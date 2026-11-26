@@ -34,6 +34,7 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import type { IdentityUniversalAuth } from "@app/hooks/api/identities/types";
 
+import { useAddDemoProjectIdentity } from "../access/demo";
 import { DEMO_SELF_USER_ID } from "../access/fixtures";
 import {
   agentVaultDemoStore,
@@ -908,8 +909,9 @@ export const agentVaultDemo: AgentVaultAdapter = {
       error: null
     };
   },
-  useCreateManagedIdentity: (projectId) =>
-    fixtureMutation(({ name, role }: { name: string; role: string }) => {
+  useCreateManagedIdentity: (projectId) => {
+    const addToAccess = useAddDemoProjectIdentity();
+    return fixtureMutation(({ name, role }: { name: string; role: string }) => {
       const id = crypto.randomUUID();
       memberStore.update((members) => [
         ...members,
@@ -926,8 +928,10 @@ export const agentVaultDemo: AgentVaultAdapter = {
         }
       ]);
       universalAuthIdentities.add(id);
+      addToAccess({ id, name, projectId, role });
       return { id, name, authAttachFailed: false };
-    })(),
+    })();
+  },
   useProxies: (_, projectId, { limit = 20, offset = 0 }) => {
     const { rows, totalCount } = slice(
       demoProject(agentVaultDemoStore.use(), projectId).proxies,

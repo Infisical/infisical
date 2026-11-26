@@ -165,6 +165,40 @@ const done = <TData>(state: AccessState, result: TData) => ({ state, result });
 const stamp = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
 
+export const useAddDemoProjectIdentity = () => {
+  const store = storeFor(useAccessScenario());
+  return (identity: { id: string; name: string; projectId: string; role: string }) =>
+    store.update((state) => ({
+      ...state,
+      identities: [
+        ...state.identities,
+        {
+          id: identity.id,
+          name: identity.name,
+          hasDeleteProtection: false,
+          authMethods: [IdentityAuthMethod.UNIVERSAL_AUTH],
+          activeLockoutAuthMethods: [],
+          createdAt: stamp(),
+          updatedAt: stamp(),
+          orgId: V4_DEMO_ORG_ID,
+          projectId: identity.projectId,
+          metadata: []
+        }
+      ],
+      projectMemberships: [
+        ...state.projectMemberships,
+        {
+          kind: "identity",
+          id: newId(),
+          projectId: identity.projectId,
+          identityId: identity.id,
+          roles: [{ id: newId(), role: identity.role, isTemporary: false }],
+          createdAt: stamp()
+        }
+      ]
+    }));
+};
+
 const BUILT_IN_ORG_ROLES = ["admin", "member", "no-access"];
 const BUILT_IN_PROJECT_ROLES = ["admin", "member", "viewer", "no-access"];
 
