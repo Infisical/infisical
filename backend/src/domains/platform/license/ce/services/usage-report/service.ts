@@ -79,7 +79,7 @@ export class UsageReportService implements TUsageReportService {
     }
   }
 
-  // No paid-plan check here (unlike handleUsageEvent): during an outage the plan is the slugless fallback,
+  // No paid-plan check here (unlike handleUsageEvent): during an outage the plan can be the slugless free plan,
   // and these events never get resent.
   async handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void> {
     if (!this.licenseServer.canReportUsage() || !events.length) return;

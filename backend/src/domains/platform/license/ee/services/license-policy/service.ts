@@ -89,7 +89,7 @@ export class LicensePolicyService implements TLicensePolicyService {
     return isOfflineLicenseKey(this.licenseKeyConfig);
   }
 
-  // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
+  // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the free plan.
   async fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan> {
     const entitlements = await this.licenseServerEntitlements.getEntitlements(rootOrg);
     if (!entitlements) {
@@ -99,7 +99,7 @@ export class LicensePolicyService implements TLicensePolicyService {
   }
 
   // eslint-disable-next-line class-methods-use-this
-  fallbackPlan(): Plan {
+  freePlan(): Plan {
     return Plan.restore(cloudPlanFeatures(null));
   }
 
