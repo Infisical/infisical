@@ -348,7 +348,6 @@ const IntegrationDetails = ({
         <PageHeader
           breadcrumb={[{ label: "Native integrations", href: listHref }]}
           title={`${name} integration`}
-          media={option && <ProviderIcon icon={option.image} alt="" size="xl" />}
           badges={<SyncStatus integration={integration} size="control-sm" />}
           actions={
             <DropdownMenu>

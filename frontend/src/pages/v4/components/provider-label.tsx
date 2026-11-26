@@ -81,7 +81,7 @@ const resolve = (source: ProviderSource) =>
 export const providerMedia = <K extends ProviderKind>(
   kind: K,
   key: ProviderKeys[K],
-  size: "sm" | "md" | "xl" = "sm"
+  size: "sm" | "md" = "sm"
 ) => {
   const image = providerOf(kind, key)?.image;
   return image ? <ProviderIcon icon={image} alt="" size={size} /> : undefined;

@@ -27,7 +27,7 @@ import {
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon, type IconName } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Tabs } from "@infisical/cipher/ui/tabs";
@@ -363,16 +363,24 @@ export const OrgIdentitiesTab = () => {
       grow: true,
       maxWidth: 320,
       text: (row) => sortedMethods(row.identity.authMethods).map(authMethodName).join(", "),
-      render: (row) =>
-        row.identity.authMethods.length ? (
-          <Inline gap={12} wrap={false} className="min-w-0 overflow-hidden">
-            {sortedMethods(row.identity.authMethods).map((method) => (
-              <ProviderLabel key={method} kind="identity-auth" value={method} />
-            ))}
-          </Inline>
-        ) : (
-          <Muted>None</Muted>
-        )
+      render: (row) => {
+        const methods = sortedMethods(row.identity.authMethods);
+        const [first, ...rest] = methods;
+        if (!first) return <Muted>None</Muted>;
+        if (!rest.length) return <ProviderLabel kind="identity-auth" value={first} />;
+        return (
+          <Tooltip content={methods.map(authMethodName).join(", ")}>
+            <Inline gap={6} align="center" wrap={false}>
+              <InlineItem truncate>
+                <ProviderLabel kind="identity-auth" value={first} />
+              </InlineItem>
+              <InlineItem shrink={false}>
+                <Badge tone="soft">+{rest.length} more</Badge>
+              </InlineItem>
+            </Inline>
+          </Tooltip>
+        );
+      }
     },
     {
       id: "signIn",
