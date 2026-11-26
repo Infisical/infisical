@@ -54,6 +54,7 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { formatDistanceToNowStrict } from "date-fns";
 
+import { EnterpriseAppConnectionsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -84,11 +85,13 @@ import {
   startConnectionRedirect
 } from "../data/integrations/connection-redirect";
 import { rotateAtLocal, rotateAtOptions } from "../data/integrations/presets/shared";
+import { useUpgradeGate } from "../license";
 import { GatewayPicker, type GatewayPickerValue } from "../networking/gateway-picker";
 import {
   DatabricksScopesField,
   FederatedCredentialDetails,
   useConnectionPreset,
+  usePlatformManagedConfirmation,
   useRotationConfirmation
 } from "./app-connection-extras";
 import {
@@ -191,8 +194,11 @@ const AppPicker = ({
   projectType?: ProjectType;
   onPick: (app: AppConnection) => void;
 }) => {
+  const orgId = useOrgId();
   const { data: options = [], isPending } =
     useV4Adapter("integrations").useConnectionOptions(projectType);
+  const { data: subscription } = useV4Adapter("networking").useSubscription(orgId);
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   if (isPending) return <Loader label="Loading apps" />;
   const items = options
     .map((option) => option.app)
@@ -209,13 +215,29 @@ const AppPicker = ({
       };
     });
   return (
-    <TilePicker
-      items={items}
-      onSelect={(app) => onPick(app as AppConnection)}
-      searchLabel="Search apps"
-      searchPlaceholder="Search apps..."
-      noun="apps"
-    />
+    <>
+      <TilePicker
+        items={items}
+        onSelect={(app) => {
+          if (
+            APP_CONNECTION_MAP[app as AppConnection].enterprise &&
+            subscription &&
+            !subscription.enterpriseAppConnections
+          ) {
+            openUpgradeGate({
+              paywallKey: "organization.app-connection-list",
+              intent: EnterpriseAppConnectionsUpgradeIntent
+            });
+            return;
+          }
+          onPick(app as AppConnection);
+        }}
+        searchLabel="Search apps"
+        searchPlaceholder="Search apps..."
+        noun="apps"
+      />
+      {upgradeGate}
+    </>
   );
 };
 
@@ -328,6 +350,7 @@ const ConnectionExtras = ({
 const usePresetCreation = (projectId?: string) => {
   const createConnection = useV4Adapter("integrations").useCreateConnection();
   const rotation = useRotationConfirmation();
+  const platformManaged = usePlatformManagedConfirmation();
   const create = async ({
     name,
     values,
@@ -345,6 +368,7 @@ const usePresetCreation = (projectId?: string) => {
       onGatewayMissing();
       throw new Error(`${name} is only reachable through a gateway.`);
     }
+    if (values.isPlatformManagedCredentials && !(await platformManaged.confirm())) return undefined;
     if (values.isAutoRotationEnabled && !(await rotation.confirm())) return undefined;
     return createConnection
       .mutateAsync({
@@ -357,7 +381,15 @@ const usePresetCreation = (projectId?: string) => {
         throw new Error(errorMessage(error));
       });
   };
-  return { create, dialog: rotation.dialog };
+  return {
+    create,
+    dialog: (
+      <>
+        {rotation.dialog}
+        {platformManaged.dialog}
+      </>
+    )
+  };
 };
 
 const addSheetTitle = (created?: TAppConnection, preset?: AppConnectionPreset) => {

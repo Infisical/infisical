@@ -89,6 +89,46 @@ export const useRotationConfirmation = () => {
   };
 };
 
+/** Main's PlatformManagedConfirmationModal, asked before creating a connection Infisical will own. */
+export const usePlatformManagedConfirmation = () => {
+  const [resolve, setResolve] = useState<((confirmed: boolean) => void) | null>(null);
+  const settle = (confirmed: boolean) => {
+    resolve?.(confirmed);
+    setResolve(null);
+  };
+  return {
+    confirm: () =>
+      new Promise<boolean>((done) => {
+        setResolve(() => done);
+      }),
+    dialog: (
+      <AlertDialog open={resolve !== null} onOpenChange={(next) => !next && settle(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Platform Managed Credentials</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once created, Infisical will update the password of this connection and you will no
+              longer be able to access it. Are you sure you want Infisical to manage the credentials
+              of this connection?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                settle(true);
+              }}
+            >
+              Grant Infisical Ownership
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )
+  };
+};
+
 /** What to add to the managed identity in Azure. The subject names the connection, so it exists first. */
 export const FederatedCredentialDetails = ({
   credential

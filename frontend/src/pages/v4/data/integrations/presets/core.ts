@@ -28,6 +28,7 @@ import type {
   AppConnectionPreset
 } from "@app/pages/v4/components/app-connection-form";
 
+import { platformManagedField } from "./databases";
 import { methodLabel } from "./shared";
 
 const gitHubInstanceFields: AppConnectionFieldPreset[] = [
@@ -319,7 +320,7 @@ export const CORE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> =
     app: AppConnection.Postgres,
     name: APP_CONNECTION_MAP[AppConnection.Postgres].name,
     schema: postgresConnectionFormSchema,
-    values: { gatewayId: null, gatewayPoolId: null },
+    values: { gatewayId: null, gatewayPoolId: null, isPlatformManagedCredentials: false },
     methods: [
       {
         value: PostgresConnectionMethod.UsernameAndPassword,
@@ -353,7 +354,8 @@ export const CORE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> =
             kind: "textarea",
             optional: true,
             visible: (values) => Boolean(values.credentials?.sslEnabled)
-          }
+          },
+          platformManagedField
         ]
       }
     ]
