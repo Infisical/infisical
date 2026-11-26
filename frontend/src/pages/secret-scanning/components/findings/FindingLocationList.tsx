@@ -17,9 +17,13 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  ProviderIcon,
   Skeleton
 } from "@app/components/v3";
-import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
+import {
+  RESOURCE_DESCRIPTION_HELPER,
+  SECRET_SCANNING_DATA_SOURCE_MAP
+} from "@app/helpers/secretScanningV2";
 import {
   TSecretScanningFindingLocation,
   TSecretScanningFindingResource,
@@ -60,7 +64,16 @@ const LocationDetails = ({
         </DetailLabel>
         <DetailValue>
           {location.resourceName}
-          {resource && <p className="text-xs text-muted">{resource.dataSourceName}</p>}
+          {resource && (
+            <p className="flex items-center gap-1.5 text-xs text-muted">
+              <ProviderIcon
+                alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source`}
+                icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
+                className="size-3.5"
+              />
+              {resource.dataSourceName}
+            </p>
+          )}
         </DetailValue>
       </Detail>
       <Detail>
