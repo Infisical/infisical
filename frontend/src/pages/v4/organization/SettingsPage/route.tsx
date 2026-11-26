@@ -2,7 +2,6 @@ import { createFileRoute, lazyRouteComponent, redirect } from "@tanstack/react-r
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { orgHref } from "../../links";
 import { SettingsPage } from "./SettingsPage";
 
 const MOVED_SETTINGS_TABS: Record<string, string> = {
@@ -21,7 +20,7 @@ export const Route = createFileRoute("/v4/organizations/$orgId/settings")({
   validateSearch: zodValidator(z.object({ selectedTab: z.string().catch("") })),
   beforeLoad: ({ params, search }) => {
     const moved = MOVED_SETTINGS_TABS[search.selectedTab];
-    if (moved) throw redirect({ href: orgHref(params.orgId, moved), replace: true });
+    if (moved) throw redirect({ href: `/v4/organizations/${params.orgId}${moved}`, replace: true });
   },
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });
