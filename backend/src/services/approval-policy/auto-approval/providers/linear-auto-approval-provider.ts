@@ -43,7 +43,6 @@ export type TLinearIssueFacts = {
 
 const MAX_ISSUE_INPUT_LENGTH = 2048;
 const MAX_STORED_LABELS = 100;
-const MAX_SIBLING_TEAMS = 5;
 
 const ISSUE_FORMAT_MESSAGE = "Enter a Linear issue ID like ENG-123, or a link to the issue";
 
@@ -189,7 +188,7 @@ export const LINEAR_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TLinearConnect
           label: "has status",
           value: AutoApprovalConstraintValue.Many,
           listOptions: async (conn, { search, siblings }, deps) => {
-            const teamKeys = (siblings[LinearIssueConstraint.Team] ?? []).slice(0, MAX_SIBLING_TEAMS);
+            const teamKeys = siblings[LinearIssueConstraint.Team] ?? [];
             const statuses = await withOptionsError("statuses", () =>
               listLinearStatuses(conn, { search, teamKeys }, deps.signal)
             );

@@ -63,7 +63,30 @@ describe("LINEAR_AI_TOOLS", () => {
         { author: { name: "Manager" }, body: "Approved", writtenByAssignee: false }
       ]
     });
-    expect((result as { description: string }).description).toHaveLength(2000 + "... (truncated)".length);
+    expect((result as { description: string }).description).toHaveLength(1500 + "... (truncated)".length);
+  });
+
+  test("get_issue drops the oldest comments to fit the AI's result limit", async () => {
+    vi.mocked(getLinearIssue).mockResolvedValue({
+      id: "uuid-1",
+      identifier: "INC-1",
+      comments: {
+        nodes: Array.from({ length: 20 }, (_, i) => ({
+          body: `${i} ${"x".repeat(600)}`,
+          createdAt: new Date(Date.UTC(2026, 0, i + 1)).toISOString()
+        }))
+      }
+    });
+
+    const { result } = await LINEAR_AI_TOOLS.get_issue.run(conn, { identifier: "INC-1" }, {});
+    const { comments, olderCommentsOmitted } = result as {
+      comments: { body: string }[];
+      olderCommentsOmitted: boolean;
+    };
+
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(7500);
+    expect(olderCommentsOmitted).toBe(true);
+    expect(comments.at(-1)?.body.startsWith("19 ")).toBe(true);
   });
 
   test("get_issue explains a missing issue", async () => {

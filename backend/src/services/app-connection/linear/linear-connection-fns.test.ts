@@ -94,6 +94,28 @@ describe("getLinearErrorMessage", () => {
 });
 
 describe("getLinearIssue", () => {
+  test("keeps the newest comments from both ends of the list", async () => {
+    const comment = (id: string, day: number) => ({ id, body: id, createdAt: `2026-01-0${day}T00:00:00Z` });
+    post.mockResolvedValue({
+      data: {
+        data: {
+          issue: {
+            id: "uuid-1",
+            identifier: "ENG-1",
+            commentsFirst: { nodes: [comment("a", 1), comment("b", 2)], pageInfo: { hasNextPage: true } },
+            commentsLast: { nodes: [comment("d", 4), comment("c", 3)], pageInfo: { hasNextPage: true } }
+          }
+        }
+      }
+    });
+
+    const issue = await getLinearIssue(config, "ENG-1", { commentCount: 2 });
+
+    expect(issue.comments?.nodes.map(({ id }) => id)).toEqual(["d", "c"]);
+    expect(issue.hasMoreComments).toBe(true);
+    expect(issue).not.toHaveProperty("commentsFirst");
+  });
+
   test("treats a missing issue as not found", async () => {
     post.mockResolvedValue({ data: { data: { issue: null } } });
     await expect(getLinearIssue(config, "ENG-1")).rejects.toThrow("Entity not found: Issue");

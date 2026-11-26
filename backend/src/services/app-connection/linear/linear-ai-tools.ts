@@ -13,8 +13,10 @@ import {
 } from "./linear-connection-fns";
 import { TLinearConnection, TLinearIssue, TLinearUser } from "./linear-connection-types";
 
-const MAX_DESCRIPTION_LENGTH = 2000;
-const MAX_COMMENT_LENGTH = 1000;
+const MAX_DESCRIPTION_LENGTH = 1500;
+const MAX_COMMENT_LENGTH = 500;
+// Stays under the AI judge's per-result cap, which cuts the end of a longer result
+const MAX_RESULT_LENGTH = 7500;
 const MAX_COMMENTS = 20;
 const MAX_SEARCH_RESULTS = 10;
 const MAX_USERS = 5;
@@ -43,7 +45,7 @@ const toToolError = (error: unknown, identifier?: string) => {
   return new BadRequestError({ message: getLinearErrorMessage(error) });
 };
 
-const toIssue = (issue: TLinearIssue) => ({
+const toIssueFields = (issue: TLinearIssue) => ({
   identifier: issue.identifier,
   title: issue.title ?? null,
   status: issue.state?.name ?? null,
@@ -71,9 +73,19 @@ const toIssue = (issue: TLinearIssue) => ({
     }))
 });
 
+const toIssue = (issue: TLinearIssue) => {
+  const result = toIssueFields(issue);
+  let omitted = Boolean(issue.hasMoreComments);
+  while (result.comments.length > 1 && JSON.stringify(result).length > MAX_RESULT_LENGTH) {
+    result.comments.shift();
+    omitted = true;
+  }
+  return { ...result, olderCommentsOmitted: omitted };
+};
+
 export const LINEAR_AI_TOOLS = {
   get_issue: defineAiTool({
-    description: `Get one Linear issue by ID: title, status, priority, team, project, assignee, creator, labels, dates, whether it's archived or in the trash, description, and its latest ${MAX_COMMENTS} comments, oldest first. Users can change their own names, so identify people by email. Each comment says whether the issue's assignee or creator wrote it.`,
+    description: `Get one Linear issue by ID: title, status, priority, team, project, assignee, creator, labels, dates, whether it's archived or in the trash, description, and its latest ${MAX_COMMENTS} comments, oldest first. Users can change their own names, so identify people by email. Each comment says whether the issue's assignee or creator wrote it, and olderCommentsOmitted says whether earlier comments were left out.`,
     inputSchema: z.object({ identifier: IdentifierSchema.describe("The issue ID, like ENG-123") }),
     run: async (conn: TLinearConnection, { identifier }, deps) => {
       let issue: TLinearIssue;

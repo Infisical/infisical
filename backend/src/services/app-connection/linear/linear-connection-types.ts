@@ -29,6 +29,20 @@ export type TLinearUser = {
   active?: boolean | null;
 };
 
+export type TLinearComment = {
+  id?: string | null;
+  body?: string | null;
+  createdAt?: string | null;
+  user?: TLinearUser | null;
+};
+
+type TLinearCommentPage = { nodes: TLinearComment[]; pageInfo?: { hasNextPage?: boolean } };
+
+export type TLinearIssueWithCommentPages = Omit<TLinearIssue, "comments" | "hasMoreComments"> & {
+  commentsFirst?: TLinearCommentPage | null;
+  commentsLast?: TLinearCommentPage | null;
+};
+
 export type TLinearIssue = {
   id: string;
   identifier: string;
@@ -46,7 +60,8 @@ export type TLinearIssue = {
   assignee?: TLinearUser | null;
   creator?: TLinearUser | null;
   labels?: { nodes: { name: string }[] } | null;
-  comments?: { nodes: { body?: string | null; createdAt?: string | null; user?: TLinearUser | null }[] } | null;
+  comments?: { nodes: TLinearComment[] } | null;
+  hasMoreComments?: boolean;
 };
 
 export type TLinearTeam = { key: string; name: string };

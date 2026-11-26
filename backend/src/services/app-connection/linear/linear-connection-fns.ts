@@ -7,7 +7,14 @@ import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { LinearConnectionMethod } from "./linear-connection-enums";
-import { TLinearConnectionConfig, TLinearIssue, TLinearTeam, TLinearUser } from "./linear-connection-types";
+import {
+  TLinearComment,
+  TLinearConnectionConfig,
+  TLinearIssue,
+  TLinearIssueWithCommentPages,
+  TLinearTeam,
+  TLinearUser
+} from "./linear-connection-types";
 
 const LINEAR_API_URL = "https://api.linear.app/graphql";
 const LINEAR_REQUEST_TIMEOUT_MS = 15_000;
@@ -176,17 +183,32 @@ export const getLinearIssue = async (
   identifier: string,
   { signal, commentCount = 0 }: { signal?: AbortSignal; commentCount?: number } = {}
 ) => {
+  const commentFields = "nodes { id body createdAt user { id name displayName email } } pageInfo { hasNextPage }";
+  // Linear doesn't document which end of the list first and last read, so both are fetched and merged
   const comments = commentCount
-    ? `comments(last: ${commentCount}) { nodes { body createdAt user { id name displayName email } } }`
+    ? `commentsFirst: comments(first: ${commentCount}) { ${commentFields} } commentsLast: comments(last: ${commentCount}) { ${commentFields} }`
     : "";
-  const data = await linearGraphql<{ issue?: TLinearIssue | null }>(
+  const data = await linearGraphql<{ issue?: TLinearIssueWithCommentPages | null }>(
     config,
     `query Issue($id: String!) { issue(id: $id) { ${ISSUE_FIELDS} ${comments} } }`,
     { id: identifier },
     signal
   );
   if (!data.issue) throw new LinearGraphqlError({ message: "Entity not found: Issue" });
-  return data.issue;
+
+  const { commentsFirst, commentsLast, ...issue } = data.issue;
+  if (!commentCount) return issue as TLinearIssue;
+
+  const byId = new Map<string, TLinearComment>();
+  [...(commentsFirst?.nodes ?? []), ...(commentsLast?.nodes ?? [])].forEach((comment, index) =>
+    byId.set(comment.id ?? `index-${index}`, comment)
+  );
+  const merged = [...byId.values()].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""));
+  return {
+    ...issue,
+    comments: { nodes: merged.slice(0, commentCount) },
+    hasMoreComments: merged.length > commentCount
+  } as TLinearIssue;
 };
 
 export const searchLinearIssues = async (
@@ -263,6 +285,12 @@ const listAllPages = async <T>(
     after = connection?.pageInfo?.endCursor ?? null;
     page += 1;
   } while (hasNextPage && after && page < LINEAR_MAX_PAGES);
+
+  if (hasNextPage) {
+    logger.warn(
+      `Linear has more ${field} than Infisical reads for options [limit=${LINEAR_PAGE_SIZE * LINEAR_MAX_PAGES}]`
+    );
+  }
 
   return nodes;
 };
