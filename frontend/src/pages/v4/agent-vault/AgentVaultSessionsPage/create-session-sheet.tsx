@@ -69,9 +69,11 @@ import {
   INSTALL_COMMANDS,
   LANGUAGE_NAMES,
   PLATFORMS,
+  resolveScriptLanguage,
   runCommand,
   sandboxScripts,
   ScriptLanguage,
+  scriptLanguagesFor,
   ScriptProvider,
   setupPrompt,
   SnippetLanguage
@@ -94,7 +96,13 @@ type TCreateTab = SnippetLanguage | typeof CREATE_NOW;
 const SNIPPET_CODE_LANGUAGES: Record<SnippetLanguage, string> = {
   [SnippetLanguage.TypeScript]: "typescript",
   [SnippetLanguage.Python]: "python",
+  [SnippetLanguage.Go]: "go",
   [SnippetLanguage.Cli]: "bash"
+};
+
+const SCRIPT_LANGUAGES: Partial<Record<TCreateTab, ScriptLanguage>> = {
+  [SnippetLanguage.Python]: ScriptLanguage.Python,
+  [SnippetLanguage.Go]: ScriptLanguage.Go
 };
 
 const TAB_STORAGE_KEY = "agentVaultCreateSessionTab";
@@ -196,7 +204,7 @@ const SandboxFiles = ({
           variant="segmented"
           value={language}
           onValueChange={(value) => onLanguageChange(value as ScriptLanguage)}
-          tabs={Object.values(ScriptLanguage).map((value) => ({
+          tabs={scriptLanguagesFor(platform).map((value) => ({
             value,
             label: LANGUAGE_NAMES[value]
           }))}
@@ -1197,6 +1205,7 @@ const OwnSandboxBody = ({
       tabs={[
         { value: SnippetLanguage.TypeScript, label: "TypeScript", disabled: Boolean(created) },
         { value: SnippetLanguage.Python, label: "Python", disabled: Boolean(created) },
+        { value: SnippetLanguage.Go, label: "Go", disabled: Boolean(created) },
         { value: SnippetLanguage.Cli, label: "CLI", disabled: Boolean(created) },
         { value: CREATE_NOW, label: "Create now" }
       ]}
@@ -1222,12 +1231,15 @@ const clientIdFor = (
 
 const createView = (platform: TPlatform | null, tab: TCreateTab) => {
   const isOwnSandbox = platform === OWN_SANDBOX;
+  const preferredScriptLanguage = SCRIPT_LANGUAGES[tab] ?? ScriptLanguage.TypeScript;
   return {
     isOwnSandbox,
     isCreateNow: isOwnSandbox && tab === CREATE_NOW,
     language: tab === CREATE_NOW ? SnippetLanguage.Cli : tab,
     scriptLanguage:
-      tab === SnippetLanguage.Python ? ScriptLanguage.Python : ScriptLanguage.TypeScript,
+      !platform || isOwnSandbox
+        ? preferredScriptLanguage
+        : resolveScriptLanguage(platform, preferredScriptLanguage),
     platformDetails: platform && platform !== OWN_SANDBOX ? PLATFORMS[platform] : null
   };
 };
