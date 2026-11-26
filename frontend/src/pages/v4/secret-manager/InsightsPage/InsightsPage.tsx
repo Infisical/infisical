@@ -60,19 +60,22 @@ const Insights = () => {
     ProjectPermissionHoneyTokenActions.Read,
     ProjectPermissionSub.HoneyTokens
   );
-  const stats =
+  const statParts =
     hasInsightsPlan && counts
-      ? [
-          plural(counts.secretCount, "secret"),
-          plural(environments.length, "environment"),
-          plural(counts.folderCount, "folder"),
-          plural(counts.secretRotationCount, "rotation"),
-          plural(counts.dynamicSecretCount, "dynamic secret"),
-          ...(counts.honeyTokenCount !== null && canReadHoneyTokens
-            ? [plural(counts.honeyTokenCount, "honey token")]
-            : [])
-        ].join(", ")
-      : undefined;
+      ? (
+          [
+            [counts.secretCount, "secret"],
+            [environments.length, "environment"],
+            [counts.folderCount, "folder"],
+            [counts.secretRotationCount, "rotation"],
+            [counts.dynamicSecretCount, "dynamic secret"],
+            [canReadHoneyTokens ? (counts.honeyTokenCount ?? 0) : 0, "honey token"]
+          ] satisfies [number, string][]
+        )
+          .filter(([count]) => count > 0)
+          .map(([count, noun]) => plural(count, noun))
+      : [];
+  const stats = statParts.length ? statParts.join(", ") : undefined;
 
   return (
     <Stack gap={24}>

@@ -196,7 +196,7 @@ export const DuplicatedSecretsCard = ({
   return (
     <Card
       title="Duplicated Secrets"
-      badges={refresh ? <Badge tone="soft">{refresh}</Badge> : undefined}
+      badges={refresh && blindIndexEnabled ? <Badge tone="soft">{refresh}</Badge> : undefined}
     >
       {body}
     </Card>

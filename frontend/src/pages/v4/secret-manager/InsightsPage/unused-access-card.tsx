@@ -179,7 +179,7 @@ export const UnusedAccessCard = ({
     <Card
       variant="framed"
       title="Overprivileged Access"
-      badges={refresh ? <Badge tone="soft">{refresh}</Badge> : undefined}
+      badges={refresh && isJudging ? <Badge tone="soft">{refresh}</Badge> : undefined}
       hint="Users and machine identities with access to secrets they haven't read in the last 30 days."
       flush
       action={
