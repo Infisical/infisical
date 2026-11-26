@@ -94,10 +94,13 @@ export const WorkflowIntegrationsTab = () => {
   const [deleting, setDeleting] = useState<WorkflowIntegration>();
   const [deletePending, setDeletePending] = useState(false);
   const [busyId, setBusyId] = useState<string>();
-  const { data: slackAlertCount = 0, error: slackAlertCountError } =
-    integrations.useSlackIntegrationAlertCount(
-      deleting?.integration === WorkflowIntegrationPlatform.SLACK ? deleting.id : undefined
-    );
+  const slackDeleteId =
+    deleting?.integration === WorkflowIntegrationPlatform.SLACK ? deleting.id : undefined;
+  const {
+    data: slackAlertCount = 0,
+    error: slackAlertCountError,
+    isPending: slackAlertCountPending
+  } = integrations.useSlackIntegrationAlertCount(slackDeleteId);
   let slackAlertWarning = "";
   if (slackAlertCountError) {
     slackAlertWarning =
@@ -345,7 +348,11 @@ export const WorkflowIntegrationsTab = () => {
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}
       >
-        <AlertDialogContent tone="danger" confirmText={deleting?.slug} pending={deletePending}>
+        <AlertDialogContent
+          tone="danger"
+          confirmText={deleting?.slug}
+          pending={deletePending || (Boolean(slackDeleteId) && slackAlertCountPending)}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete integration {deleting?.slug}?</AlertDialogTitle>
             <AlertDialogDescription>

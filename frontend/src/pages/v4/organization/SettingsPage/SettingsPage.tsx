@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -31,7 +31,7 @@ import { Select } from "@infisical/cipher/ui/select";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useQueryClient } from "@tanstack/react-query";
-import { useParams, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -141,7 +141,7 @@ const OrganizationDetails = ({
           <Input
             value={draft.name}
             invalid={Boolean(issues?.name)}
-            disabled={!canEdit}
+            disabledReason={canEdit ? undefined : RESTRICTED}
             autoComplete="off"
             onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           />
@@ -176,7 +176,7 @@ const OrganizationDetails = ({
             mono
             value={draft.slug}
             invalid={Boolean(issues?.slug)}
-            disabled={!canEdit}
+            disabledReason={canEdit ? undefined : RESTRICTED}
             onChange={(event) => setDraft({ ...draft, slug: event.target.value })}
           />
         </Field>
@@ -552,9 +552,24 @@ const SubOrgsUpgrade = () => {
   );
 };
 
+const MOVED_SETTINGS_TABS: Record<string, string> = {
+  "workflow-integrations": "/integrations?selectedTab=workflow-integrations",
+  "tag-audit-log-streams": "/audit-logs?selectedTab=streams",
+  "oauth-applications": "/oauth-applications",
+  "tab-external-migrations": "/integrations?selectedTab=external-migrations",
+  "sso-settings": "/sso?selectedTab=sso",
+  "provisioning-settings": "/sso?selectedTab=provisioning",
+  "project-templates": "/projects/secret-management/product-settings"
+};
+
 export const SettingsPage = () => {
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/settings" });
+  const moved = MOVED_SETTINGS_TABS[selectedTab];
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/settings" });
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (moved) navigate({ href: orgHref(orgId, moved), replace: true });
+  }, [moved, orgId]);
   const { organization } = useV4Session();
   const { data: entitlements } = useV4Adapter("orgSettings").useEntitlements(orgId);
   const isSubOrg = organization.isSubOrganization;
@@ -570,6 +585,7 @@ export const SettingsPage = () => {
       hidden: isSubOrg
     }
   ].filter((tab) => !tab.hidden);
+  if (moved) return null;
   const active = tabs.find((tab) => tab.key === selectedTab) ?? tabs[0];
   const Active = active.component;
   return (
