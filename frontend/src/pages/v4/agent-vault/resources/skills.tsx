@@ -26,6 +26,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
@@ -440,7 +441,6 @@ export const DeleteSkillDialog = ({
 }) => {
   const remove = useV4Adapter("agentVaultResources").useDeleteSkill(projectId);
   const bundles = skill?.accessBundles ?? [];
-  const bundleNames = bundles.map((bundle) => bundle.name).join(", ");
   return (
     <AlertDialog open={Boolean(skill)} onOpenChange={onOpenChange}>
       <AlertDialogContent tone="danger" confirmText={skill?.name}>
@@ -448,10 +448,28 @@ export const DeleteSkillDialog = ({
           <AlertDialogTitle>{`Delete ${skill?.name ?? ""}?`}</AlertDialogTitle>
           <AlertDialogDescription>
             {bundles.length
-              ? `It leaves ${bundles.length === 1 ? "the access bundle" : `the ${bundles.length} access bundles`} that use it: ${bundleNames}. Every version is deleted, and agents that already started keep their copy. This cannot be undone.`
-              : "This skill isn't in any access bundle. Every version is deleted, and agents that already started keep their copy. This cannot be undone."}
+              ? "Deleting it removes it from every access bundle below and deletes every version. This cannot be undone."
+              : "This skill isn't in any access bundle. Every version of it is deleted. This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {bundles.length > 0 && (
+          <List
+            label="Access bundles"
+            title={`Used by ${bundles.length} access bundle${bundles.length === 1 ? "" : "s"}`}
+            variant="framed"
+            size="sm"
+          >
+            {bundles.map((bundle) => (
+              <ListRow
+                key={bundle.id}
+                value={bundle.id}
+                label={bundle.name}
+                title={bundle.name}
+                media={<Icon name="package" />}
+              />
+            ))}
+          </List>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction

@@ -791,8 +791,13 @@ export const ServiceSheet = ({
       error={err(key)}
       help={
         form.credentialType === AgentVaultCredentialType.Basic && hasStored && form[key] !== "" ? (
-          <Button variant="ghost" size="xs" onClick={() => set(key, "")}>
-            {`Clear ${label.toLowerCase()}`}
+          <Button
+            variant="ghost"
+            size="xs"
+            aria-label={`Clear ${label.toLowerCase()}`}
+            onClick={() => set(key, "")}
+          >
+            Clear
           </Button>
         ) : undefined
       }
