@@ -38,17 +38,15 @@ import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeletePolicyDialog } from "../components/delete-dialogs";
 import { ExtensionName } from "../components/extension-name";
-import {
-  ConstraintList,
-  hasConstraints,
-  type PolicyConstraints
-} from "../components/policy-constraints";
+import { ConstraintList } from "../components/policy-constraints";
 import {
   CRITICALITY_LABELS,
   domainComponentChain,
   formatValidity,
+  hasConstraints,
   hasEnforcement,
   POLICY_DOCS,
+  type PolicyConstraints,
   POLICY_STATE_LABELS,
   type PolicyState,
   SAN_LABELS,

@@ -2,14 +2,9 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { SmallText } from "@infisical/cipher/ui/text";
 
-import { POLICY_STATE_LABELS } from "./policy-model";
+import { POLICY_STATE_LABELS, type PolicyConstraints } from "./policy-model";
 
 import styles from "./policy-constraints.module.css";
-
-export type PolicyConstraints = { allowed?: string[]; required?: string[]; denied?: string[] };
-
-export const hasConstraints = (rule: PolicyConstraints) =>
-  Boolean(rule.allowed?.length || rule.required?.length || rule.denied?.length);
 
 export const ConstraintList = ({
   rule,
