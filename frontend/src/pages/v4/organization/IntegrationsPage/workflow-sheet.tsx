@@ -8,7 +8,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import {
   Sheet,
@@ -201,12 +201,16 @@ const WorkflowForm = ({
       <Sheet open onOpenChange={(next) => !next && requestDiscard()}>
         <SheetContent pending={isSubmitting}>
           <SheetHeader>
-            <Inline gap={8} align="center">
-              <SheetTitle>{isAdd ? `Connect ${name}` : `Edit ${name} integration`}</SheetTitle>
-              {isTeams && isAdd && (
-                <DocumentationLink href={TEAMS_DOCS} subject="Microsoft Teams integration" />
-              )}
-            </Inline>
+            <SheetTitle
+              badges={
+                isTeams &&
+                isAdd && (
+                  <DocumentationLink href={TEAMS_DOCS} subject="Microsoft Teams integration" />
+                )
+              }
+            >
+              {isAdd ? `Connect ${name}` : `Edit ${name} integration`}
+            </SheetTitle>
             {isTeams && isAdd && (
               <SheetDescription>
                 Install the Infisical bot in your Microsoft Teams tenant before you connect it.

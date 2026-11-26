@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Grid, Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -119,7 +120,7 @@ const SummaryTile = ({
   href,
   children
 }: {
-  label: string;
+  label: ReactNode;
   onClick?: () => void;
   href?: string;
   children: ReactNode;
@@ -334,7 +335,18 @@ export const TabbedOverview = ({
       <SummaryTile key="products" label="Products">
         {billing.activeProductCount.toLocaleString()} active
       </SummaryTile>,
-      <SummaryTile key="license" label="License" href={SELF_HOSTED_LICENSE_DOCS_URL}>
+      <SummaryTile
+        key="license"
+        label={
+          <>
+            License{" "}
+            <DocumentationLink
+              href={SELF_HOSTED_LICENSE_DOCS_URL}
+              subject="self-hosted licensing"
+            />
+          </>
+        }
+      >
         {licenseCopy.methodHint}
       </SummaryTile>,
       <SummaryTile key="plan" label="Plan changes" href={SELF_HOSTED_CONTACT_SALES_URL}>

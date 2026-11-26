@@ -187,11 +187,14 @@ const ManageAccessContent = ({
   return (
     <>
       <SheetHeader>
-        <SheetTitle>Manage access</SheetTitle>
-        <SheetDescription>
-          {`Who can create sessions with ${accessBundle.name}.`}{" "}
-          <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
-        </SheetDescription>
+        <SheetTitle
+          badges={
+            <DocumentationLink href={AgentVaultDocs.accessBundles} subject="access bundles" />
+          }
+        >
+          Manage access
+        </SheetTitle>
+        <SheetDescription>{`Who can create sessions with ${accessBundle.name}.`}</SheetDescription>
       </SheetHeader>
       <SheetBody>
         <Stack gap={24}>

@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field, FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -397,16 +398,8 @@ export function CreateHoneyTokenFlow({
         open={open}
         onRequestClose={close}
         media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
-        title={
-          <span className={styles.titleLink}>
-            AWS honey token
-            <Button asChild variant="ghost" size="xs" iconRight="external">
-              <a href={HONEY_TOKEN_DOCS_URL} target="_blank" rel="noopener noreferrer">
-                Docs
-              </a>
-            </Button>
-          </span>
-        }
+        title="AWS honey token"
+        badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
         description="Plant a decoy AWS credential that alerts when anyone uses it."
         steps={HONEY_TOKEN_STEPS.map((entry) => ({ title: entry.name }))}
         current={step}

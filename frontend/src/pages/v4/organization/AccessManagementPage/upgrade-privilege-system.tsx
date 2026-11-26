@@ -29,6 +29,7 @@ const CHECKS = [
 ];
 
 const DocLink = ({ path, children }: { path: string; children: string }) => (
+  // v4-check-ignore hand-built-docs-link -- inline links on subject names inside an instructional sentence
   <a href={`${DOCS}/${path}`} target="_blank" rel="noreferrer">
     {children}
   </a>

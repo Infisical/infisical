@@ -428,14 +428,12 @@ export const EmailDomainsSection = () => {
     <>
       <Card
         variant="framed"
-        title={
-          <Inline gap={8} wrap={false}>
-            Email domains
-            <DocumentationLink
-              href="https://infisical.com/docs/documentation/platform/email-domain"
-              subject="email domains"
-            />
-          </Inline>
+        title="Email domains"
+        badges={
+          <DocumentationLink
+            href="https://infisical.com/docs/documentation/platform/email-domain"
+            subject="email domains"
+          />
         }
         action={
           <Inline gap={8} wrap={false}>

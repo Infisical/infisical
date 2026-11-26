@@ -317,14 +317,15 @@ export const OidcConfigDialog = ({
         <SheetContent size="lg" pending={isPending}>
           <form id={formId} noValidate onSubmit={handleSubmit(onSubmit)}>
             <SheetHeader>
-              <SheetTitle>
-                <Inline gap={8} wrap={false}>
-                  Manage OIDC configuration
+              <SheetTitle
+                badges={
                   <DocumentationLink
                     href="https://infisical.com/docs/integrations/user-authentication"
                     subject="OIDC"
                   />
-                </Inline>
+                }
+              >
+                Manage OIDC configuration
               </SheetTitle>
             </SheetHeader>
             <SheetBody>

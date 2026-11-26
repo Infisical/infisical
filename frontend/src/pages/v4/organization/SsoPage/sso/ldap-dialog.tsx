@@ -274,14 +274,15 @@ export const LdapConfigDialog = ({
         <SheetContent size="lg" pending={isPending}>
           <form id={formId} noValidate onSubmit={handleSubmit(onSubmit)}>
             <SheetHeader>
-              <SheetTitle>
-                <Inline gap={8} wrap={false}>
-                  Manage LDAP configuration
+              <SheetTitle
+                badges={
                   <DocumentationLink
                     href="https://infisical.com/docs/integrations/user-authentication"
                     subject="LDAP"
                   />
-                </Inline>
+                }
+              >
+                Manage LDAP configuration
               </SheetTitle>
             </SheetHeader>
             <SheetBody>

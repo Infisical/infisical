@@ -128,12 +128,8 @@ export const AgentVaultIdentityDelegationSection = ({
     <>
       <Card
         variant="framed"
-        title={
-          <Inline gap={8}>
-            Delegation
-            <DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />
-          </Inline>
-        }
+        title="Delegation"
+        badges={<DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />}
         action={
           canEditDelegation &&
           !isPending &&

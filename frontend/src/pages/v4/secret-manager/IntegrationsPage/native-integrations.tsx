@@ -3,6 +3,7 @@ import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filt
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -75,22 +76,23 @@ export const RetirementNotice = ({ orgId, projectId }: { orgId: string; projectI
   return (
     <Alert
       tone="warn"
-      title="Migrate to secret syncs"
-      actions={
+      title={
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => go(integrationsHref(orgId, projectId, SECRET_SYNCS_TAB))}
-          >
-            Go to secret syncs
-          </Button>
-          <Button variant="link" asChild>
-            <a href={MIGRATION_DOCS} target="_blank" rel="noreferrer">
-              Migration guide
-            </a>
-          </Button>
+          Migrate to secret syncs{" "}
+          <DocumentationLink
+            href={MIGRATION_DOCS}
+            subject="migrating native integrations to secret syncs"
+          />
         </>
+      }
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => go(integrationsHref(orgId, projectId, SECRET_SYNCS_TAB))}
+        >
+          Go to secret syncs
+        </Button>
       }
     >
       Native integrations are being retired on {NATIVE_INTEGRATION_DEPRECATION_DATE}. Existing

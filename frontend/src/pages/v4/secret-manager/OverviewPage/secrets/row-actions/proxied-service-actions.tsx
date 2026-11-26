@@ -10,6 +10,7 @@ import {
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { Steps } from "@infisical/cipher/ui/multi-step";
 import {
@@ -133,13 +134,6 @@ function EditProxiedServiceSheet({
   const stepErrors = Object.fromEntries(
     Object.entries(errors).filter(([key]) => stepFields.includes(key.split(".")[0] as never))
   );
-  const docs = (
-    <Button asChild variant="ghost" size="xs" iconRight="external">
-      <a href={PROXIED_SERVICE_DOCS_URL} target="_blank" rel="noopener noreferrer">
-        Docs
-      </a>
-    </Button>
-  );
 
   return (
     <>
@@ -147,11 +141,12 @@ function EditProxiedServiceSheet({
         <SheetContent className={flowStyles.wizardSheet} data-wide="">
           <SheetHeader>
             <div className={flowStyles.titleText}>
-              <SheetTitle>
-                <span className={flowStyles.titleLink}>
-                  {service.name}
-                  {docs}
-                </span>
+              <SheetTitle
+                badges={
+                  <DocumentationLink href={PROXIED_SERVICE_DOCS_URL} subject="proxied services" />
+                }
+              >
+                {service.name}
               </SheetTitle>
             </div>
           </SheetHeader>
@@ -214,7 +209,6 @@ function EditProxiedServiceSheet({
               <aside className={flowStyles.wizardAside}>
                 <div className={flowStyles.asideHead}>
                   <span className={flowStyles.eyebrow}>{current.name}</span>
-                  <span className={flowStyles.push}>{docs}</span>
                 </div>
                 <p className={flowStyles.label}>What this step does</p>
                 <SmallText muted>{current.rightDescription}</SmallText>
