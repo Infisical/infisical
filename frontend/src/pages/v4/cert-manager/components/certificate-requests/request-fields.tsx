@@ -647,16 +647,16 @@ export const CustomExtensionsField = ({
           const current = rows.find((row) => row.oid === declaration.oid);
           const error = errorOf(declaration.oid);
           return (
-            <Inline key={declaration.oid} gap={8} align="start" wrap={false}>
-              <Input
-                aria-label="Extension"
-                width="md"
-                mono
-                value={labelOf(declaration.oid)}
-                disabled
-              />
-              <InlineGrow>
-                <Field error={error}>
+            <Stack key={declaration.oid} gap={4}>
+              <Inline gap={12} align="center">
+                <Input
+                  aria-label="Extension"
+                  width="md"
+                  mono
+                  value={labelOf(declaration.oid)}
+                  disabled
+                />
+                <InlineGrow>
                   <Input
                     aria-label="Extension value"
                     placeholder={extensionPlaceholder(declaration.oid)}
@@ -667,12 +667,13 @@ export const CustomExtensionsField = ({
                       upsertPinned(declaration.oid, { value: event.target.value })
                     }
                   />
-                </Field>
-              </InlineGrow>
-              {critical(declaration.oid, Boolean(current?.critical), (next) =>
-                upsertPinned(declaration.oid, { critical: next })
-              )}
-            </Inline>
+                </InlineGrow>
+                {critical(declaration.oid, Boolean(current?.critical), (next) =>
+                  upsertPinned(declaration.oid, { critical: next })
+                )}
+              </Inline>
+              {error && <FieldError>{error}</FieldError>}
+            </Stack>
           );
         })}
         {added.map((row) => {
@@ -680,36 +681,36 @@ export const CustomExtensionsField = ({
           const selectOid = (oid: string) =>
             update(row.key, { oid, value: row.value || (declarationByOid.get(oid)?.value ?? "") });
           return (
-            <Inline key={row.key} gap={8} align="start" wrap={false}>
-              {isUnrestricted ? (
-                <Combobox
-                  label="Extension"
-                  placeholder="Select or enter an OID"
-                  width="md"
-                  mono
-                  options={oidOptions([row.oid, ...offerable].filter(Boolean)).filter(
-                    (option) => option.value === row.oid || !used.has(option.value)
-                  )}
-                  value={row.oid}
-                  onChange={selectOid}
-                  onCreate={(oid) => selectOid(oid.trim())}
-                  createLabel={(query) => `Use ${query}`}
-                />
-              ) : (
-                <Select
-                  aria-label="Extension"
-                  width="md"
-                  placeholder="Select an extension"
-                  options={(row.oid ? [row.oid, ...offerable] : offerable).map((oid) => ({
-                    value: oid,
-                    label: labelOf(oid)
-                  }))}
-                  value={row.oid || undefined}
-                  onChange={selectOid}
-                />
-              )}
-              <InlineGrow>
-                <Field error={error}>
+            <Stack key={row.key} gap={4}>
+              <Inline gap={12} align="center">
+                {isUnrestricted ? (
+                  <Combobox
+                    label="Extension"
+                    placeholder="Select or enter an OID"
+                    width="md"
+                    mono
+                    options={oidOptions([row.oid, ...offerable].filter(Boolean)).filter(
+                      (option) => option.value === row.oid || !used.has(option.value)
+                    )}
+                    value={row.oid}
+                    onChange={selectOid}
+                    onCreate={(oid) => selectOid(oid.trim())}
+                    createLabel={(query) => `Use ${query}`}
+                  />
+                ) : (
+                  <Select
+                    aria-label="Extension"
+                    width="md"
+                    placeholder="Select an extension"
+                    options={(row.oid ? [row.oid, ...offerable] : offerable).map((oid) => ({
+                      value: oid,
+                      label: labelOf(oid)
+                    }))}
+                    value={row.oid || undefined}
+                    onChange={selectOid}
+                  />
+                )}
+                <InlineGrow>
                   <Input
                     aria-label="Extension value"
                     placeholder={extensionPlaceholder(row.oid)}
@@ -718,15 +719,16 @@ export const CustomExtensionsField = ({
                     autoComplete="off"
                     onChange={(event) => update(row.key, { value: event.target.value })}
                   />
-                </Field>
-              </InlineGrow>
-              {critical(row.oid, Boolean(row.critical), (next) =>
-                update(row.key, { critical: next })
-              )}
-              <RemoveButton
-                onRemove={() => onChange(rows.filter((item) => item.key !== row.key))}
-              />
-            </Inline>
+                </InlineGrow>
+                {critical(row.oid, Boolean(row.critical), (next) =>
+                  update(row.key, { critical: next })
+                )}
+                <RemoveButton
+                  onRemove={() => onChange(rows.filter((item) => item.key !== row.key))}
+                />
+              </Inline>
+              {error && <FieldError>{error}</FieldError>}
+            </Stack>
           );
         })}
       </Stack>
