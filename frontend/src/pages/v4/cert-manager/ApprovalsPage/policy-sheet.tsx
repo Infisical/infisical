@@ -233,8 +233,8 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
     name: entry.name,
     requiredApprovals: Number(entry.requiredApprovals) || 0,
     approvers: [
-      ...entry.users.map((id) => ({ id, name: nameOf(userOptions, id) })),
-      ...entry.groups.map((id) => ({ id, name: nameOf(groupOptions, id) }))
+      ...entry.users.map((id) => ({ id, kind: "user" as const, name: nameOf(userOptions, id) })),
+      ...entry.groups.map((id) => ({ id, kind: "group" as const, name: nameOf(groupOptions, id) }))
     ]
   }));
   return (

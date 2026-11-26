@@ -251,6 +251,7 @@ const PolicyCard = ({
             requiredApprovals: step.requiredApprovals,
             approvers: step.approvers.map((approver) => ({
               id: approver.id,
+              kind: approver.type,
               name: labels.get(approver.id) ?? `${approver.id.slice(0, 8)}...`
             }))
           }))}

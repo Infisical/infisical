@@ -1,5 +1,6 @@
-import { Avatar, AvatarGroup } from "@infisical/cipher/ui/avatar";
+import { Avatar, AvatarFallback, AvatarGroup } from "@infisical/cipher/ui/avatar";
 import { Count } from "@infisical/cipher/ui/badge";
+import { Icon } from "@infisical/cipher/ui/icon";
 import { List, ListRow, ListSection } from "@infisical/cipher/ui/list";
 import { NameLine } from "@infisical/cipher/ui/name-line";
 import { Meta } from "@infisical/cipher/ui/text";
@@ -7,7 +8,7 @@ import { Meta } from "@infisical/cipher/ui/text";
 export type ApprovalStep = {
   name?: string | null;
   requiredApprovals: number;
-  approvers: { id: string; name: string }[];
+  approvers: { id: string; name: string; kind: "user" | "group" }[];
 };
 
 export const ApprovalSteps = ({ steps }: { steps: ApprovalStep[] }) => (
@@ -29,9 +30,17 @@ export const ApprovalSteps = ({ steps }: { steps: ApprovalStep[] }) => (
                 <NameLine
                   media={
                     <AvatarGroup size={24} max={3} label={`Approvers for ${name}`}>
-                      {step.approvers.map((approver) => (
-                        <Avatar key={approver.id} name={approver.name} />
-                      ))}
+                      {step.approvers.map((approver) =>
+                        approver.kind === "group" ? (
+                          <Avatar key={approver.id} label={`${approver.name}, group`}>
+                            <AvatarFallback>
+                              <Icon name="users" />
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <Avatar key={approver.id} name={approver.name} />
+                        )
+                      )}
                     </AvatarGroup>
                   }
                 >
