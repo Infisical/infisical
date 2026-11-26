@@ -941,18 +941,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `${TableName.SecretScanningFindingLocation}.findingId`,
           `${TableName.SecretScanningFinding}.id`
         ]),
-        // the newest location's rule description stands for the finding's; one without a location keeps its own
-        db.raw(
-          `COALESCE(
-             (SELECT l.details->>'description' FROM ?? AS l WHERE l."findingId" = ?? ORDER BY l."createdAt" DESC, l.id DESC LIMIT 1),
-             ??->>'description'
-           ) AS "description"`,
-          [
-            TableName.SecretScanningFindingLocation,
-            `${TableName.SecretScanningFinding}.id`,
-            `${TableName.SecretScanningFinding}.details`
-          ]
-        ),
         db.raw(
           `COALESCE(
              (
@@ -1120,7 +1108,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       return {
         findings: findings as ((typeof findings)[number] & {
           locationCount: number;
-          description: string | null;
           resources: TSecretScanningFindingResource[];
         })[],
         totalCount: Number(countResult?.count ?? 0)
@@ -1139,7 +1126,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       return finding as
         | (typeof finding & {
             locationCount: number;
-            description: string | null;
             resources: TSecretScanningFindingResource[];
           })
         | undefined;

@@ -149,7 +149,6 @@ export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit
   dataSourceName: z.string().describe(SecretScanningFindings.DEPRECATED_NAMED_RESOURCE),
   resourceName: z.string().describe(SecretScanningFindings.DEPRECATED_NAMED_RESOURCE),
   locationCount: z.number(),
-  description: z.string().nullable().describe(SecretScanningFindings.DESCRIPTION),
   resources: z
     .object({
       id: z.string().uuid(),

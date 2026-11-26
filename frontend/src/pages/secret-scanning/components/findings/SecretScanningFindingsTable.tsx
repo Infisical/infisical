@@ -545,14 +545,7 @@ export const SecretScanningFindingsTable = ({
                             }
                           />
                         </TableCell>
-                        <TableCell isTruncatable>
-                          <p className="truncate">{finding.rule}</p>
-                          {finding.description && (
-                            <p className="truncate text-xs text-muted" title={finding.description}>
-                              {finding.description}
-                            </p>
-                          )}
-                        </TableCell>
+                        <TableCell isTruncatable>{finding.rule}</TableCell>
                         <TableCell>
                           <p className="whitespace-nowrap">
                             {finding.locationCount === 1
