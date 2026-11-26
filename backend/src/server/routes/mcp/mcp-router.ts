@@ -12,7 +12,7 @@ import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 
 import { createMcpServer } from "./mcp-server";
 
-const toWebRequest = (req: FastifyRequest, url: string) => {
+const $toWebRequest = (req: FastifyRequest, url: string) => {
   const headers = new Headers();
   Object.entries(req.headers).forEach(([name, value]) => {
     // The body is handed over already parsed, so its framing headers no longer describe anything.
@@ -107,7 +107,7 @@ export const registerMcpRouter = async (server: FastifyZodProvider) => {
       // its result, and the one long-lived stream, a subscriptions/listen request, is refused straight away.
       const mcpHandler = createMcpHandler(() => createMcpServer(server, req, scopes), { maxSubscriptions: 0 });
       try {
-        const response = await mcpHandler.fetch(toWebRequest(req, mcpResource), { parsedBody: req.body });
+        const response = await mcpHandler.fetch($toWebRequest(req, mcpResource), { parsedBody: req.body });
         response.headers.forEach((value, name) => {
           void res.header(name, value);
         });

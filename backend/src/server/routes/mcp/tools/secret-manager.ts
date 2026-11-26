@@ -52,7 +52,7 @@ type TRawSecret = {
   version: number;
 };
 
-const toSecretOutput = ({
+const $toSecretOutput = ({
   id,
   secretKey,
   secretValue,
@@ -87,7 +87,7 @@ export const registerSecretManagerTools = ({
 
   // The services behind list-projects and list-folders check membership but no ability, so the scopes never narrow
   // them. Without this a write-only connection could list what it was not allowed to see.
-  const assertCanSeeProjectContents = () => {
+  const $assertCanSeeProjectContents = () => {
     if (!canReadSecretValues && !scopes.includes(OauthScope.SecretsDescribe)) {
       throw new ForbiddenRequestError({
         message:
@@ -97,7 +97,7 @@ export const registerSecretManagerTools = ({
   };
 
   // The product analytics event the tool's REST route sends, with MCP as the channel.
-  const sendSecretsEvent = (
+  const $sendSecretsEvent = (
     event: TSecretModifiedEvent["event"],
     { projectId, environmentSlug, secretPath }: z.output<typeof SecretLocationSchema>,
     numberOfSecrets = 1
@@ -117,7 +117,7 @@ export const registerSecretManagerTools = ({
       }
     });
 
-  const submittedForApproval = async (
+  const $submittedForApproval = async (
     approval: Pick<TSecretApprovalRequests, "id" | "slug" | "status" | "committerUserId">,
     { projectId, environmentSlug, secretPath, secretName }: TSecretLocation,
     eventType: SecretApprovalEvent
@@ -145,7 +145,7 @@ export const registerSecretManagerTools = ({
     };
   };
 
-  const appliedSecretWrite = async (
+  const $appliedSecretWrite = async (
     type: EventType.CREATE_SECRET | EventType.UPDATE_SECRET,
     { projectId, environmentSlug, secretPath, secretName }: TSecretLocation,
     secret: { id: string; secretKey: string; version: number; tags?: { name: string }[] }
@@ -177,7 +177,7 @@ export const registerSecretManagerTools = ({
       annotations: { readOnlyHint: true }
     },
     async () => {
-      assertCanSeeProjectContents();
+      $assertCanSeeProjectContents();
       const { projects } = await server.services.project.getProjects({
         ...actor,
         includeRoles: false,
@@ -250,7 +250,7 @@ export const registerSecretManagerTools = ({
       annotations: { readOnlyHint: true }
     },
     async ({ projectId, environmentSlug, secretPath, recursive }) => {
-      assertCanSeeProjectContents();
+      $assertCanSeeProjectContents();
       const folders = await server.services.folder.getFolders({
         ...actor,
         projectId,
@@ -372,18 +372,18 @@ export const registerSecretManagerTools = ({
         }
       });
 
-      await sendSecretsEvent(
+      await $sendSecretsEvent(
         PostHogEventTypes.SecretPulled,
         { projectId, environmentSlug, secretPath },
         secrets.length
       );
 
       return {
-        secrets: secrets.map(toSecretOutput),
+        secrets: secrets.map($toSecretOutput),
         imports: imports?.map((secretImport) => ({
           environment: secretImport.environment,
           secretPath: secretImport.secretPath,
-          secrets: secretImport.secrets.map(toSecretOutput)
+          secrets: secretImport.secrets.map($toSecretOutput)
         }))
       };
     }
@@ -446,9 +446,9 @@ export const registerSecretManagerTools = ({
         }
       });
 
-      await sendSecretsEvent(PostHogEventTypes.SecretPulled, { projectId, environmentSlug, secretPath });
+      await $sendSecretsEvent(PostHogEventTypes.SecretPulled, { projectId, environmentSlug, secretPath });
 
-      return toSecretOutput(secret);
+      return $toSecretOutput(secret);
     }
   );
 
@@ -477,11 +477,11 @@ export const registerSecretManagerTools = ({
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
-        return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Create);
+        return $submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Create);
       }
 
-      await sendSecretsEvent(PostHogEventTypes.SecretCreated, args);
-      return appliedSecretWrite(EventType.CREATE_SECRET, args, secretOperation.secret);
+      await $sendSecretsEvent(PostHogEventTypes.SecretCreated, args);
+      return $appliedSecretWrite(EventType.CREATE_SECRET, args, secretOperation.secret);
     }
   );
 
@@ -512,11 +512,11 @@ export const registerSecretManagerTools = ({
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
-        return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Update);
+        return $submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Update);
       }
 
-      await sendSecretsEvent(PostHogEventTypes.SecretUpdated, args);
-      return appliedSecretWrite(EventType.UPDATE_SECRET, args, secretOperation.secret);
+      await $sendSecretsEvent(PostHogEventTypes.SecretUpdated, args);
+      return $appliedSecretWrite(EventType.UPDATE_SECRET, args, secretOperation.secret);
     }
   );
 
@@ -539,7 +539,7 @@ export const registerSecretManagerTools = ({
       });
 
       if (secretOperation.type === SecretProtectionType.Approval) {
-        return submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Delete);
+        return $submittedForApproval(secretOperation.approval, args, SecretApprovalEvent.Delete);
       }
 
       const { secret } = secretOperation;
@@ -558,7 +558,7 @@ export const registerSecretManagerTools = ({
         }
       });
 
-      await sendSecretsEvent(PostHogEventTypes.SecretDeleted, args);
+      await $sendSecretsEvent(PostHogEventTypes.SecretDeleted, args);
 
       return { id: secret.id, secretKey: secret.secretKey, deleted: true };
     }

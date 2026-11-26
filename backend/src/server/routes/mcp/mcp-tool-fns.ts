@@ -21,7 +21,7 @@ export const ProjectIdSchema = z.string().trim().min(1).max(36).describe("The pr
 
 // The SDK validates arguments through Standard Schema, which zod 3 implements, and advertises them in tools/list
 // as JSON Schema, which zod 3 cannot produce on its own.
-const toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
+const $toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
   // Every field written out in full: a schema reused for two fields would otherwise become a $ref, which some clients
   // do not follow.
   const jsonSchema = () =>
@@ -31,7 +31,7 @@ const toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
   } as StandardSchemaWithJSON<z.input<T>, z.output<T>>;
 };
 
-const getToolErrorMessage = (error: unknown, toolName: string, actorId: string) => {
+const $getToolErrorMessage = (error: unknown, toolName: string, actorId: string) => {
   if (error instanceof ForbiddenError) return `You are not allowed to ${error.action} on ${error.subjectType}`;
   if (
     error instanceof BadRequestError ||
@@ -77,7 +77,7 @@ export const createMcpToolContext = (
     config: { description: string; inputSchema: T; annotations: ToolAnnotations },
     run: (args: z.output<T>) => Promise<unknown>
   ) => {
-    mcpServer.registerTool(name, { ...config, inputSchema: toToolInput(config.inputSchema) }, async (args) => {
+    mcpServer.registerTool(name, { ...config, inputSchema: $toToolInput(config.inputSchema) }, async (args) => {
       try {
         // Scopes narrow a delegated token through the request context. Refuse rather than run unnarrowed if a
         // change in how the SDK dispatches tools ever loses it.
@@ -99,7 +99,7 @@ export const createMcpToolContext = (
         }
 
         return {
-          content: [{ type: "text" as const, text: getToolErrorMessage(error, name, req.permission.id) }],
+          content: [{ type: "text" as const, text: $getToolErrorMessage(error, name, req.permission.id) }],
           isError: true
         };
       }
