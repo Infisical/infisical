@@ -63,6 +63,7 @@ const TRIGGERED_STICKY_CELL_CLASS_NAME =
 
 type Props = {
   honeyTokenName: string;
+  secretPath: string;
   environments: { name: string; slug: string }[];
   isHoneyTokenInEnv: (name: string, env: string) => boolean;
   getHoneyTokenByName: (slug: string, name: string) => TDashboardHoneyToken | undefined;
@@ -76,6 +77,7 @@ type Props = {
 
 export const HoneyTokenTableRow = ({
   honeyTokenName,
+  secretPath,
   environments = [],
   isHoneyTokenInEnv,
   getHoneyTokenByName,
@@ -110,7 +112,7 @@ export const HoneyTokenTableRow = ({
     const isRevoked = honeyToken.status === HoneyTokenStatus.Revoked;
     const permissionSubject = subject(ProjectPermissionSub.HoneyTokens, {
       environment: honeyToken.environment.slug,
-      secretPath: honeyToken.folder.path
+      secretPath
     });
 
     return (

@@ -4981,6 +4981,7 @@ const OverviewPageContent = () => {
                         {honeyTokenNames.map((honeyTokenName) => (
                           <HoneyTokenTableRow
                             honeyTokenName={honeyTokenName}
+                            secretPath={secretPath}
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}

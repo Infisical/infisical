@@ -304,9 +304,10 @@ describe("honey token delete", () => {
       honeyTokenDAL: {
         findLiveById: async () => ({ ...HONEY_TOKEN, status, config: { managedBy: "organization" } }),
         transaction: async <T>(fn: (trx: object) => Promise<T>) => fn(tx),
-        deleteById: async (_id: string, trx: object) => {
+        delete: async (filter: { id: string; status: HoneyTokenStatus }, trx: object) => {
+          if (filter.status !== status) return [];
           deletedIn.push(trx);
-          return { id: HONEY_TOKEN.id };
+          return [{ id: filter.id }];
         }
       },
       folderDAL: {
@@ -315,7 +316,10 @@ describe("honey token delete", () => {
       permissionService: {
         getProjectPermission: async () => ({
           permission: createMongoAbility([
-            { action: ProjectPermissionHoneyTokenActions.Revoke, subject: ProjectPermissionSub.HoneyTokens }
+            {
+              action: [ProjectPermissionHoneyTokenActions.Read, ProjectPermissionHoneyTokenActions.Revoke],
+              subject: ProjectPermissionSub.HoneyTokens
+            }
           ])
         })
       },

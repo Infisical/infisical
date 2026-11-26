@@ -799,25 +799,23 @@ export const honeyTokenServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager,
       projectId: honeyToken.projectId
     });
+    const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
+      environment: folderWithEnv.environmentSlug,
+      secretPath: folderWithEnv.path
+    });
     // Deleting only removes the record of a token that revoke already disabled, so it shares revoke's permission.
-    ForbiddenError.from(deletePermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Revoke,
-      subject(ProjectPermissionSub.HoneyTokens, {
-        environment: folderWithEnv.environmentSlug,
-        secretPath: folderWithEnv.path
-      })
-    );
-
-    if (honeyToken.status !== HoneyTokenStatus.Revoked) {
-      throw new BadRequestError({
-        message: `Honey token "${honeyToken.name}" must be revoked before it can be deleted`
-      });
-    }
+    // Read is required too, because the response returns the token.
+    ForbiddenError.from(deletePermission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, honeyTokenSubject);
+    ForbiddenError.from(deletePermission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Revoke, honeyTokenSubject);
 
     await honeyTokenDAL.transaction(async (tx) => {
-      const deleted = await honeyTokenDAL.deleteById(honeyTokenId, tx);
-      if (!deleted) {
-        throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+      // The status is checked on the primary in the delete itself, since the replica read above can still see a
+      // token revoked moments ago as active.
+      const deleted = await honeyTokenDAL.delete({ id: honeyTokenId, status: HoneyTokenStatus.Revoked }, tx);
+      if (!deleted.length) {
+        throw new BadRequestError({
+          message: `Honey token "${honeyToken.name}" must be revoked before it can be deleted`
+        });
       }
 
       await alertService.deleteAlertsForDeletedResource(
