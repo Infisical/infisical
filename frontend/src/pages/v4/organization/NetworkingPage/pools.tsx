@@ -39,7 +39,7 @@ import { RESTRICTED, usePagedList } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { ConfirmDialog } from "../../networking/confirm-dialog";
-import { PoolHealth } from "../../networking/health";
+import { CheckingHealth, PoolHealth, useGatewayHealthCheck } from "../../networking/health";
 import { NameDialog } from "../../networking/name-dialog";
 
 const resourcesLabel = (count: number) => `${count} resource${count === 1 ? "" : "s"}`;
@@ -162,7 +162,7 @@ export const PoolSheet = ({
   const { data: gateways = [] } = networking.useConnectedGateways(Boolean(pool));
   const addGateway = networking.useAddGatewayToPool();
   const removeGateway = networking.useRemoveGatewayFromPool();
-  const heartbeat = networking.useTriggerGatewayHeartbeat();
+  const healthCheck = useGatewayHealthCheck();
   const [selected, setSelected] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<TGatewayV2>();
@@ -175,8 +175,9 @@ export const PoolSheet = ({
       id: "status",
       header: "Status",
       width: 140,
-      render: (gateway) =>
-        isGatewayHealthy(gateway) ? (
+      render: (gateway) => {
+        if (healthCheck.isChecking(gateway.id)) return <CheckingHealth />;
+        return isGatewayHealthy(gateway) ? (
           <StatusText tone="ok" icon="check-c">
             Healthy
           </StatusText>
@@ -184,7 +185,8 @@ export const PoolSheet = ({
           <StatusText tone="bad" icon="x">
             Unreachable
           </StatusText>
-        )
+        );
+      }
     }
   ];
 
@@ -273,17 +275,9 @@ export const PoolSheet = ({
                       {
                         label: "Trigger health check",
                         icon: HeartPulseIcon,
-                        onSelect: async (gateway) => {
-                          try {
-                            await heartbeat.mutateAsync(gateway.id);
-                            toast({ tone: "ok", title: "Health check successful" });
-                          } catch {
-                            toast({
-                              tone: "bad",
-                              title: "Health check failed, the gateway is unreachable"
-                            });
-                          }
-                        }
+                        disabledReason: (gateway) =>
+                          healthCheck.isChecking(gateway.id) ? "Checking health…" : undefined,
+                        onSelect: healthCheck.run
                       }
                     ],
                     renderMenu: (gateway) => (

@@ -30,7 +30,7 @@ import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { ConfirmDialog } from "../../networking/confirm-dialog";
-import { GatewayHealth, isGatewayRegistered } from "../../networking/health";
+import { GatewayHealth, isGatewayRegistered, useGatewayHealthCheck } from "../../networking/health";
 import { NameDialog } from "../../networking/name-dialog";
 import type { NetworkingDialog } from "./NetworkingPage";
 import { PoolSheet, PoolsTable } from "./pools";
@@ -118,7 +118,7 @@ export const GatewaysPanel = ({
   const updateGateway = networking.useUpdateGateway();
   const deleteGateway = networking.useDeleteGateway();
   const createPool = networking.useCreatePool();
-  const heartbeat = networking.useTriggerGatewayHeartbeat();
+  const healthCheck = useGatewayHealthCheck();
   const [poolSearch, setPoolSearch] = useState("");
   const [renaming, setRenaming] = useState<TGatewayV2>();
   const [deleting, setDeleting] = useState<TGatewayV2>();
@@ -149,15 +149,6 @@ export const GatewaysPanel = ({
   const canEdit = can(OrgGatewayPermissionActions.EditGateways);
   const canDelete = can(OrgGatewayPermissionActions.DeleteGateways);
   const isPools = view === "gateway-pools";
-
-  const checkHealth = async (gateway: TGatewayV2) => {
-    try {
-      await heartbeat.mutateAsync(gateway.id);
-      toast({ tone: "ok", title: "Health check successful, the gateway is healthy" });
-    } catch {
-      toast({ tone: "bad", title: "Health check failed, the gateway is unreachable" });
-    }
-  };
 
   const columns: DataTableColumn<TGatewayV2>[] = [
     {
@@ -219,7 +210,9 @@ export const GatewaysPanel = ({
       id: "health",
       header: "Health check",
       width: 160,
-      render: (gateway) => <GatewayHealth gateway={gateway} />
+      render: (gateway) => (
+        <GatewayHealth gateway={gateway} checking={healthCheck.isChecking(gateway.id)} />
+      )
     }
   ];
 
@@ -278,9 +271,13 @@ export const GatewaysPanel = ({
               {
                 label: "Trigger health check",
                 icon: HeartPulseIcon,
-                disabledReason: (gateway) =>
-                  isGatewayRegistered(gateway) ? undefined : "This gateway is not registered yet",
-                onSelect: checkHealth
+                disabledReason: (gateway) => {
+                  if (healthCheck.isChecking(gateway.id)) return "Checking health…";
+                  return isGatewayRegistered(gateway)
+                    ? undefined
+                    : "This gateway is not registered yet";
+                },
+                onSelect: healthCheck.run
               }
             ],
             renderMenu: (gateway) => (
