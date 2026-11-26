@@ -111,7 +111,7 @@ const AccountAccess = () => {
 export const PamAccountAccessPage = () => (
   <>
     <PageTitle title="Web Access" />
-    <div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
       <AccountAccess />
     </div>
   </>

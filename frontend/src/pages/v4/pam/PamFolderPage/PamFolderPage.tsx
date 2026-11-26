@@ -107,7 +107,6 @@ export const PamFolderPage = () => {
           }
         />
         <AccountList
-          orgId={orgId}
           label="Folder accounts"
           accounts={accounts}
           loading={isLoadingFolders || isLoadingAccounts}
