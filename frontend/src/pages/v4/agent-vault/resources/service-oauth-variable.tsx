@@ -3,10 +3,7 @@ import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Link } from "@infisical/cipher/ui/link";
 
-import {
-  OAUTH_STATUS_LABELS,
-  storedOAuthVariableKey
-} from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { storedOAuthVariableKey } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
@@ -22,7 +19,11 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
-import { openClassicVariables, useClassicVariablesHref } from "./agent-vault-utils";
+import {
+  OAUTH_STATUS_TEXT,
+  openClassicVariables,
+  useClassicVariablesHref
+} from "./agent-vault-utils";
 import type { TServiceFormApi } from "./service-form";
 
 export const ClassicVariablesLink = ({
@@ -93,7 +94,7 @@ export const OAuthVariableField = ({
     label: variable.key,
     meta:
       variable.oauth?.status && variable.oauth.status !== AgentVaultOauthStatus.Connected
-        ? OAUTH_STATUS_LABELS[variable.oauth.status]
+        ? OAUTH_STATUS_TEXT[variable.oauth.status]
         : undefined
   }));
   if (selectedKey && !options.some((option) => option.value === selectedKey))

@@ -6,6 +6,7 @@ import { isNativeService } from "@app/components/agent-vault/service-sheet/servi
 import { keepInClassic } from "@app/helpers/v4Bridge";
 import {
   AgentVaultMemberType,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
   type TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault/enums";
@@ -117,4 +118,11 @@ export const useClassicVariablesHref = (projectId: string) =>
 export const openClassicVariables = (href: string) => {
   keepInClassic(href);
   window.open(href, "_blank");
+};
+
+export const OAUTH_STATUS_TEXT: Record<AgentVaultOauthStatus, string> = {
+  [AgentVaultOauthStatus.Connected]: "Authorized",
+  [AgentVaultOauthStatus.NeedsReauthorization]: "Needs reauthorization",
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing scopes",
+  [AgentVaultOauthStatus.NotConnected]: "Not connected"
 };

@@ -16,7 +16,6 @@ import {
   isMemberProvidedOAuthService,
   newOAuthAuthorizationId,
   OAUTH_OWN_APP_REQUIRED_ERROR,
-  OAUTH_STATUS_LABELS,
   oauthClientIdSchema,
   oauthClientSecretSchema,
   serverUrlOf,
@@ -32,7 +31,7 @@ import type {
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 
-import { formatDay } from "./agent-vault-utils";
+import { formatDay, OAUTH_STATUS_TEXT } from "./agent-vault-utils";
 import { useOAuthAuthorize } from "./oauth";
 import type { TServiceFormApi } from "./service-form";
 
@@ -47,7 +46,7 @@ const STATUS_TONE = {
 
 export const OAuthStatusBadge = ({ status }: { status: AgentVaultOauthStatus }) => (
   <Badge tone={STATUS_TONE[status]} dot>
-    {OAUTH_STATUS_LABELS[status]}
+    {OAUTH_STATUS_TEXT[status]}
   </Badge>
 );
 
@@ -235,13 +234,13 @@ export const OAuthAuthorizeCard = ({
     const scopes = <Scopes granted={stored.grantedScopes} requested={requested} />;
     if (stored.status === AgentVaultOauthStatus.NeedsReauthorization)
       return {
-        title: OAUTH_STATUS_LABELS[stored.status],
+        title: OAUTH_STATUS_TEXT[stored.status],
         tone: "bad",
         detail: `${host} no longer accepts this authorization.`
       };
     if (stored.status === AgentVaultOauthStatus.NeedsAdditionalScopes)
       return {
-        title: OAUTH_STATUS_LABELS[stored.status],
+        title: OAUTH_STATUS_TEXT[stored.status],
         tone: "warn",
         detail: (
           <Stack gap={2}>
@@ -253,7 +252,7 @@ export const OAuthAuthorizeCard = ({
         )
       };
     return {
-      title: OAUTH_STATUS_LABELS[stored.status],
+      title: OAUTH_STATUS_TEXT[stored.status],
       tone: "ok",
       detail: (
         <Stack gap={2}>
