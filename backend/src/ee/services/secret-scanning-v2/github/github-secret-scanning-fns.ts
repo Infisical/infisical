@@ -1230,22 +1230,34 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
 
     const { pullRequestNumber, findingIds = [] } = metadata.data;
 
-    const findings = findingIds.length
-      ? await secretScanningV2DAL.findings.findByIdsOrLocationIds(resource.id, findingIds, primary)
+    const triageComment = `${
+      action === SecretScanningFindingStatus.FalsePositive ? "Marked as a false positive" : "Ignored"
+    } from GitHub by @${sender.login} on pull request ${repository.full_name}#${pullRequestNumber}.`;
+
+    // The findings are locked in id order and their status read under the lock, as a scan saving locations does, so
+    // the two can't deadlock on a finding and only findings still needing it are skipped.
+    const findingsToSkip = findingIds.length
+      ? await secretScanningV2DAL.findings.transaction(async (tx) => {
+          const findings = await secretScanningV2DAL.findings.findByIdsOrLocationIdsForUpdate(
+            resource.id,
+            findingIds,
+            tx
+          );
+          const toSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
+
+          if (toSkip.length) {
+            await secretScanningV2DAL.findings.update(
+              { $in: { id: toSkip.map((finding) => finding.id) } },
+              { status: action, triageComment, triagedAt: new Date(), triagedByUserId: null, resolvedAt: null },
+              tx
+            );
+          }
+
+          return toSkip;
+        })
       : [];
-    const findingsToSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
 
     if (findingsToSkip.length) {
-      const triageComment = `${
-        action === SecretScanningFindingStatus.FalsePositive ? "Marked as a false positive" : "Ignored"
-      } from GitHub by @${sender.login} on pull request ${repository.full_name}#${pullRequestNumber}.`;
-      const now = new Date();
-
-      await secretScanningV2DAL.findings.update(
-        { $in: { id: findingsToSkip.map((finding) => finding.id) } },
-        { status: action, triageComment, triagedAt: now, triagedByUserId: null, resolvedAt: null }
-      );
-
       await Promise.all(
         findingsToSkip.map((finding) =>
           auditLogService.createAuditLog({

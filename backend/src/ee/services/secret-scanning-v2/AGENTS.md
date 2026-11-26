@@ -34,16 +34,31 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   location. It takes a per-resource advisory lock (`PgSqlLock.SecretScanningFindingLocations`) first, so a diff scan
   and a full scan of one resource can't both create a finding for one value (no unique index keeps one finding per
   value, so the previous release still works after a rollback) or both take a location as new.
+- Finding locks are taken in one order: a resource's advisory lock, then the project's
+  (`PgSqlLock.SecretScanningFindingValues`), then finding rows `ORDER BY id FOR UPDATE`. Never take a resource's lock
+  while holding the project's. `persistLocations` takes the project lock before writing anything whenever it saves a
+  location with a blind index, `findings.detachResources` takes only the project lock, and PR skips take only the row
+  locks. Any other write that locks several findings locks them in id order too.
+- A finding's locations, not `findings.resourceId`, say which resources it is in, since a finding can have locations
+  in resources other than the one it names. Filters and counts by resource or data source go through the locations. A finding with no location at all (a copy the merge by value had
+  no place for) is in the resource it names.
+- Deleting a resource or a data source calls `findings.detachResources` first, in the same transaction. It removes the
+  resources' locations, deletes findings left without one, and points the others' deprecated columns at a location
+  that stays, so the cascade through `findings.resourceId` and `findings.scanId` never deletes a finding that still
+  has locations elsewhere. Never rely on that cascade.
 - A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
   the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
 - Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way. So do
   matches without a value (rules that match only a file's path), since grouping them by value would merge them all.
-- `findings.scanId`, `fingerprint` and `details` are deprecated but still written: `persistLocations` stores the
-  finding's first location there, so the release before locations existed keeps working if a deploy is rolled back.
+- `findings.resourceId`, `scanId`, `fingerprint` and `details` describe one of the finding's locations and always move
+  together, so the scan always belongs to the resource. The last three are deprecated but still written:
+  `persistLocations` stores the finding's first location there, so the release before locations existed keeps working
+  if a deploy is rolled back.
   The findings API still returns them (and sorts by `author` from `details`) for clients built before locations. Never
   read them in new code; drop the columns and those fields together, in a release after this one has shipped.
 - Location ids of migrated findings are the old finding ids, so ids saved before the merge (a PR check's
-  `findingIds`) still resolve through `findings.findByIdsOrLocationIds`.
+  `findingIds`) still resolve through `findings.findByIdsOrLocationIdsForUpdate`, which only returns findings with a
+  location in the check's resource.
 - A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
   never only the new ones. Its counts are distinct findings.
 - Notifications are alerts on the shared alert module (`secret-scanning.data-source` provider), bound to one data
@@ -54,12 +69,12 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   with a status update from the queue. It owns the closing transaction and the alert decision, so
   an alert is emitted exactly when its scan closes; the DAL keeps only the guarded transitions (`scans.markCompleted`,
   `scans.markFailed`), and the queue keeps what runs after commit (pull request check, telemetry, audit logs).
-- `secrets-detected` fires only for news: unresolved findings this scan created (`countUnresolvedCreatedByScanId`),
-  plus, for diff scans only, findings it reopened. The creating scan is the finding's `scanId`, set under the
-  resource lock; never infer it from location `createdAt` (transaction start time), and keep that column when the
-  rollback-only finding columns go. A new location of a finding that's still unresolved was already alerted on. A
-  resource's first full scan alerts like any other: don't exempt it, since a scan that found secrets and stayed silent
-  looks broken.
+- `secrets-detected` fires only for news (`countNewUnresolvedByScanId`): unresolved findings this scan created, plus,
+  for diff scans only, findings it reopened, each counted once. A known value turning up in a new place, in any
+  resource, is no news and never alerts. The creating scan is the finding's `scanId`, set under the advisory locks;
+  never infer it from location `createdAt` (transaction start time), and keep that column when the rollback-only
+  finding columns go. A resource's first full scan alerts like any other: don't exempt it, since a scan that found
+  secrets and stayed silent looks broken.
 - Every data source gets its alerts in the transaction that creates it: the ones its creator passed in `alerts`
   (`prepareAlertForNewResource`, which needs edit on data sources), or `SECRET_SCANNING_DEFAULT_ALERTS` when `alerts` is
   left out. Its id is chosen before that transaction so the alerts can be prepared, a KMS call, outside it. Never put
