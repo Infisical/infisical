@@ -291,6 +291,7 @@ export const Mfa = ({
     const mfaToken = getMfaTempToken();
 
     let sessionToken: string;
+    let verifyingMfaToken = false;
     try {
       SecurityClient.setMfaToken("");
       const options = await generateWebAuthnAuthenticationOptions();
@@ -301,6 +302,7 @@ export const Mfa = ({
         return;
       }
       SecurityClient.setMfaToken(mfaToken);
+      verifyingMfaToken = true;
       const mfaResult = await verifyMfaToken({
         email,
         mfaCode: result.sessionToken,
@@ -308,7 +310,7 @@ export const Mfa = ({
       });
       sessionToken = mfaResult.token;
     } catch (error: any) {
-      if (isMfaTokenExpiredError(error)) {
+      if (verifyingMfaToken && isMfaTokenExpiredError(error)) {
         setIsLoading(false);
         await handleMfaTokenExpired();
         return;
