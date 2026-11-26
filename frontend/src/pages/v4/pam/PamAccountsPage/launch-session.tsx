@@ -1,30 +1,29 @@
 import { useState } from "react";
-import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Inline } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Select } from "@infisical/cipher/ui/select";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Snippet } from "@infisical/cipher/ui/snippet";
-import { Meta } from "@infisical/cipher/ui/text";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 
-import type { TPamAccount, TPamAccountTypeMetadata } from "@app/hooks/api/pam";
-import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import type { TPamAccount } from "@app/hooks/api/pam";
 
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import { accountHosts, browserUnavailableReason, cliLaunchCommand } from "./launch-command";
+import { AccessSheetTitle, AccountOverview } from "./request-access";
 
 type LaunchMethod = "browser" | "cli";
 
@@ -79,25 +78,6 @@ const useBrowserSupport = (account: TPamAccount) => {
   return { meta, browserReason: browserUnavailableReason(meta, account, Boolean(error)) };
 };
 
-const LaunchHeader = ({
-  account,
-  meta
-}: {
-  account: TPamAccount;
-  meta?: TPamAccountTypeMetadata;
-}) => (
-  <DialogHeader>
-    <DialogTitle>
-      <Inline gap={8} align="center">
-        {meta && <ProviderIcon icon={meta.icon} alt="" size="sm" />}
-        <span style={{ overflowWrap: "anywhere" }}>{account.name}</span>
-        <Badge tone="outline">{meta?.name ?? account.accountType}</Badge>
-      </Inline>
-    </DialogTitle>
-    {account.folderName && <Meta mono={false}>{account.folderName}</Meta>}
-  </DialogHeader>
-);
-
 const LaunchSession = ({ account }: { account: TPamAccount }) => {
   const go = useGo();
   const { orgId } = useParams({ strict: false }) as { orgId: string };
@@ -107,48 +87,62 @@ const LaunchSession = ({ account }: { account: TPamAccount }) => {
   const hosts = accountHosts(account);
   const [pickedHost, setPickedHost] = useState("");
   const host = hosts.length > 1 ? pickedHost || undefined : hosts[0];
-
-  const openInBrowser = () =>
-    go(
-      orgHref(
-        orgId,
-        `/pam/accounts/${account.accountType}/${account.id}/access${
-          host ? `?host=${encodeURIComponent(host)}` : ""
-        }`
-      )
-    );
+  const hostMissing = hosts.length > 1 && !host;
 
   return (
     <>
-      <LaunchHeader account={account} meta={meta} />
-      <DialogBody>
-        <MethodPicker method={method} browserReason={browserReason} onChange={setPicked} />
-        {hosts.length > 1 && (
-          <Field label="Host">
-            <Select
-              aria-label="Host"
-              placeholder="Choose a host"
-              options={hosts.map((value) => ({ value, label: value }))}
-              value={pickedHost}
-              onValueChange={setPickedHost}
-            />
-          </Field>
-        )}
-        {method === "cli" && (
-          <CliCommand account={account} host={hosts.length > 1 ? (host ?? "HOST") : host} />
-        )}
-      </DialogBody>
-      <DialogFooter showCloseButton>
-        {method === "browser" && (
-          <Button
-            icon="globe"
-            disabledReason={host || hosts.length <= 1 ? undefined : "Choose a host first"}
-            onClick={openInBrowser}
-          >
-            Open in browser
-          </Button>
-        )}
-      </DialogFooter>
+      <SheetHeader>
+        <SheetTitle>
+          <AccessSheetTitle account={account} meta={meta} />
+        </SheetTitle>
+        {account.folderName && <SheetDescription>{account.folderName}</SheetDescription>}
+      </SheetHeader>
+      <SheetBody>
+        <Stack gap={24}>
+          <AccountOverview account={account} meta={meta} />
+          <MethodPicker method={method} browserReason={browserReason} onChange={setPicked} />
+          {hosts.length > 1 && (
+            <Field label="Host">
+              <Select
+                aria-label="Host"
+                placeholder="Choose a host"
+                options={hosts.map((value) => ({ value, label: value }))}
+                value={pickedHost}
+                onValueChange={setPickedHost}
+              />
+            </Field>
+          )}
+          {method === "cli" && (
+            <CliCommand account={account} host={hosts.length > 1 ? (host ?? "HOST") : host} />
+          )}
+        </Stack>
+      </SheetBody>
+      {method === "browser" && (
+        <SheetFooter>
+          <Inline justify="end">
+            {hostMissing ? (
+              <Button disabledReason="Choose a host first">Open in new tab</Button>
+            ) : (
+              <Button asChild>
+                <Link
+                  {...go.link(
+                    orgHref(
+                      orgId,
+                      `/pam/accounts/${account.accountType}/${account.id}/access${
+                        host ? `?host=${encodeURIComponent(host)}` : ""
+                      }`
+                    )
+                  )}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Open in new tab
+                </Link>
+              </Button>
+            )}
+          </Inline>
+        </SheetFooter>
+      )}
     </>
   );
 };
@@ -158,29 +152,24 @@ const LaunchSessionContent = ({ accountId }: { accountId: string }) => {
   if (account) return <LaunchSession account={account} />;
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>{isPending ? "Loading account" : "Account not found"}</DialogTitle>
-      </DialogHeader>
-      {isPending && (
-        <DialogBody>
-          <Skeleton height={96} />
-        </DialogBody>
-      )}
-      <DialogFooter showCloseButton />
+      <SheetHeader>
+        <SheetTitle>{isPending ? "Loading account" : "Account not found"}</SheetTitle>
+      </SheetHeader>
+      <SheetBody>{isPending && <Skeleton height={96} />}</SheetBody>
     </>
   );
 };
 
-export const LaunchSessionDialog = ({
+export const LaunchSessionSheet = ({
   accountId,
   onOpenChange
 }: {
   accountId?: string;
   onOpenChange: (open: boolean) => void;
 }) => (
-  <Dialog open={Boolean(accountId)} onOpenChange={onOpenChange}>
-    <DialogContent>
+  <Sheet open={Boolean(accountId)} onOpenChange={onOpenChange}>
+    <SheetContent size="md">
       {accountId && <LaunchSessionContent key={accountId} accountId={accountId} />}
-    </DialogContent>
-  </Dialog>
+    </SheetContent>
+  </Sheet>
 );
