@@ -90,6 +90,7 @@ const ManageAccessContent = ({
   const {
     data,
     isPending,
+    isPlaceholderData: isMembersPlaceholder,
     error: membersError
   } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
     actorType,
@@ -100,6 +101,7 @@ const ManageAccessContent = ({
   const {
     data: available,
     isPending: isAvailablePending,
+    isPlaceholderData: isAvailablePlaceholder,
     isFetching: isAvailableFetching,
     error: availableError
   } = resources.useAvailableAccessBundleMembers(
@@ -111,10 +113,18 @@ const ManageAccessContent = ({
   const addMembers = resources.useAddAccessBundleMembers(projectId);
   const revokeMembers = resources.useRevokeAccessBundleMembers(projectId);
 
-  const members = data?.members ?? [];
+  const matchesType = (member: TActor) => !actorType || member.type === actorType;
+  const shownMembers = data?.members ?? [];
+  const members = shownMembers.filter(matchesType);
   const totalCount = data?.totalCount ?? 0;
-  const candidates = available?.members ?? [];
+  const shownCandidates = available?.members ?? [];
+  const candidates = shownCandidates.filter(matchesType);
   const candidateCount = available?.totalCount ?? 0;
+  const isMembersLoading =
+    isPending || (Boolean(isMembersPlaceholder) && shownMembers.length > 0 && !members.length);
+  const isAvailableLoading =
+    isAvailablePending ||
+    (Boolean(isAvailablePlaceholder) && shownCandidates.length > 0 && !candidates.length);
   const typeLabel = type === ALL ? "members" : `${MEMBER_KIND[type].label.toLowerCase()}s`;
 
   const grant = async (member: TAgentVaultProductActor) => {
@@ -251,7 +261,7 @@ const ManageAccessContent = ({
               columns={memberColumns}
               getRowId={memberKey}
               rowLabel={memberDisplayName}
-              loading={isPending}
+              loading={isMembersLoading}
               loadingRows={3}
               rowActions={revokeActions}
               empty={
@@ -300,7 +310,7 @@ const ManageAccessContent = ({
               columns={candidateColumns}
               getRowId={memberKey}
               rowLabel={memberDisplayName}
-              loading={isAvailablePending}
+              loading={isAvailableLoading}
               loadingRows={2}
               empty={
                 availableError ? (

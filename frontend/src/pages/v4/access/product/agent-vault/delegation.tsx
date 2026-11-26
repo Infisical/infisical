@@ -142,6 +142,7 @@ export const AgentVaultIdentityDelegationSection = ({
       <Card
         variant="framed"
         title="Delegation"
+        hint="Lets this machine identity start sessions on behalf of these users and groups, using each user's personal values."
         badges={<DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />}
         action={
           canEditDelegation &&
