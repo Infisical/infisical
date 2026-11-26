@@ -1,0 +1,119 @@
+version: v0.167.16
+releasedAt: 2026-11-25T19:12:58-03:00
+sourceTag: v0.167.16
+previousTag: v0.167.15
+impactLevel: medium
+summary: INITIAL_SETUP_ACTIVATION_TOKEN is renamed to INSTANCE_SETUP_TOKEN with
+  no fallback, so an uninitialized instance that sets only the old variable
+  allows the first admin signup without a token. Secret scanning notifications
+  move to the shared alerting module and no longer reach commit authors who
+  aren't project admins. Startup runs several database migrations, including
+  dropping unused snapshot tables and backfilling secret scanning alerts.
+requiresDbMigration: true
+breakingChanges:
+  - title: Instance setup token renamed
+    description: INITIAL_SETUP_ACTIVATION_TOKEN (added in v0.167.15) is replaced
+      by INSTANCE_SETUP_TOKEN, and the old variable is no longer read. An
+      instance that hasn't created its first admin and still sets only the old
+      variable accepts the first admin signup and POST
+      /api/v1/admin/bootstrap without a token. The new token must be 6 to 32
+      characters, so a 33 to 256 character token from v0.167.15 can't be
+      reused as is and fails startup validation. Signup and bootstrap callers
+      must send setupToken in the request body instead of activationToken.
+    action: Before upgrading an instance that sets INITIAL_SETUP_ACTIVATION_TOKEN
+      and hasn't created its first admin, set INSTANCE_SETUP_TOKEN to a value
+      of 6 to 32 characters and remove the old variable. Change bootstrap
+      automation to send setupToken instead of activationToken, or pass
+      --setup-token to infisical bootstrap. Instances that already have an
+      admin are unaffected.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9860"
+        url: https://github.com/Infisical/infisical/pull/9860
+        description: Rename instance activation token to instance setup token
+      - type: file
+        ref: backend/src/lib/config/env.ts
+        path: backend/src/lib/config/env.ts
+        description: INSTANCE_SETUP_TOKEN accepts 6 to 32 characters
+      - type: file
+        ref: backend/src/services/super-admin/super-admin-fns.ts
+        path: backend/src/services/super-admin/super-admin-fns.ts
+        description: assertInstanceSetupToken skips the check when INSTANCE_SETUP_TOKEN is unset
+  - title: Secret scanning notification recipients
+    description: Secret scanning notifications now come from the shared alerting
+      module. Each existing data source gets "Secrets detected" and "Secret
+      scanning failed" alerts that email project admins, as before. Commit
+      authors who are project members but not admins no longer get the
+      secrets detected email, and secret scanning no longer creates in-app
+      notifications.
+    action: If commit authors or other project members need these emails,
+      add them as recipients to each data source's alerts after upgrading.
+    confidence: high
+    evidence:
+      - type: pr
+        ref: "#9726"
+        url: https://github.com/Infisical/infisical/pull/9726
+        description: Move secret scanning notifications to the shared alert module
+      - type: file
+        ref: backend/src/db/migrations/20261119190000_add-secret-scanning-default-alerts.ts
+        path: backend/src/db/migrations/20261119190000_add-secret-scanning-default-alerts.ts
+        description: Backfills alerts with project-admins recipients only
+dbSchemaChanges:
+  - title: Snapshot tables removal
+    description: Startup drops the unused secret snapshot tables if they still
+      exist. Existing data in those tables is removed.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261123190000_drop-secret-snapshot-tables.ts
+        path: backend/src/db/migrations/20261123190000_drop-secret-snapshot-tables.ts
+  - title: Secret scanning default alerts
+    description: Startup backfills shared alert records and email channels for
+      existing secret scanning data sources, with project admins as the
+      recipients. See the secret scanning notification recipients entry for
+      what changes.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261119190000_add-secret-scanning-default-alerts.ts
+        path: backend/src/db/migrations/20261119190000_add-secret-scanning-default-alerts.ts
+        description: Backfills alerts and channels in batches
+  - title: Event outbox eventId migration
+    description: Startup backfills null event IDs, makes eventId non-null, and drops
+      the old idempotencyKey column and index from the event outbox table.
+    action: No manual action required; Infisical runs this migration during startup.
+      If startup fails during migration, keep the previous version running and
+      inspect migration logs before retrying.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261119230000_event-outbox-require-event-id.ts
+        path: backend/src/db/migrations/20261119230000_event-outbox-require-event-id.ts
+  - title: Secret import policy constraint rename
+    description: Startup renames approval policy JSON constraint keys from
+      enforceImportReplication to enforceOnSecretImports for secret-change
+      policies.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261124180000_rename-enforce-on-secret-imports-constraint.ts
+        path: backend/src/db/migrations/20261124180000_rename-enforce-on-secret-imports-constraint.ts
+configChanges: []
+deploymentNotes: []
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-25T22:50:55.777Z
+  sourceRange:
+    from: v0.167.15
+    to: v0.167.16

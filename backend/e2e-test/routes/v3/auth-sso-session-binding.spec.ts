@@ -278,7 +278,7 @@ describe("Auth SSO session binding", () => {
 
       await setAuthEnforced(ORG_A_ID, true);
       // Grants are still cached, but enforcement has to kick in on the very next request anyway.
-      const cachedKeys = await testRedis.keys(`*access-control:actor-grants:v1:data:${projectId}:*`);
+      const cachedKeys = await testRedis.keys(`*access-control:actor-grants:v2:data:${projectId}:*`);
       expect(cachedKeys.length).toBeGreaterThan(0);
       const refused = await readProject();
 
