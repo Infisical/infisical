@@ -30,12 +30,14 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { getProviderUrl } from "@app/helpers/auditLogStreams";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import type { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import type { TAuditLogStream } from "@app/hooks/api/auditLogStreams/types";
 
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
+import { ResourceAlertAction } from "../../../components/resource-alerts";
 import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
@@ -209,20 +211,26 @@ export const AuditLogStreamsTab = () => {
           />
         }
         actions={
-          <Button
-            variant="accent"
-            icon="plus"
-            disabledReason={canEdit ? undefined : RESTRICTED}
-            onClick={() => {
-              if (plan && !plan.auditLogStreams) {
-                setUpgrade("organization.audit-log-stream");
-                return;
-              }
-              setSheet({ mode: "create" });
-            }}
-          >
-            Add log stream
-          </Button>
+          <Inline gap={8} wrap={false}>
+            <ResourceAlertAction
+              resourceType={AlertResourceType.AuditLogStream}
+              canEdit={canEdit}
+            />
+            <Button
+              variant="accent"
+              icon="plus"
+              disabledReason={canEdit ? undefined : RESTRICTED}
+              onClick={() => {
+                if (plan && !plan.auditLogStreams) {
+                  setUpgrade("organization.audit-log-stream");
+                  return;
+                }
+                setSheet({ mode: "create" });
+              }}
+            >
+              Add log stream
+            </Button>
+          </Inline>
         }
       />
       <DataTable

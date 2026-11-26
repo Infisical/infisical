@@ -145,6 +145,10 @@ export const AddChannelMenu = ({
   );
 };
 
+export type TRecipientGroup = { id: string; name: string };
+
+const GROUP_PREFIX = "group:";
+
 const PROJECT_PRINCIPALS: string[] = [
   AlertPrincipalType.ProjectMembers,
   AlertPrincipalType.ProjectAdmins
@@ -157,7 +161,8 @@ const EmailRecipientsField = ({
   members,
   projectId,
   projectRecipients,
-  allowEmailAddresses = true
+  allowEmailAddresses = true,
+  groupOptions
 }: {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
@@ -166,13 +171,23 @@ const EmailRecipientsField = ({
   projectId?: string;
   projectRecipients?: boolean;
   allowEmailAddresses?: boolean;
+  groupOptions?: TRecipientGroup[];
 }) => {
+  const groupNames = new Map(groupOptions?.map((group) => [group.id, group.name]));
   const projectValues = value
     .filter((recipient) => PROJECT_PRINCIPALS.includes(recipient.principalType))
     .map((recipient) => recipient.principalType as string);
   const emails = toRecipientEmails(value, members);
-  const selected = [...projectValues, ...emails];
-  const groups = value.filter((recipient) => recipient.principalType === AlertPrincipalType.Group);
+  const groupRecipients = value.filter(
+    (recipient) => recipient.principalType === AlertPrincipalType.Group
+  );
+  const listedGroups = groupRecipients
+    .filter((recipient) => groupNames.has(recipient.principalId))
+    .map((recipient) => `${GROUP_PREFIX}${recipient.principalId}`);
+  const unlistedGroups = groupRecipients.filter(
+    (recipient) => !groupNames.has(recipient.principalId)
+  );
+  const selected = [...projectValues, ...emails, ...listedGroups];
   const unlistedUsers = value.filter(
     (recipient) =>
       recipient.principalType === AlertPrincipalType.User &&
@@ -185,12 +200,18 @@ const EmailRecipientsField = ({
       group: "Project"
     })
   );
+  const grouped = projectOptions.length > 0 || Boolean(groupOptions?.length);
   const options = [
     ...projectOptions,
     ...[...new Set([...members.memberIdByEmail.keys(), ...emails])].sort().map((email) => ({
       value: email,
       label: email,
-      ...(projectOptions.length && { group: "Members" })
+      ...(grouped && { group: "Members" })
+    })),
+    ...(groupOptions ?? []).map((group) => ({
+      value: `${GROUP_PREFIX}${group.id}`,
+      label: group.name,
+      group: "Groups"
     }))
   ];
 
@@ -201,6 +222,13 @@ const EmailRecipientsField = ({
           return projectId
             ? [{ principalType: entry as AlertPrincipalType, principalId: projectId }]
             : [];
+        if (entry.startsWith(GROUP_PREFIX))
+          return [
+            {
+              principalType: AlertPrincipalType.Group,
+              principalId: entry.slice(GROUP_PREFIX.length)
+            }
+          ];
         const userId = members.memberIdByEmail.get(entry);
         return [
           userId
@@ -209,13 +237,15 @@ const EmailRecipientsField = ({
         ];
       }),
       ...unlistedUsers,
-      ...groups
+      ...unlistedGroups
     ]);
 
   const also = [
     unlistedUsers.length ? pluralize(unlistedUsers.length, "more member") : undefined,
-    groups.length ? pluralize(groups.length, "group") : undefined
+    unlistedGroups.length ? pluralize(unlistedGroups.length, "group") : undefined
   ].filter(Boolean);
+  const scope = projectId ? "project" : "organization";
+  const pickable = groupOptions ? `${scope} members or groups` : `${scope} members`;
 
   return (
     <Field
@@ -225,7 +255,7 @@ const EmailRecipientsField = ({
       description={`${
         allowEmailAddresses
           ? "Pick organization members or type an email address on a verified email domain."
-          : "Pick project members."
+          : `Pick ${pickable}.`
       }${also.length ? ` Also sent to ${also.join(" and ")}.` : ""}`}
     >
       <Combobox
@@ -234,11 +264,15 @@ const EmailRecipientsField = ({
         options={options}
         value={selected}
         onChange={setEmails}
-        placeholder={allowEmailAddresses ? "Select members or type an email" : "Select members"}
+        placeholder={
+          allowEmailAddresses
+            ? "Select members or type an email"
+            : `Select ${groupOptions ? "members or groups" : "members"}`
+        }
         emptyText={
           allowEmailAddresses
             ? "No matching members. Type a full email to add it."
-            : "No matching project members."
+            : `No matching ${pickable}.`
         }
         invalid={Boolean(error)}
         onCreate={
@@ -681,6 +715,7 @@ const ChannelCard = ({
   resource,
   projectRecipients,
   allowEmailAddresses,
+  groupOptions,
   onInvalid,
   onRemove
 }: TChannelFieldProps & {
@@ -690,6 +725,7 @@ const ChannelCard = ({
   resource: TChannelResource;
   projectRecipients?: boolean;
   allowEmailAddresses?: boolean;
+  groupOptions?: TRecipientGroup[];
   onInvalid: (errors: TFieldErrors) => void;
   onRemove: () => void;
 }) => {
@@ -770,6 +806,7 @@ const ChannelCard = ({
             projectId={projectId}
             projectRecipients={projectRecipients}
             allowEmailAddresses={allowEmailAddresses}
+            groupOptions={groupOptions}
           />
         )}
         {SLACK_CHANNEL_TYPES.includes(channelType) && <SlackMethodSwitch {...fieldProps} />}
@@ -826,7 +863,8 @@ export const ChannelsStep = ({
   resource,
   upgrade,
   projectRecipients,
-  allowEmailAddresses
+  allowEmailAddresses,
+  groupOptions
 }: {
   channels: TDraftChannel[];
   errors: TFieldErrors;
@@ -840,6 +878,7 @@ export const ChannelsStep = ({
   upgrade?: TUpgradeGateRequest;
   projectRecipients?: boolean;
   allowEmailAddresses?: boolean;
+  groupOptions?: TRecipientGroup[];
 }) => (
   <Stack gap={16}>
     <Inline gap={12} justify="between" align="center" wrap={false}>
@@ -905,6 +944,7 @@ export const ChannelsStep = ({
           resource={resource}
           projectRecipients={projectRecipients}
           allowEmailAddresses={allowEmailAddresses}
+          groupOptions={groupOptions}
           onRemove={() => {
             onChange(channels.filter(({ uid }) => uid !== channel.uid));
             onErrorsChange(removeIndexedErrors(errors, "", index));
