@@ -89,6 +89,31 @@ func TestCertificateApproval_Request(t *testing.T) {
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
 	})
 
+	t.Run("should refuse the requester rejecting their own request when they are not an approver and keep it pending", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := newGated(t, tn, separateApproverOnly)
+		reqID := g.request(t).JSON200.CertificateRequestId
+		approval := pki.ApprovalFor(t, g.App, reqID)
+
+		// Action
+		res, err := g.Operator.API.RejectCertRequestApprovalRequestWithResponse(t.Context(), approval, api.RejectCertRequestApprovalRequestJSONRequestBody{})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t, "You are not an eligible approver for this step", apierr.Message(res.Body))
+		require.Equal(t, "pending", g.approvalRequest(t, approval).JSON200.Request.Status)
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
+		approved, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, approved.StatusCode(), "the approver approving afterwards: %s", apierr.Body(approved.Body))
+		issued := g.waitStatus(t, reqID, api.GetCertificateRequest200JSONResponseBodyStatusIssued)
+		require.NotNil(t, issued.JSON200.CertificateId)
+	})
+
 	t.Run("should let a requester the policy lists as an approver approve their own request", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `The certificate request approval guide allows an eligible requester to approve

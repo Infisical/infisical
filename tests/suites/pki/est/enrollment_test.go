@@ -3,6 +3,7 @@ package est_test
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"testing"
@@ -292,12 +293,7 @@ func TestEstEnrollment_SimpleReenroll(t *testing.T) {
 		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
 		key, name := newKey(t), id.Short()+".est.test"
 		issued := p.mustEnroll(t, key, name)
-		requests := pki.ProfileRequests(t, p.Project, p.Profile).JSON200.CertificateRequests
-		require.Len(t, requests, 1)
-		require.NotNil(t, requests[0].Certificate, "the enrollment issued no certificate")
-		certID, err := uuid.Parse(requests[0].Certificate.Id)
-		require.NoError(t, err)
-		pki.Revoke(t, tn.Admin, pki.Certificate{ID: certID}, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
+		pki.Revoke(t, tn.Admin, pki.Certificate{ID: enrolledCertificateID(t, p)}, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
 		before := pki.Requests(t, p.Project, p.Profile)
 
 		// Action
@@ -308,4 +304,66 @@ func TestEstEnrollment_SimpleReenroll(t *testing.T) {
 		require.Equal(t, "Client certificate has been revoked", apierr.Message(res.Body))
 		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
 	})
+
+	t.Run("should refuse a CSR for another subject than the client certificate with 400 and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		issued := p.mustEnroll(t, key, name)
+		before := pki.Requests(t, p.Project, p.Profile)
+
+		// Action
+		res := p.reenroll(t, newCSR(t, key, "other-"+name), enrollOpts{clientCert: issued})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Subject mismatch", apierr.Message(res.Body))
+		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
+	})
+
+	t.Run("should refuse a deleted client certificate with 401 and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		issued := p.mustEnroll(t, key, name)
+		del, err := tn.Admin.API.DeleteCertificateWithResponse(t.Context(), enrolledCertificateID(t, p))
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, del.StatusCode(), "deleting: %s", apierr.Body(del.Body))
+		before := pki.Requests(t, p.Project, p.Profile)
+
+		// Action
+		res := p.reenroll(t, newCSR(t, key, name), enrollOpts{clientCert: issued})
+
+		// Assert
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
+		require.Equal(t, "Client certificate with serial number '"+derSerialHex(issued)+"' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.", apierr.Message(res.Body))
+		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
+	})
+}
+
+// enrolledCertificateID is the ID of the certificate the profile's only request issued.
+func enrolledCertificateID(t *testing.T, p estProfile) uuid.UUID {
+	t.Helper()
+	requests := pki.ProfileRequests(t, p.Project, p.Profile).JSON200.CertificateRequests
+	require.Len(t, requests, 1)
+	require.NotNil(t, requests[0].Certificate, "the enrollment issued no certificate")
+	certID, err := uuid.Parse(requests[0].Certificate.Id)
+	require.NoError(t, err)
+	return certID
+}
+
+// derSerialHex is the certificate's serial as the hex of its DER integer, which keeps
+// the leading zero byte a serial with its high bit set needs.
+func derSerialHex(cert *x509.Certificate) string {
+	b := cert.SerialNumber.Bytes()
+	if len(b) == 0 || b[0]&0x80 != 0 {
+		b = append([]byte{0}, b...)
+	}
+	return hex.EncodeToString(b)
 }

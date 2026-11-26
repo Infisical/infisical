@@ -146,6 +146,24 @@ func TestInternalCA_Ocsp(t *testing.T) {
 		require.Equal(t, ocsp.Unknown, got.Status)
 	})
 
+	t.Run("should answer unknown for a serial another CA in the project issued", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		leaf := pki.ParseLeaf(t, g.Issue(t, pki.ServerCertificate(id.Short()+".ocsp.test")).Certificate)
+		other := pki.NewIntermediateCA(t, g.Project, g.Root)
+		require.Equal(t, ocsp.Good, askOcsp(t, tn, g.CA, leaf, pki.CACertificate(t, tn.Admin, g.CA.ID)).Status)
+
+		// Action
+		got := askOcsp(t, tn, other, leaf, pki.CACertificate(t, tn.Admin, other.ID))
+
+		// Assert
+		require.Equal(t, ocsp.Unknown, got.Status)
+		require.Equal(t, leaf.SerialNumber, got.SerialNumber)
+	})
+
 	t.Run("should answer malformedRequest as an OCSP response to a body that is not an OCSP request", func(t *testing.T) {
 		t.Parallel()
 
