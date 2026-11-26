@@ -155,10 +155,7 @@ import { Route as v4ProjectGroupDetailsByIDPageSecretScanningRouteImport } from 
 import { Route as v4RedirectsLegacySecretManagerApprovalRedirectRouteImport } from './pages/v4/redirects/LegacySecretManagerApprovalRedirect/route'
 import { Route as v4SecretSharingSecretSharingPageRouteImport } from './pages/v4/secret-sharing/SecretSharingPage/route'
 import { Route as v4OrganizationSecretInsightsPageRouteImport } from './pages/v4/organization/SecretInsightsPage/route'
-import { Route as v4ProjectRoleDetailsBySlugPagePamRouteImport } from './pages/v4/project/RoleDetailsBySlugPage/pam/route'
-import { Route as v4ProjectMemberDetailsByIDPagePamRouteImport } from './pages/v4/project/MemberDetailsByIDPage/pam/route'
 import { Route as v4ProjectIdentityDetailsByIDPagePamRouteImport } from './pages/v4/project/IdentityDetailsByIDPage/pam/route'
-import { Route as v4ProjectGroupDetailsByIDPagePamRouteImport } from './pages/v4/project/GroupDetailsByIDPage/pam/route'
 import { Route as v4PamPamMyAccountsPageRouteImport } from './pages/v4/pam/PamMyAccountsPage/route'
 import { Route as v4PamPamFolderPageRouteImport } from './pages/v4/pam/PamFolderPage/route'
 import { Route as v4OrganizationRelayDetailsByIDPageRouteImport } from './pages/v4/organization/RelayDetailsByIDPage/route'
@@ -1699,31 +1696,10 @@ const v4OrganizationSecretInsightsPageRouteRoute =
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
-const v4ProjectRoleDetailsBySlugPagePamRouteRoute =
-  v4ProjectRoleDetailsBySlugPagePamRouteImport.update({
-    id: '/pam/roles/$roleSlug',
-    path: '/pam/roles/$roleSlug',
-    getParentRoute: () => v4OrganizationRouteRoute,
-  } as any)
-
-const v4ProjectMemberDetailsByIDPagePamRouteRoute =
-  v4ProjectMemberDetailsByIDPagePamRouteImport.update({
-    id: '/pam/members/$membershipId',
-    path: '/pam/members/$membershipId',
-    getParentRoute: () => v4OrganizationRouteRoute,
-  } as any)
-
 const v4ProjectIdentityDetailsByIDPagePamRouteRoute =
   v4ProjectIdentityDetailsByIDPagePamRouteImport.update({
     id: '/pam/identities/$identityId',
     path: '/pam/identities/$identityId',
-    getParentRoute: () => v4OrganizationRouteRoute,
-  } as any)
-
-const v4ProjectGroupDetailsByIDPagePamRouteRoute =
-  v4ProjectGroupDetailsByIDPagePamRouteImport.update({
-    id: '/pam/groups/$groupId',
-    path: '/pam/groups/$groupId',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -5614,32 +5590,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4PamPamMyAccountsPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
-    '/v4/organizations/$orgId/pam/groups/$groupId': {
-      id: '/v4/organizations/$orgId/pam/groups/$groupId'
-      path: '/pam/groups/$groupId'
-      fullPath: '/v4/organizations/$orgId/pam/groups/$groupId'
-      preLoaderRoute: typeof v4ProjectGroupDetailsByIDPagePamRouteImport
-      parentRoute: typeof v4OrganizationRouteImport
-    }
     '/v4/organizations/$orgId/pam/identities/$identityId': {
       id: '/v4/organizations/$orgId/pam/identities/$identityId'
       path: '/pam/identities/$identityId'
       fullPath: '/v4/organizations/$orgId/pam/identities/$identityId'
       preLoaderRoute: typeof v4ProjectIdentityDetailsByIDPagePamRouteImport
-      parentRoute: typeof v4OrganizationRouteImport
-    }
-    '/v4/organizations/$orgId/pam/members/$membershipId': {
-      id: '/v4/organizations/$orgId/pam/members/$membershipId'
-      path: '/pam/members/$membershipId'
-      fullPath: '/v4/organizations/$orgId/pam/members/$membershipId'
-      preLoaderRoute: typeof v4ProjectMemberDetailsByIDPagePamRouteImport
-      parentRoute: typeof v4OrganizationRouteImport
-    }
-    '/v4/organizations/$orgId/pam/roles/$roleSlug': {
-      id: '/v4/organizations/$orgId/pam/roles/$roleSlug'
-      path: '/pam/roles/$roleSlug'
-      fullPath: '/v4/organizations/$orgId/pam/roles/$roleSlug'
-      preLoaderRoute: typeof v4ProjectRoleDetailsBySlugPagePamRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
     '/v4/organizations/$orgId/projects/secret-management/insights': {
@@ -8291,10 +8246,7 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationRelayDetailsByIDPageRouteRoute: typeof v4OrganizationRelayDetailsByIDPageRouteRoute
   v4PamPamFolderPageRouteRoute: typeof v4PamPamFolderPageRouteRoute
   v4PamPamMyAccountsPageRouteRoute: typeof v4PamPamMyAccountsPageRouteRoute
-  v4ProjectGroupDetailsByIDPagePamRouteRoute: typeof v4ProjectGroupDetailsByIDPagePamRouteRoute
   v4ProjectIdentityDetailsByIDPagePamRouteRoute: typeof v4ProjectIdentityDetailsByIDPagePamRouteRoute
-  v4ProjectMemberDetailsByIDPagePamRouteRoute: typeof v4ProjectMemberDetailsByIDPagePamRouteRoute
-  v4ProjectRoleDetailsBySlugPagePamRouteRoute: typeof v4ProjectRoleDetailsBySlugPagePamRouteRoute
   v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute: typeof v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute
   v4ProjectGroupDetailsByIDPageSecretScanningRouteRoute: typeof v4ProjectGroupDetailsByIDPageSecretScanningRouteRoute
   v4ProjectIdentityDetailsByIDPageSecretScanningRouteRoute: typeof v4ProjectIdentityDetailsByIDPageSecretScanningRouteRoute
@@ -8433,14 +8385,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4OrganizationRelayDetailsByIDPageRouteRoute,
   v4PamPamFolderPageRouteRoute: v4PamPamFolderPageRouteRoute,
   v4PamPamMyAccountsPageRouteRoute: v4PamPamMyAccountsPageRouteRoute,
-  v4ProjectGroupDetailsByIDPagePamRouteRoute:
-    v4ProjectGroupDetailsByIDPagePamRouteRoute,
   v4ProjectIdentityDetailsByIDPagePamRouteRoute:
     v4ProjectIdentityDetailsByIDPagePamRouteRoute,
-  v4ProjectMemberDetailsByIDPagePamRouteRoute:
-    v4ProjectMemberDetailsByIDPagePamRouteRoute,
-  v4ProjectRoleDetailsBySlugPagePamRouteRoute:
-    v4ProjectRoleDetailsBySlugPagePamRouteRoute,
   v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute:
     v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute,
   v4ProjectGroupDetailsByIDPageSecretScanningRouteRoute:
@@ -10077,10 +10023,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/networking/relays/$relayId': typeof v4OrganizationRelayDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/$folderId': typeof v4PamPamFolderPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/my-accounts': typeof v4PamPamMyAccountsPageRouteRoute
-  '/v4/organizations/$orgId/pam/groups/$groupId': typeof v4ProjectGroupDetailsByIDPagePamRouteRoute
   '/v4/organizations/$orgId/pam/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPagePamRouteRoute
-  '/v4/organizations/$orgId/pam/members/$membershipId': typeof v4ProjectMemberDetailsByIDPagePamRouteRoute
-  '/v4/organizations/$orgId/pam/roles/$roleSlug': typeof v4ProjectRoleDetailsBySlugPagePamRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/insights': typeof v4OrganizationSecretInsightsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/secret-sharing': typeof v4SecretSharingSecretSharingPageRouteRoute
   '/v4/organizations/$orgId/secret-manager/$projectId/approval': typeof v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute
@@ -10563,10 +10506,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/networking/relays/$relayId': typeof v4OrganizationRelayDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/$folderId': typeof v4PamPamFolderPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/my-accounts': typeof v4PamPamMyAccountsPageRouteRoute
-  '/v4/organizations/$orgId/pam/groups/$groupId': typeof v4ProjectGroupDetailsByIDPagePamRouteRoute
   '/v4/organizations/$orgId/pam/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPagePamRouteRoute
-  '/v4/organizations/$orgId/pam/members/$membershipId': typeof v4ProjectMemberDetailsByIDPagePamRouteRoute
-  '/v4/organizations/$orgId/pam/roles/$roleSlug': typeof v4ProjectRoleDetailsBySlugPagePamRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/insights': typeof v4OrganizationSecretInsightsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/secret-sharing': typeof v4SecretSharingSecretSharingPageRouteRoute
   '/v4/organizations/$orgId/secret-manager/$projectId/approval': typeof v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute
@@ -11042,10 +10982,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/networking/relays/$relayId': typeof v4OrganizationRelayDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/$folderId': typeof v4PamPamFolderPageRouteRoute
   '/v4/organizations/$orgId/pam/accounts/my-accounts': typeof v4PamPamMyAccountsPageRouteRoute
-  '/v4/organizations/$orgId/pam/groups/$groupId': typeof v4ProjectGroupDetailsByIDPagePamRouteRoute
   '/v4/organizations/$orgId/pam/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPagePamRouteRoute
-  '/v4/organizations/$orgId/pam/members/$membershipId': typeof v4ProjectMemberDetailsByIDPagePamRouteRoute
-  '/v4/organizations/$orgId/pam/roles/$roleSlug': typeof v4ProjectRoleDetailsBySlugPagePamRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/insights': typeof v4OrganizationSecretInsightsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/secret-sharing': typeof v4SecretSharingSecretSharingPageRouteRoute
   '/v4/organizations/$orgId/secret-manager/$projectId/approval': typeof v4RedirectsLegacySecretManagerApprovalRedirectRouteRoute
@@ -11545,10 +11482,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/networking/relays/$relayId'
     | '/v4/organizations/$orgId/pam/accounts/$folderId'
     | '/v4/organizations/$orgId/pam/accounts/my-accounts'
-    | '/v4/organizations/$orgId/pam/groups/$groupId'
     | '/v4/organizations/$orgId/pam/identities/$identityId'
-    | '/v4/organizations/$orgId/pam/members/$membershipId'
-    | '/v4/organizations/$orgId/pam/roles/$roleSlug'
     | '/v4/organizations/$orgId/projects/secret-management/insights'
     | '/v4/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/v4/organizations/$orgId/secret-manager/$projectId/approval'
@@ -12030,10 +11964,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/networking/relays/$relayId'
     | '/v4/organizations/$orgId/pam/accounts/$folderId'
     | '/v4/organizations/$orgId/pam/accounts/my-accounts'
-    | '/v4/organizations/$orgId/pam/groups/$groupId'
     | '/v4/organizations/$orgId/pam/identities/$identityId'
-    | '/v4/organizations/$orgId/pam/members/$membershipId'
-    | '/v4/organizations/$orgId/pam/roles/$roleSlug'
     | '/v4/organizations/$orgId/projects/secret-management/insights'
     | '/v4/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/v4/organizations/$orgId/secret-manager/$projectId/approval'
@@ -12507,10 +12438,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/networking/relays/$relayId'
     | '/v4/organizations/$orgId/pam/accounts/$folderId'
     | '/v4/organizations/$orgId/pam/accounts/my-accounts'
-    | '/v4/organizations/$orgId/pam/groups/$groupId'
     | '/v4/organizations/$orgId/pam/identities/$identityId'
-    | '/v4/organizations/$orgId/pam/members/$membershipId'
-    | '/v4/organizations/$orgId/pam/roles/$roleSlug'
     | '/v4/organizations/$orgId/projects/secret-management/insights'
     | '/v4/organizations/$orgId/projects/secret-management/secret-sharing'
     | '/v4/organizations/$orgId/secret-manager/$projectId/approval'
@@ -13245,10 +13173,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/networking/relays/$relayId",
         "/v4/organizations/$orgId/pam/accounts/$folderId",
         "/v4/organizations/$orgId/pam/accounts/my-accounts",
-        "/v4/organizations/$orgId/pam/groups/$groupId",
         "/v4/organizations/$orgId/pam/identities/$identityId",
-        "/v4/organizations/$orgId/pam/members/$membershipId",
-        "/v4/organizations/$orgId/pam/roles/$roleSlug",
         "/v4/organizations/$orgId/secret-manager/$projectId/approval",
         "/v4/organizations/$orgId/secret-scanning/groups/$groupId",
         "/v4/organizations/$orgId/secret-scanning/identities/$identityId",
@@ -13933,20 +13858,8 @@ export const routeTree = rootRoute
       "filePath": "v4/pam/PamMyAccountsPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
-    "/v4/organizations/$orgId/pam/groups/$groupId": {
-      "filePath": "v4/project/GroupDetailsByIDPage/pam/route.tsx",
-      "parent": "/v4/organizations/$orgId"
-    },
     "/v4/organizations/$orgId/pam/identities/$identityId": {
       "filePath": "v4/project/IdentityDetailsByIDPage/pam/route.tsx",
-      "parent": "/v4/organizations/$orgId"
-    },
-    "/v4/organizations/$orgId/pam/members/$membershipId": {
-      "filePath": "v4/project/MemberDetailsByIDPage/pam/route.tsx",
-      "parent": "/v4/organizations/$orgId"
-    },
-    "/v4/organizations/$orgId/pam/roles/$roleSlug": {
-      "filePath": "v4/project/RoleDetailsBySlugPage/pam/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/projects/secret-management/insights": {

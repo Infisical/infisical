@@ -300,10 +300,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "v4/project/RoleDetailsBySlugPage/secret-scanning/route.tsx"
     ),
     route("/pam/access-management", "v4/project/AccessControlPage/pam/route.tsx"),
-    route("/pam/members/$membershipId", "v4/project/MemberDetailsByIDPage/pam/route.tsx"),
     route("/pam/identities/$identityId", "v4/project/IdentityDetailsByIDPage/pam/route.tsx"),
-    route("/pam/groups/$groupId", "v4/project/GroupDetailsByIDPage/pam/route.tsx"),
-    route("/pam/roles/$roleSlug", "v4/project/RoleDetailsBySlugPage/pam/route.tsx"),
     route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),
     route("/app-connections/", "v4/organization/AppConnectionsPage/route.tsx"),
     route(
