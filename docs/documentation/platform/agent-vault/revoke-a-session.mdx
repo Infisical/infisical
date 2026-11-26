@@ -15,7 +15,7 @@ Revoke a session when:
 These people and machine identities can revoke a session:
 
 - Admins of the Agent Vault project, for any session in the project
-- Members of the project, for their own sessions
+- Other members of the project, for the sessions their [roles](/documentation/platform/agent-vault/access-control#roles) let them revoke, such as the sessions they created
 - A machine identity, for the sessions it created, including sessions it created [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users)
 - Anyone who holds the session's token
 
@@ -25,7 +25,7 @@ These people and machine identities can revoke a session:
   <Tab title="Dashboard">
     In your Agent Vault project, go to **Sessions**, open the session's menu, and select **Revoke Session**.
 
-    If you're an admin of the project, select **All Sessions** to find sessions that other users and machine identities created.
+    To find sessions that other users and machine identities created, select **All Sessions**. You see **All Sessions** only if your roles let you view other people's sessions, as the **Admin** role does.
   </Tab>
   <Tab title="CLI">
     If you started the agent with `infisical agent-vault run --access-bundle`, the CLI revokes the session when the agent exits, including when Docker or systemd stops the agent. To keep the session active after the agent exits, pass `--keep-session`.

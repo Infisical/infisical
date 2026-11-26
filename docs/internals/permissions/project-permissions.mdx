@@ -525,18 +525,22 @@ Supports conditions and permission inversion.
 
 #### Subject: `agent-vault-sessions`
 
-| Action                        | Description                                                                                                                                                                          |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `read`                        | View the sessions the member created                                                                                                                                                 |
-| `create`                      | Create sessions with the access bundles, services, and skills the member can use                                                                                                    |
-| `edit`                        | Change the [label and metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) of the sessions the member created                                    |
-| `revoke`                      | Revoke the sessions the member created                                                                                                                                               |
-| `read-any`                    | View every session in the project and its logs                                                                                                                                       |
-| `edit-any`                    | Change the label and metadata of any session in the project                                                                                                                          |
-| `revoke-any`                  | Revoke any session in the project                                                                                                                                                    |
-| `create-with-inline-services` | Create sessions with [inline services](/documentation/platform/agent-vault/inline-services), which bring their own hosts and credentials (also needs `create`)                       |
-| `create-with-inline-skills`   | Create sessions with [skills sent along with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session) (also needs `create`)                               |
-| `manage-delegations`          | Choose which users a machine identity can [create sessions on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users) (also needs `edit` on the machine identity) |
+Supports conditions and permission inversion. Without a condition, `read`, `edit`, and `revoke` cover every session in the project. To limit one of them, add the condition key `actorId`, which is the user or machine identity that created the session (a session created [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users) counts as the machine identity's). `actorId` only takes `{{identity.id}}`, which Infisical replaces with the ID of the member who makes the request:
+
+- `{ "$eq": "{{identity.id}}" }` covers only the sessions the member created
+- `{ "$ne": "{{identity.id}}" }` covers only the sessions that other users and machine identities created
+
+A rule with `actorId` can only hold `read`, `edit`, and `revoke`, so put the other session actions in a rule of their own.
+
+| Action                        | Description                                                                                                                                                                          | Condition keys |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| `read`                        | View sessions and their session logs                                                                                                                                                 | `actorId`      |
+| `create`                      | Create sessions with the access bundles, services, and skills the member can use                                                                                                    |                |
+| `edit`                        | Change the [label and metadata](/documentation/platform/agent-vault/sessions#label-a-session-and-add-metadata) of sessions                                                           | `actorId`      |
+| `revoke`                      | Revoke sessions                                                                                                                                                                      | `actorId`      |
+| `create-with-inline-services` | Create sessions with [inline services](/documentation/platform/agent-vault/inline-services), which bring their own hosts and credentials (also needs `create`)                       |                |
+| `create-with-inline-skills`   | Create sessions with [skills sent along with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session) (also needs `create`)                               |                |
+| `manage-delegations`          | Choose which users a machine identity can [create sessions on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users) (also needs `edit` on the machine identity) |                |
 
 #### Subject: `agent-vault-variables`
 
@@ -736,7 +740,14 @@ curl --request POST \
       },
       {
         "subject": "agent-vault-sessions",
-        "action": ["read", "create", "edit", "revoke"]
+        "action": ["create"]
+      },
+      {
+        "subject": "agent-vault-sessions",
+        "action": ["read", "edit", "revoke"],
+        "conditions": {
+          "actorId": { "$eq": "{{identity.id}}" }
+        }
       }
     ]
   }'
