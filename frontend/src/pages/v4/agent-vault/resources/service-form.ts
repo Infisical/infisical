@@ -66,7 +66,7 @@ export const BLANK_SERVICE_FORM: TServiceForm = {
   pathDraft: "",
   toolScope: McpToolScope.All,
   allowedTools: [],
-  credentialType: AgentVaultCredentialType.Bearer,
+  credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
   username: "",
@@ -94,7 +94,7 @@ export const blankFormOf = (serviceType: AgentVaultServiceType): TServiceForm =>
     return {
       ...BLANK_SERVICE_FORM,
       serviceType,
-      credentialType: AgentVaultCredentialType.Bearer
+      credentialType: AgentVaultCredentialType.OAuth
     };
   return {
     ...BLANK_SERVICE_FORM,
