@@ -37,7 +37,7 @@ export type ShellProductNavItem = {
 };
 
 export const SECRETS_HUE = 113.8;
-export const ORG_HUE = 250;
+export const ORG_HUE = SECRETS_HUE;
 
 export const products = [
   {
