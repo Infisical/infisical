@@ -357,6 +357,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Rfc2136]: {
     name: "DNS Server (RFC 2136)",
     image: "DNS Server.svg",
+    aliases: ["bind", "knot", "tsig", "nsupdate", "dynamic dns"],
     category: "DNS",
     description: "Manage DNS records on your own DNS server, such as BIND or Knot, with a TSIG key."
   },

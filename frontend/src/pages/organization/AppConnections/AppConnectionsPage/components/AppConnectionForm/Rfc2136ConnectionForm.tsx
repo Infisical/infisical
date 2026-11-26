@@ -24,6 +24,7 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { TRfc2136Connection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -54,8 +55,6 @@ const BASE64_REGEX =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
 const HOSTNAME_REGEX =
   /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-const IPV4_REGEX = /^(?:\d{1,3}\.){3}\d{1,3}$/;
-const IPV6_REGEX = /^[0-9a-fA-F:]+:[0-9a-fA-F:.]*$/;
 const KEY_NAME_REGEX = /^(?:[A-Za-z0-9_-]{1,63}\.)*[A-Za-z0-9_-]{1,63}\.?$/;
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -72,7 +71,8 @@ const formSchema = z.discriminatedUnion("method", [
         .min(1, "Host required")
         .max(253, "Host cannot exceed 253 characters")
         .refine(
-          (value) => HOSTNAME_REGEX.test(value) || IPV4_REGEX.test(value) || IPV6_REGEX.test(value),
+          (value) =>
+            HOSTNAME_REGEX.test(value) || isIPv4(value) || (isIPv6(value) && !value.includes("%")),
           { message: "Enter a hostname or IP address, without a scheme or port" }
         ),
       port: z.coerce

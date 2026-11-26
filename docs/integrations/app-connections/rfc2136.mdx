@@ -64,6 +64,10 @@ Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts H
         Add a `grant` line for each domain, such as `grant infisical-acme name _acme-challenge.www.example.com. TXT;` for `www.example.com`. A `subdomain` grant, such as `grant infisical-acme subdomain acme.example.com. TXT;`, covers every name in a zone, so use one only for a zone that holds nothing but challenge records.
 
         BIND saves each update in a journal file next to the zone file, so `named` needs write access to the zone file's directory.
+
+        <Note>
+          BIND doesn't accept `allow-update` and `update-policy` on the same zone. If the zone has `allow-update { key dhcp-key; };`, replace it with a grant in the same `update-policy`: `grant dhcp-key zonesub ANY;`. If `allow-update` lists IP addresses instead of keys, put the challenge records in a separate zone and point each `_acme-challenge` name at it with a CNAME.
+        </Note>
       </Step>
       <Step>
         Reload the configuration:
@@ -131,14 +135,19 @@ Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts H
 
     <Steps>
       <Step>
-        Turn on dynamic updates in `pdns.conf`, and allow updates from the address that Infisical or your Gateway connects from:
+        Turn on dynamic updates in `pdns.conf`, then restart `pdns_server`:
 
         ```ini
         dnsupdate=yes
-        allow-dnsupdate-from=<infisical-or-gateway-address>
         ```
 
-        Then restart `pdns_server`. You can also allow the address for one zone with the zone's `ALLOW-DNSUPDATE-FROM` metadata.
+        Allow updates to the zone from the address that Infisical or your Gateway connects from:
+
+        ```bash
+        pdnsutil metadata add example.com ALLOW-DNSUPDATE-FROM <infisical-or-gateway-address>
+        ```
+
+        On older PowerDNS versions, run `pdnsutil add-meta example.com ALLOW-DNSUPDATE-FROM <infisical-or-gateway-address>` instead. Allow the address on this zone only, not with `allow-dnsupdate-from` in `pdns.conf`: that setting lets the address change every zone on the server that has no key list, without a key.
       </Step>
       <Step>
         Generate the key:
@@ -308,12 +317,12 @@ If Infisical can't save the connection or add a challenge record, the error mess
 | `rejected the TSIG key` | Check **Key Name**, **Algorithm** and the secret against the key on the DNS server, and sync the DNS server's clock with NTP |
 | `does not recognize the TSIG key name or its algorithm` | Check **Key Name** for typos, and check that the DNS server has loaded the key |
 | `its clock differs from Infisical's by more than 5 minutes` | Sync the DNS server's clock with NTP |
-| `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`), that the server accepts updates from the IP address of Infisical or your Gateway (PowerDNS `allow-dnsupdate-from`), and that **Host** is the zone's primary server |
+| `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`), that the server accepts updates from the IP address of Infisical or your Gateway (PowerDNS `ALLOW-DNSUPDATE-FROM`), and that **Host** is the zone's primary server |
 | `did not accept the update for this zone` | Check the **Zone** on the certificate authority, **Key Name** and **Algorithm**, and that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`) |
 | `does not accept dynamic updates` | Turn on dynamic updates on the DNS server, such as `dnsupdate=yes` in PowerDNS |
 | `is not authoritative for any zone containing` | Point **Host** at the zone's primary server, or enter the **Zone** on the certificate authority |
 | `is not inside zone` | Correct the **Zone** on the certificate authority. If the challenge name is a CNAME to another zone, enter that zone or leave **Zone** empty |
 | `is an alias (CNAME)` | Publish the CNAME in public DNS so Infisical follows it, or remove the CNAME from the DNS server |
 | `but does not serve it` | Check that **Host** is the zone's primary server, and that the key's policy allows TXT records at the challenge name |
-| `serve the challenge record after` | Check that the named nameserver receives updates from your primary server: the primary sends it NOTIFY messages, and it's allowed to transfer the zone |
+| `serve the challenge record` | Check that the named nameserver receives updates from your primary server: the primary sends it NOTIFY messages, and it's allowed to transfer the zone |
 | `could not connect to the DNS server`, `did not answer in time`, or `closed the connection without answering` | Check that the DNS server accepts TCP connections on **Port** from Infisical or your Gateway (some firewalls allow only UDP on port 53), or connect through a Gateway |
