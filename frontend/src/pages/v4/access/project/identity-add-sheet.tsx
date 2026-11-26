@@ -35,12 +35,6 @@ import { useProjectScope } from "./scope";
 
 export type AddIdentityMode = "create" | "assign";
 
-const PRODUCT_SCOPED_ROLE_TYPES = [
-  ProjectType.CertificateManager,
-  ProjectType.PAM,
-  ProjectType.AgentVault
-];
-
 const templatePermissions = (projectType: ProjectType, templateIds: readonly string[]) => {
   const merged = new Map<string, Set<string>>();
   const selected = new Set(templateIds);
@@ -116,11 +110,7 @@ const AddIdentityForm = ({
   const currentMode = mode ?? (assignable.length > 0 ? "assign" : "create");
   const [name, setName] = useState("");
   const [identityId, setIdentityId] = useState("");
-  const [role, setRole] = useState<string>(
-    PRODUCT_SCOPED_ROLE_TYPES.includes(scope.projectType)
-      ? ProjectMembershipRole.Member
-      : ProjectMembershipRole.NoAccess
-  );
+  const [role, setRole] = useState<string>(ProjectMembershipRole.NoAccess);
   const [errors, setErrors] = useState<{ name?: string; identity?: string }>({});
 
   const submit = async () => {
