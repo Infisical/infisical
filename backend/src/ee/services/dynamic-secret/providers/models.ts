@@ -834,7 +834,8 @@ export enum DynamicSecretProviders {
   OAuth2 = "oauth2",
   Kafka = "kafka",
   OpenRouter = "openrouter",
-  Neon = "neon"
+  Neon = "neon",
+  PlanetScale = "planetscale"
 }
 
 export const DynamicSecretIbmApiConnectSchema = z.object({
@@ -1279,6 +1280,30 @@ export const DynamicSecretNeonSchema = z.discriminatedUnion("leaseType", [
   })
 ]);
 
+export enum PlanetScalePasswordRole {
+  Reader = "reader",
+  Writer = "writer",
+  ReadWriter = "readwriter",
+  Admin = "admin"
+}
+
+export const DynamicSecretPlanetScaleSchema = z.object({
+  serviceTokenId: z.string().trim().min(1).max(255).describe("ID of the PlanetScale service token."),
+  serviceToken: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1024)
+    .describe("PlanetScale service token used to create and delete the password of each lease."),
+  organization: z.string().trim().min(1).max(255).describe("Name of the PlanetScale organization."),
+  database: z.string().trim().min(1).max(255).describe("Name of the PlanetScale database."),
+  branch: z.string().trim().min(1).max(255).default("main").describe("Branch the passwords are created on."),
+  role: z
+    .nativeEnum(PlanetScalePasswordRole)
+    .default(PlanetScalePasswordRole.Reader)
+    .describe("Access level of each lease's password.")
+});
+
 export const DynamicSecretSshSchema = z.object({
   principals: z.array(z.string().trim().min(1)).min(1),
   keyAlgorithm: z.enum(SSH_CERT_KEY_ALGORITHMS).default(SshCertKeyAlgorithm.ED25519),
@@ -1327,7 +1352,8 @@ export const DynamicSecretProviderSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(DynamicSecretProviders.OAuth2), inputs: DynamicSecretOAuth2Schema }),
   z.object({ type: z.literal(DynamicSecretProviders.Kafka), inputs: DynamicSecretKafkaSchema }),
   z.object({ type: z.literal(DynamicSecretProviders.OpenRouter), inputs: DynamicSecretOpenRouterSchema }),
-  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema })
+  z.object({ type: z.literal(DynamicSecretProviders.Neon), inputs: DynamicSecretNeonSchema }),
+  z.object({ type: z.literal(DynamicSecretProviders.PlanetScale), inputs: DynamicSecretPlanetScaleSchema })
 ]);
 
 // Extended metadata passed to a provider's create() call. When the project

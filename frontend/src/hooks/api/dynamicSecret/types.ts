@@ -49,7 +49,8 @@ export enum DynamicSecretProviders {
   OAuth2 = "oauth2",
   Kafka = "kafka",
   OpenRouter = "openrouter",
-  Neon = "neon"
+  Neon = "neon",
+  PlanetScale = "planetscale"
 }
 
 export enum OpenRouterLimitReset {
@@ -61,6 +62,13 @@ export enum OpenRouterLimitReset {
 export enum NeonLeaseType {
   Role = "role",
   Branch = "branch"
+}
+
+export enum PlanetScalePasswordRole {
+  Reader = "reader",
+  Writer = "writer",
+  ReadWriter = "readwriter",
+  Admin = "admin"
 }
 
 export enum KafkaSaslMechanism {
@@ -703,6 +711,17 @@ export type TDynamicSecretProvider =
             resetRolePassword: boolean;
             setBranchExpiration: boolean;
           };
+    }
+  | {
+      type: DynamicSecretProviders.PlanetScale;
+      inputs: {
+        serviceTokenId: string;
+        serviceToken?: string;
+        organization: string;
+        database: string;
+        branch: string;
+        role: PlanetScalePasswordRole;
+      };
     };
 
 export type TCreateDynamicSecretDTO = {

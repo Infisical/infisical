@@ -11,6 +11,7 @@ import { MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS } from "./managedStoresContract"
 import { mongoAtlasDynamicSecretProvider } from "./mongoAtlas";
 import { mongoDbDynamicSecretProvider } from "./mongoDb";
 import { neonDynamicSecretProvider } from "./neon";
+import { planetScaleDynamicSecretProvider } from "./planetScale";
 import { redisDynamicSecretProvider } from "./redis";
 
 const definitionsByProvider = {
@@ -20,7 +21,8 @@ const definitionsByProvider = {
   [DynamicSecretProviders.MongoAtlas]: mongoAtlasDynamicSecretProvider,
   [DynamicSecretProviders.MongoDB]: mongoDbDynamicSecretProvider,
   [DynamicSecretProviders.Couchbase]: couchbaseDynamicSecretProvider,
-  [DynamicSecretProviders.Neon]: neonDynamicSecretProvider
+  [DynamicSecretProviders.Neon]: neonDynamicSecretProvider,
+  [DynamicSecretProviders.PlanetScale]: planetScaleDynamicSecretProvider
 } satisfies Record<
   (typeof MANAGED_STORE_DYNAMIC_SECRET_PROVIDERS)[number],
   TRegisteredDynamicSecretProviderDefinition
