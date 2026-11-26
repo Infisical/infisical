@@ -4511,13 +4511,7 @@ export const SecretScanningProjects = {
 };
 
 export const OidcSSo = {
-  GET_CONFIG: {
-    organizationId:
-      "The ID of the organization to get the OIDC config for. Defaults to the organization of the token used to make the request."
-  },
   UPDATE_CONFIG: {
-    organizationId:
-      "The ID of the organization to update the OIDC config for. Defaults to the organization of the token used to make the request.",
     allowedEmailDomains:
       "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com). Example: 'example.com, *.acme.com'",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
@@ -4539,8 +4533,6 @@ export const OidcSSo = {
     mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
-    organizationId:
-      "The ID of the organization to create the OIDC config for. Defaults to the organization of the token used to make the request.",
     allowedEmailDomains:
       "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com).",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
@@ -4560,10 +4552,6 @@ export const OidcSSo = {
     jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
     mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
     mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
-  },
-  DELETE_CONFIG: {
-    organizationId:
-      "The ID of the organization to delete the OIDC config for. Defaults to the organization of the token used to make the request."
   }
 };
 

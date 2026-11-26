@@ -39,19 +39,17 @@ const withSsoDelete = (permissions: unknown) => {
 };
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.transaction(async (trx) => {
-    const orgRoles = await trx(TableName.Role).whereNull("projectId").select("*");
-    const rolesToUpdate = orgRoles
-      .map((role) => {
-        const permissions = withSsoDelete(role.permissions);
-        return permissions ? { ...role, permissions } : null;
-      })
-      .filter(Boolean) as typeof orgRoles;
+  const orgRoles = await knex(TableName.Role).whereNotNull("orgId").select("*");
+  const rolesToUpdate = orgRoles
+    .map((role) => {
+      const permissions = withSsoDelete(role.permissions);
+      return permissions ? { ...role, permissions } : null;
+    })
+    .filter(Boolean) as typeof orgRoles;
 
-    if (rolesToUpdate.length > 0) {
-      await trx(TableName.Role).insert(rolesToUpdate).onConflict("id").merge();
-    }
-  });
+  if (rolesToUpdate.length > 0) {
+    await knex(TableName.Role).insert(rolesToUpdate).onConflict("id").merge();
+  }
 }
 
 // Backfilled `delete` rules cannot be told apart from ones an admin granted, so removing them would

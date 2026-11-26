@@ -55,7 +55,7 @@ export const registerOrgSsoSettingsRouter = async (server: FastifyZodProvider) =
       hide: false,
       operationId: "updateOrganizationSsoSettings",
       tags: [ApiDocsTags.SsoSettings],
-      description: "Update the organization's SSO enforcement settings. Fields left out are not changed.",
+      description: "Update the organization's SSO enforcement settings.",
       security: [
         {
           bearerAuth: []

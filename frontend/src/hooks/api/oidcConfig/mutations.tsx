@@ -23,7 +23,6 @@ export const useUpdateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      organizationId,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -56,7 +55,6 @@ export const useUpdateOIDCConfig = () => {
         tokenEndpoint,
         userinfoEndpoint,
         clientId,
-        organizationId,
         clientSecret,
         isActive,
         manageGroupMemberships,
@@ -91,7 +89,6 @@ export const useCreateOIDCConfig = () => {
       clientId,
       clientSecret,
       isActive,
-      organizationId,
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -126,7 +123,6 @@ export const useCreateOIDCConfig = () => {
         clientId,
         clientSecret,
         isActive,
-        organizationId,
         manageGroupMemberships,
         jwtSignatureAlgorithm,
         mfaClaimName,
@@ -145,11 +141,9 @@ export const useCreateOIDCConfig = () => {
 
 export const useDeleteOIDCConfig = () => {
   const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ organizationId }: { organizationId: string }) => {
-      const { data } = await apiRequest.delete("/api/v1/sso/oidc/config", {
-        params: { organizationId }
-      });
+  return useMutation<object, object, { organizationId: string }>({
+    mutationFn: async () => {
+      const { data } = await apiRequest.delete("/api/v1/sso/oidc/config");
       return data;
     },
     onSuccess(_, { organizationId }) {

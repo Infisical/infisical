@@ -232,9 +232,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
-        organizationId: z.string().trim().uuid().optional().describe(OidcSSo.GET_CONFIG.organizationId)
-      }),
       response: {
         200: SanitizedOidcConfigSchema.pick({
           id: true,
@@ -260,7 +257,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const oidc = await server.services.oidc.getOidc({
-        organizationId: req.query.organizationId ?? req.permission.orgId,
+        organizationId: req.permission.orgId,
         type: "external",
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -321,8 +318,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           jwtSignatureAlgorithm: z
             .nativeEnum(OIDCJWTSignatureAlgorithm)
             .optional()
-            .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm),
-          organizationId: z.string().trim().uuid().describe(OidcSSo.UPDATE_CONFIG.organizationId)
+            .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm)
         })
         .partial(),
       response: {
@@ -346,7 +342,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const organizationId = req.body.organizationId ?? req.permission.orgId;
+      const organizationId = req.permission.orgId;
       const oidc = await server.services.oidc.updateOidcCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -436,7 +432,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientId),
           clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
-          organizationId: z.string().trim().uuid().optional().describe(OidcSSo.CREATE_CONFIG.organizationId),
           mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.CREATE_CONFIG.mfaClaimName),
           mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.CREATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z
@@ -504,7 +499,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
 
     handler: async (req) => {
-      const organizationId = req.body.organizationId ?? req.permission.orgId;
+      const organizationId = req.permission.orgId;
       const oidc = await server.services.oidc.createOidcCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -561,15 +556,12 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
-        organizationId: z.string().trim().uuid().optional().describe(OidcSSo.DELETE_CONFIG.organizationId)
-      }),
       response: {
         200: SanitizedOidcConfigSchema
       }
     },
     handler: async (req) => {
-      const organizationId = req.query.organizationId ?? req.permission.orgId;
+      const organizationId = req.permission.orgId;
       const oidc = await server.services.oidc.deleteOidcCfg({
         organizationId,
         actor: req.permission.type,
