@@ -523,7 +523,9 @@ export const ServiceSheet = ({
         password: "secret",
         value: "secret",
         privateKey: "sshPrivateKey",
-        certificate: "sshCertificate"
+        certificate: "sshCertificate",
+        headerName: "headerName",
+        headerPrefix: "headerPrefix"
       };
       const next: TServiceErrors = {};
       let earliest: number | null = null;
@@ -541,6 +543,13 @@ export const ServiceSheet = ({
           issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
             ? issue.path.join(".")
             : (credentialPart ?? FORM_FIELD_OF[root] ?? root);
+        if (
+          target === "secret" &&
+          memberProvides(AgentVaultVariableReferenceField.CredentialValue)
+        ) {
+          unmapped = true;
+          return;
+        }
         next[target] = next[target] ?? issue.message;
         const index = stepKeys.indexOf(issueStep);
         if (index !== -1 && (earliest === null || index < earliest)) earliest = index;

@@ -107,6 +107,7 @@ export const VariableDialog = ({
             autoComplete="off"
             onSubmit={async (event) => {
               event.preventDefault();
+              event.stopPropagation();
               const next = {
                 key: keyError(key, isTaken, isPersonal),
                 value: isOAuth ? undefined : valueError(value, !variable)
