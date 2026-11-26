@@ -773,6 +773,11 @@ export const secretScanningV2ServiceFactory = ({
         { resourceType: SECRET_SCANNING_RESOURCE_TYPE, resourceId: dataSourceId },
         tx
       );
+      const resources = await secretScanningV2DAL.resources.find({ dataSourceId }, { tx });
+      await secretScanningV2DAL.findings.detachResources(
+        { projectId: dataSource.projectId, resourceIds: resources.map(({ id }) => id) },
+        tx
+      );
       await secretScanningV2DAL.dataSources.deleteById(dataSourceId, tx);
     });
 
@@ -1081,7 +1086,11 @@ export const secretScanningV2ServiceFactory = ({
           );
         }
 
-        // Cascades to the resource's scans and findings.
+        await secretScanningV2DAL.findings.detachResources(
+          { projectId: dataSource.projectId, resourceIds: [resourceId] },
+          tx
+        );
+        // Cascades to the resource's scans.
         await secretScanningV2DAL.resources.deleteById(resourceId, tx);
       });
     } catch (err) {

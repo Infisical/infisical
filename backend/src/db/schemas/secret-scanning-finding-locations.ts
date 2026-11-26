@@ -15,7 +15,8 @@ export const SecretScanningFindingLocationsSchema = z.object({
   fingerprint: z.string(),
   rule: z.string(),
   details: z.unknown(),
-  createdAt: z.date()
+  createdAt: z.date(),
+  isFirstInResource: z.boolean().nullable().optional()
 });
 
 export type TSecretScanningFindingLocations = z.infer<typeof SecretScanningFindingLocationsSchema>;

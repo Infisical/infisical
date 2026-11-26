@@ -1329,6 +1329,7 @@ tables:
       - rule
       - details
       - createdAt
+      - isFirstInResource
 
   - name: secret_scanning_findings
     source: public.secret_scanning_findings

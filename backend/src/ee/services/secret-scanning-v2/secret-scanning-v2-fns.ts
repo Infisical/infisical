@@ -659,10 +659,10 @@ export const completeFullScan = async (
 
     const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
 
-    // A full scan never alerts on a finding it reopened: a secret coming back is news when someone pushes it, not when
-    // history is read again.
+    // A full scan doesn't alert on a finding it reopened in a resource that already had its value: a secret coming back
+    // is news when someone pushes it, not when history is read again.
     if (alertScope) {
-      const newFindings = await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx);
+      const newFindings = await secretScanningV2DAL.findings.countNewUnresolvedByScanId(scanId, {}, tx);
 
       if (newFindings) {
         await emitSecretScanningSecretsDetected(
@@ -699,7 +699,10 @@ export const completeDiffScan = async (
 
   return secretScanningV2DAL.findings.transaction(async (tx) => {
     const persisted = rows.length
-      ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows }, tx)
+      ? await secretScanningV2DAL.findings.persistLocations(
+          { projectId: dataSource.projectId, resourceId, scanId, rows },
+          tx
+        )
       : { scannedLocations: [], reopenedFindings: [] };
 
     const completed = await secretScanningV2DAL.scans.markCompleted(
@@ -711,12 +714,14 @@ export const completeDiffScan = async (
 
     const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
 
-    // Only a secret this scan found first, or a resolved one it brought back, is news. A new location of a secret
-    // that's still unresolved has already been alerted on, and one of a false positive or an ignored finding needs
-    // no action.
-    const newFindings =
-      (await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx)) +
-      persisted.reopenedFindings.length;
+    // Only a secret this scan found first in the resource, or a resolved one it brought back, is news, each counted
+    // once. A new location of a secret that's still unresolved has already been alerted on, and one of a false positive
+    // or an ignored finding needs no action.
+    const newFindings = await secretScanningV2DAL.findings.countNewUnresolvedByScanId(
+      scanId,
+      { alsoIds: persisted.reopenedFindings.map(({ id }) => id) },
+      tx
+    );
 
     if (newFindings && alertScope) {
       await emitSecretScanningSecretsDetected(

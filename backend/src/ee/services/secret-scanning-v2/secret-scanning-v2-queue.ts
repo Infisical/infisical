@@ -482,7 +482,10 @@ export const secretScanningV2QueueServiceFactory = ({
 
         const { owned, reopenedFindings } = await secretScanningV2DAL.findings.transaction(async (tx) => {
           const persisted = findingRows.length
-            ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
+            ? await secretScanningV2DAL.findings.persistLocations(
+                { projectId: dataSource.projectId, resourceId, scanId, rows: findingRows },
+                tx
+              )
             : undefined;
 
           const progressed = await secretScanningV2DAL.scans.update(
