@@ -38,8 +38,9 @@ export type TPermissionRowKey = TResourceRowKey | TCapabilityRowKey;
 export type TAgentVaultPolicy = Record<TResourceRowKey, TResourcePermissions> &
   Record<TCapabilityRowKey, TActionSets> & {
     // Rules for the actions the editor never shows (each subject's `ignored`), kept as read so a save writes them back
-    // unchanged. A deny there can still matter: the backend widens one on assign-additional-privileges to a deny on
-    // grant-privileges, and the workflow integration delete route checks settings delete.
+    // unchanged: a deny always, an allow while the role allows an action the editor shows on the same subject. Both
+    // can matter: the backend widens a deny on assign-additional-privileges to a deny on grant-privileges, and the
+    // workflow integration delete route checks settings delete.
     hidden?: { subject: ProjectPermissionSub; action: string[]; inverted?: boolean }[];
   };
 
@@ -125,7 +126,7 @@ export type TSubjectRules = {
 // What holds for a subject whichever row shows its actions. The ignored actions are ones a role can carry but nothing in
 // Agent Vault offers: session log settings can only be read and changed, and Agent Vault refuses to assume another
 // member's privileges. They are never shown, and a save writes back whatever a role held of them, so a copy of admin
-// stays editable.
+// stays editable, except an allow on a subject the role no longer allows anything shown on (withoutLoneHiddenAllows).
 export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>> = {
   [Sub.AgentVaultAccessBundles]: { readAction: BundleAction.Read, idField: "accessBundleId" },
   [Sub.AgentVaultServices]: { readAction: ResourceAction.Read, idField: "serviceId" },

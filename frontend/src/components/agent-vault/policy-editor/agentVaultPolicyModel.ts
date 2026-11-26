@@ -285,6 +285,33 @@ const normalizeResource = (
   return { ...all, items };
 };
 
+const actionsOfSubject = (
+  policy: TAgentVaultPolicy,
+  subject: ProjectPermissionSub,
+  effect: keyof TActionSets
+) =>
+  PERMISSION_ROWS.flatMap((row) =>
+    row.actions
+      .filter(
+        (action) => action.subject === subject && policy[row.key][effect].includes(action.key)
+      )
+      .map(({ action }) => action)
+  );
+
+/**
+ * Drops each hidden allow on a subject the policy allows nothing shown on, so a role the editor shows as granting
+ * nothing on a subject grants nothing there, and taking off the last row on it takes the hidden actions too. Hidden
+ * denies stay, since dropping one could only widen a role.
+ */
+export const withoutLoneHiddenAllows = (policy: TAgentVaultPolicy): TAgentVaultPolicy => {
+  if (!policy.hidden?.length) return policy;
+  const hidden = policy.hidden.filter(
+    ({ subject, inverted }) => inverted || actionsOfSubject(policy, subject, "allow").length > 0
+  );
+  if (hidden.length === policy.hidden.length) return policy;
+  return { ...policy, hidden: hidden.length ? hidden : undefined };
+};
+
 /**
  * The one form every policy that grants the same thing takes: actions in catalog order, read held wherever use is, and
  * a bundle, service or skill listed with what it adds to every one of them or denies, and left out when that is
@@ -300,25 +327,12 @@ export const normalizeAgentVaultPolicy = (policy: TAgentVaultPolicy): TAgentVaul
     }
   });
   if (policy.hidden?.length) normalized.hidden = policy.hidden;
-  return normalized;
+  return withoutLoneHiddenAllows(normalized);
 };
 
 const SUBJECT_ORDER = unique(
   PERMISSION_ROWS.flatMap((row) => row.actions.map(({ subject }) => subject))
 );
-
-const actionsOfSubject = (
-  policy: TAgentVaultPolicy,
-  subject: ProjectPermissionSub,
-  effect: keyof TActionSets
-) =>
-  PERMISSION_ROWS.flatMap((row) =>
-    row.actions
-      .filter(
-        (action) => action.subject === subject && policy[row.key][effect].includes(action.key)
-      )
-      .map(({ action }) => action)
-  );
 
 // The API refuses a condition that names more ids than this (AGENT_VAULT_MAX_IDS_PER_CONDITION on the backend), so a
 // group that names more is written as several rules.
@@ -680,6 +694,7 @@ export const rulesToPolicy = (rules: TProjectPermission[]): TParsedAgentVaultPol
     if (!reasons.has(index)) reasons.set(index, reason);
   };
   const policy = createEmptyAgentVaultPolicy();
+  const hiddenAllows: { index: number; subject: ProjectPermissionSub; actions: string[] }[] = [];
 
   const addKey = (scope: TPermissionScope, effect: keyof TActionSets, key: string) => {
     if (scope.itemId && isResourceRowKey(scope.rowKey)) {
@@ -740,6 +755,7 @@ export const rulesToPolicy = (rules: TProjectPermission[]): TParsedAgentVaultPol
         ...(policy.hidden ?? []),
         { subject, action: hiddenActions, ...(normalized.isInverted ? { inverted: true } : {}) }
       ];
+      if (!normalized.isInverted) hiddenAllows.push({ index, subject, actions: hiddenActions });
     }
     normalized.actions.forEach((name) => {
       if (subjectRules.ignored?.includes(name)) return;
@@ -762,6 +778,16 @@ export const rulesToPolicy = (rules: TProjectPermission[]): TParsedAgentVaultPol
       ids.forEach((itemId) => addKey({ rowKey: owner.rowKey, itemId }, effect, owner.action.key));
     });
   });
+
+  // The editor would show the subject as granting nothing and drop these on save (withoutLoneHiddenAllows).
+  hiddenAllows
+    .filter(({ subject }) => !actionsOfSubject(policy, subject, "allow").length)
+    .forEach(({ index, subject, actions }) =>
+      report(
+        index,
+        `Allows ${actions.join(", ")} on "${subject}", which the visual editor hides and keeps only beside an action it shows there.`
+      )
+    );
 
   const unsupported = [...reasons]
     .sort(([a], [b]) => a - b)

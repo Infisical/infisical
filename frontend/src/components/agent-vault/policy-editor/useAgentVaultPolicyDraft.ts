@@ -9,7 +9,8 @@ import {
   policyToRules,
   rulesToPolicy,
   TAgentVaultPolicy,
-  TUnsupportedRule
+  TUnsupportedRule,
+  withoutLoneHiddenAllows
 } from "./agentVaultPolicyModel";
 
 type TDraftState = {
@@ -63,8 +64,10 @@ export const useAgentVaultPolicyDraft = (savedRules: TProjectPermission[]) => {
 
   const isDirty = useMemo(() => isDraftDirty(state), [state]);
 
-  const setPolicy = useCallback((policy: TAgentVaultPolicy) => {
+  const setPolicy = useCallback((edited: TAgentVaultPolicy) => {
     setState((prev) => {
+      // Hidden actions an edit dropped stay dropped, so adding their row back doesn't grant them again.
+      const policy = withoutLoneHiddenAllows(edited);
       const rules = policyToRules(policy);
       return {
         ...prev,

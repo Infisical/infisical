@@ -10,6 +10,7 @@ import {
   addResourceItems,
   AGENT_VAULT_ROLE_TEMPLATES,
   canonicalRulesKey,
+  clearPermissionRow,
   createEmptyAgentVaultPolicy,
   createFullAgentVaultPolicy,
   CUSTOM_LEVEL,
@@ -44,7 +45,8 @@ import {
   TAgentVaultPolicy,
   TCapabilityRowKey,
   TPermissionRowKey,
-  TResourceRowKey
+  TResourceRowKey,
+  withoutLoneHiddenAllows
 } from "./agentVaultPolicyModel";
 
 const GITHUB = "e83db5d4-ca14-4e6b-bcbe-d38e61f7c796";
@@ -647,19 +649,68 @@ describe("rulesToPolicy", () => {
 
   it("hides the actions nothing in Agent Vault offers, and writes them back unchanged", () => {
     const { policy, unsupported } = rulesToPolicy([
-      { subject: "settings", action: ["create", "delete"] },
+      { subject: "settings", action: ["read", "create", "delete"] },
       { subject: BUNDLES, action: ["read"] }
     ]);
 
     expect(unsupported).toEqual([]);
     expect({ ...policy, hidden: undefined }).toEqual({
-      ...withRow("accessBundles", { allow: ["read"], deny: [] }),
+      ...withRow(
+        "sessionLogSettings",
+        { allow: ["read"], deny: [] },
+        withRow("accessBundles", { allow: ["read"], deny: [] })
+      ),
       hidden: undefined
     });
     expect(policyToRules(policy)).toEqual([
       { subject: BUNDLES, action: ["read"] },
+      { subject: "settings", action: ["read"] },
       { subject: "settings", action: ["create", "delete"] }
     ]);
+  });
+
+  it("reports a hidden action allowed on a subject the role allows nothing shown on, rather than showing nothing", () => {
+    expect(
+      reasonsOf([
+        { subject: "settings", action: ["create", "delete"] },
+        { subject: BUNDLES, action: ["read"] }
+      ])
+    ).toEqual([
+      'Allows create, delete on "settings", which the visual editor hides and keeps only beside an action it shows there.'
+    ]);
+  });
+
+  it("keeps a hidden deny on a subject the role allows nothing shown on", () => {
+    const rules: TProjectPermission[] = [
+      { subject: "member", action: ["assign-additional-privileges"], inverted: true }
+    ];
+    const { policy, unsupported } = rulesToPolicy(rules);
+
+    expect(unsupported).toEqual([]);
+    expect(policyToRules(policy)).toEqual(rules);
+  });
+
+  it("grants nothing once every row of a copy of admin is taken off", () => {
+    const { policy } = rulesToPolicy(ADMIN_RULES);
+    const cleared = PERMISSION_ROWS.reduce(
+      (next, row) => clearPermissionRow(next, row.key),
+      policy
+    );
+
+    expect(policyToRules(cleared)).toEqual([]);
+  });
+
+  it("takes the hidden settings actions off with the last settings row, and doesn't bring them back with it", () => {
+    const settingsActions = (rules: TProjectPermission[]) =>
+      rules.filter((rule) => rule.subject === "settings").flatMap((rule) => rule.action);
+    const { policy } = rulesToPolicy(ADMIN_RULES);
+    const cleared = withoutLoneHiddenAllows(clearPermissionRow(policy, "sessionLogSettings"));
+
+    expect(cleared.hidden?.some((rule) => rule.subject === "settings")).toBe(false);
+    expect(settingsActions(policyToRules(cleared))).toEqual([]);
+    expect(
+      settingsActions(policyToRules(setRowLevel(cleared, "sessionLogSettings", "view")))
+    ).toEqual(["read"]);
   });
 
   it("keeps a hidden deny through an edit in the visual editor, so a role can't widen on save", () => {
