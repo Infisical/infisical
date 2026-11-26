@@ -206,7 +206,7 @@ const ReviewContent = ({
     ({ id }) => decisions[id] && decisions[id] !== existing?.[id]
   ).length;
   let submitBlocked: string | undefined;
-  if (!hasAllDetails) submitBlocked = "Wait for every request's changes to load";
+  if (!hasAllDetails || !existing) submitBlocked = "Wait for every request's changes to load";
   else if (decided < requests.length) submitBlocked = "Approve or reject every request first";
 
   const decideAll = (decision: Decision, onlyRemaining: boolean) =>
@@ -514,7 +514,14 @@ const ReviewContent = ({
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button layout="trigger" variant="outline" disabled={submitting}>
+                  <Button
+                    layout="trigger"
+                    variant="outline"
+                    disabled={submitting}
+                    disabledReason={
+                      existing ? undefined : "Wait for every request's changes to load"
+                    }
+                  >
                     Decide all
                   </Button>
                 </DropdownMenuTrigger>
