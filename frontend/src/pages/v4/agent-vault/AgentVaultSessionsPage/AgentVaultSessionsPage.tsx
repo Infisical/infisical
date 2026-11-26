@@ -60,7 +60,7 @@ import { NoExpiry } from "../../components/no-expiry";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { ServiceIcon } from "../resources/shared";
+import { Dash, ServiceIcon } from "../resources/shared";
 import { CreateSessionSheet } from "./create-session-sheet";
 import { RevokeSessionDialog } from "./revoke-session-dialog";
 import { SessionDetailsSheet } from "./session-details-sheet";
@@ -76,6 +76,7 @@ import {
   inlineServicesLabel,
   inlineServiceTarget,
   inlineSkillsLabel,
+  isSameSessionMetadata,
   metadataRowsToRecord,
   SESSION_STATUS as STATUS,
   sessionInlineServices,
@@ -118,6 +119,14 @@ const parseMetadataFilter = (filters: FilterBarFilter[]) => {
   const error = errors && (errors.rows[0].key ?? errors.rows[0].value ?? errors.list);
   if (error) return { metadataFilter: undefined, metadataFilterError: error };
   return { metadataFilter: metadataRowsToRecord(rows), metadataFilterError: undefined };
+};
+
+const useAppliedMetadataFilter = (filters: FilterBarFilter[]) => {
+  const { metadataFilter: typed, metadataFilterError } = parseMetadataFilter(filters);
+  const [metadataFilter, setMetadataFilter] = useState(typed);
+  if (!metadataFilterError && !isSameSessionMetadata(typed ?? {}, metadataFilter ?? {}))
+    setMetadataFilter(typed);
+  return { metadataFilter, metadataFilterError };
 };
 
 const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/sessions");
@@ -329,7 +338,7 @@ const Access = ({
 };
 
 const Expiry = ({ session }: { session: TAgentVaultSession }) => {
-  if (session.status === AgentVaultSessionStatus.Revoked) return null;
+  if (session.status === AgentVaultSessionStatus.Revoked) return <Dash />;
   if (!session.expiresAt) return <NoExpiry />;
   return (
     <Tooltip content={formatTimestamp(session.expiresAt)}>
@@ -617,7 +626,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
 
   const statuses = (filters.find((filter) => filter.field === "status")?.values ??
     []) as AgentVaultSessionStatus[];
-  const { metadataFilter, metadataFilterError } = parseMetadataFilter(filters);
+  const { metadataFilter, metadataFilterError } = useAppliedMetadataFilter(filters);
 
   const { data, isPending } = agentVault.useSessions(orgId, projectId, {
     scope: canReadAnySession ? scope : AgentVaultSessionScope.Mine,
