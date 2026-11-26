@@ -386,7 +386,7 @@ const DeleteDataSourceDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{`Delete ${dataSource?.name ?? "data source"}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            Its findings and scan history are deleted too. You cannot undo this.
+            Its findings and scan history are deleted too. You can't undo this.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

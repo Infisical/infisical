@@ -195,7 +195,7 @@ export const SharedSecretsTable = ({ subOrganization }: { subOrganization?: stri
       <DeleteDialog
         target={deleting}
         title={`Delete ${deleting?.name || "this shared secret"}?`}
-        description="The link stops working for everyone. You cannot undo this."
+        description="The link stops working for everyone. You can't undo this."
         pending={deleteSharedSecret.isPending}
         onClose={() => setDeleting(undefined)}
         onConfirm={async (row) => {
@@ -332,7 +332,7 @@ export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: str
       <DeleteDialog
         target={deleting}
         title={`Delete ${deleting?.name || "this secret request"}?`}
-        description="The link stops accepting a secret. You cannot undo this."
+        description="The link stops accepting a secret. You can't undo this."
         pending={deleteSecretRequest.isPending}
         onClose={() => setDeleting(undefined)}
         onConfirm={async (row) => {
