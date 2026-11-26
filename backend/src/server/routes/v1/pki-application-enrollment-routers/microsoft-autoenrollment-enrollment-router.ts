@@ -4,6 +4,7 @@ import { MicrosoftAutoenrollmentParamsSchema } from "@app/ee/routes/microsoft-au
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { MAX_KEYTAB_BYTES } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
 import { ApiDocsTags, MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
+import { isBase64 } from "@app/lib/base64";
 import { isValidSid } from "@app/lib/windows-sid/windows-sid-fns";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -54,8 +55,8 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
         keytab: z
           .string()
           .min(1, "The keytab file is empty. Create the keytab again with ktpass and upload it.")
-          .base64()
           .max(Math.ceil(MAX_KEYTAB_BYTES / 3) * 4, "The keytab file cannot be larger than 64 KB")
+          .refine((val) => isBase64(val), "The keytab file must be base64 encoded")
           .optional()
           .describe(MICROSOFT_AUTOENROLLMENT.SET.keytab),
         reuseKeytab: z
