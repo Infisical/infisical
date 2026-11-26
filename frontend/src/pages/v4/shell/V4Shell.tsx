@@ -16,18 +16,9 @@ import {
   useRouterState
 } from "@tanstack/react-router";
 
-import {
-  ProjectPermissionActions,
-  ProjectPermissionAuditLogsActions,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
-import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
-import { useProjectPermission } from "../access/permissions";
 import { useAgentVaultSetupSidebar } from "../agent-vault/setup-checklist/SetupChecklist";
 import {
   useHasProjectCertificateSyncs,
@@ -38,6 +29,7 @@ import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { usePendingApprovals } from "../secret-manager/pending-approvals";
+import { useAgentVaultNav } from "./agent-vault-nav";
 import { type ShellBannerContext, type ShellBannerScope, PageFrame, ShellBanners } from "./banners";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
@@ -207,40 +199,12 @@ export const V4Shell = ({
         session.organization.isSubOrganization
       );
   const hasCertificateSyncs = useHasProjectCertificateSyncs(orgId, located.level === "pki");
-  const isAgentVault = located.level === "agent-vault";
-  const { permission: agentVaultPermission } = useProjectPermission(
-    isAgentVault ? (located.projectId ?? "") : ""
+  const agentVaultNav = useAgentVaultNav(
+    orgId,
+    located.level === "agent-vault" ? located.projectId : undefined
   );
-  const agentVaultHidden: [string, boolean][] = isAgentVault
-    ? [
-        [
-          "access",
-          agentVaultPermission.can(
-            ProjectPermissionMemberActions.Read,
-            ProjectPermissionSub.Member
-          ) ||
-            agentVaultPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
-            agentVaultPermission.can(
-              ProjectPermissionIdentityActions.Read,
-              ProjectPermissionSub.Identity
-            )
-        ],
-        [
-          "audit",
-          agentVaultPermission.can(
-            ProjectPermissionAuditLogsActions.Read,
-            ProjectPermissionSub.AuditLogs
-          )
-        ],
-        ["skills", canManageAgentVaultSkills(agentVaultPermission)],
-        [
-          "session-logs",
-          agentVaultPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)
-        ]
-      ]
-    : [];
-  const at = agentVaultHidden.reduce(
-    (shown, [itemId, allowed]) => (allowed ? shown : withoutNavItem(shown, itemId)),
+  const at = agentVaultNav.hidden.reduce(
+    (shown, itemId) => withoutNavItem(shown, itemId),
     located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located
   );
   const go = (href: string) => navigate({ href: resolve(href) });
@@ -262,6 +226,7 @@ export const V4Shell = ({
     nested: nav?.levels,
     linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions,
     projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview },
+    projectBadges: agentVaultNav.badges,
     productCounts: { requests: pendingCertRequests }
   });
   const shown = trail[trail.length - 1];
