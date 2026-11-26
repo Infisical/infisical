@@ -3,12 +3,11 @@ import { Alert } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
-import { DataTable } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { DataList } from "@infisical/cipher/ui/list";
+import { DataList, List, ListRow } from "@infisical/cipher/ui/list";
 import {
   Sheet,
   SheetAside,
@@ -196,21 +195,21 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
     [events]
   );
   const term = search.trim().toLowerCase();
-  const groups = entries
-    .filter(
-      (entry) =>
-        !term ||
-        (entry.kind === "line" && `${entry.text}\n${entry.body ?? ""}`.toLowerCase().includes(term))
+  const groups: LogGroup[] = [];
+  entries.forEach((entry) => {
+    if (
+      term &&
+      (entry.kind === "marker" ||
+        !`${entry.text}\n${entry.body ?? ""}`.toLowerCase().includes(term))
     )
-    .reduce<LogGroup[]>((all, entry) => {
-      if (entry.kind === "marker") return [...all, entry];
-      const last = all.at(-1);
-      if (last?.kind === "group" && last.time === entry.time) {
-        last.lines.push(entry);
-        return all;
-      }
-      return [...all, { kind: "group", id: entry.id, time: entry.time, lines: [entry] }];
-    }, []);
+      return;
+    const last = groups.at(-1);
+    if (entry.kind === "line" && last?.kind === "group" && last.time === entry.time)
+      last.lines.push(entry);
+    else if (entry.kind === "line")
+      groups.push({ kind: "group", id: entry.id, time: entry.time, lines: [entry] });
+    else groups.push(entry);
+  });
 
   if (error)
     return (
@@ -228,39 +227,9 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-      <DataTable
-        ghost={false}
+      <List
         label="Session logs"
-        rows={groups}
         loading={isPending && entries.length === 0}
-        getRowId={(row) => row.id}
-        rowLabel={(row) => (row.kind === "group" ? row.time : row.message)}
-        isRowMuted={(row) => row.kind === "marker"}
-        columns={[
-          {
-            id: "time",
-            header: "Time",
-            width: 168,
-            render: (row) => (row.kind === "group" ? <Meta>{row.time}</Meta> : null)
-          },
-          {
-            id: "entry",
-            header: "Entry",
-            grow: true,
-            wrap: true,
-            primary: true,
-            render: (row) =>
-              row.kind === "marker" ? (
-                <Alert tone="warn">{row.message}</Alert>
-              ) : (
-                <Stack gap={4}>
-                  {row.lines.map((line) => (
-                    <LogEntry key={line.id} line={line} query={search} />
-                  ))}
-                </Stack>
-              )
-          }
-        ]}
         empty={
           <EmptyState
             size="sm"
@@ -269,7 +238,31 @@ const SessionLogs = ({ session }: { session: TPamSession }) => {
             title={term ? "No logs match your search" : "No logs recorded for this session"}
           />
         }
-      />
+      >
+        {groups.map((group) =>
+          group.kind === "marker" ? (
+            <ListRow
+              key={group.id}
+              value={group.id}
+              label={group.message}
+              title={<Alert tone="warn">{group.message}</Alert>}
+            />
+          ) : (
+            <ListRow
+              key={group.id}
+              value={group.id}
+              label={group.time}
+              title={<Meta>{group.time}</Meta>}
+            >
+              <Stack gap={4}>
+                {group.lines.map((line) => (
+                  <LogEntry key={line.id} line={line} query={search} />
+                ))}
+              </Stack>
+            </ListRow>
+          )
+        )}
+      </List>
     </Stack>
   );
 };
@@ -299,6 +292,42 @@ const isRdpSession = (session?: TPamSession) =>
   session?.accountType === PamAccountType.Windows ||
   session?.accountType === PamAccountType.WindowsAd;
 
+const SessionMain = ({ session, error }: { session?: TPamSession; error: unknown }) => {
+  if (session) {
+    const isRdp = isRdpSession(session);
+    return (
+      <Stack gap={12}>
+        <Inline gap={8} align="center">
+          <Heading level={3} size="subsection">
+            {isRdp ? "Session recording" : "Session logs"}
+          </Heading>
+          {session.status === PamSessionStatus.Active && (
+            <Badge tone="accent" dot>
+              Live
+            </Badge>
+          )}
+        </Inline>
+        {isRdp ? <SessionRecording session={session} /> : <SessionLogs session={session} />}
+      </Stack>
+    );
+  }
+  if (error)
+    return (
+      <EmptyState
+        size="sm"
+        icon="alert"
+        title="Could not load this session"
+        description={errorMessage(error) || "Please try again."}
+      />
+    );
+  return (
+    <Stack gap={16}>
+      <Skeleton height={32} width={240} />
+      <Skeleton lines={6} />
+    </Stack>
+  );
+};
+
 export const SessionSheet = ({
   sessionId,
   onClose,
@@ -318,38 +347,6 @@ export const SessionSheet = ({
     session?.status === PamSessionStatus.Active &&
     (!session.accountId || can(PamResourcePermissionActions.TerminateSessions));
 
-  let body = (
-    <Stack gap={16}>
-      <Skeleton height={32} width={240} />
-      <Skeleton lines={6} />
-    </Stack>
-  );
-  if (session)
-    body = (
-      <Stack gap={12}>
-        <Inline gap={8} align="center">
-          <Heading level={3} size="subsection">
-            {isRdp ? "Session recording" : "Session logs"}
-          </Heading>
-          {session.status === PamSessionStatus.Active && (
-            <Badge tone="accent" dot>
-              Live
-            </Badge>
-          )}
-        </Inline>
-        {isRdp ? <SessionRecording session={session} /> : <SessionLogs session={session} />}
-      </Stack>
-    );
-  else if (error)
-    body = (
-      <EmptyState
-        size="sm"
-        icon="alert"
-        title="Could not load this session"
-        description={errorMessage(error) || "Please try again."}
-      />
-    );
-
   return (
     <Sheet open={Boolean(sessionId)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent size="xl">
@@ -362,7 +359,9 @@ export const SessionSheet = ({
         >
           {session ? <SessionSummary session={session} /> : <Skeleton lines={6} />}
         </SheetAside>
-        <SheetBody>{body}</SheetBody>
+        <SheetBody>
+          <SessionMain session={session} error={error} />
+        </SheetBody>
         {session && canTerminate && (
           <SheetFooter>
             <Button variant="destructive" icon="x" onClick={() => onTerminate(session)}>
