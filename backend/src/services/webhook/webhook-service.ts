@@ -34,7 +34,7 @@ type TWebhookServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;

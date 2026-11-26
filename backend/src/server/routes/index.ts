@@ -3343,7 +3343,8 @@ export const registerRoutes = async (
     folderVersionDAL,
     notificationService,
     secretChangeRequestService,
-    auditLogService
+    auditLogService,
+    licenseService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({

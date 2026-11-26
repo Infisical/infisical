@@ -22,7 +22,7 @@ type TSecretTagServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory>;

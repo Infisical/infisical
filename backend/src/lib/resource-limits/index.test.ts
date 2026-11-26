@@ -1,5 +1,4 @@
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError } from "@app/lib/errors";
 
 import { getResourceLimits, ResourceLimit } from ".";
@@ -49,26 +48,6 @@ describe("resource limits", () => {
       limits.assertWithin({ limit: ResourceLimit.WebhooksPerProject, used: 1_000_000, describe: () => "over" })
     ).not.toThrow();
     expect(getPlan).not.toHaveBeenCalled();
-  });
-
-  test("uses the last known plan while the License Server is unreachable", async () => {
-    const licenseService = licenseWithWebhookCap(100);
-    licenseService.fallbackOrgs.add(ORG_ID);
-    licenseService.lastKnown.set(ORG_ID, {
-      plan: { ...testFeatures(), smWebhooksPerProjectLimit: null },
-      fetchedAt: Date.now()
-    });
-
-    const limits = await getResourceLimits(licenseService, ORG_ID);
-    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBeNull();
-  });
-
-  test("keeps the fallback plan's cap when there is no last known plan", async () => {
-    const licenseService = licenseWithWebhookCap(100);
-    licenseService.fallbackOrgs.add(ORG_ID);
-
-    const limits = await getResourceLimits(licenseService, ORG_ID);
-    expect(limits.max(ResourceLimit.WebhooksPerProject)).toBe(100);
   });
 
   test("allows reaching the cap and refuses going past it", async () => {

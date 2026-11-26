@@ -83,7 +83,7 @@ type TIntegrationAuthServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;

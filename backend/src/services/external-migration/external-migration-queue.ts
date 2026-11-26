@@ -3,6 +3,7 @@ import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -61,6 +62,7 @@ export type TExternalMigrationQueueFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalSideEffects">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
@@ -85,7 +87,8 @@ export const externalMigrationQueueFactory = ({
   resourceMetadataDAL,
   notificationService,
   secretChangeRequestService,
-  auditLogService
+  auditLogService,
+  licenseService
 }: TExternalMigrationQueueFactoryDep) => {
   const startImport = async (dto: {
     orgId: string;

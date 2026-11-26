@@ -42,7 +42,7 @@ type TServiceTokenServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;

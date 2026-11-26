@@ -62,16 +62,12 @@ const resourceLimitsFromPlan = (plan: Plan | null): TResourceLimits => {
 export const NO_RESOURCE_LIMITS = resourceLimitsFromPlan(null);
 
 export const getResourceLimits = async (
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">,
+  licenseService: Pick<TLicenseService, "getPlan">,
   orgId: string
 ): Promise<TResourceLimits> => {
   if (!getConfig().INFISICAL_CLOUD) return NO_RESOURCE_LIMITS;
 
-  let plan = await licenseService.getPlan(orgId);
-  if (plan.isFallback) {
-    plan = (await licenseService.getLastKnownPlan(orgId))?.plan ?? plan;
-  }
-  return resourceLimitsFromPlan(plan);
+  return resourceLimitsFromPlan(await licenseService.getPlan(orgId));
 };
 
 export const countOnPrimary = (

@@ -65,7 +65,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsDataKeyService: TKmsDataKeyService;
-  licenseService: Pick<TLicenseService, "getPlan" | "getLastKnownPlan">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
