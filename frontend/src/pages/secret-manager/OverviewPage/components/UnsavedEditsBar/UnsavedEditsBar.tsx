@@ -32,7 +32,10 @@ import {
   SheetDescription,
   SheetFooter,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 
@@ -312,6 +315,14 @@ export const UnsavedEditsBar = ({
     commit();
   };
 
+  const countByEnvironmentName = new Map<string, number>();
+  getChanges().forEach(({ environmentName }) => {
+    countByEnvironmentName.set(
+      environmentName,
+      (countByEnvironmentName.get(environmentName) ?? 0) + 1
+    );
+  });
+
   const changesByEnvironment = new Map<string, TUnsavedChange[]>();
   (reviewChanges ?? []).forEach((change) => {
     changesByEnvironment.set(change.environment, [
@@ -330,7 +341,21 @@ export const UnsavedEditsBar = ({
           if (!isCommitting) onDiscardAll();
         }}
         clearOnEscape={false}
-        selectionLabel={`${count} pending change${isSingleChange ? "" : "s"}`}
+        selectionLabel={
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{`${count} pending change${isSingleChange ? "" : "s"}`}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {[...countByEnvironmentName].map(([environmentName, environmentCount]) => (
+                <div key={environmentName} className="flex justify-between gap-4">
+                  <span>{environmentName}</span>
+                  <span className="text-muted">{environmentCount}</span>
+                </div>
+              ))}
+            </TooltipContent>
+          </Tooltip>
+        }
         clearLabel="Discard"
         iconOnlyClear={false}
         aria-label="Pending change actions"
