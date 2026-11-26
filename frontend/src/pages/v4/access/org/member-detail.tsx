@@ -145,6 +145,7 @@ const EditMembershipDialog = ({
                 placeholder="Select role..."
                 value={role}
                 options={roleOptions(roles)}
+                descriptionLayout="stacked"
                 onChange={(next) => !customRoleGate.blocked(next) && setRole(next)}
               />
             </Field>

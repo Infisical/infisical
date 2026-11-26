@@ -15,8 +15,9 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
+import { TagsInput } from "@infisical/cipher/ui/tags-input";
 
-import { isValidEmail, MAX_INVITE_EMAILS, parseEmailList } from "@app/helpers/email";
+import { isValidEmail, MAX_INVITE_EMAILS, normalizeEmail } from "@app/helpers/email";
 import { getProjectTitle } from "@app/helpers/project";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 
@@ -93,33 +94,12 @@ const RootUserPicker = ({ open, ...props }: PickerProps & { open: boolean }) => 
   );
 };
 
-const EmailPicker = ({
-  onAdd,
-  onError,
-  ...props
-}: PickerProps & {
-  onAdd: (emails: string[]) => void;
-  onError: (error: string | undefined) => void;
-}) => (
-  <Combobox
-    multiple
-    label="Emails"
-    placeholder="email@example.com, email2@example.com..."
-    emptyText="Type an email address and press Enter"
-    options={props.value.map((email) => ({ value: email, label: email }))}
-    onCreate={(query) => {
-      const values = parseEmailList([query]);
-      const invalid = values.find((value) => !isValidEmail(value));
-      if (invalid) {
-        onError(`${invalid} is not a valid email`);
-        return;
-      }
-      onAdd(values);
-      onError(undefined);
-    }}
-    {...props}
-  />
-);
+const validateInviteEmail = (tag: string, tags: readonly string[]) => {
+  if (!isValidEmail(normalizeEmail(tag))) return `${tag} is not a valid email`;
+  if (tags.length >= MAX_INVITE_EMAILS)
+    return `You can invite up to ${MAX_INVITE_EMAILS} emails at once`;
+  return undefined;
+};
 
 export const InviteUsersSheet = ({
   open,
@@ -269,14 +249,14 @@ export const InviteUsersSheet = ({
                       onChange={pick}
                     />
                   ) : (
-                    <EmailPicker
+                    <TagsInput
+                      label="Emails"
+                      placeholder="email@example.com, email2@example.com"
                       value={emails}
                       invalid={Boolean(error)}
-                      onChange={pick}
-                      onAdd={(values) =>
-                        setEmails((current) => [...new Set([...current, ...values])])
-                      }
-                      onError={setError}
+                      onChange={(next) => pick([...new Set(next.map(normalizeEmail))])}
+                      validate={validateInviteEmail}
+                      onValidationChange={setError}
                     />
                   )}
                 </Field>
@@ -286,6 +266,7 @@ export const InviteUsersSheet = ({
                     value={role ?? defaultRole}
                     onChange={setRole}
                     options={roleOptions(orgRoles)}
+                    descriptionLayout="stacked"
                   />
                 </Field>
                 <Field label="Assign users to a product" optional>
@@ -339,6 +320,7 @@ export const InviteUsersSheet = ({
                       value={projectRole}
                       onChange={setProjectRole}
                       options={projectRoleOptions}
+                      descriptionLayout="stacked"
                     />
                   </Field>
                 )}
