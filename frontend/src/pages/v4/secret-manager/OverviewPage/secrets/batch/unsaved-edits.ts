@@ -36,6 +36,7 @@ type UnsavedEditRegistry = {
   takeDraft: (key: string) => UnsavedChange[] | undefined;
   holdDrafts: (changes: UnsavedChange[]) => void;
   dropHeldDrafts: () => void;
+  generation: () => number;
   renameDraft: (
     environment: string,
     secretPath: string,
@@ -63,6 +64,7 @@ export const useUnsavedEdits = () => {
   const [committing, setCommitting] = useState(false);
   const registry = useMemo<UnsavedEditRegistry>(() => {
     const all = edits.current;
+    let generation = 0;
     const sync = () =>
       setSnapshot({
         count: [...all.values()].reduce((total, edit) => total + edit.getChanges().length, 0),
@@ -134,11 +136,13 @@ export const useUnsavedEdits = () => {
         sync();
       },
       dropHeldDrafts: () => {
+        generation += 1;
         all.forEach((edit, key) => {
           if (edit.held) all.delete(key);
         });
         sync();
       },
+      generation: () => generation,
       renameDraft: (environment, secretPath, from, to) => {
         const key = draftKey(environment, secretPath, from);
         const edit = all.get(key);

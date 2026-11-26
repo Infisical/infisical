@@ -281,11 +281,19 @@ function InlineEditor({
   const save = () => {
     if (saving || committing) return;
     const submitted = unsaved?.change(draft);
+    const generation = registry?.generation();
     setSaving(true);
     onSave(draft, setError)
       .catch(() => false)
       .then((ok) => {
-        if (!ok && submitted && !mounted.current) registry?.holdDrafts([submitted]);
+        if (
+          !ok &&
+          submitted &&
+          registry &&
+          !mounted.current &&
+          registry.generation() === generation
+        )
+          registry.holdDrafts([submitted]);
       })
       .finally(() => setSaving(false));
   };
