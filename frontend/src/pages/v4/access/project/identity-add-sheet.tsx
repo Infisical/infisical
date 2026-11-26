@@ -309,7 +309,7 @@ const AddIdentityForm = ({
                 options={(roles ?? []).map((item) => ({
                   value: item.slug,
                   label: item.name,
-                  meta: item.description || undefined
+                  description: item.description || undefined
                 }))}
                 value={role}
                 onChange={(value) => value && setRole(value)}

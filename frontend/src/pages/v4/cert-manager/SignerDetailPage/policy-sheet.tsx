@@ -95,7 +95,7 @@ const PolicySheet = ({
     if (limitsMissing) {
       setShowLimitsError(true);
       setStep(1);
-      return;
+      return false;
     }
     submitting.current = true;
     try {
@@ -107,6 +107,7 @@ const PolicySheet = ({
         })
         .catch(readableFailure("Couldn't save the approval policy."));
       onClose();
+      return true;
     } finally {
       submitting.current = false;
     }

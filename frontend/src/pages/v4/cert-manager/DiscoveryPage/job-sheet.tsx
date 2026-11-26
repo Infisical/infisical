@@ -594,8 +594,9 @@ const JobSheet = ({
   };
 
   const pickType = (next: PkiDiscoveryType) => {
-    const fresh = jobDraft(next);
     setType(next);
+    if (draft?.discoveryType === next) return;
+    const fresh = jobDraft(next);
     setInitial(fresh);
     setDraft(fresh);
     setErrors({});
@@ -622,7 +623,7 @@ const JobSheet = ({
                   media: <DiscoveryTypeIcon type={entry} />
                 }))}
                 onSelect={(value) => {
-                  if (value !== type) pickType(value as PkiDiscoveryType);
+                  pickType(value as PkiDiscoveryType);
                   next();
                 }}
               />
@@ -630,7 +631,7 @@ const JobSheet = ({
           } satisfies MultiStepStep
         ]),
     ...typeSteps(),
-    ...(stepProps
+    ...(stepProps && type
       ? [
           {
             title: "Details",
@@ -666,7 +667,10 @@ const JobSheet = ({
         }
         open
         step={step}
-        onStepChange={setStep}
+        onStepChange={(next) => {
+          if (!isEdit && next === 0) setType(undefined);
+          setStep(next);
+        }}
         onOpenChange={(next) => {
           if (next) return;
           setStep(step);

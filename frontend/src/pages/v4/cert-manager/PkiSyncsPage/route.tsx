@@ -10,7 +10,8 @@ export const Route = createFileRoute("/v4/organizations/$orgId/cert-manager/inte
     z.object({
       addSync: z.nativeEnum(PkiSync).optional(),
       connectionId: z.string().optional(),
-      connectionName: z.string().optional()
+      connectionName: z.string().optional(),
+      selectedTab: z.string().optional()
     })
   ),
   component: lazyRouteComponent(() => import("./PkiSyncsPage"), "PkiSyncsPage"),
