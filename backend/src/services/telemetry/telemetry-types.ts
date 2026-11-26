@@ -153,6 +153,7 @@ export enum PostHogEventTypes {
   HoneyTokenCreated = "Honey Token Created",
   HoneyTokenUpdated = "Honey Token Updated",
   HoneyTokenRevoked = "Honey Token Revoked",
+  HoneyTokenDeleted = "Honey Token Deleted",
   HoneyTokenReset = "Honey Token Reset",
   HoneyTokenTriggered = "Honey Token Triggered",
 
@@ -1335,6 +1336,15 @@ export type THoneyTokenUpdatedEvent = {
 
 export type THoneyTokenRevokedEvent = {
   event: PostHogEventTypes.HoneyTokenRevoked;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenDeletedEvent = {
+  event: PostHogEventTypes.HoneyTokenDeleted;
   properties: {
     honeyTokenId: string;
     type: string;
@@ -2900,6 +2910,7 @@ export type TPostHogEvent = {
   | THoneyTokenCreatedEvent
   | THoneyTokenUpdatedEvent
   | THoneyTokenRevokedEvent
+  | THoneyTokenDeletedEvent
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
   | TCaCreatedEvent

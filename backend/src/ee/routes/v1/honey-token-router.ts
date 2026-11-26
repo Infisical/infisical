@@ -414,6 +414,19 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         }
       });
 
+      await server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.HoneyTokenDeleted,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            honeyTokenId: honeyToken.id,
+            type: honeyToken.type,
+            projectId: honeyToken.projectId
+          }
+        })
+        .catch(() => {});
+
       return { honeyToken };
     }
   });
