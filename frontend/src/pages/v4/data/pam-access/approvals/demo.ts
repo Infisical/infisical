@@ -10,7 +10,12 @@ import {
   type TAutoApprovalOption,
   type TAutoApprovalOutcome
 } from "@app/hooks/api/approvalPolicies";
-import { PamApproverType, PamNotificationEvent, type TPamApprovalConfig } from "@app/hooks/api/pam";
+import {
+  PamAccessRequestStatus,
+  PamApproverType,
+  PamNotificationEvent,
+  type TPamApprovalConfig
+} from "@app/hooks/api/pam";
 
 import { createFixtureStore } from "../../fixture-store";
 import { accessRequestStore } from "../../pam/demo";
@@ -359,6 +364,16 @@ export const pamAccessApprovalsDemo: PamAccessApprovalsAdapter = {
             label.toLowerCase().includes(search)
           )
         : [],
+      isPending: false,
+      error: null
+    };
+  },
+  usePendingApprovalCount: (enabled) => {
+    const all = accessRequestStore.use();
+    return {
+      data: enabled
+        ? all.filter(({ status }) => status === PamAccessRequestStatus.Pending).length
+        : undefined,
       isPending: false,
       error: null
     };
