@@ -140,6 +140,7 @@ export const Mfa = ({
   }, [method]);
 
   const handleMfaTokenExpired = async () => {
+    setIsLoading(false);
     SecurityClient.setMfaToken("");
     if (onSessionExpired) {
       await onSessionExpired();
@@ -236,7 +237,6 @@ export const Mfa = ({
       sessionToken = result.token;
     } catch (error) {
       if (isMfaTokenExpiredError(error)) {
-        setIsLoading(false);
         await handleMfaTokenExpired();
         return;
       }
@@ -311,7 +311,6 @@ export const Mfa = ({
       sessionToken = mfaResult.token;
     } catch (error: any) {
       if (verifyingMfaToken && isMfaTokenExpiredError(error)) {
-        setIsLoading(false);
         await handleMfaTokenExpired();
         return;
       }
