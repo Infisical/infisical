@@ -291,6 +291,8 @@ Routes use Fastify's Zod type provider — schemas auto-generate OpenAPI docs. E
 
 See `src/server/routes/v4/secret-router.ts` for a representative router file.
 
+Never use `z.string().base64()` in a route schema; validate with `.refine((val) => isBase64(val), "...")` from `@app/lib/base64` instead. `zod-to-json-schema` turns `.base64()` into `contentEncoding`, which OpenAPI 3.0 does not allow, so the published spec at `/api/docs/json` fails validation and every Mintlify docs deployment fails until the route is fixed in production. The route's own PR checks cannot catch it, because Mintlify reads the live spec.
+
 ### Auth System
 
 Auth extraction happens in `src/server/plugins/auth/`:
