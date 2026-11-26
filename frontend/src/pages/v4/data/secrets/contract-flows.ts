@@ -104,6 +104,7 @@ export type SecretsFlowsAdapter = SecretsManagedAdapter &
     useSecretsAt: (
       dto: TGetProjectSecretsDTO & { options?: { enabled?: boolean } }
     ) => V4QueryResult<SecretV3RawSanitized[]>;
+    useFetchSecretsAt: () => (dto: TGetProjectSecretsDTO) => Promise<SecretV3RawSanitized[]>;
     useCreateSecretBatch: V4Mutation<TCreateSecretBatchDTO>;
     useUpdateSecretBatch: V4Mutation<TUpdateSecretBatchDTO>;
     useMoveSecrets: V4Mutation<

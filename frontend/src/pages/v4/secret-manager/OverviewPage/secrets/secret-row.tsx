@@ -86,7 +86,13 @@ import {
   selectionKey
 } from "../secrets-model";
 import type { PendingType } from "./batch/pending";
-import { useRegisterUnsavedEdit } from "./batch/unsaved-edits";
+import {
+  draftKey,
+  type UnsavedChange,
+  useHeldDraft,
+  useUnsavedEdit,
+  useUnsavedEditsState
+} from "./batch/unsaved-edits";
 import { environmentLabel } from "./flows/shared";
 import {
   ChildSelectCell,
@@ -109,7 +115,7 @@ import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
 import { ConfirmDependentsDialog } from "./row-actions/confirm-dependents-dialog";
 import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
-import { type Dependent, ReferencesDialog, useDependents } from "./row-actions/references-dialog";
+import { ReferencesDialog, useDependents } from "./row-actions/references-dialog";
 import { RenameSecretDialog } from "./row-actions/rename-secret-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
@@ -218,7 +224,8 @@ function InlineEditor({
   undoLabel,
   dirtyFromStart,
   multiline,
-  confirmable,
+  draft: restored,
+  unsaved,
   onSave,
   onCancel,
   idle
@@ -231,31 +238,46 @@ function InlineEditor({
   undoLabel: string;
   dirtyFromStart?: boolean;
   multiline?: boolean;
-  confirmable?: { dependents?: Dependent[]; save: InlineSave };
+  draft?: string;
+  unsaved?: {
+    key: string;
+    change: (draft: string) => UnsavedChange;
+    settle: (committed: UnsavedChange, draft: string) => void;
+  };
   onSave: InlineSave;
   onCancel: () => void;
   idle?: ReactNode;
 }) {
   useRequestBreadth(Boolean(multiline));
-  const [draft, setDraft] = useState(initial);
+  const [draft, setDraft] = useState(restored ?? initial);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const dirty = dirtyFromStart || draft !== initial;
-  const save = (confirmed = false) => {
-    if (saving) return Promise.resolve(false);
-    setSaving(true);
-    const run = confirmed && confirmable ? confirmable.save : onSave;
-    return run(draft, setError).finally(() => setSaving(false));
-  };
-  useRegisterUnsavedEdit(dirty, {
-    save,
-    discard: onCancel,
-    dependents: confirmable ? confirmable.dependents : []
+  const { committing, release } = useUnsavedEdit(unsaved?.key, dirty && !saving, {
+    getChanges: () => (unsaved ? [unsaved.change(draft)] : []),
+    settle: ([committed]) => {
+      if (!unsaved || !committed) return;
+      if (committed.secretValue === draft) release();
+      unsaved.settle(committed, draft);
+    },
+    discard: () => {
+      release();
+      onCancel();
+    }
   });
+  const cancel = () => {
+    release();
+    onCancel();
+  };
+  const save = () => {
+    if (saving || committing) return;
+    setSaving(true);
+    onSave(draft, setError).finally(() => setSaving(false));
+  };
   const control = {
     autoFocus: true,
-    readOnly: saving,
+    readOnly: saving || committing,
     className: styles.inlineInput,
     "aria-invalid": Boolean(error) || undefined,
     "aria-label": label,
@@ -281,7 +303,7 @@ function InlineEditor({
           }
           if (event.key === "Escape") {
             event.preventDefault();
-            onCancel();
+            cancel();
           }
         }}
         onBlur={(event) => {
@@ -298,10 +320,10 @@ function InlineEditor({
       </ReferenceEditor>
       {dirty ? (
         <span className={styles.quickActions}>
-          <Button variant="ghost" size="xs" onClick={onCancel}>
+          <Button variant="ghost" size="xs" disabled={committing} onClick={cancel}>
             {undoLabel}
           </Button>
-          <Button size="xs" loading={saving} onClick={() => save()}>
+          <Button size="xs" loading={saving} disabled={committing} onClick={save}>
             {saveLabel}
           </Button>
         </span>
@@ -1219,13 +1241,17 @@ function EnvironmentValueEditor({
   secret,
   label,
   initial,
+  draft,
   onUpdate,
+  onRebase,
   onDone
 }: {
   secret: Secret;
   label: string;
   initial: string;
+  draft?: string;
   onUpdate: SecretUpdate;
+  onRebase: (value: string) => void;
   onDone: () => void;
 }) {
   const { dependents, isPending } = useDependents(secret);
@@ -1256,10 +1282,23 @@ function EnvironmentValueEditor({
         label={`Value of ${secret.name} in ${label}`}
         scope={secret}
         initial={initial}
+        draft={draft}
         placeholder={secret.value.status === "unreadable" ? "Enter a new value" : "Secret value"}
         saveLabel="Save"
         undoLabel="Discard"
-        confirmable={{ dependents: isPending ? undefined : dependents, save: commit }}
+        unsaved={{
+          key: draftKey(secret.environment, secret.path, secret.name),
+          change: (value) => ({
+            environment: secret.environment,
+            secretPath: secret.path,
+            secretKey: secret.name,
+            secretValue: value,
+            originalValue: initial,
+            isCreate: false
+          }),
+          settle: (committed, value) =>
+            committed.secretValue === value ? onDone() : onRebase(committed.secretValue)
+        }}
         onCancel={onDone}
         onSave={(value, onFieldError) =>
           !isPending && !dependents.length
@@ -1294,20 +1333,23 @@ function EnvironmentValueCell({
   ctx: RowContext;
   onUpdate: SecretUpdate;
 }) {
-  const [initial, setInitial] = useState<string>();
+  const [editing, setEditing] = useState<{ initial: string; draft?: string }>();
   const loader = useValueLoader();
   const canEdit = canEditInline(secret, ctx);
+  useHeldDraft(draftKey(secret.environment, secret.path, secret.name), ([held]) => {
+    if (held) setEditing({ initial: held.originalValue, draft: held.secretValue });
+  });
   const begin = async () => {
-    if (!canEdit || initial !== undefined) return;
+    if (!canEdit || editing) return;
     const current = readableValue(secret);
     if (current !== undefined || secret.value.status === "unreadable") {
-      setInitial(current ?? "");
+      setEditing({ initial: current ?? "" });
       return;
     }
     const values = await loader.ensure([secret]);
     const loaded =
       values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
-    if (typeof loaded === "string") setInitial(loaded);
+    if (typeof loaded === "string") setEditing({ initial: loaded });
     else ctx.report(`Could not read ${secret.name}.`, "bad");
   };
   return (
@@ -1315,7 +1357,7 @@ function EnvironmentValueCell({
       colSpan={2}
       className={styles.valueCell}
       data-editable={canEdit || undefined}
-      tabIndex={canEdit && initial === undefined ? 0 : undefined}
+      tabIndex={canEdit && !editing ? 0 : undefined}
       onClick={() => begin()}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -1325,19 +1367,21 @@ function EnvironmentValueCell({
       }}
     >
       <div className={styles.nameLine}>
-        {initial === undefined ? (
+        {editing ? (
+          <EnvironmentValueEditor
+            secret={secret}
+            label={label}
+            initial={editing.initial}
+            draft={editing.draft}
+            onUpdate={onUpdate}
+            onRebase={(value) => setEditing((current) => current && { ...current, initial: value })}
+            onDone={() => setEditing(undefined)}
+          />
+        ) : (
           <>
             <SecretValue secret={secret} visible={visible} />
             <Indicators secret={secret} />
           </>
-        ) : (
-          <EnvironmentValueEditor
-            secret={secret}
-            label={label}
-            initial={initial}
-            onUpdate={onUpdate}
-            onDone={() => setInitial(undefined)}
-          />
         )}
       </div>
     </TableCell>
@@ -1687,6 +1731,11 @@ function SecretRowView({
   const [creatingOverride, setCreatingOverride] = useState<string[]>([]);
   const first = entries[0];
   const { name } = first;
+  const unsaved = useUnsavedEditsState();
+  const pendingIn = (environment: string, present: boolean) => {
+    if (!unsaved?.keys.has(draftKey(environment, first.path, name))) return undefined;
+    return present ? "update" : "create";
+  };
   const stopCreating = (environment: string) =>
     setCreatingOverride((current) => current.filter((entry) => entry !== environment));
   const startCreating = (environment: string) =>
@@ -1718,6 +1767,7 @@ function SecretRowView({
     renameBlock = "Managed secrets can't be renamed";
   else if (!renameBlock && entries.some((entry) => entry.override !== undefined))
     renameBlock = "Remove personal overrides first";
+  else if (!renameBlock && unsaved?.committing) renameBlock = "Wait for Save to finish";
   const groupActions: RowActionProps = {
     label: name,
     menu: (
@@ -1780,6 +1830,7 @@ function SecretRowView({
                 key={environment.value}
                 status={status(environment.value)}
                 hasOverride={secret?.override !== undefined}
+                pending={pendingIn(environment.value, Boolean(secret))}
                 annotations={
                   secret && (
                     <Annotations

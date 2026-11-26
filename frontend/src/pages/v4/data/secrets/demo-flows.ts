@@ -455,6 +455,21 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
       error: null
     };
   },
+  useFetchSecretsAt: () => {
+    const store = useStore();
+    return ({ projectId, environment, secretPath = "/" }) =>
+      Promise.resolve(
+        store
+          .get()
+          .secrets.filter(
+            (secret) =>
+              secret.projectId === projectId &&
+              secret.env === environment &&
+              secret.path === secretPath
+          )
+          .map(sanitize)
+      );
+  },
   useCreateSecretBatch: demoMutation((store, dto) => {
     upsertSecrets(
       store,

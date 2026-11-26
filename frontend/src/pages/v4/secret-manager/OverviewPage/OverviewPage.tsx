@@ -97,7 +97,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
 import { useProjectPermission } from "../../access/permissions";
-import { dismissToast, errorMessage, toast } from "../../access/toast";
+import { dismissToast, errorMessage, toast, warned } from "../../access/toast";
 import { copyText } from "../../clipboard";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
@@ -105,7 +105,7 @@ import { v4Path } from "../../links";
 import { nameLabel, useProjectName } from "../../shell/resource-name";
 import { withoutDefaults } from "../search-defaults";
 import { useEnsureTags, useResourceApply } from "./bridge/apply";
-import { toPendingChanges } from "./bridge/commit";
+import { toPendingChanges, toUnsavedPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
 import { buildResources, valueKey } from "./bridge/view-model";
@@ -122,6 +122,7 @@ import {
 } from "./secrets-model";
 import { SecretsActivationNudge, useSecretsActivationNudge } from "./secrets/activation-nudge";
 import { AgentProxyMovedDialog } from "./secrets/agent-proxy-moved-dialog";
+import { DependentsLookup } from "./secrets/batch/dependents-lookup";
 import {
   type PendingChange,
   pendingIn,
@@ -132,7 +133,7 @@ import {
 } from "./secrets/batch/pending";
 import { commitLabel, ReviewSheet } from "./secrets/batch/review-sheet";
 import {
-  type UnsavedEdit,
+  type UnsavedChange,
   UnsavedEditsContext,
   useUnsavedEdits
 } from "./secrets/batch/unsaved-edits";
@@ -173,6 +174,7 @@ import { HoneyTokenActions } from "./secrets/row-actions/honey-token-actions";
 import { ImportActions } from "./secrets/row-actions/import-actions";
 import { useManagedBlock } from "./secrets/row-actions/permissions";
 import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
+import type { Dependent } from "./secrets/row-actions/references-dialog";
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import { ShareSecretSheet } from "./secrets/row-actions/share-secret-sheet";
 import type { RowAction } from "./secrets/row-actions/types";
@@ -349,9 +351,9 @@ export const OverviewPage = () => {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [discardingPending, setDiscardingPending] = useState(false);
   const unsavedEdits = useUnsavedEdits();
-  const [savingAll, setSavingAll] = useState(false);
-  const [saveAllHold, setSaveAllHold] = useState<"lookup" | "confirm">();
-  const saveAllOutcome = useRef<{ saved: number; held: string[]; errors: string[] }>(undefined);
+  const [saveStage, setSaveStage] = useState<
+    { stage: "lookup"; changes: UnsavedChange[] } | { stage: "confirm"; dependents: Dependent[] }
+  >();
   const [deletingEnvironment, setDeletingEnvironment] = useState<{
     value: string;
     label: string;
@@ -667,18 +669,11 @@ export const OverviewPage = () => {
     options?: ResourceApplyOptions,
     onFieldError?: (message: string) => void
   ) => {
-    const batch = saveAllOutcome.current;
     const before = resourcesRef.current;
     const after = update([...before]);
     return runApply(before, after, { ...options, quiet: Boolean(onFieldError) }).then(
       ({ written, held }) => {
         if (!feedback) return true;
-        if (batch) {
-          if (held.length)
-            batch.held.push(...held.map((scope) => environmentLabel(scope.environment)));
-          else batch.saved += 1;
-          return true;
-        }
         if (held.length && !written.length) {
           toast({
             tone: "neutral",
@@ -724,9 +719,7 @@ export const OverviewPage = () => {
       (error: unknown) => {
         const fieldError = onFieldError && fieldErrorText(error);
         if (fieldError) onFieldError(fieldError);
-        else if (batch) {
-          if (!wasErrorReported(error)) batch.errors.push(errorText(error));
-        } else if (!wasErrorReported(error))
+        else if (!wasErrorReported(error))
           toast({
             tone: "bad",
             title: feedback
@@ -996,63 +989,139 @@ export const OverviewPage = () => {
       );
   };
   const changeCount = (count: number) => `${count} ${count === 1 ? "change" : "changes"}`;
-  const saveEdits = (edits: UnsavedEdit[]) => {
-    if (!edits.length) return;
-    const outcome = { saved: 0, held: [] as string[], errors: [] as string[] };
-    saveAllOutcome.current = outcome;
-    const saves = edits.map((edit) => edit.save(true));
-    saveAllOutcome.current = undefined;
-    setSavingAll(true);
-    Promise.all(saves).then((results) => {
-      setSavingAll(false);
-      const unsaved = results.filter((ok) => !ok).length;
-      const held = [...new Set(outcome.held)];
-      const description = [
-        held.length
-          ? `Change request opened for ${new Intl.ListFormat("en").format(held)}`
-          : undefined,
-        unsaved ? `${changeCount(unsaved)} still unsaved` : undefined,
-        outcome.errors[0]
-      ]
-        .filter(Boolean)
-        .join(". ");
-      if (unsaved)
+  const fetchSecretsAt = adapter.useFetchSecretsAt();
+  const unsavedCount = single ? 0 : unsavedEdits.count;
+  useEffect(() => {
+    unsavedEdits.registry.dropHeldDrafts();
+  }, [projectId, path]);
+  const saveUnsaved = async () => {
+    const edits = unsavedEdits.registry
+      .getEdits()
+      .map((edit) => ({ edit, changes: edit.getChanges() }));
+    const changes = edits.flatMap((entry) => entry.changes);
+    if (!changes.length || unsavedEdits.committing) return;
+    unsavedEdits.setCommitting(true);
+    try {
+      const updateEnvironments = [
+        ...new Set(changes.filter((change) => !change.isCreate).map((change) => change.environment))
+      ];
+      const fetched = await Promise.allSettled(
+        updateEnvironments.map((environment) =>
+          fetchSecretsAt({ projectId, environment, secretPath: path, viewSecretValue: false })
+        )
+      );
+      const current = new Map(
+        updateEnvironments.flatMap((environment, index) => {
+          const result = fetched[index];
+          return result.status === "fulfilled" ? [[environment, result.value] as const] : [];
+        })
+      );
+      const unreadable = updateEnvironments.filter((environment) => !current.has(environment));
+      const missing = changes.filter(
+        (change) =>
+          !change.isCreate &&
+          current.has(change.environment) &&
+          !current.get(change.environment)?.some((secret) => secret.key === change.secretKey)
+      );
+      if (missing.length)
+        warned(
+          `Couldn't save ${changeCount(missing.length)}`,
+          missing.length === 1
+            ? "The secret wasn't found, so the change stays pending. Discard it if the secret was deleted."
+            : "Their secrets weren't found, so the changes stay pending. Discard them if the secrets were deleted."
+        );
+      const savable = changes.filter(
+        (change) => !missing.includes(change) && !unreadable.includes(change.environment)
+      );
+      const knownTags = await ensureTags(
+        savable.flatMap((change) => change.annotations?.tags ?? [])
+      );
+      const environments = [...new Set(savable.map((change) => change.environment))];
+      const results = await Promise.allSettled(
+        environments.map((environment) =>
+          createCommit.mutateAsync({
+            projectId,
+            environment,
+            secretPath: path,
+            message: "",
+            pendingChanges: toUnsavedPendingChanges(
+              savable.filter((change) => change.environment === environment),
+              current.get(environment) ?? [],
+              knownTags
+            )
+          })
+        )
+      );
+      const review = environments.filter((_, index) => {
+        const result = results[index];
+        return result.status === "fulfilled" && Boolean(result.value.approval);
+      });
+      const unsaved = [
+        ...unreadable,
+        ...environments.filter((_, index) => results[index].status === "rejected")
+      ];
+      edits.forEach(({ edit, changes: editChanges }) => {
+        const committed = editChanges.filter(
+          (change) => savable.includes(change) && !unsaved.includes(change.environment)
+        );
+        if (committed.length) edit.settle(committed, review);
+      });
+      unreadable.forEach((environment) =>
         toast({
           tone: "bad",
-          title: `Saved ${results.length - unsaved} of ${changeCount(results.length)}`,
-          description
-        });
-      else if (held.length && !outcome.saved)
-        toast({ tone: "neutral", title: "Change request opened", description });
-      else toast({ tone: "ok", title: `Saved ${changeCount(results.length)}`, description });
-    });
-  };
-  const continueSaveAll = () => {
-    const edits = unsavedEdits.list();
-    if (edits.some((edit) => !edit.dependents)) {
-      setSaveAllHold("lookup");
-      return;
+          title: `Couldn't save changes in ${environmentLabel(environment)}`,
+          description: "Couldn't read the environment's secrets. Try again."
+        })
+      );
+      environments.forEach((environment, index) => {
+        const result = results[index];
+        const label = environmentLabel(environment);
+        const count = savable.filter((change) => change.environment === environment).length;
+        if (result.status === "rejected") {
+          if (!wasErrorReported(result.reason))
+            toast({
+              tone: "bad",
+              title: `Couldn't save changes in ${label}`,
+              description: errorText(result.reason)
+            });
+          return;
+        }
+        if (result.value.approval) {
+          toast({
+            tone: "neutral",
+            title: `Change request opened for ${label}`,
+            description: "An approval policy covers this folder, so changes wait for review."
+          });
+          return;
+        }
+        toast({ tone: "ok", title: `Saved ${changeCount(count)} in ${label}` });
+      });
+      const created = savable.filter(
+        (change) =>
+          change.isCreate &&
+          !unsaved.includes(change.environment) &&
+          !review.includes(change.environment)
+      );
+      if (created.length) {
+        [...new Set(created.map((change) => change.secretKey))].forEach(pinQuickAdded);
+        activationNudge.checkActivation();
+      }
+    } catch (error) {
+      if (!wasErrorReported(error))
+        toast({ tone: "bad", title: "Couldn't save changes", description: errorText(error) });
+    } finally {
+      unsavedEdits.setCommitting(false);
     }
-    if (edits.some((edit) => edit.dependents?.length)) {
-      setSaveAllHold("confirm");
-      return;
-    }
-    setSaveAllHold(undefined);
-    saveEdits(edits);
   };
-  useEffect(() => {
-    if (saveAllHold === "lookup") continueSaveAll();
-  }, [saveAllHold, unsavedEdits.version]);
-  const saveAllDependents = [
-    ...new Map(
-      (saveAllHold === "confirm" ? unsavedEdits.list() : [])
-        .flatMap((edit) => edit.dependents ?? [])
-        .map((dependent) => [dependent.id, dependent])
-    ).values()
-  ];
+  const startSave = () => {
+    if (unsavedEdits.committing || saveStage) return;
+    const updates = unsavedEdits.changes().filter((change) => !change.isCreate);
+    if (updates.length) setSaveStage({ stage: "lookup", changes: updates });
+    else saveUnsaved();
+  };
   const discardAllEdits = () => {
-    if (savingAll) return;
-    unsavedEdits.list().forEach((edit) => edit.discard());
+    if (unsavedEdits.committing) return;
+    unsavedEdits.registry.getEdits().forEach((edit) => edit.discard());
   };
   const expandableKeysOnPage = windowRows
     .filter(([, entries]) => entries[0].kind !== "folder")
@@ -1520,15 +1589,36 @@ export const OverviewPage = () => {
     onRefresh: () => overview.refetch(),
     onRename: (secrets, name, onFieldError) => {
       const ids = new Set(secrets.map((secret) => secret.id));
+      let applied: Secret[] = [];
       return setResources(
         (current) =>
           current.map((resource): Resource =>
             resource.kind === "secret" && ids.has(resource.id) ? { ...resource, name } : resource
           ),
-        { title: `Renamed ${secrets[0]?.name ?? "secret"} to ${name}` },
+        (isHeld) => {
+          applied = secrets.filter((secret) => !isHeld(secret.environment, secret.path));
+          return { title: `Renamed ${secrets[0]?.name ?? "secret"} to ${name}` };
+        },
         undefined,
         onFieldError
-      );
+      ).then((ok) => {
+        if (!ok) return ok;
+        applied.forEach((secret) => {
+          if (
+            unsavedEdits.registry.renameHeldDraft(
+              secret.environment,
+              secret.path,
+              secret.name,
+              name
+            ) === "conflict"
+          )
+            warned(
+              `Dropped your unsaved value for ${secret.name} in ${environmentLabel(secret.environment)}`,
+              `${name} already has an unsaved change there.`
+            );
+        });
+        return ok;
+      });
     },
     importedFrom
   });
@@ -1942,7 +2032,7 @@ export const OverviewPage = () => {
   const provide = (children: ReactNode) =>
     valueStore.provider(
       planGates.provider(
-        <UnsavedEditsContext value={single ? undefined : unsavedEdits.registry}>
+        <UnsavedEditsContext value={single ? undefined : unsavedEdits.context}>
           {children}
         </UnsavedEditsContext>
       )
@@ -2262,6 +2352,9 @@ export const OverviewPage = () => {
                               )}
                               scope={{ project, environment: activeEnvironment, path }}
                               multiple={!single}
+                              environments={visibleEnvironments.map(
+                                (environment) => environment.value
+                              )}
                               colSpan={(single ? 1 : visibleEnvironments.length) + 1}
                               existing={ordered
                                 .filter(([, entries]) => entries[0].kind === "secret")
@@ -2405,37 +2498,49 @@ export const OverviewPage = () => {
               data-active={
                 selected.length > 0 ||
                 (pendingHere.length > 0 && !reviewOpen) ||
-                unsavedEdits.count > 0 ||
+                unsavedCount > 0 ||
                 undefined
               }
             >
               <FloatingActionBar
-                label="Unsaved change actions"
-                count={selected.length ? 0 : unsavedEdits.count}
-                noun={unsavedEdits.count === 1 ? "unsaved change" : "unsaved changes"}
-                onClear={() => {
-                  if (!savingAll) discardAllEdits();
-                }}
+                label="Pending change actions"
+                count={selected.length ? 0 : unsavedCount}
+                noun={unsavedCount === 1 ? "pending change" : "pending changes"}
+                onClear={discardAllEdits}
                 actions={[
                   {
-                    label: "Save all",
+                    label: "Save",
                     icon: "check",
-                    disabled: savingAll || Boolean(saveAllHold),
-                    loading: savingAll || saveAllHold === "lookup",
-                    onClick: continueSaveAll
+                    disabled: unsavedEdits.committing || Boolean(saveStage),
+                    loading: unsavedEdits.committing || saveStage?.stage === "lookup",
+                    onClick: startSave
                   }
                 ]}
               />
+              {saveStage?.stage === "lookup" && (
+                <DependentsLookup
+                  project={project}
+                  changes={saveStage.changes}
+                  onDone={(dependents) => {
+                    if (dependents.length) {
+                      setSaveStage({ stage: "confirm", dependents });
+                      return;
+                    }
+                    setSaveStage(undefined);
+                    saveUnsaved();
+                  }}
+                />
+              )}
               <ConfirmDependentsDialog
-                open={saveAllHold === "confirm" && saveAllDependents.length > 0}
-                dependents={saveAllDependents}
-                plural={unsavedEdits.count > 1}
+                open={saveStage?.stage === "confirm"}
+                dependents={saveStage?.stage === "confirm" ? saveStage.dependents : []}
+                plural={unsavedCount > 1}
                 onOpenChange={(open) => {
-                  if (!open) setSaveAllHold(undefined);
+                  if (!open) setSaveStage(undefined);
                 }}
                 onConfirm={() => {
-                  setSaveAllHold(undefined);
-                  saveEdits(unsavedEdits.list());
+                  setSaveStage(undefined);
+                  saveUnsaved();
                 }}
               />
               {pendingHere.length ? (
@@ -2820,9 +2925,7 @@ export const OverviewPage = () => {
             open={activationNudge.open}
             onOpenChange={activationNudge.setOpen}
             lifted={
-              selected.length > 0 ||
-              (pendingHere.length > 0 && !reviewOpen) ||
-              unsavedEdits.count > 0
+              selected.length > 0 || (pendingHere.length > 0 && !reviewOpen) || unsavedCount > 0
             }
           />
         </div>
