@@ -1,3 +1,4 @@
+import { EventResultStatus } from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -7,7 +8,6 @@ import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approv
 import { DelegatedApprovalSupportedPolicyType } from "@app/services/delegated-approval/delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
-import { EventResultStatus } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { DelegatedApprovalDecision, DelegatedApprovalDecisionOutcome } from "./delegated-approval-decision-enums";

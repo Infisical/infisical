@@ -90,20 +90,17 @@ export default defineConfig({
         find: /^@app\/services\/object-storage\/object-storage-default-fns$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/object-storage-default-fns")
       },
-      // Pass-through wrappers that hand a spec the real job, to run on demand. Only
-      // server/routes/index.ts imports either specifier.
+      // Pass-through wrapper that hands a spec the real job, to run on demand. Only
+      // server/routes/index.ts imports this specifier.
       {
         find: /^@app\/services\/reminder\/reminder-queue$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/reminder-queue")
       },
+      // Records the secret events so specs can read them, and lets a spec deliver pending events on demand. Only
+      // domains.ts imports this specifier.
       {
-        find: /^@app\/services\/event-outbox\/event-outbox-queue$/,
-        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-queue")
-      },
-      // Adds a consumer that records the secret events so specs can read them.
-      {
-        find: /^@app\/services\/event-outbox\/event-outbox-registry$/,
-        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-registry")
+        find: /^\.\/platform\/events\/ce\/module$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/events-module")
       },
       // Only audit-log-stream-outbox-service.ts imports this specifier.
       {

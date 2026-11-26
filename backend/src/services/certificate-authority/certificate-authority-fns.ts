@@ -18,14 +18,14 @@ import {
   InternalServerError,
   NotFoundError
 } from "@app/lib/errors";
-import { pick } from "@app/lib/fn";
+import { pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ExecutionError, isLockHeldByAnotherOwner } from "@app/lib/red-lock";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { CERT_CLOCK_SKEW_MS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
-import { parsePemCertificateChain } from "../certificate/certificate-fns";
+import { parsePemCertificateChain, toMinimalSerialNumber } from "../certificate/certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
@@ -849,7 +849,10 @@ export const rebuildCaCrl = async ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caId: ca.id }, primary);
     if (!caCrl) throw new NotFoundError({ message: `CRL for CA with ID '${caId}' not found` });
 
-    const revokedCerts = await certificateDAL.find({ caId: ca.id, status: CertStatus.REVOKED }, { tx: primary });
+    const revokedCerts = await certificateDAL.find(
+      { caId: ca.id, status: CertStatus.REVOKED },
+      { tx: primary, sort: [["revokedAt", "asc"]] }
+    );
 
     const crlNumber = nextCrlNumber(Number(caCrl.crlNumber));
     const crlParams = await buildCaCrlParams({
@@ -859,11 +862,13 @@ export const rebuildCaCrl = async ({
       crlNumber,
       crlValidityDays: ca.internalCa.crlValidityDays,
       caNotAfter: ca.internalCa.notAfter ? new Date(ca.internalCa.notAfter) : undefined,
-      entries: revokedCerts.map((revokedCert) => ({
-        serialNumber: revokedCert.serialNumber,
-        revocationDate: new Date(revokedCert.revokedAt as Date),
-        reason: revokedCert.revocationReason as number
-      }))
+      entries: unique(revokedCerts, (revokedCert) => toMinimalSerialNumber(revokedCert.serialNumber)).map(
+        (revokedCert) => ({
+          serialNumber: revokedCert.serialNumber,
+          revocationDate: new Date(revokedCert.revokedAt as Date),
+          reason: revokedCert.revocationReason as number
+        })
+      )
     });
 
     const crl = await signer.createCrl(crlParams);

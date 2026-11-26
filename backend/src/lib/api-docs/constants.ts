@@ -14,6 +14,7 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
+import { RequestReference } from "@app/services/certificate-policy/certificate-policy-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
@@ -1046,6 +1047,8 @@ export const INSIGHTS = {
     folderEnvironment: "The slug of the environment the folder is in.",
     folderSecretPath: "The path of the folder.",
     folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
+    folderIsPermissionRecursive:
+      "Whether the folder access also applies to every folder below the granted folder. Only folder access on the root folder '/' can be recursive.",
     totalCount: "The number of actors the caller can page through.",
     unusedAccessFrom:
       "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Nothing is listed before then, since reads from before tracking began are unknown. Results are recomputed once a day."
@@ -1675,10 +1678,23 @@ export const SECRET_IMPORTS = {
     secretImportId: "The ID of the secret import to delete.",
     environment: "The slug of the environment where the secret import is located.",
     path: "The path of the secret import to delete."
+  },
+  RESPONSE: {
+    importEnv: {
+      id: "The ID of the environment the secret import reads secrets from.",
+      name: "The name of the environment the secret import reads secrets from.",
+      slug: "The slug of the environment the secret import reads secrets from.",
+      projectId:
+        "The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project."
+    }
   }
 } as const;
 
 export const DASHBOARD = {
+  IMPORTED_SECRETS: {
+    importId:
+      "The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID."
+  },
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
     tags: "The tags attached to the secret, including each tag's ID and slug."
@@ -2026,7 +2042,9 @@ export const FOLDER_ACCESS = {
       "Whether the folder access is temporary. Omit the type object for permanent access. The full-access role must be permanent.",
     temporaryMode: "Type of temporary access given. Types: relative.",
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
-    temporaryAccessStartTime: "ISO time the temporary access starts."
+    temporaryAccessStartTime: "ISO time the temporary access starts.",
+    isPermissionRecursive:
+      "Whether the folder access also applies to every folder below this one. Where folder access that applies to subfolders overlaps, the one on the deepest folder decides, and folder access granted on a folder without this setting decides that folder. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
   },
   UPDATE: {
     projectId: "The ID of the project the folder is in.",
@@ -2040,12 +2058,15 @@ export const FOLDER_ACCESS = {
       "Whether the folder access is temporary. Pass isTemporary false to make it permanent; omit the type object to leave the current temporal state unchanged. The full-access role must be permanent, so making an access temporary also requires lowering its role.",
     temporaryMode: "Type of temporary access given. Types: relative.",
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
-    temporaryAccessStartTime: "ISO time the temporary access starts."
+    temporaryAccessStartTime: "ISO time the temporary access starts.",
+    isPermissionRecursive:
+      "Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
   },
   DELETE: {
     projectId: "The ID of the project the folder is in.",
     environmentSlug: "The slug of the environment the folder is in.",
-    secretPath: "The path of the folder the access is on.",
+    secretPath:
+      "The path of the folder the access is on. Revoking access that applies to subfolders requires permission to manage access on this folder and all of its subfolders.",
     userId: "The ID of the user whose folder access to revoke.",
     identityId: "The ID of the machine identity whose folder access to revoke."
   },
@@ -2058,9 +2079,9 @@ export const FOLDER_ACCESS = {
     limit: "The number of users to return, counting both lists together.",
     search: "The text string that user names and email addresses will be filtered by.",
     users:
-      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.",
     usersWithoutAccess:
-      "The users of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+      "The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount: "The number of users of the project that match the search, with and without access together."
   },
   LIST_IDENTITIES: {
@@ -2072,9 +2093,9 @@ export const FOLDER_ACCESS = {
     limit: "The number of machine identities to return, counting both lists together.",
     search: "The text string that machine identity names will be filtered by.",
     identities:
-      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from the folder access alone.",
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.",
     identitiesWithoutAccess:
-      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles and folderRBACAccess is always null.",
+      "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount:
       "The number of machine identities of the project that match the search, with and without access together."
   },
@@ -2302,6 +2323,15 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  },
+  FILTERS: {
+    products:
+      "The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.",
+    pamSessionActivity: {
+      desc: "Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.",
+      includeOutput:
+        "Also send command output, query results and request and response bodies, which can contain sensitive data."
+    }
   }
 };
 
@@ -2501,6 +2531,10 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get.",
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    enrollmentType:
+      "How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'), falling back to its profile's enrollment method when no request is recorded. Null for imported or discovered certificates without a CA.",
+    isRenewedByClient:
+      "Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.",
     canRenewFromCsr:
       "Whether Infisical can renew this certificate on its existing key pair from a CSR it holds, without its private key: a CSR the request that produced it carried or one supplied at import, a certificate enrolled through the API, and a profile whose certificate authority issues from a CSR. When true, renewing with renewalKeySource 'reuse' renews from that CSR, and auto-renewal can be turned on.",
     externalMetadata:
@@ -2609,7 +2643,15 @@ const domainComponentRule = (rule: string) =>
 
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
+const sanRuleValues = (rule: string, reference: string) =>
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. ${RequestReference.CommonName} matches an IP address by value. Any other value containing "{{" is refused.`;
+
 export const CERTIFICATE_POLICIES = {
+  SAN_RULE: {
+    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.`,
+    required: `${sanRuleValues("the request must include", "requires a SAN of this type equal to the request's common name")} If it lists ${RequestReference.CommonName}, a request without a common name is refused.`,
+    denied: sanRuleValues("that are rejected", "rejects a SAN of this type equal to the request's common name")
+  },
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
@@ -2625,6 +2667,10 @@ export const CERTIFICATE_POLICIES = {
     required: domainComponentRule("required"),
     denied: DOMAIN_COMPONENT_DENIED_RULE
   }
+};
+
+export const CERTIFICATE_PROFILES = {
+  DEFAULT_SUBJECT_ALT_NAMES: `Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is ${RequestReference.CommonName} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.`
 };
 
 export const CERTIFICATE_TEMPLATES = {
@@ -2807,6 +2853,49 @@ export const PKI_SUBSCRIBERS = {
     projectId: "The ID of the project of the PKI subscriber to list the certificates for.",
     offset: "The offset to start from.",
     limit: "The number of certificates to return."
+  }
+};
+
+export const MICROSOFT_AUTOENROLLMENT = {
+  SET: {
+    connectionId:
+      "The ID of the Active Directory LDAP connection used to look up computers. Required when turning Microsoft Autoenrollment on; when updating, leave it out to keep the current connection.",
+    allowedGroupSids:
+      "The security identifiers (SIDs) of the Active Directory security groups whose computers may enroll. Find them with GET /api/v1/app-connections/ldap/{connectionId}/groups. Null or an empty list allows any computer in the domain. Leave it out when updating to keep the current groups.",
+    renewBeforeDays:
+      "How many days before expiry Windows renews the certificate. Windows renews only when this is more than 8 hours and less than 20% of the certificate's validity, so the value Windows is given is moved into that window (see effectiveRenewBeforeSeconds). Defaults to 42 when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value.",
+    keytab:
+      "The keytab file created with ktpass, base64 encoded. When turning Microsoft Autoenrollment on, send this or reuseKeytab. Send a new one to replace the stored keytab.",
+    reuseKeytab:
+      "Copy the keytab another profile in this application already has, named by that profile's ID in profileId. Cannot be sent together with keytab.",
+    allowAnyChannelBinding:
+      "Accept any TLS channel binding a computer sends instead of requiring the one for this instance's own TLS certificate. This also accepts a Kerberos ticket relayed through another HTTPS site, so turn it on only when computers reach Infisical through a proxy that inspects HTTPS, or when this instance cannot read its own certificate, such as in FIPS mode. Defaults to false when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value."
+  },
+  STATE: {
+    otherProfiles:
+      "Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.",
+    unsupportedReason:
+      "Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority, a key type Windows cannot request, or a certificate policy that refuses the key type or the Windows extensions. Null when it can, and always null once the method is on for the profile.",
+    configured: "Whether Microsoft Autoenrollment is on for this profile in the application.",
+    id: "The ID of the Microsoft Autoenrollment configuration.",
+    policyUrl:
+      "The enrollment policy server URL to add to the Group Policy object, under Certificate Services Client - Certificate Enrollment Policy.",
+    policyId: "The ID Windows uses for this enrollment policy server. Each policy server URL has its own.",
+    templateName: "The certificate template name Windows shows for this profile.",
+    templateOid:
+      "The OID of the certificate template, written into the template information extension of each certificate.",
+    allowedGroups:
+      "The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.",
+    renewBeforeDays: "How many days before expiry Windows renews the certificate, as entered.",
+    effectiveRenewBeforeSeconds:
+      "How many seconds before expiry Windows actually renews: renewBeforeDays moved to more than 8 hours and less than 20% of the certificate's validity. For a validity of 40 hours or less no value fits, and Windows requests a new certificate instead of renewing. Null when the profile's TTL exceeds its certificate policy's maximum validity.",
+    servicePrincipalName: "The Kerberos service principal name the stored keytab is for.",
+    keyVersion: "The key version number of the stored keytab.",
+    connectionId: "The ID of the Active Directory LDAP connection used to look up computers.",
+    allowAnyChannelBinding:
+      "Whether requests are accepted with any TLS channel binding instead of only the one for this instance's own TLS certificate.",
+    channelBinding:
+      "Whether this instance can check requests' TLS channel bindings, whatever allowAnyChannelBinding is set to. status is enforced when it has read its own TLS certificate, unverifiable when it cannot check bindings, such as in FIPS mode or when it could not read its own certificate in the last day (requests are then refused unless allowAnyChannelBinding is on), and not-checked when it has not tried to read its certificate yet, which happens at the first enrollment request. reason explains unverifiable and not-checked, and is null when status is enforced."
   }
 };
 
@@ -4302,7 +4391,10 @@ export const SecretScanningDataSources = {
       isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
       isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
       isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
-      config: `The configuration parameters to use for this Data Source.`
+      config: `The configuration parameters to use for this Data Source.`,
+      alerts: `The alerts to create with this Data Source, at most one per event. Leave it out to get the default alerts, which email project admins when secrets are detected and when a scan fails. Pass an empty list to create none.`,
+      alertEventType: `The event the alert fires on.`,
+      alertChannels: `Where the alert is sent. Takes the same channels as the alert API.`
     };
   },
   UPDATE: (type: SecretScanningDataSource) => {
@@ -4483,7 +4575,9 @@ export const SamlSso = {
     mfaSignalAttribute:
       "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
     mfaAuthnContexts:
-      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.",
+    mfaAttributeValues:
+      "Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
@@ -4498,7 +4592,9 @@ export const SamlSso = {
     mfaSignalAttribute:
       "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
     mfaAuthnContexts:
-      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.",
+    mfaAttributeValues:
+      "Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey."
   },
   ACS: {
     samlConfigId: "The ID of the SAML configuration the response is for.",
@@ -4759,6 +4855,22 @@ export const SecretValidationRules = {
       "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
   }
 } as const;
+
+export const INSTANCE_DEPLOYMENT_AWS_METADATA = {
+  description:
+    "Get details about the AWS account the Infisical instance runs as, such as the account ID to trust in an IAM role's trust policy. If Infisical can't reach AWS STS to find out, the request fails instead of returning a null account ID.",
+  accountId:
+    "The AWS account ID Infisical acts as when it assumes an IAM role in your AWS account, for example for an AWS App Connection. Name this account as the trusted principal in the role's trust policy. Null when the instance has no AWS identity."
+} as const;
+
+export const CRON_JOB_TRIGGER = {
+  description:
+    "Run a scheduled job once, now, and wait for its handler to return. Only instance admins can call it, and only when the instance sets ALLOW_CRON_JOB_TRIGGER=true. The instance that serves the request must run general workers, because jobs are registered only there. A 200 means the handler returned; work it queued may still be running.",
+  jobName: "The name of the scheduled job to run.",
+  response: {
+    jobName: "The name of the job that ran."
+  }
+};
 
 export const ENCRYPTION_KEY_ROTATION = {
   ROOT_KEY: {
@@ -5459,7 +5571,7 @@ export const AGENT_VAULT = {
       "The name of the access bundle this session carries. Leave it out to start a session that has only services and skills, from the project or sent with it.",
     accessBundleRead: "The access bundle this session carries. Null for a session without an access bundle.",
     services:
-      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 30. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
     serviceName:
       "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
     servicesRead:
@@ -5491,7 +5603,7 @@ export const AGENT_VAULT = {
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 30. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:
@@ -5759,6 +5871,27 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
     "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
+};
+
+export const SECRET_CHANGE_POLICIES = {
+  enforceOnSecretImports:
+    "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.",
+  LIST_IMPORTS: {
+    description:
+      "List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.",
+    sapId: "The ID of the secret change policy whose folders to list imports from.",
+    isReplicationFilter:
+      "When set, list only imports that respect approval policies (true) or only imports that read their source directly (false). Omit it to list both.",
+    imports: "The imports in folders this policy governs, leaving out folders a more specific policy governs.",
+    id: "The ID of the secret import.",
+    environment: "The environment the import is in, which is where the imported secrets are read.",
+    environmentSlug: "The slug of the environment.",
+    environmentName: "The name of the environment.",
+    secretPath: "The path of the folder the import is in.",
+    sourceEnvironment: "The environment the import reads its secrets from.",
+    sourceSecretPath: "The path of the folder the import reads its secrets from.",
+    isReplication: "True when the import respects approval policies, false when it reads its source directly."
+  }
 };
 
 export const HONEY_TOKENS = {

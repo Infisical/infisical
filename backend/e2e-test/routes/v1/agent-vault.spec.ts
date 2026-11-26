@@ -5,6 +5,7 @@ import * as x509 from "@peculiar/x509";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { startStandaloneKmsCore } from "@app/domains/domains";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
@@ -298,7 +299,7 @@ const createAccessBundle = async (name: string) => {
 let kmsDataKeyService: TKmsDataKeyService | undefined;
 const projectCipher = async (projectId: string) => {
   if (!kmsDataKeyService) {
-    await initEnvConfig(testSuperAdminDAL, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     const kmsCore = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
     kmsDataKeyService = kmsCore.kmsDataKeyService;
   }
@@ -9251,8 +9252,7 @@ describe("Agent Vault V1 Router", async () => {
       const getPlan = vi.fn(() => Promise.resolve(planWith({ agentVaultByoS3: false })));
       const resolver = buildResolver({
         licenseService: {
-          getPlan,
-          getLastKnownPlan: () => Promise.resolve(null)
+          getPlan
         } as never,
         agentVaultSessionLogConfigDAL: sessionLogConfig(true) as never
       });
@@ -9266,27 +9266,6 @@ describe("Agent Vault V1 Router", async () => {
 
       expect(getPlan).toHaveBeenCalledWith(seedData1.organization.id);
       expect(resolved.sessionLogs).toEqual({ enabled: false, sessionKey: null });
-    });
-
-    test("while the plan can't be confirmed, a proxy that holds the key keeps recording and no new key goes out", async () => {
-      const { session, proxy } = await mintForResolve("resolve-session-logs-plan-unknown");
-      const resolver = buildResolver({
-        licenseService: {
-          getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: false }).asFallback()),
-          getLastKnownPlan: () => Promise.resolve(null)
-        } as never,
-        agentVaultSessionLogConfigDAL: sessionLogConfig(true) as never
-      });
-      const resolve = (hasSessionLogKey: boolean) =>
-        resolver.resolveSession({
-          proxyId: proxy.id,
-          orgId: seedData1.organization.id,
-          sessionToken: session.token,
-          hasSessionLogKey
-        });
-
-      expect((await resolve(true)).sessionLogs).toEqual({ enabled: true, sessionKey: null });
-      expect((await resolve(false)).sessionLogs).toEqual({ enabled: false, sessionKey: null });
     });
 
     test("resolve does not read the plan while session logs are off", async () => {

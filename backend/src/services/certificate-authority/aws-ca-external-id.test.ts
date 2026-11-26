@@ -103,6 +103,8 @@ const connection = {
 
 const appConnectionDAL = { findById: async () => connection } as never;
 const kmsDataKeyService = {} as never;
+// No platform AWS credentials, as the env this test mocks has none.
+const instanceConfigService = { getOverridableEnv: async () => ({}) } as never;
 const stopAfterClientIsBuilt = async () => {
   throw new Error("stop after the client is built");
 };
@@ -127,7 +129,8 @@ const buildClients: Record<
         appConnectionService: {
           validateAppConnectionUsageById: async () => {}
         },
-        kmsDataKeyService
+        kmsDataKeyService,
+        instanceConfigService
       } as never);
       await expect(
         fns.createCertificateAuthority({
@@ -152,7 +155,8 @@ const buildClients: Record<
           appConnectionId: connection.id,
           region: AWSRegion.US_EAST_1,
           appConnectionDAL,
-          kmsDataKeyService
+          kmsDataKeyService,
+          instanceConfigService
         })
       ).rejects.toThrow("stop after the client is built");
     }
@@ -160,7 +164,7 @@ const buildClients: Record<
   "Route 53": {
     clientsBuilt: 1,
     buildClient: async () => {
-      await route53GetHostedZone(connection, "zone-1");
+      await route53GetHostedZone(connection, "zone-1", instanceConfigService);
     }
   },
   "AWS Certificate Manager sync": {
@@ -169,6 +173,7 @@ const buildClients: Record<
       const fns = awsCertificateManagerPkiSyncFactory({
         appConnectionDAL,
         kmsDataKeyService,
+        instanceConfigService,
         certificateSyncDAL: { findByPkiSyncId: stopAfterClientIsBuilt },
         certificateDAL: {}
       } as never);
@@ -181,6 +186,7 @@ const buildClients: Record<
       const fns = awsElasticLoadBalancerPkiSyncFactory({
         appConnectionDAL,
         kmsDataKeyService,
+        instanceConfigService,
         certificateSyncDAL: {
           findByPkiSyncId: async () => [{ certificateId: "cert-1", externalIdentifier: "arn" }]
         },

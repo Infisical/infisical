@@ -139,12 +139,28 @@ export const KeyStorePrefixes = {
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
-  ProjectFolderAccessMarker: (projectId: string, folderId: string, actorType: string, page: string) =>
-    `project-folder-access-marker:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessMarker: (
+    projectId: string,
+    rosterVersion: string,
+    folderId: string,
+    actorType: string,
+    page: string
+  ) => `project-folder-access-marker:${projectId}:${rosterVersion}:${folderId}:${actorType}:${page}` as const,
   ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
     `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
+  ProjectFolderAccessRosterVersion: (projectId: string) => `project-folder-access-roster-version:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+  MicrosoftAutoenrollmentReplay: (servicePrincipalName: string, replayKey: string) =>
+    `microsoft-autoenrollment-replay:${servicePrincipalName}:${replayKey}` as const,
+  MicrosoftAutoenrollmentServerChannelBindings: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsRefreshLock: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-refresh-lock:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLearnFailed: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-learn-failed:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailure: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-last-failure:${instanceEndpoint}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
@@ -239,7 +255,6 @@ export const KeyStorePrefixes = {
   WorkerHeartbeat: (workerType: string, instanceId: string) =>
     `worker-heartbeat:{${workerType}}:${instanceId}` as const,
 
-  AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
@@ -296,6 +311,7 @@ export const KeyStoreTtls = {
   ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   ProjectFolderAccessMarkerTtlSeconds: 20,
   ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
+  ProjectFolderAccessRosterVersionTtlSeconds: 600, // 10 minutes, must outlive the marker
 
   MfaSessionInSeconds: 300, // 5 minutes
   RecentMfaAuthInSeconds: 600, // 10 minutes
@@ -319,7 +335,6 @@ export const KeyStoreTtls = {
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
-  AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days
@@ -340,6 +355,11 @@ export const KeyStoreTtls = {
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
+  MicrosoftAutoenrollmentReplayInSeconds: 600, // 10 minutes
+  MicrosoftAutoenrollmentServerChannelBindingsInSeconds: 86400,
+  MicrosoftAutoenrollmentServerChannelBindingsRefreshLockInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLearnFailedInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailureInSeconds: 86400,
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle

@@ -4,6 +4,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { isValidSid, SID_PATTERN } from "@app/lib/windows-sid/windows-sid-fns";
 
 import { matchesNormalizedPattern } from "../certificate-policy/certificate-policy-fns";
 import {
@@ -57,7 +58,6 @@ type TCustomExtensionPreset = {
   describe: (der: Buffer) => string | null;
 };
 
-const SID_PATTERN = new RE2("^S-1-[0-9]{1,10}(-[0-9]{1,10}){1,14}$");
 const TEMPLATE_INFORMATION_PATTERN = new RE2(
   `^(${CERT_EXTENSION_OID_PATTERN_SOURCE}):(0|[1-9][0-9]{0,4})(\\.(0|[1-9][0-9]{0,4}))?$`
 );
@@ -178,9 +178,9 @@ export const CUSTOM_EXTENSION_PRESETS_BY_OID: Record<string, TCustomExtensionPre
   [CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID]: {
     critical: false,
     validateInput: (value) =>
-      SID_PATTERN.test(value)
+      isValidSid(value)
         ? null
-        : "Value must be a security identifier, for example S-1-5-21-1004336348-1177238915-682003330-1103",
+        : "Value must be a security identifier as Active Directory shows it, with no leading zeros and each sub-authority at most 4294967295, for example S-1-5-21-1004336348-1177238915-682003330-1103",
     encode: encodeNtdsSid,
     describe: describeNtdsSid
   },
@@ -459,19 +459,106 @@ const resolveCriticality = ({
   };
 };
 
+export const findCustomExtensionRuleValueError = (
+  oid: string,
+  displayValue: string,
+  rule: TCustomExtensionRule
+): string | null => {
+  const denied = rule.denied ?? [];
+  const required = rule.required ?? [];
+  const allowed = rule.allowed ?? [];
+
+  if (matchesAnyPattern(displayValue, denied)) {
+    return `Custom extension '${oid}' value '${displayValue}' is denied by this policy. Denied values: ${denied.join(", ")}`;
+  }
+
+  const satisfiesRequired = required.length > 0 && matchesAnyPattern(displayValue, required);
+  if (required.length > 0 && !satisfiesRequired) {
+    return `Custom extension '${oid}' value '${displayValue}' does not match any value required by this policy: ${required.join(", ")}`;
+  }
+
+  if (!satisfiesRequired && allowed.length > 0 && !matchesAnyPattern(displayValue, allowed)) {
+    return `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${allowed.join(", ")}`;
+  }
+
+  return null;
+};
+
+const UNRELATED_COMPUTER_SIDS = ["S-1-5-21-1-2-5-1125", "S-1-5-21-4067890-3467890-9876043-36789"];
+
+const isMatchAnyPattern = (pattern: string) => /^\*+$/.test(pattern.trim());
+
+const acceptsEveryValue = (rule: TCustomExtensionRule) => {
+  if (rule.denied?.length) return false;
+  if (rule.required?.length) return rule.required.some(isMatchAnyPattern);
+  return !rule.allowed?.length || rule.allowed.some(isMatchAnyPattern);
+};
+
+export const findMicrosoftAutoenrollmentRuleProblems = (rules: TCustomExtensionRule[] | null | undefined) => {
+  const rulesByOid = buildRuleLookup(rules);
+  if (!rulesByOid) return [];
+
+  const sidOid = CUSTOM_EXTENSION_PRESET_OIDS.NTDS_SID;
+  const templateOid = CUSTOM_EXTENSION_PRESET_OIDS.MS_CERTIFICATE_TEMPLATE_INFORMATION;
+  const problems: string[] = [];
+  const missingOids = [sidOid, templateOid].filter((oid) => !rulesByOid.has(oid));
+  if (missingOids.length) {
+    problems.push(`Allow ${missingOids.join(" and ")} in the policy's custom extension rules.`);
+  }
+  const sidRule = rulesByOid.get(sidOid);
+  if (
+    sidRule &&
+    (sidRule.denied ?? []).some((pattern) =>
+      UNRELATED_COMPUTER_SIDS.every((sid) => matchesNormalizedPattern(sid, pattern))
+    )
+  ) {
+    problems.push(`The rule for ${sidOid} denies every value, so no computer could enroll.`);
+  }
+  const templateRule = rulesByOid.get(templateOid);
+  if (templateRule && !acceptsEveryValue(templateRule)) {
+    problems.push(
+      `The rule for ${templateOid} must allow any value (*), because its value changes each time the method's settings are saved or computers are re-enrolled.`
+    );
+  }
+  return problems;
+};
+
+const findIssuerAddedExtensionErrors = (
+  issuerAddedExtensions: TResolvedCustomExtension[],
+  rulesByOid: Map<string, TCustomExtensionRule> | null
+) =>
+  issuerAddedExtensions.flatMap((extension) => {
+    if (!rulesByOid) return [];
+    const rule = rulesByOid.get(extension.oid);
+    if (!rule) {
+      return [
+        `Custom extension '${extension.oid}' is always added to these certificates, but this policy's custom extension rules don't allow it. Add a rule for '${extension.oid}' to the policy.`
+      ];
+    }
+    const displayValue = describeCustomExtensionValue(extension.oid, extension.value);
+    if (displayValue === null) {
+      return [`Custom extension '${extension.oid}' added by the issuer cannot be checked against this policy.`];
+    }
+    const error = findCustomExtensionRuleValueError(extension.oid, displayValue, rule);
+    return error ? [error] : [];
+  });
+
 export const resolveCustomExtensions = ({
   declarations,
   rules,
   requestExtensions,
-  skipRequired = false
+  skipRequired = false,
+  issuerAddedExtensions = []
 }: {
   declarations?: TProfileCustomExtension[] | null;
   rules?: TCustomExtensionRule[] | null;
   requestExtensions?: TRequestCustomExtension[];
   skipRequired?: boolean;
+  issuerAddedExtensions?: TResolvedCustomExtension[];
 }): { extensions: TResolvedCustomExtension[]; errors: string[] } => {
   const rulesByOid = buildRuleLookup(rules);
-  const errors: string[] = [];
+  const issuerAddedOids = issuerAddedExtensions.map((extension) => extension.oid);
+  const errors: string[] = findIssuerAddedExtensionErrors(issuerAddedExtensions, rulesByOid);
   const extensions: TResolvedCustomExtension[] = [];
   const resolvedOids = new Set<string>();
 
@@ -520,31 +607,9 @@ export const resolveCustomExtensions = ({
       continue;
     }
 
-    const denied = rule.denied ?? [];
-    const required = rule.required ?? [];
-    const allowed = rule.allowed ?? [];
-
-    if (matchesAnyPattern(displayValue, denied)) {
-      errors.push(
-        `Custom extension '${oid}' value '${displayValue}' is denied by this policy. Denied values: ${denied.join(", ")}`
-      );
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    const satisfiesRequired = required.length > 0 && matchesAnyPattern(displayValue, required);
-    if (required.length > 0 && !satisfiesRequired) {
-      errors.push(
-        `Custom extension '${oid}' value '${displayValue}' does not match any value required by this policy: ${required.join(", ")}`
-      );
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    if (!satisfiesRequired && allowed.length > 0 && !matchesAnyPattern(displayValue, allowed)) {
-      errors.push(
-        `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${allowed.join(", ")}`
-      );
+    const ruleError = findCustomExtensionRuleValueError(oid, displayValue, rule);
+    if (ruleError) {
+      errors.push(ruleError);
       // eslint-disable-next-line no-continue
       continue;
     }
@@ -560,7 +625,7 @@ export const resolveCustomExtensions = ({
 
   if (!skipRequired && rulesByOid !== null) {
     for (const rule of rulesByOid.values()) {
-      if (!rule.required?.length) {
+      if (!rule.required?.length || issuerAddedOids.includes(rule.oid)) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -574,5 +639,11 @@ export const resolveCustomExtensions = ({
 
   extensions.sort((a, b) => a.oid.localeCompare(b.oid));
 
-  return { extensions, errors };
+  return {
+    extensions: [
+      ...extensions.filter((extension) => !issuerAddedOids.includes(extension.oid)),
+      ...issuerAddedExtensions
+    ],
+    errors
+  };
 };

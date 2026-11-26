@@ -26,7 +26,6 @@ import { readClientCertificateHeader } from "@app/services/identity-access-token
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { invalidSignatureMessage } from "./invalid-signature-message";
 
@@ -277,6 +276,10 @@ export const injectIdentity = fp(
         return;
       }
 
+      if (pathname.startsWith("/cep/applications/") || pathname.startsWith("/ces/applications/")) {
+        return;
+      }
+
       if (pathname === "/api/v1/oauth/token") {
         return;
       }
@@ -400,7 +403,9 @@ export const injectIdentity = fp(
             req.realIp,
             readClientCertificateHeader(req.headers)
           );
-          const serverCfg = await getServerCfg();
+          const isInstanceAdmin = await server.services.instanceConfigService.isInstanceAdminIdentity(
+            identity.identityId
+          );
           requestContext.set(RequestContextKey.OrgId, identity.orgId);
           requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {
@@ -412,7 +417,7 @@ export const injectIdentity = fp(
             identityId: identity.identityId,
             identityName: identity.identityName,
             authMethod: null,
-            isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
+            isInstanceAdmin,
             token
           };
           const identityAuthInfo: RequestContextData["identityAuthInfo"] = {

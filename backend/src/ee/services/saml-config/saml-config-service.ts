@@ -14,6 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
   PlanFeature,
@@ -25,6 +26,7 @@ import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-ty
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -36,7 +38,6 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { AuthMethod } from "@app/services/auth/auth-type";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -47,8 +48,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -83,6 +82,7 @@ import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
 const GROUP_SYNC_SUPPORTED_PROVIDERS = [SamlProviders.GOOGLE_SAML] as SamlProviders[];
 
 type TSamlConfigServiceFactoryDep = {
+  instanceConfigService: TInstanceConfigService;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   userDAL: Pick<
@@ -140,6 +140,7 @@ type TSamlConfigServiceFactoryDep = {
 };
 
 export const samlConfigServiceFactory = ({
+  instanceConfigService,
   samlConfigDAL,
   auditLogService,
   orgDAL,
@@ -355,7 +356,8 @@ export const samlConfigServiceFactory = ({
     authProvider,
     enableGroupSync,
     mfaSignalAttribute,
-    mfaAuthnContexts
+    mfaAuthnContexts,
+    mfaAttributeValues
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -413,7 +415,8 @@ export const samlConfigServiceFactory = ({
       encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
       enableGroupSync: enableGroupSync || false,
       mfaSignalAttribute,
-      mfaAuthnContexts
+      mfaAuthnContexts,
+      mfaAttributeValues
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
@@ -434,7 +437,8 @@ export const samlConfigServiceFactory = ({
     authProvider,
     enableGroupSync,
     mfaSignalAttribute,
-    mfaAuthnContexts
+    mfaAuthnContexts,
+    mfaAttributeValues
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -495,6 +499,9 @@ export const samlConfigServiceFactory = ({
     }
     if (mfaAuthnContexts !== undefined) {
       updateQuery.mfaAuthnContexts = mfaAuthnContexts;
+    }
+    if (mfaAttributeValues !== undefined) {
+      updateQuery.mfaAttributeValues = mfaAttributeValues;
     }
     const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -610,7 +617,8 @@ export const samlConfigServiceFactory = ({
       lastUsed: samlConfig.lastUsed,
       enableGroupSync: samlConfig.enableGroupSync,
       mfaSignalAttribute: samlConfig.mfaSignalAttribute,
-      mfaAuthnContexts: samlConfig.mfaAuthnContexts
+      mfaAuthnContexts: samlConfig.mfaAuthnContexts,
+      mfaAttributeValues: samlConfig.mfaAttributeValues
     };
   };
 
@@ -671,9 +679,9 @@ export const samlConfigServiceFactory = ({
     metadata,
     idpMfa
   }) => {
-    const serverCfg = await getServerCfg();
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
 
-    if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.SAML)) {
+    if (!loginPolicy.allows(LoginMethod.SAML)) {
       throw new ForbiddenRequestError({
         message: "Login with SAML is disabled by administrator."
       });

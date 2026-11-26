@@ -4,6 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -17,13 +18,13 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
-import { EventModificationType } from "../event-outbox/event-definition";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -51,6 +52,7 @@ import {
 
 type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
   folderDAL: TSecretFolderDALFactory;
   eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
@@ -67,11 +69,16 @@ type TSecretImportServiceFactoryDep = {
 };
 
 const ERR_SEC_IMP_NOT_FOUND = new BadRequestError({ message: "Secret import not found" });
+const ERR_NON_REPLICATION_IMPORT_UNDER_POLICY = (policyName: string) =>
+  new BadRequestError({
+    message: `The change policy '${policyName}' requires approval for imported secrets in this folder, so imports from this project must respect approval policies. Create an import that respects approval policies instead.`
+  });
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
 
 export const secretImportServiceFactory = ({
   secretImportDAL,
+  secretChangePolicyService,
   eventEmitter,
   projectEnvDAL,
   projectFolderGrantDAL,
@@ -134,7 +141,30 @@ export const secretImportServiceFactory = ({
     scope: { projectId: string; environment: string; secretPath: string },
     modificationType: EventModificationType,
     tx: Knex
-  ) => SecretImportModifiedEventV1.emit(eventEmitter, { secretImportId, ...scope, modificationType }, tx);
+  ) => eventEmitter.emit([SecretImportModifiedEventV1.build({ secretImportId, ...scope, modificationType })], tx);
+
+  // a rename can carry the folder under a policy between the request's first read and the write. renames lock every
+  // folder they move, so locking this one orders the two, and the path read after the lock is where the import lands.
+  // a rename that commits after this transaction sees the import and refuses itself (findDirectImportEnteringEnforcedPath).
+  const $assertDirectImportAllowedInFolder = async (
+    projectId: string,
+    environment: string,
+    folderId: string,
+    tx: Knex
+  ) => {
+    await folderDAL.lockFoldersForUpdate([folderId], tx);
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Failed to retrieve path for folder with ID '${folderId}'` });
+    }
+    const policy = await secretChangePolicyService.getSecretApprovalPolicy(
+      projectId,
+      environment,
+      folderWithPath.path,
+      tx
+    );
+    if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
+  };
 
   const createImport = async ({
     environment,
@@ -248,6 +278,9 @@ export const secretImportServiceFactory = ({
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      if (!isReplication && !isCrossProjectImport) {
+        await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);
+      }
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
         {
@@ -361,6 +394,10 @@ export const secretImportServiceFactory = ({
       });
     }
 
+    const isSourceChanging =
+      (data.environment !== undefined && importedEnv.id !== secImpDoc.importEnv) ||
+      (data.path !== undefined && data.path !== secImpDoc.importPath);
+
     // check if user has permission to import from target path when source is changing
     if (data.environment || data.path) {
       const newSourcePath = data.path || secImpDoc.importPath;
@@ -385,6 +422,9 @@ export const secretImportServiceFactory = ({
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
+      if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
+        await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);
+      }
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
 
@@ -527,15 +567,16 @@ export const secretImportServiceFactory = ({
             tx
           );
           await folderDAL.deleteById(replicatedFolder.id, tx);
-          await FolderModifiedEventV1.emit(
-            eventEmitter,
-            {
-              folderId: replicatedFolder.id,
-              projectId,
-              environment,
-              secretPath: replicatedFolder.path,
-              modificationType: EventModificationType.Deleted
-            },
+          await eventEmitter.emit(
+            [
+              FolderModifiedEventV1.build({
+                folderId: replicatedFolder.id,
+                projectId,
+                environment,
+                secretPath: replicatedFolder.path,
+                modificationType: EventModificationType.Deleted
+              })
+            ],
             tx
           );
         }

@@ -28,28 +28,30 @@ anyone can edit into a paid one.
 
 Rules:
 
-- **Cloud plans are cached under the root org.** A sub-org's plan is its root's. Last-known plan, fallback and
-  pass-through markers are keyed by root too; the usage reconcile marker stays per org.
+- **Cloud plans are cached under the root org.** A sub-org's plan is its root's. The
+  pass-through marker are keyed by root too; the usage reconcile marker stays per org.
 - **A plan fetch sends the root org's name and slug.** That's mostly how the License Server learns them, so read
   them fresh each fetch (`findOrganization`), since orgs get renamed.
-- **Key names, TTLs and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`, `UsageQueues`): old
-  pods share them during a rolling deploy.
-- **A project create, delete or restore calls `refreshWorkspacesUsed`, never `invalidatePlan`.** Dropping the plan
-  sends every in-flight request for the org to the License Server and the project count at once.
-  `refreshWorkspacesUsed` rewrites only the separate `workspacesUsed` key, and only when the plan has a project
-  limit; `invalidatePlan` is for changes to the plan itself. The project limit is enforced by
-  `lockAndCountWorkspaces` under the create lock, so the cached count is for display only.
-- **A plan cache miss fetches once per root org** (`fetchOnMiss`, under the revalidate lock). The others serve the
-  last-known plan meanwhile, and fetch themselves only when there is none. A cached plan past its `fresh` marker
-  is served and refreshed in the background, so a busy org never misses.
-- **Only a License Server failure writes the fallback plan** (`fetchPlanOrFallback`). In `getPlan`, a DB or key
-  store error serves the fallback for that call only and writes nothing, so it never clobbers a cached paid plan.
-  `refreshPlan` throws on them instead. `getPlan` reads the cache under the given org id before resolving the
-  root, so a root org's cached plan is served without the database.
-- **Every fallback `getPlan` serves for a failure has `plan.isFallback` set**, the cached one (from the
-  `infisical-cloud-plan-fallback-*` marker, read with the plan) and the per-call one alike. Code that would stop
-  something an org pays for checks it and decides from `getLastKnownPlan` instead (`getSessionLogEntitlement`).
-  The flag is never serialized, so mark a plan with `asFallback()`, never through its features.
+- **Key names, value formats and queue names are frozen** (`plan-cache.ts`, `usage-report-cache.ts`,
+  `UsageQueues`): old pods share them during a rolling deploy. The cached plan's `refreshAt` is a top-level field
+  beside the features, not a wrapper, so old pods still read it as a plan.
+- **`getPlan` is the only plan read; it serves the cached plan while it refreshes it.** The plan key lives 30
+  minutes; past the `refreshAt` stored in it (about 10 minutes before expiry, jittered) `getPlan` still returns it
+  and refreshes it in the background
+  (`revalidateInBackground`, one caller per root org under the revalidate lock). A failed refresh leaves the
+  cached plan in place until it expires. A billing change
+  (`refreshPlan` with `afterBillingChange`) only marks the plan for a background refresh; only `closeDeletedOrg` removes
+  it. Do not add a second copy of the plan or a "last known plan" read beside it.
+- **The free plan is served only when nothing is cached and nothing can be fetched** (unknown org, License Server,
+  database or key store failure), and it is never cached, so the next read fetches again. `refreshPlan` throws on
+  those failures instead. `getPlan` reads the cache under the given org id before resolving the root, so a root
+  org's cached plan is served without the database. A plan has no "fallback" flag: callers trust what `getPlan`
+  returns. So a plan outlives a License Server outage by at most its 30 minute TTL; after that a paid org gets the
+  free plan (limits, invite caps, session logs) until the server answers. The entitlements call times out after
+  5 seconds (`ENTITLEMENTS_TIMEOUT_MS`), since it runs on the request path whenever no plan is cached.
+- **The plan carries no usage counts, and no API reports the project count.** The project limit is enforced only
+  on the backend, by `lockAndCountWorkspaces` under the create lock; the UI shows the refusal. Project changes do
+  not touch the plan cache.
 - **`getPlan` returns a `Plan`, which keeps its features private and frozen.** Check a feature with
   `plan.has(PlanFeature.X)` / `plan.assert(PlanFeature.X)`, a product a plan can switch off (null means available)
   with `plan.allows(PlanProduct.X)`, and read data through its getters (`slug`, `rateLimits`, ...). Add a getter only
@@ -97,6 +99,9 @@ Rules:
   final answer goes in the client, not as a status check in `UsageReportService`.
 - **Billing isn't on `TLicenseService`.** It's the EE `LicenseServerClient`, returned by `createDomains` as
   `licenseBilling` and passed only to subscription code.
+- **A failed renewal reaches the org as the `subscription_payment_failed` plan notice**, pulled with the plan since
+  the License Server never calls us. It drives the org-wide banner and carries no payment link, because every member
+  reads the plan; the invoice link stays on the permission-checked billing overview.
 - **Offline licenses never hit the License Server** (`LicenseServerClient.fromConfig` stays dormant).
 - **Only `license-policy/entitlement-projection.ts` imports `./default-features`, by that exact specifier.** The e2e
   suite aliases it to `e2e-test/fakes/default-features.ts`, so a free tier read anywhere else escapes the

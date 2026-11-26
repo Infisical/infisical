@@ -1,9 +1,7 @@
-import { TAuditLogs } from "@app/db/schemas";
-
 import { TAuditLogStreamOutboxRow } from "../audit-log-stream-outbox/audit-log-stream-outbox-types";
-import { TLogStreamFactoryProviderBatchLimit } from "./audit-log-stream-types";
+import { TAuditLogStreamEvent, TLogStreamFactoryProviderBatchLimit } from "./audit-log-stream-types";
 
-const sizeOf = (log: TAuditLogs): number => Buffer.byteLength(JSON.stringify(log), "utf8");
+const sizeOf = (log: TAuditLogStreamEvent): number => Buffer.byteLength(JSON.stringify(log), "utf8");
 
 export const chunkAuditLogsByBatchLimit = (
   auditLogs: TAuditLogStreamOutboxRow[],

@@ -4,6 +4,7 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
@@ -25,7 +26,7 @@ import { TAgentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-service";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
-import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
+import { RequestActor, TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditReportServiceFactory } from "@app/ee/services/audit-report/audit-report-service";
 import { TCertificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-types";
 import { TCertificateAuthorityCrossSignedCertServiceFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-service";
@@ -50,6 +51,7 @@ import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operati
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
+import { TMicrosoftAutoenrollmentServiceFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
 import { TPamAccountHeartbeatServiceFactory } from "@app/ee/services/pam-account-heartbeat/pam-account-heartbeat-service";
@@ -60,6 +62,7 @@ import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discover
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
 import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-project-resolver";
+import { TPamSessionActivityServiceFactory } from "@app/ee/services/pam-session-activity/pam-session-activity-service";
 import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
@@ -87,6 +90,7 @@ import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scannin
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
@@ -299,7 +303,9 @@ declare module "fastify" {
       clientId: string;
       name: string;
     };
-    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor" | "orgId">;
+    auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "orgId"> & {
+      actor: RequestActor;
+    };
     internalCertManagerProjectId: string;
     internalPamProjectId: string;
     internalSecretScanningProjectId: string;
@@ -333,6 +339,7 @@ declare module "fastify" {
     orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
+    cronJob: TCronJobFactory;
     user: TUserServiceFactory;
     group: TGroupServiceFactory;
     groupProject: TGroupProjectServiceFactory;
@@ -422,6 +429,7 @@ declare module "fastify" {
     certificateEst: TCertificateEstServiceFactory;
     pkiAcme: TPkiAcmeServiceFactory;
     pkiScep: TPkiScepServiceFactory;
+    microsoftAutoenrollment: TMicrosoftAutoenrollmentServiceFactory;
     certificateEstV3: TCertificateEstV3ServiceFactory;
     pkiCollection: TPkiCollectionServiceFactory;
     pkiSubscriber: TPkiSubscriberServiceFactory;
@@ -433,6 +441,7 @@ declare module "fastify" {
     licenseService: TLicenseService;
     kmsDataKeyService: TKmsDataKeyService;
     kmsRootKeyService: TKmsRootKeyService;
+    instanceConfigService: TInstanceConfigService;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;
@@ -503,6 +512,7 @@ declare module "fastify" {
     pamMembership: TPamMembershipServiceFactory;
     pamSession: TPamSessionServiceFactory;
     pamSessionChunk: TPamSessionChunkServiceFactory;
+    pamSessionActivity: TPamSessionActivityServiceFactory;
     pamAccessRequest: TPamAccessRequestServiceFactory;
     pamWebAccess: TPamWebAccessServiceFactory;
     mfaSession: TMfaSessionServiceFactory;

@@ -1,7 +1,7 @@
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TOrgDALFactory } from "./org-dal";
 import { emitOrgMembershipRemoved, toOrgMembershipActors } from "./org-membership-events";

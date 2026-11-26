@@ -1,1 +1,0 @@
-export { OrgCertManagerTab } from "./OrgCertManagerTab";

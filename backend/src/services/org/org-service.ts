@@ -12,6 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
+import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -48,6 +49,7 @@ import {
   NotFoundError,
   UnauthorizedError
 } from "@app/lib/errors";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -58,7 +60,7 @@ import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
-import { getOrgAllowedMfaMethods, MFA_METHOD_PRIORITY } from "../auth/auth-fns";
+import { getOrgAllowedMfaMethods } from "../auth/auth-fns";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import {
   ActorAuthMethod,
@@ -71,7 +73,6 @@ import {
 } from "../auth/auth-type";
 import { bootstrapCertManagerProject } from "../cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
-import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
@@ -84,8 +85,6 @@ import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
-import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
@@ -149,6 +148,7 @@ type TOrgServiceFactoryDep = {
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   orgInviteQuota: Pick<TOrgInviteQuota, "admit">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -186,7 +186,8 @@ export const orgServiceFactory = ({
   gatewayV2Service,
   auditLogSettingsService,
   eventEmitter,
-  orgInviteQuota
+  orgInviteQuota,
+  instanceConfigService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -503,7 +504,6 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRoleSlug,
       enforceMfa,
-      selectedMfaMethod,
       allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
@@ -570,16 +570,7 @@ export const orgServiceFactory = ({
       }
     }
 
-    // Stored strongest first, so the first entry is the strongest allowed method. selectedMfaMethod is the
-    // deprecated single-method form of the same setting.
-    let allowedMfaMethodsUpdate: MfaMethod[] | undefined;
-    if (allowedMfaMethods !== undefined) {
-      allowedMfaMethodsUpdate = MFA_METHOD_PRIORITY.filter((method) => allowedMfaMethods.includes(method));
-    } else if (selectedMfaMethod !== undefined) {
-      allowedMfaMethodsUpdate = [selectedMfaMethod];
-    }
-
-    if (enforceMfa !== undefined || allowedMfaMethodsUpdate) {
+    if (enforceMfa !== undefined || allowedMfaMethods) {
       if (!plan.has(PlanFeature.EnforceMfa)) {
         throw new BadRequestError({
           message: "Failed to enforce user MFA due to plan restriction. Upgrade plan to enforce/un-enforce MFA."
@@ -589,7 +580,7 @@ export const orgServiceFactory = ({
       // Email codes need SMTP; passkeys and authenticator apps don't, so only an allowlist with email does.
       const orgBeforeUpdate = await orgDAL.findById(orgId);
       const willEnforceMfa = enforceMfa ?? orgBeforeUpdate?.enforceMfa;
-      const willAllowEmail = (allowedMfaMethodsUpdate ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
+      const willAllowEmail = (allowedMfaMethods ?? getOrgAllowedMfaMethods(orgBeforeUpdate ?? {})).includes(
         MfaMethod.EMAIL
       );
       if (willEnforceMfa && willAllowEmail && !appCfg.isSmtpConfigured) {
@@ -747,10 +738,7 @@ export const orgServiceFactory = ({
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
-      allowedMfaMethods: allowedMfaMethodsUpdate,
-      // Kept in step with the first allowed method so a server on the previous release, which reads only
-      // selectedMfaMethod, still enforces a method the org chose.
-      selectedMfaMethod: allowedMfaMethodsUpdate?.[0],
+      allowedMfaMethods,
       ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
       bypassOrgAuthEnabled,
@@ -877,10 +865,12 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    // Seat sync calls the License Server, so it waits for commit (the caller's, if it passed a tx).
-    if (!trx) await usageMeteringService.syncSeats(organization.id);
-
-    usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    // Seat sync calls the License Server and the usage event enqueues a job, so both wait for commit. A caller that
+    // passed a tx runs them after its own commit.
+    if (!trx) {
+      await usageMeteringService.syncSeats(organization.id);
+      usageMeteringService.emit(organization.id, Meter.PamIdentities);
+    }
 
     return organization;
   };
@@ -1144,8 +1134,8 @@ export const orgServiceFactory = ({
   };
 
   const $isEmailLoginEnabled = async () => {
-    const { enabledLoginMethods } = await getServerCfg();
-    return !enabledLoginMethods || enabledLoginMethods.includes(LoginMethod.EMAIL);
+    const loginPolicy = await instanceConfigService.getLoginPolicy();
+    return loginPolicy.allows(LoginMethod.EMAIL);
   };
 
   const resendOrgMemberInvitation = async ({

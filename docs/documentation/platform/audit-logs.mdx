@@ -376,7 +376,7 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
 </Tabs>
 
 <Note>
-Actor ID filtering is only supported for actor types that carry an ID: `user`, `identity`, `service`, `kmipClient`, `kmipServer`, `gateway`, `relay`, `agentVaultProxy`, `acmeProfile`, `acmeAccount`, `estAccount`, and `scepAccount`.
+Actor ID filtering is only supported for actor types that carry an ID: `user`, `identity`, `service`, `kmipClient`, `kmipServer`, `gateway`, `relay`, `agentVaultProxy`, `acmeProfile`, `acmeAccount`, `estAccount`, `scepAccount`, and `microsoftAutoenrollmentAccount`.
 
 `platform`, `scimClient`, and `unknownUser` don't have an ID field and can only be filtered by type.
 </Note>
@@ -597,10 +597,10 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   <Accordion title="Why a certificate failed to issue" id="certificate-issuance-failures">
     Find every certificate that Infisical couldn't issue, and the reason for each failure.
 
-    Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, and SCEP, including renewals and certificates issued after an approval.
+    Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, SCEP, and Microsoft Autoenrollment, including renewals and certificates issued after an approval.
 
     <Note>
-      If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials).
+      If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials). Microsoft Autoenrollment requests refused before issuance, such as a failed Kerberos sign-in or a computer outside the allowed groups, are recorded as `microsoft-autoenrollment-request-refused` events.
     </Note>
 
     <Tabs>
@@ -629,7 +629,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     The `event.metadata` of each result records which certificate failed and why:
 
     - `operation`: what was requested (`issue`, `sign`, `order`, or `renew`)
-    - `enrollmentType`: how the certificate was requested (`api`, `acme`, `est`, or `scep`)
+    - `enrollmentType`: how the certificate was requested (`api`, `acme`, `est`, `scep`, or `microsoft-autoenrollment`)
     - `error` and `errorName`: why issuance failed, such as a TTL longer than the certificate policy allows or an error from the CA
     - `certificateProfileId`, `profileName`, `caId`, `caName`, `commonName`, `applicationId`, and `applicationName`: the certificate the request was for, where Infisical knows them
     - `certificateRequestId`: the certificate request that failed, if Infisical had already created one
@@ -672,6 +672,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     - A user or machine identity: that actor revoked the certificate right away
     - `platform`, with the approval request's ID in `event.metadata.approvalRequestId`: Infisical revoked the certificate once the request was approved
     - `platform`, with `event.metadata.source` set to `microsoft-intune`: Microsoft Intune asked Infisical to revoke the certificate
+    - `platform`, with `event.metadata.source` set to `same-certificate`: Infisical revoked the certificate because another copy of it was revoked, such as the certificate you imported again after deleting this one, with that copy's ID and name in `event.metadata.revokedThroughCertId` and `event.metadata.revokedThroughCertName`
     - `platform`, with neither field: the certificate's DigiCert CA revoked it, and Infisical recorded the revocation
 
     If an approved revocation fails, Infisical records a `cert-revocation-failed` event instead, with `platform` as the actor and the reason in `event.metadata.error`.

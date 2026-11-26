@@ -1,6 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import https from "https";
 
+import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { isValidAzureAppConfigurationUrl } from "@app/lib/validator";
@@ -19,6 +20,7 @@ type TAzureAppConfigurationSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
+  instanceConfigService: TInstanceConfigService;
 };
 
 interface AzureAppConfigKeyValue {
@@ -30,7 +32,8 @@ interface AzureAppConfigKeyValue {
 export const azureAppConfigurationSyncFactory = ({
   kmsDataKeyService,
   appConnectionDAL,
-  oidcIssuerService
+  oidcIssuerService,
+  instanceConfigService
 }: TAzureAppConfigurationSyncFactoryDeps) => {
   const $getCompleteAzureAppConfigValues = async (accessToken: string, baseURL: string, url: string) => {
     let result: AzureAppConfigKeyValue[] = [];
@@ -89,7 +92,8 @@ export const azureAppConfigurationSyncFactory = ({
       secretSync.connectionId,
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${
@@ -179,7 +183,8 @@ export const azureAppConfigurationSyncFactory = ({
       secretSync.connectionId,
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const azureAppConfigValuesUrl = `/kv?api-version=2023-11-01${
@@ -215,7 +220,8 @@ export const azureAppConfigurationSyncFactory = ({
       secretSync.connectionId,
       appConnectionDAL,
       kmsDataKeyService,
-      oidcIssuerService
+      oidcIssuerService,
+      instanceConfigService
     );
 
     const secretMap: TSecretMap = {};
