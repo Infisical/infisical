@@ -29,7 +29,7 @@ import { InfisicalProjectTemplate, type TProjectTemplate } from "@app/hooks/api/
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 import { ProjectTypePermissionSubjects } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
-import { useOrgId, useOrgPermission } from "../../../access/permissions";
+import { useOrgPermission } from "../../../access/permissions";
 import { KMS_KEY_SUBJECTS, PROJECT_SUBJECTS } from "../../../access/roles/catalog";
 import { projectToApi } from "../../../access/roles/permissions-model";
 import { RoleEditor } from "../../../access/roles/role-detail";
@@ -278,14 +278,12 @@ export const TemplateDetail = ({
   projectType: ProjectType;
   links: Links;
 }) => {
-  const orgId = useOrgId();
   const { role } = useSearch({ strict: false }) as { role?: string };
   const { permission, isPending: permissionPending } = useOrgPermission();
   const productSettings = useV4Adapter("productSettings");
-  const { data: subscription } = productSettings.useSubscription(orgId);
   const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
   const { data: templates, isPending } = productSettings.useProjectTemplates({
-    enabled: canRead && Boolean(subscription?.projectTemplates)
+    enabled: canRead
   });
   const template = useMemo(() => {
     const found = templates?.find((item) => item.id === templateId && item.type === projectType);
@@ -305,7 +303,7 @@ export const TemplateDetail = ({
   );
 
   let body;
-  if (permissionPending || (canRead && isPending && subscription?.projectTemplates))
+  if (permissionPending || (canRead && isPending))
     body = <PageLoader label="Loading project template" />;
   else if (!canRead) body = <AccessRestricted requirement="read Project Templates" />;
   else if (!template)
