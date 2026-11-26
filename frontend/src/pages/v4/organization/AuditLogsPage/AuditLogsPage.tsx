@@ -31,6 +31,7 @@ import { Heading, Meta } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { AuditLogsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   OrgPermissionAuditLogsActions,
@@ -54,6 +55,7 @@ import { useOrgPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { useUpgradeGate } from "../../license";
 import { orgHref, v4Path } from "../../links";
 import { EventClassesCard } from "./event-classes";
 import { AuditLogStreamsTab } from "./streams/streams";
@@ -636,6 +638,7 @@ const OrgAuditLogSettings = () => {
   const { data: plan } = adapter.usePlan(organization.id);
   const { data: settings, isPending, error } = adapter.useOrgSettings(organization.id);
   const update = adapter.useUpdateOrgSettings();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   if (
     !permissionPending &&
     !permission.can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs)
@@ -644,16 +647,29 @@ const OrgAuditLogSettings = () => {
   let locked: string | undefined;
   if (!permission.can(OrgPermissionAuditLogsActions.Edit, OrgPermissionSubjects.AuditLogs))
     locked = "You need the Edit permission on Audit Logs to change these settings.";
-  else if (plan && !plan.auditLogs) locked = "Choosing recorded events needs a paid plan.";
   return (
-    <EventClassesCard
-      description="Choose which organization-level events are recorded. Each project has its own setting."
-      settings={settings}
-      isPending={isPending}
-      error={error}
-      locked={locked}
-      onSave={(eventClasses) => update.mutateAsync({ eventClasses })}
-    />
+    <>
+      <EventClassesCard
+        description="Choose which organization-level events are recorded. Each project has its own setting."
+        settings={settings}
+        isPending={isPending}
+        error={error}
+        locked={locked}
+        upgradeBlocked={() => {
+          if (!plan || plan.auditLogs) return false;
+          openUpgradeGate({
+            intent: {
+              ...AuditLogsUpgradeIntent,
+              description: "Choose which audit events are recorded."
+            },
+            paywallKey: "organization.audit-log-settings"
+          });
+          return true;
+        }}
+        onSave={(eventClasses) => update.mutateAsync({ eventClasses })}
+      />
+      {upgradeGate}
+    </>
   );
 };
 

@@ -18,11 +18,15 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { isValidEmail, normalizeEmail } from "@app/helpers/email";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
-import { useOrgId, useOrgPermission } from "../permissions";
+import { useOrgId, useOrgPermission, useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { personName, useMemberRoleAccess } from "./member-access";
 import { accessNoun, accessThe, accessThis } from "./product";
@@ -41,8 +45,12 @@ export const AddMemberDialog = ({
   const scope = useProjectScope();
   const access = useV4Adapter("access");
   const { permission: orgPermission } = useOrgPermission();
+  const { permission: projectPermission } = useProjectPermission(projectId);
   const members = access.useProjectUsers(projectId);
   const availableUsers = access.useAvailableProjectUsers(projectId, scope.projectType);
+  const orgUsers = access.useOrgUsers(orgId, {
+    enabled: orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member)
+  });
   const project = access.useProject(projectId);
   const { assignable } = useMemberRoleAccess(projectId);
   const addUsers = access.useAddProjectUsers();
@@ -56,6 +64,11 @@ export const AddMemberDialog = ({
   const [invited, setInvited] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
 
+  const canAdd = projectPermission.can(
+    ProjectPermissionMemberActions.Create,
+    ProjectPermissionSub.Member
+  );
+  const loadFailed = Boolean(members.error || availableUsers.error);
   const canInvite = orgPermission.can(
     OrgPermissionMemberActions.Create,
     OrgPermissionSubjects.Member
@@ -74,9 +87,14 @@ export const AddMemberDialog = ({
     () =>
       new Set([
         ...(members.data ?? []).flatMap((member) => [member.user.username, member.user.email]),
-        ...available.flatMap((user) => [user.username, user.email])
+        ...available.flatMap((user) => [user.username, user.email]),
+        ...(orgUsers.data ?? []).flatMap(({ user, membership }) => [
+          user.username,
+          user.email,
+          membership?.inviteEmail
+        ])
       ]),
-    [members.data, available]
+    [members.data, available, orgUsers.data]
   );
   const options = [
     ...available.map((user) => ({
@@ -106,6 +124,7 @@ export const AddMemberDialog = ({
   };
 
   const submit = async () => {
+    if (!canAdd || loadFailed) return;
     if (project.data?.version === ProjectVersion.V1) {
       failed(
         `Please upgrade ${accessThe(scope.projectType)} to invite new members to ${accessThe(scope.projectType)}.`
@@ -145,6 +164,17 @@ export const AddMemberDialog = ({
           }}
         >
           <Stack gap={16}>
+            {!canAdd && (
+              <Alert
+                tone="warn"
+                title="Permission required"
+              >{`You don't have permission to add users to ${accessThis(scope.projectType)}.`}</Alert>
+            )}
+            {loadFailed && (
+              <Alert tone="bad" title="Could not load member options">
+                Refresh the page to try again.
+              </Alert>
+            )}
             {isRequesterMember && (
               <Alert
                 tone="bad"
@@ -204,7 +234,7 @@ export const AddMemberDialog = ({
             type="submit"
             form="add-project-members"
             loading={pending}
-            disabled={!users.length || !roles.length}
+            disabled={!canAdd || loadFailed || !users.length || !roles.length}
           >
             Add members
           </Button>

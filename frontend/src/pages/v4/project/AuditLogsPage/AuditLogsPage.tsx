@@ -9,7 +9,10 @@ import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
-import { AuditRetentionUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
+import {
+  AuditLogsUpgradeIntent,
+  AuditRetentionUpgradeIntent
+} from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   ProjectPermissionAuditLogsActions,
@@ -66,20 +69,31 @@ const ProjectEventClassesCard = ({
   const { data: plan } = adapter.usePlan(organization.id);
   const { data: settings, isPending, error } = adapter.useProjectSettings(projectId);
   const update = adapter.useUpdateProjectSettings();
-
-  let locked: string | undefined;
-  if (!canEdit) locked = EDIT_REQUIRED;
-  else if (plan && !plan.auditLogs) locked = "Choosing recorded events needs a paid plan.";
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   return (
-    <EventClassesCard
-      description={`Choose which classes of events ${scopeOf(projectType)} records.`}
-      settings={settings}
-      isPending={isPending}
-      error={error}
-      locked={locked}
-      onSave={(eventClasses) => update.mutateAsync({ projectId, eventClasses })}
-    />
+    <>
+      <EventClassesCard
+        description={`Choose which classes of events ${scopeOf(projectType)} records.`}
+        settings={settings}
+        isPending={isPending}
+        error={error}
+        locked={canEdit ? undefined : EDIT_REQUIRED}
+        upgradeBlocked={() => {
+          if (!plan || plan.auditLogs) return false;
+          openUpgradeGate({
+            intent: {
+              ...AuditLogsUpgradeIntent,
+              description: "Choose which audit events are recorded."
+            },
+            paywallKey: "project.audit-log-settings"
+          });
+          return true;
+        }}
+        onSave={(eventClasses) => update.mutateAsync({ projectId, eventClasses })}
+      />
+      {upgradeGate}
+    </>
   );
 };
 
