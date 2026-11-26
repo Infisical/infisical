@@ -252,11 +252,16 @@ const EmailRecipientsField = ({
       wide
       label="Recipients"
       error={error ?? members.unavailableReason}
-      description={`${
-        allowEmailAddresses
-          ? "Pick organization members or type an email address on a verified email domain."
-          : `Pick ${pickable}.`
-      }${also.length ? ` Also sent to ${also.join(" and ")}.` : ""}`}
+      description={
+        [
+          allowEmailAddresses
+            ? "Pick organization members or type an email address on a verified email domain."
+            : projectId && `Pick ${pickable}.`,
+          also.length ? `Also sent to ${also.join(" and ")}.` : undefined
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
+      }
     >
       <Combobox
         multiple
