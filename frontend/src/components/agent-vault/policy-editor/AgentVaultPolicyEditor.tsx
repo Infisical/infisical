@@ -167,7 +167,7 @@ export const AgentVaultPolicyEditor = ({
       <Tabs
         value={tab}
         onValueChange={(value) => onTabChange(value as TPolicyEditorTab)}
-        className="min-w-0 gap-4"
+        className="min-w-0"
       >
         {/* The tab bar's underline runs the full width, so the button sits over its right end */}
         <div className="relative">

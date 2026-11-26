@@ -173,7 +173,7 @@ const ServiceDetailsHoverCard = ({
         </button>
       </HoverCardTrigger>
       <HoverCardContent align="start" className="w-auto max-w-96">
-        <DetailGroup className="gap-y-3">
+        <DetailGroup>
           <Detail>
             <DetailLabel>Type</DetailLabel>
             <DetailValue>{SERVICE_TYPE_LABELS[service.type]}</DetailValue>
