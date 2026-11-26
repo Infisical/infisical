@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
@@ -122,8 +122,15 @@ export const AgentVaultPolicyEditor = ({
   const [collapsedScopes, setCollapsedScopes] = useState<string[]>([]);
   const toggled = (keys: string[], scopeKey: string, isIn: boolean) =>
     isIn ? [...new Set([...keys, scopeKey])] : keys.filter((key) => key !== scopeKey);
-  // A row shows once it's added, or while the role allows or denies anything on it.
+  // A row shows once it's added or once the role allows or denies anything on it, and stays until it's taken off, so
+  // emptying a card from inside it doesn't make the card vanish.
   const [addedRows, setAddedRows] = useState<TPermissionRowKey[]>([]);
+  useEffect(() => {
+    const held = PERMISSION_ROWS.map(({ key }) => key).filter((key) => !isRowEmpty(policy, key));
+    setAddedRows((prev) =>
+      held.every((key) => prev.includes(key)) ? prev : [...new Set([...prev, ...held])]
+    );
+  }, [policy]);
   const isRowShown = (rowKey: TPermissionRowKey) =>
     addedRows.includes(rowKey) || !isRowEmpty(policy, rowKey);
   const shownRows = PERMISSION_ROWS.map(({ key }) => key).filter(isRowShown);

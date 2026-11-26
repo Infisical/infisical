@@ -233,63 +233,51 @@ const ItemIcon = ({ item, rowKey }: { item?: TPolicyResourceItem; rowKey: TResou
 
 type TAddPopoverProps = {
   rowKey: TResourceRowKey;
-  canAddAll: boolean;
+  isAllAdded: boolean;
   addedIds: Set<string>;
   searchResults: TPolicyResourceItem[];
   isSearching: boolean;
   hasMoreResults: boolean;
   onSearchChange: (search: string) => void;
-  onAdd: (picked: { isAll: boolean; ids: string[] }) => void;
+  // Checking an entry adds it to the role and unchecking takes it off, as Add Policies does.
+  onToggleAll: (isAdded: boolean) => void;
+  onToggleItem: (itemId: string, isAdded: boolean) => void;
 };
 
-// Holds its place when hidden, so names don't shift as items are picked.
-const PickedCheck = ({ isPicked }: { isPicked: boolean }) => (
-  <CheckIcon className={cn("ml-auto text-foreground", isPicked ? "opacity-100" : "opacity-0")} />
+// Holds its place when hidden, so names don't shift as entries are checked.
+const AddedCheck = ({ isAdded }: { isAdded: boolean }) => (
+  <CheckIcon className={cn("ml-auto text-foreground", isAdded ? "opacity-100" : "opacity-0")} />
 );
 
 const AddResourcesPopover = ({
   rowKey,
-  canAddAll,
+  isAllAdded,
   addedIds,
   searchResults,
   isSearching,
   hasMoreResults,
   onSearchChange,
-  onAdd
+  onToggleAll,
+  onToggleItem
 }: TAddPopoverProps) => {
   const { label, plural } = RESOURCE_NOUNS[rowKey];
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
 
   const changeSearch = (value: string) => {
     setSearch(value);
     onSearchChange(value);
   };
-  const close = () => {
-    setIsOpen(false);
-    changeSearch("");
-    setPicked(new Set());
-  };
-  const toggle = (id: string) =>
-    setPicked((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  const isAllListed = canAddAll && !search.trim();
-  const pickedItemCount = picked.size - (picked.has(ALL_OPTION) ? 1 : 0);
-  const itemsLabel = `${pickedItemCount} ${pickedItemCount === 1 ? COLUMN_LABELS[rowKey] : label}`;
-  let addLabel = pickedItemCount ? `Add ${itemsLabel}` : `Add ${label}`;
-  if (picked.has(ALL_OPTION)) {
-    addLabel = pickedItemCount
-      ? `Add All ${label} and ${pickedItemCount} More`
-      : `Add All ${label}`;
-  }
+  const isAllListed = !search.trim();
 
   return (
-    <Popover open={isOpen} onOpenChange={(open) => (open ? setIsOpen(true) : close())}>
+    <Popover
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (!open) changeSearch("");
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm">
           <PlusIcon />
@@ -310,19 +298,17 @@ const AddResourcesPopover = ({
             onWheel={(event) => event.stopPropagation()}
           >
             {!isSearching && !isAllListed && (
-              <CommandEmpty>
-                {search ? `No ${plural} match that search` : `No ${plural} in this project`}
-              </CommandEmpty>
+              <CommandEmpty>No {plural} match that search</CommandEmpty>
             )}
             {isAllListed && (
               <CommandGroup>
-                <CommandItem value={ALL_OPTION} onSelect={() => toggle(ALL_OPTION)}>
+                <CommandItem value={ALL_OPTION} onSelect={() => onToggleAll(!isAllAdded)}>
                   <BoxesIcon className="text-muted" />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate">All {label}</span>
                     <span className="truncate text-xs text-muted">Including ones added later</span>
                   </div>
-                  <PickedCheck isPicked={picked.has(ALL_OPTION)} />
+                  <AddedCheck isAdded={isAllAdded} />
                 </CommandItem>
               </CommandGroup>
             )}
@@ -333,8 +319,7 @@ const AddResourcesPopover = ({
                   <CommandItem
                     key={option.id}
                     value={option.id}
-                    disabled={isAdded}
-                    onSelect={() => toggle(option.id)}
+                    onSelect={() => onToggleItem(option.id, !isAdded)}
                   >
                     <ItemIcon item={option} rowKey={rowKey} />
                     <div className="flex min-w-0 flex-col">
@@ -343,7 +328,7 @@ const AddResourcesPopover = ({
                         <span className="truncate text-xs text-muted">{option.description}</span>
                       )}
                     </div>
-                    <PickedCheck isPicked={isAdded || picked.has(option.id)} />
+                    <AddedCheck isAdded={isAdded} />
                   </CommandItem>
                 );
               })}
@@ -354,22 +339,6 @@ const AddResourcesPopover = ({
               Search by name to find {plural} that aren&apos;t listed.
             </div>
           )}
-          <div className="flex justify-end border-t border-border p-2">
-            <Button
-              variant="outline"
-              size="xs"
-              isDisabled={!picked.size}
-              onClick={() => {
-                onAdd({
-                  isAll: picked.has(ALL_OPTION),
-                  ids: [...picked].filter((id) => id !== ALL_OPTION)
-                });
-                close();
-              }}
-            >
-              {addLabel}
-            </Button>
-          </div>
         </Command>
       </PopoverContent>
     </Popover>
@@ -465,17 +434,26 @@ const ResourceAccessCardView = ({
     }
   ];
 
-  // Every one of them goes first, so the items picked with it start at a level above it, as they would if it had been
-  // added before them.
-  const addPicked = ({ isAll, ids }: { isAll: boolean; ids: string[] }) => {
-    if (isAll) setIsAllAdded(true);
-    const withAll = isAll ? setAllLevel(policy, ADDED_ALL_LEVEL) : policy;
-    onChange(ids.length ? addResourceItems(withAll, rowKey, ids) : withAll);
-  };
   const removeAll = () => {
     setIsAllAdded(false);
     onScopeOpenChange(allScopeKey(rowKey), false);
     onChange(setAllLevel(policy, NONE_LEVEL));
+  };
+  const toggleAll = (isAdded: boolean) => {
+    if (!isAdded) {
+      removeAll();
+      return;
+    }
+    setIsAllAdded(true);
+    onChange(setAllLevel(policy, ADDED_ALL_LEVEL));
+  };
+  const toggleItem = (itemId: string, isAdded: boolean) => {
+    if (isAdded) {
+      onChange(addResourceItems(policy, rowKey, [itemId]));
+      return;
+    }
+    onScopeOpenChange(itemScopeKey(rowKey, itemId), false);
+    onChange(removeResourceItem(policy, rowKey, itemId));
   };
 
   return (
@@ -490,13 +468,14 @@ const ResourceAccessCardView = ({
           <CardAction className="flex items-center gap-1">
             <AddResourcesPopover
               rowKey={rowKey}
-              canAddAll={!isAllShown}
+              isAllAdded={isAllShown}
               addedIds={addedIds}
               searchResults={searchResults}
               isSearching={isSearching}
               hasMoreResults={hasMoreResults}
               onSearchChange={onSearchChange}
-              onAdd={addPicked}
+              onToggleAll={toggleAll}
+              onToggleItem={toggleItem}
             />
             {onRemove && (
               <IconButton
