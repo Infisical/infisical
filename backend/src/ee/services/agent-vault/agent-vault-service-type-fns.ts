@@ -20,6 +20,7 @@ import {
   AgentVaultMysqlServiceConfigSchema,
   AgentVaultPostgresServiceConfigSchema,
   AgentVaultSshServiceConfigSchema,
+  AgentVaultTlsServiceConfigSchema,
   isNativeServiceType,
   TAgentVaultNativeServiceConfig,
   TAgentVaultNativeTls
@@ -194,6 +195,19 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
     supportsTransformations: { customHeaders: false, substitutions: false },
     unsupportedFieldHint:
       "Its server is set with 'host' and 'port', and request rules apply only to HTTP and MCP services."
+  },
+  [AgentVaultServiceType.Tls]: {
+    type: AgentVaultServiceType.Tls,
+    label: "TLS",
+    article: "A",
+    configSchema: AgentVaultTlsServiceConfigSchema,
+    allowedCredentialTypes: [AgentVaultCredentialType.ClientCertificate, AgentVaultCredentialType.DynamicSecret],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host', 'port', and 'tls', and request rules apply only to HTTP and MCP services."
   }
 };
 
@@ -280,7 +294,9 @@ const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Basic]: "basic auth",
   [AgentVaultCredentialType.Passthrough]: "pass-through",
   [AgentVaultCredentialType.OAuth]: "OAuth",
-  [AgentVaultCredentialType.SshKey]: "an SSH key"
+  [AgentVaultCredentialType.SshKey]: "an SSH key",
+  [AgentVaultCredentialType.ClientCertificate]: "a client certificate",
+  [AgentVaultCredentialType.DynamicSecret]: "a dynamic secret"
 };
 
 export const assertCredentialTypeSupported = (
@@ -369,7 +385,8 @@ export type TAgentVaultServiceTypeFields =
       database: string;
       tls: TServiceResponseTls;
     }
-  | { type: AgentVaultServiceType.Ssh; host: string; port: number };
+  | { type: AgentVaultServiceType.Ssh; host: string; port: number }
+  | { type: AgentVaultServiceType.Tls; host: string; port: number; tls: TServiceResponseTls };
 
 const toResponseTls = (tls: TAgentVaultNativeTls): TServiceResponseTls => ({
   enabled: tls.enabled,
@@ -406,6 +423,10 @@ export const toServiceTypeFields = (row: {
     case AgentVaultServiceType.Mysql: {
       const { host, port, database, tls } = row.config as z.infer<typeof AgentVaultPostgresServiceConfigSchema>;
       return { type, host, port, database, tls: toResponseTls(tls) };
+    }
+    case AgentVaultServiceType.Tls: {
+      const { host, port, tls } = row.config as z.infer<typeof AgentVaultTlsServiceConfigSchema>;
+      return { type, host, port, tls: toResponseTls(tls) };
     }
     default: {
       const { host, port } = row.config as z.infer<typeof AgentVaultSshServiceConfigSchema>;

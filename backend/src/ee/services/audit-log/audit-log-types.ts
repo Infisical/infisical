@@ -6925,7 +6925,7 @@ interface AgentVaultServiceCreateEvent {
     // MCP services only.
     serverUrl?: string;
     transport?: string;
-    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    // Database, SSH, and TLS services only. A host pattern is never set on those, so they report these instead.
     host?: string;
     port?: number;
     database?: string;
@@ -6933,9 +6933,17 @@ interface AgentVaultServiceCreateEvent {
     tlsVerify?: boolean;
     // Whether the proxy checks the server's certificate against a CA stored on the service rather than the system's.
     hasTlsCa?: boolean;
-    // Absent for a database or SSH service.
+    // Absent for a database, SSH, or TLS service.
     hostPattern?: string;
     credentialType: string;
+    // Client certificate credentials only.
+    clientCertificateNotAfter?: string;
+    // Dynamic secret credentials only.
+    dynamicSecretId?: string;
+    dynamicSecretName?: string;
+    dynamicSecretProjectId?: string;
+    dynamicSecretEnvironment?: string;
+    dynamicSecretSecretPath?: string;
     // OAuth credentials only. A service that sends an OAuth variable's sign-in names the variable instead.
     oauthIssuer?: string;
     oauthScopes?: string[];
@@ -6975,7 +6983,7 @@ interface AgentVaultServiceUpdateEvent {
     serviceType: string;
     serverUrl?: string;
     transport?: string;
-    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    // Database, SSH, and TLS services only. A host pattern is never set on those, so they report these instead.
     host?: string;
     port?: number;
     database?: string;
@@ -6993,6 +7001,14 @@ interface AgentVaultServiceUpdateEvent {
     hookSecretReplaced?: boolean;
     hostPattern?: string;
     credentialType?: string;
+    // Present when the update stored a new client certificate.
+    clientCertificateNotAfter?: string;
+    // Present when the update sent a dynamic secret credential.
+    dynamicSecretId?: string;
+    dynamicSecretName?: string;
+    dynamicSecretProjectId?: string;
+    dynamicSecretEnvironment?: string;
+    dynamicSecretSecretPath?: string;
     // Present when the update connected or reauthorized an OAuth credential, or the variable when it chose an OAuth
     // variable.
     oauthIssuer?: string;
@@ -7429,6 +7445,8 @@ interface AgentVaultSessionMintEvent {
           // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
           hasTlsCa?: boolean;
           credentialType: string;
+          // Client certificate credentials only.
+          clientCertificateNotAfter?: string;
           headerName?: string;
           // OAuth only: the OAuth variable whose sign-in the service sends, or the issuer of tokens sent with the session.
           oauthVariable?: { id: string; key: string };
@@ -8225,6 +8243,9 @@ interface CreateDynamicSecretLeaseEvent {
     environment: string;
     secretPath: string;
     projectId: string;
+    agentVaultServiceId?: string;
+    agentVaultServiceName?: string;
+    agentVaultProjectId?: string;
   };
 }
 
@@ -8593,11 +8614,10 @@ interface OauthClientTokenExchangeEvent {
 
 interface IssueOidcTokenEvent {
   type: EventType.ISSUE_OIDC_TOKEN;
-  metadata: {
-    connectionId: string;
-    connectionName: string;
-    audience: string;
-  };
+  metadata: { audience: string } & (
+    | { connectionId: string; connectionName: string }
+    | { dynamicSecretId: string; dynamicSecretName: string }
+  );
 }
 
 interface CreateEmailDomainEvent {

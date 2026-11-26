@@ -86,6 +86,13 @@ export const serviceTypeReportFieldsOf = (service: TAgentVaultServiceTypeFields)
       return pick(service, ["serverUrl", "transport", "hostPattern", "allowedTools"]);
     case AgentVaultServiceType.Ssh:
       return pick(service, ["host", "port"]);
+    case AgentVaultServiceType.Tls:
+      return {
+        ...pick(service, ["host", "port"]),
+        tlsEnabled: service.tls.enabled,
+        tlsVerify: service.tls.verify,
+        hasTlsCa: Boolean(service.tls.ca)
+      };
     default:
       return {
         ...pick(service, ["host", "port", "database"]),

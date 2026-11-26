@@ -29,6 +29,8 @@ import {
   agentVaultDelegationSubjectDALFactory
 } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-dal";
 import { agentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
+import { agentVaultDynamicSecretDALFactory } from "@app/ee/services/agent-vault-dynamic-secret/agent-vault-dynamic-secret-dal";
+import { agentVaultDynamicSecretServiceFactory } from "@app/ee/services/agent-vault-dynamic-secret/agent-vault-dynamic-secret-service";
 import { agentVaultFreeUsageNoticeServiceFactory } from "@app/ee/services/agent-vault-free-usage-notice/agent-vault-free-usage-notice-service";
 import { agentVaultHookDALFactory } from "@app/ee/services/agent-vault-hook/agent-vault-hook-dal";
 import { agentVaultHookServiceFactory } from "@app/ee/services/agent-vault-hook/agent-vault-hook-service";
@@ -2011,6 +2013,7 @@ export const registerRoutes = async (
   const agentVaultMemberDAL = agentVaultMemberDALFactory(db);
   const agentVaultAccessBundleDAL = agentVaultAccessBundleDALFactory(db);
   const agentVaultServiceDAL = agentVaultServiceDALFactory(db);
+  const agentVaultDynamicSecretDAL = agentVaultDynamicSecretDALFactory(db);
   const agentVaultServiceCustomHeaderDAL = agentVaultServiceCustomHeaderDALFactory(db);
   const agentVaultServiceSubstitutionDAL = agentVaultServiceSubstitutionDALFactory(db);
   const agentVaultVariableDAL = agentVaultVariableDALFactory(db);
@@ -2084,32 +2087,6 @@ export const registerRoutes = async (
     kmsDataKeyService,
     licenseService,
     membershipDAL
-  });
-
-  const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
-    agentVaultAccessBundleDAL,
-    agentVaultServiceDAL,
-    agentVaultServiceCustomHeaderDAL,
-    agentVaultServiceSubstitutionDAL,
-    agentVaultVariableDAL,
-    agentVaultServiceVariableReferenceDAL,
-    agentVaultPersonalValueDAL,
-    agentVaultPersonalValueService,
-    permissionService,
-    kmsDataKeyService,
-    licenseService,
-    agentVaultHookDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    agentVaultMemberDAL,
-    userGroupMembershipDAL,
-    identityGroupMembershipDAL,
-    agentVaultOauthService,
-    userDAL,
-    groupDAL,
-    identityDAL,
-    agentVaultDelegationDAL,
-    orgDAL
   });
 
   const agentVaultSessionService = agentVaultSessionServiceFactory({
@@ -2254,30 +2231,6 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     gatewayProxyRegistry
-  });
-
-  const agentVaultProxyService = agentVaultProxyServiceFactory({
-    agentVaultProxyDAL,
-    agentVaultResolveDAL,
-    agentVaultServiceCustomHeaderDAL,
-    agentVaultServiceSubstitutionDAL,
-    agentVaultVariableDAL,
-    agentVaultPersonalValueDAL,
-    agentVaultSessionDAL,
-    agentVaultSessionInlineServiceDAL,
-    agentVaultSessionInlineSkillDAL,
-    agentVaultDelegationDAL,
-    agentVaultSessionLogConfigDAL,
-    membershipDAL,
-    orgDAL,
-    projectDAL,
-    userDAL,
-    permissionService,
-    kmsDataKeyService,
-    licenseService,
-    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
-    resourceAuthMethodService,
-    agentVaultOauthService
   });
 
   const relayService = relayServiceFactory({
@@ -2507,7 +2460,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     projectDAL,
-    instanceConfigService
+    instanceConfigService,
+    oidcIssuerService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
@@ -2522,51 +2476,6 @@ export const registerRoutes = async (
     identityDAL,
     projectMembershipDAL,
     projectDAL
-  });
-
-  const projectService = projectServiceFactory({
-    permissionService,
-    projectDAL,
-    organizationsProjectsService,
-    projectQueue: projectQueueService,
-    secretValueTrackingService,
-    userDAL,
-    projectEnvDAL,
-    orgDAL,
-    projectMembershipDAL,
-    folderDAL,
-    licenseService,
-    usageMeteringService,
-    pkiSubscriberDAL,
-    certificateAuthorityDAL,
-    certificateDAL,
-    pkiAlertDAL,
-    pkiCollectionDAL,
-    keyStore,
-    kmsDataKeyService,
-    kmsKeyService,
-    certificateTemplateDAL,
-    projectSlackConfigDAL,
-    slackIntegrationDAL,
-    projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsIntegrationDAL,
-    projectTemplateService,
-    smtpService,
-    notificationService,
-    identityDAL,
-    membershipGroupDAL,
-    membershipIdentityDAL,
-    membershipRoleDAL,
-    membershipUserDAL,
-    roleDAL,
-    groupDAL,
-    projectAccessRequestDAL,
-    honeyTokenCleanupService,
-    dynamicSecretLeaseDAL,
-    dynamicSecretQueueService,
-    secretV2BridgeDAL,
-    honeyTokenDAL,
-    secretSyncDAL
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -3162,6 +3071,120 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     secretValidationRuleService
+  });
+
+  const agentVaultDynamicSecretService = agentVaultDynamicSecretServiceFactory({
+    agentVaultDynamicSecretDAL,
+    dynamicSecretDAL,
+    agentVaultServiceDAL,
+    folderDAL,
+    projectDAL,
+    permissionService,
+    dynamicSecretLeaseService,
+    dynamicSecretQueueService,
+    kmsDataKeyService,
+    keyStore,
+    licenseService,
+    auditLogService
+  });
+
+  const projectService = projectServiceFactory({
+    permissionService,
+    projectDAL,
+    organizationsProjectsService,
+    projectQueue: projectQueueService,
+    secretValueTrackingService,
+    userDAL,
+    projectEnvDAL,
+    orgDAL,
+    projectMembershipDAL,
+    folderDAL,
+    licenseService,
+    usageMeteringService,
+    pkiSubscriberDAL,
+    certificateAuthorityDAL,
+    certificateDAL,
+    pkiAlertDAL,
+    pkiCollectionDAL,
+    keyStore,
+    kmsDataKeyService,
+    kmsKeyService,
+    certificateTemplateDAL,
+    projectSlackConfigDAL,
+    slackIntegrationDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsIntegrationDAL,
+    projectTemplateService,
+    smtpService,
+    notificationService,
+    identityDAL,
+    membershipGroupDAL,
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    membershipUserDAL,
+    roleDAL,
+    groupDAL,
+    projectAccessRequestDAL,
+    honeyTokenCleanupService,
+    agentVaultServiceDAL,
+    agentVaultDynamicSecretService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretQueueService,
+    secretV2BridgeDAL,
+    honeyTokenDAL,
+    secretSyncDAL
+  });
+
+  const agentVaultAccessBundleService = agentVaultAccessBundleServiceFactory({
+    agentVaultAccessBundleDAL,
+    agentVaultServiceDAL,
+    agentVaultServiceCustomHeaderDAL,
+    agentVaultServiceSubstitutionDAL,
+    agentVaultVariableDAL,
+    agentVaultServiceVariableReferenceDAL,
+    agentVaultPersonalValueDAL,
+    agentVaultPersonalValueService,
+    permissionService,
+    kmsDataKeyService,
+    licenseService,
+    agentVaultHookDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    agentVaultMemberDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL,
+    agentVaultOauthService,
+    agentVaultDynamicSecretService,
+    userDAL,
+    groupDAL,
+    identityDAL,
+    agentVaultDelegationDAL,
+    orgDAL
+  });
+
+  const agentVaultProxyService = agentVaultProxyServiceFactory({
+    agentVaultProxyDAL,
+    agentVaultResolveDAL,
+    agentVaultServiceCustomHeaderDAL,
+    agentVaultServiceSubstitutionDAL,
+    agentVaultVariableDAL,
+    agentVaultPersonalValueDAL,
+    agentVaultSessionDAL,
+    agentVaultSessionInlineServiceDAL,
+    agentVaultSessionInlineSkillDAL,
+    agentVaultDelegationDAL,
+    agentVaultSessionLogConfigDAL,
+    membershipDAL,
+    orgDAL,
+    projectDAL,
+    userDAL,
+    permissionService,
+    kmsDataKeyService,
+    licenseService,
+    agentVaultAccessService: domains.agentVault.agentVaultAccessService,
+    resourceAuthMethodService,
+    agentVaultOauthService,
+    agentVaultDynamicSecretService
   });
 
   const emailDomainService = emailDomainServiceFactory({

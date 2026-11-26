@@ -18,6 +18,12 @@ export type TDynamicSecret = {
   tags?: { key: string; value: string }[];
 };
 
+export type TDynamicSecretOidcFederation = {
+  issuerUrl: string | null;
+  subject: string;
+  audience: string;
+};
+
 export enum DynamicSecretProviders {
   SqlDatabase = "sql-database",
   Cassandra = "cassandra",
@@ -49,7 +55,13 @@ export enum DynamicSecretProviders {
   OAuth2 = "oauth2",
   Kafka = "kafka",
   OpenRouter = "openrouter",
-  Neon = "neon"
+  Neon = "neon",
+  Namespace = "namespace"
+}
+
+export enum NamespaceAuthType {
+  Federation = "federation",
+  ProvisionerToken = "provisioner-token"
 }
 
 export enum OpenRouterLimitReset {
@@ -702,6 +714,15 @@ export type TDynamicSecretProvider =
             pooled: boolean;
             resetRolePassword: boolean;
             setBranchExpiration: boolean;
+          };
+    }
+  | {
+      type: DynamicSecretProviders.Namespace;
+      inputs:
+        | { method: NamespaceAuthType.Federation; tenantId: string; audience?: string }
+        | {
+            method: NamespaceAuthType.ProvisionerToken;
+            provisionerToken?: string;
           };
     };
 

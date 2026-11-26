@@ -15,18 +15,25 @@ import {
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
 
 import { DescriptionField } from "./DescriptionField";
-import { hasDatabase, MAX_NATIVE_SERVICE_NAME_LENGTH, TServiceForm } from "./serviceSchema";
+import { hasDatabase, hasTls, MAX_NATIVE_SERVICE_NAME_LENGTH, TServiceForm } from "./serviceSchema";
 
 const NAME_PLACEHOLDERS: Partial<Record<AgentVaultServiceType, string>> = {
   [AgentVaultServiceType.Postgres]: "orders-db",
   [AgentVaultServiceType.Mysql]: "orders-db",
-  [AgentVaultServiceType.Ssh]: "build-server"
+  [AgentVaultServiceType.Ssh]: "build-server",
+  [AgentVaultServiceType.Tls]: "build-engine"
 };
 
 const DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
   [AgentVaultServiceType.Postgres]: "Read orders and refunds for support questions",
   [AgentVaultServiceType.Mysql]: "Read orders and refunds for support questions",
-  [AgentVaultServiceType.Ssh]: "Run builds and read their logs"
+  [AgentVaultServiceType.Ssh]: "Run builds and read their logs",
+  [AgentVaultServiceType.Tls]: "Run builds on the shared engine"
+};
+
+const HOST_PLACEHOLDERS: Partial<Record<AgentVaultServiceType, string>> = {
+  [AgentVaultServiceType.Ssh]: "server.internal.example.com",
+  [AgentVaultServiceType.Tls]: "engine.internal.example.com"
 };
 
 export const NativeDetailsFields = () => {
@@ -36,6 +43,8 @@ export const NativeDetailsFields = () => {
   const tlsEnabled = watch("tlsEnabled");
   const tlsVerify = watch("tlsVerify");
   const showsDatabase = hasDatabase(serviceType);
+  const isTlsService = serviceType === AgentVaultServiceType.Tls;
+  const serverNoun = isTlsService ? "server" : "database";
 
   return (
     <div className="flex flex-col gap-5">
@@ -73,11 +82,7 @@ export const NativeDetailsFields = () => {
                 <Input
                   {...field}
                   id={`${baseId}-host`}
-                  placeholder={
-                    serviceType === AgentVaultServiceType.Ssh
-                      ? "server.internal.example.com"
-                      : "db.internal.example.com"
-                  }
+                  placeholder={HOST_PLACEHOLDERS[serviceType] ?? "db.internal.example.com"}
                   autoComplete="off"
                   spellCheck={false}
                   isError={Boolean(fieldState.error)}
@@ -136,29 +141,31 @@ export const NativeDetailsFields = () => {
         />
       )}
 
-      {showsDatabase && (
+      {hasTls(serviceType) && (
         <div className="flex flex-col gap-4">
-          <Controller
-            control={control}
-            name="tlsEnabled"
-            render={({ field }) => (
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldTitle>Use TLS</FieldTitle>
-                  <FieldDescription>
-                    Encrypt the connection from the proxy to the database.
-                  </FieldDescription>
-                </FieldContent>
-                <Toggle
-                  id={`${baseId}-tls-enabled`}
-                  aria-label="Use TLS"
-                  variant="av"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </Field>
-            )}
-          />
+          {!isTlsService && (
+            <Controller
+              control={control}
+              name="tlsEnabled"
+              render={({ field }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <FieldTitle>Use TLS</FieldTitle>
+                    <FieldDescription>
+                      Encrypt the connection from the proxy to the database.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
+                    id={`${baseId}-tls-enabled`}
+                    aria-label="Use TLS"
+                    variant="av"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </Field>
+              )}
+            />
+          )}
           {tlsEnabled && (
             <Controller
               control={control}
@@ -168,7 +175,8 @@ export const NativeDetailsFields = () => {
                   <FieldContent>
                     <FieldTitle>Verify Certificate</FieldTitle>
                     <FieldDescription>
-                      Check that the database&apos;s certificate is trusted and matches the host.
+                      Check that the {serverNoun}&apos;s certificate is trusted and matches the
+                      host.
                     </FieldDescription>
                   </FieldContent>
                   <Toggle
@@ -201,8 +209,9 @@ export const NativeDetailsFields = () => {
                       isError={Boolean(fieldState.error)}
                     />
                     <FieldDescription>
-                      Needed only if your database&apos;s certificate isn&apos;t publicly trusted,
-                      as with AWS RDS or Cloud SQL.
+                      {isTlsService
+                        ? "Needed only if the server's certificate isn't publicly trusted, such as one your own CA signed."
+                        : "Needed only if your database's certificate isn't publicly trusted, as with AWS RDS or Cloud SQL."}
                     </FieldDescription>
                     <FieldError>{fieldState.error?.message}</FieldError>
                   </FieldContent>

@@ -9,7 +9,7 @@ import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ConflictError } from "@app/lib/errors";
+import { ConflictError, ForbiddenRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "../agent-vault-hook/agent-vault-hook-fns";
@@ -37,6 +37,13 @@ const PROJECT_ID = "project-1";
 const BUNDLE_ID = "bundle-1";
 const SERVICE_ID = "service-1";
 const SAVED_HOOK = { id: "00000000-0000-4000-8000-0000000000aa", name: "approvals" };
+const DYNAMIC_SECRET_REFERENCE = {
+  dynamicSecretId: "00000000-0000-4000-8000-0000000000d5",
+  projectId: "secrets-project",
+  environment: "prod",
+  secretPath: "/certs",
+  name: "engine-client"
+};
 
 type TUpdateServiceInput = Parameters<ReturnType<typeof agentVaultAccessBundleServiceFactory>["updateService"]>[0];
 
@@ -75,7 +82,8 @@ const buildService = ({
   oauthVariableKeys = [],
   oauthVariableTokens = {},
   hooksOnPlan = true,
-  savedHooks = [SAVED_HOOK]
+  savedHooks = [SAVED_HOOK],
+  canLeaseDynamicSecret = true
 }: {
   firstRead: TAgentVaultServices;
   locked: TAgentVaultServices;
@@ -90,6 +98,8 @@ const buildService = ({
   hooksOnPlan?: boolean;
   // The project's saved hooks.
   savedHooks?: { id: string; name: string }[];
+  // Whether the caller may create leases on the dynamic secret a save names.
+  canLeaseDynamicSecret?: boolean;
 }) => {
   const tx = {};
   const agentVaultServiceDAL = {
@@ -185,7 +195,20 @@ const buildService = ({
       status: "connected"
     }))
   };
+  const agentVaultDynamicSecretService = {
+    prepareReference: vi.fn(async ({ dynamicSecretId }: { dynamicSecretId: string }) => {
+      if (!canLeaseDynamicSecret) {
+        throw new ForbiddenRequestError({
+          message: "You don't have permission to create leases on the dynamic secret"
+        });
+      }
+      return { ...DYNAMIC_SECRET_REFERENCE, dynamicSecretId };
+    }),
+    findExistingDynamicSecretIds: vi.fn(async (ids: string[]) => new Set(ids)),
+    revokeServiceLeases: vi.fn(async () => {})
+  };
   const service = agentVaultAccessBundleServiceFactory({
+    agentVaultDynamicSecretService,
     agentVaultAccessBundleDAL: {
       findByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID }),
       lockByIdInProject: vi.fn().mockResolvedValue({ id: BUNDLE_ID, name: "infra", projectId: PROJECT_ID })
@@ -230,7 +253,8 @@ const buildService = ({
     agentVaultOauthService,
     kmsDataKeyService,
     licenseService,
-    agentVaultHookDAL
+    agentVaultHookDAL,
+    agentVaultDynamicSecretService
   };
 };
 
@@ -401,6 +425,108 @@ const noHooksRead = [
   { action: "manage", subject: "all" },
   { action: "read", subject: ProjectPermissionSub.AgentVaultHooks, inverted: true }
 ];
+
+describe("a TLS service's dynamic secret credential", () => {
+  const OTHER = "00000000-0000-4000-8000-0000000000d6";
+  const leasing = (dynamicSecretId = DYNAMIC_SECRET_REFERENCE.dynamicSecretId): TAgentVaultServices => ({
+    ...plainService(),
+    name: "engine",
+    type: AgentVaultServiceType.Tls,
+    config: { host: "engine.internal", port: 443, tls: { enabled: true, verify: true } },
+    credentialType: AgentVaultCredentialType.DynamicSecret,
+    credentialConfig: { type: AgentVaultCredentialType.DynamicSecret, ...DYNAMIC_SECRET_REFERENCE, dynamicSecretId },
+    encryptedCredential: null
+  });
+  const create = (service: ReturnType<typeof buildService>["service"]) =>
+    service.createService({
+      projectId: PROJECT_ID,
+      ctx,
+      type: AgentVaultServiceType.Tls,
+      name: "engine",
+      host: "engine.internal",
+      credential: {
+        type: AgentVaultCredentialType.DynamicSecret,
+        dynamicSecretId: DYNAMIC_SECRET_REFERENCE.dynamicSecretId
+      }
+    });
+
+  test("stores the reference the lease check returned and seals nothing", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService() });
+
+    const { service } = await create(built.service);
+
+    expect(built.agentVaultServiceDAL.create.mock.calls[0][0]).toMatchObject({
+      type: AgentVaultServiceType.Tls,
+      credentialType: AgentVaultCredentialType.DynamicSecret,
+      credentialConfig: { type: AgentVaultCredentialType.DynamicSecret, ...DYNAMIC_SECRET_REFERENCE },
+      encryptedCredential: null,
+      memberProvidedFields: null
+    });
+    expect(service.credential).toEqual({
+      type: AgentVaultCredentialType.DynamicSecret,
+      ...DYNAMIC_SECRET_REFERENCE,
+      dynamicSecretExists: true
+    });
+  });
+
+  test("is refused, and nothing is written, when the caller can't lease from the secret", async () => {
+    const built = buildService({ firstRead: plainService(), locked: plainService(), canLeaseDynamicSecret: false });
+
+    await expect(create(built.service)).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(built.agentVaultServiceDAL.create).not.toHaveBeenCalled();
+  });
+
+  test("an update to another dynamic secret re-checks the lease permission and gives back the old leases", async () => {
+    const built = buildService({ firstRead: leasing(), locked: leasing() });
+
+    const result = await built.service.updateService({
+      projectId: PROJECT_ID,
+      ctx,
+      serviceId: SERVICE_ID,
+      type: AgentVaultServiceType.Tls,
+      credential: { type: AgentVaultCredentialType.DynamicSecret, dynamicSecretId: OTHER }
+    });
+
+    expect(writtenColumns(built.agentVaultServiceDAL)).toMatchObject({
+      credentialType: AgentVaultCredentialType.DynamicSecret,
+      credentialConfig: { dynamicSecretId: OTHER },
+      encryptedCredential: null
+    });
+    expect(result.credentialReplaced).toBe(true);
+    expect(built.agentVaultDynamicSecretService.revokeServiceLeases).toHaveBeenCalledWith({
+      serviceId: SERVICE_ID,
+      dynamicSecretId: DYNAMIC_SECRET_REFERENCE.dynamicSecretId
+    });
+  });
+
+  test("an update is refused, and no lease revoked, when a concurrent save switched the dynamic secret", async () => {
+    const built = buildService({ firstRead: leasing(), locked: leasing("00000000-0000-4000-8000-0000000000d7") });
+
+    await expect(
+      built.service.updateService({
+        projectId: PROJECT_ID,
+        ctx,
+        serviceId: SERVICE_ID,
+        type: AgentVaultServiceType.Tls,
+        credential: { type: AgentVaultCredentialType.DynamicSecret, dynamicSecretId: OTHER }
+      })
+    ).rejects.toBeInstanceOf(ConflictError);
+    expect(built.agentVaultServiceDAL.updateById).not.toHaveBeenCalled();
+    expect(built.agentVaultDynamicSecretService.revokeServiceLeases).not.toHaveBeenCalled();
+  });
+
+  test("deleting the service gives back the leases of the dynamic secret the deleted row named", async () => {
+    const built = buildService({ firstRead: leasing(), locked: leasing() });
+    Object.assign(built.agentVaultServiceDAL, { deleteById: vi.fn(async () => leasing(OTHER)) });
+
+    await built.service.deleteService({ projectId: PROJECT_ID, ctx, serviceId: SERVICE_ID });
+
+    expect(built.agentVaultDynamicSecretService.revokeServiceLeases).toHaveBeenCalledExactlyOnceWith({
+      serviceId: SERVICE_ID,
+      dynamicSecretId: OTHER
+    });
+  });
+});
 
 describe("a service's hook", () => {
   test("setting one writes the hook and its narrowing, checks the plan and tells the audit", async () => {

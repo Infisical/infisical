@@ -1,0 +1,70 @@
+---
+title: "TLS"
+description: "Let an AI agent reach a server that requires a client certificate without holding the certificate's key."
+---
+
+A TLS service lets an agent reach a server that authenticates clients with a certificate (mutual TLS) during a [session](/documentation/platform/agent-vault/sessions). The agent never holds the certificate's private key: the [proxy](/documentation/platform/agent-vault/proxies) opens the TLS connection to the server and presents the client certificate. The agent reaches the service through [`infisical agent-vault connect`](/cli/reference#agent-vault-connect).
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) to add the service to
+- A running [proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) that can reach the server, and whose HTTP port the agent can reach
+- A client certificate and its private key, or a [Namespace dynamic secret](/documentation/platform/dynamic-secrets/namespace) that issues them
+
+## Add a TLS server
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, select the **Databases and More** tab, then select **TLS**.
+  </Step>
+  <Step>
+    On the **Details** step, enter a **Name** and the [server's details](#server-details). Select **Continue**.
+  </Step>
+  <Step>
+    On the **Credential** step, set up the [client certificate](#credentials) the proxy presents. Select **Continue**.
+  </Step>
+  <Step>
+    Optionally, on the **Hook** step, pick the [hook](/documentation/platform/agent-vault/hooks#attach-a-hook-to-a-service) that checks each connection to this service. Select **Continue**.
+  </Step>
+  <Step>
+    On the **Review** step, select **Add Service**.
+  </Step>
+</Steps>
+
+Next, [connect your agent](/documentation/platform/agent-vault/databases-and-ssh#connect-your-agent) to the service. The agent's client connects to the local port without TLS, and the proxy adds TLS and the client certificate on the way to the server.
+
+## Server details
+
+- **Name:** The name the agent connects with, as in `infisical agent-vault connect build-engine` (lowercase letters, numbers, and hyphens, at most 63 characters)
+- **Host:** The server's host name or IP address, as the proxy reaches it (no scheme, port, path, or variable)
+- **Port:** The server's port (defaults to `443`)
+- **Verify Certificate:** Whether the proxy checks that the server's certificate is trusted and matches the host (on by default)
+- **CA Certificate (optional):** The PEM certificate of the authority that signed the server's certificate, if it isn't publicly trusted
+
+## Credentials
+
+### Stored client certificate
+
+Under **Credential Type**, select **Stored Client Certificate**, then paste the **Client Certificate (PEM)**, followed by any intermediate certificates, and its **Private Key (PEM)**.
+
+- The key must not have a passphrase
+- Members can't each provide their own certificate
+- Neither box can use a variable
+
+When you edit the service, leave both boxes empty to keep the stored certificate and key, or paste both to replace them. The **Services** list marks a service whose certificate has expired, so replace the certificate before its expiry date.
+
+### Dynamic secret
+
+Under **Credential Type**, select **Dynamic Secret**, then choose the **Project**, **Environment**, and **Secret Path** of a [Namespace dynamic secret](/documentation/platform/dynamic-secrets/namespace), and pick it under **Dynamic Secret**. You need permission to see the dynamic secret (**Read Root Credentials**) and to create leases on it, and its **Default TTL** must be at least 10 minutes. The **Dynamic Secret** list shows only Namespace dynamic secrets.
+
+The proxy leases a certificate with the dynamic secret's **Default TTL** and leases a new one before it expires. Infisical revokes the service's leases when you delete the service, change its credential, or delete the Agent Vault project. With OpenID Connect (Federation), Namespace can't revoke a certificate, so it stays valid until it expires, at most 24 hours after it was issued.
+
+If the dynamic secret is deleted, the **Services** list marks the service **Dynamic Secret Missing**, and the proxy can't connect to the server until you pick another dynamic secret.
+
+## Limitations
+
+- **Traffic isn't recorded:** The proxy relays the connection's bytes without reading the protocol inside them, so the [session log](/documentation/platform/agent-vault/session-logs#database-and-ssh-connections) records only that a connection opened

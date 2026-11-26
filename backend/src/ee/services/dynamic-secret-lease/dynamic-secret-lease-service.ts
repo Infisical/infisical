@@ -29,6 +29,7 @@ import { TSecretValidationRuleServiceFactory } from "@app/services/secret-valida
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
+import { DynamicSecretStatus } from "../dynamic-secret/dynamic-secret-types";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
@@ -50,9 +51,9 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: TLicenseService;
-  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: TIdentityDALFactory;
@@ -79,6 +80,133 @@ export const dynamicSecretLeaseServiceFactory = ({
     return match ? match[1] : email;
   };
 
+  const $issueLease = async ({
+    dynamicSecretCfg,
+    projectId,
+    folder,
+    environmentSlug,
+    path,
+    ttl,
+    config,
+    identityName,
+    extraPersistedLeaseFields
+  }: {
+    dynamicSecretCfg: Awaited<ReturnType<TDynamicSecretDALFactory["findOne"]>>;
+    projectId: string;
+    folder: { envId: string };
+    environmentSlug: string;
+    path: string;
+    ttl?: string;
+    config?: TDynamicSecretLeaseConfig;
+    identityName: () => Promise<string>;
+    extraPersistedLeaseFields?: string[];
+  }) => {
+    const appCfg = getConfig();
+    const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
+    if (totalLeasesTaken >= appCfg.MAX_LEASE_LIMIT)
+      throw new BadRequestError({ message: `Max lease limit reached. Limit: ${appCfg.MAX_LEASE_LIMIT}` });
+
+    const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
+
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
+      await kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+
+    const decryptedStoredInput = JSON.parse(
+      secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
+    ) as object;
+
+    const selectedTTL = ttl || dynamicSecretCfg.defaultTTL;
+    const { maxTTL } = dynamicSecretCfg;
+    const expireAt = new Date(new Date().getTime() + ms(selectedTTL));
+    if (maxTTL) {
+      const maxExpiryDate = new Date(new Date().getTime() + ms(maxTTL));
+      if (expireAt > maxExpiryDate) throw new BadRequestError({ message: "TTL cannot be larger than max TTL" });
+    }
+
+    let result;
+    try {
+      const identity = { name: await identityName() };
+      const ruleProvider = convertDynamicSecretProviderToValidationRuleProvider(
+        dynamicSecretCfg.type as DynamicSecretProviders
+      );
+
+      let passwordValidation;
+      if (ruleProvider) {
+        const matched = await secretValidationRuleService.findConstraintsForGeneratedSecret({
+          projectId,
+          envId: folder.envId,
+          secretPath: path,
+          type: SecretValidationRuleType.DynamicSecrets,
+          provider: ruleProvider
+        });
+        if (matched.ruleNames.length) {
+          passwordValidation = matched;
+        }
+      }
+
+      result = await selectedProvider.create({
+        inputs: decryptedStoredInput,
+        expireAt: expireAt.getTime(),
+        usernameTemplate: dynamicSecretCfg.usernameTemplate,
+        identity,
+        dynamicSecret: dynamicSecretCfg,
+        metadata: { projectId, passwordValidation },
+        config
+      });
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {
+        throw new BadRequestError({ message: error.sqlMessage as string });
+      }
+      throw error;
+    }
+    const { entityId, data } = result;
+
+    const persistedLeaseFields = [
+      ...new Set([...(selectedProvider.persistedLeaseFields ?? []), ...(extraPersistedLeaseFields ?? [])])
+    ];
+    const leaseData = persistedLeaseFields.length ? pickPersistedLeaseData(data, persistedLeaseFields) : undefined;
+    const encryptedLeaseData = leaseData
+      ? secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(leaseData)) }).cipherTextBlob
+      : undefined;
+
+    let dynamicSecretLease;
+    try {
+      dynamicSecretLease = await dynamicSecretLeaseDAL.create({
+        expireAt,
+        version: 1,
+        dynamicSecretId: dynamicSecretCfg.id,
+        externalEntityId: entityId,
+        config,
+        encryptedLeaseData
+      });
+    } catch (error) {
+      // the credential already exists upstream; without a lease row nothing would ever revoke it
+      await selectedProvider
+        .revoke(decryptedStoredInput, entityId, { projectId, leaseData }, config)
+        .catch((revokeError: Error) => {
+          recordDynamicSecretUnrecordedCredentialMetric({ provider: dynamicSecretCfg.type });
+          logger.error(
+            revokeError,
+            `Failed to revoke credential after lease insert failed [dynamicSecretId=${dynamicSecretCfg.id}] [provider=${dynamicSecretCfg.type}]`
+          );
+        });
+      throw error;
+    }
+
+    await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
+    return {
+      lease: dynamicSecretLease,
+      dynamicSecret: dynamicSecretCfg,
+      data,
+      projectId,
+      environment: environmentSlug,
+      secretPath: path
+    };
+  };
+
   const create: TDynamicSecretLeaseServiceFactory["create"] = async ({
     environmentSlug,
     path,
@@ -91,7 +219,6 @@ export const dynamicSecretLeaseServiceFactory = ({
     ttl,
     config
   }) => {
-    const appCfg = getConfig();
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
@@ -133,121 +260,67 @@ export const dynamicSecretLeaseServiceFactory = ({
       })
     );
 
-    const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
-    if (totalLeasesTaken >= appCfg.MAX_LEASE_LIMIT)
-      throw new BadRequestError({ message: `Max lease limit reached. Limit: ${appCfg.MAX_LEASE_LIMIT}` });
-
-    const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsDataKeyService.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-
-    const decryptedStoredInput = JSON.parse(
-      secretManagerDecryptor({ cipherTextBlob: Buffer.from(dynamicSecretCfg.encryptedInput) }).toString()
-    ) as object;
-
-    const selectedTTL = ttl || dynamicSecretCfg.defaultTTL;
-    const { maxTTL } = dynamicSecretCfg;
-    const expireAt = new Date(new Date().getTime() + ms(selectedTTL));
-    if (maxTTL) {
-      const maxExpiryDate = new Date(new Date().getTime() + ms(maxTTL));
-      if (expireAt > maxExpiryDate) throw new BadRequestError({ message: "TTL cannot be larger than max TTL" });
-    }
-
-    let result;
-    try {
-      const identity: { name: string } = { name: "" };
-      if (actor === ActorType.USER) {
-        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
-        if (user) {
-          identity.name = toSafeUsername(extractEmailUsername(user.username));
-        }
-      } else if (actor === ActorType.IDENTITY) {
-        const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
-          identityDAL.findById(actorId)
-        );
-        if (machineIdentity) {
-          identity.name = toSafeUsername(machineIdentity.name);
-        }
-      }
-      const ruleProvider = convertDynamicSecretProviderToValidationRuleProvider(
-        dynamicSecretCfg.type as DynamicSecretProviders
-      );
-
-      let passwordValidation;
-      if (ruleProvider) {
-        const matched = await secretValidationRuleService.findConstraintsForGeneratedSecret({
-          projectId,
-          envId: folder.envId,
-          secretPath: path,
-          type: SecretValidationRuleType.DynamicSecrets,
-          provider: ruleProvider
-        });
-        if (matched.ruleNames.length) {
-          passwordValidation = matched;
-        }
-      }
-
-      result = await selectedProvider.create({
-        inputs: decryptedStoredInput,
-        expireAt: expireAt.getTime(),
-        usernameTemplate: dynamicSecretCfg.usernameTemplate,
-        identity,
-        dynamicSecret: dynamicSecretCfg,
-        metadata: { projectId, passwordValidation },
-        config
-      });
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && error !== null && "sqlMessage" in error) {
-        throw new BadRequestError({ message: error.sqlMessage as string });
-      }
-      throw error;
-    }
-    const { entityId, data } = result;
-
-    const leaseData = selectedProvider.persistedLeaseFields?.length
-      ? pickPersistedLeaseData(data, selectedProvider.persistedLeaseFields)
-      : undefined;
-    const encryptedLeaseData = leaseData
-      ? secretManagerEncryptor({ plainText: Buffer.from(JSON.stringify(leaseData)) }).cipherTextBlob
-      : undefined;
-
-    let dynamicSecretLease;
-    try {
-      dynamicSecretLease = await dynamicSecretLeaseDAL.create({
-        expireAt,
-        version: 1,
-        dynamicSecretId: dynamicSecretCfg.id,
-        externalEntityId: entityId,
-        config,
-        encryptedLeaseData
-      });
-    } catch (error) {
-      // the credential already exists upstream; without a lease row nothing would ever revoke it
-      await selectedProvider
-        .revoke(decryptedStoredInput, entityId, { projectId, leaseData }, config)
-        .catch((revokeError: Error) => {
-          recordDynamicSecretUnrecordedCredentialMetric({ provider: dynamicSecretCfg.type });
-          logger.error(
-            revokeError,
-            `Failed to revoke credential after lease insert failed [dynamicSecretId=${dynamicSecretCfg.id}] [provider=${dynamicSecretCfg.type}]`
-          );
-        });
-      throw error;
-    }
-
-    await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
-    return {
-      lease: dynamicSecretLease,
-      dynamicSecret: dynamicSecretCfg,
-      data,
+    return $issueLease({
+      dynamicSecretCfg,
       projectId,
-      environment: environmentSlug,
-      secretPath: path
-    };
+      folder,
+      environmentSlug,
+      path,
+      ttl,
+      // reserved for the leases Agent Vault takes
+      config:
+        config && typeof config === "object" && "agentVaultServiceId" in config
+          ? (Object.fromEntries(
+              Object.entries(config).filter(([key]) => key !== "agentVaultServiceId")
+            ) as TDynamicSecretLeaseConfig)
+          : config,
+      identityName: async () => {
+        if (actor === ActorType.USER) {
+          const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+          return user ? toSafeUsername(extractEmailUsername(user.username)) : "";
+        }
+        if (actor === ActorType.IDENTITY) {
+          const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
+            identityDAL.findById(actorId)
+          );
+          return machineIdentity ? toSafeUsername(machineIdentity.name) : "";
+        }
+        return "";
+      }
+    });
+  };
+
+  // no permission check: the caller checked its user's lease permission when they set it up
+  const createSystemLease: TDynamicSecretLeaseServiceFactory["createSystemLease"] = async ({
+    dynamicSecretId,
+    config,
+    identityName,
+    persistedLeaseFields
+  }) => {
+    const dynamicSecretCfg = await dynamicSecretDAL.findOne({ id: dynamicSecretId });
+    if (!dynamicSecretCfg)
+      throw new NotFoundError({ message: `Dynamic secret with ID '${dynamicSecretId}' not found` });
+    if ((dynamicSecretCfg.status as DynamicSecretStatus | null) === DynamicSecretStatus.Deleting) {
+      throw new BadRequestError({ message: `Dynamic secret '${dynamicSecretCfg.name}' is being deleted` });
+    }
+
+    const folder = await folderDAL.findById(dynamicSecretCfg.folderId);
+    if (!folder) throw new NotFoundError({ message: `Folder of dynamic secret '${dynamicSecretCfg.name}' not found` });
+    const project = await projectDAL.findById(folder.projectId);
+    if (!project)
+      throw new NotFoundError({ message: `Project of dynamic secret '${dynamicSecretCfg.name}' not found` });
+
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
+    return $issueLease({
+      dynamicSecretCfg,
+      projectId: folder.projectId,
+      folder,
+      environmentSlug: folder.environment.envSlug,
+      path: folderWithPath?.path ?? "/",
+      config,
+      identityName: async () => toSafeUsername(identityName),
+      extraPersistedLeaseFields: persistedLeaseFields
+    });
   };
 
   const renewLease: TDynamicSecretLeaseServiceFactory["renewLease"] = async ({
@@ -595,6 +668,7 @@ export const dynamicSecretLeaseServiceFactory = ({
 
   return {
     create,
+    createSystemLease,
     listLeases,
     revokeLease,
     renewLease,

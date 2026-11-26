@@ -9221,6 +9221,7 @@ describe("Agent Vault V1 Router", async () => {
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
         resourceAuthMethodService: {} as never,
         agentVaultOauthService: {} as never,
+        agentVaultDynamicSecretService: {} as never,
         ...overrides
       });
 
@@ -9361,7 +9362,8 @@ describe("Agent Vault V1 Router", async () => {
         } as never,
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
         resourceAuthMethodService: {} as never,
-        agentVaultOauthService: {} as never
+        agentVaultOauthService: {} as never,
+        agentVaultDynamicSecretService: {} as never
       });
 
       const resolved = await resolver.resolveSession({
@@ -9626,7 +9628,8 @@ describe("Agent Vault V1 Router", async () => {
         } as never,
         licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
         resourceAuthMethodService: {} as never,
-        agentVaultOauthService: {} as never
+        agentVaultOauthService: {} as never,
+        agentVaultDynamicSecretService: {} as never
       });
       const resolve = () =>
         resolver.resolveSession({
@@ -12350,7 +12353,8 @@ describe("Agent Vault V1 Router", async () => {
           } as never,
           licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
           resourceAuthMethodService: {} as never,
-          agentVaultOauthService: {} as never
+          agentVaultOauthService: {} as never,
+          agentVaultDynamicSecretService: {} as never
         });
         const resolve = () =>
           resolver.resolveSession({
@@ -12459,7 +12463,8 @@ describe("Agent Vault V1 Router", async () => {
           } as never,
           licenseService: { getPlan: () => Promise.resolve(planWith({ agentVaultByoS3: true })) } as never,
           resourceAuthMethodService: {} as never,
-          agentVaultOauthService: {} as never
+          agentVaultOauthService: {} as never,
+          agentVaultDynamicSecretService: {} as never
         });
         const resolve = () =>
           resolver.resolveSession({

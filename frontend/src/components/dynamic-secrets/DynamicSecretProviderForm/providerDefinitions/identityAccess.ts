@@ -8,6 +8,7 @@ import { gcpIamDynamicSecretProvider } from "./gcpIam";
 import { githubDynamicSecretProvider } from "./github";
 import { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./identityAccessContract";
 import { ldapDynamicSecretProvider } from "./ldap";
+import { namespaceDynamicSecretProvider } from "./namespace";
 import { oauth2DynamicSecretProvider } from "./oauth2";
 import { openRouterDynamicSecretProvider } from "./openRouter";
 import { sshDynamicSecretProvider } from "./ssh";
@@ -22,7 +23,8 @@ const definitionsByProvider = {
   [DynamicSecretProviders.OpenRouter]: openRouterDynamicSecretProvider,
   [DynamicSecretProviders.OAuth2]: oauth2DynamicSecretProvider,
   [DynamicSecretProviders.Ssh]: sshDynamicSecretProvider,
-  [DynamicSecretProviders.Ldap]: ldapDynamicSecretProvider
+  [DynamicSecretProviders.Ldap]: ldapDynamicSecretProvider,
+  [DynamicSecretProviders.Namespace]: namespaceDynamicSecretProvider
 } satisfies Record<
   (typeof IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS)[number],
   TRegisteredDynamicSecretProviderDefinition

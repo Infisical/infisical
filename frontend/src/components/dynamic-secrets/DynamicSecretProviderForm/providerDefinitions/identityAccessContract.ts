@@ -10,5 +10,6 @@ export const IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS = [
   DynamicSecretProviders.OpenRouter,
   DynamicSecretProviders.OAuth2,
   DynamicSecretProviders.Ssh,
-  DynamicSecretProviders.Ldap
+  DynamicSecretProviders.Ldap,
+  DynamicSecretProviders.Namespace
 ] as const;

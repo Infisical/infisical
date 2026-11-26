@@ -11,6 +11,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   getAppConnectionOidcSubject,
+  getDynamicSecretOidcSubject,
   getKeyRotationPlan,
   getOidcIssuerUrl,
   getSigningKey,
@@ -19,7 +20,7 @@ import {
   publicKeyToJwk,
   signJwt
 } from "./oidc-issuer-fns";
-import { TSignOidcIssuerTokenDTO } from "./oidc-issuer-types";
+import { TSignDynamicSecretOidcTokenDTO, TSignOidcIssuerTokenDTO } from "./oidc-issuer-types";
 
 const TOKEN_TTL_SECONDS = 5 * 60;
 const MAX_TOKEN_TTL_SECONDS = 60 * 60;
@@ -168,9 +169,19 @@ export const oidcIssuerServiceFactory = ({
     return signingKey;
   };
 
-  // Takes the connection rather than a subject, so a caller can only ever sign for a real connection
-  const signToken = async ({ appConnection, audience, ttlSeconds }: TSignOidcIssuerTokenDTO) => {
-    const { orgId } = appConnection;
+  const $signJwt = async ({
+    orgId,
+    subject,
+    audience,
+    ttlSeconds,
+    projectId
+  }: {
+    orgId: string;
+    subject: string;
+    audience: string;
+    ttlSeconds?: number;
+    projectId?: string | null;
+  }) => {
     const issuer = $getIssuerUrl(orgId);
     const { id: kmsId } = await $getSigningKey(orgId);
 
@@ -182,21 +193,33 @@ export const oidcIssuerServiceFactory = ({
 
     const iat = Math.floor(Date.now() / 1000);
 
-    const token = await signJwt({
+    return signJwt({
       kid,
       claims: {
         iss: issuer,
-        sub: getAppConnectionOidcSubject(appConnection.id),
+        sub: subject,
         aud: audience,
         iat,
         nbf: iat,
         exp: iat + Math.min(ttlSeconds ?? TOKEN_TTL_SECONDS, MAX_TOKEN_TTL_SECONDS),
         jti: crypto.nativeCrypto.randomUUID(),
         // Lets a provider trust every connection in a project (GCP principalSet on attribute.project_id)
-        ...(appConnection.projectId ? { project_id: appConnection.projectId } : {})
+        ...(projectId ? { project_id: projectId } : {})
       },
       sign: async (data) =>
         (await sign({ data, signingAlgorithm: SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256, isDigest: false })).signature
+    });
+  };
+
+  // Takes the connection rather than a subject, so a caller can only ever sign for a real connection
+  const signToken = async ({ appConnection, audience, ttlSeconds }: TSignOidcIssuerTokenDTO) => {
+    const { orgId } = appConnection;
+    const token = await $signJwt({
+      orgId,
+      subject: getAppConnectionOidcSubject(appConnection.id),
+      audience,
+      ttlSeconds,
+      projectId: appConnection.projectId
     });
 
     await auditLogService.createAuditLog({
@@ -206,6 +229,29 @@ export const oidcIssuerServiceFactory = ({
       event: {
         type: EventType.ISSUE_OIDC_TOKEN,
         metadata: { connectionId: appConnection.id, connectionName: appConnection.name, audience }
+      }
+    });
+
+    return token;
+  };
+
+  // Takes the dynamic secret row rather than a subject, so a caller can only ever sign for a real dynamic secret. The
+  // caller must take orgId from the dynamic secret's project, never from user input.
+  const signDynamicSecretToken = async ({
+    dynamicSecret,
+    orgId,
+    projectId,
+    audience
+  }: TSignDynamicSecretOidcTokenDTO) => {
+    const token = await $signJwt({ orgId, subject: getDynamicSecretOidcSubject(dynamicSecret.id), audience });
+
+    await auditLogService.createAuditLog({
+      orgId,
+      projectId,
+      actor: { type: ActorType.PLATFORM, metadata: {} },
+      event: {
+        type: EventType.ISSUE_OIDC_TOKEN,
+        metadata: { dynamicSecretId: dynamicSecret.id, dynamicSecretName: dynamicSecret.name, audience }
       }
     });
 
@@ -222,7 +268,7 @@ export const oidcIssuerServiceFactory = ({
       subject_types_supported: ["public"],
       id_token_signing_alg_values_supported: [OIDC_ISSUER_SIGNING_ALG],
       scopes_supported: ["openid"],
-      // Must list every claim signToken sets
+      // Must list every claim $signJwt sets
       claims_supported: ["iss", "sub", "aud", "exp", "iat", "nbf", "jti", "project_id"]
     };
   };
@@ -242,6 +288,7 @@ export const oidcIssuerServiceFactory = ({
 
   return {
     signToken,
+    signDynamicSecretToken,
     getDiscoveryDocument,
     getJwks
   };

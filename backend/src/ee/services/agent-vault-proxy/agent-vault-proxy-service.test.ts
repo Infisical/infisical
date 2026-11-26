@@ -10,6 +10,10 @@ import {
 import { ConflictError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
+import {
+  TAgentVaultDynamicSecretServiceFactory,
+  TResolvedDynamicSecretCredential
+} from "../agent-vault-dynamic-secret/agent-vault-dynamic-secret-service";
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
 import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultInlineServiceSecretsRow } from "../agent-vault-session/agent-vault-session-inline-service-dal";
@@ -95,6 +99,7 @@ const setup = (
     licenseService = new FakeLicenseService(),
     metadata = {},
     freeLimitReached = false,
+    resolveClientCertificate = async () => ({ problem: "no dynamic secret in this test" }),
     proxy = {
       projectId: PROJECT_ID,
       orgId: "org-1",
@@ -119,6 +124,9 @@ const setup = (
     hooksOnlyOnPrimary?: boolean;
     licenseService?: FakeLicenseService;
     metadata?: Record<string, string>;
+    resolveClientCertificate?: (
+      dto: Parameters<TAgentVaultDynamicSecretServiceFactory["resolveClientCertificate"]>[0]
+    ) => Promise<TResolvedDynamicSecretCredential>;
     proxy?: {
       projectId: string;
       orgId: string;
@@ -216,7 +224,8 @@ const setup = (
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
       reportMissingScopes: reportMissingScopes as never
-    }
+    },
+    agentVaultDynamicSecretService: { resolveClientCertificate: vi.fn(resolveClientCertificate) }
   });
   return {
     service,
@@ -683,7 +692,8 @@ describe("resolve for a session on a user's behalf", () => {
         reportMissingScopes: vi.fn() as never
       },
       projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
-      userDAL: { findById: async () => undefined as never }
+      userDAL: { findById: async () => undefined as never },
+      agentVaultDynamicSecretService: { resolveClientCertificate: vi.fn() }
     });
     const resolve = () =>
       service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
@@ -1103,6 +1113,80 @@ describe("database and SSH services on resolve", () => {
       certificate: "cert"
     });
     expect(services[1].native).toBeNull();
+  });
+});
+
+describe("TLS services on resolve", () => {
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+  const PEM = { certificate: "-----BEGIN CERTIFICATE-----\nleaf\n", privateKey: "-----BEGIN PRIVATE KEY-----\nkey\n" };
+  const reference = {
+    dynamicSecretId: "66666666-6666-4666-8666-666666666666",
+    projectId: "secrets-project",
+    environment: "prod",
+    secretPath: "/certs",
+    name: "engine-client"
+  };
+  const tlsRow = (overrides: Partial<TResolveServiceRow> = {}) =>
+    serviceRow({
+      type: AgentVaultServiceType.Tls,
+      name: "engine",
+      hostPattern: null,
+      config: { host: "engine.internal", port: 8443, tls: { enabled: true, verify: true } },
+      ...overrides
+    });
+  const staticRow = tlsRow({
+    credentialType: AgentVaultCredentialType.ClientCertificate,
+    credentialConfig: { type: AgentVaultCredentialType.ClientCertificate, notAfter: "2030-01-01T00:00:00.000Z" },
+    encryptedCredential: Buffer.from(JSON.stringify(PEM))
+  });
+  const leasedRow = tlsRow({
+    id: "77777777-7777-4777-8777-777777777777",
+    name: "engine-leased",
+    credentialType: AgentVaultCredentialType.DynamicSecret,
+    credentialConfig: { type: AgentVaultCredentialType.DynamicSecret, ...reference },
+    encryptedCredential: null
+  });
+
+  test("a dynamic secret's certificate goes out in exactly the shape of a stored one", async () => {
+    const { service } = setup(async () => refreshed, [staticRow, leasedRow], [], {
+      resolveClientCertificate: async () => ({
+        credential: { type: AgentVaultCredentialType.ClientCertificate as const, ...PEM }
+      })
+    });
+    const { services } = await resolve(service);
+
+    expect(services[1].credential).toEqual(services[0].credential);
+    expect(services[1].native).toEqual(services[0].native);
+  });
+
+  test("a lease that fails leaves only that service without a certificate, and the session still resolves", async () => {
+    const { service } = setup(async () => refreshed, [staticRow, leasedRow], [], {
+      resolveClientCertificate: async () => ({ problem: "Max lease limit reached. Limit: 100" })
+    });
+    const { services } = await resolve(service);
+
+    expect(services[0].credential).toEqual({ type: AgentVaultCredentialType.ClientCertificate, ...PEM });
+    expect(services[1].credential).toEqual({ type: AgentVaultCredentialType.Passthrough });
+  });
+
+  test("a lease still running after 6 seconds sends the service's older, still valid certificate", async () => {
+    vi.useFakeTimers();
+    try {
+      const older = { type: AgentVaultCredentialType.ClientCertificate as const, ...PEM };
+      const { service } = setup(async () => refreshed, [leasedRow], [], {
+        resolveClientCertificate: ({ onFallback }) => {
+          onFallback?.(older);
+          return new Promise(() => {});
+        }
+      });
+      const result = resolve(service);
+      await vi.advanceTimersByTimeAsync(6_000);
+      const { services } = await result;
+      expect(services[0].credential).toEqual(older);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -133,6 +133,7 @@ export type TResolvedService = {
       }
     | { type: AgentVaultCredentialType.Basic; username: string; password: string }
     | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string }
+    | { type: AgentVaultCredentialType.ClientCertificate; certificate: string; privateKey: string }
     | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];

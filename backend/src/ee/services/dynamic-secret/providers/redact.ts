@@ -31,7 +31,8 @@ export const DYNAMIC_SECRET_SECRET_FIELDS: Record<DynamicSecretProviders, readon
   [DynamicSecretProviders.OAuth2]: ["clientAuth.clientSecret"],
   [DynamicSecretProviders.Kafka]: [],
   [DynamicSecretProviders.OpenRouter]: ["managementKey"],
-  [DynamicSecretProviders.Neon]: ["apiKey"]
+  [DynamicSecretProviders.Neon]: ["apiKey"],
+  [DynamicSecretProviders.Namespace]: ["provisionerToken"]
 };
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>

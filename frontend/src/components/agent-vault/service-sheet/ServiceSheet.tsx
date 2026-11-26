@@ -151,6 +151,13 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   sshPrivateKey: "",
   sshCertificate: "",
   sshCertificateRemoved: false,
+  clientCertificate: "",
+  clientPrivateKey: "",
+  dynamicSecretProjectId: "",
+  dynamicSecretEnvironment: "",
+  dynamicSecretPath: "/",
+  dynamicSecretId: "",
+  dynamicSecretName: "",
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -193,7 +200,10 @@ const blankNativeForm = (serviceType: TAgentVaultNativeServiceType): TServiceFor
   ...BLANK_SERVICE_FORM,
   serviceType,
   port: String(AGENT_VAULT_NATIVE_DEFAULT_PORTS[serviceType]),
-  credentialType: AgentVaultCredentialType.Basic
+  credentialType:
+    serviceType === AgentVaultServiceType.Tls
+      ? AgentVaultCredentialType.ClientCertificate
+      : AgentVaultCredentialType.Basic
 });
 
 const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
@@ -577,11 +587,16 @@ export const ServiceSheet = ({
 
     if (isNativeService(service)) {
       const { credential } = service;
-      const databaseService = service.type === AgentVaultServiceType.Ssh ? null : service;
+      const tlsService = service.type === AgentVaultServiceType.Ssh ? null : service;
+      const databaseService =
+        service.type === AgentVaultServiceType.Ssh || service.type === AgentVaultServiceType.Tls
+          ? null
+          : service;
       const memberProvidedFields = storedMemberFields(service);
       const storedValue = (field: TAgentVaultMemberProvidedField) =>
         memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
       const isSshKey = credential.type === AgentVaultCredentialType.SshKey;
+      const isClientCertificate = credential.type === AgentVaultCredentialType.ClientCertificate;
       reset({
         ...blankNativeForm(service.type),
         name: service.name,
@@ -589,9 +604,9 @@ export const ServiceSheet = ({
         host: service.host,
         port: String(service.port),
         database: databaseService?.database ?? "",
-        tlsEnabled: databaseService?.tls.enabled ?? true,
-        tlsVerify: databaseService?.tls.verify ?? true,
-        tlsCa: databaseService?.tls.ca ?? "",
+        tlsEnabled: tlsService?.tls.enabled ?? true,
+        tlsVerify: tlsService?.tls.verify ?? true,
+        tlsCa: tlsService?.tls.ca ?? "",
         credentialType: credential.type,
         username:
           credential.type === AgentVaultCredentialType.Basic
@@ -604,6 +619,15 @@ export const ServiceSheet = ({
         memberProvidedFields,
         sshPrivateKey: isSshKey ? UNCHANGED_SECRET : "",
         sshCertificate: isSshKey && credential.hasCertificate ? UNCHANGED_SECRET : "",
+        clientCertificate: isClientCertificate ? UNCHANGED_SECRET : "",
+        clientPrivateKey: isClientCertificate ? UNCHANGED_SECRET : "",
+        ...(credential.type === AgentVaultCredentialType.DynamicSecret && {
+          dynamicSecretProjectId: credential.projectId,
+          dynamicSecretEnvironment: credential.environment,
+          dynamicSecretPath: credential.secretPath,
+          dynamicSecretId: credential.dynamicSecretId,
+          dynamicSecretName: credential.name
+        }),
         hook: serviceHookDraftOf(service.hook)
       });
     } else if (service?.type === AgentVaultServiceType.Mcp) {
@@ -832,6 +856,18 @@ export const ServiceSheet = ({
         return;
       }
 
+      // The picked dynamic secret was deleted, or the caller can't lease from it.
+      if (
+        data.credentialType === AgentVaultCredentialType.DynamicSecret &&
+        (serverResponse?.error === ApiErrorTypes.BadRequestError ||
+          serverResponse?.error === ApiErrorTypes.CustomForbiddenError) &&
+        serverResponse.message.toLowerCase().includes("dynamic secret")
+      ) {
+        setError("dynamicSecretId", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
+        return;
+      }
+
       // Thrown after the stored halves are merged in, so the form cannot have known: it is told which
       // halves exist only as "unchanged", never whether one of them is empty.
       if (
@@ -888,6 +924,9 @@ export const ServiceSheet = ({
           tls: "tlsCa",
           credential: (() => {
             if (isOAuthVariableCredential(data)) return "oauthVariableKey";
+            if (data.credentialType === AgentVaultCredentialType.DynamicSecret) {
+              return "dynamicSecretId";
+            }
             return data.credentialType === AgentVaultCredentialType.OAuth
               ? "oauthAuthorizationId"
               : "secret";
@@ -897,8 +936,10 @@ export const ServiceSheet = ({
           username: "username",
           password: "secret",
           value: "secret",
-          privateKey: "sshPrivateKey",
-          certificate: "sshCertificate"
+          dynamicSecretId: "dynamicSecretId",
+          ...(data.credentialType === AgentVaultCredentialType.ClientCertificate
+            ? { privateKey: "clientPrivateKey", certificate: "clientCertificate" }
+            : { privateKey: "sshPrivateKey", certificate: "sshCertificate" })
         };
 
         let earliestStep: number | null = null;
@@ -1152,6 +1193,15 @@ export const ServiceSheet = ({
                         hasStoredCertificate={
                           service?.credential.type === AgentVaultCredentialType.SshKey &&
                           service.credential.hasCertificate
+                        }
+                        storedCertificateExpiry={
+                          service?.credential.type === AgentVaultCredentialType.ClientCertificate
+                            ? service.credential.notAfter
+                            : undefined
+                        }
+                        isStoredDynamicSecretMissing={
+                          service?.credential.type === AgentVaultCredentialType.DynamicSecret &&
+                          !service.credential.dynamicSecretExists
                         }
                       />
                     </ServiceVariablesContext.Provider>

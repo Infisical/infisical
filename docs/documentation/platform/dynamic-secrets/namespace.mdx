@@ -1,0 +1,133 @@
+---
+title: "Namespace dynamic secrets"
+sidebarTitle: "Namespace"
+description: "Learn how to issue short-lived Namespace client certificates on demand, for mutual TLS access to Namespace ingress."
+---
+
+The Namespace dynamic secret issues a new [Namespace](https://namespace.so/) tenant client certificate each time someone creates a lease. Use it to give an application, a CI job, or an AI agent its own short-lived certificate for Namespace's mutual TLS ingress, instead of sharing one long-lived certificate. An [Agent Vault TLS service](/documentation/platform/agent-vault/tls#dynamic-secret) can lease its client certificate from this dynamic secret.
+
+To learn how leases work across providers, see [Dynamic secrets](/documentation/platform/dynamic-secrets/overview).
+
+## Prerequisites
+
+- The ID of your Namespace tenant, which starts with `tenant_`
+- Permission in Namespace to add trust relationships to the tenant with `nsc`, or a [provisioner token](#provisioner-token)
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+By default, Infisical signs in to Namespace with a token from your organization's OIDC issuer, so the dynamic secret stores no Namespace credential. Namespace must be able to reach your Infisical instance to check the token. On a self-hosted instance, set `SITE_URL` to the instance's public URL. If Namespace can't reach your instance, use a [provisioner token](#provisioner-token) instead.
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **Namespace**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease, and its certificate, lasts if the person creating it doesn't choose a TTL (for example, `1h`). With **OpenID Connect (Federation)**, at most `24h`.
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`). With **OpenID Connect (Federation)**, at most `24h`.
+    </ParamField>
+
+    <ParamField path="Authentication" type="string" default="OpenID Connect (Federation)">
+      How Infisical signs in to Namespace: **OpenID Connect (Federation)** or **Provisioner Token**.
+    </ParamField>
+
+    <ParamField path="Tenant ID" type="string">
+      With **OpenID Connect (Federation)**, the ID of your Namespace tenant, such as `tenant_abc123`.
+    </ParamField>
+
+    <ParamField path="Provisioner Token" type="string">
+      With **Provisioner Token**, your [provisioner token](#provisioner-token). When you edit the dynamic secret, leave this blank to keep the current token.
+    </ParamField>
+
+    <ParamField path="Audience" type="string" default="https://federation.namespaceapis.com">
+      With **OpenID Connect (Federation)**, under **Advanced**: the audience of the token Infisical presents to Namespace. Change it only if your trust relationship uses another.
+    </ParamField>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    With **OpenID Connect (Federation)**, leases fail until you [add the trust relationship](#step-2-add-the-trust-relationship-in-namespace). With **Provisioner Token**, Infisical checks the token before it saves the dynamic secret. If Namespace refuses the token, Infisical shows the error from Namespace and doesn't save the dynamic secret.
+  </Step>
+</Steps>
+
+## Step 2: Add the trust relationship in Namespace
+
+Skip this step if you use a provisioner token.
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Edit** (the pencil icon). Under **Namespace Trust Relationship**, Infisical shows the **Issuer URL**, the **Subject**, the **Audience**, and a command that uses them.
+  </Step>
+  <Step>
+    Copy the command and run it with `nsc`, signed in to the tenant:
+
+    ```bash
+    nsc auth trust-relationships add \
+      --issuer <issuer-url> \
+      --subject_match dynamic-secret:<dynamic-secret-id> \
+      --audience https://federation.namespaceapis.com \
+      --grant '{"resource_type":"ingress","resource_id":"*","actions":["access"]}' \
+      --maximum_token_duration 86400s
+    ```
+  </Step>
+</Steps>
+
+## Provisioner token
+
+Create a Namespace token with [`nsc token create`](https://namespace.so/docs/reference/cli/token-create), with these grants:
+
+```json
+{"resource_type":"token/revokable","resource_id":"*","actions":["create","revoke"]}
+{"resource_type":"ingress","resource_id":"*","actions":["access"]}
+```
+
+The token starts with `nsrt_`. Infisical uses it to create a child token for each lease, and revokes the child token when the lease ends.
+
+<Note>
+  If the provisioner token has an expiration date, the dynamic secret stops working when the token expires. Before that date, create a new token with the same grants and enter it in the dynamic secret.
+</Note>
+
+## Step 3: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the values Infisical shows:
+
+    - `CLIENT_CERTIFICATE`: the tenant client certificate followed by its intermediate certificates, in PEM format
+    - `PRIVATE_KEY`: the certificate's private key, in PEM format
+    - `EXPIRES_AT`: when the certificate expires, as an ISO 8601 date
+
+    <Warning>
+      Infisical shows the private key only once. Copy it before you close the dialog.
+    </Warning>
+  </Step>
+</Steps>
+
+Present the whole `CLIENT_CERTIFICATE` chain when you connect. If a client sends only the first certificate, Namespace's ingress refuses the connection with `unknown ca`.
+
+## Revoke a lease
+
+Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to end it before it expires.
+
+Namespace can't revoke a certificate, so a certificate stays valid until its expiry date, even after its lease is revoked. Keep lease TTLs short.
+
+Namespace leases can't be renewed, because a certificate's expiry date can't be changed after it's issued. To keep access, create a new lease before the current one expires.

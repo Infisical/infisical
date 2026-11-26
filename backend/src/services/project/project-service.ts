@@ -27,6 +27,10 @@ import {
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TAgentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
+import { TAgentVaultDynamicSecretServiceFactory } from "@app/ee/services/agent-vault-dynamic-secret/agent-vault-dynamic-secret-service";
+import { TAgentVaultDynamicSecretConfig } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
+import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -215,6 +219,8 @@ type TProjectServiceFactoryDep = {
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
+  agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "find">;
+  agentVaultDynamicSecretService: Pick<TAgentVaultDynamicSecretServiceFactory, "revokeServiceLeases">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
   dynamicSecretQueueService: Pick<
     TDynamicSecretLeaseQueueServiceFactory,
@@ -276,6 +282,8 @@ export const projectServiceFactory = ({
   groupDAL,
   projectAccessRequestDAL,
   honeyTokenCleanupService,
+  agentVaultServiceDAL,
+  agentVaultDynamicSecretService,
   dynamicSecretLeaseDAL,
   dynamicSecretQueueService,
   secretV2BridgeDAL,
@@ -939,6 +947,22 @@ export const projectServiceFactory = ({
 
       if (!softDeletedProject) {
         throw new NotFoundError({ message: `Project with ID '${project.id}' not found` });
+      }
+
+      // A service's leases live in the dynamic secret's project, so its cascade would leave them issued.
+      if (project.type === ProjectType.AgentVault) {
+        const leasingServices = await agentVaultServiceDAL.find({
+          projectId: project.id,
+          credentialType: AgentVaultCredentialType.DynamicSecret
+        });
+        await Promise.all(
+          leasingServices.map((service) =>
+            agentVaultDynamicSecretService.revokeServiceLeases({
+              serviceId: service.id,
+              dynamicSecretId: (service.credentialConfig as TAgentVaultDynamicSecretConfig).dynamicSecretId
+            })
+          )
+        );
       }
 
       // The plan caches the project count, which leaves out soft-deleted projects.

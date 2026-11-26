@@ -29,6 +29,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
 import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
+import { TAgentVaultDynamicSecretServiceFactory } from "../agent-vault-dynamic-secret/agent-vault-dynamic-secret-service";
 import { pickHookNarrowing } from "../agent-vault-hook/agent-vault-hook-fns";
 import {
   AGENT_VAULT_SERVICE_MOVED_MESSAGE,
@@ -63,6 +64,7 @@ import { TAgentVaultSessionInlineSkillDALFactory } from "../agent-vault-session/
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { TAgentVaultOauthVariableConfig } from "../agent-vault-variable/agent-vault-variable-types";
+import { TAgentVaultDynamicSecretConfig } from "../agent-vault/agent-vault-credential-schemas";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
@@ -129,6 +131,7 @@ type TPersonalValueResolveRow = Awaited<ReturnType<TAgentVaultPersonalValueDALFa
 const HEARTBEAT_MISSES_BEFORE_UNHEALTHY = 3;
 
 const RESOLVE_REFRESH_BUDGET_MS = 4_000;
+const RESOLVE_LEASE_BUDGET_MS = 6_000;
 
 type TAgentVaultProxyServiceFactoryDep = {
   agentVaultProxyDAL: TAgentVaultProxyDALFactory;
@@ -169,6 +172,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultAccessService: Pick<TAgentVaultAccessService, "assertCanBroker">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
   agentVaultOauthService: Pick<TAgentVaultOauthServiceFactory, "refreshServiceToken" | "reportMissingScopes">;
+  agentVaultDynamicSecretService: Pick<TAgentVaultDynamicSecretServiceFactory, "resolveClientCertificate">;
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
@@ -229,7 +233,8 @@ export const agentVaultProxyServiceFactory = ({
   licenseService,
   agentVaultAccessService,
   resourceAuthMethodService,
-  agentVaultOauthService
+  agentVaultOauthService,
+  agentVaultDynamicSecretService
 }: TAgentVaultProxyServiceFactoryDep) => {
   const isHealthy = (proxy: Pick<TAgentVaultProxies, "heartbeat" | "pollInterval" | "heartbeatTTL">) => {
     if (!proxy.heartbeat) return false;
@@ -628,6 +633,13 @@ export const agentVaultProxyServiceFactory = ({
         ...(secret.certificate ? { certificate: secret.certificate } : {})
       };
     }
+    if (row.credentialType === AgentVaultCredentialType.ClientCertificate) {
+      return {
+        type: AgentVaultCredentialType.ClientCertificate,
+        certificate: secret.certificate,
+        privateKey: secret.privateKey
+      };
+    }
     if (row.credentialType !== AgentVaultCredentialType.Basic) {
       throw new InternalServerError({ message: `Unknown credential type '${row.credentialType}'` });
     }
@@ -1022,6 +1034,60 @@ export const agentVaultProxyServiceFactory = ({
     return { session, onPrimary, proxy, accessBundleIds, ownerCanUseInlineServices };
   };
 
+  const $leaseDynamicSecretCredentials = async (
+    sessionId: string,
+    projectId: string,
+    rows: TResolveServiceRow[],
+    pollIntervalSeconds: number
+  ) => {
+    const leased = new Map<string, TResolvedService["credential"]>();
+    const dynamicSecretRows = rows.filter((row) => row.credentialType === AgentVaultCredentialType.DynamicSecret);
+    if (!dynamicSecretRows.length) return leased;
+
+    const pending = new Set(dynamicSecretRows.map((row) => row.id));
+    const fallbacks = new Map<string, TResolvedService["credential"]>();
+    const leases = dynamicSecretRows.map(async (row) => {
+      const result = await agentVaultDynamicSecretService.resolveClientCertificate({
+        serviceId: row.id,
+        serviceName: row.name,
+        agentVaultProjectId: projectId,
+        reference: row.credentialConfig as TAgentVaultDynamicSecretConfig,
+        pollIntervalSeconds,
+        onFallback: (credential) => fallbacks.set(row.id, credential)
+      });
+      pending.delete(row.id);
+      if ("credential" in result) {
+        leased.set(row.id, result.credential);
+        return;
+      }
+      logger.warn(
+        `agentVaultResolve: dynamic secret credential unavailable, sending none [sessionId=${sessionId}] [serviceId=${row.id}] [reason=${result.problem}]`
+      );
+    });
+
+    let budgetTimer: NodeJS.Timeout | undefined;
+    await Promise.race([
+      Promise.all(leases),
+      new Promise<void>((resolve) => {
+        budgetTimer = setTimeout(resolve, RESOLVE_LEASE_BUDGET_MS);
+      })
+    ]);
+    clearTimeout(budgetTimer);
+    // A lease finishing after the budget must not change what this resolve sends.
+    const sent = new Map(leased);
+    if (pending.size) {
+      const withFallback = [...pending].filter((id) => {
+        const fallback = fallbacks.get(id);
+        if (fallback) sent.set(id, fallback);
+        return Boolean(fallback);
+      });
+      logger.warn(
+        `agentVaultResolve: dynamic secret lease still running, sending the older certificate if one is valid [sessionId=${sessionId}] [serviceIds=${[...pending].join(",")}] [fallbackServiceIds=${withFallback.join(",")}]`
+      );
+    }
+    return sent;
+  };
+
   /** Resolve services and decrypt their credentials. The proxy's JWT authorizes; the session token is a selector. */
   const resolveSession = async ({ proxyId, orgId, sessionToken, hasSessionLogKey }: TResolveSessionDTO) => {
     const { session, onPrimary, proxy, accessBundleIds, ownerCanUseInlineServices } = await $authorizeSession({
@@ -1044,6 +1110,13 @@ export const agentVaultProxyServiceFactory = ({
       ownerCanUseInlineServices
         ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
         : []
+    );
+
+    const dynamicSecretCredentials = $leaseDynamicSecretCredentials(
+      session.id,
+      session.projectId,
+      rows,
+      proxy.pollInterval
     );
 
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
@@ -1257,6 +1330,8 @@ export const agentVaultProxyServiceFactory = ({
       return new Map(found.map((hook) => [hook.id, hook]));
     };
 
+    const leasedCredentials = await dynamicSecretCredentials;
+
     const serviceIds = rows.map((row) => row.id);
     const hasHook = hookIds.length > 0 || legacyInlineHookRows.length > 0;
     // Metadata goes to the proxy only for the hook's payload, so a session without a hook doesn't read it.
@@ -1348,8 +1423,10 @@ export const agentVaultProxyServiceFactory = ({
       allowedPathPrefixes: row.allowedPathPrefixes,
       allowedTools: row.allowedTools,
       credential:
-        (isMemberProvidedOauth(row) ? undefined : refreshedCredentials.get(row.id)?.credential) ??
-        $decryptCredential(row, decryptor),
+        row.credentialType === AgentVaultCredentialType.DynamicSecret
+          ? (leasedCredentials.get(row.id) ?? { type: AgentVaultCredentialType.Passthrough })
+          : ((isMemberProvidedOauth(row) ? undefined : refreshedCredentials.get(row.id)?.credential) ??
+            $decryptCredential(row, decryptor)),
       customHeaders: customHeaderRows
         .filter((header) => header.serviceId === row.id)
         .map((header) => ({ name: header.name, prefix: header.prefix, value: $decryptValue(header.encryptedValue) })),

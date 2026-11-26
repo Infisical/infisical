@@ -248,7 +248,7 @@ infisical agent start
 infisical agent-vault
 ```
 
-Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](#agent-vault-skills-push), and list, download, and delete them with the other [infisical agent-vault skills](#agent-vault-skills) commands. Reach database and SSH services from an agent with [infisical agent-vault connect](#agent-vault-connect).
+Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](#agent-vault-skills-push), and list, download, and delete them with the other [infisical agent-vault skills](#agent-vault-skills) commands. Reach database, SSH, and TLS services from an agent with [infisical agent-vault connect](#agent-vault-connect).
 
 `av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does.
 
@@ -417,7 +417,7 @@ infisical agent-vault run -- claude
 infisical agent-vault connect [service...] [flags]
 ```
 
-Open a port on `127.0.0.1` for each [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account, so the client uses any username and no password. The command keeps running. Once the ports are open, it prints each service's address and an example command, and the ports stay open until you stop the command with Ctrl+C.
+Open a port on `127.0.0.1` for each [database, SSH, or TLS service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account, so the client uses any username and no password. For a [TLS service](/documentation/platform/agent-vault/tls), the client connects to the port without TLS, and the proxy opens the TLS connection to the server with the service's client certificate. The command keeps running. Once the ports are open, it prints each service's address and an example command, and the ports stay open until you stop the command with Ctrl+C.
 
 Before it opens any port, the command checks each service with the proxy. If the proxy refuses a service you named, the command stops with the proxy's reason. With `--all`, it skips each refused service and prints its name and the reason. It stops only if the proxy refuses every service.
 
@@ -425,11 +425,11 @@ Under [infisical agent-vault run](#agent-vault-run), the command reads the sessi
 
 ### Arguments
 
-- `service`: The names of the database or SSH services to open ports for. Required unless you pass `--all`.
+- `service`: The names of the database, SSH, or TLS services to open ports for. Required unless you pass `--all`.
 
 ### Flags
 
-- `--all`: Open a port for every database and SSH service in the session, skipping any the proxy refuses. Can't be combined with service names.
+- `--all`: Open a port for every database, SSH, and TLS service in the session, skipping any the proxy refuses. Can't be combined with service names.
 - `--ca-fingerprint <string>`: The SHA256 fingerprint of the proxy's certificate authority, from the **Certificate Authority** column on the **Proxies** page. The command trusts the proxy only if it serves this certificate authority, and checks nothing else. Accepted with or without the `SHA256:` prefix and colons.
 - `--port <int>`: The local port to open. Works only with one named service. Without it, the command picks a free port.
 - `--proxy <string>`: The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set.
@@ -449,7 +449,7 @@ Open ports for two services
 infisical agent-vault connect analytics bastion
 ```
 
-Open ports for every database and SSH service in the session
+Open ports for every database, SSH, and TLS service in the session
 
 ```bash
 infisical agent-vault connect --all

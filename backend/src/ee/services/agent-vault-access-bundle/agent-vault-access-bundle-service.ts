@@ -32,6 +32,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { findOnBehalfOfListScope, TOnBehalfOfDeps } from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { TAgentVaultDynamicSecretServiceFactory } from "../agent-vault-dynamic-secret/agent-vault-dynamic-secret-service";
 import { TAgentVaultHookDALFactory } from "../agent-vault-hook/agent-vault-hook-dal";
 import {
   assertAgentVaultHooksOnPlan,
@@ -87,7 +88,10 @@ import {
   TAgentVaultActorNameDALs
 } from "../agent-vault/agent-vault-actor-name-fns";
 import { describeConflict, findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fns";
-import { TAgentVaultCredentialConfig } from "../agent-vault/agent-vault-credential-schemas";
+import {
+  TAgentVaultCredentialConfig,
+  TAgentVaultDynamicSecretConfig
+} from "../agent-vault/agent-vault-credential-schemas";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
@@ -165,6 +169,8 @@ import {
 } from "./agent-vault-access-bundle-types";
 import {
   assertNativeBasicHasUsername,
+  dynamicSecretIdFor,
+  dynamicSecretWrite,
   isStoredSecretReplaced,
   memberFieldsOf,
   memberOauthChangeOf,
@@ -221,6 +227,10 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   agentVaultDelegationDAL: TOnBehalfOfDeps["agentVaultDelegationDAL"];
   orgDAL: TOnBehalfOfDeps["orgDAL"];
   userDAL: TOnBehalfOfDeps["userDAL"];
+  agentVaultDynamicSecretService: Pick<
+    TAgentVaultDynamicSecretServiceFactory,
+    "prepareReference" | "findExistingDynamicSecretIds" | "revokeServiceLeases"
+  >;
   agentVaultOauthService: Pick<
     TAgentVaultOauthServiceFactory,
     | "claimAuthorization"
@@ -271,6 +281,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     agentVaultOauthService,
+    agentVaultDynamicSecretService,
     userDAL,
     groupDAL,
     identityDAL,
@@ -444,7 +455,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   const summarizeCredential = (
     service: TAgentVaultServices,
-    oauthVariables: TOauthVariablesById = new Map()
+    oauthVariables: TOauthVariablesById = new Map(),
+    existingDynamicSecretIds: ReadonlySet<string> = new Set()
   ): TAgentVaultCredentialSummary => {
     const config = service.credentialConfig as Record<string, string>;
     const memberProvidedFields = service.memberProvidedFields ?? [];
@@ -504,6 +516,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           type: AgentVaultCredentialType.SshKey,
           hasCertificate: Boolean((service.credentialConfig as { hasCertificate?: boolean }).hasCertificate)
         };
+      case AgentVaultCredentialType.ClientCertificate:
+        return { type: AgentVaultCredentialType.ClientCertificate, notAfter: config.notAfter };
+      case AgentVaultCredentialType.DynamicSecret: {
+        const reference = service.credentialConfig as TAgentVaultDynamicSecretConfig;
+        return {
+          type: AgentVaultCredentialType.DynamicSecret,
+          dynamicSecretId: reference.dynamicSecretId,
+          name: reference.name,
+          projectId: reference.projectId,
+          environment: reference.environment,
+          secretPath: reference.secretPath,
+          dynamicSecretExists: existingDynamicSecretIds.has(reference.dynamicSecretId)
+        };
+      }
       default:
         return { type: AgentVaultCredentialType.Passthrough };
     }
@@ -554,7 +580,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[],
     variableReferences: TAgentVaultVariableReferenceWithKey[],
-    oauthVariables?: TOauthVariablesById
+    oauthVariables?: TOauthVariablesById,
+    existingDynamicSecretIds?: ReadonlySet<string>
   ): TAgentVaultServiceSummary => {
     const base = {
       id: service.id,
@@ -564,7 +591,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       updatedAt: service.updatedAt
     };
     const references = variableReferences.map(summarizeVariableReference);
-    const credential = summarizeCredential(service, oauthVariables);
+    const credential = summarizeCredential(service, oauthVariables, existingDynamicSecretIds);
     const customHeaderSummaries = customHeaders.map((header) => ({
       id: header.id,
       name: header.name,
@@ -625,6 +652,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           throw unsupportedCredential();
         }
         return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
+      case AgentVaultServiceType.Tls:
+        if (
+          !isCredentialOfType(credential, [
+            AgentVaultCredentialType.ClientCertificate,
+            AgentVaultCredentialType.DynamicSecret
+          ])
+        ) {
+          throw unsupportedCredential();
+        }
+        return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
       default:
         if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic])) throw unsupportedCredential();
         return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
@@ -666,7 +703,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       transformations.customHeaders.filter((header) => header.serviceId === service.id),
       transformations.substitutions.filter((substitution) => substitution.serviceId === service.id),
       transformations.variableReferences.filter((reference) => reference.serviceId === service.id),
-      transformations.oauthVariables
+      transformations.oauthVariables,
+      transformations.existingDynamicSecretIds
     );
     let { credential } = projected;
     // An OAuth variable's key is a variable read, like the keys in variableReferences.
@@ -696,6 +734,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return new Map(rows.map((row) => [row.id, row]));
   };
 
+  const loadExistingDynamicSecretIds = async (
+    services: Pick<TAgentVaultServices, "credentialType" | "credentialConfig">[]
+  ): Promise<ReadonlySet<string>> => {
+    const ids = services
+      .filter((service) => service.credentialType === AgentVaultCredentialType.DynamicSecret)
+      .map((service) => (service.credentialConfig as TAgentVaultDynamicSecretConfig).dynamicSecretId);
+    return ids.length ? agentVaultDynamicSecretService.findExistingDynamicSecretIds(ids) : new Set<string>();
+  };
+
   const loadHookNames = (services: Pick<TAgentVaultServices, "projectId" | "hookId">[], tx?: Knex) => {
     const ids = services.flatMap((service) => (service.hookId ? [service.hookId] : []));
     return ids.length
@@ -709,14 +756,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     { withVariableReferences = true }: { withVariableReferences?: boolean } = {}
   ) => {
     const serviceIds = services.map((service) => service.id);
-    const [customHeaders, substitutions, variableReferences, oauthVariables, hookNames] = await Promise.all([
-      agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
-      agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx),
-      withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : [],
-      services.length ? loadOauthVariables(services[0].projectId, services) : new Map(),
-      loadHookNames(services, tx)
-    ]);
-    return { customHeaders, substitutions, variableReferences, oauthVariables, hookNames };
+    const [customHeaders, substitutions, variableReferences, oauthVariables, hookNames, existingDynamicSecretIds] =
+      await Promise.all([
+        agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds, tx),
+        agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds, tx),
+        withVariableReferences ? agentVaultServiceVariableReferenceDAL.findByServiceIds(serviceIds, tx) : [],
+        services.length ? loadOauthVariables(services[0].projectId, services) : new Map(),
+        loadHookNames(services, tx),
+        loadExistingDynamicSecretIds(services)
+      ]);
+    return { customHeaders, substitutions, variableReferences, oauthVariables, hookNames, existingDynamicSecretIds };
   };
 
   // What a missing key's error calls the field. Never the value itself, which is secret.
@@ -1428,11 +1477,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         ? await findOauthVariableForCredential({ projectId: rest.projectId, permission }, credential.variable)
         : null;
 
+    const dynamicSecretReference =
+      credential.type === AgentVaultCredentialType.DynamicSecret
+        ? await agentVaultDynamicSecretService.prepareReference({
+            dynamicSecretId: dynamicSecretIdFor(credential),
+            ctx: rest.ctx
+          })
+        : null;
+
     // Encrypt before the lock: KMS is a network call and the transaction has to stay short.
-    const split =
-      credential.type === AgentVaultCredentialType.OAuth
-        ? null
-        : splitCredential(storeCredentialReferences(credential, store));
+    let split: TCredentialWrite | null = null;
+    if (dynamicSecretReference) split = dynamicSecretWrite(dynamicSecretReference);
+    else if (credential.type !== AgentVaultCredentialType.OAuth) {
+      split = splitCredential(storeCredentialReferences(credential, store));
+    }
     if (split && isNativeServiceType(serviceType.type)) assertNativeBasicHasUsername(split);
     assertCustomHeadersDoNotShadowCredential(split ? split.config : { type: credential.type }, customHeaders);
     const secret = split?.secret ?? null;
@@ -1610,7 +1668,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           result.insertedCustomHeaders,
           result.insertedSubstitutions,
           result.variableReferences,
-          await loadOauthVariables(rest.projectId, [result.created])
+          await loadOauthVariables(rest.projectId, [result.created]),
+          await loadExistingDynamicSecretIds([result.created])
         ),
         ...(serviceVisibilityOf(permission).canReadHooks ? { hook: result.hook } : {}),
         accessBundles: bundles
@@ -1811,14 +1870,38 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const oauthVariable = oauthVariableKey
       ? await findOauthVariableForCredential({ projectId: rest.projectId, permission }, oauthVariableKey)
       : null;
+    const dynamicSecretReference =
+      credential?.type === AgentVaultCredentialType.DynamicSecret
+        ? await agentVaultDynamicSecretService.prepareReference({
+            dynamicSecretId: dynamicSecretIdFor(credential, service),
+            ctx: rest.ctx
+          })
+        : null;
+    const storedDynamicSecretId =
+      service.credentialType === AgentVaultCredentialType.DynamicSecret
+        ? (service.credentialConfig as TAgentVaultDynamicSecretConfig).dynamicSecretId
+        : undefined;
 
     let credentialUpdate = {};
     // Undefined leaves the sealed secret, and the references read off it, as they are.
     let writtenSecret: TCredentialWrite["secret"];
     let credentialReplaced = false;
     let effectiveCredentialConfig = service.credentialConfig as TAgentVaultCredentialConfig;
+    if (dynamicSecretReference) {
+      const { config, secret, memberProvidedFields } = dynamicSecretWrite(dynamicSecretReference);
+      credentialUpdate = {
+        credentialType: AgentVaultCredentialType.DynamicSecret,
+        credentialConfig: config,
+        memberProvidedFields,
+        encryptedCredential: null
+      };
+      effectiveCredentialConfig = config;
+      writtenSecret = secret;
+      credentialReplaced =
+        Boolean(service.encryptedCredential) || storedDynamicSecretId !== dynamicSecretReference.dynamicSecretId;
+    }
     // A new OAuth authorization is claimed right before the write.
-    if (credential && credential.type !== AgentVaultCredentialType.OAuth) {
+    else if (credential && credential.type !== AgentVaultCredentialType.OAuth) {
       const { config, secret, memberProvidedFields } = mergeCredential(
         storeCredentialReferences(credential, store),
         service,
@@ -2043,6 +2126,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           storedSecret !== null && !locked.encryptedCredential?.equals(service.encryptedCredential!);
         if (
           locked.credentialType !== service.credentialType ||
+          (locked.credentialType === AgentVaultCredentialType.DynamicSecret &&
+            (locked.credentialConfig as TAgentVaultDynamicSecretConfig).dynamicSecretId !== storedDynamicSecretId) ||
           !sameMemberProvidedFields(locked.memberProvidedFields, service.memberProvidedFields) ||
           secretChanged
         ) {
@@ -2059,6 +2144,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           if (credential.certificate === null && sshKeyChanged) {
             throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
           }
+          lockedCredentialConfig = locked.credentialConfig as TAgentVaultCredentialConfig;
+          lockedCredentialUpdate = { ...credentialUpdate, credentialConfig: lockedCredentialConfig };
+        }
+        if (credential.type === AgentVaultCredentialType.ClientCertificate && writtenSecret === undefined) {
           lockedCredentialConfig = locked.credentialConfig as TAgentVaultCredentialConfig;
           lockedCredentialUpdate = { ...credentialUpdate, credentialConfig: lockedCredentialConfig };
         }
@@ -2333,6 +2422,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       throw err;
     }
 
+    if (storedDynamicSecretId && credential && storedDynamicSecretId !== dynamicSecretReference?.dynamicSecretId) {
+      await agentVaultDynamicSecretService.revokeServiceLeases({
+        serviceId: service.id,
+        dynamicSecretId: storedDynamicSecretId
+      });
+    }
+
     return {
       service: {
         ...projectService(
@@ -2340,7 +2436,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           result.updatedCustomHeaders,
           result.updatedSubstitutions,
           result.variableReferences,
-          await loadOauthVariables(rest.projectId, [result.updatedService])
+          await loadOauthVariables(rest.projectId, [result.updatedService]),
+          await loadExistingDynamicSecretIds([result.updatedService])
         ),
         ...(serviceVisibilityOf(permission).canReadHooks
           ? {
@@ -2640,11 +2737,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
     // Read before the delete, since CASCADE takes these rows with the service.
-    const [{ customHeaders, substitutions, variableReferences, oauthVariables }, bundlesByService] = await Promise.all([
+    const [
+      { customHeaders, substitutions, variableReferences, oauthVariables, existingDynamicSecretIds },
+      bundlesByService
+    ] = await Promise.all([
       loadTransformations([service]),
       agentVaultServiceDAL.findBundlesForServices([service.id], null)
     ]);
-    const deleted = await agentVaultServiceDAL.deleteById(service.id);
+    const deleted = (await agentVaultServiceDAL.deleteById(service.id)) as TAgentVaultServices | undefined;
+    if (deleted?.credentialType === AgentVaultCredentialType.DynamicSecret) {
+      await agentVaultDynamicSecretService.revokeServiceLeases({
+        serviceId: deleted.id,
+        dynamicSecretId: (deleted.credentialConfig as TAgentVaultDynamicSecretConfig).dynamicSecretId
+      });
+    }
     return {
       service: {
         ...projectService(
@@ -2652,7 +2758,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           customHeaders,
           substitutions,
           variableReferences,
-          oauthVariables
+          oauthVariables,
+          existingDynamicSecretIds
         ),
         accessBundles: bundlesByService.get(service.id) ?? []
       }

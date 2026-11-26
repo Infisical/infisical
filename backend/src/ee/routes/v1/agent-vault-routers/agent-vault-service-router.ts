@@ -214,6 +214,19 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             serviceType: service.type,
             ...serviceTypeFields,
             credentialType: service.credential.type,
+            clientCertificateNotAfter:
+              service.credential.type === AgentVaultCredentialType.ClientCertificate
+                ? service.credential.notAfter
+                : undefined,
+            ...(service.credential.type === AgentVaultCredentialType.DynamicSecret
+              ? {
+                  dynamicSecretId: service.credential.dynamicSecretId,
+                  dynamicSecretName: service.credential.name,
+                  dynamicSecretProjectId: service.credential.projectId,
+                  dynamicSecretEnvironment: service.credential.environment,
+                  dynamicSecretSecretPath: service.credential.secretPath
+                }
+              : {}),
             headerName:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
@@ -221,7 +234,9 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             ...oauthAuditFieldsOf(service.credential),
             memberProvidedFields:
               service.credential.type === AgentVaultCredentialType.Passthrough ||
-              service.credential.type === AgentVaultCredentialType.SshKey
+              service.credential.type === AgentVaultCredentialType.SshKey ||
+              service.credential.type === AgentVaultCredentialType.ClientCertificate ||
+              service.credential.type === AgentVaultCredentialType.DynamicSecret
                 ? undefined
                 : service.credential.memberProvidedFields,
             ...transformationNames,
@@ -313,6 +328,20 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
             hostPattern: update.hostPattern ?? (update.serverUrl ? serviceTypeFields.hostPattern : undefined),
             credentialType: req.body.credential?.type,
+            clientCertificateNotAfter:
+              credentialReplaced && service.credential.type === AgentVaultCredentialType.ClientCertificate
+                ? service.credential.notAfter
+                : undefined,
+            ...(req.body.credential?.type === AgentVaultCredentialType.DynamicSecret &&
+            service.credential.type === AgentVaultCredentialType.DynamicSecret
+              ? {
+                  dynamicSecretId: service.credential.dynamicSecretId,
+                  dynamicSecretName: service.credential.name,
+                  dynamicSecretProjectId: service.credential.projectId,
+                  dynamicSecretEnvironment: service.credential.environment,
+                  dynamicSecretSecretPath: service.credential.secretPath
+                }
+              : {}),
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.headerName
@@ -327,7 +356,9 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             memberProvidedFields:
               req.body.credential &&
               service.credential.type !== AgentVaultCredentialType.Passthrough &&
-              service.credential.type !== AgentVaultCredentialType.SshKey
+              service.credential.type !== AgentVaultCredentialType.SshKey &&
+              service.credential.type !== AgentVaultCredentialType.ClientCertificate &&
+              service.credential.type !== AgentVaultCredentialType.DynamicSecret
                 ? service.credential.memberProvidedFields
                 : undefined,
             customHeaderNames: update.customHeaders?.map((header) => header.name),

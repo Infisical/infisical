@@ -15,6 +15,8 @@ import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import {
   buildServiceSchema,
   certificateAuthorityError,
+  clientCertificateError,
+  clientPrivateKeyError,
   credentialLabel,
   isOAuthAuthorizationMissing,
   MAX_ALLOWED_TOOLS,
@@ -50,6 +52,13 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   sshPrivateKey: "",
   sshCertificate: "",
   sshCertificateRemoved: false,
+  clientCertificate: "",
+  clientPrivateKey: "",
+  dynamicSecretProjectId: "",
+  dynamicSecretEnvironment: "",
+  dynamicSecretPath: "/",
+  dynamicSecretId: "",
+  dynamicSecretName: "",
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -656,6 +665,114 @@ describe("buildServiceSchema with native validation", () => {
       []
     );
     expect(issuesOf(sshKey({ sshCertificate: UNCHANGED_SECRET }))).toEqual([]);
+  });
+});
+
+const pemBlock = (label: string, body: string) =>
+  ["-----BEGIN ", label, "-----\n", body, "\n-----END ", label, "-----"].join("");
+const TEST_KEY = pemBlock(
+  "PRIVATE KEY",
+  "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgAAAAAAAAAAAAAAAA\nAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+);
+
+describe("buildServiceSchema with a TLS service", () => {
+  const tlsForm = (overrides: Partial<TServiceForm> = {}) =>
+    nativeForm({
+      serviceType: AgentVaultServiceType.Tls,
+      name: "engine",
+      host: "engine.internal",
+      port: "443",
+      database: "",
+      credentialType: AgentVaultCredentialType.ClientCertificate,
+      username: "",
+      clientCertificate: TEST_CA,
+      clientPrivateKey: TEST_KEY,
+      ...overrides
+    });
+  const storedTls = {
+    id: "service-1",
+    name: "engine",
+    description: null,
+    type: AgentVaultServiceType.Tls,
+    host: "engine.internal",
+    port: 443,
+    tls: { enabled: true, verify: true, ca: null },
+    credential: {
+      type: AgentVaultCredentialType.ClientCertificate,
+      notAfter: "2036-11-03T23:34:53.000Z"
+    },
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  } satisfies TAgentVaultService;
+  const issuesOnEdit = (form: TServiceForm) => {
+    const result = buildServiceSchema(storedTls).safeParse(form);
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
+  };
+
+  it("accepts a certificate and its key without a database", () => {
+    expect(issuesOf(tlsForm())).toEqual([]);
+  });
+
+  it("asks for the certificate and key on create", () => {
+    expect(issuesOf(tlsForm({ clientCertificate: "", clientPrivateKey: "" }))).toEqual([
+      "clientCertificate",
+      "clientPrivateKey"
+    ]);
+  });
+
+  it("keeps the stored pair on edit and asks for the other half of a new one", () => {
+    const unchanged = { clientCertificate: UNCHANGED_SECRET, clientPrivateKey: UNCHANGED_SECRET };
+    expect(issuesOnEdit(tlsForm(unchanged))).toEqual([]);
+    expect(issuesOnEdit(tlsForm({ ...unchanged, clientCertificate: TEST_CA }))).toEqual([
+      "clientPrivateKey"
+    ]);
+  });
+
+  it("refuses a password credential on a TLS service and a client certificate on a database", () => {
+    expect(
+      issuesOf(tlsForm({ credentialType: AgentVaultCredentialType.Basic, username: "agent" }))
+    ).toEqual(["credentialType"]);
+    expect(
+      issuesOf(
+        nativeForm({
+          credentialType: AgentVaultCredentialType.ClientCertificate,
+          clientCertificate: TEST_CA,
+          clientPrivateKey: TEST_KEY
+        })
+      )
+    ).toEqual(["credentialType"]);
+  });
+
+  it("asks for the first missing step of the dynamic secret picker", () => {
+    const dynamicSecretForm = (overrides: Partial<TServiceForm>) =>
+      tlsForm({
+        credentialType: AgentVaultCredentialType.DynamicSecret,
+        clientCertificate: "",
+        clientPrivateKey: "",
+        dynamicSecretProjectId: "project-1",
+        dynamicSecretEnvironment: "prod",
+        dynamicSecretId: "dynamic-secret-1",
+        ...overrides
+      });
+    expect(issuesOf(dynamicSecretForm({}))).toEqual([]);
+    expect(
+      issuesOf(dynamicSecretForm({ dynamicSecretEnvironment: "", dynamicSecretId: "" }))
+    ).toEqual(["dynamicSecretEnvironment"]);
+    expect(issuesOf(dynamicSecretForm({ dynamicSecretId: "" }))).toEqual(["dynamicSecretId"]);
+  });
+});
+
+describe("clientCertificateError and clientPrivateKeyError", () => {
+  it("refuses text that isn't a PEM certificate, or holds a key beside one", () => {
+    expect(clientCertificateError(TEST_CA)).toBeNull();
+    expect(clientCertificateError("not a certificate")).not.toBeNull();
+    expect(clientCertificateError(`${TEST_CA}\n${TEST_KEY}`)).not.toBeNull();
+  });
+
+  it("accepts one unencrypted key and refuses an encrypted key or several blocks", () => {
+    expect(clientPrivateKeyError(TEST_KEY)).toBeNull();
+    expect(clientPrivateKeyError(pemBlock("ENCRYPTED PRIVATE KEY", "AAAA"))).not.toBeNull();
+    expect(clientPrivateKeyError(`${TEST_KEY}\n${TEST_KEY}`)).not.toBeNull();
   });
 });
 

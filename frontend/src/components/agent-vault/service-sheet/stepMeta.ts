@@ -149,6 +149,15 @@ const NATIVE_STEP_COPY: Record<
     credential: "The user the proxy logs in as, with a password or an SSH key.",
     credentialRight:
       "The proxy logs in to the server for the agent, so the agent never holds the password or the key. What the agent can run is up to that user's permissions on the server."
+  },
+  [AgentVaultServiceType.Tls]: {
+    details: "What this service is called and the TLS server it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name, and the proxy opens the TLS connection to the server.",
+    credential:
+      "The client certificate the proxy presents, stored here or leased from a dynamic secret.",
+    credentialRight:
+      "The proxy presents the certificate for the agent, so the agent never holds the private key."
   }
 };
 

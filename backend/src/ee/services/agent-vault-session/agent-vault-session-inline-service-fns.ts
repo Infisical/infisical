@@ -26,7 +26,7 @@ import {
 } from "../agent-vault-variable/agent-vault-oauth-variable-fns";
 import { TAgentVaultOauthVariableConnection } from "../agent-vault-variable/agent-vault-variable-types";
 import { findHostPatternConflicts, TConflictCandidate } from "../agent-vault/agent-vault-conflict-fns";
-import { AgentVaultBearerConfigSchema } from "../agent-vault/agent-vault-credential-schemas";
+import { AgentVaultBearerConfigSchema, parseClientCertificate } from "../agent-vault/agent-vault-credential-schemas";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -83,6 +83,7 @@ const InlineServiceSecretsSchema = z.object({
       z.object({ username: z.string(), password: z.string() }),
       // Strict, so a basic secret is never read as an SSH key or the other way round.
       z.object({ username: z.string(), privateKey: z.string(), certificate: z.string().optional() }).strict(),
+      z.object({ certificate: z.string(), privateKey: z.string() }).strict(),
       z
         .object({ accessToken: z.string(), refreshToken: z.string().optional(), clientSecret: z.string().optional() })
         .strict()
@@ -244,8 +245,14 @@ const toInlineOauthCredential = (
   return { config: connection, secret, variableKey: null };
 };
 
+export const INLINE_DYNAMIC_SECRET_MESSAGE =
+  "A service sent with a session can't use a dynamic secret yet. Save the service in the project with the dynamic secret as its credential, and add it to an access bundle or list it by name.";
+
 const toInlineCredential = (
-  credential: Exclude<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>
+  credential: Exclude<
+    TAgentVaultInlineServiceInput["credential"],
+    { type: AgentVaultCredentialType.OAuth | AgentVaultCredentialType.DynamicSecret }
+  >
 ): { config: TInlineCredentialConfig; secret: TInlineServiceSecrets["credential"] } => {
   switch (credential.type) {
     case AgentVaultCredentialType.Bearer: {
@@ -275,6 +282,13 @@ const toInlineCredential = (
           ...(credential.certificate ? { certificate: credential.certificate } : {})
         }
       };
+    case AgentVaultCredentialType.ClientCertificate: {
+      const { certificate, privateKey, notAfter } = parseClientCertificate(credential);
+      return {
+        config: { type: AgentVaultCredentialType.ClientCertificate, notAfter },
+        secret: { certificate, privateKey }
+      };
+    }
     case AgentVaultCredentialType.Passthrough:
       return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
     default: {
@@ -309,6 +323,9 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     });
   }
   assertCredentialTypeSupported(definition, credential.type);
+  if (credential.type === AgentVaultCredentialType.DynamicSecret) {
+    throw new BadRequestError({ message: INLINE_DYNAMIC_SECRET_MESSAGE });
+  }
 
   const config = buildServiceConfig(definition, {
     serverUrl: input.serverUrl,
@@ -575,6 +592,8 @@ const toInlineCredentialSummary = (
       return { type: config.type, headerName: config.headerName, headerPrefix: config.headerPrefix };
     case AgentVaultCredentialType.SshKey:
       return { type: config.type, hasCertificate: Boolean(config.hasCertificate) };
+    case AgentVaultCredentialType.ClientCertificate:
+      return { type: config.type, notAfter: config.notAfter };
     case AgentVaultCredentialType.OAuth:
       return toInlineOauthCredentialSummary(config, oauthVariables);
     default:
@@ -627,6 +646,11 @@ export const toInlineServiceSummary = (
       return { ...base, ...typeFields, credential, customHeaders: row.customHeaders as TInlineCustomHeader[] };
     case AgentVaultServiceType.Ssh:
       if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
+        throw unsupportedCredential();
+      }
+      return { ...base, ...typeFields, credential };
+    case AgentVaultServiceType.Tls:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.ClientCertificate])) {
         throw unsupportedCredential();
       }
       return { ...base, ...typeFields, credential };
@@ -777,13 +801,25 @@ export const toResolvedInlineService = (
   } else if (
     credentialConfig.type === AgentVaultCredentialType.SshKey &&
     secrets?.credential &&
-    "privateKey" in secrets.credential
+    "privateKey" in secrets.credential &&
+    "username" in secrets.credential
   ) {
     credential = {
       type: AgentVaultCredentialType.SshKey,
       username: secrets.credential.username,
       privateKey: secrets.credential.privateKey,
       ...(secrets.credential.certificate ? { certificate: secrets.credential.certificate } : {})
+    };
+  } else if (
+    credentialConfig.type === AgentVaultCredentialType.ClientCertificate &&
+    secrets?.credential &&
+    "certificate" in secrets.credential &&
+    !("username" in secrets.credential)
+  ) {
+    credential = {
+      type: AgentVaultCredentialType.ClientCertificate,
+      certificate: secrets.credential.certificate,
+      privateKey: secrets.credential.privateKey
     };
   } else {
     return null;

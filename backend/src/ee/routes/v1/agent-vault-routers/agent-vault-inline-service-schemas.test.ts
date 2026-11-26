@@ -210,6 +210,29 @@ describe("database and SSH services in the inline request schema", () => {
   });
 });
 
+describe("TLS services in the inline request schema", () => {
+  const tls = (credential: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    type: "tls",
+    name: "engine",
+    host: "engine.internal",
+    credential: { type: "client-certificate", ...credential },
+    ...extra
+  });
+  const certificate = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----";
+  const privateKey = "-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----";
+
+  test("take a client certificate and its key, with or without TLS settings", () => {
+    expect(issuesOf([tls({ certificate, privateKey })])).toEqual([]);
+    expect(issuesOf([tls({ certificate, privateKey }, { port: 8443, tls: { verify: false } })])).toEqual([]);
+  });
+
+  test("refuse a variable reference in the certificate", () => {
+    expect(issuesOf([tls({ certificate: "{{CERT}}", privateKey })]).map((issue) => issue.path)).toEqual([
+      [0, "credential", "certificate"]
+    ]);
+  });
+});
+
 describe("hooks in the inline request schema", () => {
   test("an inline service names a saved hook, with its narrowing", () => {
     const parsed = AgentVaultSessionServicesInputSchema.parse([

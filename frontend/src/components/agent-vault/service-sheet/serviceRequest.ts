@@ -8,8 +8,10 @@ import {
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultBasicCredentialInput,
+  TAgentVaultClientCertificateCredentialInput,
   TAgentVaultCredentialInput,
   TAgentVaultCredentialUpdate,
+  TAgentVaultDynamicSecretCredentialInput,
   TAgentVaultOauthCredentialInput,
   TAgentVaultService,
   TAgentVaultServiceHookInput,
@@ -23,6 +25,7 @@ import {
 import { buildHookNarrowing, hookNarrowingDraftOf, sameHookNarrowing } from "../hooks/hookSchema";
 import {
   hasDatabase,
+  hasTls,
   hostOf,
   isAllMethods,
   isCredentialMemberProvided,
@@ -276,10 +279,42 @@ const buildSshKeyCredentialPatch = (data: TServiceForm): TAgentVaultSshKeyCreden
   };
 };
 
+const buildClientCertificateCredential = (
+  data: TServiceForm
+): TAgentVaultClientCertificateCredentialInput => ({
+  type: AgentVaultCredentialType.ClientCertificate,
+  certificate: data.clientCertificate.trim(),
+  privateKey: data.clientPrivateKey.trim()
+});
+
+const buildDynamicSecretCredential = (
+  data: TServiceForm
+): TAgentVaultDynamicSecretCredentialInput => ({
+  type: AgentVaultCredentialType.DynamicSecret,
+  dynamicSecretId: data.dynamicSecretId
+});
+
+// Left out while unchanged, which keeps the stored credential. The certificate and key are replaced together.
+const withTlsCredentialChange = (service: TAgentVaultService, data: TServiceForm) => {
+  if (data.credentialType === AgentVaultCredentialType.DynamicSecret) {
+    const isStoredDynamicSecret =
+      service.credential.type === AgentVaultCredentialType.DynamicSecret &&
+      service.credential.dynamicSecretId === data.dynamicSecretId;
+    return isStoredDynamicSecret ? {} : { credential: buildDynamicSecretCredential(data) };
+  }
+  const changed = (value: string) => (value === UNCHANGED_SECRET ? "" : value.trim());
+  return changed(data.clientCertificate) && changed(data.clientPrivateKey)
+    ? { credential: buildClientCertificateCredential(data) }
+    : {};
+};
+
 // The CA is left out while TLS is off: its field is hidden then, and leaving it out keeps a stored one for when TLS
 // is turned back on. An emptied CA is null, which clears a stored one and is the same as none on create.
 // The proxy reads the CA only while it verifies the certificate, so it is left out otherwise and a stored one is kept.
-const buildNativeTls = (data: TServiceForm) => {
+const buildNativeTls = (data: TServiceForm, serviceType: TAgentVaultNativeServiceType) => {
+  if (serviceType === AgentVaultServiceType.Tls) {
+    return data.tlsVerify ? { verify: true, ca: data.tlsCa.trim() || null } : { verify: false };
+  }
   if (!data.tlsEnabled) return { enabled: false, verify: data.tlsVerify };
   if (!data.tlsVerify) return { enabled: true, verify: false };
   return { enabled: true, verify: true, ca: data.tlsCa.trim() || null };
@@ -289,7 +324,8 @@ const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativ
   name: data.name,
   host: data.host.trim(),
   port: Number(data.port.trim()),
-  ...(hasDatabase(serviceType) ? { database: data.database.trim(), tls: buildNativeTls(data) } : {})
+  ...(hasDatabase(serviceType) ? { database: data.database.trim() } : {}),
+  ...(hasTls(serviceType) ? { tls: buildNativeTls(data, serviceType) } : {})
 });
 
 // A service created from a bundle's page goes into that bundle in the same request.
@@ -337,6 +373,17 @@ const buildNativeCreateRequest = (
         data.credentialType === AgentVaultCredentialType.SshKey
           ? buildSshKeyCredential(data)
           : buildBasicCredential(data)
+    };
+  }
+  if (serviceType === AgentVaultServiceType.Tls) {
+    return {
+      ...intoBundle(accessBundleId),
+      type: serviceType,
+      ...connection,
+      credential:
+        data.credentialType === AgentVaultCredentialType.DynamicSecret
+          ? buildDynamicSecretCredential(data)
+          : buildClientCertificateCredential(data)
     };
   }
   return {
@@ -398,7 +445,9 @@ export const buildUpdateServiceRequest = (
       type: data.serviceType,
       ...buildNativeConnection(data, data.serviceType),
       description,
-      credential: buildNativeCredentialPatch(data),
+      ...(data.serviceType === AgentVaultServiceType.Tls
+        ? withTlsCredentialChange(service, data)
+        : { credential: buildNativeCredentialPatch(data) }),
       ...withHookChange(service, data)
     };
   }

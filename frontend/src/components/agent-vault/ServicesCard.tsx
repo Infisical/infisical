@@ -482,6 +482,20 @@ export const ServicesCard = ({
                         ) : (
                           <OAuthStatusBadge status={service.credential.status} />
                         ))}
+                      {service.credential.type === AgentVaultCredentialType.ClientCertificate &&
+                        new Date(service.credential.notAfter).getTime() <= Date.now() && (
+                          <Badge variant="danger">
+                            <TriangleAlertIcon />
+                            Certificate Expired
+                          </Badge>
+                        )}
+                      {service.credential.type === AgentVaultCredentialType.DynamicSecret &&
+                        !service.credential.dynamicSecretExists && (
+                          <Badge variant="danger">
+                            <TriangleAlertIcon />
+                            Dynamic Secret Missing
+                          </Badge>
+                        )}
                       {service.description && (
                         <span
                           className="min-w-0 flex-1 truncate text-sm text-muted"
