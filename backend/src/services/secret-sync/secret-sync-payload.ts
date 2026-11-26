@@ -1,4 +1,5 @@
 import handlebars from "handlebars";
+import path from "path";
 
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -18,8 +19,10 @@ export type TSecretSyncPayload = {
   secrets: TSecretPayload[];
   environment: string;
   flatten: (opts?: { disableKeySchema?: boolean }) => TSecretMap;
+  mirror: () => TSecretMap;
+  mirroredFolders: () => Set<string>;
   findConflicts: (opts?: { disableKeySchema?: boolean }) => TSecretSyncConflict[];
-  dedupeConflicts: () => TSecretSyncPayload;
+  tolerateConflicts: () => TSecretSyncPayload;
 };
 
 export type TSecretSyncConflict = {
@@ -77,49 +80,57 @@ export const findFlattenConflicts = (
     .map(([key, group]) => ({ key, paths: group.map((entry) => entry.path).sort() }));
 };
 
-const buildConflictError = (conflicts: TSecretSyncConflict[]) => {
+const describeConflicts = (conflicts: TSecretSyncConflict[]) => {
   const shown = conflicts.slice(0, MAX_REPORTED_KEY_CONFLICTS);
   const remainder = conflicts.length - shown.length;
 
   const detail = shown.map(({ key, paths }) => `"${key}" in ${paths.join(" and ")}`).join("; ");
 
-  return new SecretSyncError({
-    message: `This destination stores secrets in a single flat list, so each name can be used only once. These names are used in more than one folder: ${detail}${
-      remainder > 0 ? `, and ${remainder} more` : ""
-    }. Rename or move one secret in each pair, or point the sync at a narrower secret path.`,
+  return `${detail}${remainder > 0 ? `, and ${remainder} more` : ""}`;
+};
+
+const buildConflictError = (conflicts: TSecretSyncConflict[]) =>
+  new SecretSyncError({
+    message: `This destination stores secrets in a single flat list, so each name can be used only once. These names are used in more than one folder: ${describeConflicts(conflicts)}. Rename or move one secret in each pair, or point the sync at a narrower secret path.`,
     shouldRetry: false
   });
+
+// The folder part of a name mirror() builds, eg "api/payments" for "api/payments/STRIPE_KEY", and ""
+// for a name in the source folder itself.
+export const getMirroredFolder = (name: string) => name.substring(0, Math.max(name.lastIndexOf("/"), 0));
+
+const getMirroredName = (
+  entry: TSecretPayload,
+  { environment, keySchema, sourcePath }: { environment: string; keySchema?: string; sourcePath: string }
+) => {
+  const folder = path.posix.relative(sourcePath, entry.path);
+  const key = getKeyWithSchema({ key: entry.key, environment, schema: keySchema });
+
+  return folder ? `${folder}/${key}` : key;
 };
 
-// Removal deletes by destination key and does not care which duplicate wins, so dedupeConflicts()
-// (below) uses this to resolve a conflict before a provider's own flatten() call ever sees it: a
-// sync that has drifted into a duplicate-name state must still be removable, since
-// deleteSyncOnComplete only drops the sync row after a successful remove.
-export const dedupeEntriesByDestinationKey = (
-  entries: TSecretPayload[],
-  { environment, keySchema }: { environment: string; keySchema?: string }
-): TSecretPayload[] => {
-  const seenDestinationKeys = new Set<string>();
-  const deduped: TSecretPayload[] = [];
-
-  for (const entry of entries) {
-    const destinationKey = getKeyWithSchema({ key: entry.key, environment, schema: keySchema });
-
-    if (seenDestinationKeys.has(destinationKey)) {
-      // eslint-disable-next-line no-continue
-      continue;
-    }
-
-    seenDestinationKeys.add(destinationKey);
-    deduped.push(entry);
-  }
-
-  return deduped;
-};
+const toSecretMapEntry = ({ value, id, comment, secretMetadata }: TSecretPayload): TSecretMap[string] => ({
+  value,
+  id,
+  comment,
+  secretMetadata
+});
 
 export const createSecretSyncPayload = (
   secrets: TSecretPayload[],
-  { environment, keySchema }: { environment: string; keySchema?: string }
+  {
+    environment,
+    keySchema,
+    sourcePath = "/",
+    folderPaths = [sourcePath],
+    allowConflicts = false
+  }: {
+    environment: string;
+    keySchema?: string;
+    sourcePath?: string;
+    folderPaths?: string[];
+    allowConflicts?: boolean;
+  }
 ): TSecretSyncPayload => ({
   secrets,
   environment,
@@ -131,34 +142,73 @@ export const createSecretSyncPayload = (
   flatten: ({ disableKeySchema = false }: { disableKeySchema?: boolean } = {}) => {
     const conflicts = findFlattenConflicts({ secrets, environment, keySchema }, { disableKeySchema });
 
-    if (conflicts.length) throw buildConflictError(conflicts);
+    if (conflicts.length && !allowConflicts) throw buildConflictError(conflicts);
 
     const schema = disableKeySchema ? undefined : keySchema;
     const grouped = groupByDestinationKey({ secrets, environment }, schema);
     const map: TSecretMap = {};
 
     for (const [destinationKey, [entry]] of grouped) {
-      map[destinationKey] = {
-        value: entry.value,
-        id: entry.id,
-        comment: entry.comment,
-        secretMetadata: entry.secretMetadata
-      };
+      map[destinationKey] = toSecretMapEntry(entry);
     }
 
     return map;
   },
+  // For a destination that keeps the sync's folders as path segments: each key is its folder,
+  // relative to the source folder, joined to the key, eg "api/payments/STRIPE_KEY". The key schema
+  // only renames the last segment. A folder can't hold the same key twice, but a name saved before
+  // "/" was refused in secret names adds folders of its own: "b/X" in /a and "X" in /a/b are both
+  // "a/b/X", so that collision is refused like a flattened one.
+  mirror: () => {
+    const grouped = new Map<string, TSecretPayload[]>();
+
+    for (const entry of secrets) {
+      const name = getMirroredName(entry, { environment, keySchema, sourcePath });
+      const group = grouped.get(name);
+
+      if (group) group.push(entry);
+      else grouped.set(name, [entry]);
+    }
+
+    const conflicts = [...grouped.entries()]
+      .filter(([, group]) => group.length > 1)
+      .map(([key, group]) => ({ key, paths: group.map((entry) => entry.path).sort() }));
+
+    if (conflicts.length && !allowConflicts) {
+      throw new SecretSyncError({
+        message: `Two secrets would be written to the same name, because a secret name containing "/" adds folders to it: ${describeConflicts(conflicts)}. Rename one secret in each pair.`,
+        shouldRetry: false
+      });
+    }
+
+    const map: TSecretMap = {};
+
+    for (const [name, [entry]] of grouped) {
+      map[name] = toSecretMapEntry(entry);
+    }
+
+    return map;
+  },
+  // The folders, relative to the source folder, whose names a sync that preserves folder structure
+  // owns at the destination: every synced folder, including an empty one so the copies of its last
+  // secrets still get deleted, and any folder a name containing "/" writes into. Names in other
+  // folders below the destination path belong to something else, eg another sync, and are left alone.
+  mirroredFolders: () =>
+    new Set([
+      ...folderPaths.map((folderPath) => path.posix.relative(sourcePath, folderPath)),
+      ...secrets.map((entry) => getMirroredFolder(getMirroredName(entry, { environment, keySchema, sourcePath })))
+    ]),
   // keySchema itself is deliberately not a field on this object: nothing outside this module
   // needs to read it directly, and findConflicts() is how an external caller (the
   // recursive-conflicts preview endpoint) reaches the same check flatten() runs, without it.
   findConflicts: (opts) => findFlattenConflicts({ secrets, environment, keySchema }, opts),
   // Removal hands the whole payload to a provider's own removeSecrets, which calls flatten()
   // itself with no idea this is a removal, so tolerating a duplicate name has to happen here,
-  // before that flatten() call exists to throw on it. Returns a new payload; this one's
-  // duplicate-free by construction, so its own flatten() call, whatever calls it, never conflicts.
-  dedupeConflicts: () =>
-    createSecretSyncPayload(dedupeEntriesByDestinationKey(secrets, { environment, keySchema }), {
-      environment,
-      keySchema
-    })
+  // before that flatten() call exists to throw on it: a sync that has drifted into a
+  // duplicate-name state must still be removable, since deleteSyncOnComplete only drops the sync
+  // row after a successful remove. The returned payload's flatten() keeps the first entry for each
+  // destination key. Its secrets stay whole, since mirror() names same-named secrets in different
+  // folders apart and removal has to delete each of them.
+  tolerateConflicts: () =>
+    createSecretSyncPayload(secrets, { environment, keySchema, sourcePath, folderPaths, allowConflicts: true })
 });

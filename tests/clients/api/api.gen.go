@@ -3806,8 +3806,6 @@ const (
 	DailySecretVersionCleanup                     TriggerAdminCronJobParamsJobName = "daily-secret-version-cleanup"
 	DigicertOrderPolling                          TriggerAdminCronJobParamsJobName = "digicert-order-polling"
 	DigicertRevocationSync                        TriggerAdminCronJobParamsJobName = "digicert-revocation-sync"
-	EventOutboxCleanup                            TriggerAdminCronJobParamsJobName = "event-outbox-cleanup"
-	EventOutboxStaleClaimSweeper                  TriggerAdminCronJobParamsJobName = "event-outbox-stale-claim-sweeper"
 	FrequentResourceCleanup                       TriggerAdminCronJobParamsJobName = "frequent-resource-cleanup"
 	GodaddyOrderPolling                           TriggerAdminCronJobParamsJobName = "godaddy-order-polling"
 	HealthAlert                                   TriggerAdminCronJobParamsJobName = "health-alert"
@@ -3877,10 +3875,6 @@ func (e TriggerAdminCronJobParamsJobName) Valid() bool {
 	case DigicertOrderPolling:
 		return true
 	case DigicertRevocationSync:
-		return true
-	case EventOutboxCleanup:
-		return true
-	case EventOutboxStaleClaimSweeper:
 		return true
 	case FrequentResourceCleanup:
 		return true
@@ -39801,6 +39795,27 @@ func (e GetPkiApplicationEnrollment200JSONResponseBodyCaType) Valid() bool {
 	}
 }
 
+// Defines values for GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus.
+const (
+	Enforced     GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus = "enforced"
+	NotChecked   GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus = "not-checked"
+	Unverifiable GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus = "unverifiable"
+)
+
+// Valid indicates whether the value is a known member of the GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus enum.
+func (e GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus) Valid() bool {
+	switch e {
+	case Enforced:
+		return true
+	case NotChecked:
+		return true
+	case Unverifiable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType.
 const (
 	GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeTypeDynamic         GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType = "dynamic"
@@ -56930,21 +56945,22 @@ func (e GetCertificate200JSONResponseBodyCertificateCaType) Valid() bool {
 
 // Defines values for GetCertificate200JSONResponseBodyCertificateDeletedByActorType.
 const (
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeAcmeAccount     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "acmeAccount"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeAcmeProfile     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "acmeProfile"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeAgentVaultProxy GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "agentVaultProxy"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeEstAccount      GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "estAccount"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeGateway         GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "gateway"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeIdentity        GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "identity"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeKmipClient      GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "kmipClient"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeKmipServer      GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "kmipServer"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypePlatform        GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "platform"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeRelay           GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "relay"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeScepAccount     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "scepAccount"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeScimClient      GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "scimClient"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeService         GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "service"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeUnknownUser     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "unknownUser"
-	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeUser            GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "user"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeAcmeAccount                    GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "acmeAccount"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeAcmeProfile                    GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "acmeProfile"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeAgentVaultProxy                GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "agentVaultProxy"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeEstAccount                     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "estAccount"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeGateway                        GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "gateway"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeIdentity                       GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "identity"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeKmipClient                     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "kmipClient"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeKmipServer                     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "kmipServer"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeMicrosoftAutoenrollmentAccount GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "microsoftAutoenrollmentAccount"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypePlatform                       GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "platform"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeRelay                          GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "relay"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeScepAccount                    GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "scepAccount"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeScimClient                     GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "scimClient"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeService                        GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "service"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeUnknownUser                    GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "unknownUser"
+	GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeUser                           GetCertificate200JSONResponseBodyCertificateDeletedByActorType = "user"
 )
 
 // Valid indicates whether the value is a known member of the GetCertificate200JSONResponseBodyCertificateDeletedByActorType enum.
@@ -56965,6 +56981,8 @@ func (e GetCertificate200JSONResponseBodyCertificateDeletedByActorType) Valid() 
 	case GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeKmipClient:
 		return true
 	case GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeKmipServer:
+		return true
+	case GetCertificate200JSONResponseBodyCertificateDeletedByActorTypeMicrosoftAutoenrollmentAccount:
 		return true
 	case GetCertificate200JSONResponseBodyCertificateDeletedByActorTypePlatform:
 		return true
@@ -96821,21 +96839,22 @@ func (e UpdateOrganizationAuditLogSettings500JSONResponseBodyStatusCode) Valid()
 
 // Defines values for ListOrganizationAuditLogsParamsActorType.
 const (
-	ListOrganizationAuditLogsParamsActorTypeAcmeAccount     ListOrganizationAuditLogsParamsActorType = "acmeAccount"
-	ListOrganizationAuditLogsParamsActorTypeAcmeProfile     ListOrganizationAuditLogsParamsActorType = "acmeProfile"
-	ListOrganizationAuditLogsParamsActorTypeAgentVaultProxy ListOrganizationAuditLogsParamsActorType = "agentVaultProxy"
-	ListOrganizationAuditLogsParamsActorTypeEstAccount      ListOrganizationAuditLogsParamsActorType = "estAccount"
-	ListOrganizationAuditLogsParamsActorTypeGateway         ListOrganizationAuditLogsParamsActorType = "gateway"
-	ListOrganizationAuditLogsParamsActorTypeIdentity        ListOrganizationAuditLogsParamsActorType = "identity"
-	ListOrganizationAuditLogsParamsActorTypeKmipClient      ListOrganizationAuditLogsParamsActorType = "kmipClient"
-	ListOrganizationAuditLogsParamsActorTypeKmipServer      ListOrganizationAuditLogsParamsActorType = "kmipServer"
-	ListOrganizationAuditLogsParamsActorTypePlatform        ListOrganizationAuditLogsParamsActorType = "platform"
-	ListOrganizationAuditLogsParamsActorTypeRelay           ListOrganizationAuditLogsParamsActorType = "relay"
-	ListOrganizationAuditLogsParamsActorTypeScepAccount     ListOrganizationAuditLogsParamsActorType = "scepAccount"
-	ListOrganizationAuditLogsParamsActorTypeScimClient      ListOrganizationAuditLogsParamsActorType = "scimClient"
-	ListOrganizationAuditLogsParamsActorTypeService         ListOrganizationAuditLogsParamsActorType = "service"
-	ListOrganizationAuditLogsParamsActorTypeUnknownUser     ListOrganizationAuditLogsParamsActorType = "unknownUser"
-	ListOrganizationAuditLogsParamsActorTypeUser            ListOrganizationAuditLogsParamsActorType = "user"
+	ListOrganizationAuditLogsParamsActorTypeAcmeAccount                    ListOrganizationAuditLogsParamsActorType = "acmeAccount"
+	ListOrganizationAuditLogsParamsActorTypeAcmeProfile                    ListOrganizationAuditLogsParamsActorType = "acmeProfile"
+	ListOrganizationAuditLogsParamsActorTypeAgentVaultProxy                ListOrganizationAuditLogsParamsActorType = "agentVaultProxy"
+	ListOrganizationAuditLogsParamsActorTypeEstAccount                     ListOrganizationAuditLogsParamsActorType = "estAccount"
+	ListOrganizationAuditLogsParamsActorTypeGateway                        ListOrganizationAuditLogsParamsActorType = "gateway"
+	ListOrganizationAuditLogsParamsActorTypeIdentity                       ListOrganizationAuditLogsParamsActorType = "identity"
+	ListOrganizationAuditLogsParamsActorTypeKmipClient                     ListOrganizationAuditLogsParamsActorType = "kmipClient"
+	ListOrganizationAuditLogsParamsActorTypeKmipServer                     ListOrganizationAuditLogsParamsActorType = "kmipServer"
+	ListOrganizationAuditLogsParamsActorTypeMicrosoftAutoenrollmentAccount ListOrganizationAuditLogsParamsActorType = "microsoftAutoenrollmentAccount"
+	ListOrganizationAuditLogsParamsActorTypePlatform                       ListOrganizationAuditLogsParamsActorType = "platform"
+	ListOrganizationAuditLogsParamsActorTypeRelay                          ListOrganizationAuditLogsParamsActorType = "relay"
+	ListOrganizationAuditLogsParamsActorTypeScepAccount                    ListOrganizationAuditLogsParamsActorType = "scepAccount"
+	ListOrganizationAuditLogsParamsActorTypeScimClient                     ListOrganizationAuditLogsParamsActorType = "scimClient"
+	ListOrganizationAuditLogsParamsActorTypeService                        ListOrganizationAuditLogsParamsActorType = "service"
+	ListOrganizationAuditLogsParamsActorTypeUnknownUser                    ListOrganizationAuditLogsParamsActorType = "unknownUser"
+	ListOrganizationAuditLogsParamsActorTypeUser                           ListOrganizationAuditLogsParamsActorType = "user"
 )
 
 // Valid indicates whether the value is a known member of the ListOrganizationAuditLogsParamsActorType enum.
@@ -96856,6 +96875,8 @@ func (e ListOrganizationAuditLogsParamsActorType) Valid() bool {
 	case ListOrganizationAuditLogsParamsActorTypeKmipClient:
 		return true
 	case ListOrganizationAuditLogsParamsActorTypeKmipServer:
+		return true
+	case ListOrganizationAuditLogsParamsActorTypeMicrosoftAutoenrollmentAccount:
 		return true
 	case ListOrganizationAuditLogsParamsActorTypePlatform:
 		return true
@@ -99438,27 +99459,6 @@ func (e UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1) Valid()
 	}
 }
 
-// Defines values for UpdateOrganizationJSONBodySelectedMfaMethod.
-const (
-	UpdateOrganizationJSONBodySelectedMfaMethodEmail    UpdateOrganizationJSONBodySelectedMfaMethod = "email"
-	UpdateOrganizationJSONBodySelectedMfaMethodTotp     UpdateOrganizationJSONBodySelectedMfaMethod = "totp"
-	UpdateOrganizationJSONBodySelectedMfaMethodWebauthn UpdateOrganizationJSONBodySelectedMfaMethod = "webauthn"
-)
-
-// Valid indicates whether the value is a known member of the UpdateOrganizationJSONBodySelectedMfaMethod enum.
-func (e UpdateOrganizationJSONBodySelectedMfaMethod) Valid() bool {
-	switch e {
-	case UpdateOrganizationJSONBodySelectedMfaMethodEmail:
-		return true
-	case UpdateOrganizationJSONBodySelectedMfaMethodTotp:
-		return true
-	case UpdateOrganizationJSONBodySelectedMfaMethodWebauthn:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for UpdateOrganizationJSONBodySsoMfaTrust.
 const (
 	UpdateOrganizationJSONBodySsoMfaTrustNone   UpdateOrganizationJSONBodySsoMfaTrust = "none"
@@ -101315,21 +101315,22 @@ func (e ListFolderCommitsParamsSort) Valid() bool {
 
 // Defines values for ListFolderCommitsParamsActorType.
 const (
-	ListFolderCommitsParamsActorTypeAcmeAccount     ListFolderCommitsParamsActorType = "acmeAccount"
-	ListFolderCommitsParamsActorTypeAcmeProfile     ListFolderCommitsParamsActorType = "acmeProfile"
-	ListFolderCommitsParamsActorTypeAgentVaultProxy ListFolderCommitsParamsActorType = "agentVaultProxy"
-	ListFolderCommitsParamsActorTypeEstAccount      ListFolderCommitsParamsActorType = "estAccount"
-	ListFolderCommitsParamsActorTypeGateway         ListFolderCommitsParamsActorType = "gateway"
-	ListFolderCommitsParamsActorTypeIdentity        ListFolderCommitsParamsActorType = "identity"
-	ListFolderCommitsParamsActorTypeKmipClient      ListFolderCommitsParamsActorType = "kmipClient"
-	ListFolderCommitsParamsActorTypeKmipServer      ListFolderCommitsParamsActorType = "kmipServer"
-	ListFolderCommitsParamsActorTypePlatform        ListFolderCommitsParamsActorType = "platform"
-	ListFolderCommitsParamsActorTypeRelay           ListFolderCommitsParamsActorType = "relay"
-	ListFolderCommitsParamsActorTypeScepAccount     ListFolderCommitsParamsActorType = "scepAccount"
-	ListFolderCommitsParamsActorTypeScimClient      ListFolderCommitsParamsActorType = "scimClient"
-	ListFolderCommitsParamsActorTypeService         ListFolderCommitsParamsActorType = "service"
-	ListFolderCommitsParamsActorTypeUnknownUser     ListFolderCommitsParamsActorType = "unknownUser"
-	ListFolderCommitsParamsActorTypeUser            ListFolderCommitsParamsActorType = "user"
+	ListFolderCommitsParamsActorTypeAcmeAccount                    ListFolderCommitsParamsActorType = "acmeAccount"
+	ListFolderCommitsParamsActorTypeAcmeProfile                    ListFolderCommitsParamsActorType = "acmeProfile"
+	ListFolderCommitsParamsActorTypeAgentVaultProxy                ListFolderCommitsParamsActorType = "agentVaultProxy"
+	ListFolderCommitsParamsActorTypeEstAccount                     ListFolderCommitsParamsActorType = "estAccount"
+	ListFolderCommitsParamsActorTypeGateway                        ListFolderCommitsParamsActorType = "gateway"
+	ListFolderCommitsParamsActorTypeIdentity                       ListFolderCommitsParamsActorType = "identity"
+	ListFolderCommitsParamsActorTypeKmipClient                     ListFolderCommitsParamsActorType = "kmipClient"
+	ListFolderCommitsParamsActorTypeKmipServer                     ListFolderCommitsParamsActorType = "kmipServer"
+	ListFolderCommitsParamsActorTypeMicrosoftAutoenrollmentAccount ListFolderCommitsParamsActorType = "microsoftAutoenrollmentAccount"
+	ListFolderCommitsParamsActorTypePlatform                       ListFolderCommitsParamsActorType = "platform"
+	ListFolderCommitsParamsActorTypeRelay                          ListFolderCommitsParamsActorType = "relay"
+	ListFolderCommitsParamsActorTypeScepAccount                    ListFolderCommitsParamsActorType = "scepAccount"
+	ListFolderCommitsParamsActorTypeScimClient                     ListFolderCommitsParamsActorType = "scimClient"
+	ListFolderCommitsParamsActorTypeService                        ListFolderCommitsParamsActorType = "service"
+	ListFolderCommitsParamsActorTypeUnknownUser                    ListFolderCommitsParamsActorType = "unknownUser"
+	ListFolderCommitsParamsActorTypeUser                           ListFolderCommitsParamsActorType = "user"
 )
 
 // Valid indicates whether the value is a known member of the ListFolderCommitsParamsActorType enum.
@@ -101350,6 +101351,8 @@ func (e ListFolderCommitsParamsActorType) Valid() bool {
 	case ListFolderCommitsParamsActorTypeKmipClient:
 		return true
 	case ListFolderCommitsParamsActorTypeKmipServer:
+		return true
+	case ListFolderCommitsParamsActorTypeMicrosoftAutoenrollmentAccount:
 		return true
 	case ListFolderCommitsParamsActorTypePlatform:
 		return true
@@ -108974,6 +108977,44 @@ const (
 	DeleteIdentityFolderAccess400JSONResponseBodyStatusCodeN400 DeleteIdentityFolderAccess400JSONResponseBodyStatusCode = 400
 )
 
+// Defines values for DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken400JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken400JSONResponseBodyStatusCodeN400 DeleteHoneyToken400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken400JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken401JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken401JSONResponseBodyStatusCodeN401 DeleteHoneyToken401JSONResponseBodyStatusCode = 401
+)
+
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess400JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -108987,6 +109028,21 @@ func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess401JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess401JSONResponseBodyStatusCodeN401 DeleteIdentityFolderAccess401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken401JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken403JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken403JSONResponseBodyStatusCodeN403 DeleteHoneyToken403JSONResponseBodyStatusCode = 403
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess401JSONResponseBodyStatusCode enum.
@@ -109004,6 +109060,21 @@ const (
 	DeleteIdentityFolderAccess403JSONResponseBodyStatusCodeN403 DeleteIdentityFolderAccess403JSONResponseBodyStatusCode = 403
 )
 
+// Valid indicates whether the value is a known member of the DeleteHoneyToken403JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken404JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken404JSONResponseBodyStatusCodeN404 DeleteHoneyToken404JSONResponseBodyStatusCode = 404
+)
+
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess403JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109017,6 +109088,21 @@ func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess404JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess404JSONResponseBodyStatusCodeN404 DeleteIdentityFolderAccess404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken404JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken422JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken422JSONResponseBodyStatusCodeN422 DeleteHoneyToken422JSONResponseBodyStatusCode = 422
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess404JSONResponseBodyStatusCode enum.
@@ -109034,6 +109120,21 @@ const (
 	DeleteIdentityFolderAccess422JSONResponseBodyStatusCodeN422 DeleteIdentityFolderAccess422JSONResponseBodyStatusCode = 422
 )
 
+// Valid indicates whether the value is a known member of the DeleteHoneyToken422JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken500JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken500JSONResponseBodyStatusCodeN500 DeleteHoneyToken500JSONResponseBodyStatusCode = 500
+)
+
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess422JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109048,6 +109149,19 @@ func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 const (
 	DeleteIdentityFolderAccess500JSONResponseBodyStatusCodeN500 DeleteIdentityFolderAccess500JSONResponseBodyStatusCode = 500
 )
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken500JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess500JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess500JSONResponseBodyStatusCode) Valid() bool {
@@ -147825,6 +147939,7 @@ type AdminBootstrapJSONBody struct {
 	Email        openapi_types.Email `json:"email"`
 	Organization string              `json:"organization"`
 	Password     string              `json:"password"`
+	SetupToken   *string             `json:"setupToken,omitempty"`
 }
 
 // AdminBootstrap400JSONResponseBodyStatusCode defines parameters for AdminBootstrap.
@@ -148210,6 +148325,7 @@ type AdminSignUpJSONBody struct {
 	LastName         *string             `json:"lastName,omitempty"`
 	OrganizationName *string             `json:"organizationName,omitempty"`
 	Password         string              `json:"password"`
+	SetupToken       *string             `json:"setupToken,omitempty"`
 }
 
 // AdminSignUp400JSONResponseBodyStatusCode defines parameters for AdminSignUp.
@@ -165566,6 +165682,13 @@ type ListAuditLogStreams200JSONResponseBodyAuditLogStreams0 struct {
 	} `json:"credentials"`
 	FailingSince *time.Time `json:"failingSince,omitempty"`
 	Filters      *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]ListAuditLogStreams200JSONResponseBodyAuditLogStreams0FiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	Id                openapi_types.UUID                                             `json:"id"`
@@ -165590,6 +165713,13 @@ type ListAuditLogStreams200JSONResponseBodyAuditLogStreams1 struct {
 	} `json:"credentials"`
 	FailingSince *time.Time `json:"failingSince,omitempty"`
 	Filters      *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]ListAuditLogStreams200JSONResponseBodyAuditLogStreams1FiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	Id                openapi_types.UUID                                             `json:"id"`
@@ -165615,6 +165745,13 @@ type ListAuditLogStreams200JSONResponseBodyAuditLogStreams2 struct {
 	} `json:"credentials"`
 	FailingSince *time.Time `json:"failingSince,omitempty"`
 	Filters      *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]ListAuditLogStreams200JSONResponseBodyAuditLogStreams2FiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	Id                openapi_types.UUID                                             `json:"id"`
@@ -165643,6 +165780,13 @@ type ListAuditLogStreams200JSONResponseBodyAuditLogStreams3 struct {
 	} `json:"credentials"`
 	FailingSince *time.Time `json:"failingSince,omitempty"`
 	Filters      *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]ListAuditLogStreams200JSONResponseBodyAuditLogStreams3FiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	Id                openapi_types.UUID                                             `json:"id"`
@@ -165667,6 +165811,13 @@ type ListAuditLogStreams200JSONResponseBodyAuditLogStreams4 struct {
 	} `json:"credentials"`
 	FailingSince *time.Time `json:"failingSince,omitempty"`
 	Filters      *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]ListAuditLogStreams200JSONResponseBodyAuditLogStreams4FiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	Id                openapi_types.UUID                                             `json:"id"`
@@ -165692,6 +165843,13 @@ type ListAuditLogStreams200JSONResponseBodyAuditLogStreams5 struct {
 	} `json:"credentials"`
 	FailingSince *time.Time `json:"failingSince,omitempty"`
 	Filters      *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]ListAuditLogStreams200JSONResponseBodyAuditLogStreams5FiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	Id                openapi_types.UUID                                             `json:"id"`
@@ -165742,6 +165900,13 @@ type CreateAzureAuditLogStreamJSONBody struct {
 		TenantId     openapi_types.UUID `json:"tenantId"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]CreateAzureAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 }
@@ -165804,6 +165969,13 @@ type CreateCriblAuditLogStreamJSONBody struct {
 		Url   string `json:"url"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]CreateCriblAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 }
@@ -165869,6 +166041,13 @@ type CreateCustomAuditLogStreamJSONBody struct {
 		Url string `json:"url"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]CreateCustomAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 }
@@ -165958,6 +166137,13 @@ type UpdateCustomAuditLogStreamJSONBody struct {
 		Url string `json:"url"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]UpdateCustomAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 	StreamMode *UpdateCustomAuditLogStreamJSONBodyStreamMode `json:"streamMode,omitempty"`
@@ -166000,6 +166186,13 @@ type CreateDatadogAuditLogStreamJSONBody struct {
 		Url   string `json:"url"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]CreateDatadogAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 }
@@ -166158,6 +166351,13 @@ type CreateSplunkAuditLogStreamJSONBody struct {
 		Token    openapi_types.UUID `json:"token"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]CreateSplunkAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 }
@@ -166220,6 +166420,13 @@ type CreateSumoLogicAuditLogStreamJSONBody struct {
 		Url   string `json:"url"`
 	} `json:"credentials"`
 	Filters *struct {
+		// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+		PamSessionActivity *struct {
+			// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+			IncludeOutput bool `json:"includeOutput"`
+		} `json:"pamSessionActivity,omitempty"`
+
+		// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 		Products *[]CreateSumoLogicAuditLogStreamJSONBodyFiltersProducts `json:"products,omitempty"`
 	} `json:"filters,omitempty"`
 }
@@ -170169,6 +170376,9 @@ type DetachPkiApplicationProfile500JSONResponseBodyStatusCode float32
 // GetPkiApplicationEnrollment200JSONResponseBodyCaType defines parameters for GetPkiApplicationEnrollment.
 type GetPkiApplicationEnrollment200JSONResponseBodyCaType string
 
+// GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus defines parameters for GetPkiApplicationEnrollment.
+type GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus string
+
 // GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType defines parameters for GetPkiApplicationEnrollment.
 type GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType string
 
@@ -172779,8 +172989,13 @@ type CreateCertificatePolicyJSONBody struct {
 	Name      string  `json:"name"`
 	ProjectId *string `json:"projectId,omitempty"`
 	Sans      *[]struct {
-		Allowed  *[]string                               `json:"allowed,omitempty"`
-		Denied   *[]string                               `json:"denied,omitempty"`
+		// Allowed SAN values this type may take, with * as a wildcard. {{request.commonName}} as the whole value allows a SAN equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused. The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.
+		Allowed *[]string `json:"allowed,omitempty"`
+
+		// Denied SAN values that are rejected, with * as a wildcard. {{request.commonName}} as the whole value rejects a SAN of this type equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused.
+		Denied *[]string `json:"denied,omitempty"`
+
+		// Required SAN values the request must include, with * as a wildcard. {{request.commonName}} as the whole value requires a SAN of this type equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused. If it lists {{request.commonName}}, a request without a common name is refused.
 		Required *[]string                               `json:"required,omitempty"`
 		Type     CreateCertificatePolicyJSONBodySansType `json:"type"`
 	} `json:"sans,omitempty"`
@@ -173123,8 +173338,13 @@ type UpdateCertificatePolicyJSONBody struct {
 	} `json:"keyUsages,omitempty"`
 	Name *string `json:"name,omitempty"`
 	Sans *[]struct {
-		Allowed  *[]string                               `json:"allowed,omitempty"`
-		Denied   *[]string                               `json:"denied,omitempty"`
+		// Allowed SAN values this type may take, with * as a wildcard. {{request.commonName}} as the whole value allows a SAN equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused. The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.
+		Allowed *[]string `json:"allowed,omitempty"`
+
+		// Denied SAN values that are rejected, with * as a wildcard. {{request.commonName}} as the whole value rejects a SAN of this type equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused.
+		Denied *[]string `json:"denied,omitempty"`
+
+		// Required SAN values the request must include, with * as a wildcard. {{request.commonName}} as the whole value requires a SAN of this type equal to the request's common name. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. {{request.commonName}} matches an IP address by value. Any other value containing "{{" is refused. If it lists {{request.commonName}}, a request without a common name is refused.
 		Required *[]string                               `json:"required,omitempty"`
 		Type     UpdateCertificatePolicyJSONBodySansType `json:"type"`
 	} `json:"sans,omitempty"`
@@ -173393,7 +173613,9 @@ type CreateCertificateProfileJSONBody struct {
 		OrganizationalUnit *string                                                      `json:"organizationalUnit,omitempty"`
 		SignatureAlgorithm *CreateCertificateProfileJSONBodyDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
 		State              *string                                                      `json:"state,omitempty"`
-		SubjectAltNames    *[]struct {
+
+		// SubjectAltNames Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is {{request.commonName}} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.
+		SubjectAltNames *[]struct {
 			Type  CreateCertificateProfileJSONBodyDefaultsSubjectAltNamesType `json:"type"`
 			Value string                                                      `json:"value"`
 		} `json:"subjectAltNames,omitempty"`
@@ -173798,7 +174020,9 @@ type UpdateCertificateProfileJSONBody struct {
 		OrganizationalUnit *string                                                      `json:"organizationalUnit,omitempty"`
 		SignatureAlgorithm *UpdateCertificateProfileJSONBodyDefaultsSignatureAlgorithm  `json:"signatureAlgorithm,omitempty"`
 		State              *string                                                      `json:"state,omitempty"`
-		SubjectAltNames    *[]struct {
+
+		// SubjectAltNames Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is {{request.commonName}} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.
+		SubjectAltNames *[]struct {
 			Type  UpdateCertificateProfileJSONBodyDefaultsSubjectAltNamesType `json:"type"`
 			Value string                                                      `json:"value"`
 		} `json:"subjectAltNames,omitempty"`
@@ -192659,14 +192883,11 @@ type UpdateOrganizationJSONBody struct {
 		PrimaryColor   *UpdateOrganizationJSONBody_SecretShareBrandConfig_PrimaryColor   `json:"primaryColor,omitempty"`
 		SecondaryColor *UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor `json:"secondaryColor,omitempty"`
 	} `json:"secretShareBrandConfig,omitempty"`
-	SecretsProductEnabled *bool `json:"secretsProductEnabled,omitempty"`
-
-	// SelectedMfaMethod Deprecated: use allowedMfaMethods. Sets the allowed MFA methods to this one method.
-	SelectedMfaMethod          *UpdateOrganizationJSONBodySelectedMfaMethod `json:"selectedMfaMethod,omitempty"`
-	ShareSecretsProductEnabled *bool                                        `json:"shareSecretsProductEnabled,omitempty"`
-	Slug                       *string                                      `json:"slug,omitempty"`
-	SsoMfaTrust                *UpdateOrganizationJSONBodySsoMfaTrust       `json:"ssoMfaTrust,omitempty"`
-	UserTokenExpiration        *string                                      `json:"userTokenExpiration,omitempty"`
+	SecretsProductEnabled      *bool                                  `json:"secretsProductEnabled,omitempty"`
+	ShareSecretsProductEnabled *bool                                  `json:"shareSecretsProductEnabled,omitempty"`
+	Slug                       *string                                `json:"slug,omitempty"`
+	SsoMfaTrust                *UpdateOrganizationJSONBodySsoMfaTrust `json:"ssoMfaTrust,omitempty"`
+	UserTokenExpiration        *string                                `json:"userTokenExpiration,omitempty"`
 }
 
 // UpdateOrganizationJSONBodyAllowedMfaMethods defines parameters for UpdateOrganization.
@@ -192709,9 +192930,6 @@ type UpdateOrganizationJSONBodySecretShareBrandConfigSecondaryColor1 string
 type UpdateOrganizationJSONBody_SecretShareBrandConfig_SecondaryColor struct {
 	union json.RawMessage
 }
-
-// UpdateOrganizationJSONBodySelectedMfaMethod defines parameters for UpdateOrganization.
-type UpdateOrganizationJSONBodySelectedMfaMethod string
 
 // UpdateOrganizationJSONBodySsoMfaTrust defines parameters for UpdateOrganization.
 type UpdateOrganizationJSONBodySsoMfaTrust string
@@ -196089,20 +196307,38 @@ type DeleteIdentityFolderAccessJSONBody struct {
 // DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission string
 
+// DeleteHoneyToken400JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken400JSONResponseBodyStatusCode float32
+
 // DeleteIdentityFolderAccess400JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess400JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken401JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken401JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess401JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess401JSONResponseBodyStatusCode float32
 
+// DeleteHoneyToken403JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken403JSONResponseBodyStatusCode float32
+
 // DeleteIdentityFolderAccess403JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess403JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken404JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken404JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess404JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess404JSONResponseBodyStatusCode float32
 
+// DeleteHoneyToken422JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken422JSONResponseBodyStatusCode float32
+
 // DeleteIdentityFolderAccess422JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess422JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken500JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken500JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess500JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess500JSONResponseBodyStatusCode float32
@@ -196133,7 +196369,7 @@ type UpdateIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
 	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
@@ -196208,7 +196444,7 @@ type CreateIdentityFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Where folder access that applies to subfolders overlaps, the one on the deepest folder decides, and folder access granted on a folder without this setting decides that folder. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
 	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
@@ -197149,7 +197385,7 @@ type UpdateUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders.
 	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to change the access to. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
@@ -197224,7 +197460,7 @@ type CreateUserFolderAccessJSONBody struct {
 	// EnvironmentSlug The slug of the environment the folder is in.
 	EnvironmentSlug string `json:"environmentSlug"`
 
-	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
+	// IsPermissionRecursive Whether the folder access also applies to every folder below this one. Where folder access that applies to subfolders overlaps, the one on the deepest folder decides, and folder access granted on a folder without this setting decides that folder. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false.
 	IsPermissionRecursive *bool `json:"isPermissionRecursive,omitempty"`
 
 	// Permission The folder role to grant. One of: list, read, edit, manage, full-access. The full-access role cannot be temporary.
@@ -256478,6 +256714,9 @@ type ClientInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteIdentityFolderAccessWithBody performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -274212,6 +274451,19 @@ func (c *Client) CreateProjectIdentityMembership(ctx context.Context, projectId 
 // Revoke a machine identity's access to a folder.
 func (c *Client) DeleteIdentityFolderAccessWithBody(ctx context.Context, projectId string, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteIdentityFolderAccessRequestWithBody(c.Server, projectId, identityId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+func (c *Client) DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteHoneyTokenRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -313331,6 +313583,40 @@ func NewCreateProjectIdentityMembershipRequestWithBody(server string, projectId 
 	return req, nil
 }
 
+// NewDeleteHoneyTokenRequest constructs an http.Request for the DeleteHoneyToken method
+func NewDeleteHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/honey-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeleteIdentityFolderAccessRequest calls the generic DeleteIdentityFolderAccess builder with application/json body
 func NewDeleteIdentityFolderAccessRequest(server string, projectId string, identityId openapi_types.UUID, body DeleteIdentityFolderAccessJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -334997,6 +335283,11 @@ type ClientWithResponsesInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
 
+	// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error)
+
 	// DeleteIdentityFolderAccessWithBodyWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -342606,6 +342897,7 @@ type GetAdminConfigResponse struct {
 			Initialized                            *bool               `json:"initialized,omitempty"`
 			InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 			IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+			IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 			IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 			IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 			IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -342707,6 +342999,7 @@ func (r GetAdminConfigResponse) GetJSON200() *struct {
 		Initialized                            *bool               `json:"initialized,omitempty"`
 		InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 		IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+		IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 		IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 		IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 		IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -342859,6 +343152,7 @@ type UpdateAdminConfigResponse struct {
 			Initialized                            *bool               `json:"initialized,omitempty"`
 			InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 			IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+			IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 			IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 			IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 			IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -342960,6 +343254,7 @@ func (r UpdateAdminConfigResponse) GetJSON200() *struct {
 		Initialized                            *bool               `json:"initialized,omitempty"`
 		InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 		IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+		IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 		IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 		IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 		IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -344149,7 +344444,6 @@ type ListAdminOrganizationsResponse struct {
 			ScimEnabled                 *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig      interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled       *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod           *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                        string              `json:"slug"`
@@ -344261,7 +344555,6 @@ func (r ListAdminOrganizationsResponse) GetJSON200() *struct {
 		ScimEnabled                 *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig      interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled       *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod           *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                        string              `json:"slug"`
@@ -344405,7 +344698,6 @@ type CreateAdminOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -344497,7 +344789,6 @@ func (r CreateAdminOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -344640,7 +344931,6 @@ type DeleteAdminOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -344732,7 +345022,6 @@ func (r DeleteAdminOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -345420,7 +345709,6 @@ type AdminSignUpResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -345525,7 +345813,6 @@ func (r AdminSignUpResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -358865,6 +359152,13 @@ type CreateAzureAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]CreateAzureAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                 `json:"id"`
@@ -358934,6 +359228,13 @@ func (r CreateAzureAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]CreateAzureAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                 `json:"id"`
@@ -359054,6 +359355,13 @@ type GetAzureAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]GetAzureAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                              `json:"id"`
@@ -359123,6 +359431,13 @@ func (r GetAzureAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]GetAzureAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                              `json:"id"`
@@ -359239,6 +359554,13 @@ type CreateCriblAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                 `json:"id"`
@@ -359304,6 +359626,13 @@ func (r CreateCriblAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                 `json:"id"`
@@ -359420,6 +359749,13 @@ type GetCriblAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                              `json:"id"`
@@ -359485,6 +359821,13 @@ func (r GetCriblAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                              `json:"id"`
@@ -359605,6 +359948,13 @@ type CreateCustomAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]CreateCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                  `json:"id"`
@@ -359674,6 +360024,13 @@ func (r CreateCustomAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]CreateCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                  `json:"id"`
@@ -359794,6 +360151,13 @@ type DeleteCustomAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]DeleteCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                  `json:"id"`
@@ -359863,6 +360227,13 @@ func (r DeleteCustomAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]DeleteCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                  `json:"id"`
@@ -359983,6 +360354,13 @@ type GetCustomAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]GetCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                               `json:"id"`
@@ -360052,6 +360430,13 @@ func (r GetCustomAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]GetCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                               `json:"id"`
@@ -360172,6 +360557,13 @@ type UpdateCustomAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]UpdateCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                  `json:"id"`
@@ -360241,6 +360633,13 @@ func (r UpdateCustomAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]UpdateCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                  `json:"id"`
@@ -360357,6 +360756,13 @@ type CreateDatadogAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]CreateDatadogAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                   `json:"id"`
@@ -360422,6 +360828,13 @@ func (r CreateDatadogAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]CreateDatadogAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                   `json:"id"`
@@ -360538,6 +360951,13 @@ type GetDatadogAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]GetDatadogAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                `json:"id"`
@@ -360603,6 +361023,13 @@ func (r GetDatadogAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]GetDatadogAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                `json:"id"`
@@ -360871,6 +361298,13 @@ type CreateSplunkAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]CreateSplunkAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                  `json:"id"`
@@ -360937,6 +361371,13 @@ func (r CreateSplunkAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]CreateSplunkAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                  `json:"id"`
@@ -361054,6 +361495,13 @@ type GetSplunkAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]GetSplunkAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                               `json:"id"`
@@ -361120,6 +361568,13 @@ func (r GetSplunkAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]GetSplunkAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                               `json:"id"`
@@ -361237,6 +361692,13 @@ type CreateSumoLogicAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                     `json:"id"`
@@ -361303,6 +361765,13 @@ func (r CreateSumoLogicAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                     `json:"id"`
@@ -361420,6 +361889,13 @@ type GetSumoLogicAuditLogStreamResponse struct {
 			} `json:"credentials"`
 			FailingSince *time.Time `json:"failingSince,omitempty"`
 			Filters      *struct {
+				// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+				PamSessionActivity *struct {
+					// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+					IncludeOutput bool `json:"includeOutput"`
+				} `json:"pamSessionActivity,omitempty"`
+
+				// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 				Products *[]GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 			} `json:"filters,omitempty"`
 			Id                openapi_types.UUID                                                  `json:"id"`
@@ -361486,6 +361962,13 @@ func (r GetSumoLogicAuditLogStreamResponse) GetJSON200() *struct {
 		} `json:"credentials"`
 		FailingSince *time.Time `json:"failingSince,omitempty"`
 		Filters      *struct {
+			// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+			PamSessionActivity *struct {
+				// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+				IncludeOutput bool `json:"includeOutput"`
+			} `json:"pamSessionActivity,omitempty"`
+
+			// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 			Products *[]GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 		} `json:"filters,omitempty"`
 		Id                openapi_types.UUID                                                  `json:"id"`
@@ -381900,16 +382383,17 @@ type ListPkiApplicationProfilesResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Profiles []struct {
-			AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
-			ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
-			ApplicationId      openapi_types.UUID  `json:"applicationId"`
-			CreatedAt          time.Time           `json:"createdAt"`
-			EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
-			ProfileDescription *string             `json:"profileDescription,omitempty"`
-			ProfileId          openapi_types.UUID  `json:"profileId"`
-			ProfileSlug        string              `json:"profileSlug"`
-			ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
-			UpdatedAt          time.Time           `json:"updatedAt"`
+			AcmeConfigId                    *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+			ApiConfigId                     *openapi_types.UUID `json:"apiConfigId,omitempty"`
+			ApplicationId                   openapi_types.UUID  `json:"applicationId"`
+			CreatedAt                       time.Time           `json:"createdAt"`
+			EstConfigId                     *openapi_types.UUID `json:"estConfigId,omitempty"`
+			MicrosoftAutoenrollmentConfigId *openapi_types.UUID `json:"microsoftAutoenrollmentConfigId,omitempty"`
+			ProfileDescription              *string             `json:"profileDescription,omitempty"`
+			ProfileId                       openapi_types.UUID  `json:"profileId"`
+			ProfileSlug                     string              `json:"profileSlug"`
+			ScepConfigId                    *openapi_types.UUID `json:"scepConfigId,omitempty"`
+			UpdatedAt                       time.Time           `json:"updatedAt"`
 		} `json:"profiles"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -381961,16 +382445,17 @@ type ListPkiApplicationProfilesResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListPkiApplicationProfilesResponse) GetJSON200() *struct {
 	Profiles []struct {
-		AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
-		ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
-		ApplicationId      openapi_types.UUID  `json:"applicationId"`
-		CreatedAt          time.Time           `json:"createdAt"`
-		EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
-		ProfileDescription *string             `json:"profileDescription,omitempty"`
-		ProfileId          openapi_types.UUID  `json:"profileId"`
-		ProfileSlug        string              `json:"profileSlug"`
-		ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
-		UpdatedAt          time.Time           `json:"updatedAt"`
+		AcmeConfigId                    *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+		ApiConfigId                     *openapi_types.UUID `json:"apiConfigId,omitempty"`
+		ApplicationId                   openapi_types.UUID  `json:"applicationId"`
+		CreatedAt                       time.Time           `json:"createdAt"`
+		EstConfigId                     *openapi_types.UUID `json:"estConfigId,omitempty"`
+		MicrosoftAutoenrollmentConfigId *openapi_types.UUID `json:"microsoftAutoenrollmentConfigId,omitempty"`
+		ProfileDescription              *string             `json:"profileDescription,omitempty"`
+		ProfileId                       openapi_types.UUID  `json:"profileId"`
+		ProfileSlug                     string              `json:"profileSlug"`
+		ScepConfigId                    *openapi_types.UUID `json:"scepConfigId,omitempty"`
+		UpdatedAt                       time.Time           `json:"updatedAt"`
 	} `json:"profiles"`
 } {
 	return r.JSON200
@@ -382073,16 +382558,17 @@ type AttachPkiApplicationProfilesResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Profiles []struct {
-			AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
-			ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
-			ApplicationId      openapi_types.UUID  `json:"applicationId"`
-			CreatedAt          time.Time           `json:"createdAt"`
-			EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
-			ProfileDescription *string             `json:"profileDescription,omitempty"`
-			ProfileId          openapi_types.UUID  `json:"profileId"`
-			ProfileSlug        string              `json:"profileSlug"`
-			ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
-			UpdatedAt          time.Time           `json:"updatedAt"`
+			AcmeConfigId                    *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+			ApiConfigId                     *openapi_types.UUID `json:"apiConfigId,omitempty"`
+			ApplicationId                   openapi_types.UUID  `json:"applicationId"`
+			CreatedAt                       time.Time           `json:"createdAt"`
+			EstConfigId                     *openapi_types.UUID `json:"estConfigId,omitempty"`
+			MicrosoftAutoenrollmentConfigId *openapi_types.UUID `json:"microsoftAutoenrollmentConfigId,omitempty"`
+			ProfileDescription              *string             `json:"profileDescription,omitempty"`
+			ProfileId                       openapi_types.UUID  `json:"profileId"`
+			ProfileSlug                     string              `json:"profileSlug"`
+			ScepConfigId                    *openapi_types.UUID `json:"scepConfigId,omitempty"`
+			UpdatedAt                       time.Time           `json:"updatedAt"`
 		} `json:"profiles"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -382134,16 +382620,17 @@ type AttachPkiApplicationProfilesResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r AttachPkiApplicationProfilesResponse) GetJSON200() *struct {
 	Profiles []struct {
-		AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
-		ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
-		ApplicationId      openapi_types.UUID  `json:"applicationId"`
-		CreatedAt          time.Time           `json:"createdAt"`
-		EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
-		ProfileDescription *string             `json:"profileDescription,omitempty"`
-		ProfileId          openapi_types.UUID  `json:"profileId"`
-		ProfileSlug        string              `json:"profileSlug"`
-		ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
-		UpdatedAt          time.Time           `json:"updatedAt"`
+		AcmeConfigId                    *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+		ApiConfigId                     *openapi_types.UUID `json:"apiConfigId,omitempty"`
+		ApplicationId                   openapi_types.UUID  `json:"applicationId"`
+		CreatedAt                       time.Time           `json:"createdAt"`
+		EstConfigId                     *openapi_types.UUID `json:"estConfigId,omitempty"`
+		MicrosoftAutoenrollmentConfigId *openapi_types.UUID `json:"microsoftAutoenrollmentConfigId,omitempty"`
+		ProfileDescription              *string             `json:"profileDescription,omitempty"`
+		ProfileId                       openapi_types.UUID  `json:"profileId"`
+		ProfileSlug                     string              `json:"profileSlug"`
+		ScepConfigId                    *openapi_types.UUID `json:"scepConfigId,omitempty"`
+		UpdatedAt                       time.Time           `json:"updatedAt"`
 	} `json:"profiles"`
 } {
 	return r.JSON200
@@ -382417,9 +382904,70 @@ type GetPkiApplicationEnrollmentResponse struct {
 			EstEndpointUrl               string             `json:"estEndpointUrl"`
 			Id                           openapi_types.UUID `json:"id"`
 		} `json:"est"`
-		EstConfigured bool               `json:"estConfigured"`
-		ProfileId     openapi_types.UUID `json:"profileId"`
-		Scep          *struct {
+		EstConfigured           bool `json:"estConfigured"`
+		MicrosoftAutoenrollment *struct {
+			// AllowAnyChannelBinding Whether requests are accepted with any TLS channel binding instead of only the one for this instance's own TLS certificate.
+			AllowAnyChannelBinding bool `json:"allowAnyChannelBinding"`
+
+			// AllowedGroups The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.
+			AllowedGroups []struct {
+				Name string `json:"name"`
+				Sid  string `json:"sid"`
+			} `json:"allowedGroups"`
+
+			// ChannelBinding Whether this instance can check requests' TLS channel bindings, whatever allowAnyChannelBinding is set to. status is enforced when it has read its own TLS certificate, unverifiable when it cannot check bindings, such as in FIPS mode or when it could not read its own certificate in the last day (requests are then refused unless allowAnyChannelBinding is on), and not-checked when it has not tried to read its certificate yet, which happens at the first enrollment request. reason explains unverifiable and not-checked, and is null when status is enforced.
+			ChannelBinding struct {
+				Reason *string                                                                                   `json:"reason"`
+				Status GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus `json:"status"`
+			} `json:"channelBinding"`
+
+			// ConnectionId The ID of the Active Directory LDAP connection used to look up computers.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// EffectiveRenewBeforeSeconds How many seconds before expiry Windows actually renews: renewBeforeDays moved to more than 8 hours and less than 20% of the certificate's validity. For a validity of 40 hours or less no value fits, and Windows requests a new certificate instead of renewing. Null when the profile's TTL exceeds its certificate policy's maximum validity.
+			EffectiveRenewBeforeSeconds *int `json:"effectiveRenewBeforeSeconds"`
+
+			// Id The ID of the Microsoft Autoenrollment configuration.
+			Id openapi_types.UUID `json:"id"`
+
+			// KeyVersion The key version number of the stored keytab.
+			KeyVersion int `json:"keyVersion"`
+
+			// PolicyId The ID Windows uses for this enrollment policy server. Each policy server URL has its own.
+			PolicyId string `json:"policyId"`
+
+			// PolicyUrl The enrollment policy server URL to add to the Group Policy object, under Certificate Services Client - Certificate Enrollment Policy.
+			PolicyUrl string `json:"policyUrl"`
+
+			// RenewBeforeDays How many days before expiry Windows renews the certificate, as entered.
+			RenewBeforeDays int `json:"renewBeforeDays"`
+
+			// ServicePrincipalName The Kerberos service principal name the stored keytab is for.
+			ServicePrincipalName string `json:"servicePrincipalName"`
+
+			// TemplateName The certificate template name Windows shows for this profile.
+			TemplateName string `json:"templateName"`
+
+			// TemplateOid The OID of the certificate template, written into the template information extension of each certificate.
+			TemplateOid string `json:"templateOid"`
+		} `json:"microsoftAutoenrollment"`
+
+		// MicrosoftAutoenrollmentConfigured Whether Microsoft Autoenrollment is on for this profile in the application.
+		MicrosoftAutoenrollmentConfigured bool `json:"microsoftAutoenrollmentConfigured"`
+
+		// MicrosoftAutoenrollmentOtherProfiles Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.
+		MicrosoftAutoenrollmentOtherProfiles []struct {
+			ConnectionId         openapi_types.UUID `json:"connectionId"`
+			KeyVersion           int                `json:"keyVersion"`
+			ProfileId            openapi_types.UUID `json:"profileId"`
+			ProfileName          string             `json:"profileName"`
+			ServicePrincipalName string             `json:"servicePrincipalName"`
+		} `json:"microsoftAutoenrollmentOtherProfiles"`
+
+		// MicrosoftAutoenrollmentUnsupportedReason Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority, a key type Windows cannot request, or a certificate policy that refuses the key type or the Windows extensions. Null when it can, and always null once the method is on for the profile.
+		MicrosoftAutoenrollmentUnsupportedReason *string            `json:"microsoftAutoenrollmentUnsupportedReason"`
+		ProfileId                                openapi_types.UUID `json:"profileId"`
+		Scep                                     *struct {
 			AllowCertBasedRenewal         bool                                                            `json:"allowCertBasedRenewal"`
 			ChallengeEndpointUrl          *string                                                         `json:"challengeEndpointUrl"`
 			ChallengeType                 GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
@@ -382502,9 +383050,70 @@ func (r GetPkiApplicationEnrollmentResponse) GetJSON200() *struct {
 		EstEndpointUrl               string             `json:"estEndpointUrl"`
 		Id                           openapi_types.UUID `json:"id"`
 	} `json:"est"`
-	EstConfigured bool               `json:"estConfigured"`
-	ProfileId     openapi_types.UUID `json:"profileId"`
-	Scep          *struct {
+	EstConfigured           bool `json:"estConfigured"`
+	MicrosoftAutoenrollment *struct {
+		// AllowAnyChannelBinding Whether requests are accepted with any TLS channel binding instead of only the one for this instance's own TLS certificate.
+		AllowAnyChannelBinding bool `json:"allowAnyChannelBinding"`
+
+		// AllowedGroups The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.
+		AllowedGroups []struct {
+			Name string `json:"name"`
+			Sid  string `json:"sid"`
+		} `json:"allowedGroups"`
+
+		// ChannelBinding Whether this instance can check requests' TLS channel bindings, whatever allowAnyChannelBinding is set to. status is enforced when it has read its own TLS certificate, unverifiable when it cannot check bindings, such as in FIPS mode or when it could not read its own certificate in the last day (requests are then refused unless allowAnyChannelBinding is on), and not-checked when it has not tried to read its certificate yet, which happens at the first enrollment request. reason explains unverifiable and not-checked, and is null when status is enforced.
+		ChannelBinding struct {
+			Reason *string                                                                                   `json:"reason"`
+			Status GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus `json:"status"`
+		} `json:"channelBinding"`
+
+		// ConnectionId The ID of the Active Directory LDAP connection used to look up computers.
+		ConnectionId openapi_types.UUID `json:"connectionId"`
+
+		// EffectiveRenewBeforeSeconds How many seconds before expiry Windows actually renews: renewBeforeDays moved to more than 8 hours and less than 20% of the certificate's validity. For a validity of 40 hours or less no value fits, and Windows requests a new certificate instead of renewing. Null when the profile's TTL exceeds its certificate policy's maximum validity.
+		EffectiveRenewBeforeSeconds *int `json:"effectiveRenewBeforeSeconds"`
+
+		// Id The ID of the Microsoft Autoenrollment configuration.
+		Id openapi_types.UUID `json:"id"`
+
+		// KeyVersion The key version number of the stored keytab.
+		KeyVersion int `json:"keyVersion"`
+
+		// PolicyId The ID Windows uses for this enrollment policy server. Each policy server URL has its own.
+		PolicyId string `json:"policyId"`
+
+		// PolicyUrl The enrollment policy server URL to add to the Group Policy object, under Certificate Services Client - Certificate Enrollment Policy.
+		PolicyUrl string `json:"policyUrl"`
+
+		// RenewBeforeDays How many days before expiry Windows renews the certificate, as entered.
+		RenewBeforeDays int `json:"renewBeforeDays"`
+
+		// ServicePrincipalName The Kerberos service principal name the stored keytab is for.
+		ServicePrincipalName string `json:"servicePrincipalName"`
+
+		// TemplateName The certificate template name Windows shows for this profile.
+		TemplateName string `json:"templateName"`
+
+		// TemplateOid The OID of the certificate template, written into the template information extension of each certificate.
+		TemplateOid string `json:"templateOid"`
+	} `json:"microsoftAutoenrollment"`
+
+	// MicrosoftAutoenrollmentConfigured Whether Microsoft Autoenrollment is on for this profile in the application.
+	MicrosoftAutoenrollmentConfigured bool `json:"microsoftAutoenrollmentConfigured"`
+
+	// MicrosoftAutoenrollmentOtherProfiles Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.
+	MicrosoftAutoenrollmentOtherProfiles []struct {
+		ConnectionId         openapi_types.UUID `json:"connectionId"`
+		KeyVersion           int                `json:"keyVersion"`
+		ProfileId            openapi_types.UUID `json:"profileId"`
+		ProfileName          string             `json:"profileName"`
+		ServicePrincipalName string             `json:"servicePrincipalName"`
+	} `json:"microsoftAutoenrollmentOtherProfiles"`
+
+	// MicrosoftAutoenrollmentUnsupportedReason Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority, a key type Windows cannot request, or a certificate policy that refuses the key type or the Windows extensions. Null when it can, and always null once the method is on for the profile.
+	MicrosoftAutoenrollmentUnsupportedReason *string            `json:"microsoftAutoenrollmentUnsupportedReason"`
+	ProfileId                                openapi_types.UUID `json:"profileId"`
+	Scep                                     *struct {
 		AllowCertBasedRenewal         bool                                                            `json:"allowCertBasedRenewal"`
 		ChallengeEndpointUrl          *string                                                         `json:"challengeEndpointUrl"`
 		ChallengeType                 GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
@@ -398665,7 +399274,10 @@ type GetCertificateResponse struct {
 			// DeletedByActorType The type of actor that deleted this certificate: 'user' or 'identity'.
 			DeletedByActorType *GetCertificate200JSONResponseBodyCertificateDeletedByActorType `json:"deletedByActorType,omitempty"`
 			DiscoveryMetadata  interface{}                                                     `json:"discoveryMetadata,omitempty"`
-			ExtendedKeyUsages  *[]string                                                       `json:"extendedKeyUsages,omitempty"`
+
+			// EnrollmentType How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'), falling back to its profile's enrollment method when no request is recorded. Null for imported or discovered certificates without a CA.
+			EnrollmentType    *string   `json:"enrollmentType,omitempty"`
+			ExtendedKeyUsages *[]string `json:"extendedKeyUsages,omitempty"`
 
 			// ExternalMetadata Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.
 			ExternalMetadata  *GetCertificate200JSONResponseBody_Certificate_ExternalMetadata `json:"externalMetadata,omitempty"`
@@ -398685,9 +399297,12 @@ type GetCertificateResponse struct {
 			HsmPublicKeySpki interface{}         `json:"hsmPublicKeySpki,omitempty"`
 			Id               openapi_types.UUID  `json:"id"`
 			IsCA             *bool               `json:"isCA,omitempty"`
-			KeyAlgorithm     *string             `json:"keyAlgorithm,omitempty"`
-			KeySource        *string             `json:"keySource,omitempty"`
-			KeyUsages        *[]string           `json:"keyUsages,omitempty"`
+
+			// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+			IsRenewedByClient bool      `json:"isRenewedByClient"`
+			KeyAlgorithm      *string   `json:"keyAlgorithm,omitempty"`
+			KeySource         *string   `json:"keySource,omitempty"`
+			KeyUsages         *[]string `json:"keyUsages,omitempty"`
 
 			// LatestRenewalCertificateId The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.
 			LatestRenewalCertificateId *openapi_types.UUID `json:"latestRenewalCertificateId,omitempty"`
@@ -398811,7 +399426,10 @@ func (r GetCertificateResponse) GetJSON200() *struct {
 		// DeletedByActorType The type of actor that deleted this certificate: 'user' or 'identity'.
 		DeletedByActorType *GetCertificate200JSONResponseBodyCertificateDeletedByActorType `json:"deletedByActorType,omitempty"`
 		DiscoveryMetadata  interface{}                                                     `json:"discoveryMetadata,omitempty"`
-		ExtendedKeyUsages  *[]string                                                       `json:"extendedKeyUsages,omitempty"`
+
+		// EnrollmentType How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'), falling back to its profile's enrollment method when no request is recorded. Null for imported or discovered certificates without a CA.
+		EnrollmentType    *string   `json:"enrollmentType,omitempty"`
+		ExtendedKeyUsages *[]string `json:"extendedKeyUsages,omitempty"`
 
 		// ExternalMetadata Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.
 		ExternalMetadata  *GetCertificate200JSONResponseBody_Certificate_ExternalMetadata `json:"externalMetadata,omitempty"`
@@ -398831,9 +399449,12 @@ func (r GetCertificateResponse) GetJSON200() *struct {
 		HsmPublicKeySpki interface{}         `json:"hsmPublicKeySpki,omitempty"`
 		Id               openapi_types.UUID  `json:"id"`
 		IsCA             *bool               `json:"isCA,omitempty"`
-		KeyAlgorithm     *string             `json:"keyAlgorithm,omitempty"`
-		KeySource        *string             `json:"keySource,omitempty"`
-		KeyUsages        *[]string           `json:"keyUsages,omitempty"`
+
+		// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+		IsRenewedByClient bool      `json:"isRenewedByClient"`
+		KeyAlgorithm      *string   `json:"keyAlgorithm,omitempty"`
+		KeySource         *string   `json:"keySource,omitempty"`
+		KeyUsages         *[]string `json:"keyUsages,omitempty"`
 
 		// LatestRenewalCertificateId The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.
 		LatestRenewalCertificateId *openapi_types.UUID `json:"latestRenewalCertificateId,omitempty"`
@@ -420636,7 +421257,9 @@ type GetSecretImportsResponse struct {
 				Name string `json:"name"`
 				Slug string `json:"slug"`
 			} `json:"environmentInfo"`
-			FolderId   *string `json:"folderId,omitempty"`
+			FolderId *string `json:"folderId,omitempty"`
+
+			// ImportId The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID.
 			ImportId   *string `json:"importId,omitempty"`
 			SecretPath string  `json:"secretPath"`
 			Secrets    []struct {
@@ -420722,7 +421345,9 @@ func (r GetSecretImportsResponse) GetJSON200() *struct {
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"environmentInfo"`
-		FolderId   *string `json:"folderId,omitempty"`
+		FolderId *string `json:"folderId,omitempty"`
+
+		// ImportId The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID.
 		ImportId   *string `json:"importId,omitempty"`
 		SecretPath string  `json:"secretPath"`
 		Secrets    []struct {
@@ -447899,7 +448524,6 @@ type ListOrganizationsResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -447987,7 +448611,6 @@ func (r ListOrganizationsResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -448490,7 +449113,6 @@ type ListAccessibleOrganizationsWithSubOrgsResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -448583,7 +449205,6 @@ func (r ListAccessibleOrganizationsWithSubOrgsResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -453380,7 +454001,6 @@ type GetOrganizationByIdResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -453466,7 +454086,6 @@ func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -453603,7 +454222,6 @@ type UpdateOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -453689,7 +454307,6 @@ func (r UpdateOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -464088,34 +464705,37 @@ type SearchProjectCertificatesResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Certificates []struct {
-			AltNames                  *string             `json:"altNames,omitempty"`
-			ApplicationId             *openapi_types.UUID `json:"applicationId,omitempty"`
-			ApplicationName           *string             `json:"applicationName,omitempty"`
-			CaCertId                  *openapi_types.UUID `json:"caCertId,omitempty"`
-			CaId                      *openapi_types.UUID `json:"caId,omitempty"`
-			CaName                    *string             `json:"caName,omitempty"`
-			CanRenewFromCsr           bool                `json:"canRenewFromCsr"`
-			CertificateTemplateId     *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
-			CommonName                string              `json:"commonName"`
-			CreatedAt                 time.Time           `json:"createdAt"`
-			CustomExtensions          interface{}         `json:"customExtensions,omitempty"`
-			DeletedAt                 *time.Time          `json:"deletedAt,omitempty"`
-			DeletedByActorId          *openapi_types.UUID `json:"deletedByActorId,omitempty"`
-			DeletedByActorType        *string             `json:"deletedByActorType,omitempty"`
-			DiscoveryMetadata         interface{}         `json:"discoveryMetadata,omitempty"`
-			EnrollmentType            *string             `json:"enrollmentType,omitempty"`
-			ExtendedKeyUsages         *[]string           `json:"extendedKeyUsages,omitempty"`
-			ExternalMetadata          interface{}         `json:"externalMetadata,omitempty"`
-			FingerprintSha1           *string             `json:"fingerprintSha1,omitempty"`
-			FingerprintSha256         *string             `json:"fingerprintSha256,omitempty"`
-			FriendlyName              string              `json:"friendlyName"`
-			HasPrivateKey             bool                `json:"hasPrivateKey"`
-			HsmConnectorId            *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
-			HsmKeyId                  *string             `json:"hsmKeyId,omitempty"`
-			HsmKeyLabel               *string             `json:"hsmKeyLabel,omitempty"`
-			HsmPublicKeySpki          interface{}         `json:"hsmPublicKeySpki,omitempty"`
-			Id                        openapi_types.UUID  `json:"id"`
-			IsCA                      *bool               `json:"isCA,omitempty"`
+			AltNames              *string             `json:"altNames,omitempty"`
+			ApplicationId         *openapi_types.UUID `json:"applicationId,omitempty"`
+			ApplicationName       *string             `json:"applicationName,omitempty"`
+			CaCertId              *openapi_types.UUID `json:"caCertId,omitempty"`
+			CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+			CaName                *string             `json:"caName,omitempty"`
+			CanRenewFromCsr       bool                `json:"canRenewFromCsr"`
+			CertificateTemplateId *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
+			CommonName            string              `json:"commonName"`
+			CreatedAt             time.Time           `json:"createdAt"`
+			CustomExtensions      interface{}         `json:"customExtensions,omitempty"`
+			DeletedAt             *time.Time          `json:"deletedAt,omitempty"`
+			DeletedByActorId      *openapi_types.UUID `json:"deletedByActorId,omitempty"`
+			DeletedByActorType    *string             `json:"deletedByActorType,omitempty"`
+			DiscoveryMetadata     interface{}         `json:"discoveryMetadata,omitempty"`
+			EnrollmentType        *string             `json:"enrollmentType,omitempty"`
+			ExtendedKeyUsages     *[]string           `json:"extendedKeyUsages,omitempty"`
+			ExternalMetadata      interface{}         `json:"externalMetadata,omitempty"`
+			FingerprintSha1       *string             `json:"fingerprintSha1,omitempty"`
+			FingerprintSha256     *string             `json:"fingerprintSha256,omitempty"`
+			FriendlyName          string              `json:"friendlyName"`
+			HasPrivateKey         bool                `json:"hasPrivateKey"`
+			HsmConnectorId        *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+			HsmKeyId              *string             `json:"hsmKeyId,omitempty"`
+			HsmKeyLabel           *string             `json:"hsmKeyLabel,omitempty"`
+			HsmPublicKeySpki      interface{}         `json:"hsmPublicKeySpki,omitempty"`
+			Id                    openapi_types.UUID  `json:"id"`
+			IsCA                  *bool               `json:"isCA,omitempty"`
+
+			// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+			IsRenewedByClient         *bool               `json:"isRenewedByClient,omitempty"`
 			KeyAlgorithm              *string             `json:"keyAlgorithm,omitempty"`
 			KeySource                 *string             `json:"keySource,omitempty"`
 			KeyUsages                 *[]string           `json:"keyUsages,omitempty"`
@@ -464196,34 +464816,37 @@ type SearchProjectCertificatesResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r SearchProjectCertificatesResponse) GetJSON200() *struct {
 	Certificates []struct {
-		AltNames                  *string             `json:"altNames,omitempty"`
-		ApplicationId             *openapi_types.UUID `json:"applicationId,omitempty"`
-		ApplicationName           *string             `json:"applicationName,omitempty"`
-		CaCertId                  *openapi_types.UUID `json:"caCertId,omitempty"`
-		CaId                      *openapi_types.UUID `json:"caId,omitempty"`
-		CaName                    *string             `json:"caName,omitempty"`
-		CanRenewFromCsr           bool                `json:"canRenewFromCsr"`
-		CertificateTemplateId     *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
-		CommonName                string              `json:"commonName"`
-		CreatedAt                 time.Time           `json:"createdAt"`
-		CustomExtensions          interface{}         `json:"customExtensions,omitempty"`
-		DeletedAt                 *time.Time          `json:"deletedAt,omitempty"`
-		DeletedByActorId          *openapi_types.UUID `json:"deletedByActorId,omitempty"`
-		DeletedByActorType        *string             `json:"deletedByActorType,omitempty"`
-		DiscoveryMetadata         interface{}         `json:"discoveryMetadata,omitempty"`
-		EnrollmentType            *string             `json:"enrollmentType,omitempty"`
-		ExtendedKeyUsages         *[]string           `json:"extendedKeyUsages,omitempty"`
-		ExternalMetadata          interface{}         `json:"externalMetadata,omitempty"`
-		FingerprintSha1           *string             `json:"fingerprintSha1,omitempty"`
-		FingerprintSha256         *string             `json:"fingerprintSha256,omitempty"`
-		FriendlyName              string              `json:"friendlyName"`
-		HasPrivateKey             bool                `json:"hasPrivateKey"`
-		HsmConnectorId            *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
-		HsmKeyId                  *string             `json:"hsmKeyId,omitempty"`
-		HsmKeyLabel               *string             `json:"hsmKeyLabel,omitempty"`
-		HsmPublicKeySpki          interface{}         `json:"hsmPublicKeySpki,omitempty"`
-		Id                        openapi_types.UUID  `json:"id"`
-		IsCA                      *bool               `json:"isCA,omitempty"`
+		AltNames              *string             `json:"altNames,omitempty"`
+		ApplicationId         *openapi_types.UUID `json:"applicationId,omitempty"`
+		ApplicationName       *string             `json:"applicationName,omitempty"`
+		CaCertId              *openapi_types.UUID `json:"caCertId,omitempty"`
+		CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+		CaName                *string             `json:"caName,omitempty"`
+		CanRenewFromCsr       bool                `json:"canRenewFromCsr"`
+		CertificateTemplateId *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
+		CommonName            string              `json:"commonName"`
+		CreatedAt             time.Time           `json:"createdAt"`
+		CustomExtensions      interface{}         `json:"customExtensions,omitempty"`
+		DeletedAt             *time.Time          `json:"deletedAt,omitempty"`
+		DeletedByActorId      *openapi_types.UUID `json:"deletedByActorId,omitempty"`
+		DeletedByActorType    *string             `json:"deletedByActorType,omitempty"`
+		DiscoveryMetadata     interface{}         `json:"discoveryMetadata,omitempty"`
+		EnrollmentType        *string             `json:"enrollmentType,omitempty"`
+		ExtendedKeyUsages     *[]string           `json:"extendedKeyUsages,omitempty"`
+		ExternalMetadata      interface{}         `json:"externalMetadata,omitempty"`
+		FingerprintSha1       *string             `json:"fingerprintSha1,omitempty"`
+		FingerprintSha256     *string             `json:"fingerprintSha256,omitempty"`
+		FriendlyName          string              `json:"friendlyName"`
+		HasPrivateKey         bool                `json:"hasPrivateKey"`
+		HsmConnectorId        *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+		HsmKeyId              *string             `json:"hsmKeyId,omitempty"`
+		HsmKeyLabel           *string             `json:"hsmKeyLabel,omitempty"`
+		HsmPublicKeySpki      interface{}         `json:"hsmPublicKeySpki,omitempty"`
+		Id                    openapi_types.UUID  `json:"id"`
+		IsCA                  *bool               `json:"isCA,omitempty"`
+
+		// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+		IsRenewedByClient         *bool               `json:"isRenewedByClient,omitempty"`
 		KeyAlgorithm              *string             `json:"keyAlgorithm,omitempty"`
 		KeySource                 *string             `json:"keySource,omitempty"`
 		KeyUsages                 *[]string           `json:"keyUsages,omitempty"`
@@ -470658,6 +471281,74 @@ func (r CreateProjectIdentityMembershipResponse) ContentType() string {
 	return ""
 }
 
+type DeleteHoneyTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
+			CreatedAt      time.Time          `json:"createdAt"`
+			Description    *string            `json:"description,omitempty"`
+			Id             openapi_types.UUID `json:"id"`
+			Name           string             `json:"name"`
+			ProjectId      string             `json:"projectId"`
+			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+			Status         *string            `json:"status,omitempty"`
+			Type           string             `json:"type"`
+			UpdatedAt      time.Time          `json:"updatedAt"`
+		} `json:"honeyToken"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
 type DeleteIdentityFolderAccessResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -470728,6 +471419,28 @@ type DeleteIdentityFolderAccessResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON200() *struct {
+	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
+		CreatedAt      time.Time          `json:"createdAt"`
+		Description    *string            `json:"description,omitempty"`
+		Id             openapi_types.UUID `json:"id"`
+		Name           string             `json:"name"`
+		ProjectId      string             `json:"projectId"`
+		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+		Status         *string            `json:"status,omitempty"`
+		Type           string             `json:"type"`
+		UpdatedAt      time.Time          `json:"updatedAt"`
+	} `json:"honeyToken"`
+} {
+	return r.JSON200
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 	FolderAccess struct {
 		CreatedAt                time.Time                                                           `json:"createdAt"`
@@ -470751,6 +471464,17 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 	Details    interface{}                                             `json:"details,omitempty"`
 	Error      string                                                  `json:"error"`
@@ -470762,6 +471486,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -470769,6 +471503,17 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	StatusCode DeleteIdentityFolderAccess401JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
@@ -470783,6 +471528,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON403() *struct {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -470790,6 +471545,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	StatusCode DeleteIdentityFolderAccess404JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
@@ -470803,6 +471568,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON422() *struct {
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -470813,8 +471588,21 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 }
 
 // GetBody returns the raw response body bytes
+func (r DeleteHoneyTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// GetBody returns the raw response body bytes
 func (r DeleteIdentityFolderAccessResponse) GetBody() []byte {
 	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteHoneyTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
 }
 
 // Status returns HTTPResponse.Status
@@ -470826,11 +471614,27 @@ func (r DeleteIdentityFolderAccessResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
+func (r DeleteHoneyTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// StatusCode returns HTTPResponse.StatusCode
 func (r DeleteIdentityFolderAccessResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteHoneyTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
@@ -471395,7 +472199,7 @@ type ListFolderAccessIdentitiesResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
-		// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
+		// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.
 		Identities []struct {
 			FolderRBACAccess *struct {
 				CreatedAt                time.Time                                                                         `json:"createdAt"`
@@ -471540,7 +472344,7 @@ type ListFolderAccessIdentitiesResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListFolderAccessIdentitiesResponse) GetJSON200() *struct {
-	// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
+	// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.
 	Identities []struct {
 		FolderRBACAccess *struct {
 			CreatedAt                time.Time                                                                         `json:"createdAt"`
@@ -474175,7 +474979,7 @@ type ListFolderAccessUsersResponse struct {
 		// TotalCount The number of users of the project that match the search, with and without access together.
 		TotalCount float32 `json:"totalCount"`
 
-		// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
+		// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.
 		Users []struct {
 			Email            *string `json:"email"`
 			FirstName        *string `json:"firstName"`
@@ -474326,7 +475130,7 @@ func (r ListFolderAccessUsersResponse) GetJSON200() *struct {
 	// TotalCount The number of users of the project that match the search, with and without access together.
 	TotalCount float32 `json:"totalCount"`
 
-	// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
+	// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.
 	Users []struct {
 		Email            *string `json:"email"`
 		FirstName        *string `json:"firstName"`
@@ -508418,7 +509222,6 @@ type CreateOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -508503,7 +509306,6 @@ func (r CreateOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -508639,7 +509441,6 @@ type UpgradePrivilegeSystemResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -508724,7 +509525,6 @@ func (r UpgradePrivilegeSystemResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -509060,7 +509860,6 @@ type DeleteOrganizationResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -509146,7 +509945,6 @@ func (r DeleteOrganizationResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -512110,8 +512908,10 @@ type ListSecretApprovalPoliciesResponse struct {
 				Id   *string                                                             `json:"id,omitempty"`
 				Type ListSecretApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 			} `json:"bypassers"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+			CreatedAt time.Time  `json:"createdAt"`
+			DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+			// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
 			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
 			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
 			EnvId                  openapi_types.UUID `json:"envId"`
@@ -512192,8 +512992,10 @@ func (r ListSecretApprovalPoliciesResponse) GetJSON200() *struct {
 			Id   *string                                                             `json:"id,omitempty"`
 			Type ListSecretApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 		} `json:"bypassers"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+		CreatedAt time.Time  `json:"createdAt"`
+		DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+		// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
 		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
 		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
 		EnvId                  openapi_types.UUID `json:"envId"`
@@ -512314,15 +513116,17 @@ type CreateSecretApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32   `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time  `json:"createdAt"`
+			DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+			// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+			EnvId                  openapi_types.UUID `json:"envId"`
+			Environment            struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -512388,15 +513192,17 @@ type CreateSecretApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateSecretApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32   `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time  `json:"createdAt"`
+		DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+		// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+		EnvId                  openapi_types.UUID `json:"envId"`
+		Environment            struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -512513,15 +513319,17 @@ type GetSecretApprovalPolicyBoardResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Policy *struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32   `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time  `json:"createdAt"`
+			DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+			// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+			EnvId                  openapi_types.UUID `json:"envId"`
+			Environment            struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -512590,15 +513398,17 @@ type GetSecretApprovalPolicyBoardResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetSecretApprovalPolicyBoardResponse) GetJSON200() *struct {
 	Policy *struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32   `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time  `json:"createdAt"`
+		DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+		// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+		EnvId                  openapi_types.UUID `json:"envId"`
+		Environment            struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -512718,15 +513528,17 @@ type DeleteSecretApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32   `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time  `json:"createdAt"`
+			DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+			// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+			EnvId                  openapi_types.UUID `json:"envId"`
+			Environment            struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -512792,15 +513604,17 @@ type DeleteSecretApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteSecretApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32   `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time  `json:"createdAt"`
+		DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+		// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+		EnvId                  openapi_types.UUID `json:"envId"`
+		Environment            struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -512930,8 +513744,10 @@ type GetSecretApprovalPolicyResponse struct {
 				Type     GetSecretApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 				Username *string                                                         `json:"username,omitempty"`
 			} `json:"bypassers"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+			CreatedAt time.Time  `json:"createdAt"`
+			DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+			// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
 			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
 			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
 			EnvId                  openapi_types.UUID `json:"envId"`
@@ -513014,8 +513830,10 @@ func (r GetSecretApprovalPolicyResponse) GetJSON200() *struct {
 			Type     GetSecretApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 			Username *string                                                         `json:"username,omitempty"`
 		} `json:"bypassers"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+		CreatedAt time.Time  `json:"createdAt"`
+		DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+		// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
 		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
 		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
 		EnvId                  openapi_types.UUID `json:"envId"`
@@ -513136,15 +513954,17 @@ type UpdateSecretApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32   `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time  `json:"createdAt"`
+			DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+			// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+			EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+			EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+			EnvId                  openapi_types.UUID `json:"envId"`
+			Environment            struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -513210,15 +514030,17 @@ type UpdateSecretApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateSecretApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32   `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time  `json:"createdAt"`
+		DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+		// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+		EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+		EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+		EnvId                  openapi_types.UUID `json:"envId"`
+		Environment            struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -513553,10 +514375,17 @@ type ListSecretImportsResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id        string  `json:"id"`
-				Name      string  `json:"name"`
-				ProjectId *string `json:"projectId,omitempty"`
-				Slug      string  `json:"slug"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
+				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
+				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
 			IsReplication        *bool      `json:"isReplication,omitempty"`
@@ -513624,10 +514453,17 @@ func (r ListSecretImportsResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id        string  `json:"id"`
-			Name      string  `json:"name"`
-			ProjectId *string `json:"projectId,omitempty"`
-			Slug      string  `json:"slug"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
+			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
+			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
 		IsReplication        *bool      `json:"isReplication,omitempty"`
@@ -513746,8 +514582,16 @@ type CreateSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -513815,8 +514659,16 @@ func (r CreateSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -514154,8 +515006,16 @@ type DeleteSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -514223,8 +515083,16 @@ func (r DeleteSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -514347,8 +515215,16 @@ type GetSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -514422,8 +515298,16 @@ func (r GetSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -514544,8 +515428,16 @@ type UpdateSecretImportResponse struct {
 			FolderId  openapi_types.UUID `json:"folderId"`
 			Id        openapi_types.UUID `json:"id"`
 			ImportEnv struct {
-				Id   string `json:"id"`
+				// Id The ID of the environment the secret import reads secrets from.
+				Id string `json:"id"`
+
+				// Name The name of the environment the secret import reads secrets from.
 				Name string `json:"name"`
+
+				// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+				ProjectId string `json:"projectId"`
+
+				// Slug The slug of the environment the secret import reads secrets from.
 				Slug string `json:"slug"`
 			} `json:"importEnv"`
 			ImportPath           string     `json:"importPath"`
@@ -514613,8 +515505,16 @@ func (r UpdateSecretImportResponse) GetJSON200() *struct {
 		FolderId  openapi_types.UUID `json:"folderId"`
 		Id        openapi_types.UUID `json:"id"`
 		ImportEnv struct {
-			Id   string `json:"id"`
+			// Id The ID of the environment the secret import reads secrets from.
+			Id string `json:"id"`
+
+			// Name The name of the environment the secret import reads secrets from.
 			Name string `json:"name"`
+
+			// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+			ProjectId string `json:"projectId"`
+
+			// Slug The slug of the environment the secret import reads secrets from.
 			Slug string `json:"slug"`
 		} `json:"importEnv"`
 		ImportPath           string     `json:"importPath"`
@@ -522776,7 +523676,6 @@ type ListUserOrganizationsResponse struct {
 			ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 			SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 			SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-			SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 			ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 			ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 			Slug                                  string              `json:"slug"`
@@ -522861,7 +523760,6 @@ func (r ListUserOrganizationsResponse) GetJSON200() *struct {
 		ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 		SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 		SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-		SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 		ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 		ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 		Slug                                  string              `json:"slug"`
@@ -541823,6 +542721,17 @@ func (c *ClientWithResponses) DeleteIdentityFolderAccessWithBodyWithResponse(ctx
 	return ParseDeleteIdentityFolderAccessResponse(rsp)
 }
 
+// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error) {
+	rsp, err := c.DeleteHoneyToken(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteHoneyTokenResponse(rsp)
+}
+
 // DeleteIdentityFolderAccessWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -550420,6 +551329,7 @@ func ParseGetAdminConfigResponse(rsp *http.Response) (*GetAdminConfigResponse, e
 				Initialized                            *bool               `json:"initialized,omitempty"`
 				InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 				IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+				IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 				IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 				IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 				IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -550573,6 +551483,7 @@ func ParseUpdateAdminConfigResponse(rsp *http.Response) (*UpdateAdminConfigRespo
 				Initialized                            *bool               `json:"initialized,omitempty"`
 				InstanceId                             *openapi_types.UUID `json:"instanceId,omitempty"`
 				IsClickhouseAuditLogEnabled            *bool               `json:"isClickhouseAuditLogEnabled,omitempty"`
+				IsInstanceSetupTokenRequired           *bool               `json:"isInstanceSetupTokenRequired,omitempty"`
 				IsMigrationModeOn                      *bool               `json:"isMigrationModeOn,omitempty"`
 				IsOfflineUsageReportsEnabled           *bool               `json:"isOfflineUsageReportsEnabled,omitempty"`
 				IsPublicSecretSharingDisabled          *bool               `json:"isPublicSecretSharingDisabled,omitempty"`
@@ -551422,7 +552333,6 @@ func ParseListAdminOrganizationsResponse(rsp *http.Response) (*ListAdminOrganiza
 				ScimEnabled                 *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig      interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled       *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod           *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled  *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                        string              `json:"slug"`
@@ -551567,7 +552477,6 @@ func ParseCreateAdminOrganizationResponse(rsp *http.Response) (*CreateAdminOrgan
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -551711,7 +552620,6 @@ func ParseDeleteAdminOrganizationResponse(rsp *http.Response) (*DeleteAdminOrgan
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -552208,7 +553116,6 @@ func ParseAdminSignUpResponse(rsp *http.Response) (*AdminSignUpResponse, error) 
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -560745,6 +561652,13 @@ func ParseCreateAzureAuditLogStreamResponse(rsp *http.Response) (*CreateAzureAud
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]CreateAzureAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                 `json:"id"`
@@ -560866,6 +561780,13 @@ func ParseGetAzureAuditLogStreamResponse(rsp *http.Response) (*GetAzureAuditLogS
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]GetAzureAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                              `json:"id"`
@@ -560983,6 +561904,13 @@ func ParseCreateCriblAuditLogStreamResponse(rsp *http.Response) (*CreateCriblAud
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]CreateCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                 `json:"id"`
@@ -561100,6 +562028,13 @@ func ParseGetCriblAuditLogStreamResponse(rsp *http.Response) (*GetCriblAuditLogS
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]GetCriblAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                              `json:"id"`
@@ -561221,6 +562156,13 @@ func ParseCreateCustomAuditLogStreamResponse(rsp *http.Response) (*CreateCustomA
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]CreateCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                  `json:"id"`
@@ -561342,6 +562284,13 @@ func ParseDeleteCustomAuditLogStreamResponse(rsp *http.Response) (*DeleteCustomA
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]DeleteCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                  `json:"id"`
@@ -561463,6 +562412,13 @@ func ParseGetCustomAuditLogStreamResponse(rsp *http.Response) (*GetCustomAuditLo
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]GetCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                               `json:"id"`
@@ -561584,6 +562540,13 @@ func ParseUpdateCustomAuditLogStreamResponse(rsp *http.Response) (*UpdateCustomA
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]UpdateCustomAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                  `json:"id"`
@@ -561701,6 +562664,13 @@ func ParseCreateDatadogAuditLogStreamResponse(rsp *http.Response) (*CreateDatado
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]CreateDatadogAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                   `json:"id"`
@@ -561818,6 +562788,13 @@ func ParseGetDatadogAuditLogStreamResponse(rsp *http.Response) (*GetDatadogAudit
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]GetDatadogAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                `json:"id"`
@@ -562038,6 +563015,13 @@ func ParseCreateSplunkAuditLogStreamResponse(rsp *http.Response) (*CreateSplunkA
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]CreateSplunkAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                  `json:"id"`
@@ -562156,6 +563140,13 @@ func ParseGetSplunkAuditLogStreamResponse(rsp *http.Response) (*GetSplunkAuditLo
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]GetSplunkAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                               `json:"id"`
@@ -562274,6 +563265,13 @@ func ParseCreateSumoLogicAuditLogStreamResponse(rsp *http.Response) (*CreateSumo
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]CreateSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                     `json:"id"`
@@ -562392,6 +563390,13 @@ func ParseGetSumoLogicAuditLogStreamResponse(rsp *http.Response) (*GetSumoLogicA
 				} `json:"credentials"`
 				FailingSince *time.Time `json:"failingSince,omitempty"`
 				Filters      *struct {
+					// PamSessionActivity Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.
+					PamSessionActivity *struct {
+						// IncludeOutput Also send command output, query results and request and response bodies, which can contain sensitive data.
+						IncludeOutput bool `json:"includeOutput"`
+					} `json:"pamSessionActivity,omitempty"`
+
+					// Products The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.
 					Products *[]GetSumoLogicAuditLogStream200JSONResponseBodyAuditLogStreamFiltersProducts `json:"products,omitempty"`
 				} `json:"filters,omitempty"`
 				Id                openapi_types.UUID                                                  `json:"id"`
@@ -575675,16 +576680,17 @@ func ParseListPkiApplicationProfilesResponse(rsp *http.Response) (*ListPkiApplic
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Profiles []struct {
-				AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
-				ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
-				ApplicationId      openapi_types.UUID  `json:"applicationId"`
-				CreatedAt          time.Time           `json:"createdAt"`
-				EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
-				ProfileDescription *string             `json:"profileDescription,omitempty"`
-				ProfileId          openapi_types.UUID  `json:"profileId"`
-				ProfileSlug        string              `json:"profileSlug"`
-				ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
-				UpdatedAt          time.Time           `json:"updatedAt"`
+				AcmeConfigId                    *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+				ApiConfigId                     *openapi_types.UUID `json:"apiConfigId,omitempty"`
+				ApplicationId                   openapi_types.UUID  `json:"applicationId"`
+				CreatedAt                       time.Time           `json:"createdAt"`
+				EstConfigId                     *openapi_types.UUID `json:"estConfigId,omitempty"`
+				MicrosoftAutoenrollmentConfigId *openapi_types.UUID `json:"microsoftAutoenrollmentConfigId,omitempty"`
+				ProfileDescription              *string             `json:"profileDescription,omitempty"`
+				ProfileId                       openapi_types.UUID  `json:"profileId"`
+				ProfileSlug                     string              `json:"profileSlug"`
+				ScepConfigId                    *openapi_types.UUID `json:"scepConfigId,omitempty"`
+				UpdatedAt                       time.Time           `json:"updatedAt"`
 			} `json:"profiles"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -575788,16 +576794,17 @@ func ParseAttachPkiApplicationProfilesResponse(rsp *http.Response) (*AttachPkiAp
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Profiles []struct {
-				AcmeConfigId       *openapi_types.UUID `json:"acmeConfigId,omitempty"`
-				ApiConfigId        *openapi_types.UUID `json:"apiConfigId,omitempty"`
-				ApplicationId      openapi_types.UUID  `json:"applicationId"`
-				CreatedAt          time.Time           `json:"createdAt"`
-				EstConfigId        *openapi_types.UUID `json:"estConfigId,omitempty"`
-				ProfileDescription *string             `json:"profileDescription,omitempty"`
-				ProfileId          openapi_types.UUID  `json:"profileId"`
-				ProfileSlug        string              `json:"profileSlug"`
-				ScepConfigId       *openapi_types.UUID `json:"scepConfigId,omitempty"`
-				UpdatedAt          time.Time           `json:"updatedAt"`
+				AcmeConfigId                    *openapi_types.UUID `json:"acmeConfigId,omitempty"`
+				ApiConfigId                     *openapi_types.UUID `json:"apiConfigId,omitempty"`
+				ApplicationId                   openapi_types.UUID  `json:"applicationId"`
+				CreatedAt                       time.Time           `json:"createdAt"`
+				EstConfigId                     *openapi_types.UUID `json:"estConfigId,omitempty"`
+				MicrosoftAutoenrollmentConfigId *openapi_types.UUID `json:"microsoftAutoenrollmentConfigId,omitempty"`
+				ProfileDescription              *string             `json:"profileDescription,omitempty"`
+				ProfileId                       openapi_types.UUID  `json:"profileId"`
+				ProfileSlug                     string              `json:"profileSlug"`
+				ScepConfigId                    *openapi_types.UUID `json:"scepConfigId,omitempty"`
+				UpdatedAt                       time.Time           `json:"updatedAt"`
 			} `json:"profiles"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -576022,9 +577029,70 @@ func ParseGetPkiApplicationEnrollmentResponse(rsp *http.Response) (*GetPkiApplic
 				EstEndpointUrl               string             `json:"estEndpointUrl"`
 				Id                           openapi_types.UUID `json:"id"`
 			} `json:"est"`
-			EstConfigured bool               `json:"estConfigured"`
-			ProfileId     openapi_types.UUID `json:"profileId"`
-			Scep          *struct {
+			EstConfigured           bool `json:"estConfigured"`
+			MicrosoftAutoenrollment *struct {
+				// AllowAnyChannelBinding Whether requests are accepted with any TLS channel binding instead of only the one for this instance's own TLS certificate.
+				AllowAnyChannelBinding bool `json:"allowAnyChannelBinding"`
+
+				// AllowedGroups The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.
+				AllowedGroups []struct {
+					Name string `json:"name"`
+					Sid  string `json:"sid"`
+				} `json:"allowedGroups"`
+
+				// ChannelBinding Whether this instance can check requests' TLS channel bindings, whatever allowAnyChannelBinding is set to. status is enforced when it has read its own TLS certificate, unverifiable when it cannot check bindings, such as in FIPS mode or when it could not read its own certificate in the last day (requests are then refused unless allowAnyChannelBinding is on), and not-checked when it has not tried to read its certificate yet, which happens at the first enrollment request. reason explains unverifiable and not-checked, and is null when status is enforced.
+				ChannelBinding struct {
+					Reason *string                                                                                   `json:"reason"`
+					Status GetPkiApplicationEnrollment200JSONResponseBodyMicrosoftAutoenrollmentChannelBindingStatus `json:"status"`
+				} `json:"channelBinding"`
+
+				// ConnectionId The ID of the Active Directory LDAP connection used to look up computers.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// EffectiveRenewBeforeSeconds How many seconds before expiry Windows actually renews: renewBeforeDays moved to more than 8 hours and less than 20% of the certificate's validity. For a validity of 40 hours or less no value fits, and Windows requests a new certificate instead of renewing. Null when the profile's TTL exceeds its certificate policy's maximum validity.
+				EffectiveRenewBeforeSeconds *int `json:"effectiveRenewBeforeSeconds"`
+
+				// Id The ID of the Microsoft Autoenrollment configuration.
+				Id openapi_types.UUID `json:"id"`
+
+				// KeyVersion The key version number of the stored keytab.
+				KeyVersion int `json:"keyVersion"`
+
+				// PolicyId The ID Windows uses for this enrollment policy server. Each policy server URL has its own.
+				PolicyId string `json:"policyId"`
+
+				// PolicyUrl The enrollment policy server URL to add to the Group Policy object, under Certificate Services Client - Certificate Enrollment Policy.
+				PolicyUrl string `json:"policyUrl"`
+
+				// RenewBeforeDays How many days before expiry Windows renews the certificate, as entered.
+				RenewBeforeDays int `json:"renewBeforeDays"`
+
+				// ServicePrincipalName The Kerberos service principal name the stored keytab is for.
+				ServicePrincipalName string `json:"servicePrincipalName"`
+
+				// TemplateName The certificate template name Windows shows for this profile.
+				TemplateName string `json:"templateName"`
+
+				// TemplateOid The OID of the certificate template, written into the template information extension of each certificate.
+				TemplateOid string `json:"templateOid"`
+			} `json:"microsoftAutoenrollment"`
+
+			// MicrosoftAutoenrollmentConfigured Whether Microsoft Autoenrollment is on for this profile in the application.
+			MicrosoftAutoenrollmentConfigured bool `json:"microsoftAutoenrollmentConfigured"`
+
+			// MicrosoftAutoenrollmentOtherProfiles Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.
+			MicrosoftAutoenrollmentOtherProfiles []struct {
+				ConnectionId         openapi_types.UUID `json:"connectionId"`
+				KeyVersion           int                `json:"keyVersion"`
+				ProfileId            openapi_types.UUID `json:"profileId"`
+				ProfileName          string             `json:"profileName"`
+				ServicePrincipalName string             `json:"servicePrincipalName"`
+			} `json:"microsoftAutoenrollmentOtherProfiles"`
+
+			// MicrosoftAutoenrollmentUnsupportedReason Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority, a key type Windows cannot request, or a certificate policy that refuses the key type or the Windows extensions. Null when it can, and always null once the method is on for the profile.
+			MicrosoftAutoenrollmentUnsupportedReason *string            `json:"microsoftAutoenrollmentUnsupportedReason"`
+			ProfileId                                openapi_types.UUID `json:"profileId"`
+			Scep                                     *struct {
 				AllowCertBasedRenewal         bool                                                            `json:"allowCertBasedRenewal"`
 				ChallengeEndpointUrl          *string                                                         `json:"challengeEndpointUrl"`
 				ChallengeType                 GetPkiApplicationEnrollment200JSONResponseBodyScepChallengeType `json:"challengeType"`
@@ -586352,7 +587420,10 @@ func ParseGetCertificateResponse(rsp *http.Response) (*GetCertificateResponse, e
 				// DeletedByActorType The type of actor that deleted this certificate: 'user' or 'identity'.
 				DeletedByActorType *GetCertificate200JSONResponseBodyCertificateDeletedByActorType `json:"deletedByActorType,omitempty"`
 				DiscoveryMetadata  interface{}                                                     `json:"discoveryMetadata,omitempty"`
-				ExtendedKeyUsages  *[]string                                                       `json:"extendedKeyUsages,omitempty"`
+
+				// EnrollmentType How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'), falling back to its profile's enrollment method when no request is recorded. Null for imported or discovered certificates without a CA.
+				EnrollmentType    *string   `json:"enrollmentType,omitempty"`
+				ExtendedKeyUsages *[]string `json:"extendedKeyUsages,omitempty"`
 
 				// ExternalMetadata Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.
 				ExternalMetadata  *GetCertificate200JSONResponseBody_Certificate_ExternalMetadata `json:"externalMetadata,omitempty"`
@@ -586372,9 +587443,12 @@ func ParseGetCertificateResponse(rsp *http.Response) (*GetCertificateResponse, e
 				HsmPublicKeySpki interface{}         `json:"hsmPublicKeySpki,omitempty"`
 				Id               openapi_types.UUID  `json:"id"`
 				IsCA             *bool               `json:"isCA,omitempty"`
-				KeyAlgorithm     *string             `json:"keyAlgorithm,omitempty"`
-				KeySource        *string             `json:"keySource,omitempty"`
-				KeyUsages        *[]string           `json:"keyUsages,omitempty"`
+
+				// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+				IsRenewedByClient bool      `json:"isRenewedByClient"`
+				KeyAlgorithm      *string   `json:"keyAlgorithm,omitempty"`
+				KeySource         *string   `json:"keySource,omitempty"`
+				KeyUsages         *[]string `json:"keyUsages,omitempty"`
 
 				// LatestRenewalCertificateId The ID of the newest certificate that has replaced this one through renewal, or null if no newer replacement is available. Revoked and deleted certificates are never named, so this is null when this certificate has never been renewed and also when every renewal of it has since been revoked or deleted. Use this to follow renewals without walking the chain one certificate at a time.
 				LatestRenewalCertificateId *openapi_types.UUID `json:"latestRenewalCertificateId,omitempty"`
@@ -600394,7 +601468,9 @@ func ParseGetSecretImportsResponse(rsp *http.Response) (*GetSecretImportsRespons
 					Name string `json:"name"`
 					Slug string `json:"slug"`
 				} `json:"environmentInfo"`
-				FolderId   *string `json:"folderId,omitempty"`
+				FolderId *string `json:"folderId,omitempty"`
+
+				// ImportId The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID.
 				ImportId   *string `json:"importId,omitempty"`
 				SecretPath string  `json:"secretPath"`
 				Secrets    []struct {
@@ -618088,7 +619164,6 @@ func ParseListOrganizationsResponse(rsp *http.Response) (*ListOrganizationsRespo
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -618463,7 +619538,6 @@ func ParseListAccessibleOrganizationsWithSubOrgsResponse(rsp *http.Response) (*L
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -621650,7 +622724,6 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -621788,7 +622861,6 @@ func ParseUpdateOrganizationResponse(rsp *http.Response) (*UpdateOrganizationRes
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -628474,34 +629546,37 @@ func ParseSearchProjectCertificatesResponse(rsp *http.Response) (*SearchProjectC
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Certificates []struct {
-				AltNames                  *string             `json:"altNames,omitempty"`
-				ApplicationId             *openapi_types.UUID `json:"applicationId,omitempty"`
-				ApplicationName           *string             `json:"applicationName,omitempty"`
-				CaCertId                  *openapi_types.UUID `json:"caCertId,omitempty"`
-				CaId                      *openapi_types.UUID `json:"caId,omitempty"`
-				CaName                    *string             `json:"caName,omitempty"`
-				CanRenewFromCsr           bool                `json:"canRenewFromCsr"`
-				CertificateTemplateId     *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
-				CommonName                string              `json:"commonName"`
-				CreatedAt                 time.Time           `json:"createdAt"`
-				CustomExtensions          interface{}         `json:"customExtensions,omitempty"`
-				DeletedAt                 *time.Time          `json:"deletedAt,omitempty"`
-				DeletedByActorId          *openapi_types.UUID `json:"deletedByActorId,omitempty"`
-				DeletedByActorType        *string             `json:"deletedByActorType,omitempty"`
-				DiscoveryMetadata         interface{}         `json:"discoveryMetadata,omitempty"`
-				EnrollmentType            *string             `json:"enrollmentType,omitempty"`
-				ExtendedKeyUsages         *[]string           `json:"extendedKeyUsages,omitempty"`
-				ExternalMetadata          interface{}         `json:"externalMetadata,omitempty"`
-				FingerprintSha1           *string             `json:"fingerprintSha1,omitempty"`
-				FingerprintSha256         *string             `json:"fingerprintSha256,omitempty"`
-				FriendlyName              string              `json:"friendlyName"`
-				HasPrivateKey             bool                `json:"hasPrivateKey"`
-				HsmConnectorId            *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
-				HsmKeyId                  *string             `json:"hsmKeyId,omitempty"`
-				HsmKeyLabel               *string             `json:"hsmKeyLabel,omitempty"`
-				HsmPublicKeySpki          interface{}         `json:"hsmPublicKeySpki,omitempty"`
-				Id                        openapi_types.UUID  `json:"id"`
-				IsCA                      *bool               `json:"isCA,omitempty"`
+				AltNames              *string             `json:"altNames,omitempty"`
+				ApplicationId         *openapi_types.UUID `json:"applicationId,omitempty"`
+				ApplicationName       *string             `json:"applicationName,omitempty"`
+				CaCertId              *openapi_types.UUID `json:"caCertId,omitempty"`
+				CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+				CaName                *string             `json:"caName,omitempty"`
+				CanRenewFromCsr       bool                `json:"canRenewFromCsr"`
+				CertificateTemplateId *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
+				CommonName            string              `json:"commonName"`
+				CreatedAt             time.Time           `json:"createdAt"`
+				CustomExtensions      interface{}         `json:"customExtensions,omitempty"`
+				DeletedAt             *time.Time          `json:"deletedAt,omitempty"`
+				DeletedByActorId      *openapi_types.UUID `json:"deletedByActorId,omitempty"`
+				DeletedByActorType    *string             `json:"deletedByActorType,omitempty"`
+				DiscoveryMetadata     interface{}         `json:"discoveryMetadata,omitempty"`
+				EnrollmentType        *string             `json:"enrollmentType,omitempty"`
+				ExtendedKeyUsages     *[]string           `json:"extendedKeyUsages,omitempty"`
+				ExternalMetadata      interface{}         `json:"externalMetadata,omitempty"`
+				FingerprintSha1       *string             `json:"fingerprintSha1,omitempty"`
+				FingerprintSha256     *string             `json:"fingerprintSha256,omitempty"`
+				FriendlyName          string              `json:"friendlyName"`
+				HasPrivateKey         bool                `json:"hasPrivateKey"`
+				HsmConnectorId        *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+				HsmKeyId              *string             `json:"hsmKeyId,omitempty"`
+				HsmKeyLabel           *string             `json:"hsmKeyLabel,omitempty"`
+				HsmPublicKeySpki      interface{}         `json:"hsmPublicKeySpki,omitempty"`
+				Id                    openapi_types.UUID  `json:"id"`
+				IsCA                  *bool               `json:"isCA,omitempty"`
+
+				// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+				IsRenewedByClient         *bool               `json:"isRenewedByClient,omitempty"`
 				KeyAlgorithm              *string             `json:"keyAlgorithm,omitempty"`
 				KeySource                 *string             `json:"keySource,omitempty"`
 				KeyUsages                 *[]string           `json:"keyUsages,omitempty"`
@@ -632699,6 +633774,123 @@ func ParseCreateProjectIdentityMembershipResponse(rsp *http.Response) (*CreatePr
 	return response, nil
 }
 
+// ParseDeleteHoneyTokenResponse parses an HTTP response from a DeleteHoneyTokenWithResponse call
+func ParseDeleteHoneyTokenResponse(rsp *http.Response) (*DeleteHoneyTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteHoneyTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
+				CreatedAt      time.Time          `json:"createdAt"`
+				Description    *string            `json:"description,omitempty"`
+				Id             openapi_types.UUID `json:"id"`
+				Name           string             `json:"name"`
+				ProjectId      string             `json:"projectId"`
+				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+				Status         *string            `json:"status,omitempty"`
+				Type           string             `json:"type"`
+				UpdatedAt      time.Time          `json:"updatedAt"`
+			} `json:"honeyToken"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDeleteIdentityFolderAccessResponse parses an HTTP response from a DeleteIdentityFolderAccessWithResponse call
 func ParseDeleteIdentityFolderAccessResponse(rsp *http.Response) (*DeleteIdentityFolderAccessResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -633187,7 +634379,7 @@ func ParseListFolderAccessIdentitiesResponse(rsp *http.Response) (*ListFolderAcc
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
-			// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
+			// Identities The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.
 			Identities []struct {
 				FolderRBACAccess *struct {
 					CreatedAt                time.Time                                                                         `json:"createdAt"`
@@ -634976,7 +636168,7 @@ func ParseListFolderAccessUsersResponse(rsp *http.Response) (*ListFolderAccessUs
 			// TotalCount The number of users of the project that match the search, with and without access together.
 			TotalCount float32 `json:"totalCount"`
 
-			// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.
+			// Users The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.
 			Users []struct {
 				Email            *string `json:"email"`
 				FirstName        *string `json:"firstName"`
@@ -656560,7 +657752,6 @@ func ParseCreateOrganizationResponse(rsp *http.Response) (*CreateOrganizationRes
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -656697,7 +657888,6 @@ func ParseUpgradePrivilegeSystemResponse(rsp *http.Response) (*UpgradePrivilegeS
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -656961,7 +658151,6 @@ func ParseDeleteOrganizationResponse(rsp *http.Response) (*DeleteOrganizationRes
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`
@@ -658926,8 +660115,10 @@ func ParseListSecretApprovalPoliciesResponse(rsp *http.Response) (*ListSecretApp
 					Id   *string                                                             `json:"id,omitempty"`
 					Type ListSecretApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 				} `json:"bypassers"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+				CreatedAt time.Time  `json:"createdAt"`
+				DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+				// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
 				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
 				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
 				EnvId                  openapi_types.UUID `json:"envId"`
@@ -659049,15 +660240,17 @@ func ParseCreateSecretApprovalPolicyResponse(rsp *http.Response) (*CreateSecretA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32   `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time  `json:"createdAt"`
+				DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+				// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+				EnvId                  openapi_types.UUID `json:"envId"`
+				Environment            struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -659175,15 +660368,17 @@ func ParseGetSecretApprovalPolicyBoardResponse(rsp *http.Response) (*GetSecretAp
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Policy *struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32   `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time  `json:"createdAt"`
+				DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+				// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+				EnvId                  openapi_types.UUID `json:"envId"`
+				Environment            struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -659304,15 +660499,17 @@ func ParseDeleteSecretApprovalPolicyResponse(rsp *http.Response) (*DeleteSecretA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32   `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time  `json:"createdAt"`
+				DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+				// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+				EnvId                  openapi_types.UUID `json:"envId"`
+				Environment            struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -659443,8 +660640,10 @@ func ParseGetSecretApprovalPolicyResponse(rsp *http.Response) (*GetSecretApprova
 					Type     GetSecretApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 					Username *string                                                         `json:"username,omitempty"`
 				} `json:"bypassers"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				DeletedAt              *time.Time         `json:"deletedAt,omitempty"`
+				CreatedAt time.Time  `json:"createdAt"`
+				DeletedAt *time.Time `json:"deletedAt,omitempty"`
+
+				// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
 				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
 				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
 				EnvId                  openapi_types.UUID `json:"envId"`
@@ -659566,15 +660765,17 @@ func ParseUpdateSecretApprovalPolicyResponse(rsp *http.Response) (*UpdateSecretA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforceOnSecretImports     bool               `json:"enforceOnSecretImports"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool      `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32   `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool      `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time  `json:"createdAt"`
+				DeletedAt                  *time.Time `json:"deletedAt,omitempty"`
+
+				// EnforceOnSecretImports When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.
+				EnforceOnSecretImports bool               `json:"enforceOnSecretImports"`
+				EnforcementLevel       *string            `json:"enforcementLevel,omitempty"`
+				EnvId                  openapi_types.UUID `json:"envId"`
+				Environment            struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -659830,10 +661031,17 @@ func ParseListSecretImportsResponse(rsp *http.Response) (*ListSecretImportsRespo
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id        string  `json:"id"`
-					Name      string  `json:"name"`
-					ProjectId *string `json:"projectId,omitempty"`
-					Slug      string  `json:"slug"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
+					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
+					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
 				IsReplication        *bool      `json:"isReplication,omitempty"`
@@ -659953,8 +661161,16 @@ func ParseCreateSecretImportResponse(rsp *http.Response) (*CreateSecretImportRes
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -660210,8 +661426,16 @@ func ParseDeleteSecretImportResponse(rsp *http.Response) (*DeleteSecretImportRes
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -660335,8 +661559,16 @@ func ParseGetSecretImportResponse(rsp *http.Response) (*GetSecretImportResponse,
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -660458,8 +661690,16 @@ func ParseUpdateSecretImportResponse(rsp *http.Response) (*UpdateSecretImportRes
 				FolderId  openapi_types.UUID `json:"folderId"`
 				Id        openapi_types.UUID `json:"id"`
 				ImportEnv struct {
-					Id   string `json:"id"`
+					// Id The ID of the environment the secret import reads secrets from.
+					Id string `json:"id"`
+
+					// Name The name of the environment the secret import reads secrets from.
 					Name string `json:"name"`
+
+					// ProjectId The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project.
+					ProjectId string `json:"projectId"`
+
+					// Slug The slug of the environment the secret import reads secrets from.
 					Slug string `json:"slug"`
 				} `json:"importEnv"`
 				ImportPath           string     `json:"importPath"`
@@ -665592,7 +666832,6 @@ func ParseListUserOrganizationsResponse(rsp *http.Response) (*ListUserOrganizati
 				ScimEnabled                           *bool               `json:"scimEnabled,omitempty"`
 				SecretShareBrandConfig                interface{}         `json:"secretShareBrandConfig,omitempty"`
 				SecretsProductEnabled                 *bool               `json:"secretsProductEnabled,omitempty"`
-				SelectedMfaMethod                     *string             `json:"selectedMfaMethod,omitempty"`
 				ShareSecretsProductEnabled            *bool               `json:"shareSecretsProductEnabled,omitempty"`
 				ShouldUseNewPrivilegeSystem           *bool               `json:"shouldUseNewPrivilegeSystem,omitempty"`
 				Slug                                  string              `json:"slug"`

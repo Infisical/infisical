@@ -17,10 +17,14 @@ type ParameterDeleted struct{ ParameterDetail }
 type ParameterTagged struct{ ParameterDetail }
 type ParameterUntagged struct{ ParameterDetail }
 
-func (ParameterPut) EventName() string      { return "aws.parameter-put" }
-func (ParameterDeleted) EventName() string  { return "aws.parameter-deleted" }
-func (ParameterTagged) EventName() string   { return "aws.parameter-tagged" }
-func (ParameterUntagged) EventName() string { return "aws.parameter-untagged" }
+// ParameterDecrypted is a SecureString value a Get call returned in the clear.
+type ParameterDecrypted struct{ ParameterDetail }
+
+func (ParameterPut) EventName() string       { return "aws.parameter-put" }
+func (ParameterDeleted) EventName() string   { return "aws.parameter-deleted" }
+func (ParameterTagged) EventName() string    { return "aws.parameter-tagged" }
+func (ParameterUntagged) EventName() string  { return "aws.parameter-untagged" }
+func (ParameterDecrypted) EventName() string { return "aws.parameter-decrypted" }
 
 // SecretDetail names a Secrets Manager secret.
 type SecretDetail struct {

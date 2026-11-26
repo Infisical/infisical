@@ -1,7 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -66,7 +65,6 @@ type TProjectCleanupQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  licenseService: TLicenseService;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;
@@ -81,8 +79,7 @@ export const projectCleanupQueueFactory = ({
   keyStore,
   auditLogService,
   queueService,
-  cronJob,
-  licenseService
+  cronJob
 }: TProjectCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -226,7 +223,6 @@ export const projectCleanupQueueFactory = ({
       }
 
       await releaseCaKeys();
-      await licenseService.refreshWorkspacesUsed(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

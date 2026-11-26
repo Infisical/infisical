@@ -148,7 +148,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const { data } = useGetOIDCConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, setValue, setError, watch } = useForm<OIDCFormData>({
+  const { control, handleSubmit, reset, setError, watch } = useForm<OIDCFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       configurationType: ConfigurationType.DISCOVERY_URL,
@@ -183,27 +183,35 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     });
   };
 
-  // The stored secret never returns to the form; a blank field on update keeps it.
+  // The stored secret never returns to the form; a blank field on update keeps it. reset() rather than
+  // setValue() makes these the form's defaults, so discarding edits restores the saved config.
   useEffect(() => {
     if (data) {
-      setValue("issuer", data.issuer);
-      setValue("authorizationEndpoint", data.authorizationEndpoint);
-      setValue("jwksUri", data.jwksUri);
-      setValue("tokenEndpoint", data.tokenEndpoint);
-      setValue("userinfoEndpoint", data.userinfoEndpoint);
-      setValue("discoveryURL", data.discoveryURL);
-      setValue("clientId", data.clientId);
-      setValue("clientSecret", "");
-      setValue("allowedEmailDomains", data.allowedEmailDomains ?? "");
-      setValue("configurationType", data.configurationType);
-      setValue("jwtSignatureAlgorithm", data.jwtSignatureAlgorithm);
-      setValue("mfaClaimName", data.mfaClaimName || "amr");
-      setValue("mfaAmrValues", data.mfaAmrValues ?? []);
+      reset({
+        issuer: data.issuer,
+        authorizationEndpoint: data.authorizationEndpoint,
+        jwksUri: data.jwksUri,
+        tokenEndpoint: data.tokenEndpoint,
+        userinfoEndpoint: data.userinfoEndpoint,
+        discoveryURL: data.discoveryURL,
+        clientId: data.clientId,
+        clientSecret: "",
+        allowedEmailDomains: data.allowedEmailDomains ?? "",
+        configurationType: data.configurationType,
+        jwtSignatureAlgorithm: data.jwtSignatureAlgorithm,
+        mfaClaimName: data.mfaClaimName || "amr",
+        mfaAmrValues: data.mfaAmrValues ?? []
+      });
     }
   }, [data]);
 
   const isExistingConfig = Boolean(data?.isActive);
   const hasStoredSecret = Boolean(data?.clientSecret);
+
+  const discardEdits = () => {
+    reset();
+    setAmrValueTagError(null);
+  };
 
   const onOIDCModalSubmit = async ({
     issuer,
@@ -271,6 +279,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     }
 
     handlePopUpClose("addOIDC");
+    setAmrValueTagError(null);
 
     createNotification({
       text: `Successfully ${data?.isActive ? "updated" : "added"} OIDC SSO configuration`,
@@ -311,7 +320,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         open={popUp?.addOIDC?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addOIDC", isOpen);
-          reset();
+          discardEdits();
           setIsClientSecretRevealed(false);
         }}
       >
@@ -561,7 +570,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 <Button type="submit" variant="org" isPending={isPending}>
                   {isExistingConfig ? "Update Configuration" : "Configure OIDC"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addOIDC")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    handlePopUpClose("addOIDC");
+                    discardEdits();
+                  }}
+                >
                   Cancel
                 </Button>
               </div>

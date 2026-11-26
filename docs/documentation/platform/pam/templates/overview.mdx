@@ -46,11 +46,14 @@ To use the template, choose it when you [add an account](/documentation/platform
 | **Allow Break-Glass** | Named responders can approve their own access requests in an emergency (see [Break-glass access](/documentation/platform/pam/access-requests/break-glass)) |
 | **Require MFA** | Users must complete an MFA challenge before they connect |
 | **Require Reason** | Users must give a reason before they connect |
-| **Max Session Duration** | Infisical ends the session after this many seconds (60 to 86,400, or 900 to 86,400 for [AWS IAM](/documentation/platform/pam/accounts/aws-iam#session-duration)) |
+| **Max Session Duration** | Infisical ends each session after this many seconds (60 to 86,400, or 900 to 86,400 for [AWS IAM](/documentation/platform/pam/accounts/aws-iam#session-duration)). It doesn't limit how long approved access lasts |
+| **Max Access Duration** | The longest access a user can request, in seconds (60 to 604,800, or 900 to 604,800 for [AWS IAM](/documentation/platform/pam/accounts/aws-iam#session-duration)). Without it, users can request up to 7 days. Only available with **Require Approval** |
 | **Command Blocking** | Infisical rejects commands or SQL statements that match one of these regular expressions (SSH, Snowflake, and ClickHouse only) |
 | **Output Masking** | Infisical replaces text that matches the selected presets or your regular expressions with `[MASKED]` before the user sees it (SSH and PostgreSQL only) |
 
-**Allow Auto-Approval** and **Allow Break-Glass** only work together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
+**Allow Auto-Approval**, **Allow Break-Glass**, and **Max Access Duration** only work together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns them off.
+
+**Max Session Duration** and **Max Access Duration** limit different things. For example, with a **Max Access Duration** of 1 day and a **Max Session Duration** of 1 hour, an approved user can start sessions for 1 day, and each session ends after 1 hour or when the access ends, whichever comes first.
 
 Machine identities can't complete an MFA challenge. They can't connect to accounts whose template has **Require MFA** on. If an [AI agent](/documentation/platform/pam/ai-agents/overview#accounts-that-require-mfa) runs as you, it gives you a link to complete MFA in your browser. If an agent runs as a machine identity and needs an account, use **Require Approval** instead.
 

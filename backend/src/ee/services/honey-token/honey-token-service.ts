@@ -124,7 +124,7 @@ export type THoneyTokenServiceFactoryDep = {
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource" | "deleteAlertsForDeletedResource">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "findActorsWithActiveOrgAccess">;
@@ -784,6 +784,49 @@ export const honeyTokenServiceFactory = ({
     return { honeyTokenId, honeyToken, folderInfo };
   };
 
+  const deleteHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+    const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
+    if (!honeyToken) {
+      throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
+    }
+
+    const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
+    const { permission: deletePermission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId: honeyToken.projectId
+    });
+    const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
+      environment: folderWithEnv.environmentSlug,
+      secretPath: folderWithEnv.path
+    });
+    // Deleting only removes the record of a token that revoke already disabled, so it shares revoke's permission.
+    // Read is required too, because the response returns the token.
+    ForbiddenError.from(deletePermission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, honeyTokenSubject);
+    ForbiddenError.from(deletePermission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Revoke, honeyTokenSubject);
+
+    await honeyTokenDAL.transaction(async (tx) => {
+      // The status is checked on the primary in the delete itself, since the replica read above can still see a
+      // token revoked moments ago as active.
+      const deleted = await honeyTokenDAL.delete({ id: honeyTokenId, status: HoneyTokenStatus.Revoked }, tx);
+      if (!deleted.length) {
+        throw new BadRequestError({
+          message: `Honey token "${honeyToken.name}" must be revoked before it can be deleted`
+        });
+      }
+
+      await alertService.deleteAlertsForDeletedResource(
+        { resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceId: honeyTokenId },
+        tx
+      );
+    });
+
+    return { honeyToken: { ...honeyToken, config: getHoneyTokenConfig(honeyToken) }, folderInfo: folderWithEnv };
+  };
+
   const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
@@ -1279,6 +1322,7 @@ export const honeyTokenServiceFactory = ({
     create,
     updateHoneyToken,
     revokeHoneyToken,
+    deleteHoneyToken,
     resetHoneyToken,
     getCredentials,
     getHoneyTokenById,

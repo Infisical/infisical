@@ -420,10 +420,11 @@ const SettingsTab = ({
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
-  // These only change how an approval is reached, so they follow Require Approval
+  // These only apply to approval requests, so they follow Require Approval
   const approvalDependentPolicies = [
     PamPolicyType.AllowAutoApproval,
-    PamPolicyType.AllowBreakGlass
+    PamPolicyType.AllowBreakGlass,
+    PamPolicyType.MaxAccessDuration
   ];
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
     (p) => POLICY_EDITORS[p.key] && (!approvalDependentPolicies.includes(p.key) || requiresApproval)

@@ -5,7 +5,7 @@ import { TPasswordPolicy } from "@app/hooks/api/admin/types";
 
 export const createAdminSignUpSchema = (
   passwordPolicy: TPasswordPolicy,
-  isActivationTokenRequired: boolean
+  isSetupTokenRequired: boolean
 ) =>
   z
     .object({
@@ -14,12 +14,12 @@ export const createAdminSignUpSchema = (
       email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
       password: createPasswordSchema(passwordPolicy),
       confirmPassword: z.string().min(1, "Please confirm your password"),
-      activationToken: isActivationTokenRequired
+      setupToken: isSetupTokenRequired
         ? z
             .string()
             .trim()
-            .min(1, "Activation token is required")
-            .max(256, "Activation token must be at most 256 characters")
+            .min(1, "Setup token is required")
+            .max(32, "Setup token must be at most 32 characters")
         : z.string().trim().optional()
     })
     .refine(({ confirmPassword, password }) => confirmPassword === password, {

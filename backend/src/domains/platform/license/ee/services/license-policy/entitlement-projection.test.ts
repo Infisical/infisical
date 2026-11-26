@@ -75,6 +75,18 @@ describe("applyEntitlements notices", () => {
     ]);
   });
 
+  test("projects a subscription_payment_failed notice", () => {
+    expect(
+      projectNotices([
+        { type: "subscription_payment_failed", cause: "payment_action_required", since: "2026-11-20T10:00:00Z" },
+        { type: "subscription_payment_failed" }
+      ])
+    ).toEqual([
+      { type: "subscription_payment_failed", cause: "payment_action_required", since: "2026-11-20T10:00:00Z" },
+      { type: "subscription_payment_failed", cause: null, since: null }
+    ]);
+  });
+
   test("drops unknown and malformed notices without failing the rest", () => {
     const notices = projectNotices([
       { type: "usage_over_limit", product_key: "pam" },

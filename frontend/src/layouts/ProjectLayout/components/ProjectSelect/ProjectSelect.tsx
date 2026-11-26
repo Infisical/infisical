@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
-import { UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -30,7 +29,6 @@ import { useGetUserProjects } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
-import { useProjectCreationAllowance } from "@app/hooks/useProjectCreationAllowance";
 import {
   NavbarBlock,
   NavbarSwitcher,
@@ -62,14 +60,7 @@ const ProjectSelectInner = () => {
     });
   };
 
-  const { isAddingProjectsAllowed, upgradeIntent } = useProjectCreationAllowance(
-    currentWorkspace.type
-  );
-
-  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
-    "addNewWs",
-    "upgradePlan"
-  ] as const);
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addNewWs"] as const);
 
   const projectsSortedByFav = useMemo(() => {
     const projectOptions = projects
@@ -224,7 +215,7 @@ const ProjectSelectInner = () => {
                         className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5 disabled:pointer-events-none disabled:opacity-50"
                         onClick={() => {
                           setOpen(false);
-                          handlePopUpOpen(isAddingProjectsAllowed ? "addNewWs" : "upgradePlan");
+                          handlePopUpOpen("addNewWs");
                         }}
                       >
                         <Plus className="size-4" />
@@ -238,12 +229,6 @@ const ProjectSelectInner = () => {
           </Command>
         </NavbarSwitcherContent>
       </NavbarSwitcher>
-      <UpgradeGate
-        paywallKey="project.limit"
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        intent={upgradeIntent}
-      />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}

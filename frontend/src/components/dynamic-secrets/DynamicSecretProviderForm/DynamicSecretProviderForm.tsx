@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Controller,
   DefaultValues,
@@ -98,6 +98,11 @@ export const DynamicSecretProviderForm = <
     isDisabled: false,
     isPending: false
   });
+  const setSubmitState = useCallback(
+    (state: { isDisabled?: boolean; isPending?: boolean }) =>
+      setProviderSubmitState((current) => ({ ...current, ...state })),
+    []
+  );
 
   let environments = EMPTY_ENVIRONMENTS;
   let isSingleEnvironmentMode = false;
@@ -446,13 +451,7 @@ export const DynamicSecretProviderForm = <
               />
             )}
             {CustomRenderer && (
-              <CustomRenderer
-                mode={mode}
-                context={context}
-                setSubmitState={(state) =>
-                  setProviderSubmitState((current) => ({ ...current, ...state }))
-                }
-              />
+              <CustomRenderer mode={mode} context={context} setSubmitState={setSubmitState} />
             )}
           </section>
         </div>
