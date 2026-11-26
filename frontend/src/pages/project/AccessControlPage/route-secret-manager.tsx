@@ -8,7 +8,8 @@ import { AccessControlPage } from "./AccessControlPage";
 
 const AccessControlPageQuerySchema = z.object({
   selectedTab: z.nativeEnum(ProjectAccessControlTabs).catch(ProjectAccessControlTabs.Member),
-  requesterEmail: z.string().catch("")
+  requesterEmail: z.string().catch(""),
+  createRole: z.boolean().catch(false)
 });
 
 export const Route = createFileRoute(
@@ -17,7 +18,7 @@ export const Route = createFileRoute(
   component: AccessControlPage,
   validateSearch: zodValidator(AccessControlPageQuerySchema),
   search: {
-    middlewares: [stripSearchParams({ requesterEmail: "" })]
+    middlewares: [stripSearchParams({ requesterEmail: "", createRole: false })]
   },
   beforeLoad: ({ context }) => {
     return {

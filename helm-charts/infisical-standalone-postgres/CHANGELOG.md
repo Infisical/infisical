@@ -1,3 +1,11 @@
+## 1.12.6
+Changes:
+* Updated the default Infisical image (`appVersion`) from `v0.167.15` to `v0.167.16`.
+
+Upgrade notes:
+* Instance setup token renamed (`v0.167.16`): `INITIAL_SETUP_ACTIVATION_TOKEN` is replaced by `INSTANCE_SETUP_TOKEN` and is no longer read, so an instance that hasn't created its first admin and still sets only the old variable accepts the first admin signup without a token. The new token must be 6 to 32 characters. Before upgrading such an instance, set `INSTANCE_SETUP_TOKEN` in the `infisical.kubeSecretRef` secret, remove the old variable, and change bootstrap automation to send `setupToken` instead of `activationToken`.
+* Secret scanning notification recipients (`v0.167.16`): secret scanning notifications move to the shared alerting module and email project admins only. Commit authors who aren't project admins no longer get the secrets detected email, and in-app notifications stop. To keep notifying them, add them as recipients to each data source's alerts after upgrading.
+
 ## 1.12.5
 Changes:
 * Updated the default Infisical image (`appVersion`) from `v0.167.14` to `v0.167.15`.
