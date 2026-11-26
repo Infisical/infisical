@@ -983,7 +983,7 @@ export const ServiceSheet = ({
           set(
             "hook",
             hook
-              ? { ...serviceHookDraftOf(), hookId: hook.id, hookName: hook.name }
+              ? { ...form.hook, hookId: hook.id, hookName: hook.name }
               : serviceHookDraftOf()
           );
           setErrors({});
