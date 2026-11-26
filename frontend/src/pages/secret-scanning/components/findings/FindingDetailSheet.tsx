@@ -26,10 +26,7 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  RESOURCE_DESCRIPTION_HELPER,
-  SECRET_SCANNING_DATA_SOURCE_MAP
-} from "@app/helpers/secretScanningV2";
+import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
@@ -41,6 +38,8 @@ import { FindingStatusBadge } from "./FindingStatusBadge";
 
 type Props = {
   finding?: TSecretScanningFinding;
+  // the resource the user came from, whose locations are shown first
+  focusResourceId: string | null;
   position: { index: number; total: number } | null;
   onClose: () => void;
   onPrevious: () => void;
@@ -53,6 +52,7 @@ const formatDate = (date: string | Date) => format(new Date(date), "MMM d, yyyy 
 
 export const FindingDetailSheet = ({
   finding,
+  focusResourceId,
   position,
   onClose,
   onPrevious,
@@ -63,6 +63,9 @@ export const FindingDetailSheet = ({
   // the newest location's rule description stands for the finding's
   const { data: locationPages } = useListSecretScanningFindingLocations(finding?.id ?? "");
   const latestLocation = locationPages?.pages[0]?.locations[0];
+  const dataSourceNames = [
+    ...new Set(finding?.resources.map((resource) => resource.dataSourceName) ?? [])
+  ];
 
   return (
     <Sheet open={Boolean(finding)} onOpenChange={(open) => !open && onClose()}>
@@ -72,12 +75,7 @@ export const FindingDetailSheet = ({
             <SheetHeader>
               <div className="flex items-center gap-1 pr-8">
                 <span className="mr-auto flex items-center gap-2 text-xs text-muted">
-                  <ProviderIcon
-                    alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType].name} data source`}
-                    icon={SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType].image}
-                    className="size-4"
-                  />
-                  {finding.dataSourceName}
+                  {dataSourceNames.join(", ")}
                 </span>
                 {position && (
                   <span className="mr-1 text-xs text-muted">
@@ -114,11 +112,28 @@ export const FindingDetailSheet = ({
 
             <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
               <div className="grid grid-cols-2 gap-4">
-                <Detail>
-                  <DetailLabel>
-                    {RESOURCE_DESCRIPTION_HELPER[finding.dataSourceType].singularTitle}
-                  </DetailLabel>
-                  <DetailValue>{finding.resourceName}</DetailValue>
+                <Detail className="col-span-2">
+                  <DetailLabel>Found In</DetailLabel>
+                  <DetailValue>
+                    <ul className="flex flex-col gap-1">
+                      {finding.resources.map((resource) => (
+                        <li key={resource.id} className="flex items-center gap-2">
+                          <ProviderIcon
+                            alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source ${resource.dataSourceName}`}
+                            title={resource.dataSourceName}
+                            icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
+                            className="size-3.5"
+                          />
+                          <span className="truncate">{resource.name}</span>
+                          <span className="shrink-0 text-xs text-muted">
+                            {resource.locationCount === 1
+                              ? "1 location"
+                              : `${resource.locationCount} locations`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </DetailValue>
                 </Detail>
                 <Detail>
                   <DetailLabel>Last Detected</DetailLabel>
@@ -138,7 +153,13 @@ export const FindingDetailSheet = ({
                 )}
               </div>
               <Separator />
-              <FindingLocationList findingId={finding.id} locationCount={finding.locationCount} />
+              <FindingLocationList
+                key={finding.id}
+                findingId={finding.id}
+                locationCount={finding.locationCount}
+                resources={finding.resources}
+                initialResourceId={focusResourceId}
+              />
             </div>
 
             <Separator />

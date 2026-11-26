@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   Button,
   Dialog,
   DialogClose,
@@ -61,6 +64,18 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
   const { name, description } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
   const isBulk = findings.length > 1;
   const hasExistingComment = findings.some((finding) => Boolean(finding.triageComment));
+  const sharedFindings = findings.filter((finding) => finding.resources.length > 1);
+
+  const renderSharedNotice = () => {
+    if (!sharedFindings.length) return null;
+
+    if (isBulk) {
+      return `${sharedFindings.length} of these secrets were found in more than one place. The status applies everywhere each was found.`;
+    }
+
+    const names = findings[0].resources.map((resource) => resource.name);
+    return `This secret was found in ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}. The status applies to all of them.`;
+  };
 
   const onSubmit = ({ comment }: TFormData) => {
     const triageComment = comment || null;
@@ -97,6 +112,12 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          {sharedFindings.length > 0 && (
+            <Alert variant="info">
+              <InfoIcon />
+              <AlertDescription>{renderSharedNotice()}</AlertDescription>
+            </Alert>
+          )}
           <Controller
             control={control}
             name="comment"

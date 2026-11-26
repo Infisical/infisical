@@ -22,12 +22,14 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
 
 ## Findings
 
-- A finding is one secret value in one resource, and every place it was found is a row in
-  `secret_scanning_finding_locations` (unique `(resourceId, fingerprint)`). Triage lives on the finding only and never
-  cascades to other findings, including ones with the same value in other resources.
-- Nothing in the database makes a value's finding unique, because the release before locations existed saves a
-  finding per location and has to keep working after a rollback. Code that looks a value up must take the oldest
-  finding when there are several.
+- A finding is one secret value in a project, across all its resources, and every place it was found is a row in
+  `secret_scanning_finding_locations` (unique `(resourceId, fingerprint)`). Its status covers every resource: a false
+  positive or ignored finding passes in every resource's pull request checks, and triage never cascades to other
+  findings. The blind index is org-level, so values match across resources without decrypting.
+- Nothing in the database makes a value's finding unique, because earlier releases save a finding per resource or per
+  location and have to keep working after a rollback. Code that looks a value up must take the oldest finding when
+  there are several, which is also the one the merge by value keeps
+  (`20261125120000_merge-secret-scanning-findings-across-resources.ts`).
 - Scans write findings only through `findings.persistLocations` (`secret-scanning-v2-dal.ts`), in the transaction
   that records the scan's progress. Only a location the resource didn't have can create a finding or reopen a
   `resolved` one; a rescan of history must change nothing. False positives and ignored findings just gain the
@@ -60,7 +62,11 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   `findingIds`) still resolve through `findings.findByIdsOrLocationIdsForUpdate`, which only returns findings with a
   location in the check's resource.
 - A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
-  never only the new ones. Its counts are distinct findings.
+  never only the new ones. Its counts are distinct findings. Its output lists only the scan's own locations, never
+  another resource's names or paths, since a public repository's check is public. Skipping it from GitHub triages the
+  whole finding, in every resource, as GitGuardian does.
+- A finding's `resources` (API) lists every resource it was found in, the one a list was filtered by (or its scan's)
+  first, so links from a resource's alert or check open on that resource.
 - Notifications are alerts on the shared alert module (`secret-scanning.data-source` provider), bound to one data
   source each: never send email or in-app notifications from this module. A scan emits `secrets-detected` or
   `scan-failed` (`secret-scanning-v2-events.ts`) with its data source as the `resourceId`, in the transaction that

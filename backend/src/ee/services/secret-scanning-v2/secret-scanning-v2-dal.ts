@@ -45,6 +45,17 @@ export type TListSecretScanningFindingsFilter = {
   limit: number;
 };
 
+type TFindingResourceOrder = { resourceId?: string | null; dataSourceId?: string | null; scanId?: string | null };
+
+export type TSecretScanningFindingResource = {
+  id: string;
+  name: string;
+  dataSourceId: string;
+  dataSourceName: string;
+  dataSourceType: string;
+  locationCount: number;
+};
+
 export type TListSecretScanningResourcesFilter = {
   search?: string;
   orderBy: SecretScanningResourceOrderBy;
@@ -178,10 +189,11 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
 
   /**
-   * Saves what a scan found in one resource. A finding is one secret value in the resource, and each place it was
-   * found is a location of it. A location the resource already has is left as it is, so rescanning history changes
-   * nothing. A new location creates its value's finding, or reopens it if it was resolved, since the value turning up
-   * somewhere new after it was resolved is a regression. False positives and ignored findings only gain the location.
+   * Saves what a scan found in one resource. A finding is one secret value in the project, across its resources, and
+   * each place it was found is a location of it. A location the resource already has is left as it is, so rescanning
+   * history changes nothing. A new location creates its value's finding, or reopens it if it was resolved, since the
+   * value turning up somewhere new after it was resolved is a regression. False positives and ignored findings only gain
+   * the location.
    *
    * Returns every row's finding, including rows an earlier scan saved, and the findings this call reopened.
    */
@@ -233,19 +245,30 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         secretFindingBlindIndex ? [secretFindingBlindIndex] : []
       );
 
-      // Taken before anything is written, so a scan waiting here holds no row lock that a resource delete holding this
-      // lock would wait on.
+      // A value's finding spans the project's resources, so scans of two resources could each miss it and create one
+      // without this. Taken before anything is written, so a scan waiting here holds no row lock that a resource delete
+      // holding this lock would wait on.
       if (newBlindIndexes.length) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(projectId)]);
       }
 
-      // The release before this one saves a finding per location, so after a rollback a value can have several
-      // findings; the oldest one takes the new locations.
+      // Earlier releases save a finding per resource or per location, so after a rollback a value can have several
+      // findings; the oldest one takes the new locations, as the merge of findings by value keeps the oldest.
       const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
       for (const chunk of chunkArray(newBlindIndexes, FINDINGS_UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
         const findings = await tx(TableName.SecretScanningFinding)
-          .where({ resourceId })
+          .whereIn("resourceId", (projectResources) => {
+            void projectResources
+              .select(`${TableName.SecretScanningResource}.id`)
+              .from(TableName.SecretScanningResource)
+              .join(
+                TableName.SecretScanningDataSource,
+                `${TableName.SecretScanningDataSource}.id`,
+                `${TableName.SecretScanningResource}.dataSourceId`
+              )
+              .where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+          })
           .whereIn("secretFindingBlindIndex", chunk)
           .orderBy("createdAt")
           .orderBy("id")
@@ -898,7 +921,13 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         `${TableName.SecretScanningResource}.dataSourceId`
       );
 
-  const findingWithDetailsQuery = (tx?: Knex) =>
+  // `resources` lists every resource the finding has a location in, the one a list was filtered by (or its scan's)
+  // first, so a link from a resource's alert or pull request check opens on that resource. A finding without any
+  // location lists the resource it names.
+  const findingWithDetailsQuery = (
+    tx?: Knex,
+    { resourceId = null, dataSourceId = null, scanId = null }: TFindingResourceOrder = {}
+  ) =>
     baseFindingQuery(tx)
       .select(selectAllTableCols(TableName.SecretScanningFinding))
       .select(
@@ -911,7 +940,42 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           TableName.SecretScanningFindingLocation,
           `${TableName.SecretScanningFindingLocation}.findingId`,
           `${TableName.SecretScanningFinding}.id`
-        ])
+        ]),
+        db.raw(
+          `COALESCE(
+             (
+               SELECT json_agg(
+                 json_build_object(
+                   'id', r.id, 'name', r.name, 'dataSourceId', ds.id, 'dataSourceName', ds.name,
+                   'dataSourceType', ds.type, 'locationCount', lc.count
+                 )
+                 ORDER BY r.id = COALESCE(?::uuid, (SELECT s."resourceId" FROM ?? AS s WHERE s.id = ?::uuid)) DESC NULLS LAST,
+                   ds.id = ?::uuid DESC NULLS LAST, lc.count DESC, r.name
+               )
+               FROM (SELECT l."resourceId", count(*)::int AS count FROM ?? AS l WHERE l."findingId" = ?? GROUP BY l."resourceId") AS lc
+               JOIN ?? AS r ON r.id = lc."resourceId"
+               JOIN ?? AS ds ON ds.id = r."dataSourceId"
+             ),
+             json_build_array(json_build_object(
+               'id', ??, 'name', ??, 'dataSourceId', ??, 'dataSourceName', ??, 'dataSourceType', ??, 'locationCount', 0
+             ))
+           ) AS "resources"`,
+          [
+            resourceId,
+            TableName.SecretScanningScan,
+            scanId,
+            dataSourceId,
+            TableName.SecretScanningFindingLocation,
+            `${TableName.SecretScanningFinding}.id`,
+            TableName.SecretScanningResource,
+            TableName.SecretScanningDataSource,
+            `${TableName.SecretScanningResource}.id`,
+            `${TableName.SecretScanningResource}.name`,
+            `${TableName.SecretScanningDataSource}.id`,
+            `${TableName.SecretScanningDataSource}.name`,
+            `${TableName.SecretScanningDataSource}.type`
+          ]
+        )
       );
 
   const applyFindingFilters = <Q extends Knex.QueryBuilder>(
@@ -1022,7 +1086,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   ) => {
     try {
       const findingsQuery = applyFindingOrder(
-        applyFindingFilters(findingWithDetailsQuery(tx), projectId, filter),
+        applyFindingFilters(findingWithDetailsQuery(tx, filter), projectId, filter),
         orderBy,
         orderDirection
       )
@@ -1036,7 +1100,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       const [findings, countResult] = await Promise.all([findingsQuery, countQuery]);
 
       return {
-        findings: findings as ((typeof findings)[number] & { locationCount: number })[],
+        findings: findings as ((typeof findings)[number] & {
+          locationCount: number;
+          resources: TSecretScanningFindingResource[];
+        })[],
         totalCount: Number(countResult?.count ?? 0)
       };
     } catch (error) {
@@ -1050,7 +1117,9 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .where(`${TableName.SecretScanningFinding}.id`, findingId)
         .first();
 
-      return finding as (typeof finding & { locationCount: number }) | undefined;
+      return finding as
+        | (typeof finding & { locationCount: number; resources: TSecretScanningFindingResource[] })
+        | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By ID - Secret Scanning Finding" });
     }
@@ -1270,14 +1339,30 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   // Ordered newest first, which is the order a finding's locations are shown in.
   const findLocationsByFindingId = async (
     findingId: string,
-    { offset, limit }: { offset: number; limit: number },
+    { resourceId, offset, limit }: { resourceId?: string; offset: number; limit: number },
     tx?: Knex
   ) => {
     try {
-      const baseQuery = (tx || db.replicaNode())(TableName.SecretScanningFindingLocation).where({ findingId });
+      const baseQuery = (tx || db.replicaNode())(TableName.SecretScanningFindingLocation).where(
+        `${TableName.SecretScanningFindingLocation}.findingId`,
+        findingId
+      );
+      if (resourceId) void baseQuery.where(`${TableName.SecretScanningFindingLocation}.resourceId`, resourceId);
 
       const [locations, countResult] = await Promise.all([
-        baseQuery.clone().orderBy("createdAt", "desc").orderBy("id", "desc").offset(offset).limit(limit),
+        baseQuery
+          .clone()
+          .join(
+            TableName.SecretScanningResource,
+            `${TableName.SecretScanningResource}.id`,
+            `${TableName.SecretScanningFindingLocation}.resourceId`
+          )
+          .select(selectAllTableCols(TableName.SecretScanningFindingLocation))
+          .select(db.ref("name").withSchema(TableName.SecretScanningResource).as("resourceName"))
+          .orderBy(`${TableName.SecretScanningFindingLocation}.createdAt`, "desc")
+          .orderBy(`${TableName.SecretScanningFindingLocation}.id`, "desc")
+          .offset(offset)
+          .limit(limit),
         baseQuery.clone().count({ count: "*" }).first()
       ]);
 

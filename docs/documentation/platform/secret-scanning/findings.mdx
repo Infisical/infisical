@@ -4,7 +4,7 @@ sidebarTitle: "Findings"
 description: "Review the secrets Infisical finds in your repositories."
 ---
 
-A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). Infisical creates one finding for each secret value in a repository. If the same value appears in several files or commits, each place is a location of that one finding, so you review the secret once. If the same value appears in another repository, it's a separate finding there.
+A finding is a secret that a scan found in one of your [data sources](/documentation/platform/secret-scanning/scan-repositories). Infisical creates one finding for each secret value. If the same value appears in several files, commits, or repositories, each place is a location of that one finding, so you review the secret once.
 
 To see the findings from every data source, go to **Secret Scanning** > **Findings**.
 
@@ -17,8 +17,9 @@ To see the details of a finding, select its row:
 - **Description**: What the matching rule detects, such as a type of API key
 - **Last Detected**: The last time a scan found the secret in a new place
 - **First Detected**: The first time a scan found the secret
+- **Found In**: Each repository or project the secret is in, with the number of locations in each
 - **Comment**: The comment left with the finding's current status, if any
-- **Locations**: Every place Infisical found the secret, with the file and line, the commit and its author, and a link to the file at that commit on GitHub, GitLab, or Bitbucket
+- **Locations**: Every place Infisical found the secret, with the file and line, the commit and its author, and a link to the file at that commit on GitHub, GitLab, or Bitbucket (if the secret is in more than one repository, you can filter the locations by repository)
 
 ## Finding statuses
 
@@ -28,13 +29,13 @@ Every new finding starts as **Unresolved**. After you review a finding, change i
 - **False Positive**: The value isn't a secret
 - **Ignored**: The value is a secret, but you've decided it's safe to leave, such as a test credential
 
-A status applies to every location of the finding, including locations that later scans find. To stop Infisical from reporting a value at all, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+A status applies to every location of the finding, in every repository, including locations that later scans find. For example, if you mark a finding as a false positive, pull request checks pass for that value in every repository. To stop Infisical from reporting a value at all, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
 
 ## When a scan finds the secret again
 
 If a later scan finds the secret in a place Infisical already recorded, the finding doesn't change.
 
-If a later scan finds the secret in a new place, Infisical adds the location to the finding. What happens next depends on the finding's status:
+If a later scan finds the secret in a new place, Infisical adds the location to the finding, even if the new place is in another repository. What happens next depends on the finding's status:
 
 - **Unresolved**: The finding doesn't change, and Infisical doesn't send another [alert](#alerts-about-new-findings)
 - **Resolved**: Infisical sets the finding back to **Unresolved**. If a push or a pull request brought the secret back, Infisical sends an alert
@@ -65,7 +66,7 @@ To set a finding back to **Unresolved**, select its row, then select **Reopen**.
 
 Each data source has its own alerts, which notify your team by email, Slack, webhook, or PagerDuty, once for each scan. A data source can have one alert for each of two events:
 
-- **Secrets Detected**: A scan found a secret for the first time, or a push or pull request brought back a resolved one (the notification links to the findings from that scan)
+- **Secrets Detected**: A scan found a secret that Infisical hadn't found in any repository before, or a push or pull request brought back a resolved one (the notification links to the findings from that scan)
 - **Scan Failure**: A scan failed after all of its retries (the notification links to the data source and includes the error)
 
 When you create a data source, its **Alerts** step lets you choose which of the two alerts it gets and where the alerts are sent. Both alerts start out on, and both email the project's admins. If your [project role](/documentation/platform/access-controls/role-based-access-controls) doesn't have the **Edit Data Sources** action, you can't change the alerts in that step, and the data source gets both alerts as they start out.

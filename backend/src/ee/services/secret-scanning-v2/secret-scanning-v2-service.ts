@@ -1442,7 +1442,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const listSecretScanningFindingLocations = async (
-    { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
+    { findingId, resourceId, offset, limit }: TListSecretScanningFindingLocationsDTO,
     actor: OrgServiceActor
   ) => {
     const finding = await findSecretScanningFindingWithPermission(
@@ -1452,6 +1452,7 @@ export const secretScanningV2ServiceFactory = ({
     );
 
     const { locations, totalCount } = await secretScanningV2DAL.locations.findByFindingId(findingId, {
+      resourceId,
       offset,
       limit
     });

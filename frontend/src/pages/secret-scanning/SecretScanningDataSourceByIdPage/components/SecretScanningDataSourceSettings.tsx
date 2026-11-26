@@ -165,6 +165,7 @@ export const SecretScanningDataSourceSettings = ({ dataSource, onDeleted }: Prop
             <CardTitle>Danger Zone</CardTitle>
             <CardDescription>
               Stop scanning {dataSource.name} and permanently delete its findings and scan history.
+              A secret also found in another data source keeps its locations there.
             </CardDescription>
             <CardAction>
               <ProjectPermissionCan

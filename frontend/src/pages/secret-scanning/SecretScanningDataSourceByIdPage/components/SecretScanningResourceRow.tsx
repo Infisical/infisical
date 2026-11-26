@@ -218,7 +218,8 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
               <AlertDialogTitle>Remove {name}?</AlertDialogTitle>
               <AlertDialogDescription>
                 This {resourceDetails.singularNoun} won&apos;t be scanned anymore, and its scans and
-                findings are permanently deleted.
+                the secrets found in it are permanently deleted. A secret also found elsewhere keeps
+                its other locations.
                 {dataSource.isDiscoveryEnabled &&
                   " Discovery is on, so it's added back the next time someone pushes to it."}
               </AlertDialogDescription>

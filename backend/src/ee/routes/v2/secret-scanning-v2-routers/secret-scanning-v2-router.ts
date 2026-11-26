@@ -283,6 +283,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         findingId: z.string().trim().uuid().describe(SecretScanningFindings.LIST_LOCATIONS.findingId)
       }),
       querystring: z.object({
+        resourceId: z.string().trim().uuid().optional().describe(SecretScanningFindings.LIST_LOCATIONS.resourceId),
         offset: z.coerce.number().int().min(0).default(0).describe(SecretScanningFindings.LIST_LOCATIONS.offset),
         limit: z.coerce
           .number()
@@ -300,13 +301,13 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     handler: async (req) => {
       const {
         params: { findingId },
-        query: { offset, limit },
+        query: { resourceId, offset, limit },
         permission
       } = req;
 
       const { locations, totalCount, finding } =
         await server.services.secretScanningV2.listSecretScanningFindingLocations(
-          { findingId, offset, limit },
+          { findingId, resourceId, offset, limit },
           permission
         );
 
@@ -320,6 +321,9 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
             findingRule: finding.rule,
             resourceId: finding.resourceId,
             resourceName: finding.resourceName,
+            resources: finding.resources
+              .filter((resource) => !resourceId || resource.id === resourceId)
+              .map(({ id, name }) => ({ id, name })),
             count: locations.length
           }
         }
@@ -372,6 +376,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
             findingRule: finding.rule,
             resourceId: finding.resourceId,
             resourceName: finding.resourceName,
+            resources: finding.resources.map(({ id, name }) => ({ id, name })),
             ...body
           }
         }
@@ -423,7 +428,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
               ...findingUpdatePayload,
               findingRule: finding.rule,
               resourceId: finding.resourceId,
-              resourceName: finding.resourceName
+              resourceName: finding.resourceName,
+              resources: finding.resources.map(({ id, name }) => ({ id, name }))
             }
           }
         });

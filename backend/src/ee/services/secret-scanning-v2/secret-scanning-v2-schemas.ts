@@ -145,14 +145,26 @@ export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit
   fingerprint: z.string().describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION),
   scanId: z.string().uuid().describe(SecretScanningFindings.DEPRECATED_FIRST_LOCATION),
   projectId: z.string(),
-  dataSourceId: z.string().uuid(),
-  dataSourceName: z.string(),
-  resourceName: z.string(),
-  locationCount: z.number()
+  dataSourceId: z.string().uuid().describe(SecretScanningFindings.DEPRECATED_NAMED_RESOURCE),
+  dataSourceName: z.string().describe(SecretScanningFindings.DEPRECATED_NAMED_RESOURCE),
+  resourceName: z.string().describe(SecretScanningFindings.DEPRECATED_NAMED_RESOURCE),
+  locationCount: z.number(),
+  resources: z
+    .object({
+      id: z.string().uuid(),
+      name: z.string(),
+      dataSourceId: z.string().uuid(),
+      dataSourceName: z.string(),
+      dataSourceType: z.string(),
+      locationCount: z.number()
+    })
+    .array()
+    .describe(SecretScanningFindings.RESOURCES)
 });
 
 export const SecretScanningFindingLocationSchema = SecretScanningFindingLocationsSchema.extend({
-  details: GitRepositoryScanFindingDetailsSchema
+  details: GitRepositoryScanFindingDetailsSchema,
+  resourceName: z.string()
 });
 
 export const SecretScanningResourceSchema = SecretScanningResourcesSchema;

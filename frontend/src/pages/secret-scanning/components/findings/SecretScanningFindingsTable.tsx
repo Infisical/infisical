@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   Button,
   Card,
   CardAction,
@@ -481,7 +482,7 @@ export const SecretScanningFindingsTable = ({
                       onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
                     />
                   </TableHead>
-                  {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
+                  <TableHead>{resourceLabel}</TableHead>
                   {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
                   {renderSortableHead(
                     SecretScanningFindingOrderBy.LastDetectedAt,
@@ -508,7 +509,9 @@ export const SecretScanningFindingsTable = ({
                 {!isPending &&
                   findings.map((finding) => {
                     const isSelected = selectedIds.includes(finding.id);
-                    const source = SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType];
+                    // the resource the list is filtered by comes first
+                    const [resource, ...otherResources] = finding.resources;
+                    const source = SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType];
 
                     return (
                       <TableRow
@@ -534,13 +537,21 @@ export const SecretScanningFindingsTable = ({
                           <p className="flex items-center gap-1.5 truncate">
                             {!isScoped && (
                               <ProviderIcon
-                                alt={`${source.name} data source ${finding.dataSourceName}`}
-                                title={finding.dataSourceName}
+                                alt={`${source.name} data source ${resource.dataSourceName}`}
+                                title={resource.dataSourceName}
                                 icon={source.image}
                                 className="size-3.5"
                               />
                             )}
-                            {finding.resourceName}
+                            <span className="truncate">{resource.name}</span>
+                            {otherResources.length > 0 && (
+                              <Badge
+                                variant="neutral"
+                                title={otherResources.map(({ name }) => name).join(", ")}
+                              >
+                                +{otherResources.length}
+                              </Badge>
+                            )}
                           </p>
                           <p className="truncate text-xs text-muted">
                             {finding.locationCount === 1
@@ -617,6 +628,12 @@ export const SecretScanningFindingsTable = ({
 
       <FindingDetailSheet
         finding={visibleOpenFinding}
+        // a list filtered by resource, or by a scan, lists that resource first
+        focusResourceId={
+          (resourceFilter || scanFilter) && visibleOpenFinding?.resources.length
+            ? visibleOpenFinding.resources[0].id
+            : null
+        }
         position={openIndex >= 0 ? { index: openIndex, total: findings.length } : null}
         onClose={() => setOpenFinding(null)}
         onPrevious={() => {

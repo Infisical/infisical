@@ -401,6 +401,7 @@ export type TSecretScanningFindingLocation = z.infer<typeof SecretScanningFindin
 
 export type TListSecretScanningFindingLocationsDTO = {
   findingId: string;
+  resourceId?: string;
   offset: number;
   limit: number;
 };

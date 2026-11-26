@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { format, formatDistanceToNowStrict } from "date-fns";
-import { ExternalLinkIcon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 
 import {
   Accordion,
@@ -11,17 +11,28 @@ import {
   Detail,
   DetailLabel,
   DetailValue,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Skeleton
 } from "@app/components/v3";
 import {
   TSecretScanningFindingLocation,
+  TSecretScanningFindingResource,
   useListSecretScanningFindingLocations
 } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
   findingId: string;
   locationCount: number;
+  resources: TSecretScanningFindingResource[];
+  initialResourceId: string | null;
 };
+
+const ALL_RESOURCES = "all";
 
 const formatDate = (date: string) => format(new Date(date), "MMM d, yyyy h:mm a");
 
@@ -100,23 +111,58 @@ const LocationDetails = ({ location }: { location: TSecretScanningFindingLocatio
   );
 };
 
-export const FindingLocationList = ({ findingId, locationCount }: Props) => {
+export const FindingLocationList = ({
+  findingId,
+  locationCount,
+  resources,
+  initialResourceId
+}: Props) => {
+  const [resourceId, setResourceId] = useState<string | null>(initialResourceId);
+  const selectedResource = resources.find((resource) => resource.id === resourceId);
+
   const { data, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useListSecretScanningFindingLocations(findingId);
+    useListSecretScanningFindingLocations(findingId, selectedResource?.id);
 
   // the findings table polls, so a scan that finds the secret somewhere new changes the count while this is open
+  const expectedCount = selectedResource ? selectedResource.locationCount : locationCount;
   const loadedCount = data?.pages[0]?.totalCount;
   useEffect(() => {
-    if (loadedCount !== undefined && loadedCount !== locationCount) refetch();
-  }, [locationCount, loadedCount]);
+    if (loadedCount !== undefined && loadedCount !== expectedCount) refetch();
+  }, [expectedCount, loadedCount]);
 
   const locations = data?.pages.flatMap((page) => page.locations) ?? [];
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium">
-        {locationCount === 1 ? "1 Location" : `${locationCount} Locations`}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">
+          {expectedCount === 1 ? "1 Location" : `${expectedCount} Locations`}
+        </span>
+        {resources.length > 1 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="xs">
+                {selectedResource ? selectedResource.name : "Everywhere"}
+                <ChevronDownIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup
+                value={selectedResource?.id ?? ALL_RESOURCES}
+                onValueChange={(next) => setResourceId(next === ALL_RESOURCES ? null : next)}
+              >
+                <DropdownMenuRadioItem value={ALL_RESOURCES}>Everywhere</DropdownMenuRadioItem>
+                <DropdownMenuSeparator />
+                {resources.map((resource) => (
+                  <DropdownMenuRadioItem key={resource.id} value={resource.id}>
+                    <span className="truncate">{resource.name}</span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
       {isPending && <Skeleton className="h-16 w-full" />}
       {isError && !data && (
         <div className="flex items-center justify-between gap-2 text-sm text-muted">
@@ -135,6 +181,9 @@ export const FindingLocationList = ({ findingId, locationCount }: Props) => {
               <AccordionItem key={location.id} value={location.id}>
                 <AccordionTrigger className="min-h-10 overflow-hidden py-0">
                   <span className="flex-1 truncate text-left">
+                    {!selectedResource && resources.length > 1 && (
+                      <span className="text-muted">{location.resourceName} · </span>
+                    )}
                     {details.file}:{details.startLine}
                   </span>
                   <span className="shrink-0 text-xs font-normal text-muted">

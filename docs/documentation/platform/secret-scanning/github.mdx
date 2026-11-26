@@ -74,7 +74,7 @@ If **Scan New Commits** is on for a GitHub data source, Infisical scans the comm
 
 To stop a pull request that contains a secret from being merged, [require the check in a branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
 
-If the secrets on a failed check are false positives or safe to ignore, select **Skip: False positive** or **Skip: Ignore** on the check. Infisical sets that status on every [finding](/documentation/platform/secret-scanning/findings) the check failed on, records the GitHub user who selected it in the finding's comment, and runs the check again. Anyone with write access to the repository can select these.
+If the secrets on a failed check are false positives or safe to ignore, select **Skip: False positive** or **Skip: Ignore** on the check. Infisical sets that status on every [finding](/documentation/platform/secret-scanning/findings) the check failed on, records the GitHub user who selected it in the finding's comment, and runs the check again. Anyone with write access to the repository can select these. The status applies to the secret in every repository, so the same secret also passes pull request checks in your other repositories.
 
 To stop Infisical from reporting a value in any repository, add it to the allowlist in your [scanning configuration](/documentation/platform/secret-scanning/configuration).
 

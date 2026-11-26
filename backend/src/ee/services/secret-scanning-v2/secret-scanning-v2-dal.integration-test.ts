@@ -166,6 +166,66 @@ describe("secretScanningV2DAL findings", () => {
       expect(await s.dal.findings.countNewUnresolvedByScanId(second.id)).toBe(0);
     });
 
+    test("should add a value found in another resource to its finding, without counting it as news", async () => {
+      // Setup
+      const s = await setup();
+      const [first, second] = [await s.resource(), await s.resource()];
+      const firstScan = await s.scan(first.id);
+      const created = await s.persist(first.id, firstScan.id, [row("value-a", "fp-1")]);
+      const secondScan = await s.scan(second.id);
+
+      // Action
+      const found = await s.persist(second.id, secondScan.id, [row("value-a", "fp-1")]);
+
+      // Assert
+      expect(found.scannedLocations).toMatchObject([{ id: created.scannedLocations[0].id, isNew: true }]);
+      expect((await s.locationsOf(created.scannedLocations[0].id)).map(({ resourceId }) => resourceId).sort()).toEqual(
+        [first.id, second.id].sort()
+      );
+      expect(await s.dal.findings.countNewUnresolvedByScanId(secondScan.id)).toBe(0);
+    });
+
+    test("should reopen a resolved finding found in another resource", async () => {
+      // Setup
+      const s = await setup();
+      const [first, second] = [await s.resource(), await s.resource()];
+      const created = await s.persist(first.id, (await s.scan(first.id)).id, [row("value-a", "fp-1")]);
+      const findingId = created.scannedLocations[0].id;
+      await h
+        .db(TableName.SecretScanningFinding)
+        .where({ id: findingId })
+        .update({ status: SecretScanningFindingStatus.Resolved });
+
+      // Action
+      const found = await s.persist(second.id, (await s.scan(second.id)).id, [row("value-a", "fp-9")]);
+
+      // Assert
+      expect(found.reopenedFindings.map(({ id }) => id)).toEqual([findingId]);
+    });
+
+    test("should keep one finding when two resources save the same value at once", async () => {
+      // Setup
+      const s = await setup();
+      const resources = [await s.resource(), await s.resource(), await s.resource()];
+      const scans = await Promise.all(resources.map(({ id }) => s.scan(id)));
+
+      // Action
+      await Promise.all(
+        resources.map((resource, index) => s.persist(resource.id, scans[index].id, [row("value-a", `fp-${index}`)]))
+      );
+
+      // Assert
+      const findings = await h
+        .db(TableName.SecretScanningFinding)
+        .whereIn(
+          "resourceId",
+          resources.map(({ id }) => id)
+        )
+        .where({ secretFindingBlindIndex: "value-a" });
+      expect(findings).toHaveLength(1);
+      expect(await s.locationsOf(findings[0].id)).toHaveLength(3);
+    });
+
     test("should count a finding that is both new and reopened once", async () => {
       // Setup
       const s = await setup();
@@ -292,6 +352,38 @@ describe("secretScanningV2DAL findings", () => {
       expect(inEmpty).toEqual({ ids: [], totalCount: 0 });
       expect(inDataSource.totalCount).toBe(2);
       expect(counts).toEqual({ [named.id]: 1, [other.id]: 2, [empty.id]: 0 });
+    });
+
+    test("should list the resource a list was filtered by first", async () => {
+      // Setup
+      const s = await setup();
+      const [named, other] = [await s.resource(), await s.resource()];
+      const [namedScan, otherScan] = [await s.scan(named.id), await s.scan(other.id)];
+      const shared = await s.finding({ resourceId: named.id, scanId: namedScan.id, blindIndex: "value-a" });
+      await s.location({ findingId: shared.id, resourceId: named.id, scanId: namedScan.id });
+      await s.location({ findingId: shared.id, resourceId: named.id, scanId: namedScan.id });
+      await s.location({ findingId: shared.id, resourceId: other.id, scanId: otherScan.id });
+      const list = (filter: { resourceId?: string; scanId?: string }) =>
+        s.dal.findings.findByProjectId(s.projectId, {
+          ...filter,
+          orderBy: SecretScanningFindingOrderBy.CreatedAt,
+          orderDirection: OrderByDirection.ASC,
+          offset: 0,
+          limit: 100
+        });
+
+      // Action
+      const unfiltered = await list({});
+      const byResource = await list({ resourceId: other.id });
+      const byScan = await list({ scanId: otherScan.id });
+
+      // Assert
+      expect(unfiltered.findings[0].resources.map(({ id, locationCount }) => [id, locationCount])).toEqual([
+        [named.id, 2],
+        [other.id, 1]
+      ]);
+      expect(byResource.findings[0].resources[0].id).toBe(other.id);
+      expect(byScan.findings[0].resources[0].id).toBe(other.id);
     });
 
     test("should lock only the check's findings that have a location in its resource", async () => {
