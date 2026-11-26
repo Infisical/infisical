@@ -82,6 +82,7 @@ import type {
 } from "@app/hooks/api/agentVault/types";
 import { ApiErrorTypes, type TApiErrors } from "@app/hooks/api/types";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
@@ -1227,7 +1228,10 @@ export const ServiceSheet = ({
   const title = (() => {
     if (service) return `Edit ${service.name}`;
     if (!picked) return "Add service";
-    return `Add ${template?.name ?? customName}`;
+    const name = template?.name ?? customName;
+    const image =
+      template?.image ?? (nativeType ? NATIVE_SERVICE_META[nativeType].image : undefined);
+    return <ProviderLabel provider={{ name, image }}>Add {name}</ProviderLabel>;
   })();
 
   return (

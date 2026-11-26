@@ -84,6 +84,7 @@ import {
 import { useOrgId, useOrgPermission } from "../access/permissions";
 import { errorMessage, failed, saved } from "../access/toast";
 import { ProviderIcon } from "../components/provider-icon";
+import { ProviderLabel } from "../components/provider-label";
 import { useV4Adapter } from "../data/adapters";
 import { CONNECTION_GATEWAYS } from "../data/integrations/connection-presets";
 import {
@@ -396,9 +397,23 @@ const usePresetCreation = (projectId?: string) => {
   };
 };
 
-const addSheetTitle = (created?: TAppConnection, preset?: AppConnectionPreset) => {
-  if (created) return `Set up ${created.name}`;
-  return preset ? `Add ${preset.name} connection` : "Add connection";
+const addSheetTitle = (
+  app?: AppConnection,
+  created?: TAppConnection,
+  preset?: AppConnectionPreset
+) => {
+  if (created)
+    return (
+      <ProviderLabel kind="app-connection" value={created.app}>
+        Set up {created.name}
+      </ProviderLabel>
+    );
+  if (!preset || !app) return "Add connection";
+  return (
+    <ProviderLabel kind="app-connection" value={app}>
+      Add {preset.name} connection
+    </ProviderLabel>
+  );
 };
 
 /** The chosen app's form, with the fields some apps add and their own gateway and scope state. */
@@ -576,7 +591,7 @@ export const AddConnectionSheet = ({
       <Sheet open={open} onOpenChange={(next) => (next ? onOpenChange(true) : request(close))}>
         <SheetContent size={!created && !preset ? "lg" : "md"} pending={pending}>
           <SheetHeader>
-            <SheetTitle>{addSheetTitle(created, preset)}</SheetTitle>
+            <SheetTitle>{addSheetTitle(selected, created, preset)}</SheetTitle>
           </SheetHeader>
           {created && (
             <VerifyConnectionStep
@@ -682,7 +697,11 @@ export const EditConnectionDetailsDialog = ({
       <Dialog open onOpenChange={(next) => !next && requestDiscard()}>
         <DialogContent pending={pending}>
           <DialogHeader>
-            <DialogTitle>Edit {appName(connection.app)} connection</DialogTitle>
+            <DialogTitle>
+              <ProviderLabel kind="app-connection" value={connection.app}>
+                {`Edit ${appName(connection.app)} connection`}
+              </ProviderLabel>
+            </DialogTitle>
           </DialogHeader>
           <form
             id={formId}
@@ -1068,7 +1087,11 @@ const CredentialsForm = ({
       <Sheet open onOpenChange={(next) => !next && requestDiscard()}>
         <SheetContent size="md" pending={pending}>
           <SheetHeader>
-            <SheetTitle>Edit {connection.name} credentials</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel kind="app-connection" value={connection.app}>
+                Edit {connection.name} credentials
+              </ProviderLabel>
+            </SheetTitle>
             <SheetDescription>{method.label}</SheetDescription>
           </SheetHeader>
           <SheetBody>
@@ -1157,7 +1180,11 @@ const ViewCredentialsSheet = ({
     <Sheet open onOpenChange={(next) => !next && onClose()}>
       <SheetContent size="md">
         <SheetHeader>
-          <SheetTitle>{connection.name} credentials</SheetTitle>
+          <SheetTitle>
+            <ProviderLabel kind="app-connection" value={connection.app}>
+              {connection.name} credentials
+            </ProviderLabel>
+          </SheetTitle>
           <SheetDescription>{methodName(connection)}</SheetDescription>
         </SheetHeader>
         <SheetBody>

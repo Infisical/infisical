@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import type { TPamAccount } from "@app/hooks/api/pam";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -69,7 +70,15 @@ export const AwsConsoleAccess = ({ account }: { account: TPamAccount }) => {
         label="Complete multi-factor authentication in the pop-up window"
       />
     );
-  if (step === "loading") return <AccessPending title="AWS Console" label="Connecting to AWS" />;
+  if (step === "loading")
+    return (
+      <AccessPending
+        title={
+          <ProviderLabel provider={{ name: "AWS Console", image: "Amazon Web Services.png" }} />
+        }
+        label="Connecting to AWS"
+      />
+    );
   return (
     <ReasonCard
       required={requiresReason(account)}

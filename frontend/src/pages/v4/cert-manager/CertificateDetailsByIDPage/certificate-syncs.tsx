@@ -25,6 +25,7 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
 import { useOrgId } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import { destinationNameOf } from "../components/pki-syncs/shared";
@@ -56,7 +57,7 @@ const columns: DataTableColumn<TPkiSync>[] = [
     header: "Destination",
     width: 200,
     text: (sync) => destinationNameOf(sync.destination),
-    render: (sync) => destinationNameOf(sync.destination)
+    render: (sync) => <ProviderLabel kind="pki-sync" value={sync.destination} size="sm" />
   }
 ];
 

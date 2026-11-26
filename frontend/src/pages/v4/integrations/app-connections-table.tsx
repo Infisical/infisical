@@ -34,10 +34,10 @@ import { useOrgId, useOrgPermission, useProjectPermission } from "../access/perm
 import { failed, saved } from "../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../access/ui";
 import { copyText } from "../clipboard";
+import { ProviderLabel } from "../components/provider-label";
 import { usePageSize } from "../components/use-page-size";
 import { useV4Adapter } from "../data/adapters";
 import { orgHref } from "../links";
-import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
 import { projectBase } from "../shell/navigation";
 import {
   AddConnectionSheet,
@@ -184,12 +184,7 @@ const useConnectionColumns = (connections: TAppConnection[], scope: AppConnectio
       sortable: true,
       width: 220,
       text: (row) => appName(row.app),
-      render: (row) => (
-        <Inline gap={8} align="center" wrap={false}>
-          <AppLogo app={row.app} />
-          <span className="truncate">{appName(row.app)}</span>
-        </Inline>
-      )
+      render: (row) => <ProviderLabel kind="app-connection" value={row.app} />
     },
     {
       id: "name",

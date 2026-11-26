@@ -13,6 +13,7 @@ import {
   ExternalMigrationImportStatus,
   type TImportVaultSecretsResponse
 } from "@app/hooks/api/migration/types";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { readableFailure, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
@@ -120,7 +121,11 @@ export function VaultImportSheet({
       <MultiStep
         variant="sheet"
         open
-        title="Import from HashiCorp Vault"
+        title={
+          <ProviderLabel provider={{ name: "HashiCorp Vault", image: "Vault.png" }}>
+            Import from HashiCorp Vault
+          </ProviderLabel>
+        }
         description={`Secrets go to ${environment.label} at ${path}.`}
         onOpenChange={(next) => {
           if (next || completed.current) return;

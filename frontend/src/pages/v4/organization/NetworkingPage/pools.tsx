@@ -32,10 +32,12 @@ import type {
 } from "@app/hooks/api/gateway-pools/types";
 import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
 import { useOrgPermission } from "../../access/permissions";
 import { toast } from "../../access/toast";
 import { RESTRICTED, usePagedList } from "../../access/ui";
+import { ProviderLabel, providerOf } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { ConfirmDialog } from "../../networking/confirm-dialog";
@@ -63,7 +65,14 @@ const usePoolPermissions = () => {
   };
 };
 
-type ResourceRow = { id: string; name: string; type: string; location: string; href?: string };
+type ResourceRow = {
+  id: string;
+  name: string;
+  type: string;
+  image?: string;
+  location: string;
+  href?: string;
+};
 
 const resourceRows = (orgId: string, resources?: TGatewayPoolConnectedResources): ResourceRow[] =>
   resources
@@ -72,6 +81,7 @@ const resourceRows = (orgId: string, resources?: TGatewayPoolConnectedResources)
           id: auth.id,
           name: auth.identityName ?? auth.identityId,
           type: "Kubernetes auth",
+          image: providerOf("identity-auth", IdentityAuthMethod.KUBERNETES_AUTH)?.image,
           location: "Machine identity",
           href: orgHref(orgId, `/identities/${auth.identityId}`)
         })),
@@ -123,7 +133,12 @@ const PoolResourcesSheet = ({
           row.name
         )
     },
-    { id: "type", header: "Type", width: 150, render: (row) => row.type },
+    {
+      id: "type",
+      header: "Type",
+      width: 150,
+      render: (row) => <ProviderLabel provider={{ name: row.type, image: row.image }} />
+    },
     { id: "location", header: "Location", width: 180, render: (row) => row.location }
   ];
   return (

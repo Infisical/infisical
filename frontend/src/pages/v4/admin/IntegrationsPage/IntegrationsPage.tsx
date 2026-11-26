@@ -11,6 +11,7 @@ import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import type { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
 import { failed, toast } from "../../access/toast";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 
 const noop = () => {};
@@ -58,6 +59,9 @@ const slackAppCreationUrl = () =>
     })
   )}`;
 
+const SLACK = { name: "Slack", image: "Slack.svg" };
+const MICROSOFT_TEAMS = { name: "Microsoft Teams", image: "Microsoft Teams.svg" };
+
 const changed = <T extends Record<string, string>>(draft: T, saved: T) =>
   Object.keys(draft).some((key) => draft[key] !== saved[key]);
 
@@ -67,7 +71,7 @@ const SlackSettings = ({ config }: { config: AdminIntegrationsConfig["slack"] })
   const [draft, setDraft] = useState(config);
   return (
     <SettingsCard
-      title="Slack"
+      title={<ProviderLabel provider={SLACK} />}
       description="Create the Infisical Slack app, then copy the values from its App Credentials page."
       action={
         <Button asChild variant="outline" size="xs" icon="external">
@@ -123,12 +127,8 @@ const MicrosoftTeamsSettings = ({
   const [draft, setDraft] = useState(config);
   return (
     <SettingsCard
-      title={
-        <>
-          Microsoft Teams{" "}
-          <DocumentationLink href={TEAMS_DOCS} subject="Microsoft Teams integration" />
-        </>
-      }
+      title={<ProviderLabel provider={MICROSOFT_TEAMS} />}
+      badges={<DocumentationLink href={TEAMS_DOCS} subject="Microsoft Teams integration" />}
       description="Create the Teams bot and its Azure resources, then copy the values from the bot's app registration. The client secret is the bot's password."
       dirty={changed(draft, saved)}
       onDiscard={() => setDraft(saved)}
@@ -202,8 +202,12 @@ export const IntegrationsPage = () => {
         </>
       ) : (
         <>
-          <SettingsCard title="Slack" loading onSave={noop} />
-          <SettingsCard title="Microsoft Teams" loading onSave={noop} />
+          <SettingsCard title={<ProviderLabel provider={SLACK} />} loading onSave={noop} />
+          <SettingsCard
+            title={<ProviderLabel provider={MICROSOFT_TEAMS} />}
+            loading
+            onSave={noop}
+          />
         </>
       )}
     </Stack>

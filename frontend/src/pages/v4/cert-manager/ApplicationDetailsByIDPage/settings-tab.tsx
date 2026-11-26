@@ -55,6 +55,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  AlertChannelType,
   AlertRunStatus,
   CertificateAlertResourceType,
   CertificateApplicationAlertEventType,
@@ -62,7 +63,11 @@ import {
   type TCertificateAlertEventType
 } from "@app/hooks/api/alerts/types";
 import { ApprovalPolicyScope, type TApprovalPolicy } from "@app/hooks/api/approvalPolicies/types";
-import { PkiAlertEventTypeV2, type TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2/types";
+import {
+  PkiAlertChannelTypeV2,
+  PkiAlertEventTypeV2,
+  type TPkiAlertV2
+} from "@app/hooks/api/pkiAlertsV2/types";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
@@ -84,6 +89,7 @@ import { PolicyProfileBadges } from "../ApprovalsPage/policies-tab";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
 import { policyTypeLabel } from "../components/approval";
 import { canCreateAttachableProfile } from "../components/profile-model";
+import { ChannelTypeLabel } from "../SettingsPage/alert-channels";
 import {
   CertificateAlertScopeKind,
   getScopeEventTypes,
@@ -111,6 +117,13 @@ const alertEventLabel: Record<string, string> = {
   [CertificateApplicationAlertEventType.Issuance]: "Certificate issuance",
   [CertificateApplicationAlertEventType.Renewal]: "Certificate renewal",
   [CertificateApplicationAlertEventType.Revocation]: "Certificate revocation"
+};
+
+const legacyChannelType: Record<PkiAlertChannelTypeV2, AlertChannelType> = {
+  [PkiAlertChannelTypeV2.EMAIL]: AlertChannelType.Email,
+  [PkiAlertChannelTypeV2.WEBHOOK]: AlertChannelType.Webhook,
+  [PkiAlertChannelTypeV2.SLACK]: AlertChannelType.Slack,
+  [PkiAlertChannelTypeV2.PAGERDUTY]: AlertChannelType.PagerDuty
 };
 
 const legacyEventLabel: Record<PkiAlertEventTypeV2, string> = {
@@ -936,9 +949,18 @@ const LegacyAlertSheet = ({ alert, onClose }: { alert?: TPkiAlertV2; onClose: ()
               ["Description", alert.description || "None"],
               [
                 "Channels",
-                alert.channels.length
-                  ? alert.channels.map((channel) => channel.channelType).join(", ")
-                  : "None"
+                alert.channels.length ? (
+                  <Stack key="channels" gap={4}>
+                    {alert.channels.map((channel) => (
+                      <ChannelTypeLabel
+                        key={channel.id}
+                        channelType={legacyChannelType[channel.channelType]}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  "None"
+                )
               ],
               ["Filters", alert.filters.length ? `${alert.filters.length}` : "None"],
               [

@@ -22,6 +22,7 @@ import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
 import type { TCreateSecretSyncDTO, TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { failed, toast } from "../../../access/toast";
@@ -297,7 +298,7 @@ export const SecretSyncsTab = ({
           <Tooltip
             content={
               <Stack gap={4}>
-                <span>{destinationNameOf(sync.destination)}</span>
+                <ProviderLabel kind="secret-sync" value={sync.destination} size="sm" />
                 <span>{primaryText}</span>
                 {secondaryText && <span>{secondaryText}</span>}
               </Stack>

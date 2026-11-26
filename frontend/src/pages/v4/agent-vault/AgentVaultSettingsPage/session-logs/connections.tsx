@@ -43,6 +43,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connections";
 import { AppConnectionForm } from "@app/pages/v4/components/app-connection-form";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
@@ -125,7 +126,11 @@ const CreateConnectionDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent pending={pending}>
         <DialogHeader>
-          <DialogTitle>Add AWS connection</DialogTitle>
+          <DialogTitle>
+            <ProviderLabel kind="app-connection" value={AppConnection.AWS}>
+              Add AWS connection
+            </ProviderLabel>
+          </DialogTitle>
         </DialogHeader>
         {open && (
           <AppConnectionForm
@@ -434,7 +439,11 @@ export const SessionLogConnections = ({ inUseId }: { inUseId: string | null }) =
       <Card
         variant="framed"
         flush
-        title="AWS connections"
+        title={
+          <ProviderLabel kind="app-connection" value={AppConnection.AWS}>
+            AWS connections
+          </ProviderLabel>
+        }
         hint="Only this project can use these. Organization connections live in Integrations."
         action={
           <Button

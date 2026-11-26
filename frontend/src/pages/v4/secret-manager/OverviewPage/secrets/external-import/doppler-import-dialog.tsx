@@ -8,6 +8,7 @@ import { MultiStep } from "@infisical/cipher/ui/multi-step";
 
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import { ExternalMigrationImportStatus, type TDopplerConfig } from "@app/hooks/api/migration/types";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { readableFailure, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
@@ -94,7 +95,11 @@ export function DopplerImportDialog({
       <MultiStep
         variant="dialog"
         open
-        title="Import from Doppler"
+        title={
+          <ProviderLabel provider={{ name: "Doppler", image: "Doppler.png" }}>
+            Import from Doppler
+          </ProviderLabel>
+        }
         description={`Secrets go to ${environment.label} at ${path}.`}
         onOpenChange={(next) => {
           if (next || completed.current) return;

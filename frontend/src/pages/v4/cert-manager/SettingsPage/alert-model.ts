@@ -512,6 +512,12 @@ export const CHANNEL_ICONS: Record<AlertChannelType, IconName | typeof MailIcon>
   [AlertChannelType.PagerDuty]: "alert"
 };
 
+export const CHANNEL_LOGOS: Partial<Record<AlertChannelType, string>> = {
+  [AlertChannelType.SlackApp]: "Slack.svg",
+  [AlertChannelType.Slack]: "Slack.svg",
+  [AlertChannelType.PagerDuty]: "PagerDuty.svg"
+};
+
 export const buildNextChannel = (
   existing: { name: string }[],
   channelType: AlertChannelType

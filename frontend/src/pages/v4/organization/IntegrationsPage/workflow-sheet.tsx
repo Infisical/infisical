@@ -28,8 +28,9 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 import { useOrgId } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { FormSkeleton, RESTRICTED } from "../../access/ui";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
-import { PLATFORM_NAMES } from "./workflow-platforms";
+import { PLATFORM_ICONS, PLATFORM_NAMES } from "./workflow-platforms";
 
 const TEAMS_DOCS =
   "https://infisical.com/docs/documentation/platform/workflow-integrations/microsoft-teams-integration";
@@ -209,7 +210,9 @@ const WorkflowForm = ({
                 )
               }
             >
-              {isAdd ? `Connect ${name}` : `Edit ${name} integration`}
+              <ProviderLabel provider={{ name, image: PLATFORM_ICONS[state.platform] }}>
+                {isAdd ? `Connect ${name}` : `Edit ${name} integration`}
+              </ProviderLabel>
             </SheetTitle>
             {isTeams && isAdd && (
               <SheetDescription>
@@ -306,7 +309,16 @@ const EditLoader = ({
       <Sheet open onOpenChange={(next) => !next && onClose()}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Edit {PLATFORM_NAMES[state.platform]} integration</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel
+                provider={{
+                  name: PLATFORM_NAMES[state.platform],
+                  image: PLATFORM_ICONS[state.platform]
+                }}
+              >
+                Edit {PLATFORM_NAMES[state.platform]} integration
+              </ProviderLabel>
+            </SheetTitle>
           </SheetHeader>
           <SheetBody>
             {query.error ? (

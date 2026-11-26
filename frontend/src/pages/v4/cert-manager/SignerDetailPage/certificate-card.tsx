@@ -5,17 +5,14 @@ import { Link } from "@infisical/cipher/ui/link";
 import { DataList, type DataListItem } from "@infisical/cipher/ui/list";
 
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
-import {
-  CertKeySource,
-  certKeySourceLabels,
-  getNextDigicertOrderId,
-  type TSigner
-} from "@app/hooks/api/signers/types";
+import { CertKeySource, getNextDigicertOrderId, type TSigner } from "@app/hooks/api/signers/types";
 
 import { CopyButton, Dash } from "../../access/org/detail-parts";
+import { ProviderLabel } from "../../components/provider-label";
 import { orgHref } from "../../links";
 import { CaStatusBadge } from "../CertificateAuthoritiesPage/shared";
 import { dateOnly } from "../CodeSigningPage/signer-shared";
+import { keySourceProvider } from "../components/ca-providers";
 
 const copyable = (
   label: string,
@@ -82,8 +79,10 @@ export const SignerCertificateCard = ({ orgId, signer }: { orgId: string; signer
             [
               "Key source",
               signer.certificateKeySource ? (
-                (certKeySourceLabels[signer.certificateKeySource as CertKeySource] ??
-                signer.certificateKeySource)
+                <ProviderLabel
+                  key="source"
+                  provider={keySourceProvider(signer.certificateKeySource as CertKeySource)}
+                />
               ) : (
                 <Dash key="source" />
               )

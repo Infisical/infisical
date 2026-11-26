@@ -42,6 +42,7 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../../access/ui";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import { AwsKmsForm, GcpKmsForm, type KmsFormHandle, type KmsFormMode } from "./kms-forms";
@@ -78,7 +79,14 @@ const EditForm = ({
       <SheetSections
         header={
           <SheetHeader>
-            <SheetTitle>{KMS_PROVIDERS[provider].title}</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel
+                provider={{
+                  name: KMS_PROVIDERS[provider].title,
+                  image: KMS_PROVIDERS[provider].icon
+                }}
+              />
+            </SheetTitle>
           </SheetHeader>
         }
       >
