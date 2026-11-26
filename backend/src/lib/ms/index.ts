@@ -15,15 +15,23 @@ export const ms = (val: string) => {
 };
 
 const EXACT_DURATION_UNITS = [
-  { seconds: 86_400, name: "day" },
-  { seconds: 3600, name: "hour" },
-  { seconds: 60, name: "minute" },
-  { seconds: 1, name: "second" }
+  { seconds: 86_400, name: "day", suffix: "d" },
+  { seconds: 3600, name: "hour", suffix: "h" },
+  { seconds: 60, name: "minute", suffix: "m" },
+  { seconds: 1, name: "second", suffix: "s" }
 ];
+
+const exactUnitFor = (seconds: number) =>
+  EXACT_DURATION_UNITS.find((u) => seconds % u.seconds === 0) ?? EXACT_DURATION_UNITS[3];
+
+export const toExactDurationString = (seconds: number): string => {
+  const unit = exactUnitFor(seconds);
+  return `${seconds / unit.seconds}${unit.suffix}`;
+};
 
 // Unlike formatDuration, never rounds: 5400 reads "90 minutes", not "2 hours".
 export const formatDurationSeconds = (seconds: number): string => {
-  const unit = EXACT_DURATION_UNITS.find((u) => seconds % u.seconds === 0) ?? EXACT_DURATION_UNITS[3];
+  const unit = exactUnitFor(seconds);
   const amount = seconds / unit.seconds;
   return `${amount} ${unit.name}${amount === 1 ? "" : "s"}`;
 };

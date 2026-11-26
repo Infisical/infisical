@@ -1,4 +1,8 @@
-import { ApprovalNotificationEvent, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalAuditAction,
+  ApprovalNotificationEvent,
+  ApprovalPolicyType
+} from "@app/services/approval-policy/approval-policy-enums";
 import { TPamAccessPolicy } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 
 import { PamPolicyType } from "../pam/pam-policies";
@@ -207,6 +211,43 @@ describe("pam access resource: break-glass notification", () => {
       bypassReason: "outage needs access"
     } as never);
     expect(notification?.email?.substitutions).toMatchObject({ accessDuration: "1 hour" });
+  });
+});
+
+describe("pam access resource: exact durations", () => {
+  const capped = { [PamPolicyType.RequiresApproval]: true, [PamPolicyType.MaxAccessDuration]: 3600 };
+  const build = () =>
+    pamAccessApprovalResourceFactory({
+      pamAccountDAL: { findByIdWithDetails: vi.fn(async () => ({ name: "pg", templatePolicies: capped })) },
+      pamFolderDAL: { findById: vi.fn(async () => ({ name: "folder", emailApproversOnRequest: true })) },
+      pamFolderNotificationConfigDAL: { findByFolderIdWithIntegration: vi.fn(async () => []) },
+      approvalPolicyDAL: { findById: vi.fn(async () => null), findStepsByPolicyId: vi.fn(async () => []) }
+    } as never);
+  const request = (duration: string) =>
+    ({
+      id: "request",
+      organizationId: "org",
+      requesterName: "Requester",
+      requestData: { version: 1, requestData: { accountId: ACCOUNT_ID, folderId: FOLDER_ID, duration } }
+    }) as never;
+
+  test("names a 90-minute request exactly in the request email", async () => {
+    const notification = await build().buildNotification!({
+      event: ApprovalNotificationEvent.Requested,
+      request: request("90m")
+    });
+    expect(notification?.email?.substitutions).toMatchObject({ accessDuration: "90 minutes" });
+  });
+
+  test("records the capped duration in the break-glass audit event", async () => {
+    const event = await build().buildAuditEvent!({
+      action: ApprovalAuditAction.RequestBypassed,
+      request: request("7d"),
+      grantId: "grant",
+      actorId: "user",
+      bypassReason: "outage"
+    } as never);
+    expect(event?.metadata).toMatchObject({ accessDuration: "1h" });
   });
 });
 

@@ -190,6 +190,14 @@ export const PAM_POLICY_DEFINITIONS: Record<PamPolicyType, TPamPolicyDefinition>
   }
 };
 
+export const MaxAccessDurationSecondsResponseSchema = z
+  .number()
+  .int()
+  .nullable()
+  .describe(
+    "Longest access an approval request can ask for, in seconds, from the account's template. Approval grants at most this long. Null means the 7-day limit applies"
+  );
+
 export const PamPolicyDescriptorSchema = z.object({
   key: z.nativeEnum(PamPolicyType),
   label: z.string(),

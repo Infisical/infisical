@@ -13,7 +13,7 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { formatDuration, formatDurationSeconds, ms } from "@app/lib/ms";
+import { formatDuration, formatDurationSeconds, ms, toExactDurationString } from "@app/lib/ms";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
@@ -751,15 +751,24 @@ export const pamAccessApprovalResourceFactory = ({
     return getSlackSendTargets(configs, event);
   };
 
-  const $grantedDurationLabel = (duration: string, templatePolicies: unknown) => {
-    const grantedMs = effectivePamAccessDurationMs(
-      duration,
-      resolveAccessControls(templatePolicies).maxAccessDurationSeconds
-    );
-    return grantedMs !== null && grantedMs % 1000 === 0
-      ? formatDurationSeconds(grantedMs / 1000)
-      : formatDuration(duration);
+  const $grantedDurationMs = (duration: string, templatePolicies: unknown) =>
+    effectivePamAccessDurationMs(duration, resolveAccessControls(templatePolicies).maxAccessDurationSeconds);
+
+  const $exactDurationLabel = (durationMs: number | null, fallback: string) =>
+    durationMs !== null && durationMs % 1000 === 0
+      ? formatDurationSeconds(durationMs / 1000)
+      : formatDuration(fallback);
+
+  const $requestedDurationLabel = (duration: string) => $exactDurationLabel(parsePamAccessDuration(duration), duration);
+
+  const $grantedDurationString = (duration: string | undefined, templatePolicies: unknown) => {
+    if (!duration) return "";
+    const grantedMs = $grantedDurationMs(duration, templatePolicies);
+    return grantedMs && grantedMs % 1000 === 0 ? toExactDurationString(grantedMs / 1000) : duration;
   };
+
+  const $grantedDurationLabel = (duration: string, templatePolicies: unknown) =>
+    $exactDurationLabel($grantedDurationMs(duration, templatePolicies), duration);
 
   const buildNotification: NonNullable<TPamAccessApprovalResource["buildNotification"]> = async ({
     event,
@@ -808,7 +817,7 @@ export const pamAccessApprovalResourceFactory = ({
                   requesterEmail,
                   accountName,
                   folderName: folder?.name ?? undefined,
-                  accessDuration: formatDuration(inputs.duration),
+                  accessDuration: $requestedDurationLabel(inputs.duration),
                   accessTypeLabel,
                   reason: inputs.reason,
                   approvalUrl
@@ -823,7 +832,7 @@ export const pamAccessApprovalResourceFactory = ({
               requesterEmail,
               accountName,
               folderName,
-              accessDuration: formatDuration(inputs.duration),
+              accessDuration: $requestedDurationLabel(inputs.duration),
               accessTypeLabel,
               reason: inputs.reason,
               approvalUrl
@@ -891,7 +900,7 @@ export const pamAccessApprovalResourceFactory = ({
             requesterEmail,
             folderName: folder?.name ?? undefined,
             accountName,
-            accessDuration: formatDuration(inputs.duration),
+            accessDuration: $requestedDurationLabel(inputs.duration),
             accessTypeLabel,
             ruleName,
             linkedRecords: linkedRecords || undefined,
@@ -1138,7 +1147,7 @@ export const pamAccessApprovalResourceFactory = ({
         granteeEmail: request.requesterEmail ?? undefined,
         ...scope,
         resourceName: folder?.name,
-        accessDuration: inputs?.duration ?? "",
+        accessDuration: $grantedDurationString(inputs?.duration, account?.templatePolicies),
         bypassReason: bypassReason ?? "",
         approverCount: new Set(steps.flatMap((step) => step.approvers.map((a) => `${a.type}:${a.id}`))).size
       }

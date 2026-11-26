@@ -759,6 +759,7 @@ export type TPamAccessRequest = {
   maxAccessDurationSeconds?: number | null;
   grantId?: string | null;
   grantExpiresAt?: string | null;
+  grantCreatedAt?: string | null;
   grantStatus?: string | null;
   isBreakGlass?: boolean;
   bypassReason?: string | null;

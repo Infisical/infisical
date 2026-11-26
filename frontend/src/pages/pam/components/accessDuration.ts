@@ -1,4 +1,4 @@
-import ms from "ms";
+import { capDurationOptions, parseDurationMs } from "@app/helpers/datetime";
 
 import { describeDurationSeconds } from "./formatDuration";
 
@@ -13,18 +13,13 @@ const ACCESS_DURATION_PRESETS: TAccessDurationOption[] = [
   { value: "7d", label: "1 week" }
 ];
 
-const parseMs = (duration?: string) => {
-  if (!duration) return null;
-  const parsed = ms(duration);
-  return typeof parsed === "number" && parsed > 0 ? parsed : null;
-};
-
 export const getAccessDurationOptions = (maxSeconds?: number | null): TAccessDurationOption[] => {
   if (!maxSeconds) return ACCESS_DURATION_PRESETS;
-  const maxMs = maxSeconds * 1000;
-  const allowed = ACCESS_DURATION_PRESETS.filter((option) => (parseMs(option.value) ?? 0) <= maxMs);
-  if (allowed.some((option) => parseMs(option.value) === maxMs)) return allowed;
-  return [...allowed, describeDurationSeconds(maxSeconds)];
+  return capDurationOptions(
+    ACCESS_DURATION_PRESETS,
+    maxSeconds * 1000,
+    describeDurationSeconds(maxSeconds)
+  );
 };
 
 export const formatAccessDurationLimit = (maxSeconds: number) =>
@@ -32,6 +27,6 @@ export const formatAccessDurationLimit = (maxSeconds: number) =>
 
 // Approval grants at most the template max, even for requests raised before it was lowered.
 export const isAccessDurationCapped = (duration?: string, maxSeconds?: number | null) => {
-  const requestedMs = parseMs(duration);
+  const requestedMs = parseDurationMs(duration);
   return Boolean(maxSeconds && requestedMs !== null && requestedMs > maxSeconds * 1000);
 };

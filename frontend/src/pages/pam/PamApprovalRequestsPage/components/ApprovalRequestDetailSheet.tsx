@@ -62,6 +62,14 @@ export const ApprovalRequestDetailSheet = ({
     request ?? { status: PamAccessRequestStatus.Pending, grantExpiresAt: null }
   );
   const requestData = request?.requestData?.requestData;
+  const grantedSeconds =
+    request?.grantCreatedAt && request.grantExpiresAt
+      ? Math.round(
+          (new Date(request.grantExpiresAt).getTime() -
+            new Date(request.grantCreatedAt).getTime()) /
+            1000
+        )
+      : null;
   const maxAccessDurationSeconds = request?.maxAccessDurationSeconds ?? null;
   const isPending = request?.status === PamAccessRequestStatus.Pending;
   // Self-approval is always blocked server-side; denying your own request stays allowed
@@ -251,11 +259,18 @@ export const ApprovalRequestDetailSheet = ({
             )}
 
             <div>
-              <p className="mb-2 text-sm font-medium text-foreground">Access duration</p>
+              <p className="mb-2 text-sm font-medium text-foreground">Requested duration</p>
               <div className="flex items-center gap-2 rounded-md border border-border bg-container px-3 py-2.5 text-sm text-foreground">
                 <Clock className="size-4 text-muted" />
                 {formatDuration(requestData?.duration)}
               </div>
+              {grantedSeconds !== null &&
+                isAccessDurationCapped(requestData?.duration, grantedSeconds) && (
+                  <p className="mt-1.5 text-xs text-muted">
+                    Granted {formatAccessDurationLimit(grantedSeconds)}, the template&apos;s Max
+                    Access Duration at approval time.
+                  </p>
+                )}
               {isPending &&
                 maxAccessDurationSeconds !== null &&
                 isAccessDurationCapped(requestData?.duration, maxAccessDurationSeconds) && (

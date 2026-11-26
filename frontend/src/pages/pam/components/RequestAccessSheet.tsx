@@ -228,6 +228,10 @@ export const RequestAccessSheet = ({
   });
 
   useEffect(() => {
+    reset({ duration: defaultDuration, reason: "" });
+  }, [account?.id]);
+
+  useEffect(() => {
     if (!durationOptions.some((opt) => opt.value === getValues("duration"))) {
       reset({ duration: defaultDuration, reason: getValues("reason") });
     }
