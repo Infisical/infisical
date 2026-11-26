@@ -396,20 +396,24 @@ const IntegrationDetails = ({
               <DataList variant="props" density="compact" items={details} />
             </Card>
           }
+          secondary={
+            <>
+              <Card variant="framed" title="Connection">
+                <DataList
+                  variant="props"
+                  density="compact"
+                  items={[
+                    ["Source environment", integration.environment.name],
+                    ["Source path", <code key="path">{integration.secretPath}</code>],
+                    ["Destination platform", name],
+                    ...destinationFacts(integration)
+                  ]}
+                />
+              </Card>
+              <SettingsCard integration={integration} />
+            </>
+          }
         >
-          <Card variant="framed" title="Connection">
-            <DataList
-              variant="props"
-              density="compact"
-              items={[
-                ["Source environment", integration.environment.name],
-                ["Source path", <code key="path">{integration.secretPath}</code>],
-                ["Destination platform", name],
-                ...destinationFacts(integration)
-              ]}
-            />
-          </Card>
-          <SettingsCard integration={integration} />
           <LogsCard integration={integration} projectId={projectId} />
         </DetailLayout>
       </Stack>

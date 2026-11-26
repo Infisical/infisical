@@ -388,6 +388,50 @@ const RequestDetail = ({
               <DataList variant="props" density="compact" items={facts} />
             </Card>
           }
+          secondary={
+            <>
+              {isSigning && <SigningScopeCard request={request} />}
+              {revocationData && (
+                <Card
+                  variant="framed"
+                  title="Revocation"
+                  hint="The certificate stays active until this request is approved. Once approved, it is revoked with this reason and added to its CA's revocation list."
+                >
+                  <DataList
+                    variant="props"
+                    density="compact"
+                    items={[
+                      [
+                        "Certificate",
+                        <Button key="certificate" variant="link" asChild>
+                          <a
+                            href={certificateHref(orgId, revocationData.certificateId, {
+                              applicationName: origin.applicationName
+                            })}
+                          >
+                            {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
+                          </a>
+                        </Button>
+                      ],
+                      [
+                        "Revocation reason",
+                        crlReasonToNameMap[revocationData.revocationReason as CrlReason] ??
+                          revocationData.revocationReason
+                      ],
+                      [
+                        "Serial number",
+                        <TruncatedValue
+                          key="serial"
+                          value={revocationData.serialNumber.toUpperCase()}
+                          copyLabel="Copy serial number to clipboard"
+                        />
+                      ]
+                    ]}
+                  />
+                </Card>
+              )}
+            </>
+          }
         >
           {request.approversCanNoLongerApprove && (
             <Alert tone="warn">
@@ -413,46 +457,6 @@ const RequestDetail = ({
             request.steps.map((step, index) => (
               <StepList key={step.id} step={step} index={index} label={label} />
             ))
-          )}
-          {isSigning && <SigningScopeCard request={request} />}
-          {revocationData && (
-            <Card
-              variant="framed"
-              title="Revocation"
-              hint="The certificate stays active until this request is approved. Once approved, it is revoked with this reason and added to its CA's revocation list."
-            >
-              <DataList
-                variant="props"
-                density="compact"
-                items={[
-                  [
-                    "Certificate",
-                    <Button key="certificate" variant="link" asChild>
-                      <a
-                        href={certificateHref(orgId, revocationData.certificateId, {
-                          applicationName: origin.applicationName
-                        })}
-                      >
-                        {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
-                      </a>
-                    </Button>
-                  ],
-                  [
-                    "Revocation reason",
-                    crlReasonToNameMap[revocationData.revocationReason as CrlReason] ??
-                      revocationData.revocationReason
-                  ],
-                  [
-                    "Serial number",
-                    <TruncatedValue
-                      key="serial"
-                      value={revocationData.serialNumber.toUpperCase()}
-                      copyLabel="Copy serial number to clipboard"
-                    />
-                  ]
-                ]}
-              />
-            </Card>
           )}
           {!isSigning && !revocationData && <CertificateSections orgId={orgId} request={request} />}
         </DetailLayout>

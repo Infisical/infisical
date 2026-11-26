@@ -297,11 +297,11 @@ export const GatewayDetailsByIDPage = () => {
             />
           </Card>
         }
+        secondary={<AuthenticationCard gateway={gateway} canEdit={canEdit} />}
       >
         <Stack gap={24}>
           <GatewayDeployCard gateway={gateway} />
           <ConnectedResourcesCard gatewayId={gateway.id} />
-          <AuthenticationCard gateway={gateway} canEdit={canEdit} />
         </Stack>
       </DetailLayout>
       <NameDialog

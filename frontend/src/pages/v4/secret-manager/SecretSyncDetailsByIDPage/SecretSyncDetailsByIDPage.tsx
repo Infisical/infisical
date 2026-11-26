@@ -359,48 +359,52 @@ const SyncDetails = ({
               <DataList variant="props" density="compact" items={details} />
             </Card>
           }
+          secondary={
+            <>
+              <Card
+                variant="framed"
+                title="Source"
+                badges={
+                  sourceDeleted && (
+                    <Badge tone="bad" icon="alert">
+                      Folder deleted
+                    </Badge>
+                  )
+                }
+                action={editButton("source", "source")}
+              >
+                <DataList variant="props" density="compact" items={source} />
+              </Card>
+              <Card
+                variant="framed"
+                title="Destination"
+                action={editButton("destination", "destination")}
+              >
+                <FormProvider {...reviewForm}>
+                  <DataList variant="props" density="compact" items={destination} />
+                </FormProvider>
+              </Card>
+              <Card
+                variant="framed"
+                title="Sync options"
+                action={editButton("options", "sync options")}
+              >
+                <DataList variant="props" density="compact" items={syncOptions} />
+              </Card>
+              <Card
+                variant="framed"
+                title="Failure alert"
+                action={editButton(
+                  "alerts",
+                  "failure alert",
+                  editBlock ?? (alerts.isPending ? "Loading the failure alert" : undefined)
+                )}
+              >
+                <DataList variant="props" density="compact" items={failureAlertItems} />
+              </Card>
+            </>
+          }
         >
-          <Card
-            variant="framed"
-            title="Source"
-            badges={
-              sourceDeleted && (
-                <Badge tone="bad" icon="alert">
-                  Folder deleted
-                </Badge>
-              )
-            }
-            action={editButton("source", "source")}
-          >
-            <DataList variant="props" density="compact" items={source} />
-          </Card>
-          <Card
-            variant="framed"
-            title="Destination"
-            action={editButton("destination", "destination")}
-          >
-            <FormProvider {...reviewForm}>
-              <DataList variant="props" density="compact" items={destination} />
-            </FormProvider>
-          </Card>
-          <Card
-            variant="framed"
-            title="Sync options"
-            action={editButton("options", "sync options")}
-          >
-            <DataList variant="props" density="compact" items={syncOptions} />
-          </Card>
-          <Card
-            variant="framed"
-            title="Failure alert"
-            action={editButton(
-              "alerts",
-              "failure alert",
-              editBlock ?? (alerts.isPending ? "Loading the failure alert" : undefined)
-            )}
-          >
-            <DataList variant="props" density="compact" items={failureAlertItems} />
-          </Card>
           <LogsCard sync={sync} />
         </DetailLayout>
       </Stack>

@@ -516,6 +516,7 @@ const CertificateDetail = ({
       <DetailLayout
         asideLabel="Certificate details"
         aside={<CertificateAside cert={cert} orgId={orgId} applicationName={applicationName} />}
+        secondary={<CertificateMetadataCard cert={cert} editReason={metadataReason} />}
       >
         {revocation.isPending && revocation.requestId && (
           <Alert tone="warn">
@@ -636,7 +637,6 @@ const CertificateDetail = ({
             />
           ))}
         </List>
-        <CertificateMetadataCard cert={cert} editReason={metadataReason} />
       </DetailLayout>
     </Stack>
   );
