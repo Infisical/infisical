@@ -104,9 +104,15 @@ export const ProjectIdentitiesTab = () => {
   const [assuming, setAssuming] = useState<string>();
   const [removing, setRemoving] = useState<ProjectIdentityMembership>();
   const [authFor, setAuthFor] = useState<string>();
+  const authRow = rows.find((row) => row.identity.id === authFor)?.identity;
+  const { data: authMembership } = access.useProjectIdentity(
+    projectId,
+    authRow && !authRow.authMethods ? authRow.id : "",
+    scope.projectType
+  );
   const flows = useAuthMethodFlows(
     projectId,
-    rows.find((row) => row.identity.id === authFor)?.identity
+    authRow?.authMethods ? authRow : authMembership?.identity
   );
 
   const canCreate = permission.can(
