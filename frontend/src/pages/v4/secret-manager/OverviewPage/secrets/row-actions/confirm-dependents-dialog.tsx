@@ -17,12 +17,14 @@ export function ConfirmDependentsDialog({
   open,
   dependents,
   pending,
+  plural,
   onOpenChange,
   onConfirm
 }: {
   open: boolean;
   dependents: Dependent[];
   pending?: boolean;
+  plural?: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
@@ -30,9 +32,13 @@ export function ConfirmDependentsDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent icon="alert" confirmText="confirm" pending={pending}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Update this secret?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {plural ? "Update these secrets?" : "Update this secret?"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Other secrets reference this one. Saving updates it everywhere it&apos;s referenced.
+            {plural
+              ? "Other secrets reference them. Saving updates them everywhere they're referenced."
+              : "Other secrets reference this one. Saving updates it everywhere it's referenced."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <ul className={styles.dependentList}>

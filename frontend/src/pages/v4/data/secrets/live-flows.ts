@@ -30,6 +30,8 @@ import {
   useUpdateSecretBatch
 } from "@app/hooks/api/secrets/mutations";
 import {
+  fetchProjectSecrets,
+  mergePersonalSecrets,
   useGetProjectSecrets,
   useGetSecretAccessList,
   useGetSecretVersion,
@@ -64,6 +66,8 @@ export const secretsFlowsLive: SecretsFlowsAdapter = {
   useDeleteReminder,
   useProjectFolders: useListProjectEnvironmentsFolders,
   useSecretsAt: useGetProjectSecrets,
+  useFetchSecretsAt: () => (dto) =>
+    fetchProjectSecrets(dto).then(({ secrets }) => mergePersonalSecrets(secrets)),
   useCreateSecretBatch: withMutationMeta(useCreateSecretBatch),
   useUpdateSecretBatch: withMutationMeta(useUpdateSecretBatch),
   useMoveSecrets: withMutationMeta(useMoveSecrets),

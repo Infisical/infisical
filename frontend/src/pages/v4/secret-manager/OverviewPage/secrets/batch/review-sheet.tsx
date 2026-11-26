@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Badge, Count } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field } from "@infisical/cipher/ui/field";
@@ -61,18 +61,20 @@ export function ReviewSheet({
   open,
   pending,
   onOpenChange,
+  groups,
   onDiscard,
   onCommit
 }: {
   open: boolean;
   pending: readonly PendingChange[];
+  groups?: { label: string; icon: ReactNode; changes: readonly PendingChange[] }[];
   onOpenChange: (open: boolean) => void;
   onDiscard: (change: PendingChange) => void;
   onCommit: (message: string) => void;
 }) {
   const [message, setMessage] = useState("");
   const single = pending.length === 1;
-  const groups = [
+  const shown = groups ?? [
     {
       label: "Folders",
       icon: <Icon name="folder" />,
@@ -100,7 +102,7 @@ export function ReviewSheet({
         </SheetHeader>
         <SheetBody>
           <div className={styles.groups}>
-            {groups
+            {shown
               .filter((group) => group.changes.length)
               .map((group) => (
                 <section key={group.label} className={styles.group}>

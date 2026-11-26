@@ -1,0 +1,17 @@
+.step {
+  container-type: inline-size;
+}
+.approvers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 7rem;
+  align-items: start;
+  gap: var(--cipher-space-12);
+}
+@container (width < 26rem) {
+  .approvers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .approvers > :last-child {
+    max-width: 7rem;
+  }
+}

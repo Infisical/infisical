@@ -25,7 +25,6 @@ import {
 
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
-import { RequestsTab as CertificateRequestsTab } from "../ApplicationDetailsByIDPage/requests-tab";
 import {
   applicationRequestSummaryOf,
   RequestStatus,
@@ -37,7 +36,7 @@ import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/cert
 const routeId = v4Path("/organizations/$orgId/cert-manager/requests");
 const detailPath = v4Path("/organizations/$orgId/cert-manager/approvals/$approvalRequestId");
 
-type Tab = "application-requests" | "signing-requests" | "certificate-requests";
+type Tab = "application-requests" | "signing-requests";
 
 const statusMatches: Record<string, (status: ApprovalRequestStatus) => boolean> = {
   pending: (status) => status === ApprovalRequestStatus.Pending,
@@ -320,15 +319,11 @@ const RequestsContent = () => {
                   value: "signing-requests",
                   label: "Signing requests",
                   count: pendingCount(signingRequests.data)
-                },
-                { value: "certificate-requests", label: "Certificate requests" }
+                }
               ]}
             />
           }
         />
-        {tab === "certificate-requests" && (
-          <CertificateRequestsTab orgId={orgId} projectId={projectId} />
-        )}
         {tab === "application-requests" && (
           <RequestsTable
             key="application-requests"

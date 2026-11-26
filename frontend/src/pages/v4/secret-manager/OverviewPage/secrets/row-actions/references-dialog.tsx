@@ -45,7 +45,9 @@ const toDependent = (node: TSecretDependencyTreeNode, parent: string): Dependent
   };
 };
 
-export const useDependents = (secret: Secret) => {
+export const useDependents = (
+  secret: Pick<Secret, "project" | "environment" | "path" | "name">
+) => {
   const { data, isPending } = useV4Adapter("secrets").useSecretReferences({
     projectId: secret.project,
     environment: secret.environment,

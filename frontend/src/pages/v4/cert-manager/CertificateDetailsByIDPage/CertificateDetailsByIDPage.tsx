@@ -57,6 +57,7 @@ import {
   usePkcs12Block
 } from "../components/certificate-export";
 import { exportFormatLabel } from "../components/certificate-export-format";
+import { CertificatePartsDialog } from "../components/certificate-parts-dialog";
 import { AutoRenewalDialog } from "../components/certificate-requests/auto-renewal-dialog";
 import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
 import { CertificateMetadataCard } from "./certificate-metadata";
@@ -321,6 +322,7 @@ const CertificateActionsMenu = ({
   const [renewing, setRenewing] = useState(false);
   const [managingRenewal, setManagingRenewal] = useState(false);
   const [managingSyncs, setManagingSyncs] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const updateRenewal = useV4Adapter("certificates").useUpdateRenewalConfig();
   const {
     canDelete,
@@ -349,6 +351,15 @@ const CertificateActionsMenu = ({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            disabled={Boolean(blocks.export)}
+            description={blocks.export}
+            onSelect={() => setExporting(true)}
+          >
+            <Icon name="copy" />
+            Export certificate
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             disabled={Boolean(renewReason)}
             description={renewReason}
@@ -404,6 +415,11 @@ const CertificateActionsMenu = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <CertificatePartsDialog
+        cert={exporting ? cert : undefined}
+        projectId={projectId}
+        onClose={() => setExporting(false)}
+      />
       {renewing && (
         <RenewCertificateSheet
           cert={cert}
