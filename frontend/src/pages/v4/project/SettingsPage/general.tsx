@@ -389,7 +389,7 @@ export const ProjectGeneralSettings = ({
   const { data: project, error } = useV4Adapter("projectSettings").useProject(projectId);
   const { permission, isPending } = useProjectPermission(projectId);
   const { data: facts } = useV4Adapter("projectSettings").useMembershipFacts(projectId);
-  if (error)
+  if (error && !project)
     return (
       <SettingsCard title="Project details">
         <EmptyState
