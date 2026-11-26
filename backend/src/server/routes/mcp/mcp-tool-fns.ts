@@ -4,6 +4,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   BadRequestError,
@@ -84,6 +85,17 @@ export const createMcpToolContext = (
         if (!isScopeNarrowedRequest()) {
           throw new Error("OAuth scopes missing from the request context");
         }
+
+        // The same check consent ran, repeated because a connection outlives it: it refuses a user who has left the org
+        // or no longer meets its SSO enforcement. Not every tool reaches a permission check of its own (list-projects).
+        await server.services.permission.getOrgPermission({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          orgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          scope: OrganizationActionScope.ParentOrganization
+        });
 
         return { content: [{ type: "text" as const, text: JSON.stringify(await run(args)) }] };
       } catch (error) {

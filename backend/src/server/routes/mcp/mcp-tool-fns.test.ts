@@ -9,7 +9,13 @@ vi.mock("@app/lib/request-context/oauth-delegation", () => ({ isScopeNarrowedReq
 
 type TToolResult = { isError?: boolean; content: { text: string }[] };
 
-const callFailingTool = async (error: unknown) => {
+const callTool = async ({
+  run,
+  getOrgPermission = vi.fn().mockResolvedValue({})
+}: {
+  run: () => Promise<unknown>;
+  getOrgPermission?: () => Promise<unknown>;
+}) => {
   const recordPermissionDenied = vi.fn().mockResolvedValue(undefined);
   let handler: ((args: Record<string, unknown>) => Promise<TToolResult>) | undefined;
   const mcpServer = {
@@ -17,7 +23,7 @@ const callFailingTool = async (error: unknown) => {
       handler = callback;
     }
   };
-  const server = { services: { auditLog: { recordPermissionDenied } } };
+  const server = { services: { auditLog: { recordPermissionDenied }, permission: { getOrgPermission } } };
   const req = {
     method: "POST",
     auditLogInfo: { ipAddress: "203.0.113.1" },
@@ -25,13 +31,13 @@ const callFailingTool = async (error: unknown) => {
   };
 
   const { registerTool } = createMcpToolContext(server as never, req as never, mcpServer as never, []);
-  registerTool("create-project", { description: "", inputSchema: z.object({}), annotations: {} }, () =>
-    Promise.reject(error)
-  );
+  registerTool("create-project", { description: "", inputSchema: z.object({}), annotations: {} }, run);
 
   const result = await handler!({ projectId: "project-id" });
   return { result, recordPermissionDenied };
 };
+
+const callFailingTool = (error: unknown) => callTool({ run: () => Promise.reject(error) });
 
 const caslDenial = () => {
   try {
@@ -76,5 +82,21 @@ describe("MCP tool refusals", () => {
 
     expect(result.isError).toBe(true);
     expect(recordPermissionDenied).not.toHaveBeenCalled();
+  });
+
+  test("a user the org check refuses, such as under newly enforced SSO, never reaches the tool", async () => {
+    const run = vi.fn();
+    const { result, recordPermissionDenied } = await callTool({
+      run,
+      getOrgPermission: () =>
+        Promise.reject(new ForbiddenRequestError({ message: "Your organization requires logging in with SSO" }))
+    });
+
+    expect(run).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      content: [{ type: "text", text: "Your organization requires logging in with SSO" }],
+      isError: true
+    });
+    expect(recordPermissionDenied).toHaveBeenCalled();
   });
 });
