@@ -170,7 +170,13 @@ export const PoolSheet = ({
   const available = gateways.filter((gateway) => !pool?.memberGatewayIds.includes(gateway.id));
 
   const columns: DataTableColumn<TGatewayV2>[] = [
-    { id: "name", header: "Name", grow: true, render: (gateway) => gateway.name },
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      grow: true,
+      text: (gateway) => gateway.name
+    },
     {
       id: "status",
       header: "Status",
@@ -374,6 +380,7 @@ export const PoolsTable = ({
       id: "name",
       header: "Name",
       sortable: true,
+      primary: true,
       grow: true,
       text: (pool) => pool.name,
       render: (pool) => (
@@ -387,6 +394,7 @@ export const PoolsTable = ({
       header: "Connected",
       sortable: true,
       width: 160,
+      dropFirst: true,
       render: (pool) =>
         pool.connectedResourcesCount > 0 ? (
           <Button
