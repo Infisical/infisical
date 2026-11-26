@@ -232,11 +232,8 @@ const Content = ({ identity }: { identity: Identity }) => {
   return (
     <>
       <SheetHeader>
-        <SheetTitle>
-          <Inline gap={8}>
-            Manage delegation
-            <DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />
-          </Inline>
+        <SheetTitle badges={<DocumentationLink href={DELEGATION_DOCS_URL} subject="delegation" />}>
+          Manage delegation
         </SheetTitle>
       </SheetHeader>
       <SheetBody>

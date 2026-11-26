@@ -40,6 +40,7 @@ const toItem = (entry: DocsEntry): TilePickerItem => ({
   icon: entry.icon,
   media: entry.image && <ProviderIcon icon={`${entry.image}.png`} alt="" />,
   keywords: [entry.slug],
+  // v4-check-ignore hand-built-docs-link -- each catalog tile is itself a docs link
   href: entry.docsLink,
   external: true
 });

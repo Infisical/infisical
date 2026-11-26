@@ -528,12 +528,8 @@ export const FolderAccessSection = ({
     <>
       <Card
         variant="framed"
-        title={
-          <Inline gap={8}>
-            Folder access
-            <DocumentationLink href={FOLDER_ACCESS_DOCS_URL} subject="folder access" />
-          </Inline>
-        }
+        title="Folder access"
+        badges={<DocumentationLink href={FOLDER_ACCESS_DOCS_URL} subject="folder access" />}
         action={readOnly ? undefined : grantButton("accent")}
       >
         {hasPlan && query.error ? (

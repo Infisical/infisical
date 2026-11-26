@@ -68,7 +68,7 @@ export const providerLabel = (provider: SsoProvider) => {
 
 const GROUP_SYNC_SUPPORTED_PROVIDERS: string[] = ["google-saml"];
 
-const docsLink = "https://infisical.com/docs/documentation/platform/sso/overview";
+const SSO_DOCS = "https://infisical.com/docs/documentation/platform/sso/overview";
 
 const SettingRow = ({
   title,
@@ -122,17 +122,6 @@ const InfoHoverCard = ({ label, children }: { label: string; children: ReactNode
       <Stack gap={12}>{children}</Stack>
     </HoverCardContent>
   </HoverCard>
-);
-
-const DocsLink = ({ children }: { children: ReactNode }) => (
-  <a
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-foreground no-underline hover:underline"
-    href={docsLink}
-  >
-    {children}
-  </a>
 );
 
 const ProviderMenu = ({
@@ -290,8 +279,7 @@ export const SamlSection = ({ onSwitchProvider }: SectionProps) => {
                     </p>
                     <p>
                       To use this feature you must include group claims in the SAML response as a
-                      &quot;groups&quot; attribute.{" "}
-                      <DocsLink>See your SAML provider docs for details.</DocsLink>
+                      &quot;groups&quot; attribute.
                     </p>
                     <Alert tone="warn">
                       <AlertDescription>
@@ -302,6 +290,7 @@ export const SamlSection = ({ onSwitchProvider }: SectionProps) => {
                       </AlertDescription>
                     </Alert>
                   </InfoHoverCard>
+                  <DocumentationLink href={SSO_DOCS} subject="SAML group membership mapping" />
                 </Inline>
               }
               label="SAML group membership mapping"
@@ -436,10 +425,7 @@ export const OidcSection = ({ onSwitchProvider }: SectionProps) => {
                     groups matching their OIDC group names and leave the ones that don&apos;t.
                     Manual group management is disabled while this is on.
                   </p>
-                  <p>
-                    Requires group claims in the OIDC token.{" "}
-                    <DocsLink>See your OIDC provider docs for details.</DocsLink>
-                  </p>
+                  <p>Requires group claims in the OIDC token.</p>
                   <Alert tone="warn">
                     <AlertTitle>
                       Changes only apply on the user&apos;s next OIDC sign-in.
@@ -447,6 +433,7 @@ export const OidcSection = ({ onSwitchProvider }: SectionProps) => {
                     <AlertDescription>Enforce OIDC SSO to keep this gap small.</AlertDescription>
                   </Alert>
                 </InfoHoverCard>
+                <DocumentationLink href={SSO_DOCS} subject="OIDC group membership mapping" />
               </Inline>
             }
             label="OIDC group membership mapping"
@@ -620,14 +607,15 @@ export const ProviderChooserDialog = ({
     >
       <DialogContent pending={pending}>
         <DialogHeader>
-          <DialogTitle>
-            <Inline gap={8} wrap={false}>
-              {exclude ? "Switch identity provider" : "Add identity provider"}
+          <DialogTitle
+            badges={
               <DocumentationLink
                 href="https://infisical.com/docs/integrations/user-authentication"
                 subject="identity providers"
               />
-            </Inline>
+            }
+          >
+            {exclude ? "Switch identity provider" : "Add identity provider"}
           </DialogTitle>
         </DialogHeader>
         <RadioGroup

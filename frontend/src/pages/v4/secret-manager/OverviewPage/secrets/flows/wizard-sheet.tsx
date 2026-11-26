@@ -41,6 +41,7 @@ export function WizardSheet({
   wide,
   onRequestClose,
   title,
+  badges,
   description,
   media,
   steps,
@@ -56,6 +57,7 @@ export function WizardSheet({
   wide?: boolean;
   onRequestClose: () => void;
   title: ReactNode;
+  badges?: ReactNode;
   description?: ReactNode;
   media?: ReactNode;
   steps?: { title: string; summary?: ReactNode }[];
@@ -79,7 +81,7 @@ export function WizardSheet({
           <div className={styles.titleRow}>
             {media && <span className={styles.titleMedia}>{media}</span>}
             <div className={styles.titleText}>
-              <SheetTitle>{title}</SheetTitle>
+              <SheetTitle badges={badges}>{title}</SheetTitle>
               {description && <SheetDescription>{description}</SheetDescription>}
             </div>
           </div>

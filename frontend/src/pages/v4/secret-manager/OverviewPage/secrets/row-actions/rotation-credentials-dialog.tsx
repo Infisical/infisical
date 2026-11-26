@@ -127,6 +127,7 @@ export function RotationCredentialsDialog({
               authenticate with {appName} during their{" "}
               <a
                 target="_blank"
+                // v4-check-ignore hand-built-docs-link -- inline link on a defined term inside an explanation
                 href="https://infisical.com/docs/documentation/platform/secret-rotation/overview#how-rotation-works"
                 rel="noopener noreferrer"
               >

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -42,12 +42,7 @@ const draftOf = (config: TCertificateCleanupConfig | null | undefined): Draft =>
   skipCertsWithActiveSyncs: config?.skipCertsWithActiveSyncs ?? true
 });
 
-const Title = () => (
-  <Inline gap={8} align="center">
-    Certificate cleanup
-    <DocumentationLink href={DOCS_URL} subject="certificate cleanup" />
-  </Inline>
-);
+const docs = <DocumentationLink href={DOCS_URL} subject="certificate cleanup" />;
 
 const CleanupForm = ({ config }: { config: TCertificateCleanupConfig | null }) => {
   const updateConfig = useV4Adapter("certManagerSettings").useUpdateCleanupConfig();
@@ -63,7 +58,8 @@ const CleanupForm = ({ config }: { config: TCertificateCleanupConfig | null }) =
     : undefined;
   return (
     <SettingsCard
-      title={<Title />}
+      title="Certificate cleanup"
+      badges={docs}
       dirty={dirty}
       onDiscard={() => setDraft(savedDraft)}
       onSave={async () => {
@@ -137,6 +133,7 @@ const CleanupForm = ({ config }: { config: TCertificateCleanupConfig | null }) =
 
 export const CleanupTab = () => {
   const { data: config, isPending } = useV4Adapter("certManagerSettings").useCleanupConfig();
-  if (isPending) return <SettingsCard title={<Title />} loading onSave={noop} />;
+  if (isPending)
+    return <SettingsCard title="Certificate cleanup" badges={docs} loading onSave={noop} />;
   return <CleanupForm config={config ?? null} />;
 };

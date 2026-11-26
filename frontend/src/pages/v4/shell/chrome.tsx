@@ -209,6 +209,7 @@ export const useShellChrome = () => {
       {
         label: "Read Docs",
         icon: BookOpen,
+        // v4-check-ignore hand-built-docs-link -- help menu navigation to the docs home
         href: "https://infisical.com/docs/documentation/getting-started/introduction",
         external: true
       },

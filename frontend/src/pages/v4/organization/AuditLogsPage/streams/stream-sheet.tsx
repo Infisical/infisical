@@ -465,11 +465,10 @@ const StreamForm = ({
     <SheetSections
       header={
         <SheetHeader>
-          <SheetTitle>
+          <SheetTitle badges={<DocumentationLink href={PROVIDERS_DOCS} subject="log streams" />}>
             <Inline gap={8} align="center" wrap={false}>
               <ProviderMedia provider={provider} size="lg" />
               {stream ? `Edit ${name} log stream` : `Add ${name} log stream`}
-              <DocumentationLink href={PROVIDERS_DOCS} subject="log streams" />
             </Inline>
           </SheetTitle>
         </SheetHeader>

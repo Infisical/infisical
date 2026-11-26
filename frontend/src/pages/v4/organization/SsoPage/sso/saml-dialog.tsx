@@ -312,14 +312,15 @@ export const SamlConfigDialog = ({
         <SheetContent size="lg" pending={pending}>
           <form id="saml-config" noValidate onSubmit={handleSubmit(onSubmit)}>
             <SheetHeader>
-              <SheetTitle>
-                <Inline gap={8} wrap={false}>
-                  Manage SAML configuration
+              <SheetTitle
+                badges={
                   <DocumentationLink
                     href={docsUrl}
                     subject={provider ? `${provider.name} SAML` : "SAML"}
                   />
-                </Inline>
+                }
+              >
+                Manage SAML configuration
               </SheetTitle>
             </SheetHeader>
             <SheetBody>

@@ -6,6 +6,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DurationInput } from "@infisical/cipher/ui/duration-input";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -1000,7 +1001,13 @@ const NoProxyAlert = ({ orgId, projectId }: { orgId: string; projectId: string }
 
 const PlatformHeader = ({ platform }: { platform: (typeof PLATFORMS)[ScriptProvider] | null }) => (
   <SheetHeader>
-    <SheetTitle>
+    <SheetTitle
+      badges={
+        platform && (
+          <DocumentationLink href={platform.guideUrl} subject={`${platform.name} setup`} />
+        )
+      }
+    >
       <Inline gap={8} align="center" wrap={false}>
         {platform ? <ProviderIcon icon={platform.logo} alt="" size="sm" /> : <Icon name="server" />}
         {platform?.name ?? "Your own sandbox"}
@@ -1026,21 +1033,13 @@ const GuideActions = ({
     clientId: string | null;
   };
 }) => {
-  const details = PLATFORMS[platform];
   return (
-    <>
-      <Button variant="outline" iconRight="external" asChild>
-        <a href={details.guideUrl} target="_blank" rel="noopener noreferrer">
-          View guide
-        </a>
-      </Button>
-      <CopyPromptButton
-        prompt={setupPrompt(details, {
-          ...prompt,
-          language: hasScriptLanguages(platform) ? prompt.language : undefined
-        })}
-      />
-    </>
+    <CopyPromptButton
+      prompt={setupPrompt(PLATFORMS[platform], {
+        ...prompt,
+        language: hasScriptLanguages(platform) ? prompt.language : undefined
+      })}
+    />
   );
 };
 
