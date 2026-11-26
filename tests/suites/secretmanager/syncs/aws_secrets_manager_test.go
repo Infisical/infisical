@@ -3,6 +3,7 @@ package syncs_test
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fakes/aws"
@@ -249,5 +250,26 @@ func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 		require.Equal(t, http.StatusUnprocessableEntity, status)
 		require.Contains(t, message(body), "Preserving folder structure is not supported with")
 		require.Zero(t, awsSyncCount(t, proj, dest))
+	})
+
+	t.Run("should fail naming the secret and write nothing when its name would be longer than Secrets Manager allows", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Secrets Manager allows 512 characters. Three 170-character folders and the key make 521.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		long := "/backend/" + strings.Repeat("a", 170) + "/" + strings.Repeat("b", 170) + "/" + strings.Repeat("c", 170)
+		secretmanager.CreateFolder(t, proj, "dev", long)
+		secretmanager.CreateSecret(t, proj, "dev", "SHORT", "v", secretmanager.WithPath("/backend"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "v", secretmanager.WithPath(long))
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		got := s.triggerExpectingFailure(t)
+
+		// Assert
+		require.Equal(t, "failed", got.status)
+		require.Contains(t, got.message, "521 characters")
+		require.Empty(t, cp.Secrets(t))
 	})
 }

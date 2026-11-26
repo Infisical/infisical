@@ -40,6 +40,7 @@ type TAwsSecretValuesRecord = Record<string, SecretValueEntry>;
 type TAwsSecretDescriptionsRecord = Record<string, DescribeSecretResponse>;
 
 const MAX_RETRIES = 10;
+const MAX_SECRET_NAME_LENGTH = 512;
 const BATCH_SIZE = 20;
 
 const getSecretsManagerClient = async (
@@ -72,6 +73,23 @@ const getMirroredSecretMap = (payload: TSecretSyncPayload): TSecretMap =>
   Object.fromEntries(
     Object.entries(payload.mirror()).map(([key, secret]) => [key.includes("/") ? `/${key}` : key, secret])
   );
+
+// Folders add to a mirrored name, and they can be nested after the sync is saved, so check every name
+// before writing any rather than failing partway. An empty value is never written, so it can't be too long.
+const assertWithinNameLengthLimit = (secretMap: TSecretMap) => {
+  const tooLong = Object.entries(secretMap).find(
+    ([name, { value }]) => value && name.length > MAX_SECRET_NAME_LENGTH
+  )?.[0];
+
+  if (tooLong) {
+    const shown = tooLong.length > 200 ? `${tooLong.slice(0, 80)}...${tooLong.slice(-80)}` : tooLong;
+
+    throw new SecretSyncError({
+      message: `"${shown}" is ${tooLong.length} characters long, more than the ${MAX_SECRET_NAME_LENGTH} AWS Secrets Manager allows. Shorten the secret's folder names, move it to a shallower folder, or turn off preserving folder structure.`,
+      shouldRetry: false
+    });
+  }
+};
 
 // With folders mirrored, a name is the sync's only if it's shaped like one getMirroredSecretMap
 // builds, so another sync's "team-a/DB_URL" or a bare "/DB_URL" is left alone.
@@ -398,6 +416,8 @@ export const AwsSecretsManagerSyncFns = {
 
     const secretMap = preserveFolderStructure ? getMirroredSecretMap(payload) : payload.flatten();
     const mirroredFolders = preserveFolderStructure ? payload.mirroredFolders() : undefined;
+
+    if (preserveFolderStructure) assertWithinNameLengthLimit(secretMap);
 
     const client = await getSecretsManagerClient(secretSync, instanceConfigService);
 
