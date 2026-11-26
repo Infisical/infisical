@@ -108977,6 +108977,44 @@ const (
 	DeleteIdentityFolderAccess400JSONResponseBodyStatusCodeN400 DeleteIdentityFolderAccess400JSONResponseBodyStatusCode = 400
 )
 
+// Defines values for DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken400JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken400JSONResponseBodyStatusCodeN400 DeleteHoneyToken400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken400JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken401JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken401JSONResponseBodyStatusCodeN401 DeleteHoneyToken401JSONResponseBodyStatusCode = 401
+)
+
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess400JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -108990,6 +109028,21 @@ func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess401JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess401JSONResponseBodyStatusCodeN401 DeleteIdentityFolderAccess401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken401JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken403JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken403JSONResponseBodyStatusCodeN403 DeleteHoneyToken403JSONResponseBodyStatusCode = 403
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess401JSONResponseBodyStatusCode enum.
@@ -109007,6 +109060,21 @@ const (
 	DeleteIdentityFolderAccess403JSONResponseBodyStatusCodeN403 DeleteIdentityFolderAccess403JSONResponseBodyStatusCode = 403
 )
 
+// Valid indicates whether the value is a known member of the DeleteHoneyToken403JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken404JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken404JSONResponseBodyStatusCodeN404 DeleteHoneyToken404JSONResponseBodyStatusCode = 404
+)
+
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess403JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109020,6 +109088,21 @@ func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess404JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess404JSONResponseBodyStatusCodeN404 DeleteIdentityFolderAccess404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken404JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken422JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken422JSONResponseBodyStatusCodeN422 DeleteHoneyToken422JSONResponseBodyStatusCode = 422
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess404JSONResponseBodyStatusCode enum.
@@ -109037,6 +109120,21 @@ const (
 	DeleteIdentityFolderAccess422JSONResponseBodyStatusCodeN422 DeleteIdentityFolderAccess422JSONResponseBodyStatusCode = 422
 )
 
+// Valid indicates whether the value is a known member of the DeleteHoneyToken422JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken500JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken500JSONResponseBodyStatusCodeN500 DeleteHoneyToken500JSONResponseBodyStatusCode = 500
+)
+
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess422JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109051,6 +109149,19 @@ func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 const (
 	DeleteIdentityFolderAccess500JSONResponseBodyStatusCodeN500 DeleteIdentityFolderAccess500JSONResponseBodyStatusCode = 500
 )
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken500JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess500JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess500JSONResponseBodyStatusCode) Valid() bool {
@@ -196196,20 +196307,38 @@ type DeleteIdentityFolderAccessJSONBody struct {
 // DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission string
 
+// DeleteHoneyToken400JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken400JSONResponseBodyStatusCode float32
+
 // DeleteIdentityFolderAccess400JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess400JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken401JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken401JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess401JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess401JSONResponseBodyStatusCode float32
 
+// DeleteHoneyToken403JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken403JSONResponseBodyStatusCode float32
+
 // DeleteIdentityFolderAccess403JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess403JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken404JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken404JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess404JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess404JSONResponseBodyStatusCode float32
 
+// DeleteHoneyToken422JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken422JSONResponseBodyStatusCode float32
+
 // DeleteIdentityFolderAccess422JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess422JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken500JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken500JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess500JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess500JSONResponseBodyStatusCode float32
@@ -256585,6 +256714,9 @@ type ClientInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteIdentityFolderAccessWithBody performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -274319,6 +274451,19 @@ func (c *Client) CreateProjectIdentityMembership(ctx context.Context, projectId 
 // Revoke a machine identity's access to a folder.
 func (c *Client) DeleteIdentityFolderAccessWithBody(ctx context.Context, projectId string, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteIdentityFolderAccessRequestWithBody(c.Server, projectId, identityId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+func (c *Client) DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteHoneyTokenRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -313438,6 +313583,40 @@ func NewCreateProjectIdentityMembershipRequestWithBody(server string, projectId 
 	return req, nil
 }
 
+// NewDeleteHoneyTokenRequest constructs an http.Request for the DeleteHoneyToken method
+func NewDeleteHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/honey-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeleteIdentityFolderAccessRequest calls the generic DeleteIdentityFolderAccess builder with application/json body
 func NewDeleteIdentityFolderAccessRequest(server string, projectId string, identityId openapi_types.UUID, body DeleteIdentityFolderAccessJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -335103,6 +335282,11 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create project identity membership.
 	CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
+
+	// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error)
 
 	// DeleteIdentityFolderAccessWithBodyWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
@@ -471097,6 +471281,74 @@ func (r CreateProjectIdentityMembershipResponse) ContentType() string {
 	return ""
 }
 
+type DeleteHoneyTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
+			CreatedAt      time.Time          `json:"createdAt"`
+			Description    *string            `json:"description,omitempty"`
+			Id             openapi_types.UUID `json:"id"`
+			Name           string             `json:"name"`
+			ProjectId      string             `json:"projectId"`
+			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+			Status         *string            `json:"status,omitempty"`
+			Type           string             `json:"type"`
+			UpdatedAt      time.Time          `json:"updatedAt"`
+		} `json:"honeyToken"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
 type DeleteIdentityFolderAccessResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -471167,6 +471419,28 @@ type DeleteIdentityFolderAccessResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON200() *struct {
+	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
+		CreatedAt      time.Time          `json:"createdAt"`
+		Description    *string            `json:"description,omitempty"`
+		Id             openapi_types.UUID `json:"id"`
+		Name           string             `json:"name"`
+		ProjectId      string             `json:"projectId"`
+		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+		Status         *string            `json:"status,omitempty"`
+		Type           string             `json:"type"`
+		UpdatedAt      time.Time          `json:"updatedAt"`
+	} `json:"honeyToken"`
+} {
+	return r.JSON200
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 	FolderAccess struct {
 		CreatedAt                time.Time                                                           `json:"createdAt"`
@@ -471190,6 +471464,17 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 	Details    interface{}                                             `json:"details,omitempty"`
 	Error      string                                                  `json:"error"`
@@ -471201,6 +471486,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -471208,6 +471503,17 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	StatusCode DeleteIdentityFolderAccess401JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
@@ -471222,6 +471528,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON403() *struct {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -471229,6 +471545,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	StatusCode DeleteIdentityFolderAccess404JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
@@ -471242,6 +471568,16 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON422() *struct {
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -471252,8 +471588,21 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 }
 
 // GetBody returns the raw response body bytes
+func (r DeleteHoneyTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// GetBody returns the raw response body bytes
 func (r DeleteIdentityFolderAccessResponse) GetBody() []byte {
 	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteHoneyTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
 }
 
 // Status returns HTTPResponse.Status
@@ -471265,11 +471614,27 @@ func (r DeleteIdentityFolderAccessResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
+func (r DeleteHoneyTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// StatusCode returns HTTPResponse.StatusCode
 func (r DeleteIdentityFolderAccessResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteHoneyTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
@@ -542354,6 +542719,17 @@ func (c *ClientWithResponses) DeleteIdentityFolderAccessWithBodyWithResponse(ctx
 		return nil, err
 	}
 	return ParseDeleteIdentityFolderAccessResponse(rsp)
+}
+
+// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error) {
+	rsp, err := c.DeleteHoneyToken(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteHoneyTokenResponse(rsp)
 }
 
 // DeleteIdentityFolderAccessWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request.
@@ -633387,6 +633763,123 @@ func ParseCreateProjectIdentityMembershipResponse(rsp *http.Response) (*CreatePr
 			Message    string                                                       `json:"message"`
 			ReqId      string                                                       `json:"reqId"`
 			StatusCode CreateProjectIdentityMembership500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteHoneyTokenResponse parses an HTTP response from a DeleteHoneyTokenWithResponse call
+func ParseDeleteHoneyTokenResponse(rsp *http.Response) (*DeleteHoneyTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteHoneyTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
+				CreatedAt      time.Time          `json:"createdAt"`
+				Description    *string            `json:"description,omitempty"`
+				Id             openapi_types.UUID `json:"id"`
+				Name           string             `json:"name"`
+				ProjectId      string             `json:"projectId"`
+				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+				Status         *string            `json:"status,omitempty"`
+				Type           string             `json:"type"`
+				UpdatedAt      time.Time          `json:"updatedAt"`
+			} `json:"honeyToken"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

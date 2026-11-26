@@ -85,3 +85,20 @@ export const useRevokeHoneyToken = () => {
     }
   });
 };
+
+export const useDeleteHoneyToken = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ honeyToken: THoneyToken }, object, { honeyTokenId: string }>({
+    mutationFn: async ({ honeyTokenId }) => {
+      const { data } = await apiRequest.delete<{ honeyToken: THoneyToken }>(
+        `/api/v1/honey-tokens/${honeyTokenId}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["honeyTokens"] });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
+    }
+  });
+};
