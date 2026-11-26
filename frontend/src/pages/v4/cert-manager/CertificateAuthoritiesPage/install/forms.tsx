@@ -97,7 +97,11 @@ export const InternalInstallForm = ({
   onDone
 }: InstallFormProps) => {
   const adapter = useV4Adapter("certificateAuthorities");
-  const { data: cas = [], isPending } = adapter.useProjectCas({
+  const {
+    data: cas = [],
+    isPending,
+    error: loadError
+  } = adapter.useProjectCas({
     projectId,
     status: CaStatus.ACTIVE
   });
@@ -147,9 +151,12 @@ export const InternalInstallForm = ({
       <Stack gap={16}>
         <Field
           label="Parent CA"
-          error={errors.parent}
+          error={
+            errors.parent ??
+            (loadError ? "Couldn't load the CAs that can sign this one" : undefined)
+          }
           description={
-            !isPending && parents.length === 0
+            !isPending && !loadError && parents.length === 0
               ? "No active CA can sign this one. Create a root CA first."
               : undefined
           }
