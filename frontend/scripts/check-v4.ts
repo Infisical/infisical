@@ -834,37 +834,32 @@ export const handBuiltDocsLinks = (text: string) => {
   const readsDocs = (value: string) =>
     docsUrl.test(value) ||
     [...code(value).matchAll(/\b[A-Za-z_]\w*\b/g)].some(
-      ([name]) => docsNames.has(name) || /docs?(?:[A-Z_]|$)|^DOCS?\b|_DOCS?(?:_|$)/.test(name)
+      ([name]) => docsNames.has(name) || /(?:^|_)DOCS?(?:_|$)|[Dd]ocs?(?:[A-Z_]|$)/.test(name)
     );
+  const openTag = (index: number) =>
+    [...text.slice(Math.max(0, index - 2000), index).matchAll(/<([A-Za-z][\w.]*)\b/g)].at(-1)?.[1];
   const links = [...text.matchAll(/\bhref\s*([=:])\s*/g)].flatMap((match) => {
     const index = match.index ?? 0;
     const value = hrefValue(text, index + match[0].length);
     if (!readsDocs(value)) return [];
-    if (match[1] === "=") {
-      const tags = [
-        ...text.slice(Math.max(0, index - 2000), index).matchAll(/<([A-Za-z][\w.]*)\b/g)
-      ];
-      if (tags.at(-1)?.[1] === "DocumentationLink") return [];
-    }
+    if (match[1] === "=" && openTag(index) === "DocumentationLink") return [];
     return [{ index, text: `href${match[1]}${value}`.slice(0, 120) }];
   });
-  const opened = [...text.matchAll(/\bwindow\.open\(\s*([^,)]+)/g)]
-    .filter((match) => readsDocs(match[1]))
-    .map((match) => ({ index: match.index ?? 0, text: match[0] }));
-  const passed = [...text.matchAll(/[(,]\s*[`"']https?:\/\/(?:www\.)?infisical\.com\/docs[^`"']*/g)]
-    .filter(
-      (match) =>
-        !opened.some(
-          (open) =>
-            open.index <= (match.index ?? 0) &&
-            (match.index ?? 0) < open.index + open.text.length + 2
-        )
+  const calls = [
+    ...text.matchAll(
+      /(?<!\bfunction\s+)\b(?!(?:return|if|for|while|switch|catch|typeof|await)\b)[A-Za-z_$][\w$]*(?:\.[\w$]+)*\(([^()]*)\)/g
     )
-    .map((match) => ({ index: match.index ?? 0, text: match[0] }));
+  ]
+    .filter((match) => readsDocs(match[1]))
+    .map((match) => ({ index: match.index ?? 0, text: match[0].slice(0, 120) }));
   const labels = [
     ...text.matchAll(/>\s*(?:Docs|Documentation|Read (?:the )?docs|View docs)\s*(?:↗\s*)?</g)
-  ].map((match) => ({ index: match.index ?? 0, text: match[0] }));
-  return [...links, ...opened, ...passed, ...labels];
+  ]
+    .filter((match) =>
+      ["a", "Button", "Badge", "Link"].includes(openTag((match.index ?? 0) + 1) ?? "")
+    )
+    .map((match) => ({ index: match.index ?? 0, text: match[0] }));
+  return [...links, ...calls, ...labels];
 };
 
 export const v4Checks: readonly V4Check[] = [
