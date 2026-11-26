@@ -847,11 +847,26 @@ export const handBuiltDocsLinks = (text: string) => {
   });
   const calls = [
     ...text.matchAll(
-      /(?<!\bfunction\s+)\b(?!(?:return|if|for|while|switch|catch|typeof|await)\b)[A-Za-z_$][\w$]*(?:\.[\w$]+)*\(([^()]*)\)/g
+      /(?<!\bfunction\s+)\b(?!(?:return|if|for|while|switch|catch|typeof|await)\b)[A-Za-z_$][\w$]*(?:\.[\w$]+)*\(/g
     )
-  ]
-    .filter((match) => readsDocs(match[1]))
-    .map((match) => ({ index: match.index ?? 0, text: match[0].slice(0, 120) }));
+  ].flatMap((match) => {
+    const index = match.index ?? 0;
+    const open = index + match[0].length - 1;
+    let depth = 0;
+    let close = text.length;
+    for (let cursor = open; cursor < text.length; cursor += 1) {
+      if (text[cursor] === "(") depth += 1;
+      else if (text[cursor] === ")") depth -= 1;
+      if (depth === 0) {
+        close = cursor;
+        break;
+      }
+    }
+    let args = text.slice(open + 1, close);
+    while (/\([^()]*\)/.test(args)) args = args.replace(/\([^()]*\)/g, "");
+    if (args.includes("=>") || /<[A-Za-z>]/.test(args) || !readsDocs(args)) return [];
+    return [{ index, text: text.slice(index, close + 1).slice(0, 120) }];
+  });
   const labels = [
     ...text.matchAll(/>\s*(?:Docs|Documentation|Read (?:the )?docs|View docs)\s*(?:↗\s*)?</g)
   ]
