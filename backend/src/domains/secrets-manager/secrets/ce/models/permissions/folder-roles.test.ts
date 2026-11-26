@@ -30,8 +30,7 @@ describe("SECRET_FOLDER_ROLE_PERMISSIONS", () => {
     LADDER.slice(1).forEach((role, idx) => {
       const lowerRole = LADDER[idx];
 
-      // Each tier is built by applying the tier below it first, so the lower tier's rules must
-      // appear verbatim at the head of the higher tier's. A reorder or a dropped rule breaks this.
+      // Each tier applies the one below first, so the lower tier's rules must be a verbatim prefix.
       test(`should grant ${role} everything ${lowerRole} grants`, () => {
         const lower = SECRET_FOLDER_ROLE_PERMISSIONS[lowerRole];
 

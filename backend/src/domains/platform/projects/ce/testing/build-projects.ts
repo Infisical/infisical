@@ -9,9 +9,8 @@ import { ProjectResourcePermissionService } from "../services/project-resource-p
 import { InMemoryProjectCache } from "./in-memory-project-cache";
 import { InMemoryProjectStore } from "./in-memory-project-store";
 
-// Projects' permission services over in-memory projects and an in-memory Access Control, with the real org
-// permission service on the same grants. `seed` writes memberships, roles and privileges; `projectStore.add` writes
-// projects.
+// In-memory projects and Access Control, plus the real org permission service on the same grants. `seed` writes
+// memberships, roles and privileges; `projectStore.add` writes projects.
 export const buildProjects = ({
   projectRoles = [],
   onProjectAccess

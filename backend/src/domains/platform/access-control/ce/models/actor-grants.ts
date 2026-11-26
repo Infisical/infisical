@@ -10,8 +10,8 @@ export type TActorGrantsRecord = {
   attributes: TIdentityAttributeRecord[];
 };
 
-// What one user or identity holds at one scope: its memberships there (direct and through groups) with their
-// roles, its privileges at that scope, and its attributes. What any of it grants is the scope owner's call.
+// One actor's memberships (direct and via groups), privileges and attributes at a scope. What they actually grant
+// is up to the scope owner.
 export class ActorGrants {
   private constructor(
     readonly memberships: Membership[],
@@ -35,21 +35,20 @@ export class ActorGrants {
     return this.memberships.length > 0;
   }
 
-  // Every role and privilege in force now: each membership's roles, then the privileges.
+  // Roles first, then privileges.
   active(now: Date = new Date()): Grant[] {
     const roles = this.memberships.flatMap((membership) => membership.activeRoles(now).map((role) => role.toGrant()));
     return roles.concat(this.activePrivileges(now).map((privilege) => privilege.toGrant()));
   }
 
-  // What a privilege boundary compares an actor against: each distinct role it holds now (by the slug it is known
-  // by), leaving out the slugs the scope owner says grant nothing, then each privilege in force.
+  // For privilege boundary checks: roles deduped by effective slug, minus the ones that grant nothing, then privileges.
   distinctActiveGrants({ grantsNothing, now = new Date() }: { grantsNothing: string[]; now?: Date }): Grant[] {
     return this.distinctActiveRoleGrants({ grantsNothing, now }).concat(
       this.activePrivileges(now).map((privilege) => privilege.toGrant())
     );
   }
 
-  // The roles half of distinctActiveGrants, for an owner that reads roles and privileges with different tables.
+  // Roles only, for owners that read privileges from a different table.
   distinctActiveRoleGrants({ grantsNothing, now = new Date() }: { grantsNothing: string[]; now?: Date }): Grant[] {
     const seen = new Set<string>(grantsNothing);
     return this.memberships
@@ -67,14 +66,14 @@ export class ActorGrants {
     return this.privileges.filter((privilege) => privilege.isActive(now));
   }
 
-  // Whether an active role carries this slug: a custom role's own slug, or a built-in slug.
+  // Matches a custom role's own slug too. Use hasActiveBuiltInRole when that must not count.
   hasActiveRole(slug: string, now: Date = new Date()): boolean {
     return this.memberships.some((membership) =>
       membership.activeRoles(now).some((role) => role.effectiveSlug === slug)
     );
   }
 
-  // Whether an active role is this built-in slug. A custom role slugged the same never matches.
+  // A custom role with the same slug never matches.
   hasActiveBuiltInRole(slug: string, now: Date = new Date()): boolean {
     return this.memberships.some((membership) => membership.activeRoles(now).some((role) => role.isBuiltIn(slug)));
   }
@@ -83,7 +82,7 @@ export class ActorGrants {
     return Object.fromEntries(this.attributes.map((attribute) => [attribute.key, attribute.value]));
   }
 
-  // The grants of several scopes held together (a folder and an account in it).
+  // Combines grants from several scopes (e.g. a folder and an account in it).
   merge(other: ActorGrants): ActorGrants {
     return new ActorGrants(
       [...this.memberships, ...other.memberships],

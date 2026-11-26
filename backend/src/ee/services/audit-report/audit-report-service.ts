@@ -110,7 +110,7 @@ export const auditReportServiceFactory = ({
     }
   };
 
-  // A recipient is checked as the user it is, not as the requester, so it gets a context of its own.
+  // Recipients are checked as themselves, not as the requester, so each gets its own context.
   const $recipientContext = async (recipientUserId: string, requester: TAuditReportServiceActor) => {
     const user = await userDAL.findById(recipientUserId);
     return actorContextService.forPrincipal({

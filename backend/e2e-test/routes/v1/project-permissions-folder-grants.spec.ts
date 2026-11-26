@@ -9,7 +9,7 @@ import { addUserMembership, createUser, createUserAccessToken, deleteUsers } fro
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
 
-// A member whose project role grants no secret access, so any secret access it has comes from its folder grant.
+// The member's role grants no secret access, so whatever it can see comes from its folder grant.
 describe("Project permission checks that count a member's folder grants", () => {
   let userId: string;
   let memberToken: string;

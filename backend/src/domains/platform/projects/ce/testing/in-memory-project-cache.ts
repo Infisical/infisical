@@ -3,8 +3,7 @@ import type { TGrantActor } from "@app/domains/platform/access-control/ce/module
 import { Project, TProjectRecord } from "../models/project";
 import { TProjectCache } from "../services/dependencies";
 
-// Behaves like ProjectCache with its marker TTL at 0: the fingerprint is checked on every read, and the project is
-// loaded again only when it changed.
+// Like ProjectCache with marker TTL 0: checks the fingerprint on every read, reloads only when it changed.
 export class InMemoryProjectCache implements TProjectCache {
   private readonly entries = new Map<string, { fingerprint: string; record: TProjectRecord }>();
 

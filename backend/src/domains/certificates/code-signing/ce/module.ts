@@ -10,7 +10,6 @@ export type TCodeSigningDeps = {
   projectResourcePermissionService: TProjectResourcePermissionService;
 };
 
-// Code Signing: its signer roles and permission for now. More moves in as signers move into domains.
 export class CodeSigningModule {
   readonly signerPermissionService: TSignerPermissionService;
 

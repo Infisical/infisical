@@ -302,5 +302,5 @@ const buildProjectAdminApplicationFallbackRules = () => {
 export const applicationAdminPermissions = buildApplicationAdminPermissionRules();
 export const applicationOperatorPermissions = buildApplicationOperatorPermissionRules();
 export const applicationAuditorPermissions = buildApplicationAuditorPermissionRules();
-// What a project admin gets on an application it holds no role on, and on top of the roles it holds.
+// Project admins get these on an application even with no role on it, on top of any roles they hold.
 export const projectAdminApplicationFallbackPermissions = buildProjectAdminApplicationFallbackRules();

@@ -17,61 +17,56 @@ export type TGrantScope =
 
 export type TGroup = Pick<TGroups, "id" | "orgId" | "name" | "slug">;
 
-// A membership an actor holds, directly or through one of its groups.
+// Held directly or through one of the actor's groups.
 export type TActorMembership = { actor: TGrantActor; membership: Membership };
 
 export type TRoleOwner = { orgId: string } | { projectId: string };
 
-// Read-only over every table Access Control owns (memberships, membership_roles, roles, additional_privileges,
-// groups, user_group_membership, identity_group_membership, identity_metadata), as one store so a check costs the
-// round trips it always has. The writes, and a store per entity, come when the membership writes move here.
+// Read-only over every table Access Control owns. One store so a check doesn't pay extra DB round trips.
 export type TGrantStore = {
-  // The actor's memberships at the scope, directly or through its groups, with their roles; its privileges at the org
-  // or project scope (never folder grants); and its attributes. A resource scope reads only active memberships and
-  // has no privileges.
+  // Memberships (direct or via groups) with roles, org/project privileges (never folder grants) and attributes.
+  // At a resource scope: active memberships only, no privileges.
   findActorGrants(actor: TGrantActor, scope: TGrantScope, options?: TReadOptions): Promise<ActorGrants>;
-  // A hash of everything findActorGrants reads for the actor in one project, its resources and its org. It changes
-  // when a membership, role assignment, custom role, privilege or attribute changes, or when a temporary grant ends.
+  // Covers the project, its resources and its org. Changes on any membership, role assignment, custom role,
+  // privilege or attribute change, and when a temporary grant ends.
   findGrantsFingerprint(
     actor: TGrantActor,
     scope: { orgId: string; projectId: string },
     options?: TReadOptions
   ): Promise<string>;
-  // Every membership in the project (users, identities and groups) with its roles, and the project-wide privileges
-  // and the attributes of its direct user and identity members. Active or not.
+  // All memberships (users, identities, groups) with roles, plus project-wide privileges and direct members'
+  // attributes. Active or not.
   findProjectMemberGrants(
     scope: { orgId: string; projectId: string },
     options?: TReadOptions
   ): Promise<ProjectMemberGrants>;
   // The actor's own folder grants in a project, active or not.
   findFolderGrants(input: { actor: TGrantActor; projectId: string }, options?: TReadOptions): Promise<Privilege[]>;
-  // Every folder grant in a project, of every user and identity, active or not.
+  // Every user's and identity's folder grants, active or not.
   findProjectFolderGrants(input: { projectId: string }, options?: TReadOptions): Promise<Privilege[]>;
-  // The actor's memberships on resources of one type in a project, directly or through its groups, active or not.
+  // Direct or via groups, active or not.
   findResourceMembershipsForActor(
     input: { actor: TGrantActor; projectId: string; resourceType: string },
     options?: TReadOptions
   ): Promise<Membership[]>;
-  // findResourceMembershipsForActor for many actors and resource types in a fixed number of queries. A group's
-  // membership comes back once for each requested actor in that group, paired with that actor.
+  // Fixed number of queries. A group's membership comes back once per requested actor in that group.
   findResourceMembershipsForActors(
     input: { actors: TGrantActor[]; projectId: string; resourceTypes: string[] },
     options?: TReadOptions
   ): Promise<TActorMembership[]>;
-  // The org's or project's custom roles with these slugs; slugs with no role are left out.
+  // Slugs with no custom role are left out.
   findRolesBySlugs(input: { owner: TRoleOwner; slugs: string[] }, options?: TReadOptions): Promise<Role[]>;
   findGroupsByIds(ids: string[], options?: TReadOptions): Promise<TGroup[]>;
 };
 
 export type TActorGrantsCache = {
-  // The actor's grants in a project, served from the cache while their fingerprint is unchanged, otherwise loaded.
   getOrLoad(input: {
     actor: TGrantActor;
     projectId: string;
     fingerprint: () => Promise<string>;
     load: () => Promise<ActorGrants>;
   }): Promise<ActorGrants>;
-  // The fingerprint of the grants getOrLoad serves now: the live marker's, otherwise a fresh one.
+  // Fingerprint of what getOrLoad serves now: the live marker's, otherwise a fresh one.
   readFingerprint(input: {
     actor: TGrantActor;
     projectId: string;

@@ -124,7 +124,7 @@ const buildFolderRoleRules = (applyRules: (can: TProjectCan) => void) => {
   return rules;
 };
 
-// A grant that applies to subfolders also lets its edit tier and above create and edit the folders below it.
+// Recursive grants also let edit and above create/edit the folders below.
 const buildFolderRoleTable = (
   recursive: boolean
 ): Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]> => ({
@@ -138,26 +138,23 @@ const buildFolderRoleTable = (
 export const SECRET_FOLDER_ROLE_PERMISSIONS = buildFolderRoleTable(false);
 export const RECURSIVE_SECRET_FOLDER_ROLE_PERMISSIONS = buildFolderRoleTable(true);
 
-// The roles whose recursive grant lets its holder create and edit folders across the subtree.
 export const FOLDER_EDITING_ROLES = new Set([
   SecretFolderRole.Edit,
   SecretFolderRole.Manage,
   SecretFolderRole.FullAccess
 ]);
 
-// A folder path with no empty, leading or trailing segments: "/" for the root, "/a/b" below it.
 export const canonicalFolderPath = (folderPath: string) => {
   const segments = folderPath.split("/").filter(Boolean);
   return segments.length ? `/${segments.join("/")}` : "/";
 };
 
-// The glob a grant that applies to subfolders matches: the folder and everything below it.
+// Matches the folder itself and everything below it.
 export const recursiveFolderPathGlob = (folderPath: string) => {
   const path = canonicalFolderPath(folderPath);
   return path === "/" ? "/**" : `${path}/**`;
 };
 
-// Whether the folder is strictly below the ancestor.
 export const isFolderPathBelow = (folderPath: string, ancestorPath: string) => {
   const folder = canonicalFolderPath(folderPath);
   const ancestor = canonicalFolderPath(ancestorPath);
@@ -263,7 +260,6 @@ type TProjectRawRule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
 
 const toArray = <T>(value: T | T[]): T[] => (Array.isArray(value) ? value : [value]);
 
-// What each folder role means, and the denies a grant of it puts in front of its allows at the granted folder.
 export class FolderRoles {
   private constructor() {}
 
@@ -271,8 +267,7 @@ export class FolderRoles {
     return Object.values(SecretFolderRole).includes(role as SecretFolderRole);
   }
 
-  // Drops each deny action the rules also allow on the same subject, so a role's own allows are not denied by the
-  // deny block that comes before them.
+  // Drops denies the role itself allows, otherwise the deny block in front would cancel the role's own allows.
   static filterOverriddenDenyRules(rules: TProjectRawRule[]): TProjectRawRule[] {
     const allowedPairs = new Set<string>();
     rules

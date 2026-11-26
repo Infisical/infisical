@@ -83,8 +83,8 @@ describe("toOauthTokenError", () => {
     expect(mapped.statusCode).toBe(400);
   });
 
-  // getOrgPermission refuses a subject that is not a member with the domain's error, which must be answered like the
-  // HTTP one rather than as a server_error.
+  // getOrgPermission refuses non-members with the domain error, which must map like the HTTP one, not to
+  // server_error.
   test("maps the domain's permission refusal and rule violation like their HTTP counterparts", () => {
     const refused = toOauthTokenError(
       new PermissionDeniedError({ message: "You are not a member of this organization with ID 8f2c." }),

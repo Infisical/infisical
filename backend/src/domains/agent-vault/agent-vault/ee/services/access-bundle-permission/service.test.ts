@@ -42,7 +42,6 @@ const userActor = (userId: string): TActorContext => ({
   }
 });
 
-// Projects' permission for an Agent Vault project, from the in-memory grants.
 const projectPermissionsOver = (actorGrantsService: FakeActorGrantsService) => {
   const getProjectPermission = vi.fn(async ({ actor, projectId }: TGetProjectPermissionInput) => {
     const { principal } = actor;
@@ -280,7 +279,7 @@ describe("AccessBundlePermissionService.getAgentVaultPermission", () => {
 });
 
 describe("AccessBundlePermissionService.intersectAccessBundleIds", () => {
-  // null is every bundle, the admin role's reach.
+  // null means every bundle (what the admin reaches).
   test.each([
     { a: null, b: null, expected: null },
     { a: null, b: [], expected: [] },

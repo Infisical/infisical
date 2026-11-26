@@ -155,7 +155,7 @@ const setup = ({
     encryptedValue: row.encryptedValue ? Buffer.from(row.encryptedValue) : null
   });
   const permissions = { canEditVariables, canReadVariables, isProjectMember: true };
-  // Built on every call, since a test can take a variable permission away after setup.
+  // Rebuilt per call since a test can take a variable permission away after setup.
   const permissionOf = () =>
     Permission.fromRules({
       rules: [

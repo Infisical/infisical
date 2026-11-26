@@ -4,7 +4,7 @@ import { TReadOptions } from "@app/domains/lib/data-access";
 import { TActorGrantsService, TActorGrantsTransaction } from "../services/actor-grants/service";
 import { TGrantActor, TGrantScope, TGrantStore } from "../services/dependencies";
 
-// For other domains' tests: the real service's answers straight from a store, with no cache in between.
+// For other domains' tests: reads straight from the store, no cache.
 export class FakeActorGrantsService implements TActorGrantsService {
   constructor(private readonly grantStore: TGrantStore) {}
 
@@ -44,7 +44,7 @@ export class FakeActorGrantsService implements TActorGrantsService {
     return this.grantStore.findResourceMembershipsForActors(input);
   }
 
-  // A store has no transactions, so a read on one is the same read.
+  // The store has no transactions, so a tx read is just a normal read.
   within(): TActorGrantsTransaction {
     return { listResourceMembershipsForActors: (input) => this.listResourceMembershipsForActors(input) };
   }

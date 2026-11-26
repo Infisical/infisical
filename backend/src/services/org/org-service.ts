@@ -222,7 +222,7 @@ export const orgServiceFactory = ({
     };
   };
 
-  // For a session refreshing its token, which has no request context in its org.
+  // For token refresh: the session has no request context in its org.
   const findOrganizationByIdForUser = async ({
     userId,
     authMethod,
@@ -245,7 +245,6 @@ export const orgServiceFactory = ({
       orgId
     });
     const organization = await findOrganizationById({ actor, orgId });
-    // A session the org's SSO enforcement refuses does not get its access token refreshed.
     const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(actor);
     if (ssoRefusal) {
       throw new ForbiddenRequestError({

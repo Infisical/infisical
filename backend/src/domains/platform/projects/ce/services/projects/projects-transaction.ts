@@ -2,10 +2,10 @@ import { TTransactionRunner } from "@app/domains/lib/transactions";
 
 import { TProjectsStores } from "../dependencies";
 
-// Locks the count until the caller's transaction ends and reads it on that transaction (the primary), so concurrent
-// writers checking the same limit queue up and each sees the others' rows.
+// Lock is held until the caller's tx ends and the count reads on that tx (primary), so concurrent writers checking
+// the same limit queue up and each sees the others' rows.
 export type TProjectsTransaction = {
-  // Same scope as countWorkspaces.
+  // Same scope as countWorkspaces (sub-orgs included).
   lockAndCountWorkspaces(orgId: string): Promise<number>;
 };
 

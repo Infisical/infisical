@@ -6,17 +6,16 @@ import { withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { FolderGrant, TFolderGrantRecord } from "../models/folder-grant";
 import { TFolderGrantCache } from "../services/dependencies";
 
-// The grants are kept ten minutes and served without a database read for ten seconds after they were last checked,
-// then checked again against their fingerprint.
+// Grants are kept 10 min, served without a DB read for 10s after the last check, then re-checked by fingerprint.
 const MARKER_TTL_SECONDS = 10;
 const DATA_TTL_SECONDS = 600;
 
-// Must comfortably exceed DATA_TTL_SECONDS: an expired row reads as 0 and the next bump re-inserts at 1, so a short
-// expiry lets a live cached value's fingerprint collide with the resurrected counter.
+// Must be well above DATA_TTL_SECONDS: an expired row reads 0 and the next bump re-inserts at 1, so a short expiry
+// can make a live cached fingerprint collide with the reset counter.
 const FOLDER_VERSION_EXPIRY = "2d";
 
-// The version is a Postgres key_value_store row, shared with the legacy permission service during a rolling deploy.
-// Bump the cache version when the cached shape changes, so a deploy never reads an older one.
+// folderVersion is a Postgres key_value_store row shared with the legacy permission service during rolling deploys.
+// Bump the v1 in the keys when the cached shape changes so a deploy never reads an old one.
 const FolderGrantKeys = {
   folderVersion: (projectId: string) => `project-folder-permission-version:${projectId}`,
   data: (projectId: string, actor: TGrantActor) =>
@@ -28,7 +27,7 @@ const FolderGrantKeys = {
 export class FolderGrantCache implements TFolderGrantCache {
   constructor(
     private readonly keyStore: TDomainKeyStore,
-    // 0 checks the fingerprint on every read: what tests use, so a change shows on the next request.
+    // 0 checks the fingerprint on every read (tests use it so a change shows on the next request).
     private readonly markerTtlSeconds: number = MARKER_TTL_SECONDS
   ) {}
 

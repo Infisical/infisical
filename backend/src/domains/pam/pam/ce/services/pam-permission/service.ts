@@ -24,7 +24,7 @@ import {
   PamResourcePermissionSub
 } from "../../models/permissions/pam-roles";
 
-// Every action in allOf, and at least one in anyOf, when given.
+// Needs every action in allOf and at least one in anyOf (both optional).
 export type TPamActionFilter = {
   allOf?: PamResourcePermissionActions[];
   anyOf?: PamResourcePermissionActions[];
@@ -44,12 +44,12 @@ export type TPamAccountRef = { id: string; folderId?: string | null };
 
 type TPackedPamRules = PackRule<RawRuleOf<MongoAbility<PamResourcePermissionSet>>>[];
 
-// Users and identities live in separate columns everywhere, so a key of the id alone would cross the two.
+// Users and identities are separate id spaces, so the type has to be in the key.
 export const pamActorKey = ({ type, id }: TGrantActor) => `${type}:${id}`;
 
-// What may read on a caller's transaction, so a re-check sees the membership changes it has not committed yet.
+// Reads on the caller's tx, so a re-check sees membership changes it hasn't committed yet.
 export type TPamPermissionTransaction = {
-  // getResourceIdsWithActions for many actors at once, keyed by pamActorKey.
+  // Keyed by pamActorKey.
   getResourceIdsWithActionsForActors(input: {
     actors: TGrantActor[];
     projectId: string;
@@ -65,17 +65,13 @@ export type TGetPamPermissionInput = {
 };
 
 export type TPamPermissionService = {
-  // What the actor may do on a PAM folder, an account, or an account in a folder: the roles it holds on either,
-  // together. isProjectAdmin on the result is the product admin, who gets nothing on a resource it holds no role on.
+  // Folder and account roles combined. The product admin (isProjectAdmin) gets nothing on a resource it has no role on.
   getPamPermission(input: TGetPamPermissionInput): Promise<ProjectResourcePermission<PamResourcePermissionSet>>;
-  // Refuses unless the account's and its folder's roles together allow the action. A folder member the folder does
-  // not allow it, holding no role on the account, is refused as a non-member of the account, as when the account was
-  // checked on its own.
+  // A folder member with no account role, whose folder roles don't allow the action, gets the account non-member
+  // error, same as checking the account alone.
   assertAccountAccess(input: TAccountAccessInput): Promise<void>;
-  // assertAccountAccess without the refusal, for deciding what a caller may do.
   canAccessAccount(input: TAccountAccessInput): Promise<boolean>;
-  // The folders and accounts the actor holds an active role on, directly or through a group, that allows the
-  // actions. A product admin gets none it holds no role on.
+  // Includes roles held through groups. The product admin gets nothing it has no role on.
   getResourceIdsWithActions(input: {
     actor: TActorContext;
     projectId: string;
@@ -86,15 +82,13 @@ export type TPamPermissionService = {
     projectId: string;
     actions: TPamActionFilter;
   }): Promise<Map<string, { folderIds: Set<string>; accountIds: Set<string> }>>;
-  // How long the actor keeps LaunchSessions on the account through its roles on the account or its folder: null while
-  // a granting role is permanent, 0 once none grants it.
+  // LaunchSessions time left from account or folder roles: null if a granting role is permanent, 0 if none grants it.
   getLaunchAccessRemainingMs(input: {
     actor: TGrantActor;
     projectId: string;
     account: TPamAccountRef;
   }): Promise<number | null>;
-  // Each account's packed rules from the actor's active roles on the account and on its folder, from one read, so a
-  // list can show what the actor may do on every row.
+  // One read for all accounts, so a list can show what the actor may do on every row.
   getAccountPermissionRules(input: {
     actor: TActorContext;
     projectId: string;
@@ -294,7 +288,7 @@ export class PamPermissionService implements TPamPermissionService {
     };
   }
 
-  // PAM is never reached through assumed privileges, so its resource roles are the principal's own.
+  // PAM is never reached through assumed privileges, so use the principal directly.
   private static grantActorOf(actor: TActorContext): TGrantActor {
     return { type: actor.principal.type, id: actor.principal.id } as TGrantActor;
   }

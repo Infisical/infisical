@@ -3,16 +3,15 @@ import { TProjectPermissionAuditSource, TProjectRule } from "@app/domains/platfo
 
 import { FolderGrant } from "./folder-grant";
 
-// The folder grants in force for one actor, layered over its project roles.
+// One actor's folder grants, layered over its project roles.
 export class FolderGrants {
   private constructor(private readonly grants: FolderGrant[]) {}
 
-  // The grants active at `now`: a temporary grant stops applying the moment it ends.
   static inForce(grants: FolderGrant[], now: Date = new Date()): FolderGrants {
     return new FolderGrants(grants.filter((grant) => grant.isActive(now)));
   }
 
-  // The grants as given, active or not.
+  // Keeps inactive grants too.
   static of(grants: FolderGrant[]): FolderGrants {
     return new FolderGrants([...grants]);
   }
@@ -29,12 +28,10 @@ export class FolderGrants {
     return this.grants.length === 0;
   }
 
-  // Each grant with the rules it contributes, in the order they apply: the grants that apply to subfolders,
-  // shallowest first, then the exact ones, each grant's denies right before its own allows. So the deepest recursive
-  // grant above a folder decides it, and an exact grant overrides every recursive grant at its own folder only.
-  // Grouping every deny ahead of every allow would let a shallow grant's allows override a deeper grant's denies. An
-  // exact grant keeps the recursive tables' folder create and edit only when the nearest recursive grant above it
-  // gives them.
+  // Order matters: recursive grants shallowest first, then exact ones, each grant's denies right before its allows.
+  // So the deepest recursive grant decides, and an exact grant wins at its own folder only. All denies first would let
+  // a shallow grant's allows beat a deeper grant's denies. An exact grant gets folder create/edit only if the nearest
+  // recursive grant above it gives it.
   rulesByGrant(): { grant: FolderGrant; rules: RuleSet<TProjectRule> }[] {
     const recursive = this.grants.filter((grant) => grant.appliesToSubfolders).sort((a, b) => a.depth - b.depth);
     const exact = this.grants.filter((grant) => !grant.appliesToSubfolders);
@@ -62,7 +59,7 @@ export class FolderGrants {
     return RuleSet.of(this.rulesByGrant().flatMap(({ rules }) => rules.rules));
   }
 
-  // Each grant as a permission audit source, in the order held, with the rules it contributes beside the others.
+  // Listed in the order held, but each with the rules it contributes in rulesByGrant order.
   auditSources(): TProjectPermissionAuditSource[] {
     const rulesById = new Map(this.rulesByGrant().map(({ grant, rules }) => [grant.id, rules]));
     return this.grants.map((grant) => grant.toAuditSource(rulesById.get(grant.id)));

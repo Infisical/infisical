@@ -11,15 +11,14 @@ export type TMembershipActor =
   | { type: ActorType.IDENTITY; id: string }
   | { type: "group"; id: string };
 
-// An actor's place in an org, a project or a resource, with the roles it holds there. A user or identity is a
-// member directly; a group's membership applies to every member of the group.
+// A group's membership applies to every member of the group.
 export class Membership {
   private constructor(
     private readonly record: Omit<TMembershipRecord, "roles">,
     private readonly roleAssignments: RoleAssignment[]
   ) {}
 
-  // Trusts the row. Dates may arrive as strings from a cache.
+  // No validation. Dates can come back as strings from the cache.
   static restore({ roles, ...record }: TMembershipRecord): Membership {
     return new Membership(
       {
@@ -67,7 +66,6 @@ export class Membership {
     return this.roleAssignments.filter((role) => role.isActive(now));
   }
 
-  // Whether this membership is the given user's or identity's own, or through one of the given groups.
   isFor({ actor, groupIds }: { actor: { type: ActorType; id: string }; groupIds: Set<string> }): boolean {
     if (this.record.actorGroupId) return groupIds.has(this.record.actorGroupId);
     return actor.type === ActorType.USER

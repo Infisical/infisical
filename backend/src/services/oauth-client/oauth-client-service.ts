@@ -165,7 +165,7 @@ export const oauthClientServiceFactory = ({
   userAliasDAL,
   auditLogService
 }: TOauthClientServiceFactoryDep) => {
-  // The user is checked in the client's org, which the request it arrived on carries no context for.
+  // The request carries no context for the client's org, so build one for the user there.
   const $userContextInOrg = ({
     userId,
     user,
@@ -569,8 +569,7 @@ export const oauthClientServiceFactory = ({
       orgId: client.orgId
     });
 
-    // A session the client org's sign-in policy refuses (enforced SSO, or a session another org's IdP issued)
-    // never consents for it.
+    // A session the client org's sign-in policy refuses (enforced SSO, or another org's IdP) can't consent for it.
     await assertSsoSessionAllowed(consentActor);
 
     // Called only for its side effects: it throws if the consenting user is not a member of the

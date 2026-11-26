@@ -4,21 +4,20 @@ import { Grant } from "../../models/grant";
 import { Role } from "../../models/role";
 import { TGrantStore, TRoleOwner } from "../dependencies";
 
-// A slug resolved to what holding it grants: a built-in slug as itself, a custom slug with its role.
+// Built-in slugs resolve to themselves (no role), custom slugs carry their role.
 export type TResolvedRole = { slug: string; grant: Grant; role?: Role };
 
 export type TResolveRolesInput = {
   owner: TRoleOwner;
   slugs: string[];
-  // The owner's built-in slugs; every other slug names one of its custom roles.
+  // Any slug not in here is treated as a custom role slug.
   builtInSlugs: readonly string[];
-  // Leaves out a custom slug with no role instead of refusing it.
+  // Drop custom slugs with no role instead of throwing.
   ignoreUnresolvedRoles?: boolean;
 };
 
 export type TRoleService = {
-  // Each slug in order, resolved against the owner's built-in slugs and custom roles. Refuses a custom slug with no
-  // role unless told to leave it out.
+  // Keeps slug order. Throws on a custom slug with no role unless ignoreUnresolvedRoles is set.
   resolveRoles(input: TResolveRolesInput): Promise<TResolvedRole[]>;
 };
 

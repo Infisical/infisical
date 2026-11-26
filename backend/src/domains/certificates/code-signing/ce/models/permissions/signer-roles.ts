@@ -82,5 +82,5 @@ const buildProjectAdminSignerFallbackRules = () => {
 export const signerAdminPermissions = buildSignerAdminPermissionRules();
 export const signerOperatorPermissions = buildSignerOperatorPermissionRules();
 export const signerAuditorPermissions = buildSignerAuditorPermissionRules();
-// What a project admin gets on a signer it holds no role on, and on top of the roles it holds.
+// Project admins get these on a signer even with no role on it, on top of any roles they hold.
 export const projectAdminSignerFallbackPermissions = buildProjectAdminSignerFallbackRules();

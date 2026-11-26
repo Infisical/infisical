@@ -10,21 +10,20 @@ import { TSsoSessionService } from "../sso-session/service";
 
 export type TRequestActorContext = {
   actor: TActorContext;
-  // Set when the org's sign-in policy refuses the session: the request is turned away as signed out.
+  // Set when the sign-in policy refuses the session; the request is treated as signed out.
   ssoRefusal: TSsoSessionRefusal | null;
 };
 
 export type TActorContextService = {
-  // The context the auth middleware puts on a request. A session not yet scoped to an existing org (before one is
-  // selected, or a deprecated API key) gets a context whose org refuses when used.
+  // For the auth middleware. Sessions not scoped to an existing org (none picked yet, or an API key) get an org
+  // that throws when read.
   forRequest(input: { principal: TPrincipal; orgId: string | undefined }): Promise<TRequestActorContext>;
-  // The context for a user or identity acting in one org outside a request. Refuses an org that does not exist.
+  // For use outside a request. Throws if the org doesn't exist.
   forPrincipal(input: { principal: TPrincipal; orgId: string }): Promise<TActorContext>;
-  // forPrincipal for a user session checked away from its own request (a stream refresh, a callback, a queued job, a
-  // check made for another member with the requester's sign-in method). Refuses when the org's sign-in policy no
-  // longer allows the session.
+  // Like forPrincipal, but re-checks the sign-in policy for a user session used outside its own request (stream
+  // refresh, callback, queued job, a check for another member using the requester's sign-in method).
   forSession(input: { principal: TPrincipal; orgId: string }): Promise<TActorContext>;
-  // The context for work the platform does in an org on nobody's behalf: queues, crons, consumers.
+  // Platform work on nobody's behalf (queues, crons, consumers).
   system(input: { orgId: string }): Promise<TActorContext>;
 };
 
@@ -68,7 +67,7 @@ export class ActorContextService implements TActorContextService {
     return this.forPrincipal({ principal: platformPrincipal(), orgId });
   }
 
-  // org is non-enumerable and throws on read, so spreading req.permission never trips it.
+  // Non-enumerable so spreading req.permission doesn't hit the throwing org getter.
   private static unscoped(principal: TPrincipal): TActorContext {
     return Object.defineProperty({ principal }, "org", {
       enumerable: false,

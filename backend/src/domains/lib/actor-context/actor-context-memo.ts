@@ -1,7 +1,7 @@
 import type { TActorContext } from "./actor-context";
 
-// Remembers a value per actor context and key, so repeated permission checks in one request compute once. Keyed on
-// the context object itself: it lives as long as the request does, and the entry goes with it.
+// Per-request memo for permission checks. Keyed on the context object itself, which lives as long as the request,
+// so entries go away with it.
 export class ActorContextMemo<T> {
   private readonly entries = new WeakMap<TActorContext, Map<string, Promise<T>>>();
 
@@ -15,7 +15,7 @@ export class ActorContextMemo<T> {
     if (existing) return existing;
     const pending = compute();
     forActor.set(key, pending);
-    // A failure is not remembered: the next check in the request tries again.
+    // Don't cache failures, the next check in the request retries.
     pending.catch(() => forActor.delete(key));
     return pending;
   }

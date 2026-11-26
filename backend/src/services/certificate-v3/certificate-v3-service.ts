@@ -259,7 +259,7 @@ const validateProfileAndPermissions = async ({
   }
 
   if (caller.enrollment) {
-    // The EST, SCEP and Microsoft autoenrollment services have already matched the client to the profile.
+    // EST, SCEP and MS autoenrollment already matched the client to the profile.
     if (PROTOCOL_ENROLLMENT_ACTORS.has(caller.enrollment.type)) {
       return profile;
     }

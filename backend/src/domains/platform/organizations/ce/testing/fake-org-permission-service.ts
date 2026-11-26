@@ -4,8 +4,6 @@ const notExpected = (method: string) => async (): Promise<never> => {
   throw new Error(`FakeOrgPermissionService.${method} was called but the test did not set it`);
 };
 
-// For tests of code that uses OrgPermissionService: every method refuses until a test replaces it, and canBypassSso
-// answers what `canBypass` says.
 export class FakeOrgPermissionService implements TOrgPermissionService {
   canBypass = false;
 

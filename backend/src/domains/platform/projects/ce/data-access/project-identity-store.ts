@@ -7,7 +7,7 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { TProjectIdentityStore } from "../services/dependencies";
 
-// Reads tables a future domain will own; see ../../AGENTS.md.
+// Reads tables another domain will own later (see ../../AGENTS.md).
 export class ProjectIdentityStore implements TProjectIdentityStore {
   constructor(private readonly connection: TStoreConnection) {}
 
@@ -48,7 +48,8 @@ export class ProjectIdentityStore implements TProjectIdentityStore {
     }
   }
 
-  // Attributed by owner (project, or the org when org-owned), not membership, for the same reason as above.
+  // Grouped by owner (identities.projectId, or the org), not membership: an identity can be in many projects but
+  // has one owner, so the total splits exactly once.
   async getProjectIdentityOwnershipBreakdown(
     projectType: ProjectType,
     orgId?: string,
@@ -74,8 +75,8 @@ export class ProjectIdentityStore implements TProjectIdentityStore {
     }
   }
 
-  // Shared by the meter and the usage breakdown so the breakdown can't disagree with what gets billed.
-  // Shaped to hit the partial unique indexes. Pending group members (invited, not joined) don't take a seat.
+  // Shared by the meter and the usage breakdown so they can't disagree. Shaped to hit the partial unique indexes.
+  // Pending group members (invited, not joined) don't take a seat.
   private static projectIdentityEntities(db: Knex, projectType: ProjectType, orgId?: string | null) {
     const scopedOrgIds = () => {
       const qb = db(TableName.Organization).select(`${TableName.Organization}.id`);

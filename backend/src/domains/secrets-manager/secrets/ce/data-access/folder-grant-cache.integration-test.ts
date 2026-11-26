@@ -14,8 +14,7 @@ import { FolderGrantCache } from "./folder-grant-cache";
 describe("FolderGrantCache.bumpFolderVersions", () => {
   const h = setupIntegration();
 
-  // The folder version lives in key_value_store, through the same DAL the server's key store uses; the Redis half
-  // of the key store is not used here.
+  // Folder version lives in key_value_store, via the same DAL the server's key store uses. Redis half isn't used.
   const postgresKeyStore = (): TDomainKeyStore => {
     const keyValueStore = keyValueStoreDALFactory(h.db);
     return Object.assign(new InMemoryKeyStore(), {

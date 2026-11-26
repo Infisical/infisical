@@ -2,8 +2,8 @@ import { TTransactionRunner } from "@app/domains/lib/transactions";
 
 import { TOrganizationsStores } from "../dependencies";
 
-// Locks the count until the caller's transaction ends and reads it on that transaction (the primary), so concurrent
-// writers checking the same limit queue up and each sees the others' rows.
+// Locks the count until the caller's tx ends and reads on that tx (primary), so concurrent writers on the same
+// limit queue up and see each other's rows.
 export type TOrganizationsTransaction = {
   // Counts the root org's tree for any org in it; null orgId = whole instance. Null when the org doesn't exist.
   lockAndCountBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number } | null>;

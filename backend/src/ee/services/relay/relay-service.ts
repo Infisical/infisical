@@ -971,7 +971,7 @@ export const relayServiceFactory = ({
   }: {
     host: string;
     name: string;
-    // The org relay's identity; absent for an instance relay, which authenticates with the relay auth secret.
+    // The org relay's identity. Unset for an instance relay, which auths with the relay auth secret.
     actor?: TActorContext;
   }) => {
     let relay: TRelays;
@@ -1083,7 +1083,7 @@ export const relayServiceFactory = ({
     actor
   }: {
     name: string;
-    // The org relay's identity; absent for an instance relay, which authenticates with the relay auth secret.
+    // The org relay's identity. Unset for an instance relay, which auths with the relay auth secret.
     actor?: TActorContext;
   }) => {
     const identityId = actor?.principal.id;

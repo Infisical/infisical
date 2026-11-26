@@ -12,7 +12,7 @@ import { createIdentityActor } from "../../testUtils/identities";
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
 
-// An identity access token carries the name it was issued with; {{identity.username}} must follow a rename.
+// The token carries the name it was issued with, but {{identity.username}} has to follow a rename.
 describe("{{identity.username}} after an identity is renamed", () => {
   let identityId: string;
   let identityToken: string;
@@ -41,7 +41,7 @@ describe("{{identity.username}} after an identity is renamed", () => {
     );
     folderIds.push(...folders.map((folder) => folder.id));
 
-    // Written straight to the table: the e2e license mock refuses custom roles through the API.
+    // Inserted directly since the e2e license mock refuses custom roles through the API.
     const slug = `by-name-${randomUUID().slice(0, 8)}`;
     const [role] = await testDb(TableName.Role)
       .insert({

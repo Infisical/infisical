@@ -30,37 +30,31 @@ import { SecretsPermissionTransaction, TSecretsPermissionTransaction } from "./s
 
 export type TSecretsPermission = {
   permission: ProjectPermission;
-  // The actor's folder grants in force now: none for a built-in admin, whom they never restrict, or a service token.
+  // Empty for a built-in admin (folder grants never restrict them) or a service token.
   folderGrants: FolderGrants;
 };
 
-// A user or identity whose folder grants are read, with the grants it holds in the project (for the admin check).
+// `grants` is only read to skip built-in admins.
 export type TFolderGrantTargetInput = { target: TGrantActor; projectId: string; grants: ActorGrants };
 
 export type TSecretsPermissionService = {
-  // What the actor may do in a Secret Manager project: its project roles, with its folder grants deciding at their
-  // folders. A service token gets the scopes it was issued with. Every Secret Manager check goes through it.
+  // Every Secret Manager check goes through this. Folder grants override project roles at their folders; service
+  // tokens get the scopes they were issued with.
   getSecretsPermission(input: { actor: TActorContext; projectId: string }): Promise<TSecretsPermission>;
-  // What the actor may do in a project of any type, with its folder grants when it is a Secret Manager project.
-  // For checks every project type shares that measure the whole permission, such as privilege boundaries.
+  // Any project type. For shared checks that need the whole permission, like privilege boundaries.
   getProjectPermissionWithFolderGrants(input: { actor: TActorContext; projectId: string }): Promise<ProjectPermission>;
-  // Every member's permission in the project (users, identities and groups), folder grants included, for listings
-  // of who can reach a secret. The caller checks the request may see them.
+  // Folder grants included. The caller has to check the request may see them.
   getProjectMemberPermissions(input: { orgId: string; projectId: string }): Promise<TProjectMemberPermissions>;
-  // A member's active folder grants as permission audit sources; none outside Secret Manager or for a built-in
-  // admin. Pass the grants getPermissionAuditSources returned for the member.
+  // Empty outside Secret Manager or for built-in admins. Pass the grants getPermissionAuditSources returned.
   getFolderGrantAuditSources(input: TFolderGrantTargetInput): Promise<TProjectPermissionAuditSource[]>;
-  // Each of a member's active folder grants as a permission of its own (allow rules only), for privilege
-  // boundaries; none outside Secret Manager or for a built-in admin.
+  // One permission per grant (allow rules only), for privilege boundaries. Empty outside Secret Manager or for admins.
   getFolderGrantPermissions(input: TFolderGrantTargetInput): Promise<Permission<ProjectPermissionSet>[]>;
-  // Changes whenever the actor's Secret Manager permission in the project may have: its grants, or the project's
-  // folder grants and folder tree. For caches of values derived from that permission.
+  // Changes when the actor's grants, the project's folder grants or its folder tree change. Use as a cache key.
   getPermissionFingerprint(input: { actor: TGrantActor; orgId: string; projectId: string }): Promise<string>;
-  // The fingerprint of the permission getSecretsPermission serves now, read from its caches while they are fresh, for
-  // a cache of answers built on it (the secret list ETag): it never pairs a newer fingerprint with older cached data.
+  // Read from the caches while fresh so a cache built on it (secret list ETag) never pairs a newer fingerprint with
+  // older cached data.
   getPermissionCacheFingerprint(input: { actor: TGrantActor; orgId: string; projectId: string }): Promise<string>;
-  // Makes cached folder grants of these projects revalidate, outside a transaction. A caller that changes a folder
-  // grant or the folder tree in a transaction uses within(tx) instead, so the bump commits with the change.
+  // Outside a transaction only. Inside one, use within(tx) so the bump commits with the change.
   invalidateFolderGrants(input: { projectIds: string[] }): Promise<void>;
   within(tx: TTransaction): TSecretsPermissionTransaction;
 };
@@ -185,7 +179,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     projectId: string;
   }): Promise<string> {
     const grants = await this.actorGrantsService.getCachedGrantsFingerprint({ actor, orgId, projectId });
-    // Without a live marker the folder grants are checked again before they are served, against exactly this.
+    // No live marker means the grants get revalidated against exactly this before they're served.
     const folderGrants =
       (await this.folderGrantCache.findLiveFingerprint({ actor, projectId })) ??
       `${grants}:${await this.folderGrantCache.getFolderVersion(projectId)}`;
@@ -200,8 +194,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     return new SecretsPermissionTransaction(this.folderGrantCache, tx);
   }
 
-  // Cached with the actor's grants and revalidated against the folder version, then filtered for expiry on every
-  // call, so a temporary grant stops applying the moment it ends.
+  // Expiry is filtered on every call so a temporary grant stops applying right when it ends.
   private async cachedFolderGrants({
     actor,
     orgId,
@@ -221,7 +214,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     return FolderGrants.inForce(grants);
   }
 
-  // Read fresh, not from the cache: an audit and a privilege boundary must see the grants as they are now.
+  // Not cached: audits and privilege boundaries need the grants as they are right now.
   private async targetFolderGrants({ target, projectId, grants }: TFolderGrantTargetInput): Promise<FolderGrants> {
     if (grants.hasActiveBuiltInRole("admin")) return FolderGrants.none();
     const project = await this.projectsService.findProject(projectId);
@@ -230,9 +223,8 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     return FolderGrants.inForce(await this.locateFolderGrants(projectId, privileges));
   }
 
-  // Each folder grant at its folder's location. A grant whose folder is gone, or that holds no role, grants nothing.
-  // From the primary, like the grants themselves: a replica still holding a renamed folder's old path would be cached
-  // under the newer folder version.
+  // From the primary: a replica still holding a renamed folder's old path would get cached under the newer folder
+  // version.
   private async locateFolderGrants(projectId: string, privileges: Privilege[]): Promise<FolderGrant[]> {
     const withFolder = privileges.filter((privilege) => privilege.folderId && privilege.folderRole);
     const locations = await this.folderLocationStore.findLocations(
@@ -254,7 +246,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
     actor: TActorContext;
     access: ProjectAccess;
   }): Promise<TSecretsPermission> {
-    // A folder grant can predate a promotion to admin; it must never restrict an admin.
+    // A folder grant can predate a promotion to admin, and it must never restrict an admin.
     const folderGrants = access.holdsBuiltInAdmin
       ? FolderGrants.none()
       : await this.cachedFolderGrants({

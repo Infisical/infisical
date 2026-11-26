@@ -49,7 +49,7 @@ const pamRoles = (): TProjectRoles =>
     [ProjectMembershipRole.Member]: readOnlyMember
   });
 
-// Like the PAM product's roles: the built-in admin gets admin rules, every other grant (privileges included) member rules.
+// Mimics PAM: built-in admin gets admin rules, every other grant (privileges too) gets member rules.
 const adminOrMemberRoles = (): TProjectRoles => ({
   projectType: ProjectType.PAM,
   rulesFor: (grant) => (grant.isBuiltIn(ProjectMembershipRole.Admin) ? genericProjectRoles.admin : readOnlyMember)
@@ -205,7 +205,7 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     await service.getProjectPermission({ actor: actor(), projectId });
     const identity = identityPrincipal();
     await addRole(ProjectMembershipRole.Member, { who: { identityId: identity.id } });
-    // Rewritten in place, so its version is unchanged: only a cache kept per actor reads it again.
+    // Rewritten in place so the version doesn't change; only a per-actor cache picks it up.
     projectStore.add({ id: projectId, orgId, enforceEncryptedSecretManagerSecretMetadata: true });
 
     // Action

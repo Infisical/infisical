@@ -30,12 +30,11 @@ let memberMembershipId: string;
 
 let actor: TActorContext;
 
-// The routes' services are encapsulated in their plugin, so build the domains over the same DB and Redis the test
-// server runs on.
+// Route services are encapsulated in their plugin, so build our own domains on the test server's DB and Redis.
 let secretsPermissionService: Pick<TSecretsPermissionService, "getSecretsPermission">;
 
-// The domains' cached folder grants for the member. Tests run with the cache marker off, so every read revalidates
-// against the fingerprint (grants plus the folder version) and only this data entry is written.
+// Member's cached folder grants. Cache marker is off in tests, so every read revalidates against the fingerprint
+// (grants + folder version) and only this data entry gets written.
 let folderGrantsDataKey: string;
 const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(projectId);
 
@@ -274,8 +273,7 @@ describe("Folder-scoped privilege permissions", () => {
     const versionAfterRename = await getFolderVersion();
     expect(versionAfterRename).toBeGreaterThan(versionBefore);
 
-    // The cached grants with the pre-rename fingerprint stay, so the refetch below is driven by the version bump,
-    // not by a cold cache.
+    // Old-fingerprint grants are still cached, so the refetch comes from the version bump, not a cold cache.
     const afterRename = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     expect(afterRename.folderGrants.list.map((grant) => grant.toJSON())).toEqual([
       expect.objectContaining({ folderId: folderB.id, secretPath: "/rbac-a-renamed/rbac-b" })

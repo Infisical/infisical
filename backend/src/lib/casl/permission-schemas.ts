@@ -34,7 +34,6 @@ export const PermissionConditionSchema = {
     )
 };
 
-// One rule as custom roles and privileges store it, unpacked.
 export const UnpackedPermissionSchema = z.object({
   subject: z
     .union([z.string().min(1), z.string().array()])

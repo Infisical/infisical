@@ -1,10 +1,9 @@
 /* eslint-disable class-methods-use-this */
 import { TOrganizationsService } from "../services/organizations/service";
 
-// For tests of code that uses Organizations: every org is its own root with nothing counted, until a test sets a
-// root or replaces a method.
+// Every org is its own root and counts are zero until a test sets a root or overrides a method.
 export class FakeOrganizationsService implements TOrganizationsService {
-  // Org id to root org id. Once any root is set, an org missing from the map does not exist.
+  // orgId -> rootOrgId. Once non-empty, orgs missing from it don't exist.
   roots = new Map<string, string>();
 
   setRoot(orgId: string, rootOrgId: string) {

@@ -7,7 +7,7 @@ import { FolderLocationStore } from "./folder-location-store";
 describe("FolderLocationStore.findLocations", () => {
   const h = setupIntegration();
 
-  // secret_folders belongs to Secret Manager but no domain owns it yet, so the test writes the rows directly.
+  // No domain owns secret_folders yet, so the test writes the rows directly.
   const folderTree = async () => {
     const tenant = await h.newTenant();
     const prod = tenant.environments.find((env) => env.slug === "prod")!;

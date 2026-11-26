@@ -124,8 +124,7 @@ describe("roleGrantsFolderAccess", () => {
     expect(roleGrantsFolderAccess(builtIn(ProjectMembershipRole.NoAccess), folder)).toBe(false);
   });
 
-  // KMS's cryptographic operator holds only CMEK rules, so it reaches no folder whether or not the product's roles
-  // define it.
+  // KMS crypto operator only has CMEK rules, so it reaches no folder either way.
   test("built-in KMS cryptographic operator grants no access", () => {
     expect(roleGrantsFolderAccess(builtIn(ProjectMembershipRole.KmsCryptographicOperator), folder)).toBe(false);
   });

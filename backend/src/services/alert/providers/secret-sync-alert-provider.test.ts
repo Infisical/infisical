@@ -244,7 +244,7 @@ describe("secret sync alert provider", () => {
   });
 
   describe("listing a project's sync alerts without naming a sync", () => {
-    // A denial is what the permission-denied audit hook records, with the action and subject it names.
+    // Has to be a denial so the permission-denied audit hook records it, with the action and subject.
     const expectAuditableReadDenial = async (result: Promise<void>) => {
       const error = await result.catch((err: unknown) => err);
       expect(error).toBeInstanceOf(PermissionDeniedError);

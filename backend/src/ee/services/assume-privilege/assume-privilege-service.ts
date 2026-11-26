@@ -57,8 +57,8 @@ export const assumePrivilegeServiceFactory = ({
       });
     }
 
-    // check entity is  part of project; only membership is read here, so the principal needs no profile. A user
-    // target is checked against the org's sign-in policy with the requester's sign-in method.
+    // check entity is part of project. Only membership is read, so the principal needs no profile. User targets are
+    // checked against the org's sign-in policy using the requester's sign-in method.
     const targetActor =
       targetActorType === ActorType.USER
         ? await actorContextService.forSession({

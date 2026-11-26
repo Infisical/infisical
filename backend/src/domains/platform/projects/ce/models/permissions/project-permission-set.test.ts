@@ -34,8 +34,7 @@ describe("ProjectPermissionV2Schema secret-folders actions", () => {
 });
 
 describe("ProjectPermissionV2Schema and the generic project roles", () => {
-  // Actions the role API refuses because another flow grants them, so a duplicate of a built-in role cannot carry
-  // them. The duplicate flow strips them.
+  // The role API refuses these since another flow grants them, so duplicating a built-in role strips them.
   const NON_GRANTABLE_ACTIONS_BY_SUBJECT: Record<string, string[]> = {
     [ProjectPermissionSub.SecretFolders]: [ProjectPermissionSecretFolderActions.ManageAccess]
   };

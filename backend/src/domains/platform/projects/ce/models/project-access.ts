@@ -16,8 +16,7 @@ import { Project } from "./project";
 import { ProjectPermission } from "./project-permission";
 import { TProjectRoles, TProjectRule } from "./standard-project-roles";
 
-// A forbid written before an action was split in two also forbids the two new actions, so an old custom role keeps
-// denying what it denied.
+// An old forbid on a since-split action also forbids the new actions, so old custom roles keep denying the same.
 const LEGACY_FORBID_ACTION_EXPANSIONS: Partial<
   Record<ProjectPermissionSub, { legacyAction: string; newActions: string[] }>
 > = {
@@ -54,8 +53,7 @@ const expandLegacyForbid = <T extends RawRuleOf<MongoAbility<ProjectPermissionSe
   return { ...rule, action: [...actions, expansion.legacyAction] as typeof rule.action };
 };
 
-// An actor's place in one project: the project, what it holds there, and what those roles mean in the project's
-// product. Products build their permission on it.
+// What an actor holds in one project and what those roles mean in its product. Products build permissions on it.
 export class ProjectAccess {
   private constructor(
     readonly project: Project,
@@ -84,14 +82,12 @@ export class ProjectAccess {
     return new ProjectAccess(project, grants, roles, principal, identity, usesNewPrivilegeSystem);
   }
 
-  // Several roles and privileges held together, as this product defines them: legacy forbids widened, then merged so
-  // a deny from one is not undone by another's allow.
+  // Widens legacy forbids, then merges so a deny from one role isn't undone by another's allow.
   static rulesOf(grants: Grant[], roles: TProjectRoles): RuleSet<TProjectRule> {
     return RuleSet.merge(grants.map((grant) => roles.rulesFor(grant).map((rule) => expandLegacyForbid(rule))));
   }
 
-  // Holds the built-in admin role, whatever a delegated OAuth token's scopes cut from its permission. A custom role
-  // slugged "admin" does not count.
+  // Ignores OAuth scope narrowing. A custom role slugged "admin" doesn't count.
   get holdsBuiltInAdmin(): boolean {
     return this.grants.hasActiveBuiltInRole(ProjectMembershipRole.Admin);
   }
@@ -100,8 +96,7 @@ export class ProjectAccess {
     return ProjectAccess.rulesOf(this.grants.active(), this.roles);
   }
 
-  // The permission from the actor's roles, with a product's own rules after them where it has any (Secrets' folder
-  // grants), which decide wherever they match.
+  // Product overrides (e.g. Secrets folder grants) go after the role rules and win wherever they match.
   toPermission({ overrides }: { overrides?: RuleSet<TProjectRule> } = {}): ProjectPermission {
     const rules = overrides ? this.roleRules().then(overrides) : this.roleRules();
     return ProjectPermission.build({

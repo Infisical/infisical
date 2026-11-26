@@ -26,7 +26,7 @@ export const toHttpError = (error: Error): Error => {
   if (error instanceof RuleViolationError) return new BadRequestError({ ...props, details: error.details });
   if (error instanceof EntityNotFoundError) return new NotFoundError(props);
   if (error instanceof StateConflictError) return new ConflictError(props);
-  // Same body as a CASL denial: error "PermissionDenied", the refused action and subject, and the rules that matched.
+  // Same body as a CASL denial: error "PermissionDenied", the refused action and subject, and the matched rules.
   if (error instanceof PermissionDeniedError && error.isBoundaryRefusal)
     return new PermissionBoundaryError({ ...props, details: error.details });
   if (error instanceof PermissionDeniedError) return new ForbiddenRequestError({ ...props, details: error.details });

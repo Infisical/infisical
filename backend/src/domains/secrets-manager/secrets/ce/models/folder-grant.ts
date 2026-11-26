@@ -23,30 +23,26 @@ import {
 export type TFolderGrantRecord = {
   id: string;
   name: string;
-  // The user or identity holding it.
   actorId: string | null;
   folderId: string;
   role: string;
-  // Where the folder is: its environment and full path.
   environmentSlug: string;
   secretPath: string;
-  // The grant reaches the folders below its folder too.
   appliesToSubfolders?: boolean;
   isTemporary: boolean;
   temporaryAccessStartTime: Date | null;
   temporaryAccessEndTime: Date | null;
 };
 
-// One folder grant: a folder role held on one secret folder, which decides what its holder may do at that folder's
-// environment and path (and below it, for a grant that applies to subfolders), whatever the project roles say there.
+// A folder role held on one folder. Overrides the project roles there (and below, if it applies to subfolders).
 export class FolderGrant {
   private constructor(
     private readonly record: TFolderGrantRecord,
     private readonly access: TemporaryAccess
   ) {}
 
-  // Trusts the record. Dates may arrive as strings from a cache. An unknown role is only refused when the grant's
-  // rules are built, so a listing still shows it.
+  // Dates can come back as strings from the cache. Unknown roles only throw once rules get built, so listings still
+  // show them.
   static restore(record: TFolderGrantRecord): FolderGrant {
     const restored: TFolderGrantRecord = {
       ...record,
@@ -58,8 +54,6 @@ export class FolderGrant {
     return new FolderGrant(restored, TemporaryAccess.restore(restored));
   }
 
-  // A folder grant privilege at its folder's location. Null when the privilege is not a folder grant or holds no
-  // role, since it grants nothing.
   static fromPrivilege(
     privilege: Privilege,
     location: { environmentSlug: string; secretPath: string }
@@ -110,18 +104,16 @@ export class FolderGrant {
     return Boolean(this.record.appliesToSubfolders);
   }
 
-  // The folder's path in canonical form, which the grant's conditions match against.
+  // Canonical, since the grant's conditions match against it.
   get folderPath(): string {
     return canonicalFolderPath(this.record.secretPath);
   }
 
-  // How many folders deep the grant's folder is; the root folder is 0.
   get depth(): number {
     return this.folderPath.split("/").filter(Boolean).length;
   }
 
-  // Whether the folder role lets its holder create and edit folders, which a grant that applies to subfolders gives
-  // across its subtree.
+  // A recursive grant with this lets its holder create and edit folders across the subtree.
   get editsFolders(): boolean {
     return FOLDER_EDITING_ROLES.has(this.knownRole());
   }
@@ -130,9 +122,8 @@ export class FolderGrant {
     return this.access.isActive(now);
   }
 
-  // What the folder role does not allow, denied at the folder (and below it, for a grant that applies to
-  // subfolders): it resets whatever the project roles allowed there. `recursiveTables` picks the role tables that
-  // also let the edit tier and above create and edit folders, which a grant that applies to subfolders always uses.
+  // Denies what the role doesn't allow at the folder, resetting whatever project roles allowed there.
+  // `recursiveTables` picks the tables where edit and above can also create/edit folders (recursive grants always do).
   denyBlock({ recursiveTables = this.appliesToSubfolders }: { recursiveTables?: boolean } = {}): RuleSet<TProjectRule> {
     const role = this.knownRole();
     return this.atFolder(
@@ -140,7 +131,6 @@ export class FolderGrant {
     );
   }
 
-  // What the folder role allows, at the folder (and below it, for a grant that applies to subfolders).
   allowBlock({
     recursiveTables = this.appliesToSubfolders
   }: { recursiveTables?: boolean } = {}): RuleSet<TProjectRule> {
@@ -150,19 +140,17 @@ export class FolderGrant {
     );
   }
 
-  // Its denies, then its allows.
   rules(options: { recursiveTables?: boolean } = {}): RuleSet<TProjectRule> {
     return this.denyBlock(options).then(this.allowBlock(options));
   }
 
-  // What the grant gives, without the denies, for a privilege boundary: the boundary reads every rule as a grant, so
-  // the deny half would make the holder look barred from the folder the grant opens.
+  // Allows only, for privilege boundaries: they read every rule as a grant, so the denies would make the holder look
+  // barred from the folder the grant opens.
   allowPermission(): Permission<ProjectPermissionSet> {
     return Permission.fromRules<ProjectPermissionSet>({ rules: this.allowBlock() });
   }
 
-  // The grant as one of the sources a member's permission audit lists, with the rules it contributes beside the
-  // holder's other grants (FolderGrants.rulesByGrant), or on its own.
+  // Pass `rules` from FolderGrants.rulesByGrant to show what it adds beside the holder's other grants.
   toAuditSource(rules: RuleSet<TProjectRule> = this.rules()): TProjectPermissionAuditSource {
     return {
       id: this.record.id,

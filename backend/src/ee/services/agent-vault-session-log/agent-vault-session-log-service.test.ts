@@ -35,8 +35,8 @@ import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { TCreateChunkUploadUrlDTO, TUpdateSessionLogSettingsDTO } from "./agent-vault-session-log-types";
 
-// Agent Vault's role rules are EE-only inside its domain. These stand in for the parts of its admin and member sets
-// the service reads: any member reads its own sessions; the admin reads every session and the project settings.
+// Agent Vault's real role rules are EE-only, so these stub just what the service reads: any member reads its own
+// sessions; admin reads every session and the project settings.
 const agentVaultMemberRules: TPermissionRule<ProjectPermissionSet>[] = [
   { action: [ProjectPermissionAgentVaultSessionActions.Read], subject: ProjectPermissionSub.AgentVaultSessions }
 ];

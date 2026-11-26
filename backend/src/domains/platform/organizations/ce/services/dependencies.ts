@@ -10,7 +10,7 @@ export type TOrganization = { id: string; name: string; slug: string };
 export type TOrganizationStore = {
   findRootOrgId(orgId: string, options?: TReadOptions): Promise<string | null>;
   findById(orgId: string, options?: TReadOptions): Promise<TOrganization | null>;
-  // The org with its root org's sign-in policy, as a request acting in it needs. Null when it doesn't exist.
+  // Includes the root org's sign-in policy.
   findActorOrg(orgId: string, options?: TReadOptions): Promise<TActorOrg | null>;
 };
 

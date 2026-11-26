@@ -129,7 +129,7 @@ export type TPamAccessApprovalResource = TApprovalResource<
   ) => Promise<{ revoked: TApprovalRequestGrants; sendCancellationSignals: () => void }>;
 };
 
-// The approval service hands a resource the actor its caller passed, which is always the request's actor context
+// Safe cast: the approval service passes back the caller's actor, which is always a request actor context
 // (req.permission, or one built with toApprovalActorContext).
 const toActorContext = (actor: TApprovalActor): TActorContext => actor as TApprovalActorContext;
 

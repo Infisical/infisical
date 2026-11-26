@@ -53,7 +53,7 @@ export const subOrgServiceFactory = ({
   projectDAL,
   certificatePolicyDAL
 }: TSubOrgServiceFactoryDep) => {
-  // Sub-organizations are listed and managed in the root org, so a request scoped to a sub-org is checked there.
+  // Sub-orgs are managed from the root org, so a sub-org-scoped request gets checked there.
   const $rootOrgActor = async (actor: TActorContext) =>
     actor.org.id === actor.org.rootOrgId
       ? actor

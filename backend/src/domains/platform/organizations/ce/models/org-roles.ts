@@ -17,9 +17,8 @@ const BUILT_IN_ROLES: Record<string, TOrgRule[]> = {
   [OrgMembershipRole.NoAccess]: orgNoAccessPermissions
 };
 
-// What org roles grant: the built-in ones as defined, a custom role or privilege as its own rules.
 export class OrgRoles {
-  // Refuses a slug that is neither built in nor custom.
+  // Throws on a slug that's neither built-in nor custom.
   static rulesFor(grant: Grant): TOrgRule[] {
     if (grant.isCustom()) return grant.customRules<TOrgRule>();
     const slug = grant.builtInSlug() as string;

@@ -13,8 +13,7 @@ import {
 
 type TFakeAccess = { rules: TProjectRule[]; reachesEveryBundle: boolean; grantedAccessBundleIds: string[] };
 
-// For tests of code that checks Agent Vault permissions: say what the actor may do in a project and which bundles it
-// is granted. An actor with nothing set is refused as a non-member.
+// An actor with nothing set is refused as a non-member.
 export class FakeAccessBundlePermissionService implements TAccessBundlePermissionService {
   private readonly access = new Map<string, TFakeAccess>();
 

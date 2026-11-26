@@ -4,8 +4,8 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { TMemberNames, TMemberNameStore } from "../services/dependencies";
 
-// Reads users and identities, which no domain owns yet: a declared exception (see ../../AGENTS.md). Only the names a
-// member listing shows.
+// Reads users and identities (just the names a member listing shows), which no domain owns yet. Declared exception,
+// see ../../AGENTS.md.
 export class MemberNameStore implements TMemberNameStore {
   constructor(private readonly connection: TStoreConnection) {}
 

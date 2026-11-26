@@ -67,8 +67,8 @@ const buildTx = (adminCount: number) => {
 // follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
 type TTestRule = { action: string | string[]; subject: string; conditions?: unknown };
 
-// Agent Vault's role rules are EE-only inside its domain. These stand in for the parts of its admin and member sets
-// the guards read: the admin manages members, groups and identities, the member only runs sessions.
+// Agent Vault's real role rules are EE-only, so these stub just what the guards read: admin manages members,
+// groups and identities; member only runs sessions.
 const agentVaultMemberRules: TTestRule[] = [
   {
     action: [

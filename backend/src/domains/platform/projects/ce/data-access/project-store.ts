@@ -25,8 +25,7 @@ export class ProjectStore implements TProjectStore {
       const row = (await knex(TableName.Project)
         .whereNull("deleteAfter")
         .whereNotIn("type", UNCOUNTED_WORKSPACE_TYPES)
-        // One IN over the org and its sub-orgs, not "orgId = ? OR orgId IN (...)": the OR keeps Postgres off the
-        // index and scans every project.
+        // Single IN over org + sub-orgs. "orgId = ? OR orgId IN (...)" skips the index and scans every project.
         .whereIn("orgId", knex(TableName.Organization).where("id", orgId).orWhere("rootOrgId", orgId).select("id"))
         .count("* as count")
         .first()) as { count?: string | number } | undefined;
@@ -52,7 +51,7 @@ export class ProjectStore implements TProjectStore {
   async findVersion(projectId: string, options?: TReadOptions): Promise<string> {
     try {
       const knex = this.connection.reader(options);
-      // As text, so two changes within one millisecond still differ.
+      // Read as text so two changes in the same millisecond still differ.
       const row = (await knex(TableName.Project)
         .where({ id: projectId })
         .first(knex.raw('"updatedAt"::text as "updatedAt"'), knex.raw('"deleteAfter"::text as "deleteAfter"'))) as

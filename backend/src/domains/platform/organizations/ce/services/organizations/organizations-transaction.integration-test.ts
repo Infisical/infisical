@@ -9,7 +9,7 @@ import { accessControlServices } from "@app/domains/platform/access-control/ce/t
 
 import { OrganizationsModule } from "../../module";
 
-// The limit checks project and identity create run on the caller's transaction (see ../../../AGENTS.md).
+// Project and identity create run their limit checks on the caller's tx (see ../../../AGENTS.md).
 describe("OrganizationsService.within", () => {
   const h = setupIntegration();
 

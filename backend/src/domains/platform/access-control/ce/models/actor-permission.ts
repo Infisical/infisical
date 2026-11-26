@@ -5,8 +5,8 @@ import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 
 import { Permission, TPermissionRule, TRuleSource } from "./permission";
 
-// A change to what another actor holds (their roles or privileges): the change asked for and what the target holds,
-// one entry per role, so a rule can scope the change to a role through its `assignableRole` field.
+// A change to another actor's roles or privileges. One target per role, so a rule can scope the change to a role
+// via its `assignableRole` field.
 export type TBoundsCheck<TSet extends AbilityTuple> = {
   actions: TSet[0] | TSet[0][];
   subject: Extract<TSet[1], string>;
@@ -16,8 +16,7 @@ export type TBoundsCheck<TSet extends AbilityTuple> = {
 
 export type TMissingPermission = { action: string; subject: string; conditions?: unknown };
 
-// The refusal names the rule that applied: the change's own permission under the new privilege system, otherwise the
-// actor holding less than the target.
+// New privilege system: the change's own permission refused it. Old system: the actor holds less than the target.
 export const permissionBoundsMessage = ({
   message,
   usesNewPrivilegeSystem,
@@ -35,8 +34,8 @@ export const permissionBoundsMessage = ({
       : ". Actor privilege level is not high enough to perform this action"
   }`;
 
-// What the actor making a request may do in its org or one of the org's projects. Built for that actor, so it knows
-// which privilege system the org uses and can bound a change the actor makes to what another actor holds.
+// The requesting actor's permission. Knows which privilege system the org uses so it can bound changes the actor
+// makes to another actor's grants.
 export class ActorPermission<TSet extends AbilityTuple> extends Permission<TSet> {
   protected constructor(
     ability: MongoAbility<TSet>,
@@ -55,9 +54,8 @@ export class ActorPermission<TSet extends AbilityTuple> extends Permission<TSet>
     return new ActorPermission<T>(Permission.abilityOf<T>(rules), usesNewPrivilegeSystem);
   }
 
-  // What stops this actor making the change, empty when nothing does. Under the org's new privilege system the
-  // change's own permission decides (any of the actions, the first reported); otherwise the actor must hold at least
-  // everything each target role holds. A target with no roles is measured as holding nothing.
+  // New privilege system: the change's own permission decides (any action passes, first one reported). Old system:
+  // the actor must hold everything each target role holds. No targets counts as holding nothing.
   boundsViolations({ actions, subject, fields, targets }: TBoundsCheck<TSet>): TMissingPermission[] {
     const actionList = Array.isArray(actions) ? actions : [actions];
     const measured = targets.length ? targets : [{ permission: Permission.none<AbilityTuple>() }];
@@ -72,8 +70,7 @@ export class ActorPermission<TSet extends AbilityTuple> extends Permission<TSet>
     return [];
   }
 
-  // Throws PermissionDeniedError named PermissionBoundaryError, with the missing permissions as its details, when
-  // boundsViolations finds any. `message` says what was refused; the rule that refused it is appended.
+  // `message` says what was refused; the reason gets appended.
   assertBounds({ message, ...check }: TBoundsCheck<TSet> & { message: string }): void {
     const missingPermissions = this.boundsViolations(check);
     if (!missingPermissions.length) return;

@@ -54,8 +54,7 @@ const memberRoles = [ProjectMembershipRole.Member];
 const viewerRoles = [ProjectMembershipRole.Viewer];
 const noAccessRoles = [ProjectMembershipRole.NoAccess];
 
-// Secret Manager projects use the standard project roles; folder grants decide at their folders, as
-// getSecretsPermission layers them.
+// Standard project roles, with folder grants layered on top the way getSecretsPermission does it.
 const roleRules = (roles: string[]) =>
   ProjectAccess.rulesOf(
     roles.map((slug) => Grant.restore({ slug })),
@@ -866,7 +865,7 @@ describe("FolderGrants.rules with recursive and exact grants together", () => {
     ["member", memberRoles]
   ] as const;
   const toArray = <T>(value: T | T[]): T[] => (Array.isArray(value) ? value : [value]);
-  // Whether an exact grant keeps folder create and edit under a recursive grant is its own rule, tested above.
+  // Skipped: whether an exact grant keeps folder create/edit under a recursive one has its own test above.
   const isFolderCreateOrEdit = (subjectName: string, action: string) =>
     subjectName === ProjectPermissionSub.SecretFolders &&
     (action === ProjectPermissionActions.Create || action === ProjectPermissionActions.Edit);

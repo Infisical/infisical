@@ -26,17 +26,16 @@ import { TProjectAccessListener, TProjectCache, TProjectStore } from "../depende
 export type TGetProjectPermissionInput = {
   actor: TActorContext;
   projectId: string;
-  // The product the call is for. A project of another type is refused; omit it for checks every project type shares.
+  // A project of another type is refused. Omit for checks every project type shares.
   type?: ProjectType;
 };
 
 export type TProjectRolePermission = {
   permission: Permission<ProjectPermissionSet>;
-  // The custom role, or the built-in slug as its own name.
+  // Built-in roles use their slug as the name.
   role: { name: string; slug: string; id?: string; description?: string | null; permissions?: unknown };
 };
 
-// One of the roles or project-wide privileges an actor holds in a project, as a permission audit shows it.
 export type TProjectPermissionAuditSource = {
   id: string;
   type: "role" | "group_role" | "additional_privilege";
@@ -51,31 +50,27 @@ export type TProjectPermissionAuditSource = {
 };
 
 export type TProjectPermissionService = {
-  // What the actor may do in the project from its project roles: checks every project type shares, and products
-  // whose roles are all they need (Cert Manager, Secret Scanning, KMS).
+  // For shared checks and products whose roles are all they need (Cert Manager, Secret Scanning, KMS).
   getProjectPermission(input: TGetProjectPermissionInput): Promise<ProjectPermission>;
-  // The actor's place in the project, for a product that adds its own rules (Secrets). Refuses a non-member.
+  // For products that add their own rules (Secrets). Throws for a non-member.
   getProjectAccess(input: TGetProjectPermissionInput): Promise<ProjectAccess>;
-  // The same, or null for an actor that is not a member of the project.
+  // Null for a non-member.
   findProjectAccess(input: TGetProjectPermissionInput): Promise<ProjectAccess | null>;
-  // What the roles held in projects of this type grant.
   getProjectRoles(input: { projectType: ProjectType }): TProjectRoles;
-  // Each slug as a permission of its own, as the project's product defines it: built-in slugs as defined, custom
-  // slugs from the project's custom roles. Refuses a slug with no role unless told to skip it.
+  // One permission per slug. Custom slugs come from the project's custom roles. Throws on an unknown slug unless
+  // ignoreUnresolvedRoles.
   getProjectPermissionByRoles(input: {
     projectId: string;
     roles: string[];
     ignoreUnresolvedRoles?: boolean;
   }): Promise<TProjectRolePermission[]>;
-  // Each active role and project-wide privilege another user or identity holds, as a permission of its own with its
-  // `{{identity.*}}` placeholders filled in. The caller passes the actor's name.
+  // One permission per active role and privilege, with `{{identity.*}}` placeholders filled in.
   getGrantPermissions(input: {
     actor: TGrantActor & { name: string };
     orgId: string;
     projectId: string;
   }): Promise<Permission<ProjectPermissionSet>[]>;
-  // The roles (direct and through groups) and project-wide privileges a user or identity holds, for its permission
-  // audit. Folder grants belong to Secrets, which adds them for its projects.
+  // No folder grants here: those belong to Secrets, which adds them for its projects.
   getPermissionAuditSources(input: {
     target: TGrantActor;
     orgId: string;
@@ -205,8 +200,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
       })
     ]);
     const projectType = project?.type ?? ProjectType.SecretManager;
-    // Roles read as the project's product defines them; privileges with the generic tables, as the legacy engine
-    // built them.
+    // Roles per the project's product, but privileges always use the generic tables (matches the legacy engine).
     const roles = project ? this.getProjectRoles({ projectType }) : StandardProjectRoles.generic(projectType);
     const generic = StandardProjectRoles.generic(projectType);
     const identity = RuleIdentity.create({ id: actor.id, username: actor.name, metadata: grants.attributeMap() });
@@ -244,7 +238,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
         message: `Target ${label} with ID '${target.id}' is not a member of project with ID '${projectId}' [${idName}=${target.id}] [projectId=${projectId}]`
       });
     }
-    // Generic tables whatever the project type, as the legacy audit built its sources.
+    // Always the generic tables, whatever the project type, to match the legacy audit.
     const roles = StandardProjectRoles.generic(project?.type ?? ProjectType.SecretManager);
     const groupIds = [
       ...new Set(grants.memberships.flatMap((membership) => (membership.viaGroupId ? [membership.viaGroupId] : [])))
@@ -299,7 +293,7 @@ export class ProjectPermissionService implements TProjectPermissionService {
     if (isPrincipal && principal.type === ActorType.USER) username = principal.username;
     if (isPrincipal && principal.type === ActorType.IDENTITY) username = principal.name;
     if (!isPrincipal && "assumed" in principal) username = principal.assumed?.actorName ?? "";
-    // identity.auth is knowable only for the identity making the request.
+    // identity.auth is only known for the identity making the request.
     const auth = isPrincipal && principal.type === ActorType.IDENTITY && principal.authInfo ? principal.authInfo : null;
     return RuleIdentity.create({ id: grantActor.id, username, metadata: grants.attributeMap(), auth });
   }

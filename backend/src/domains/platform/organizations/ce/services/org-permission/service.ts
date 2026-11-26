@@ -16,35 +16,34 @@ import { OrgPermissionSet } from "../../models/permissions/org-permission-set";
 
 export type TGetOrgPermissionInput = {
   actor: TActorContext;
-  // Defaults to the actor's org; any other org is refused.
+  // Defaults to the actor's org; any other org gets refused.
   orgId?: string;
-  // Refuses a sub-org for parent-only operations, and a root org for child-only ones.
+  // Rejects sub-orgs for parent-only ops and root orgs for child-only ones.
   scope?: OrganizationActionScope;
 };
 
 export type TOrgRolePermission = {
   permission: Permission<OrgPermissionSet>;
-  // The custom role; absent for a built-in slug.
+  // Only set for custom roles.
   role?: { id: string; name: string; slug: string; description?: string | null; permissions?: unknown };
 };
 
 export type TOrgPermissionService = {
-  // What the actor may do in its org. Refuses another org, a non-member, and the wrong org level.
+  // Refuses another org, non-members, and the wrong org level.
   getOrgPermission(input: TGetOrgPermissionInput): Promise<OrgPermission>;
-  // Each slug as a permission of its own: built-in slugs as defined, custom slugs from the org's custom roles.
-  // Refuses a slug with no role unless told to skip it.
+  // One permission per slug (built-ins as defined, custom ones from the org's roles). Throws on an unknown slug
+  // unless ignoreUnresolvedRoles is set.
   getOrgPermissionByRoles(input: {
     orgId: string;
     roles: string[];
     ignoreUnresolvedRoles?: boolean;
   }): Promise<TOrgRolePermission[]>;
-  // Each active org role and privilege another user or identity holds, as a permission of its own with its
-  // `{{identity.*}}` placeholders filled in. The caller passes the actor's name.
+  // One permission per active org role/privilege the actor holds. The name fills `{{identity.*}}` placeholders.
   getGrantPermissions(input: {
     actor: TGrantActor & { name: string };
     orgId: string;
   }): Promise<Permission<OrgPermissionSet>[]>;
-  // Whether the user's root org roles let it through the root org's SSO enforcement, on its full roles.
+  // Checked against the user's full root org roles.
   canBypassSso(input: { userId: string; rootOrgId: string }): Promise<boolean>;
 };
 
@@ -96,7 +95,7 @@ export class OrgPermissionService implements TOrgPermissionService {
     roles: string[];
     ignoreUnresolvedRoles?: boolean;
   }): Promise<TOrgRolePermission[]> {
-    // "custom" counts as built in, so it resolves to no rules rather than to a custom role of that slug.
+    // "custom" is listed as built in so it resolves to no rules, not to a custom role with that slug.
     const resolved = await this.roleService.resolveRoles({
       owner: { orgId },
       slugs: roles,

@@ -16,8 +16,7 @@ import { InMemoryFolderLocationStore } from "./in-memory-folder-location-store";
 import { InMemoryMemberNameStore } from "./in-memory-member-name-store";
 import { InMemoryServiceTokenStore } from "./in-memory-service-token-store";
 
-// The Secrets permission service over in-memory stores and Access Control, with one org and one Secret Manager
-// project, and helpers that seed what the tests need. The cache checks its fingerprint on every read.
+// One org, one Secret Manager project, plus seeding helpers. The cache checks its fingerprint on every read.
 export const buildSecretsPermission = () => {
   const accessControl = buildAccessControl();
   const projectStore = new FakeProjectsService();

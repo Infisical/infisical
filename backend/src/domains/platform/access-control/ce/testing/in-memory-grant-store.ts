@@ -44,7 +44,7 @@ const hasEnded = (row: { isTemporary?: boolean | null; temporaryAccessEndTime?: 
 const ownsPrivilege = (actor: TGrantActor, privilege: TAdditionalPrivileges) =>
   actor.type === ActorType.USER ? privilege.actorUserId === actor.id : privilege.actorIdentityId === actor.id;
 
-// Behaves like GrantStore over plain maps. Tests write through `rows` (see grant-fixture.ts); the store has no writes.
+// GrantStore over plain maps. The store is read-only, so tests write through `rows` (see grant-fixture.ts).
 export class InMemoryGrantStore implements TGrantStore {
   readonly rows: TInMemoryGrantRows = {
     memberships: new Map(),
@@ -249,7 +249,7 @@ export class InMemoryGrantStore implements TGrantStore {
       });
   }
 
-  // The inner join on membership_roles: a membership with no role assignment is not returned.
+  // Mirrors the inner join on membership_roles: memberships with no role assignment are dropped.
   private joinedMemberships(memberships: TMemberships[]): TMembershipRecord[] {
     return memberships
       .map((membership) => ({ ...membership, roles: this.assignmentsOf(membership.id) }))
@@ -262,7 +262,7 @@ export class InMemoryGrantStore implements TGrantStore {
       .sort(byId);
   }
 
-  // A user's attributes are per org; an identity belongs to one org, so its attributes are its own.
+  // User attributes are per org. An identity lives in one org, so no org filter needed.
   private actorAttributes(actor: TGrantActor, orgId: string): TIdentityMetadata[] {
     return [...this.rows.attributes.values()]
       .filter((attribute) =>
@@ -274,6 +274,6 @@ export class InMemoryGrantStore implements TGrantStore {
   }
 }
 
-// Transactions over the store for the real service in tests: reads only, so there is nothing to roll back.
+// Reads only, so there's nothing to roll back.
 export const inMemoryGrantTransactions = (grantStore: TGrantStore) =>
   new InMemoryTransactionRunner({ snapshot: () => null, restore: () => undefined }, () => ({ grantStore }));

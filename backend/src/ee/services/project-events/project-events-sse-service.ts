@@ -164,8 +164,7 @@ export const projectEventsSSEServiceFactory = ({
    * Fetch fresh permission from permission service
    */
   const fetchPermission = async (actor: TActorContext, projectId: string): Promise<TSSEPermissionCache> => {
-    // A subscription is accepted on a project of any type. In a Secret Manager project folder grants decide at their
-    // folders as they do for every other secret check.
+    // Any project type is accepted. In Secret Manager projects folder grants apply, like every other secret check.
     const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({ actor, projectId });
 
     return {
@@ -222,8 +221,8 @@ export const projectEventsSSEServiceFactory = ({
     if (!entry) return;
 
     try {
-      // A context of its own per refresh: the domains remember a permission for as long as its context lives.
-      // Re-checked against the org's sign-in policy too, so a session it stops allowing loses the stream.
+      // Fresh context per refresh since the domains cache a permission for as long as its context lives. Also rechecks
+      // the org's sign-in policy, so a session it no longer allows loses the stream.
       const actor = await actorContextService.forSession({
         principal: entry.opts.actor.principal,
         orgId: entry.opts.actor.org.id

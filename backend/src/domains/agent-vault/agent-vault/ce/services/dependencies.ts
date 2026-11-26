@@ -64,30 +64,28 @@ export type TAgentVaultPermission = {
 };
 
 export type TAgentVaultReachability = TAgentVaultPermission & {
-  // A role that reaches every bundle without a grant (the built-in admin).
+  // The built-in admin reaches every bundle without a grant.
   reachesEveryBundle: boolean;
-  // The bundles the actor reaches: null for every bundle, otherwise the ones it is granted.
+  // null means every bundle.
   accessBundleIds: string[] | null;
 };
 
 export type TAgentVaultGrantedReachability = TAgentVaultReachability & {
-  // The bundles granted to the actor, directly or through a group, whatever its role: what "mine" means for an actor
-  // that reaches every bundle.
+  // Granted directly or via a group, regardless of role. This is what "mine" means for an actor that reaches
+  // every bundle.
   grantedAccessBundleIds: string[];
 };
 
-// What the actor may do in an Agent Vault project, and which access bundles it reaches. Reaching a bundle is a filter
-// the services apply, not a CASL condition (conditions interpolate only identity.id, username and metadata).
+// Bundle reach is a filter the services apply, not a CASL condition (conditions only interpolate identity.id,
+// username and metadata).
 export type TAccessBundlePermissionService = {
-  // The project permission alone. Refuses a project of another type and a non-member.
+  // Refuses a project of another type and a non-member.
   getAgentVaultPermission(input: TGetAccessBundlePermissionInput): Promise<TAgentVaultPermission>;
-  // The permission and the bundles the actor reaches. An actor that is not a user or an identity reaches none.
+  // Actors that aren't a user or identity reach no bundles.
   getAccessBundlePermission(input: TGetAccessBundlePermissionInput): Promise<TAgentVaultReachability>;
-  // The same, plus the bundles granted to the actor whatever its role.
   getGrantedAccessBundlePermission(input: TGetAccessBundlePermissionInput): Promise<TAgentVaultGrantedReachability>;
-  // The bundles granted to the actor, directly or through one of the groups given. Pass only the groups that hold a
-  // live role in the project: a group's grants count only while it does.
+  // Only pass groups holding a live role in the project, a group's grants count only while it does.
   findReachableAccessBundleIds(input: { projectId: string; actor: TGrantActor; groupIds: string[] }): Promise<string[]>;
-  // The bundles both reach, where null reaches every bundle (so it returns the other side unchanged).
+  // null means every bundle, so a null side just returns the other one.
   intersectAccessBundleIds(a: string[] | null, b: string[] | null): string[] | null;
 };

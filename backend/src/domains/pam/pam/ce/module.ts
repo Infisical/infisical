@@ -25,8 +25,6 @@ export type TPamDeps = {
   actorGrantsService: TActorGrantsService;
 };
 
-// The PAM product: its usage counter, its roles (PamProjectRoles, which domains.ts hands to Projects) and its folder
-// and account permission for now.
 export class PamModule {
   readonly pamPermissionService: TPamPermissionService;
 

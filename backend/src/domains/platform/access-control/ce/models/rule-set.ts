@@ -30,8 +30,7 @@ const hbsTrimSuffix = (text: string, suffix: string) => {
     return textStr.endsWith(suffix) ? textStr.slice(0, -suffix.length) : textStr;
   }
 
-  // the matcher is run once per suffix position below, so every variable-length wildcard multiplies
-  // the backtracking across that whole scan.
+  // The matcher runs once per suffix position below, so each wildcard multiplies backtracking across the whole scan.
   const wildcardCount = [...suffix].filter((char) => char === "*" || char === "?").length;
   if (wildcardCount > HBS_TRIM_SUFFIX_MAX_GLOB_WILDCARDS) return textStr;
 
@@ -64,22 +63,19 @@ const handlebarsClient = (() => {
 const CASL_MANAGE_ACTION = "manage";
 const CASL_ALL_SUBJECT = "all";
 
-// `identity.auth.*` is read off the credential an identity authenticates with, so it is knowable only for the actor of
-// the live request. Rendered against a context that lacks it, the mustache collapses to an empty string, and the
-// condition it guarded turns into one nothing satisfies, which reads to a privilege boundary as a grant anybody
-// outranks. Rules that reference it keep their mustaches instead, so they stay unsatisfiable on both sides.
+// `identity.auth.*` only exists for the live requester. Rendered without it, the condition collapses to an empty
+// string that nothing satisfies, and a privilege boundary would read that as a grant anyone outranks. So rules that
+// reference it keep their mustaches and stay unsatisfiable on both sides.
 const AUTH_TEMPLATE_PATH = "identity.auth";
 
-// A rule on the CASL "all" subject (an org or project admin) fans out to every allowed subject; any other subject maps
-// to itself only when it is allowed, otherwise to nothing.
+// "all" (org/project admin) fans out to every allowed subject.
 const resolveTargetSubjects = (ruleSubject: string | undefined, allowed: Map<string, Set<string>>): string[] => {
   if (ruleSubject === CASL_ALL_SUBJECT) return [...allowed.keys()];
   if (ruleSubject && allowed.has(ruleSubject)) return [ruleSubject];
   return [];
 };
 
-// An ordered list of CASL rules. CASL lets the last matching rule decide, so the order is the precedence: merge keeps
-// a deny from one role from being undone by another's allow, and then lets a later layer decide where it matches.
+// Order matters: in CASL the last matching rule wins.
 export class RuleSet<TRule extends TRuleLike = TRuleLike> {
   private constructor(private readonly list: TRule[]) {}
 
@@ -91,8 +87,7 @@ export class RuleSet<TRule extends TRuleLike = TRuleLike> {
     return new RuleSet<T>([]);
   }
 
-  // Rules held together (several roles): everything any of them allows, and any of them can deny. Cannot rules go
-  // last, keeping each run in its order.
+  // Denies go last so one role's allow can't undo another role's deny.
   static merge<T extends TRuleLike>(sets: T[][]): RuleSet<T> {
     const flat = sets.flat();
     const isDeny = (rule: T) => Boolean(rule.inverted);
@@ -103,19 +98,17 @@ export class RuleSet<TRule extends TRuleLike = TRuleLike> {
     return [...this.list];
   }
 
-  // These rules, then the later ones: where both match, the later ones decide.
+  // Where both match, `later` wins.
   then(later: RuleSet<TRule>): RuleSet<TRule> {
     return new RuleSet<TRule>([...this.list, ...later.list]);
   }
 
-  // Fills `{{identity.*}}` placeholders. Built-in roles carry none, so a set without a mustache is returned as is,
-  // skipping the compile, the render and the reparse.
   interpolate(context: Record<string, unknown>): RuleSet<TRule> {
     return new RuleSet<TRule>(RuleSet.render(this.list, context));
   }
 
-  // Interpolation for stored rules read for someone other than the requester (a privilege boundary, a member
-  // listing): rules that read `identity.auth` keep their mustaches.
+  // For rules read on behalf of someone other than the requester (privilege boundary, member listing). Rules that
+  // read `identity.auth` keep their mustaches (see AUTH_TEMPLATE_PATH).
   interpolateStored(context: Record<string, unknown>): RuleSet<TRule> {
     const serialized = JSON.stringify(this.list);
     if (!serialized.includes("{{")) return this;
@@ -127,7 +120,7 @@ export class RuleSet<TRule extends TRuleLike = TRuleLike> {
     );
   }
 
-  // The subjects and actions a list of grants allows, merged per subject, in the shape narrowTo takes.
+  // Builds the input for narrowTo.
   static allowlistOf(entries: { subject: string; actions: string[] }[]): Map<string, Set<string>> {
     const allowed = new Map<string, Set<string>>();
     entries.forEach(({ subject, actions }) => {
@@ -138,9 +131,8 @@ export class RuleSet<TRule extends TRuleLike = TRuleLike> {
     return allowed;
   }
 
-  // Cuts the set down to the allowed subjects and actions (what a delegated OAuth token's scopes cover). Purely
-  // subtractive: allow rules out of scope are dropped, the rest narrowed to the allowed actions with their conditions,
-  // and cannot rules kept, since they only restrict.
+  // Narrows to e.g. a delegated OAuth token's scopes. Only ever subtracts: out-of-scope allows are dropped and denies
+  // are kept since they only restrict.
   narrowTo(allowed: Map<string, Set<string>>): RuleSet<TRule> {
     return new RuleSet<TRule>(
       this.list.flatMap((rule) => {

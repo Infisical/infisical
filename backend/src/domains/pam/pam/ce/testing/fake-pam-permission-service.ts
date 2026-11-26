@@ -27,8 +27,7 @@ import {
 
 type TPamResource = { resourceType: ResourceType.PamFolder | ResourceType.PamAccount; resourceId: string };
 
-// For tests of code that checks PAM permissions: give the actor folder or account roles, or make it the product
-// admin, and get what the PAM resource roles say they grant, a folder's and an account's together. Anyone else is
+// Assign folder/account roles or product admin; permissions come from the real PAM resource roles. Anyone else is
 // refused as a non-member.
 export class FakePamPermissionService implements TPamPermissionService {
   private readonly roles = new Map<string, string[]>();
@@ -88,7 +87,7 @@ export class FakePamPermissionService implements TPamPermissionService {
     throw new PermissionDeniedError({ message: `You are not a member of this ${last?.resourceType ?? "resource"}.` });
   }
 
-  // The reads over memberships answer from the same assigned roles, through the real service.
+  // Membership reads go through the real service, backed by the same assigned roles.
   private readonly memberships = new PamPermissionService(
     {} as TProjectResourcePermissionService,
     {

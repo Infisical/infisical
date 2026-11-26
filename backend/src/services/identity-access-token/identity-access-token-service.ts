@@ -880,8 +880,8 @@ export const identityAccessTokenServiceFactory = ({
     await bumpRevocationVersion(identityId);
   };
 
-  // A token carries the name it was issued with, and renewal copies it, so a rename reaches the principal only from
-  // the identities table; `{{identity.username}}` conditions must match the current name.
+  // Tokens keep their issue-time name (renewal copies it), so read the current name here for
+  // `{{identity.username}}` conditions.
   const getCurrentIdentityName = async (identityId: string) =>
     (await requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId)))?.name;
 

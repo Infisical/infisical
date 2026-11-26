@@ -273,8 +273,8 @@ declare module "@fastify/request-context" {
 
 declare module "fastify" {
   interface FastifyContextConfig {
-    // The route leaves the token's org (selecting another one) and checks the destination org's sign-in policy
-    // itself, so the current org's policy is not applied to the request.
+    // The route switches away from the token's org and checks the destination org's sign-in policy itself, so
+    // the current org's policy doesn't apply.
     skipCurrentOrgSsoCheck?: boolean;
   }
 

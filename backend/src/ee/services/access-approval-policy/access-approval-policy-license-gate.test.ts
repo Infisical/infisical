@@ -29,7 +29,7 @@ const createService = (secretApproval: boolean) => {
       findProjectBySlug: vi.fn().mockResolvedValue({ id: PROJECT_ID, orgId: ORG_ID })
     },
     secretsPermissionService: {
-      // the gate sits behind the authorization check, so the permission must allow the action
+      // the gate runs after the authz check, so the permission has to allow the action
       getSecretsPermission: vi.fn().mockResolvedValue({
         permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })
       })

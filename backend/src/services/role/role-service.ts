@@ -33,7 +33,7 @@ import {
   TUpdateRoleDTO
 } from "./role-types";
 
-// The membership rows the permissions endpoints return, with expired temporary roles left out.
+// Expired temporary roles are left out.
 const membershipRows = (memberships: Membership[]) =>
   memberships.map((membership) => ({
     id: membership.id,

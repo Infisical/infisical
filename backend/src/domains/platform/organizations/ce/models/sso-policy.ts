@@ -25,14 +25,14 @@ export type TSsoPolicyRecord = {
 };
 
 export type TSsoSession = {
-  // Null for the deprecated API key mode, which carries no sign-in method and is never checked.
+  // Null for deprecated API key auth: no sign-in method, never checked.
   authMethod: AuthMethod | null;
-  // The root org whose IdP issued the session; absent on own-credential sessions and on tokens issued before the
-  // claim existed, which are taken at their auth method.
+  // Root org whose IdP issued the session. Missing for own-credential sessions and for tokens minted before this
+  // claim existed (those are judged on authMethod alone).
   sessionRootOrgId?: string;
 };
 
-// A root org's sign-in policy. A sub-org has none of its own: its root's applies.
+// Root orgs only. Sub-orgs use their root's policy.
 export class SsoPolicy {
   private constructor(
     private readonly rootOrgId: string,
@@ -49,12 +49,12 @@ export class SsoPolicy {
     return Boolean(authMethod && SAML_AUTH_METHODS.includes(authMethod));
   }
 
-  // Whether a user the policy refuses may still pass on its own root org roles (the caller checks them).
+  // A refused user may still get through on their root org roles (caller checks those).
   get allowsBypass(): boolean {
     return this.bypassOrgAuthEnabled;
   }
 
-  // Why the policy refuses a user session, or null when it allows it. The bypass is not applied here.
+  // Null means allowed. Doesn't apply the bypass.
   refusalFor({ authMethod, sessionRootOrgId }: TSsoSession): TSsoSessionRefusal | null {
     if (authMethod === null) return null;
     if (this.googleSsoAuthEnforced && authMethod !== AuthMethod.GOOGLE) {
@@ -71,7 +71,7 @@ export class SsoPolicy {
           "Organization authentication is enforced. Cannot access org-scoped resource. Login with SAML SSO to access this resource."
       };
     }
-    // A session another org's IdP minted would otherwise satisfy this org's enforcement without its IdP, MFA or
+    // Otherwise a session from another org's IdP would pass enforcement here without this org's IdP, MFA or
     // deprovisioning ever seeing the login.
     if (this.authEnforced && sessionRootOrgId && sessionRootOrgId !== this.rootOrgId) {
       return {

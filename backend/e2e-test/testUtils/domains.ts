@@ -10,8 +10,8 @@ import { OrganizationsModule } from "@app/domains/platform/organizations/ce/modu
 import { ProjectsModule } from "@app/domains/platform/projects/ce/module";
 import { SecretsModule } from "@app/domains/secrets-manager/secrets/ce/module";
 
-// The permission domains over the database and key store the test server runs on, built the way createDomains builds
-// them with the caches' markers off, so a spec checks permissions without starting the License, KMS or queues.
+// Permission domains on the test server's DB and key store, wired like createDomains but with cache markers off,
+// so specs can check permissions without booting License, KMS or queues.
 export const buildPermissionDomains = (db: Knex, keyStore: TDomainKeyStore) => {
   const accessControl = new AccessControlModule({ db, keyStore, cacheMarkerTtlSeconds: 0 });
   const organizations = new OrganizationsModule({

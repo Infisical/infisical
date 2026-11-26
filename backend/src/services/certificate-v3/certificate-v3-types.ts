@@ -198,7 +198,7 @@ export type TRenewCertificateDTO = {
   auditLogInfo?: AuditLogInfo;
 } & TActorInput;
 
-// The renewal queue renews on nobody's behalf and skips authorization; every other caller passes its actor.
+// The renewal queue renews on nobody's behalf and skips authz; every other caller passes its actor.
 export type TRenewCertificateInput = Omit<TRenewCertificateDTO, "certificateRequestId" | "actor"> &
   (
     | { internal: true; actor?: undefined; organizationId?: string }

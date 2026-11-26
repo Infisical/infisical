@@ -8,8 +8,7 @@ const MAX_FOLDER_DEPTH = 20;
 
 type TFolderRow = Pick<TSecretFolders, "id" | "name" | "envId" | "parentId">;
 
-// The path from the environment's root, which is "/" itself. A folder whose parent is missing is placed under the
-// root.
+// Path from the env root ("/" for the root itself). A folder with a missing parent goes under the root.
 const folderPath = (folder: TFolderRow, byId: Map<string, TFolderRow>, depth = 0): string => {
   if (depth > MAX_FOLDER_DEPTH) throw new Error(`Maximum folder depth of ${MAX_FOLDER_DEPTH} exceeded`);
   if (!folder.parentId) return depth === 0 ? "/" : "";
@@ -18,8 +17,7 @@ const folderPath = (folder: TFolderRow, byId: Map<string, TFolderRow>, depth = 0
   return `${folderPath(parent, byId, depth + 1)}/${folder.name}`;
 };
 
-// Reads secret_folders and project_environments, which no domain owns yet: a declared exception (see
-// ../../AGENTS.md).
+// Reads secret_folders and project_environments, which no domain owns yet (declared exception, see ../../AGENTS.md).
 export class FolderLocationStore implements TFolderLocationStore {
   constructor(private readonly connection: TStoreConnection) {}
 

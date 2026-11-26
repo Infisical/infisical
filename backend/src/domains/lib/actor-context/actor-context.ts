@@ -1,6 +1,6 @@
 import type { TPrincipal } from "@app/lib/auth/principal";
 
-// The root org's sign-in policy, which every session in the org tree must satisfy.
+// Root org's sign-in policy, every session in the org tree has to satisfy it.
 export type TActorOrgSsoPolicy = {
   authEnforced: boolean;
   googleSsoAuthEnforced: boolean;
@@ -10,16 +10,15 @@ export type TActorOrgSsoPolicy = {
 export type TActorOrg = {
   id: string;
   name: string;
-  // The org itself for a root org.
+  // Same as id for a root org.
   rootOrgId: string;
   parentOrgId: string;
   shouldUseNewPrivilegeSystem: boolean;
   ssoPolicy: TActorOrgSsoPolicy;
 };
 
-// Who is acting and in which org, built once per request by the auth middleware (req.permission) and by
-// actorContextService for queues, crons and consumers. The project is not here: a permission service loads it from
-// the id it is given, because the project depends on the call, not the request.
+// Built once per request by the auth middleware (req.permission), or by actorContextService for queues, crons and
+// consumers. No project here on purpose: it depends on the call, not the request, so permission services load it.
 export type TActorContext = {
   principal: TPrincipal;
   org: TActorOrg;

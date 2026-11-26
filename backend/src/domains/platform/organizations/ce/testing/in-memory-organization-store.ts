@@ -2,8 +2,7 @@ import type { TActorOrg } from "@app/domains/lib/actor-context";
 
 import { TOrganization, TOrganizationStore } from "../services/dependencies";
 
-// Behaves like OrganizationStore over the orgs a test adds. A sub-org carries its root's sign-in policy, as the
-// store reads it.
+// Sub-orgs get their root's sign-in policy, same as the real store.
 export class InMemoryOrganizationStore implements TOrganizationStore {
   private readonly orgs = new Map<string, TActorOrg & { slug: string }>();
 

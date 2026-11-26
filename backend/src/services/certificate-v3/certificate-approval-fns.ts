@@ -270,7 +270,7 @@ export const certificateApprovalServiceFactory = (
     }
   };
 
-  // Approval requests were authorized when they were created, so the profile is only loaded here.
+  // Requests were authorized at creation, so just load the profile.
   const $getProfile = async (profileId: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {

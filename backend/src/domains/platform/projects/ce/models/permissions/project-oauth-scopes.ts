@@ -7,8 +7,7 @@ import {
   ProjectPermissionSub
 } from "./project-permission-set";
 
-// What each delegated OAuth scope allows on project subjects. A token keeps the user's rules only where a granted
-// scope covers them.
+// A delegated OAuth token keeps the user's rules only where a granted scope covers them.
 export const PROJECT_OAUTH_SCOPE_RULES: Record<OauthScope, { subject: ProjectPermissionSub; actions: string[] }[]> = {
   [OauthScope.SecretsRead]: [
     {
@@ -24,6 +23,6 @@ export const PROJECT_OAUTH_SCOPE_RULES: Record<OauthScope, { subject: ProjectPer
   ]
 };
 
-// The subjects and actions the granted scopes allow, in the shape RuleSet.narrowTo takes.
+// In the shape RuleSet.narrowTo expects.
 export const projectOauthAllowlist = (scopes: string[]) =>
   RuleSet.allowlistOf(scopes.flatMap((scope) => PROJECT_OAUTH_SCOPE_RULES[scope as OauthScope] ?? []));

@@ -13,19 +13,18 @@ import { conditionsMatcher } from "@app/lib/casl";
 
 export type TPermissionRule<TSet extends AbilityTuple> = RawRuleOf<MongoAbility<TSet>>;
 
-// Anything holding rules in order: a RuleSet of any rule type.
+// Any ordered rule holder, e.g. a RuleSet of any rule type.
 export type TRuleSource = { readonly rules: object[] };
 
-// One check: an action on a subject, optionally on an object of that subject described by its fields (an
-// environment and secret path, a key name). Fields are what CASL conditions match against.
+// `fields` describe the object (env and secret path, key name, ...) and are what CASL conditions match against.
 export type TPermissionCheck<TSet extends AbilityTuple> = {
   action: TSet[0];
   subject: Extract<TSet[1], string>;
   fields?: Record<string, unknown>;
 };
 
-// What an actor may do in one scope, built by that scope's owner. Wraps a CASL ability so callers check with objects
-// and never handle CASL; owners extend it with their own facts (the project, the admin role).
+// Built by the scope owner. Wraps CASL so callers never touch it; owners subclass to add their own facts (project,
+// admin role).
 export class Permission<TSet extends AbilityTuple> {
   protected constructor(private readonly ability: MongoAbility<TSet>) {}
 
@@ -33,7 +32,6 @@ export class Permission<TSet extends AbilityTuple> {
     return new Permission<T>(Permission.abilityOf<T>(rules));
   }
 
-  // Allows nothing.
   static none<T extends AbilityTuple>(): Permission<T> {
     return new Permission<T>(Permission.abilityOf<T>([]));
   }
@@ -43,8 +41,7 @@ export class Permission<TSet extends AbilityTuple> {
     return createMongoAbility<T>(list, { conditionsMatcher });
   }
 
-  // The subject CASL checks: the bare subject type, or the fields tagged with it. Copied, so the caller's object is
-  // never tagged.
+  // Copy the fields so CASL doesn't tag the caller's object.
   private static target<T extends AbilityTuple>({ subject, fields }: TPermissionCheck<T>) {
     return fields ? caslSubject(subject, { ...fields }) : subject;
   }
@@ -57,8 +54,7 @@ export class Permission<TSet extends AbilityTuple> {
     return !this.can(check);
   }
 
-  // Throws PermissionDeniedError naming the refused check and the rules that matched it, which the 403 response and
-  // the permission-denied audit log report.
+  // The matched rules end up in the 403 response and the permission-denied audit log.
   assert(check: TPermissionCheck<TSet>): void {
     if (this.can(check)) return;
     const action = check.action as string;
@@ -77,12 +73,11 @@ export class Permission<TSet extends AbilityTuple> {
     return this.ability.rules as TPermissionRule<TSet>[];
   }
 
-  // The rules packed for an API response.
   pack(): PackRule<TPermissionRule<TSet>>[] {
     return packRules(this.rules);
   }
 
-  // The CASL ability, for legacy code that still reads one.
+  // For legacy code that still needs a raw CASL ability.
   toAbility(): MongoAbility<TSet> {
     return this.ability;
   }

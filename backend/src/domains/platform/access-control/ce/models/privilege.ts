@@ -6,15 +6,15 @@ import { TemporaryAccess } from "./temporary-access";
 
 export type TPrivilegeRecord = TAdditionalPrivileges;
 
-// Permissions granted to one user or identity on top of their roles, org-wide or project-wide. A folder grant is a
-// privilege on one secret folder, holding a folder role instead of rules.
+// Extra permissions on top of roles, org- or project-wide. A folder grant is a privilege on one secret folder that
+// holds a folder role instead of rules.
 export class Privilege {
   private constructor(
     private readonly record: TPrivilegeRecord,
     private readonly access: TemporaryAccess
   ) {}
 
-  // Trusts the row. Dates may arrive as strings from a cache.
+  // No validation. Dates can come back as strings from the cache.
   static restore(record: TPrivilegeRecord): Privilege {
     const restored: TPrivilegeRecord = {
       ...record,
@@ -47,7 +47,7 @@ export class Privilege {
     return this.record.temporaryAccessEndTime ?? null;
   }
 
-  // The folder a folder grant is on, and the folder role it holds; null for other privileges.
+  // folderId and folderRole are null for anything but a folder grant.
   get folderId(): string | null {
     return this.record.folderId ?? null;
   }
@@ -56,7 +56,6 @@ export class Privilege {
     return this.record.folderId ? (this.record.role ?? null) : null;
   }
 
-  // Whether a folder grant reaches the folders below its folder too.
   get appliesToSubfolders(): boolean {
     return Boolean(this.record.folderId && this.record.appliesToSubfolders);
   }
@@ -65,7 +64,6 @@ export class Privilege {
     return this.access.isActive(now);
   }
 
-  // A privilege grants its rules the way a custom role does.
   toGrant(): Grant {
     return Grant.custom(this.record.permissions);
   }

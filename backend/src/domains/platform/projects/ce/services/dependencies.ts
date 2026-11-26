@@ -6,21 +6,20 @@ import { TIdentityOwnership } from "@app/domains/platform/organizations/ce/modul
 
 import { Project } from "../models/project";
 
-// Told about each actor's access to a project as it is resolved, nested checks included, for the request's audit
-// context; the domains never touch the request themselves.
+// Fires on every project access as it resolves (nested checks too) to feed the request's audit context, so the
+// domains never touch the request themselves.
 export type TProjectAccessListener = (access: { project: Project; grants: ActorGrants }) => void;
 
 export type TProjectStore = {
   countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;
   findById(projectId: string, options?: TReadOptions): Promise<Project | null>;
-  // Changes whenever the project row does (a setting, a scheduled deletion) and reads "missing" when it is gone, so
-  // a cached project is replaced within the cache's check interval.
+  // Changes with any row change and reads "missing" once it's gone, so a cached project gets replaced within the
+  // cache's check interval.
   findVersion(projectId: string, options?: TReadOptions): Promise<string>;
 };
 
 export type TProjectCache = {
-  // The project, from the cache while its version is unchanged, otherwise loaded. Kept per actor, as the legacy
-  // engine kept it inside each actor's permission, so an actor's first request always reads current settings.
+  // Cached per actor (like the legacy engine did), so an actor's first request always sees current settings.
   getOrLoad(input: {
     projectId: string;
     actor: TGrantActor;
@@ -29,8 +28,7 @@ export type TProjectCache = {
   }): Promise<Project>;
 };
 
-// The users and identities in a product's projects, which that product's usage meter bills. Null orgId = whole
-// instance.
+// Users and identities billed by the product's usage meter. Null orgId means the whole instance.
 export type TProjectIdentityStore = {
   countProjectIdentities(projectType: ProjectType, orgId: string | null, options?: TReadOptions): Promise<number>;
   countProjectIdentitiesByKind(

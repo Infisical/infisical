@@ -13,7 +13,6 @@ import {
 
 type TApplicationRule = TPermissionRule<ApplicationPermissionSet>;
 
-// What the roles held on a certificate application grant.
 export class ApplicationRoles implements TResourceRoles<ApplicationPermissionSet> {
   readonly resourceType = ResourceType.CertificateApplication;
 

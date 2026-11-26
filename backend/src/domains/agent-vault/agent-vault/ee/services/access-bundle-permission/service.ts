@@ -11,7 +11,7 @@ import {
   TGetAccessBundlePermissionInput
 } from "../../../ce/services/dependencies";
 
-// Reaching every bundle without a grant comes with the role, not with a permission. Keep this in step with
+// Reaching every bundle comes with the role, not a permission. Keep in sync with
 // AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE in ee/services/agent-vault, which the queries that lock or keep those role
 // rows read.
 const ROLES_REACHING_EVERY_BUNDLE: readonly string[] = [ProjectMembershipRole.Admin];
@@ -115,7 +115,7 @@ export class AccessBundlePermissionService implements TAccessBundlePermissionSer
     return { permission, reachesEveryBundle: AccessBundlePermissionService.reachesEveryBundle(permission) };
   }
 
-  // Any role carrying the slug, a custom one included, as legacy hasRole matched it.
+  // Matches any role with the slug, custom ones too, same as legacy hasRole.
   private static reachesEveryBundle(permission: ProjectPermission): boolean {
     return ROLES_REACHING_EVERY_BUNDLE.some((slug) => permission.hasRole({ slug }));
   }

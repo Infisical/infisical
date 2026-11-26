@@ -8,8 +8,7 @@ import { Project, ProjectAccess, ProjectPermission } from "@app/domains/platform
 import { kmsProjectRoles } from "../models/permissions/kms-project-roles";
 import { TGetKmsPermissionInput, TKmsPermissionService } from "../services/kms-permission/service";
 
-// For tests of code that checks KMS permissions: give the actor roles in a KMS project, which mean what
-// kmsProjectRoles says. An actor with none is refused as a non-member.
+// Roles mean what kmsProjectRoles says. An actor with none is refused as a non-member.
 export class FakeKmsPermissionService implements TKmsPermissionService {
   private readonly roles = new Map<string, string[]>();
 

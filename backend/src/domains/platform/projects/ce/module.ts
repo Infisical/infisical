@@ -48,9 +48,9 @@ export type TProjectsDeps = {
   roleService: TRoleService;
   groupService: TGroupService;
   orgPermissionService: TOrgPermissionService;
-  // What the roles held in each product's projects grant, for the products whose roles differ from the standard ones.
+  // Only for products whose roles differ from the standard ones.
   projectRoles: TProjectRoles[];
-  // Seconds the cached project is served without checking it; 0 checks on every read (tests).
+  // Seconds a cached project is served unchecked. 0 checks on every read (tests).
   cacheMarkerTtlSeconds?: number;
   onProjectAccess?: TProjectAccessListener;
 };

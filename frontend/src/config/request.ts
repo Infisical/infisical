@@ -75,9 +75,8 @@ let refreshPromise: Promise<string> | null = null;
 
 const SSO_SESSION_REFUSED_ERRORS = ["OrgSsoRequired", "ForeignSsoSession"];
 
-// The refresh cookie would mint a new token for a session the org's SSO policy refused, so that session is ended on
-// the server and the client state cleared before the login page loads. Plain axios: the refused token must not be
-// sent, and this request must not re-enter the interceptors.
+// Otherwise the refresh cookie would mint a new token for the refused session, so end it server-side and clear
+// client state before the login page loads. Plain axios so the refused token isn't sent and we skip the interceptors.
 const endRefusedSession = async () => {
   // Bounded, so an unreachable server can't hold the user on the page; local cleanup runs either way.
   await axios
@@ -179,8 +178,8 @@ apiRequest.interceptors.response.use(
       }
     }
 
-    // The organization's SSO policy refuses this session (enforcement turned on after sign-in, or a session
-    // another organization's identity provider issued). A refreshed token would be refused too, so sign out.
+    // The org's SSO policy refuses this session (enforced after sign-in, or issued by another org's IdP). A refreshed
+    // token would be refused too, so sign out.
     if (
       response &&
       response.status === 401 &&

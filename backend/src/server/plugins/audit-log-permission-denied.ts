@@ -74,7 +74,7 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
         permissionSubject:
           denial?.subject ?? (caslError?.subjectType ? String(caslError.subjectType) : missing?.subject),
         permissionSubjectDetails: pickSubjectDetails(denial ? denial.subjectFields : caslError?.subject),
-        // A domain denial records the name a CASL denial always had, so the audit log reads the same either way.
+        // Domain denials log the name CASL denials always had, so the audit log reads the same either way.
         errorName: denial ? "ForbiddenError" : error.name,
         route: req.routeOptions.url,
         method: req.method

@@ -16,7 +16,6 @@ import { TActorMembership, TGrantActor, TGrantScope, TGrantStore, TGroup, TRoleO
 
 type TMembershipRoleRow = Record<string, unknown> & { membershipId: string; membershipRoleId: string };
 
-// See TGrantStore: one read-only store over Access Control's tables.
 export class GrantStore implements TGrantStore {
   constructor(private readonly connection: TStoreConnection) {}
 
@@ -58,7 +57,7 @@ export class GrantStore implements TGrantStore {
         )
         .select(
           knex.ref("id").withSchema(TableName.Membership).as("mId"),
-          // isActive and status gate access; updatedAt moves on every login, so it is left out.
+          // Leave out updatedAt: it changes on every login and would bust the fingerprint.
           knex.ref("isActive").withSchema(TableName.Membership).as("mActive"),
           knex.ref("status").withSchema(TableName.Membership).as("mStatus"),
           knex.ref("id").withSchema(TableName.MembershipRole).as("rId"),
@@ -282,8 +281,8 @@ export class GrantStore implements TGrantStore {
     }
   }
 
-  // The ids of the actor's memberships in these scopes, direct or through its groups: one UNION ALL branch per scope and
-  // kind, because "actor = ? OR group IN (...)" keeps Postgres off the partial indexes and scans every membership.
+  // One UNION ALL branch per scope and kind: "actor = ? OR group IN (...)" keeps Postgres off the partial indexes
+  // and scans every membership.
   private static actorMembershipIds(
     knex: Knex,
     actor: TGrantActor,
@@ -304,7 +303,7 @@ export class GrantStore implements TGrantStore {
         const qb = knex(TableName.Membership).select("id").where("scopeOrgId", orgId).where("scope", scope);
         return scope === AccessScope.Organization ? qb : qb.where("scopeProjectId", projectId as string);
       };
-      // IS NOT NULL is implied by the IN, but Postgres only uses the partial group index when it is stated.
+      // Redundant with the IN, but Postgres only uses the partial group index if it's stated.
       return [
         inScope().where(directColumn, actor.id),
         inScope().whereNotNull("actorGroupId").whereIn("actorGroupId", actorGroupIds())
@@ -465,7 +464,7 @@ export class GrantStore implements TGrantStore {
   }
 
   private static attributeQuery(knex: Knex, actor: TGrantActor, orgId: string) {
-    // A user's attributes are per org; an identity belongs to one org, so its attributes are its own.
+    // User attributes are per org. An identity is in one org, so no org filter needed.
     return actor.type === ActorType.USER
       ? knex(TableName.IdentityMetadata).where({ userId: actor.id, orgId })
       : knex(TableName.IdentityMetadata).where({ identityId: actor.id });

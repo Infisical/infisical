@@ -13,35 +13,34 @@ import {
 
 import { Project } from "./project";
 
-// What the roles held on one kind of resource inside a project grant (a PAM folder or account, a certificate
-// application, a signer, an access bundle). The product implements it and passes it with each check.
+// Role rules for one resource kind in a project (PAM folder/account, cert application, signer, access bundle).
+// The product implements it and passes it with each check.
 export type TResourceRoles<TSet extends AbilityTuple> = {
   readonly resourceType: string;
-  // The rules for a role; throws for one the product does not define.
+  // Throws for a role the product doesn't define.
   rulesFor(grant: Grant): TPermissionRule<TSet>[];
-  // What a project admin gets on a resource it holds no role on, and on top of its roles where it holds some.
+  // What a project admin gets on a resource with no role, and on top of its roles when it has some.
   projectAdminRules(): TPermissionRule<TSet>[];
 };
 
-// TypeScript cannot resolve a CASL raw rule over a generic ability set, so it cannot see it is a rule like any other.
+// TS can't resolve a CASL raw rule over a generic ability set, so cast to the plain rule type.
 const asRules = <T extends AbilityTuple>(rules: TPermissionRule<T>[]) => rules as TRuleLike[];
 
-// What an actor may do on resources inside a project, from its memberships on them.
 export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permission<TSet> {
   private constructor(
     rules: TRuleSource,
-    // What it was built from, for code that still reads the membership rows.
+    // Kept for code that still reads membership rows.
     readonly grants: ActorGrants,
-    // True when the actor holds no role on the resource and gets the project-admin rules only.
+    // No role on the resource, only the project-admin rules.
     readonly isImplicitAdmin: boolean,
     readonly isProjectAdmin: boolean,
-    // The project, when the actor is a member of it.
+    // Only set when the actor is a project member.
     readonly project: Project | null = null
   ) {
     super(Permission.abilityOf<TSet>(rules));
   }
 
-  // The roles held on the resources together, then the project-admin rules for a project admin.
+  // Merged resource roles, with project-admin rules on top for project admins.
   static fromGrants<T extends AbilityTuple>({
     grants,
     roles,
@@ -58,7 +57,6 @@ export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permis
     return new ProjectResourcePermission<T>(rules, grants, false, isProjectAdmin, project);
   }
 
-  // A project admin with no role on the resource.
   static implicitAdmin<T extends AbilityTuple>({
     roles,
     project = null
@@ -75,7 +73,7 @@ export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permis
     );
   }
 
-  // Allows nothing: what a delegated OAuth token gets, since no scope covers resource memberships.
+  // Delegated OAuth tokens get this, since no scope covers resource memberships.
   static none<T extends AbilityTuple>(): ProjectResourcePermission<T> {
     return new ProjectResourcePermission<T>(RuleSet.empty(), ActorGrants.empty(), false, false);
   }

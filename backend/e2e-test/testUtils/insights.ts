@@ -22,12 +22,12 @@ const unreachable = (method: string) => (): never => {
   );
 };
 
-// Specs supply their own getOrgPermission; the project-scoped permission is never reached.
+// Specs pass their own getOrgPermission, so the project-scoped one is never hit.
 export const unreachableSecretsDomain = {
   getSecretsPermission: unreachable("secretsPermissionService.getSecretsPermission")
 } as unknown as TInsightsServiceFactoryDep["secretsPermissionService"];
 
-// The request's actor context for a user in an org, holding only what the insights permission checks read.
+// Only carries what the insights permission checks read.
 export const insightsActor = (userId: string, orgId: string) =>
   ({
     principal: { type: ActorType.USER, id: userId, authMethod: AuthMethod.EMAIL },

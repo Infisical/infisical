@@ -87,7 +87,6 @@ export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
   )
 ];
 
-// The role permissions as the targets a privilege boundary check measures, one per role.
 export const toBoundsTargets = (rolePermissions: { permission: Permission<AbilityTuple>; role?: { slug: string } }[]) =>
   rolePermissions.map(({ permission, role }) => ({ permission, roleSlug: role?.slug }));
 
@@ -170,9 +169,8 @@ type TMemberActorContextDeps = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
-// The actor context of a user or identity in the org, to build that member's own permission. A requester's sign-in
-// method (or the one given, for work queued from a request) and delegated OAuth scopes carry over to a user, and a
-// sign-in method is checked against the org's sign-in policy.
+// For building the member's own permission. The requester's delegated OAuth scopes carry over; for a user target
+// so does its sign-in method (or the stored one, for queued work), which is checked against the org's sign-in policy.
 export const buildMemberActorContext = async (
   { actorContextService, userDAL, identityDAL }: TMemberActorContextDeps,
   {

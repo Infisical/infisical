@@ -19,14 +19,14 @@ export type TSeedRole = {
 
 export type TSeededMembership = TMemberships & { roles: TMembershipRoles[] };
 
-// Writes the rows the grant store reads. The store has no writes, so each backend seeds its own way.
+// The grant store is read-only, so each backend seeds its rows its own way.
 export type TGrantSeeder = {
   role(input: {
     owner: { orgId: string } | { projectId: string };
     slug: string;
     permissions?: unknown;
   }): Promise<TRoles>;
-  // Roles default to a single built-in "member"; pass [] for a membership with no role assignment.
+  // Roles default to one built-in "member". Pass [] for a membership with no role assignment.
   membership(input: {
     scope: AccessScope | typeof RESOURCE_SCOPE;
     orgId: string;
@@ -37,7 +37,7 @@ export type TGrantSeeder = {
     isActive?: boolean;
     roles?: TSeedRole[];
   }): Promise<TSeededMembership>;
-  // A project or org privilege, or a folder grant when `folder` is given.
+  // Folder grant when `folder` is set, otherwise a project or org privilege.
   privilege(input: {
     actor: TSeedActor;
     orgId?: string;
@@ -50,7 +50,7 @@ export type TGrantSeeder = {
   attribute(input: { orgId: string; actor: TSeedActor; key: string; value: string }): Promise<TIdentityMetadata>;
   removeMembership(membershipId: string): Promise<void>;
   deactivateMembership(membershipId: string): Promise<void>;
-  // Moves a temporary role's end into the past, so a test never waits for the clock.
+  // Moves a temporary role's end into the past so tests don't wait on the clock.
   endRoleAssignment(membershipRoleId: string): Promise<void>;
 };
 

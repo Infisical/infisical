@@ -45,7 +45,6 @@ import {
   ProjectPermissionSub
 } from "./project-permission-set";
 
-// The built-in project roles every product builds on: admin, member, viewer and no access.
 const buildAdminPermissionRules = () => {
   const { can, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
 
@@ -792,13 +791,12 @@ export const projectViewerPermission = buildViewerPermissionRules();
 export const projectNoAccessPermissions = buildNoAccessProjectPermission();
 export const cryptographicOperatorPermissions = buildCryptographicOperatorPermissionRules();
 
-// The roles a project type gets when its product registers none. A product that only adds a role spreads these in.
+// Default roles for a project type whose product registers none. Products that just add a role spread these in.
 export const genericProjectRoles = {
   [ProjectMembershipRole.Admin]: projectAdminPermissions,
   [ProjectMembershipRole.Member]: projectMemberPermissions,
   [ProjectMembershipRole.Viewer]: projectViewerPermission,
   [ProjectMembershipRole.NoAccess]: projectNoAccessPermissions,
-  // Offered only in KMS projects, but a membership elsewhere that holds it keeps its rules, as role slugs never
-  // depended on the project type.
+  // Only offered in KMS projects, but memberships elsewhere that hold it keep its rules (slugs were never per type).
   [ProjectMembershipRole.KmsCryptographicOperator]: cryptographicOperatorPermissions
 };

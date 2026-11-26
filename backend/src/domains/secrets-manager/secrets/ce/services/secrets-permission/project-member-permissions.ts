@@ -30,8 +30,6 @@ export type TMemberRoleSummary = {
   customRoleName?: string | null;
 };
 
-// One user or identity that is a member directly, with its permission (roles, project-wide privileges and folder
-// grants).
 export type TDirectMemberPermission = {
   permission: TProjectPermission;
   id: string;
@@ -39,8 +37,7 @@ export type TDirectMemberPermission = {
   membershipId: string;
   roles: TMemberRoleSummary[];
   additionalPrivileges: { id: string; name: string }[];
-  // Each role ("role:<assignment id>") and project-wide privilege ("privilege:<id>") as a permission of its own,
-  // without folder grants. Built on first use.
+  // One per role ("role:<assignment id>") and privilege ("privilege:<id>"), without folder grants. Built lazily.
   accessSources: () => { key: string; permission: TProjectPermission }[];
 };
 
@@ -56,25 +53,22 @@ export type TProjectMemberPermissions = {
   userPermissions: TDirectMemberPermission[];
   identityPermissions: TDirectMemberPermission[];
   groupPermissions: TGroupMemberPermission[];
-  // Each user's and identity's active folder grants, keyed by actor id, whether they are a direct member or reach
-  // the project through a group. Admins are listed too, though their grants are never applied.
+  // Active grants by actor id, group-only members included. Admins are listed too, though their grants never apply.
   folderAccessByActorId: Map<string, FolderGrant[]>;
-  // One person's permission merged across their direct membership and the given groups, the way
-  // getSecretsPermission builds it. Pass the username and metadata of someone who is only in the project through a
-  // group, since only direct members' details are loaded here.
+  // Merged like getSecretsPermission does. Pass username/metadata for group-only members, since only direct
+  // members' details are loaded here.
   permissionForActor: (input: {
     actorId: string;
     groupIds: string[];
     username?: string;
     metadata?: { key: string; value: string }[];
-    // Only what the given groups give the person, without their direct membership or folder grants.
+    // Just what the groups give: no direct membership or folder grants.
     groupsOnly?: boolean;
   }) => TProjectPermission;
-  // Whether any group role holds a placeholder such as {{identity.username}}.
   groupRulesHavePlaceholders: boolean;
 };
 
-// Members whose sources have the same rules share one permission.
+// Dedupes: members with identical rules share one permission.
 class PermissionsByRules {
   private readonly byRules = new Map<string, TProjectPermission>();
 
@@ -94,8 +88,7 @@ const withFolderGrants = (rules: RuleSet<TProjectRule>, grants: ActorGrants, fol
     ? rules
     : rules.then(FolderGrants.inForce(folderGrants).rules());
 
-// Every member's permission in one project, as the legacy listing built it: direct members' and groups' permissions
-// from the standard project roles, and `permissionForActor` from the project's own roles.
+// Mirrors the legacy listing: members and groups use the standard roles, `permissionForActor` the project's own.
 export const buildProjectMemberPermissions = ({
   members,
   folderGrants,
@@ -106,7 +99,7 @@ export const buildProjectMemberPermissions = ({
   now
 }: {
   members: ProjectMemberGrants;
-  // Every folder grant in the project, active or not.
+  // Includes inactive grants.
   folderGrants: FolderGrant[];
   names: TMemberNames;
   groups: TGroup[];
@@ -193,7 +186,7 @@ export const buildProjectMemberPermissions = ({
     };
   });
 
-  // Only listed members count as direct: a ghost user's membership is never merged in.
+  // Only listed members count as direct, so a ghost user's membership never gets merged in.
   const directByActorId = new Map(
     members.directMembers().flatMap(({ actor }) => {
       const name = nameOf(actor);

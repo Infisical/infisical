@@ -10,8 +10,8 @@ import { OrgServiceActor } from "@app/lib/types";
 
 import { TAuthMode } from "./inject-identity";
 
-// Who the request acts as, from what inject-identity and inject-assume-privilege already loaded, so permission
-// code never reads users or identities again.
+// Built from what inject-identity and inject-assume-privilege already loaded, so permission code never re-reads
+// users or identities.
 const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: string } => {
   switch (auth.actor) {
     case ActorType.USER: {
@@ -81,7 +81,7 @@ const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: s
   }
 };
 
-// Builds req.permission: the actor context (principal and org) and the flat fields services still read.
+// req.permission is the actor context plus the flat fields services still read.
 export const injectPermission = fp(async (server) => {
   server.decorateRequest("permission");
   server.addHook("onRequest", async (req) => {
@@ -96,17 +96,17 @@ export const injectPermission = fp(async (server) => {
       principal,
       orgId: req.auth.orgId
     });
-    // A user token minted without a sign-in method can't be held to the org's sign-in policy.
+    // Can't hold a user token minted without a sign-in method to the org's sign-in policy.
     if (principal.type === ActorType.USER && principal.authMethod === undefined && req.auth.orgId) {
       throw new UnauthorizedError({ name: "No auth method defined" });
     }
-    // A session the org's sign-in policy no longer allows is turned away like an expired one.
+    // Treat a session the org's sign-in policy no longer allows like an expired one.
     if (ssoRefusal && !req.routeOptions.config?.skipCurrentOrgSsoCheck)
       throw new UnauthorizedError({ name: ssoRefusal.name, message: ssoRefusal.message });
     const flat: OrgServiceActor = {
       type: principal.type,
       id: actorId,
-      // With the deprecated API key mode orgId is "API_KEY" and authMethod is null.
+      // Deprecated API key mode has orgId "API_KEY" and a null authMethod.
       orgId: req.auth.orgId,
       authMethod: req.auth.actor === ActorType.USER ? req.auth.authMethod : null,
       rootOrgId: req.auth.rootOrgId,

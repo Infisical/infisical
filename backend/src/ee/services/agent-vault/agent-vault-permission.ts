@@ -43,9 +43,9 @@ export const agentVaultUserPrincipal = (
   isSuperAdmin: Boolean(user?.superAdmin)
 });
 
-// The context for checking another actor's Agent Vault access (a session's owner, the user an identity acts for, a
-// member a delegation covers). It carries the requester's delegated OAuth scopes when given one, but never its
-// assumed privilege, and no auth method, since the session row stores none.
+// For checking another actor's access (session owner, user an identity acts for, member a delegation covers).
+// Carries the requester's delegated OAuth scopes but never its assumed privilege, and no auth method (the session
+// row stores none).
 export const agentVaultActorContext = async (
   {
     actorContextService,

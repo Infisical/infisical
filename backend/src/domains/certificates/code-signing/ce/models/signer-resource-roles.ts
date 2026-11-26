@@ -13,7 +13,6 @@ import {
 
 type TSignerRule = TPermissionRule<SignerPermissionSet>;
 
-// What the roles held on a signer grant.
 export class SignerRoles implements TResourceRoles<SignerPermissionSet> {
   readonly resourceType = ResourceType.Signer;
 

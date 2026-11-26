@@ -272,7 +272,6 @@ const buildService = ({
   return { service, deps, hasRole };
 };
 
-// The cases override the actor as flat fields; the service takes them as an actor context.
 const asActorContext = ({
   actor = ActorType.USER,
   actorId,

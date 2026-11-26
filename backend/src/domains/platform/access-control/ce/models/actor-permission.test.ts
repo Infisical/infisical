@@ -20,11 +20,11 @@ const adminRules: TPermissionRule<TSet>[] = [
   { action: "assign-role", subject: "member" }
 ];
 
-// What a target holds.
+// Target permissions.
 const admin = Permission.fromRules<TSet>({ rules: adminRules });
 const member = Permission.fromRules<TSet>({ rules: memberRules });
 
-// The actor making the change, in an org on one privilege system or the other.
+// The actor making the change.
 const actorWith = (rules: TPermissionRule<TSet>[], usesNewPrivilegeSystem: boolean) =>
   ActorPermission.of<TSet>({ rules, usesNewPrivilegeSystem });
 const legacy = { admin: actorWith(adminRules, false), member: actorWith(memberRules, false) };

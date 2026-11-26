@@ -16,22 +16,22 @@ export type TGetResourcePermissionInput<TSet extends AbilityTuple> = {
   actor: TActorContext;
   projectId: string;
   type: ProjectType;
-  // The resources whose memberships count together (a folder, then an account in it). The last one names the
-  // resource in the "not a member" error.
+  // Memberships on all of these count together (e.g. a folder, then an account in it). The last one is the resource
+  // named in the "not a member" error.
   resources: TResourceRef[];
   roles: TResourceRoles<TSet>;
 };
 
 export type TProjectResourcePermissionService = {
-  // What the actor may do on resources inside a project, from its memberships on them. A project admin gets the
-  // product's project-admin rules on top, or alone where it holds no role; anyone else with no role is refused.
+  // Project admins get the product's project-admin rules on top (or alone if they hold no role). Anyone else with no
+  // role is refused.
   getResourcePermission<TSet extends AbilityTuple>(
     input: TGetResourcePermissionInput<TSet>
   ): Promise<ProjectResourcePermission<TSet>>;
 };
 
-// The one way a product builds a permission on a resource inside a project (a PAM folder or account, a certificate
-// application, a signer, an access bundle), so they all treat delegated tokens, non-members and project admins alike.
+// Every product builds resource permissions here (PAM folders and accounts, cert apps, signers, access bundles), so
+// delegated tokens, non-members and project admins get handled the same way everywhere.
 export class ProjectResourcePermissionService implements TProjectResourcePermissionService {
   constructor(
     private readonly projectPermissionService: TProjectPermissionService,
@@ -48,14 +48,13 @@ export class ProjectResourcePermissionService implements TProjectResourcePermiss
   }: TGetResourcePermissionInput<TSet>): Promise<ProjectResourcePermission<TSet>> {
     const { principal } = actor;
     const holder = roleHolderOf(principal);
-    // No OAuth scope covers resource memberships, so a delegated token gets nothing on a resource.
+    // No OAuth scope covers resource memberships, so delegated tokens get nothing here.
     if (delegatedOauthScopesOf(principal)) return ProjectResourcePermission.none<TSet>();
 
     const access = await this.projectPermissionService.findProjectAccess({ actor, projectId, type });
-    // Someone who is not a project member may still hold a role on one of its resources, as long as they are in
-    // the org.
+    // Non-members can still hold a role on a resource, but they must be in the org.
     if (!access) await this.orgPermissionService.getOrgPermission({ actor });
-    // By slug, so a custom role slugged admin counts too; the folder-grant skip counts only the built-in admin.
+    // Matched by slug, so a custom role slugged admin counts too (the folder-grant skip only counts built-in admin).
     const isProjectAdmin = Boolean(access?.grants.hasActiveRole(ProjectMembershipRole.Admin));
 
     const grantsPerResource = await Promise.all(

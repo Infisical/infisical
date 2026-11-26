@@ -1496,8 +1496,7 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("Profile is not configured for api enrollment");
     });
 
-    // Enrollment clients hold no project permissions: they are checked against the profile and never reach
-    // the permission functions.
+    // Enrollment clients have no project permissions; they're checked against the profile instead.
     describe("enrollment callers", () => {
       const enrollmentProfile = (enrollmentType: EnrollmentType) =>
         ({

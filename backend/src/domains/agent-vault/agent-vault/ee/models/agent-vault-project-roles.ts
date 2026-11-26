@@ -4,8 +4,8 @@ import { TProjectRoles, TProjectRule } from "@app/domains/platform/projects/ce/m
 
 import { agentVaultProjectAdminPermissions, agentVaultProjectMemberPermissions } from "./permissions/agent-vault-roles";
 
-// Agent Vault issues only admin and member, as PAM does, so anything that is not the built-in admin, a custom role
-// carrying the admin rules included, is a member.
+// Agent Vault only issues admin and member (like PAM), so anything but the built-in admin is a member, even a
+// custom role carrying the admin rules.
 export class AgentVaultProjectRoles implements TProjectRoles {
   readonly projectType = ProjectType.AgentVault;
 

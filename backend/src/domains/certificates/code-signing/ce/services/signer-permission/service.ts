@@ -12,7 +12,7 @@ export type TGetSignerPermissionInput = {
 };
 
 export type TSignerPermissionService = {
-  // What the actor may do on one signer: its signer roles, with the project-admin rules on top for a project admin.
+  // Project admins get the project-admin rules on top of their signer roles.
   getSignerPermission(input: TGetSignerPermissionInput): Promise<ProjectResourcePermission<SignerPermissionSet>>;
 };
 

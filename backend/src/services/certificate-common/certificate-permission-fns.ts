@@ -17,8 +17,8 @@ import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 
-// ACME, EST, SCEP and Microsoft autoenrollment clients enroll through a profile and hold no project permissions, so
-// they are checked against that profile instead of through the permission functions.
+// ACME, EST, SCEP and MS autoenrollment clients hold no project permissions, so they're checked against their
+// profile instead of the permission functions.
 export type TCertificateEnrollmentActor = {
   type:
     | ActorType.ACME_ACCOUNT
@@ -34,7 +34,7 @@ export type TCertificateIssuanceCaller =
   | { actor: TActorContext; enrollment?: undefined }
   | { actor?: undefined; enrollment: TCertificateEnrollmentActor };
 
-// The flat actor that issuance records (requester, telemetry, metadata org) are written with.
+// For writing issuance records (requester, telemetry, metadata org).
 export const flatActorOfCaller = (caller: TCertificateIssuanceCaller) =>
   caller.actor
     ? { actor: caller.actor.principal.type, actorId: caller.actor.principal.id, actorOrgId: caller.actor.org.id }

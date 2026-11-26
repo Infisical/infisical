@@ -1413,8 +1413,8 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
 
-    // The account's roles and its folder's count together. With neither, the refusal is the rule denial a member
-    // without ReadAccounts gets, not a "not a member" one.
+    // Account and folder roles count together. With neither, refuse with the same rule denial a member missing
+    // ReadAccounts gets, not a "not a member" one.
     const permission = await pamPermissionService
       .getPamPermission({ actor: ctx, projectId, folderId: account.folderId, accountId })
       .catch((err: unknown) => {

@@ -26,7 +26,6 @@ type TOrgRule = TPermissionRule<OrgPermissionSet>;
 const createMember = { action: OrgPermissionMemberActions.Create, subject: OrgPermissionSubjects.Member } as const;
 const readMember = { action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member } as const;
 
-// The grants a user holds in one org, read back through the in-memory store.
 const grantsWith = async ({ roles = [], customRules }: { roles?: TSeedRole[]; customRules?: TOrgRule[] }) => {
   const { grantStore, seed } = buildAccessControl();
   const orgId = randomUUID();

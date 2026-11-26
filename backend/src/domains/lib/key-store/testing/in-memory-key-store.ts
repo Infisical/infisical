@@ -6,7 +6,7 @@ type TEntry = { value: string; expiresAt: number };
 export class InMemoryKeyStore implements TDomainKeyStore {
   private readonly entries = new Map<string, TEntry>();
 
-  // The Postgres counters (pgIncrementBy), which never expire here.
+  // Postgres counters (pgIncrementBy), they never expire here.
   private readonly counters = new Map<string, number>();
 
   constructor(private readonly now: () => number = Date.now) {}

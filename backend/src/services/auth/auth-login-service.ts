@@ -1311,7 +1311,7 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    // The user has no request context for the org being selected yet, so it gets one for the root org here.
+    // No request context for the org being selected yet, so build one for the root org.
     const rootOrgActor = await actorContextService.forPrincipal({
       principal: {
         type: ActorType.USER,
@@ -1325,7 +1325,6 @@ export const authLoginServiceFactory = ({
       orgId: rootOrg.id
     });
 
-    // A session the root org's sign-in policy refuses never gets a token for it.
     const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(rootOrgActor);
     if (ssoRefusal) {
       const isForeignSession = ssoRefusal.name === FOREIGN_SSO_SESSION_ERROR_NAME;

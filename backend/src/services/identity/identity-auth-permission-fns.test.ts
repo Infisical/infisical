@@ -82,9 +82,8 @@ const runBoundary = async ({
   const toPermission = (ability: MongoAbility) => Permission.fromRules({ rules: ability.rules as never });
   const actorPermissionOf = (ability: MongoAbility) =>
     ActorPermission.of({ rules: ability.rules as never, usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem });
-  // One permission per grant the target holds. The real implementation builds these from the
-  // target's grants, so direct roles, group-inherited roles and additional privileges are
-  // indistinguishable from each other by the time they reach the boundary.
+  // One permission per grant. Like the real thing, direct, group-inherited and additional-privilege grants all
+  // look the same by the time they reach the boundary.
   const grantPermissions = (scopeData: TScopeCall, target: { type: ActorType; id: string }) => {
     scopeCalls.push(scopeData);
     principals.push({ actorId: target.id, actorType: target.type });

@@ -132,7 +132,7 @@ export const withCacheFingerprint = async <T>({
   dataFetcher,
   reviver
 }: TWithCacheFingerprintOpts<T>): Promise<T> => {
-  // A marker TTL of 0 turns the marker off, so every read checks the fingerprint.
+  // TTL 0 disables the marker, so every read checks the fingerprint.
   const usesMarker = markerTtlSeconds > 0;
   const [markerValue, cachedDataStr] = await Promise.all([
     usesMarker ? cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed") : null,

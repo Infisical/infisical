@@ -20,8 +20,8 @@ export type TMemberPermissionAuditServiceFactory = ReturnType<typeof memberPermi
 
 type TAuditInput = { actor: TActorContext; projectId: string; includeFolderPermissions: boolean };
 
-// Where a project member's permission comes from: each role (direct and through groups), project-wide privilege
-// and, in a Secret Manager project, folder grant, with its rules.
+// Where a member's permission comes from: each role (direct and via groups), project-wide privilege and, in
+// Secret Manager projects, folder grant, with its rules.
 export const memberPermissionAuditServiceFactory = ({
   projectPermissionService,
   secretsPermissionService

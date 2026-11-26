@@ -9,7 +9,6 @@ export type TKmsDeps = {
   projectPermissionService: TProjectPermissionService;
 };
 
-// The KMS product: its project roles (kmsProjectRoles, which domains.ts hands to Projects) and permission for now.
 export class KmsModule {
   readonly kmsPermissionService: TKmsPermissionService;
 

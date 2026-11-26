@@ -10,8 +10,7 @@ import { TGrantSeeder, TSeedActor, TSeedRole } from "./grant-fixture";
 import { InMemoryGrantSeeder } from "./in-memory-grant-seeder";
 import { InMemoryGrantStore } from "./in-memory-grant-store";
 
-// Organizations, projects, users, identities and folders belong to no store here, so each backend creates them its
-// own way.
+// Orgs, projects, users, identities and folders aren't owned by any store here, so each backend creates its own.
 export type TGrantStoreFixture = {
   store: TGrantStore;
   seed: TGrantSeeder;

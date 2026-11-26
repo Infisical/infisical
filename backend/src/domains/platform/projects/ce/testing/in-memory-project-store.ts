@@ -14,8 +14,7 @@ const UNCOUNTED_WORKSPACE_TYPES: string[] = [
 
 type TStoredProject = TProjectRecord & { deleteAfter: Date | null; rootOrgId: string };
 
-// Behaves like ProjectStore over the projects a test adds. Sub-orgs are given by the root org id a project is added
-// with.
+// Like ProjectStore over the projects a test adds. Sub-orgs come from the root org id passed when adding.
 export class InMemoryProjectStore implements TProjectStore {
   private readonly projects = new Map<string, TStoredProject>();
 
@@ -60,7 +59,7 @@ export class InMemoryProjectStore implements TProjectStore {
     return stored && !stored.deleteAfter ? InMemoryProjectStore.toProject(stored) : null;
   }
 
-  // A counter stands in for updatedAt: every change through this store bumps it.
+  // Counter stands in for updatedAt; every change through this store bumps it.
   async findVersion(projectId: string): Promise<string> {
     const stored = this.projects.get(projectId);
     if (!stored) return "missing";

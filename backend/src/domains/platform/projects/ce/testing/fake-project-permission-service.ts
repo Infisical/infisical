@@ -11,8 +11,7 @@ import { StandardProjectRoles, TProjectRoles } from "../models/standard-project-
 import { TGetProjectPermissionInput, TProjectPermissionService } from "../services/project-permission/service";
 import { FakeProjectsService } from "./fake-projects-service";
 
-// For tests of code that checks project permissions: the real rules over FakeProjectsService and Access Control's
-// services, with no cache.
+// Real rules over FakeProjectsService and Access Control's services, no cache.
 export class FakeProjectPermissionService implements TProjectPermissionService {
   constructor(
     private readonly projectStore: FakeProjectsService,

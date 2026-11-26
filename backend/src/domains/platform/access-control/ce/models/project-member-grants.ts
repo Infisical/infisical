@@ -4,20 +4,19 @@ import { ActorGrants, TIdentityAttributeRecord } from "./actor-grants";
 import { Membership, TMembershipRecord } from "./membership";
 import { TPrivilegeRecord } from "./privilege";
 
-// An attribute with its owner, for project-wide reads that cover many actors.
+// Carries the owner since project-wide reads cover many actors.
 export type TOwnedAttributeRecord = TIdentityAttributeRecord & { userId?: string | null; identityId?: string | null };
 
 export type TProjectMemberGrantsRecord = {
   memberships: TMembershipRecord[];
-  // The project-wide privileges of the project's users and identities (never folder grants).
+  // Project-wide only, never folder grants.
   privileges: TPrivilegeRecord[];
   attributes: TOwnedAttributeRecord[];
 };
 
 type TMemberActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
 
-// Everyone's grants in one project: every user, identity and group membership there with its roles, and the
-// project-wide privileges and attributes of the users and identities. For listings over all members.
+// Every member's grants in one project, read at once for member listings.
 export class ProjectMemberGrants {
   private constructor(
     private readonly record: TProjectMemberGrantsRecord,
@@ -31,7 +30,6 @@ export class ProjectMemberGrants {
     );
   }
 
-  // Users and identities that are members directly, in membership order.
   directMembers(): { actor: TMemberActor; membership: Membership }[] {
     return this.memberships.flatMap((membership) => {
       const { actor } = membership;
@@ -39,7 +37,6 @@ export class ProjectMemberGrants {
     });
   }
 
-  // Groups that are members, in membership order.
   groupMembers(): { groupId: string; membership: Membership }[] {
     return this.memberships.flatMap((membership) => {
       const { actor } = membership;
@@ -47,8 +44,7 @@ export class ProjectMemberGrants {
     });
   }
 
-  // One user's or identity's grants: its direct membership (unless left out) and the memberships of the given
-  // groups, with its own privileges and attributes.
+  // includeDirect: false keeps only the group memberships and drops the actor's own privileges too.
   grantsFor({
     actor,
     groupIds = [],

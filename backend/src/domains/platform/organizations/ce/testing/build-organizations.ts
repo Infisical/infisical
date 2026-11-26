@@ -6,8 +6,8 @@ import { OrgPermissionService } from "../services/org-permission/service";
 import { SsoSessionService } from "../services/sso-session/service";
 import { InMemoryOrganizationStore } from "./in-memory-organization-store";
 
-// Organizations' permission and actor context services over the Access Control a test gives it (usually
-// buildAccessControl()), with orgs in memory: `organizationStore.add` writes them.
+// Real permission and actor context services over the given Access Control (usually buildAccessControl()),
+// with orgs kept in memory (add them via `organizationStore.add`).
 export const buildOrganizations = ({
   actorGrantsService,
   roleService

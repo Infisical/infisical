@@ -4,7 +4,6 @@ import type { TActorContext, TActorOrg, TActorOrgSsoPolicy } from "@app/domains/
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import type { TIdentityPrincipal, TPrincipal, TUserPrincipal } from "@app/lib/auth/principal";
 
-// A root org with no sign-in policy, unless the test says otherwise.
 export const actorOrg = (
   overrides: Partial<Omit<TActorOrg, "ssoPolicy">> & { ssoPolicy?: Partial<TActorOrgSsoPolicy> } = {}
 ): TActorOrg => {
@@ -43,7 +42,7 @@ export const identityPrincipal = (overrides: Partial<TIdentityPrincipal> = {}): 
   ...overrides
 });
 
-// A fresh object each call: permission services memoize per context object, as they do per request.
+// New object every call, since permission services memoize per context object (like per request).
 export const actorContext = ({ principal, org }: { principal: TPrincipal; org: TActorOrg }): TActorContext => ({
   principal,
   org

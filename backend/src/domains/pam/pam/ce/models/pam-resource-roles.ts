@@ -20,7 +20,7 @@ type TPamResourceRule = TPermissionRule<PamResourcePermissionSet>;
 abstract class PamResourceRoles implements TResourceRoles<PamResourcePermissionSet> {
   abstract readonly resourceType: ResourceType;
 
-  // PamResourceRole in ee/services/pam/pam-enums.ts.
+  // Mirrors PamResourceRole in ee/services/pam/pam-enums.ts.
   private readonly builtInRoles = new Map<string, TPamResourceRule[]>([
     ["admin", pamResourceAdminPermissions],
     ["operator", pamResourceOperatorPermissions],
@@ -28,8 +28,7 @@ abstract class PamResourceRoles implements TResourceRoles<PamResourcePermissionS
     ["auditor", pamResourceAuditorPermissions]
   ]);
 
-  // A PAM project admin administers the product, not each folder: it gets nothing on a folder or account it holds no
-  // role on.
+  // A PAM project admin runs the product, not each folder, so it gets nothing on a folder or account without a role.
   private readonly adminRules: TPamResourceRule[] = [];
 
   // PAM issues no custom role, so "custom" is refused like any other slug it does not define.
@@ -44,7 +43,7 @@ abstract class PamResourceRoles implements TResourceRoles<PamResourcePermissionS
     return this.adminRules;
   }
 
-  // The rules of a role a membership holds, or none for a slug PAM does not define.
+  // Unknown slugs get no rules instead of throwing.
   rulesOrNoneFor(grant: Grant): TPamResourceRule[] {
     return this.builtInRoles.get(grant.toJSON().slug) ?? [];
   }

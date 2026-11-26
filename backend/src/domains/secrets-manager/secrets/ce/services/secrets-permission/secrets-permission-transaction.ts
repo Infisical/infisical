@@ -2,10 +2,8 @@ import { TTransaction } from "@app/domains/lib/transactions";
 
 import { TFolderGrantCache } from "../dependencies";
 
-// What may run on a caller's transaction: only the folder version bump, so it commits or rolls back with the
-// folder grant or folder tree change it reports.
+// Only the folder version bump runs on the caller's tx, so it commits or rolls back with the change it reports.
 export type TSecretsPermissionTransaction = {
-  // Makes every cached folder grant of these projects revalidate.
   invalidateFolderGrants(input: { projectIds: string[] }): Promise<void>;
 };
 

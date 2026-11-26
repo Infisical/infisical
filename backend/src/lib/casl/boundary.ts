@@ -33,8 +33,7 @@ const canonicalizeRuleConditions = (conditions: unknown): TRuleConditions => {
   };
 };
 
-// Reading secret folders (ProjectPermissionActions.Read on ProjectPermissionSub.SecretFolders) never limits a
-// boundary. Written as the literal so this shared module imports no domain.
+// Reading secret folders never limits a boundary. Literal ID so this shared module imports no domain.
 const IGNORED_PERMISSIONS = new Set([getPermissionSetID("read", "secret-folders")]);
 
 const invertTheOperation = (shouldInvert: boolean, operation: boolean) => (shouldInvert ? !operation : operation);

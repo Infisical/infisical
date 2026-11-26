@@ -4,7 +4,7 @@ import { Grant } from "./grant";
 
 export type TRoleRecord = TRoles;
 
-// A custom role: packed rules an org or a project defined. Built-in roles are not stored; their owners define them.
+// Custom roles only. Built-in roles aren't stored; their scope owners define them in code.
 export class Role {
   private constructor(private readonly record: TRoleRecord) {}
 
@@ -24,7 +24,6 @@ export class Role {
     return this.record.name;
   }
 
-  // What holding this role grants, read the way a held custom role is.
   toGrant(): Grant {
     return Grant.custom(this.record.permissions);
   }

@@ -37,12 +37,11 @@ export type TSecretsDeps = {
   actorGrantsService: TActorGrantsService;
   groupService: TGroupService;
   projectsService: TProjectsService;
-  // Seconds cached folder grants are served without checking their fingerprint; 0 checks on every read (tests).
+  // Seconds cached folder grants skip the fingerprint check. 0 checks every read (used by tests).
   cacheMarkerTtlSeconds?: number;
 };
 
-// Secret Manager's permissions (project roles with folder grants over them, and service tokens) and its usage
-// counter. It grows as Secret Manager moves into domains.
+// Secret Manager permissions (project roles plus folder grants, service tokens) and its usage counter.
 export class SecretsModule {
   readonly usageCounters: TUsageCounter[];
 

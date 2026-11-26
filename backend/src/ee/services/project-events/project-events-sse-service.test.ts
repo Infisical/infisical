@@ -29,7 +29,7 @@ const subscribeToCreation: TPermissionRule<ProjectPermissionSet>[] = [
 ];
 
 // The plan refuses event subscriptions, so a subscribe that passes the permission checks stops there, before any
-// connection or stream is opened.
+// stream opens.
 const buildService = ({ rules }: { rules: TPermissionRule<ProjectPermissionSet>[] }) => {
   const secretsPermissionService = {
     getProjectPermissionWithFolderGrants: vi.fn(async () => Permission.fromRules({ rules }))

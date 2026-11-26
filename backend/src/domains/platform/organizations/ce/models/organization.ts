@@ -24,7 +24,6 @@ export class Organization {
     return this.org.rootOrgId !== this.org.id;
   }
 
-  // Refuses a sub-org for parent-only operations, and a root org for child-only ones.
   assertLevel(scope: OrganizationActionScope): void {
     if (scope === OrganizationActionScope.ParentOrganization && this.isSubOrg()) {
       throw new PermissionDeniedError({ message: "Child organization cannot do this operation" });
@@ -34,7 +33,7 @@ export class Organization {
     }
   }
 
-  // The root org's sign-in policy, which every session in the org tree must satisfy.
+  // Comes from the root org: every session in the org tree has to satisfy it.
   ssoPolicy(): SsoPolicy {
     return SsoPolicy.restore({ rootOrgId: this.org.rootOrgId, ...this.org.ssoPolicy });
   }

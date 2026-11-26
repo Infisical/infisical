@@ -12,8 +12,7 @@ export type TGetApplicationPermissionInput = {
 };
 
 export type TApplicationPermissionService = {
-  // What the actor may do on one certificate application: its application roles, with the project-admin rules on
-  // top for a project admin.
+  // Project admins get the project-admin rules on top of their application roles.
   getApplicationPermission(
     input: TGetApplicationPermissionInput
   ): Promise<ProjectResourcePermission<ApplicationPermissionSet>>;

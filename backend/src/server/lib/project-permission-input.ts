@@ -13,8 +13,8 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 
 export const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
-// A role or privilege may not mix a legacy umbrella action with the actions that replaced it, and a condition must
-// be one its action allows.
+// Rejects mixing a legacy umbrella action with the actions that replaced it, and conditions the action doesn't
+// allow.
 export function checkForInvalidPermissionCombination(permissions: z.infer<typeof OptionalArrayPermissionSchema>) {
   if (!permissions) return;
 

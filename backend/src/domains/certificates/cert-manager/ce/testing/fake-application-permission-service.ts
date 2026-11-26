@@ -12,8 +12,8 @@ import {
   TGetApplicationPermissionInput
 } from "../services/application-permission/service";
 
-// For tests of code that checks certificate application permissions: give the actor application roles, or make it
-// a project admin, and get what ApplicationRoles says they grant. Anyone else is refused as a non-member.
+// Grants are whatever ApplicationRoles says. Actors with no roles that aren't project admins are refused as
+// non-members.
 export class FakeApplicationPermissionService implements TApplicationPermissionService {
   private readonly roles = new Map<string, string[]>();
 

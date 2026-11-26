@@ -14,22 +14,21 @@ import { projectOauthAllowlist } from "./permissions/project-oauth-scopes";
 import { buildServiceTokenProjectPermission, ProjectPermissionSet } from "./permissions/project-permission-set";
 import { Project } from "./project";
 
-// What an actor may do in one project, with the project and the memberships it was built from.
 export class ProjectPermission extends ActorPermission<ProjectPermissionSet> {
   private constructor(
     rules: TRuleSource,
     readonly project: Project,
-    // What it was built from, for code that still reads the membership rows.
+    // Kept for code that still reads membership rows.
     readonly grants: ActorGrants,
-    // A delegated OAuth token holds no roles of its own: it only borrows what its scopes allow.
+    // Delegated OAuth tokens have no roles of their own, only what their scopes allow.
     private readonly isDelegated: boolean,
     usesNewPrivilegeSystem: boolean
   ) {
     super(Permission.abilityOf<ProjectPermissionSet>(rules), usesNewPrivilegeSystem);
   }
 
-  // The only way to build one from role rules, so every project permission, generic or a product's, gets the same
-  // last steps: fill `{{identity.*}}` placeholders, then cut the rules down to a delegated OAuth token's scopes.
+  // Only way to build one from role rules, so every project permission gets the same last steps: fill
+  // `{{identity.*}}` placeholders, then narrow to a delegated OAuth token's scopes.
   static build({
     rules,
     project,
@@ -56,7 +55,6 @@ export class ProjectPermission extends ActorPermission<ProjectPermissionSet> {
     );
   }
 
-  // A service token gets the scopes and permissions it was issued with.
   static forServiceToken({
     project,
     scopes,
@@ -76,12 +74,12 @@ export class ProjectPermission extends ActorPermission<ProjectPermissionSet> {
     return this.grants.memberships;
   }
 
-  // An active role with this slug: a custom role's own slug, or a built-in slug.
+  // Matches custom role slugs and built-in slugs.
   hasRole({ slug }: { slug: string }): boolean {
     return !this.isDelegated && this.grants.hasActiveRole(slug);
   }
 
-  // An active built-in role with this slug. A custom role slugged the same never matches.
+  // Built-in only; a custom role with the same slug never matches.
   hasBuiltInRole({ slug }: { slug: string }): boolean {
     return !this.isDelegated && this.grants.hasActiveBuiltInRole(slug);
   }

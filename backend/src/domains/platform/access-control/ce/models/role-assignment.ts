@@ -17,20 +17,19 @@ export type TRoleAssignmentRecord = Pick<
   | "createdAt"
   | "updatedAt"
 > & {
-  // Read with the assignment when customRoleId is set: the custom role's slug, name and packed rules.
+  // Joined in from the custom role when customRoleId is set.
   customRoleSlug?: string | null;
   customRoleName?: string | null;
   customRolePermissions?: unknown;
 };
 
-// One role a membership holds: a built-in slug, or "custom" with the custom role it names.
 export class RoleAssignment {
   private constructor(
     private readonly record: TRoleAssignmentRecord,
     private readonly access: TemporaryAccess
   ) {}
 
-  // Dates may arrive as strings from a cache.
+  // Dates can come back as strings from the cache.
   static restore(record: TRoleAssignmentRecord): RoleAssignment {
     const restored: TRoleAssignmentRecord = {
       ...record,
@@ -47,7 +46,7 @@ export class RoleAssignment {
     return this.record.id;
   }
 
-  // The stored slug: a built-in role, or "custom" for a custom role.
+  // A built-in slug, or "custom" for a custom role (see effectiveSlug).
   get role(): string {
     return this.record.role;
   }
@@ -68,7 +67,6 @@ export class RoleAssignment {
     return this.record.temporaryAccessEndTime ?? null;
   }
 
-  // A custom role's own name, for display; null for a built-in role.
   get customRoleName(): string | null {
     return this.record.customRoleName ?? null;
   }
@@ -77,7 +75,6 @@ export class RoleAssignment {
     return this.record.customRoleSlug ?? null;
   }
 
-  // The slug the role is known by: the custom role's own slug, or the built-in slug.
   get effectiveSlug(): string {
     return this.record.customRoleSlug || this.record.role;
   }
@@ -86,7 +83,7 @@ export class RoleAssignment {
     return this.access.isActive(now);
   }
 
-  // Decided by the stored slug, as Grant decides it, so the answer always matches the rules the role grants.
+  // Goes through Grant so this always agrees with the rules the role actually grants.
   get isCustom(): boolean {
     return this.toGrant().isCustom();
   }
@@ -95,7 +92,6 @@ export class RoleAssignment {
     return this.toGrant().isBuiltIn(slug);
   }
 
-  // What a listing calls the role: a custom role's own name (or slug), otherwise the built-in slug.
   get displayName(): string {
     if (!this.isCustom) return this.record.role;
     return this.record.customRoleName || this.record.customRoleSlug || "Custom";

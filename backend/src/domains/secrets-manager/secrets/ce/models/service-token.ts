@@ -9,8 +9,7 @@ export type TServiceTokenRecord = {
   permissions: string[];
 };
 
-// A legacy Secret Manager service token: bound to one project, with the environment and path scopes and the
-// permissions it was issued with.
+// Legacy service token, bound to one project.
 export class ServiceToken {
   private constructor(
     private readonly id: string,
@@ -23,8 +22,7 @@ export class ServiceToken {
     return new ServiceToken(id, projectId, scopes, [...(permissions ?? [])]);
   }
 
-  // Refuses a token whose project is gone, used for another project or org than the request's, or whose project is
-  // not a Secret Manager project. `project` is the token's own project, null when it no longer exists. Returns it.
+  // `project` is the token's own project, null if it was deleted.
   assertUsableIn({
     project,
     projectId,
@@ -34,7 +32,7 @@ export class ServiceToken {
     project: Project | null;
     projectId: string;
     orgId: string;
-    // A check every project type shares accepts the token in any project type.
+    // For checks every project type shares, so any project type is fine.
     anyProjectType?: boolean;
   }): Project {
     if (!project) throw new RuleViolationError({ message: "Service token not linked to a project" });

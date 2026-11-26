@@ -3,7 +3,7 @@ import { InMemoryKeyStore } from "@app/domains/lib/key-store/testing/in-memory-k
 
 import { AccessControlModule } from "../module";
 
-// The services another domain's integration tests take from Access Control, on Postgres, with caches off.
+// For other domains' integration tests: real Postgres, caches off.
 export const accessControlServices = (db: TDbClient) => {
   const { actorGrantsService, roleService, groupService } = new AccessControlModule({
     db,

@@ -44,7 +44,7 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
     }
   });
 
-  // secret_folders belongs to Secret Manager but no domain owns it yet, so the test writes the rows directly.
+  // No domain owns secret_folders yet, so write the rows directly.
   const addFolder = async (tenant: TTenant, name: string) => {
     const prod = tenant.environments.find((env) => env.slug === "prod")!;
     const [root] = await h.db(TableName.SecretFolder).insert({ name: "root", envId: prod.id }).returning("*");

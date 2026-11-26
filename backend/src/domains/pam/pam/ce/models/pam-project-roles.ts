@@ -4,11 +4,9 @@ import { TProjectRoles, TProjectRule } from "@app/domains/platform/projects/ce/m
 
 import { pamProjectAdminPermissions, pamProjectMemberPermissions } from "./permissions/pam-roles";
 
-// A PAM project's role slugs are the PAM product roles, and they mean something different from the generic project
-// roles: everything a product member can do comes from their folder/account memberships, which PAM resolves
-// separately. Anything that is not the product admin therefore resolves to the same read-only member ability,
-// including Custom, which covers both custom roles and additional privileges, neither of which PAM issues (it only
-// ever assigns `admin`/`member`).
+// PAM project roles aren't the generic ones: what a member can do comes from folder/account memberships, resolved
+// separately. So anything but the product admin gets the read-only member rules, Custom included (PAM only ever
+// assigns `admin`/`member`, never custom roles or additional privileges).
 export class PamProjectRoles implements TProjectRoles {
   readonly projectType = ProjectType.PAM;
 

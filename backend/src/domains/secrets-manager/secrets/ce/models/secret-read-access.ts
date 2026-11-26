@@ -16,8 +16,7 @@ const secretCheck = (action: ProjectPermissionSecretActions, fields?: SecretSubj
   fields
 });
 
-// Read Value and Describe Secret replaced the combined read action; a role granting the combined action still grants
-// both, so every read check accepts either.
+// The old combined read action still grants both Read Value and Describe Secret, so every read check accepts it.
 export class SecretReadAccess {
   private constructor() {}
 
@@ -28,15 +27,13 @@ export class SecretReadAccess {
     );
   }
 
-  // Throws PermissionDeniedError naming the requested action, not the combined one.
+  // Error names the requested action, not the combined one.
   static assert(permission: TSecretPermission, action: TSecretReadAction, fields?: SecretSubjectFields): void {
     if (SecretReadAccess.can(permission, action, fields)) return;
     permission.assert(secretCheck(action, fields));
   }
 
-  // A move deletes the secrets at the source and creates or edits them at the destination, and reading them at the
-  // source needs Read Value and Describe Secret. Checked per path, without secret names or tags, so one call covers
-  // a batch sharing a source and a destination. Throws on the first missing permission.
+  // Checked per path, without secret names or tags, so one call covers a batch with the same source and destination.
   static assertMove(
     permission: TSecretPermission,
     {

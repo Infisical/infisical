@@ -167,7 +167,7 @@ describe("Auth SSO session binding", () => {
 
     await setAuthEnforced(ORG_A_ID, true);
     const refusedMemberships = await get(`/api/v2/organizations/${ORG_A_ID}/memberships`);
-    // No permission check runs here; the session itself is refused.
+    // No permission check on this route, the session itself gets refused.
     const refusedUser = await get("/api/v1/user");
 
     expect(refusedMemberships.statusCode).toBe(401);
@@ -277,7 +277,7 @@ describe("Auth SSO session binding", () => {
       expect((await readProject()).statusCode).toBe(200);
 
       await setAuthEnforced(ORG_A_ID, true);
-      // The actor's project grants are still cached; enforcement must apply on the very next request.
+      // Grants are still cached, but enforcement has to kick in on the very next request anyway.
       const cachedKeys = await testRedis.keys(`*access-control:actor-grants:v1:data:${projectId}:*`);
       expect(cachedKeys.length).toBeGreaterThan(0);
       const refused = await readProject();

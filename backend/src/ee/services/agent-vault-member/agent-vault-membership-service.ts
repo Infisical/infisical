@@ -565,7 +565,7 @@ export const agentVaultMembershipServiceFactory = ({
     });
   };
 
-  // Read outside the write's transaction: the boundary check reads roles, and the write re-reads under lock.
+  // Outside the write's tx: the boundary check reads roles, and the write re-reads them under lock.
   const currentRolesOf = async (projectId: string, actors: TAgentVaultActorRef[]) => {
     const memberships = await findMembershipsForActors(projectId, actors);
     const membershipIds = [...memberships.values()].map((membership) => membership.id);

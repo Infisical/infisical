@@ -8,7 +8,7 @@ import { TProjectIdentityStore, TProjectsStores, TProjectStore } from "../depend
 import { ProjectsTransaction, TProjectsTransaction } from "./projects-transaction";
 
 export type TProjectsService = {
-  // The project, for a caller that may not be a member of it. Null when it does not exist.
+  // No membership check, so callers that aren't members can use it. Null when it doesn't exist.
   findProject(projectId: string): Promise<Project | null>;
   // Includes sub-orgs. Pass readFrom primary right after a commit that changed it.
   countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;

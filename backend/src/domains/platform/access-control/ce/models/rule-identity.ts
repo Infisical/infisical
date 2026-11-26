@@ -1,14 +1,14 @@
 export type TRuleIdentityRecord = {
   id: string;
-  // The user's username or the identity's name; empty when unknown.
+  // User's username or identity's name. Empty if unknown.
   username: string;
   metadata: Record<string, string>;
-  // What the identity authenticated with; only known for the identity making the request.
+  // Only known for the identity making the request.
   auth?: Record<string, unknown> | null;
 };
 
-// A placeholder nobody filled renders back as itself (`{{identity.metadata.team}}`), so a condition on a missing
-// attribute matches nothing instead of an empty string.
+// Unfilled placeholders render back as themselves, so a condition on a missing attribute matches nothing instead of
+// matching an empty string.
 const keepMissingPlaceholders = <T extends Record<string, unknown>>(values: T, path: string): T =>
   new Proxy(
     { ...values },
@@ -24,7 +24,7 @@ const keepMissingPlaceholders = <T extends Record<string, unknown>>(values: T, p
     }
   ) as T;
 
-// What `{{identity.*}}` placeholders in a custom role or privilege resolve to for one actor.
+// Resolves `{{identity.*}}` placeholders in custom roles and privileges.
 export class RuleIdentity {
   private constructor(
     private readonly id: string,

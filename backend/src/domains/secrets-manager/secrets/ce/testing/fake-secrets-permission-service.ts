@@ -21,8 +21,8 @@ import { FolderGrants } from "../models/folder-grants";
 import { TProjectMemberPermissions } from "../services/secrets-permission/project-member-permissions";
 import { TSecretsPermission, TSecretsPermissionService } from "../services/secrets-permission/service";
 
-// For tests of code that checks Secret Manager permissions: every actor gets `rules` in any project, with
-// `folderGrants` layered over them the way the real service layers them. Set both, or replace a method.
+// Every actor gets `rules` in any project, with `folderGrants` layered on top like the real service does. Set
+// both, or replace a method.
 export class FakeSecretsPermissionService implements TSecretsPermissionService {
   rules: TProjectRule[] = [];
 

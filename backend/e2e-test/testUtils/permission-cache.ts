@@ -1,5 +1,5 @@
-// Drops the cached permissions of every actor in the projects, so the next check reads the database: what a spec
-// does to see a role change before the cache's 10 second marker would have expired.
+// Clears every actor's cached permissions in the projects, so a spec sees a role change without waiting out the
+// cache's 10s marker.
 export const clearPermissionCaches = async (projectIds: string[]) => {
   const domainKeys = (
     await Promise.all(

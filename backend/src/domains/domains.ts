@@ -56,7 +56,7 @@ export type TDomainDeps = {
     | "OTEL_TELEMETRY_COLLECTION_ENABLED"
   > &
     TKmsCoreEnvConfig;
-  // Told about each actor's project access as it is resolved, for the request's audit context.
+  // Gets each actor's project access as it resolves, feeding the request's audit context.
   onProjectAccess?: TProjectAccessListener;
 };
 
@@ -132,7 +132,7 @@ export const createDomains = async (deps: TDomainDeps) => {
   const accessControl = new AccessControlModule({
     db: deps.db,
     keyStore: deps.keyStore,
-    // Tests check grants on every read, so a change shows on the next request.
+    // Marker off in tests so a grant change shows up on the very next request.
     cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
   const organizations = new OrganizationsModule({

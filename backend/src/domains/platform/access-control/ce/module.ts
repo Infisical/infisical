@@ -29,12 +29,12 @@ export type { TResolvedRole, TResolveRolesInput, TRoleService } from "./services
 export type TAccessControlDeps = {
   db: TDbClient;
   keyStore: TDomainKeyStore;
-  // Seconds cached grants are served without checking their fingerprint; 0 checks on every read (tests).
+  // Seconds to serve cached grants without checking the fingerprint. 0 checks every read (tests).
   cacheMarkerTtlSeconds?: number;
 };
 
-// Who holds what: memberships at every scope, roles, privileges, groups and attributes. A base domain: it depends on
-// no other domain, does not know what any role means (scope owners do), and does no permission checks.
+// Who holds what (memberships, roles, privileges, groups, attributes). Base domain: depends on no other domain,
+// doesn't know what roles mean (scope owners do) and does no permission checks.
 export class AccessControlModule {
   readonly actorGrantsService: TActorGrantsService;
 

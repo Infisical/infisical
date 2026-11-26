@@ -6,9 +6,8 @@ import { TSsoSessionRefusal } from "../../models/sso-policy";
 import { TOrgPermissionService } from "../org-permission/service";
 
 export type TSsoSessionService = {
-  // Why the org's sign-in policy refuses the principal's session, after the bypass; null when it allows it (and
-  // always for anything but a user). The bypass is looked up only when the policy refuses, and never cached, so
-  // revoking it applies on the next request.
+  // Applies the bypass. Null if allowed (always for non-users). Bypass is only looked up on refusal and never
+  // cached, so revoking it takes effect on the next request.
   findSsoSessionRefusal(input: { principal: TPrincipal; org: TActorOrg }): Promise<TSsoSessionRefusal | null>;
 };
 

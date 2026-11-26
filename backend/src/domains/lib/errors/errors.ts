@@ -34,7 +34,7 @@ export class StateConflictError extends DomainError {}
 // Something we depend on failed. Nothing the caller sent is wrong.
 export class ExternalSystemError extends DomainError {}
 
-// One CASL rule that matched a refused check: what the 403 response lists.
+// A CASL rule that matched a refused check, listed in the 403 response.
 export type TPermissionDeniedRule = {
   action: unknown;
   inverted?: boolean;
@@ -45,18 +45,17 @@ export type TPermissionDeniedRule = {
 export type TPermissionDenial = {
   action: string;
   subject: string;
-  // The object checked, when the check named one (an environment and secret path, a key name).
+  // Set when the check named an object (an environment and secret path, a key name).
   subjectFields?: Record<string, unknown>;
   matchedRules: TPermissionDeniedRule[];
 };
 
-// A refused change to what another actor holds (their roles or privileges), from Permission.assertBounds. The HTTP
-// layer answers it as PermissionBoundaryError.
+// For a refused change to another actor's roles or privileges (Permission.assertBounds). The HTTP layer answers it
+// as PermissionBoundaryError.
 export const PERMISSION_BOUNDARY_ERROR_NAME = "PermissionBoundaryError";
 
-// The actor may not do this. A refused permission check carries `denial` (what was refused and the rules that matched),
-// which the 403 response and the permission-denied audit log report; a refusal with no check behind it (not a
-// member, another org's project) carries only its message.
+// `denial` is set for a refused permission check and feeds the 403 response and the permission-denied audit log.
+// Refusals with no check behind them (not a member, another org's project) only carry a message.
 export class PermissionDeniedError extends DomainError {
   readonly denial?: TPermissionDenial;
 

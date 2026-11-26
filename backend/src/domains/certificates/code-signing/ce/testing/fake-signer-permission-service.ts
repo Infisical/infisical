@@ -9,8 +9,7 @@ import { SignerPermissionSet } from "../models/permissions/signer-roles";
 import { SignerRoles } from "../models/signer-resource-roles";
 import { TGetSignerPermissionInput, TSignerPermissionService } from "../services/signer-permission/service";
 
-// For tests of code that checks signer permissions: give the actor signer roles, or make it a project admin, and
-// get what SignerRoles says they grant. Anyone else is refused as a non-member.
+// Grants are whatever SignerRoles says. Actors with no roles that aren't project admins are refused as non-members.
 export class FakeSignerPermissionService implements TSignerPermissionService {
   private readonly roles = new Map<string, string[]>();
 

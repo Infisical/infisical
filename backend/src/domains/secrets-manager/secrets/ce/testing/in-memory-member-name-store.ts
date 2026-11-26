@@ -1,6 +1,5 @@
 import { TMemberNames, TMemberNameStore } from "../services/dependencies";
 
-// Names of users that are not ghosts, and of identities.
 export class InMemoryMemberNameStore implements TMemberNameStore {
   readonly users = new Map<string, { username: string; isGhost?: boolean }>();
 

@@ -90,7 +90,6 @@ const deleteOrgIdentity = async (identityId: string) => {
   await testDb("identities").where({ id: identityId }).delete();
 };
 
-// What the proxy checks a session's owner with, over the test database.
 const buildProxyPermissionDeps = () => ({
   ...buildPermissionDomains(testDb, testKeyStore),
   identityDAL: identityDALFactory(testDb)

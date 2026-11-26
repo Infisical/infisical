@@ -8,7 +8,7 @@ export type TGetKmsPermissionInput = {
 };
 
 export type TKmsPermissionService = {
-  // What the actor may do in a KMS project. Refuses a project of another type.
+  // Refuses a project of another type.
   getKmsPermission(input: TGetKmsPermissionInput): Promise<ProjectPermission>;
 };
 
