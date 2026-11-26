@@ -9,7 +9,8 @@ export const SanitizedSamlConfigSchema = SamlConfigsSchema.pick({
   updatedAt: true,
   authProvider: true,
   mfaSignalAttribute: true,
-  mfaAuthnContexts: true
+  mfaAuthnContexts: true,
+  mfaAttributeValues: true
 });
 
 export const SanitizedLdapConfigSchema = LdapConfigsSchema.pick({

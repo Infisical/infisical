@@ -68,6 +68,7 @@ export const AuthPage = ({
           <AuthCellField copyRef={copyRef} />
           <div className={styles.asideBar}>
             <Button asChild variant="outline" size="sm" icon="file">
+              {/* v4-check-ignore hand-built-docs-link -- the auth aside links the docs home as site navigation */}
               <a href="https://infisical.com/docs" target="_blank" rel="noopener noreferrer">
                 Documentation
               </a>

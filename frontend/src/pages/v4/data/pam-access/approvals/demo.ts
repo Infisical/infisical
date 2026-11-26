@@ -10,7 +10,12 @@ import {
   type TAutoApprovalOption,
   type TAutoApprovalOutcome
 } from "@app/hooks/api/approvalPolicies";
-import { PamApproverType, PamNotificationEvent, type TPamApprovalConfig } from "@app/hooks/api/pam";
+import {
+  PamAccessRequestStatus,
+  PamApproverType,
+  PamNotificationEvent,
+  type TPamApprovalConfig
+} from "@app/hooks/api/pam";
 
 import { createFixtureStore } from "../../fixture-store";
 import { accessRequestStore } from "../../pam/demo";
@@ -108,7 +113,8 @@ const emptyConfig: TPamApprovalConfig = {
   steps: [],
   notificationConfigs: [],
   breakGlassUsers: [],
-  autoApproval: { inputs: [], rules: [] }
+  autoApproval: { inputs: [], rules: [] },
+  emailApproversOnRequest: true
 };
 
 const configStore = createFixtureStore<Record<string, TPamApprovalConfig>>({
@@ -132,6 +138,7 @@ const configStore = createFixtureStore<Record<string, TPamApprovalConfig>>({
       }
     ],
     breakGlassUsers: [{ type: PamApproverType.User, id: "u-marcus" }],
+    emailApproversOnRequest: true,
     autoApproval: {
       inputs: [{ id: "in-1", connectionId: JIRA_CONNECTION_ID, subject: "issue" }],
       rules: [
@@ -284,7 +291,8 @@ export const pamAccessApprovalsDemo: PamAccessApprovalsAdapter = {
       steps,
       breakGlassUsers,
       notificationConfigs,
-      autoApproval
+      autoApproval,
+      emailApproversOnRequest
     }) => {
       configStore.update((all) => {
         const current = all[folderId] ?? emptyConfig;
@@ -293,6 +301,7 @@ export const pamAccessApprovalsDemo: PamAccessApprovalsAdapter = {
           [folderId]: {
             steps,
             breakGlassUsers: breakGlassUsers ?? current.breakGlassUsers,
+            emailApproversOnRequest: emailApproversOnRequest ?? current.emailApproversOnRequest,
             notificationConfigs: notificationConfigs
               ? current.notificationConfigs.filter((saved) =>
                   notificationConfigs.some(
@@ -355,6 +364,16 @@ export const pamAccessApprovalsDemo: PamAccessApprovalsAdapter = {
             label.toLowerCase().includes(search)
           )
         : [],
+      isPending: false,
+      error: null
+    };
+  },
+  usePendingApprovalCount: (enabled) => {
+    const all = accessRequestStore.use();
+    return {
+      data: enabled
+        ? all.filter(({ status }) => status === PamAccessRequestStatus.Pending).length
+        : undefined,
       isPending: false,
       error: null
     };

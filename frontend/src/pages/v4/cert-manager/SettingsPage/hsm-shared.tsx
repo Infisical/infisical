@@ -1,5 +1,6 @@
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Select } from "@infisical/cipher/ui/select";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
@@ -149,13 +150,11 @@ export const NoHsmRouteNotice = ({ orgId, plan }: { orgId: string; plan: HsmPlan
   return (
     <Alert
       tone="info"
-      title="No gateways can reach an HSM yet"
-      actions={
-        <Button variant="link" asChild>
-          <a href={HSM_DOCS_URL} target="_blank" rel="noreferrer">
-            Read the setup guide
-          </a>
-        </Button>
+      title={
+        <>
+          No gateways can reach an HSM yet{" "}
+          <DocumentationLink href={HSM_DOCS_URL} subject="HSM connectors" />
+        </>
       }
     >
       A gateway with PKCS#11 support must run on a machine that can reach your HSM. Someone with

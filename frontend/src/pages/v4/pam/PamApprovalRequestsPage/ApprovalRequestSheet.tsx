@@ -26,14 +26,13 @@ import {
 } from "@infisical/cipher/ui/detail";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { type DataListItem, DataList } from "@infisical/cipher/ui/list";
 import {
   Sheet,
+  SheetAside,
   SheetBody,
   SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
+  SheetFooter
 } from "@infisical/cipher/ui/sheet";
 import { SmallText, StatusText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
@@ -47,6 +46,7 @@ import {
 } from "@app/hooks/api/pam";
 
 import { failed, toast } from "../../access/toast";
+import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import {
@@ -71,11 +71,10 @@ const LinkedValue = ({ input }: { input: TAutoApprovalOutcome["inputs"][number] 
   );
 
 const ruleSummary = (rule: Rule) => {
-  const failures = rule.conditions.filter((condition) => !condition.passed);
-  if (!failures.length) return `All ${rule.conditions.length} checks passed`;
-  const [first] = failures;
-  const more = failures.length > 1 ? ` (+${failures.length - 1} more)` : "";
-  return `${first.reason ?? first.description}${more}`;
+  const failures = rule.conditions.filter((condition) => !condition.passed).length;
+  const total = rule.conditions.length;
+  if (!failures) return `All ${total} ${total === 1 ? "check" : "checks"} passed`;
+  return `${failures} of ${total} ${total === 1 ? "check" : "checks"} failed`;
 };
 
 const AutoApprovalResults = ({ outcome }: { outcome: TAutoApprovalOutcome }) => {
@@ -137,6 +136,7 @@ const RequestBody = ({
 }) => {
   const pam = useV4Adapter("pam");
   const { user } = useV4Session();
+  const { data: accountTypes = [] } = pam.useAccountTypes();
   const review = pam.useReviewAccessRequest();
   const revoke = pam.useRevokeAccessRequest();
   const [comment, setComment] = useState("");
@@ -150,6 +150,19 @@ const RequestBody = ({
   const isOwnRequest = Boolean(request.requesterId && request.requesterId === user.id);
   const canRevoke = canRevokeGrants && isGrantActive(request);
   const isCredential = request.accessType === PamAccessType.Credential;
+  const meta = accountTypes.find(({ type }) => type === request.accountType);
+  const facts: DataListItem[] = [
+    isMachineIdentityRequest(request)
+      ? ["Actor", "Machine identity"]
+      : ["Email", request.requesterEmail],
+    ["Folder", request.folderName ?? "None"],
+    ["Grants", isCredential ? "Credential access" : "Session access"],
+    ...(request.host ? [["Host", <code key="host">{request.host}</code>] as DataListItem] : []),
+    ["Requested at", formatRequestDate(request.createdAt)],
+    ...(request.grantExpiresAt
+      ? [["Expires", formatRequestDate(request.grantExpiresAt)] as DataListItem]
+      : [])
+  ];
 
   const handleReview = async (next: PamAccessRequestDecision) => {
     setDecision(next);
@@ -192,11 +205,20 @@ const RequestBody = ({
   };
 
   return (
-    <SheetContent size="md" pending={Boolean(decision) || revoking}>
-      <SheetHeader>
-        <SheetTitle>{request.accountName ?? "Access request"}</SheetTitle>
-        <SheetDescription>{`Request from ${request.requesterName}`}</SheetDescription>
-      </SheetHeader>
+    <SheetContent size="xl" pending={Boolean(decision) || revoking}>
+      <SheetAside
+        mainLabel="Request"
+        media={meta && <ProviderIcon icon={meta.icon} alt={meta.name} size="md" />}
+        title={request.accountName ?? "Access request"}
+        description={`Request from ${request.requesterName}`}
+        badges={
+          <StatusText tone={status.tone} icon={status.icon}>
+            {status.label}
+          </StatusText>
+        }
+      >
+        <DataList variant="props" items={facts} />
+      </SheetAside>
       <SheetBody>
         <Stack gap={24}>
           {request.isBreakGlass && (
@@ -217,58 +239,9 @@ const RequestBody = ({
           )}
           <DetailGroup>
             <Detail>
-              <DetailLabel>Status</DetailLabel>
-              <DetailValue>
-                <StatusText tone={status.tone} icon={status.icon}>
-                  {status.label}
-                </StatusText>
-              </DetailValue>
-            </Detail>
-            <Detail>
-              <DetailLabel>Requester</DetailLabel>
-              <DetailValue>{request.requesterName}</DetailValue>
-            </Detail>
-            {isMachineIdentityRequest(request) ? (
-              <Detail>
-                <DetailLabel>Actor</DetailLabel>
-                <DetailValue>Machine identity</DetailValue>
-              </Detail>
-            ) : (
-              <Detail>
-                <DetailLabel>Email</DetailLabel>
-                <DetailValue>{request.requesterEmail}</DetailValue>
-              </Detail>
-            )}
-            <Detail>
-              <DetailLabel>Folder</DetailLabel>
-              <DetailValue>{request.folderName ?? "None"}</DetailValue>
-            </Detail>
-            <Detail>
-              <DetailLabel>Grants</DetailLabel>
-              <DetailValue>{isCredential ? "Credential access" : "Session access"}</DetailValue>
-            </Detail>
-            {request.host && (
-              <Detail>
-                <DetailLabel>Host</DetailLabel>
-                <DetailValue>
-                  <code>{request.host}</code>
-                </DetailValue>
-              </Detail>
-            )}
-            <Detail>
               <DetailLabel>Access duration</DetailLabel>
               <DetailValue>{formatDuration(requestData?.duration)}</DetailValue>
             </Detail>
-            <Detail>
-              <DetailLabel>Requested at</DetailLabel>
-              <DetailValue>{formatRequestDate(request.createdAt)}</DetailValue>
-            </Detail>
-            {request.grantExpiresAt && (
-              <Detail>
-                <DetailLabel>Expires</DetailLabel>
-                <DetailValue>{formatRequestDate(request.grantExpiresAt)}</DetailValue>
-              </Detail>
-            )}
             <Detail>
               <DetailLabel>Reason</DetailLabel>
               <DetailValue>{requestData?.reason || "No reason provided"}</DetailValue>

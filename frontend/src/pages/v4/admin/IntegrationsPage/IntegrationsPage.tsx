@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
@@ -122,15 +123,13 @@ const MicrosoftTeamsSettings = ({
   const [draft, setDraft] = useState(config);
   return (
     <SettingsCard
-      title="Microsoft Teams"
-      description="Create the Teams bot and its Azure resources, then copy the values from the bot's app registration. The client secret is the bot's password."
-      action={
-        <Button asChild variant="outline" size="xs" icon="external">
-          <a href={TEAMS_DOCS} target="_blank" rel="noopener noreferrer">
-            Documentation
-          </a>
-        </Button>
+      title={
+        <>
+          Microsoft Teams{" "}
+          <DocumentationLink href={TEAMS_DOCS} subject="Microsoft Teams integration" />
+        </>
       }
+      description="Create the Teams bot and its Azure resources, then copy the values from the bot's app registration. The client secret is the bot's password."
       dirty={changed(draft, saved)}
       onDiscard={() => setDraft(saved)}
       onSave={async () => {

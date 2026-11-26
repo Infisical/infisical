@@ -556,6 +556,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
           <AlertDescription>
             Your audit log volume is growing. To keep searches fast, stream logs to an{" "}
             <a
+              // v4-check-ignore hand-built-docs-link -- inline link on a product name inside an instructional sentence
               href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
               target="_blank"
               rel="noopener noreferrer"
@@ -564,6 +565,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
             </a>{" "}
             or use the{" "}
             <a
+              // v4-check-ignore hand-built-docs-link -- inline link on a product name inside an instructional sentence
               href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
               target="_blank"
               rel="noopener noreferrer"

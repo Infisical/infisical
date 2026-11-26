@@ -19,7 +19,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@infisical/cipher/ui/alert-dialog";
-import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
@@ -30,8 +29,8 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field, FieldDescription } from "@infisical/cipher/ui/field";
-import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import {
@@ -376,20 +375,15 @@ export function DynamicSecretFlow({
           )}
           {definition && (
             <SheetHeader>
-              <SheetTitle>
-                <Inline gap={8}>
-                  Add {definition.label} Dynamic Secret
-                  <Badge tone="info" asChild>
-                    <a
-                      href={`https://infisical.com/docs/documentation/platform/dynamic-secrets/${dynamicSecretDocsSlug(definition.provider)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Documentation
-                      <Icon name="external" />
-                    </a>
-                  </Badge>
-                </Inline>
+              <SheetTitle
+                badges={
+                  <DocumentationLink
+                    href={`https://infisical.com/docs/documentation/platform/dynamic-secrets/${dynamicSecretDocsSlug(definition.provider)}`}
+                    subject={`${definition.label} dynamic secrets`}
+                  />
+                }
+              >
+                Add {definition.label} Dynamic Secret
               </SheetTitle>
               <SheetDescription>
                 Each lease gets its own credentials, revoked when its TTL ends.

@@ -6,6 +6,7 @@ import { Knex } from "knex";
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ActorType, AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";
@@ -174,6 +175,40 @@ describe("Auth IdP Service-Level Tests", () => {
       await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, isActive: false });
 
       expect(await orgFlags()).toEqual({ authEnforced: false, scimEnabled: false });
+    });
+
+    test("a saved SAML MFA attribute value decides the login verdict, and adding or removing it keeps SSO enforcement and SCIM", async () => {
+      await getServices().saml.createSamlCfg({
+        ...actor,
+        orgId: TEST_ORG_ID,
+        authProvider: AuthMethod.OKTA_SAML,
+        isActive: true,
+        entryPoint: "https://idp.example.com/sso/saml",
+        issuer: "https://idp.example.com",
+        idpCert: "cert",
+        mfaAttributeValues: ["swk"]
+      });
+      await enforceSsoAndScim();
+
+      const isPasskeyLoginTrusted = async () => {
+        const config = await getServices().saml.getSaml({ ...actor, type: "org", orgId: TEST_ORG_ID });
+        return matchIdpMfaSignal({
+          kind: "saml",
+          authnContextClassRefs: ["urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport"],
+          attributes: { amr: ["pwd", "swk"] },
+          config
+        }).verified;
+      };
+
+      expect(await isPasskeyLoginTrusted()).toBe(true);
+
+      await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, mfaAttributeValues: null });
+      expect(await isPasskeyLoginTrusted()).toBe(false);
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
+
+      await getServices().saml.updateSamlCfg({ ...actor, orgId: TEST_ORG_ID, mfaAttributeValues: ["swk"] });
+      expect(await isPasskeyLoginTrusted()).toBe(true);
+      expect(await orgFlags()).toEqual({ authEnforced: true, scimEnabled: true });
     });
 
     test("editing only the OIDC MFA signal keeps SSO enforcement and SCIM", async () => {

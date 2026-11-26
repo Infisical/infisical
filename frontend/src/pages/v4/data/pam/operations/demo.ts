@@ -625,7 +625,7 @@ const sqlLogs = (minutesAgo: number, entries: [string, string][]): TPamSessionLo
 
 const terminalLogs = (minutesAgo: number, lines: string[]): TPamSessionLog[] =>
   lines.map((line, index) => ({
-    timestamp: ago(minutesAgo - index * 0.3),
+    timestamp: ago(minutesAgo - Math.floor(index / 2) * 0.3),
     eventType: index % 2 === 0 ? "input" : "output",
     data: encode(line),
     rendered: true,
@@ -692,7 +692,11 @@ const sessionSeeds: SessionSeed[] = [
         "EXPLAIN ANALYZE SELECT * FROM export_jobs WHERE finished_at IS NULL;",
         "Seq Scan on export_jobs (cost=0.00..1834.22 rows=418)"
       ],
-      ["UPDATE export_jobs SET retry_count = 0 WHERE id = 99812;", "UPDATE 1"]
+      ["UPDATE export_jobs SET retry_count = 0 WHERE id = 99812;", "UPDATE 1"],
+      [
+        "WITH stuck AS ( SELECT j.id, j.order_id, j.started_at, o.customer_id FROM export_jobs j JOIN orders o ON o.id = j.order_id WHERE j.finished_at IS NULL AND j.started_at < now() - interval '30 minutes' ), retried AS ( SELECT order_id, count(*) AS attempts FROM export_job_attempts WHERE created_at > now() - interval '1 day' GROUP BY order_id ) SELECT s.id, s.order_id, s.customer_id, s.started_at, COALESCE(r.attempts, 0) AS attempts FROM stuck s LEFT JOIN retried r ON r.order_id = s.order_id ORDER BY s.started_at ASC LIMIT 50;",
+        "50 rows"
+      ]
     ])
   },
   {

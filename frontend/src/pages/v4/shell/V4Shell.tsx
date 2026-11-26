@@ -24,6 +24,7 @@ import {
   useHasProjectCertificateSyncs,
   usePendingRequestCount
 } from "../cert-manager/components/certificate";
+import { useV4Adapter } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
@@ -211,6 +212,9 @@ export const V4Shell = ({
     at.product === ProjectType.SecretManager ? (at.projectId ?? "") : ""
   );
   const pendingCertRequests = usePendingRequestCount(orgId, at.level === "pki");
+  const { data: pendingPamRequests = 0 } = useV4Adapter("pamAccess").usePendingApprovalCount(
+    at.level === "pam"
+  );
   const trail = shellTrail({
     at,
     projectName: projectName.name,
@@ -219,7 +223,7 @@ export const V4Shell = ({
     nested: nav?.levels,
     linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions,
     projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview },
-    productCounts: { requests: pendingCertRequests }
+    productCounts: { requests: pendingCertRequests, "approval-requests": pendingPamRequests }
   });
   const shown = trail[trail.length - 1];
   const parent = trail[trail.length - 2];

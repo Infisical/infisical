@@ -296,7 +296,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
             {socialOptions.map((option) => option.render({ showLabel: false, isLastUsed: false }))}
           </div>
         )}
-        {organizationOptions.length > 0 && !areSsoOptionsVisible && (
+        {organizationOptions.length > 0 && socialOptions.length > 0 && !areSsoOptionsVisible && (
           <Button
             type="button"
             variant="ghost"
@@ -306,7 +306,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
             View SSO options
           </Button>
         )}
-        <AnimatedCollapse open={areSsoOptionsVisible}>
+        <AnimatedCollapse open={socialOptions.length === 0 || areSsoOptionsVisible}>
           <Stack gap={8}>
             {organizationOptions.map((option) =>
               option.render({ showLabel: true, isLastUsed: false })

@@ -83,7 +83,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: ["es2020", "edge88", "firefox78", "chrome87", "safari14"],
-      cssTarget: ["edge88", "firefox78", "chrome87", "safari14"],
+      cssTarget: ["chrome109", "edge109", "firefox121", "safari16.4"],
       rolldownOptions: {
         output: {
           entryFileNames: `assets/[name]-${version}-[hash].js`,

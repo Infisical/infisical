@@ -11,6 +11,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -512,13 +513,10 @@ function CopySecretsSession({
       >
         <SheetContent className={styles.sheet}>
           <SheetHeader>
-            <SheetTitle className={styles.title}>
+            <SheetTitle
+              badges={<DocumentationLink href={DOCUMENTATION_URL} subject="copying secrets" />}
+            >
               Copy secrets
-              <Button asChild variant="ghost" size="xs" iconRight="external">
-                <a href={DOCUMENTATION_URL} target="_blank" rel="noopener noreferrer">
-                  Docs
-                </a>
-              </Button>
             </SheetTitle>
             <SheetDescription>A one-time copy. Later changes are not synced.</SheetDescription>
           </SheetHeader>

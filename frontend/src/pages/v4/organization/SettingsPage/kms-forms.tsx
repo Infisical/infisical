@@ -422,20 +422,16 @@ export const AwsKmsForm = ({
                   <AlertTitle>
                     {storedExternalId
                       ? "External ID not tied to this organization"
-                      : "No External ID on this key"}
+                      : "No External ID on this key"}{" "}
+                    <DocumentationLink
+                      href={`${AWS_KMS_DOCS_URL}#update-the-external-id-of-an-existing-aws-kms-key`}
+                      subject="updating the External ID"
+                    />
                   </AlertTitle>
                   <AlertDescription>
-                    <Stack gap={8}>
-                      <span>
-                        {storedExternalId
-                          ? "This key keeps working with its current External ID. Before updating its credentials, add your organization ID to the role's trust policy next to the current value. Remove the old value after the update."
-                          : "This key keeps working without an External ID. Update its credentials first so Infisical sends your organization ID, then require that value in the role's trust policy."}
-                      </span>
-                      <DocumentationLink
-                        href={`${AWS_KMS_DOCS_URL}#update-the-external-id-of-an-existing-aws-kms-key`}
-                        subject="updating the External ID"
-                      />
-                    </Stack>
+                    {storedExternalId
+                      ? "This key keeps working with its current External ID. Before updating its credentials, add your organization ID to the role's trust policy next to the current value. Remove the old value after the update."
+                      : "This key keeps working without an External ID. Update its credentials first so Infisical sends your organization ID, then require that value in the role's trust policy."}
                   </AlertDescription>
                 </Alert>
               )}

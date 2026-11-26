@@ -25,6 +25,7 @@ const ApiKeysTab = () => (
     <AlertDescription>
       Existing keys no longer authenticate requests. Use{" "}
       <a
+        // v4-check-ignore hand-built-docs-link -- inline link on a product name inside an instructional sentence
         href="https://infisical.com/docs/documentation/platform/identities/overview"
         target="_blank"
         rel="noreferrer"

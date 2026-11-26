@@ -44,12 +44,7 @@ import { RESTRICTED, useCertManagerSettingsScope, useSettingsPermission } from "
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
 
-const Title = () => (
-  <Inline gap={8} align="center">
-    HSM connectors
-    <DocumentationLink href={HSM_DOCS_URL} subject="HSM connectors" />
-  </Inline>
-);
+const docs = <DocumentationLink href={HSM_DOCS_URL} subject="HSM connectors" />;
 
 export const DeleteHsmConnectorDialog = ({
   connector,
@@ -256,7 +251,8 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
       <Card
         variant="framed"
         flush
-        title={<Title />}
+        title="HSM connectors"
+        badges={docs}
         action={
           <Inline gap={8} align="center">
             <ListToolbar search={search} onSearch={setSearch} placeholder="Search HSM connectors" />
@@ -313,13 +309,13 @@ export const HsmConnectorsTab = () => {
   const { data: plan, isPending } = useV4Adapter("certManagerSettings").useHsmPlan(orgId);
   if (isPending || !plan)
     return (
-      <Card variant="framed" title={<Title />}>
+      <Card variant="framed" title="HSM connectors" badges={docs}>
         <Skeleton height={120} />
       </Card>
     );
   if (!plan.hsm)
     return (
-      <Card variant="framed" title={<Title />}>
+      <Card variant="framed" title="HSM connectors" badges={docs}>
         <EmptyState
           size="sm"
           icon="lock"

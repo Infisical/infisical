@@ -143,6 +143,29 @@ export const secretImportServiceFactory = ({
     tx: Knex
   ) => eventEmitter.emit([SecretImportModifiedEventV1.build({ secretImportId, ...scope, modificationType })], tx);
 
+  // a rename can carry the folder under a policy between the request's first read and the write. renames lock every
+  // folder they move, so locking this one orders the two, and the path read after the lock is where the import lands.
+  // a rename that commits after this transaction sees the import and refuses itself (findDirectImportEnteringEnforcedPath).
+  const $assertDirectImportAllowedInFolder = async (
+    projectId: string,
+    environment: string,
+    folderId: string,
+    tx: Knex
+  ) => {
+    await folderDAL.lockFoldersForUpdate([folderId], tx);
+    const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+    if (!folderWithPath) {
+      throw new NotFoundError({ message: `Failed to retrieve path for folder with ID '${folderId}'` });
+    }
+    const policy = await secretChangePolicyService.getSecretApprovalPolicy(
+      projectId,
+      environment,
+      folderWithPath.path,
+      tx
+    );
+    if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
+  };
+
   const createImport = async ({
     environment,
     data,
@@ -233,17 +256,6 @@ export const secretImportServiceFactory = ({
         message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
       });
 
-    if (!isReplication && !isCrossProjectImport) {
-      // findBySecretPath resolves "//app" to the /app folder but returns the requested path as folder.path, and
-      // policies are matched by path, so an alias would miss the policy that governs the folder.
-      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
-        projectId,
-        environment,
-        path.posix.join("/", folder.path)
-      );
-      if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
-    }
-
     const [importEnv] = await projectEnvDAL.findBySlugs(sourceProjectId, [data.environment]);
     if (!importEnv) {
       throw new NotFoundError({
@@ -266,6 +278,9 @@ export const secretImportServiceFactory = ({
     }
 
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      if (!isReplication && !isCrossProjectImport) {
+        await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);
+      }
       const lastPos = await secretImportDAL.findLastImportPosition(folder.id, tx);
       const doc = await secretImportDAL.create(
         {
@@ -382,14 +397,6 @@ export const secretImportServiceFactory = ({
     const isSourceChanging =
       (data.environment !== undefined && importedEnv.id !== secImpDoc.importEnv) ||
       (data.path !== undefined && data.path !== secImpDoc.importPath);
-    if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
-      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
-        projectId,
-        environment,
-        path.posix.join("/", folder.path)
-      );
-      if (policy?.enforceOnSecretImports) throw ERR_NON_REPLICATION_IMPORT_UNDER_POLICY(policy.name);
-    }
 
     // check if user has permission to import from target path when source is changing
     if (data.environment || data.path) {
@@ -415,6 +422,9 @@ export const secretImportServiceFactory = ({
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
+      if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
+        await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);
+      }
       const secImp = await secretImportDAL.findOne({ folderId: folder.id, id });
       if (!secImp) throw ERR_SEC_IMP_NOT_FOUND;
 

@@ -24,6 +24,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DataTable } from "@infisical/cipher/ui/data-table";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -646,19 +647,14 @@ function KeySchemaField({ destinationName }: { destinationName: string }) {
             <Stack gap={12}>
               <SyncField
                 label="Key schema"
+                help={
+                  <DocumentationLink href={`${DOCS}/overview#key-schemas`} subject="key schemas" />
+                }
                 error={error?.message}
                 description={
                   <>
                     Use <code>{"{{secretKey}}"}</code> as a placeholder, and optionally{" "}
-                    <code>{"{{environment}}"}</code>.{" "}
-                    <a
-                      href={`${DOCS}/overview#key-schemas`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Learn more
-                    </a>
-                    .
+                    <code>{"{{environment}}"}</code>.
                   </>
                 }
               >
@@ -1222,6 +1218,14 @@ export function CreateSecretSyncSheet({
             ) : undefined
           }
           title={destination ? `${destinationName} sync` : "Choose a destination"}
+          badges={
+            destination ? (
+              <DocumentationLink
+                href={`${DOCS}/${destination}`}
+                subject={`${destinationName} syncs`}
+              />
+            ) : undefined
+          }
           description={
             destination ? undefined : "You can't change the destination later without a new sync."
           }
@@ -1242,11 +1246,6 @@ export function CreateSecretSyncSheet({
                 <div className={flowStyles.asideHead}>
                   <span className={flowStyles.eyebrow}>{`Step ${step + 2}`}</span>
                   <span className={flowStyles.eyebrow}>{current.name}</span>
-                  <Button asChild variant="ghost" size="xs" iconRight="external">
-                    <a href={`${DOCS}/${destination}`} target="_blank" rel="noopener noreferrer">
-                      Docs
-                    </a>
-                  </Button>
                 </div>
                 <p className={flowStyles.label}>What this step does</p>
                 <SmallText muted>{current.rightDescription}</SmallText>

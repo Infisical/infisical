@@ -34,8 +34,8 @@ export type ShellAdapter = {
   useCertManagerInstance: (orgId: string) => V4QueryResult<CertManagerInstance>;
   useNotifications: (orgId: string) => V4QueryResult<TUserNotification[]>;
   useMarkAllNotificationsRead: V4Mutation<{ orgId: string }>;
-  useMarkNotificationRead: V4Mutation<{ orgId: string; notificationId: string }>;
-  useDeleteNotification: V4Mutation<{ orgId: string; notificationId: string }>;
+  useMarkNotificationsRead: V4Mutation<{ orgId: string; notificationIds: string[] }>;
+  useDeleteNotifications: V4Mutation<{ orgId: string; notificationIds: string[] }>;
   useDeleteAllNotifications: V4Mutation<{ orgId: string }>;
   useServerAdmins: (orgId: string, enabled: boolean) => V4QueryResult<OrgUser["user"][]>;
 };

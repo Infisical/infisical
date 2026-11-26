@@ -797,6 +797,86 @@ const notPortedGates = (text: string, file: string) => {
   ];
 };
 
+const docsUrl = /https?:\/\/(?:www\.)?infisical\.com\/docs\b/;
+
+/** The value after href= or href:, as written: a quoted string or a balanced {...} expression. */
+const hrefValue = (text: string, start: number) => {
+  const first = text[start];
+  if (first === '"' || first === "'" || first === "`") {
+    const end = text.indexOf(first, start + 1);
+    return text.slice(start, end === -1 ? undefined : end + 1);
+  }
+  if (first !== "{") return text.slice(start).match(/^[^,;\n)}]*/)?.[0] ?? "";
+  let depth = 0;
+  for (let index = start; index < text.length; index += 1) {
+    if (text[index] === "{") depth += 1;
+    else if (text[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, index + 1);
+    }
+  }
+  return text.slice(start);
+};
+
+/** Links to Infisical's docs rendered by anything other than DocumentationLink, and Docs or Documentation text links. */
+export const handBuiltDocsLinks = (text: string) => {
+  const docsNames = new Set(
+    [
+      ...text.matchAll(/\b(\w+)\s*[=:]\s*\(?\s*[`"']https?:\/\/(?:www\.)?infisical\.com\/docs\b/g)
+    ].map((match) => match[1])
+  );
+  docsNames.delete("href");
+  const code = (value: string) =>
+    [
+      value.replace(/(["'`])(?:(?!\1)[\s\S])*\1/g, ""),
+      ...[...value.matchAll(/\$\{([^}]*)\}/g)].map((match) => match[1])
+    ].join(" ");
+  const readsDocs = (value: string) =>
+    docsUrl.test(value) ||
+    [...code(value).matchAll(/\b[A-Za-z_]\w*\b/g)].some(
+      ([name]) => docsNames.has(name) || /(?:^|_)DOCS?(?:_|$)|[Dd]ocs?(?:[A-Z_]|$)/.test(name)
+    );
+  const openTag = (index: number) =>
+    [...text.slice(Math.max(0, index - 2000), index).matchAll(/<([A-Za-z][\w.]*)\b/g)].at(-1)?.[1];
+  const links = [...text.matchAll(/\bhref\s*([=:])\s*/g)].flatMap((match) => {
+    const index = match.index ?? 0;
+    const value = hrefValue(text, index + match[0].length);
+    if (!readsDocs(value)) return [];
+    if (match[1] === "=" && openTag(index) === "DocumentationLink") return [];
+    return [{ index, text: `href${match[1]}${value}`.slice(0, 120) }];
+  });
+  const calls = [
+    ...text.matchAll(
+      /(?<!\bfunction\s+)\b(?!(?:return|if|for|while|switch|catch|typeof|await)\b)[A-Za-z_$][\w$]*(?:\.[\w$]+)*\(/g
+    )
+  ].flatMap((match) => {
+    const index = match.index ?? 0;
+    const open = index + match[0].length - 1;
+    let depth = 0;
+    let close = text.length;
+    for (let cursor = open; cursor < text.length; cursor += 1) {
+      if (text[cursor] === "(") depth += 1;
+      else if (text[cursor] === ")") depth -= 1;
+      if (depth === 0) {
+        close = cursor;
+        break;
+      }
+    }
+    let args = text.slice(open + 1, close);
+    while (/\([^()]*\)/.test(args)) args = args.replace(/\([^()]*\)/g, "");
+    if (args.includes("=>") || /<[A-Za-z>]/.test(args) || !readsDocs(args)) return [];
+    return [{ index, text: text.slice(index, close + 1).slice(0, 120) }];
+  });
+  const labels = [
+    ...text.matchAll(/>\s*(?:Docs|Documentation|Read (?:the )?docs|View docs)\s*(?:↗\s*)?</g)
+  ]
+    .filter((match) =>
+      ["a", "Button", "Badge", "Link"].includes(openTag((match.index ?? 0) + 1) ?? "")
+    )
+    .map((match) => ({ index: match.index ?? 0, text: match[0] }));
+  return [...links, ...calls, ...labels];
+};
+
 export const v4Checks: readonly V4Check[] = [
   {
     id: "has-selector",
@@ -1136,6 +1216,14 @@ export const v4Checks: readonly V4Check[] = [
     appliesTo: (file) =>
       isMarkup(file) && isAuthored(file) && file !== "src/pages/v4/not-ported.ts",
     source: notPortedGates
+  },
+  {
+    id: "hand-built-docs-link",
+    rule: "shared-docs-link",
+    message:
+      "Link to Infisical's docs only through DocumentationLink, placed in the badges slot of the title or label it documents (PageHeader, DialogTitle, SheetTitle, Card or SettingsCard title, Field label), where it sizes itself to that title. Never a Docs or Documentation text button, an external-link icon, or a docs link in an action row, toolbar, footer or empty state. A docs URL inside an instructional sentence or global navigation takes v4-check-ignore hand-built-docs-link with the reason.",
+    appliesTo: isAuthored,
+    source: handBuiltDocsLinks
   },
   {
     id: "suspense-fallback",

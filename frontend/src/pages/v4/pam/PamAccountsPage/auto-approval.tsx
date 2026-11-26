@@ -1,6 +1,6 @@
-import { type Dispatch, type SetStateAction, useState } from "react";
-import { Alert } from "@infisical/cipher/ui/alert";
-import { Badge } from "@infisical/cipher/ui/badge";
+import { type Dispatch, Fragment, type SetStateAction, useState } from "react";
+import { Alert, AlertAction, AlertDescription } from "@infisical/cipher/ui/alert";
+import { Badge, BadgeGroup } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { Combobox } from "@infisical/cipher/ui/combobox";
@@ -20,7 +20,7 @@ import { Item } from "@infisical/cipher/ui/item";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiSelect } from "@infisical/cipher/ui/multi-select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
-import { Heading, Meta, SmallText, StatusText } from "@infisical/cipher/ui/text";
+import { Heading, Meta, SmallText, StatusText, Text } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import {
@@ -64,6 +64,8 @@ import {
   UNUSED_CONSTRAINT
 } from "./auto-approval-draft";
 
+import css from "./auto-approval.module.css";
+
 type Scope = ReturnType<typeof folderAutoApprovalScope>;
 type TAi = TAutoApprovalCatalog["ai"];
 
@@ -97,7 +99,11 @@ const ValuePicker = ({
   const [search, setSearch] = useState("");
   const isMany = constraint.value === AutoApprovalConstraintValue.Many;
   const pamAccess = useV4Adapter("pamAccess");
-  const { data: fetched = [], isPending } = pamAccess.useAutoApprovalOptions(
+  const {
+    data: fetched = [],
+    isPending,
+    error: optionsError
+  } = pamAccess.useAutoApprovalOptions(
     {
       ...scope,
       connectionId,
@@ -159,7 +165,11 @@ const ValuePicker = ({
       loading={constraint.hasOptions && isPending}
       onCreate={create}
       createLabel={(query) => `Use "${query.trim()}"`}
-      emptyText="No matches. Type a value to use it."
+      emptyText={
+        optionsError
+          ? "Couldn't load values. Type one instead."
+          : "No matches. Type a value to use it."
+      }
       placeholder="Choose a value..."
     />
   );
@@ -203,17 +213,20 @@ const ConditionRow = ({
     <Item
       variant="outline"
       size="sm"
-      media={connection && <ConnectionIcon app={connection.app} />}
+      truncate={false}
       title={
         <Inline gap={8} align="center">
-          <span>
-            {subjectDisplayLabel(inputs, catalog, condition.connectionId, condition.subject) ??
-              "Unavailable record"}
-          </span>
-          <Meta mono={false}>
-            {constraint?.label ?? condition.constraint}
-            {constraint?.value === AutoApprovalConstraintValue.Many && " one of"}
-          </Meta>
+          <BadgeGroup wrap>
+            <Badge tone="soft">
+              {connection && <ConnectionIcon app={connection.app} />}
+              {subjectDisplayLabel(inputs, catalog, condition.connectionId, condition.subject) ??
+                "Unavailable record"}
+            </Badge>
+          </BadgeGroup>
+          <span>{constraint?.label ?? condition.constraint}</span>
+          {constraint?.value === AutoApprovalConstraintValue.Many && (
+            <Meta mono={false}>one of</Meta>
+          )}
         </Inline>
       }
       error={error ?? undefined}
@@ -282,10 +295,13 @@ const AiConditionRow = ({
     <Item
       variant="outline"
       size="sm"
-      icon="sparkles"
+      truncate={false}
       title={
         <Inline gap={8} align="center">
-          <span>AI approves the request</span>
+          <Badge tone="soft" icon="sparkles">
+            AI
+          </Badge>
+          <span>approves the request</span>
           {ai.model ? (
             <Meta mono={false}>using {ai.model}</Meta>
           ) : (
@@ -338,10 +354,10 @@ const AiConditionRow = ({
             placeholder="Connections the AI can read from..."
           />
         </Field>
-        <Alert
-          tone="warn"
-          title="Requesters write the reason and form fields, and can try to instruct the AI through them. Keep the assignee and reuse checks in this rule."
-        />
+        <Alert tone="warn">
+          Requesters write the reason and form fields, and can try to instruct the AI through them.
+          Keep the assignee and reuse checks in this rule.
+        </Alert>
       </Stack>
     </Item>
   );
@@ -426,10 +442,11 @@ const RuleCard = ({
     .filter(({ constraints }) => constraints.length > 0);
 
   const aiConditions = rule.aiConditions ?? [];
+  const conditionCount = rule.conditions.length + aiConditions.length;
   const canAddAi = aiConditions.length === 0;
 
   let addBlocker: string | undefined;
-  if (rule.conditions.length + aiConditions.length >= AUTO_APPROVAL_LIMITS.conditions)
+  if (conditionCount >= AUTO_APPROVAL_LIMITS.conditions)
     addBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions`;
   else if (choices.length === 0 && !canAddAi) addBlocker = "Add a request form field first";
   else if (menuGroups.length === 0 && !canAddAi)
@@ -467,138 +484,176 @@ const RuleCard = ({
         />
       }
     >
-      <Stack gap={12}>
-        <SmallText muted>
-          When a request is submitted and every condition passes, approve it.
-        </SmallText>
-        {rule.conditions.map((condition) => (
-          <ConditionRow
-            key={condition.key}
-            condition={condition}
-            rule={rule}
-            inputs={inputs}
-            catalog={catalog}
-            scope={scope}
-            showErrors={showErrors}
-            onChange={(next) =>
-              onChange({
-                ...rule,
-                conditions: rule.conditions.map((entry) => (entry.key === next.key ? next : entry))
-              })
-            }
-            onRemove={() =>
-              onChange({
-                ...rule,
-                conditions: rule.conditions.filter(({ key }) => key !== condition.key)
-              })
-            }
-          />
-        ))}
-        {aiConditions.map((condition) => (
-          <AiConditionRow
-            key={condition.key}
-            condition={condition}
-            ai={ai}
-            showErrors={showErrors}
-            onChange={(next) =>
-              onChange({
-                ...rule,
-                aiConditions: aiConditions.map((entry) => (entry.key === next.key ? next : entry))
-              })
-            }
-            onRemove={() =>
-              onChange({
-                ...rule,
-                aiConditions: aiConditions.filter(({ key }) => key !== condition.key)
-              })
-            }
-          />
-        ))}
-        {missingChecks.map(({ condition, constraint, message, action }) => (
-          <Alert
-            key={`${condition.connectionId}:${condition.subject}:${constraint}`}
-            tone="warn"
-            title={message(
-              subjectDisplayLabel(inputs, catalog, condition.connectionId, condition.subject) ??
-                "record"
-            )}
-            actions={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  addCondition({
-                    connectionId: condition.connectionId,
-                    subject: condition.subject,
-                    constraint
-                  })
-                }
-              >
-                {action}
-              </Button>
-            }
-          />
-        ))}
-        <Inline gap={12} align="center">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild disabled={Boolean(addBlocker)}>
-              <Button variant="outline" size="sm" icon="plus" disabledReason={addBlocker}>
-                Add condition
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {menuGroups.map(({ choice, constraints }, index) => (
-                <div key={`${choice.connectionId}:${choice.subject}`}>
-                  {index > 0 && <DropdownMenuSeparator />}
-                  {menuGroups.length > 1 && (
-                    <DropdownMenuLabel>
-                      {choice.label} from {choice.via}
-                    </DropdownMenuLabel>
-                  )}
-                  {constraints.map((constraint) => (
-                    <DropdownMenuItem
-                      key={constraint.id}
-                      onSelect={() =>
+      <dl className={css.clauses}>
+        <div className={css.clause}>
+          <dt className={css.label}>When</dt>
+          <dd className={css.value}>
+            <Text>The request is submitted</Text>
+          </dd>
+        </div>
+        <div className={css.clause}>
+          <dt className={css.label}>Conditions</dt>
+          <dd className={css.value}>
+            <Stack gap={12}>
+              {conditionCount > 0 && (
+                <Stack gap={4}>
+                  {rule.conditions.map((condition, index) => (
+                    <Fragment key={condition.key}>
+                      {index > 0 && <Meta mono={false}>and</Meta>}
+                      <ConditionRow
+                        condition={condition}
+                        rule={rule}
+                        inputs={inputs}
+                        catalog={catalog}
+                        scope={scope}
+                        showErrors={showErrors}
+                        onChange={(next) =>
+                          onChange({
+                            ...rule,
+                            conditions: rule.conditions.map((entry) =>
+                              entry.key === next.key ? next : entry
+                            )
+                          })
+                        }
+                        onRemove={() =>
+                          onChange({
+                            ...rule,
+                            conditions: rule.conditions.filter(({ key }) => key !== condition.key)
+                          })
+                        }
+                      />
+                    </Fragment>
+                  ))}
+                  {aiConditions.map((condition) => (
+                    <Fragment key={condition.key}>
+                      {rule.conditions.length > 0 && <Meta mono={false}>and</Meta>}
+                      <AiConditionRow
+                        condition={condition}
+                        ai={ai}
+                        showErrors={showErrors}
+                        onChange={(next) =>
+                          onChange({
+                            ...rule,
+                            aiConditions: aiConditions.map((entry) =>
+                              entry.key === next.key ? next : entry
+                            )
+                          })
+                        }
+                        onRemove={() =>
+                          onChange({
+                            ...rule,
+                            aiConditions: aiConditions.filter(({ key }) => key !== condition.key)
+                          })
+                        }
+                      />
+                    </Fragment>
+                  ))}
+                </Stack>
+              )}
+              {missingChecks.map(({ condition, constraint, message, action }) => (
+                <Alert
+                  key={`${condition.connectionId}:${condition.subject}:${constraint}`}
+                  tone="warn"
+                >
+                  <Icon name="alert" />
+                  <AlertDescription>
+                    {message(
+                      subjectDisplayLabel(
+                        inputs,
+                        catalog,
+                        condition.connectionId,
+                        condition.subject
+                      ) ?? "record"
+                    )}
+                  </AlertDescription>
+                  <AlertAction>
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() =>
                         addCondition({
-                          connectionId: choice.connectionId,
-                          subject: choice.subject,
-                          constraint: constraint.id
+                          connectionId: condition.connectionId,
+                          subject: condition.subject,
+                          constraint
                         })
                       }
                     >
-                      {choice.label} {constraint.label}
-                      {constraint.value !== AutoApprovalConstraintValue.None && "..."}
-                    </DropdownMenuItem>
-                  ))}
-                </div>
+                      {action}
+                    </Button>
+                  </AlertAction>
+                </Alert>
               ))}
-              {canAddAi && (
-                <>
-                  {menuGroups.length > 0 && <DropdownMenuSeparator />}
-                  {menuGroups.length > 0 && <DropdownMenuLabel>AI</DropdownMenuLabel>}
-                  <DropdownMenuItem
-                    disabledReason={ai.model ? undefined : NO_AI_MODEL}
-                    onSelect={() =>
-                      onChange({
-                        ...rule,
-                        aiConditions: [{ key: newKey(), prompt: "", contextConnectionIds: [] }]
-                      })
-                    }
-                  >
-                    <Icon name="sparkles" />
-                    AI approves the request...
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {error && (
-            <StatusText tone="bad" icon="alert-c">
-              {error}
-            </StatusText>
-          )}
-        </Inline>
-      </Stack>
+              <Inline gap={12} align="center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={Boolean(addBlocker)}>
+                    <Button variant="outline" size="sm" icon="plus" disabledReason={addBlocker}>
+                      Add condition
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {menuGroups.map(({ choice, constraints }, index) => (
+                      <div key={`${choice.connectionId}:${choice.subject}`}>
+                        {index > 0 && <DropdownMenuSeparator />}
+                        {menuGroups.length > 1 && (
+                          <DropdownMenuLabel>
+                            {choice.label} from {choice.via}
+                          </DropdownMenuLabel>
+                        )}
+                        {constraints.map((constraint) => (
+                          <DropdownMenuItem
+                            key={constraint.id}
+                            onSelect={() =>
+                              addCondition({
+                                connectionId: choice.connectionId,
+                                subject: choice.subject,
+                                constraint: constraint.id
+                              })
+                            }
+                          >
+                            {choice.label} {constraint.label}
+                            {constraint.value !== AutoApprovalConstraintValue.None && "..."}
+                          </DropdownMenuItem>
+                        ))}
+                      </div>
+                    ))}
+                    {canAddAi && (
+                      <>
+                        {menuGroups.length > 0 && <DropdownMenuSeparator />}
+                        {menuGroups.length > 0 && <DropdownMenuLabel>AI</DropdownMenuLabel>}
+                        <DropdownMenuItem
+                          disabledReason={ai.model ? undefined : NO_AI_MODEL}
+                          onSelect={() =>
+                            onChange({
+                              ...rule,
+                              aiConditions: [
+                                { key: newKey(), prompt: "", contextConnectionIds: [] }
+                              ]
+                            })
+                          }
+                        >
+                          <Icon name="sparkles" />
+                          AI approves the request...
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {error && (
+                  <StatusText tone="bad" icon="alert-c">
+                    {error}
+                  </StatusText>
+                )}
+              </Inline>
+            </Stack>
+          </dd>
+        </div>
+        <div className={css.clause}>
+          <dt className={css.label}>Then</dt>
+          <dd className={css.value}>
+            <Text>Approve automatically</Text>
+          </dd>
+        </div>
+      </dl>
     </Card>
   );
 };
@@ -692,13 +747,7 @@ const RulesSection = ({
         />
       )}
       {draft.rules.length === 0 ? (
-        <EmptyState
-          size="sm"
-          media="bare"
-          icon="zap"
-          title="No rules"
-          description="Every request waits for the approvers below."
-        />
+        <SmallText muted>No rules yet. Every request waits for the approvers below.</SmallText>
       ) : (
         draft.rules.map((rule, index) => (
           <Stack key={rule.key} gap={8}>
@@ -772,17 +821,11 @@ const InputList = ({
 }) => {
   if (inputs.length === 0)
     return (
-      <EmptyState
-        size="sm"
-        media="bare"
-        icon="file-text"
-        title="No request form fields"
-        description={
-          hasAiModel
-            ? "Rules can only use AI until you add one."
-            : "Rules have nothing to check until you add one."
-        }
-      />
+      <SmallText muted>
+        {hasAiModel
+          ? "No fields yet. Rules can only use AI until you add one."
+          : "No fields yet. Rules have nothing to check until you add one."}
+      </SmallText>
     );
   return inputs.map((input) => (
     <InputRow
@@ -882,7 +925,7 @@ export const AutoApprovalCard = ({
     body = (
       <Stack gap={24}>
         <Stack gap={12}>
-          <Inline gap={12} justify="between" align="center" wrap={false}>
+          <Inline gap={12} justify="between" align="center">
             <Stack gap={2}>
               <Heading level={4} size="subsection">
                 Request form fields

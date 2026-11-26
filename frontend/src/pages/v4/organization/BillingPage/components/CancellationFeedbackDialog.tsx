@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { type ReactNode, useEffect, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@infisical/cipher/ui/button";
 import {
@@ -91,13 +91,27 @@ export const CancellationFeedbackDialog = ({
   const {
     control,
     handleSubmit,
+    setFocus,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { comment: "" }
   });
 
+  const isOther = useWatch({ control, name: "reason" }) === "other";
+  const [isCommentNudged, setIsCommentNudged] = useState(false);
+
+  useEffect(() => {
+    if (isCommentNudged && !isSubmitting) {
+      setFocus("comment");
+    }
+  }, [isCommentNudged, isSubmitting, setFocus]);
+
   const onSubmit = async ({ reason, comment }: FormData) => {
+    if (reason === "other" && !comment && !isCommentNudged) {
+      setIsCommentNudged(true);
+      return;
+    }
     try {
       await onConfirm();
     } catch {
@@ -141,7 +155,13 @@ export const CancellationFeedbackDialog = ({
                 <RadioGroup
                   aria-label={reasonLabel}
                   value={field.value ?? ""}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setIsCommentNudged(false);
+                    if (value === "other") {
+                      setFocus("comment");
+                    }
+                  }}
                   disabled={isSubmitting}
                   className="sm:grid-cols-2"
                 >
@@ -165,16 +185,26 @@ export const CancellationFeedbackDialog = ({
               <Stack gap={4}>
                 <Field
                   label="Comment"
-                  optional
+                  optional={!isOther}
                   error={fieldState.error?.message}
-                  description="Don't include secrets, credentials, or personal data."
+                  description={
+                    isCommentNudged
+                      ? "Add a comment so we can improve, or submit again to skip."
+                      : "Don't include secrets, credentials, or personal data."
+                  }
                 >
                   <Textarea
                     {...field}
+                    onChange={(event) => {
+                      field.onChange(event);
+                      setIsCommentNudged(false);
+                    }}
                     rows={3}
                     maxLength={COMMENT_MAX_LENGTH}
                     disabled={isSubmitting}
-                    placeholder="Tell us what would have made you stay"
+                    placeholder={
+                      isOther ? "What made you cancel?" : "Tell us what would have made you stay"
+                    }
                   />
                 </Field>
                 <div className="self-end tabular-nums">

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -105,6 +105,14 @@ export const ProjectRoleList = () => {
   const projectsHidden = hidesProjects(currentProject?.type);
   const canOfferFolderAccess =
     currentProject?.type === ProjectType.SecretManager && !subscription?.secretsFolderRbac;
+  const navigate = useNavigate();
+  const shouldOpenCreateRole = useSearch({ strict: false, select: (el) => el?.createRole });
+
+  useEffect(() => {
+    if (!shouldOpenCreateRole) return;
+    handlePopUpOpen(subscription && !subscription.rbac ? "upgradePlan" : "role");
+    navigate({ to: ".", search: (prev) => ({ ...prev, createRole: false }), replace: true });
+  }, [shouldOpenCreateRole]);
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(
     projectId,

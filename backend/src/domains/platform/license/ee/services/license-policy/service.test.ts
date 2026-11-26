@@ -239,7 +239,7 @@ describe("LicensePolicyService.fetchPlan", () => {
     expect(plan.has(PlanFeature.Rbac)).toBe(true);
   });
 
-  test("should throw when the License Server cannot be read, so the domain serves the fallback", async () => {
+  test("should throw when the License Server cannot be read, so the domain serves the free plan", async () => {
     // Setup
     const { policy } = cloudPolicy(null);
 
@@ -251,13 +251,13 @@ describe("LicensePolicyService.fetchPlan", () => {
   });
 });
 
-describe("LicensePolicyService.fallbackPlan", () => {
+describe("LicensePolicyService.freePlan", () => {
   test("should be the free tier with cloud defaults, and no slug", () => {
     // Setup
     const { policy } = cloudPolicy(null);
 
     // Action
-    const plan = policy.fallbackPlan();
+    const plan = policy.freePlan();
 
     // Assert
     expect(plan.slug).toBeNull();

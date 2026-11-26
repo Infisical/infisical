@@ -25,4 +25,5 @@ export type PamAccessApprovalsAdapter = {
     params: TListAutoApprovalOptionsDTO,
     enabled: boolean
   ) => V4QueryResult<TAutoApprovalOption[]>;
+  usePendingApprovalCount: (enabled: boolean) => V4QueryResult<number>;
 };
