@@ -19,7 +19,7 @@ export const ApprovalSteps = ({ steps }: { steps: ApprovalStep[] }) => (
         const name = step.name || `Step ${number}`;
         return (
           <ListRow
-            key={`${number}:${step.approvers.map((approver) => approver.id).join(",")}`}
+            key={`${step.name ?? ""}:${step.approvers.map((approver) => approver.id).join(",")}`}
             value={String(number)}
             label={name}
             title={name}
@@ -29,7 +29,7 @@ export const ApprovalSteps = ({ steps }: { steps: ApprovalStep[] }) => (
               step.approvers.length ? (
                 <NameLine
                   media={
-                    <AvatarGroup size={24} max={3} label={`Approvers for ${name}`}>
+                    <AvatarGroup max={3} label={`Approvers for ${name}`}>
                       {step.approvers.map((approver) =>
                         approver.kind === "group" ? (
                           <Avatar key={approver.id} label={`${approver.name}, group`}>
@@ -50,7 +50,7 @@ export const ApprovalSteps = ({ steps }: { steps: ApprovalStep[] }) => (
                 <Meta mono={false}>No approvers</Meta>
               )
             }
-            meta={`${step.requiredApprovals} required`}
+            meta={<Meta mono={false}>{`${step.requiredApprovals} required`}</Meta>}
           />
         );
       })}

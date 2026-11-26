@@ -223,11 +223,12 @@ const PolicyCard = ({
         <Button
           variant="ghost"
           size="sm"
-          icon="pencil"
-          aria-label="Edit policy"
+          aria-label="Edit approval policy"
           disabledReason={reason}
           onClick={() => setEditing(true)}
-        />
+        >
+          Edit
+        </Button>
       }
     >
       <Stack gap={16}>
