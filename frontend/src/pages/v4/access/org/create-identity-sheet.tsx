@@ -180,6 +180,7 @@ const SubOrgAddIdentitySheet = ({
   const addUniversalAuth = access.useAddIdentityUniversalAuth();
   const link = access.useCreateOrgIdentityMembership();
   const [draft, setDraft] = useState(EMPTY_SUB_ORG_IDENTITY);
+  const rbacGate = useCustomRoleGate("organization.org-identity");
   const { data: available = [], isPending: availablePending } = access.useAvailableOrgIdentities({
     enabled: open && draft.mode === "assign"
   });
@@ -230,6 +231,7 @@ const SubOrgAddIdentitySheet = ({
         completeLabel={draft.mode === "assign" ? "Assign" : "Create"}
         onOpenChange={(next) => !next && requestDiscard()}
         onComplete={async () => {
+          if (draft.mode === "create" && role && rbacGate.blocked(role)) return;
           const identityId = draft.mode === "assign" ? await assign() : await createNew();
           close();
           go(accessLinks.orgIdentity(orgId, identityId));
@@ -289,6 +291,7 @@ const SubOrgAddIdentitySheet = ({
           }
         ]}
       />
+      {rbacGate.upgradeGate}
       <DiscardChangesAlertDialog {...discardDialogProps} title="Discard this machine identity?" />
     </>
   );
