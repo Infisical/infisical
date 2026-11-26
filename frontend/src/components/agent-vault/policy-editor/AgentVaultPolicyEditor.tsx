@@ -201,7 +201,7 @@ export const AgentVaultPolicyEditor = ({
             </Alert>
           )}
           {!shownRows.length && (
-            <Empty className="border py-8">
+            <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>No policies applied</EmptyTitle>
                 <EmptyDescription>
