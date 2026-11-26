@@ -203,9 +203,11 @@ const issuerItemsOf = ({
         [
           "Certificate authority",
           isInternalCa && profile.caId ? (
-            <a key="ca" href={orgHref(orgId, `/cert-manager/ca/${profile.caId}?${backQuery}`)}>
-              {caName ?? profile.caId}
-            </a>
+            <Button key="ca" variant="link" asChild>
+              <a href={orgHref(orgId, `/cert-manager/ca/${profile.caId}?${backQuery}`)}>
+                {caName ?? profile.caId}
+              </a>
+            </Button>
           ) : (
             (caName ?? "None")
           )
@@ -319,15 +321,16 @@ const ProfileDetail = ({
                 ...issuerItems,
                 [
                   "Certificate policy",
-                  <a
-                    key="policy"
-                    href={orgHref(
-                      orgId,
-                      `/cert-manager/certificate-policies/${profile.certificatePolicyId}?${backQuery}`
-                    )}
-                  >
-                    {profile.certificatePolicy?.name ?? profile.certificatePolicyId}
-                  </a>
+                  <Button key="policy" variant="link" asChild>
+                    <a
+                      href={orgHref(
+                        orgId,
+                        `/cert-manager/certificate-policies/${profile.certificatePolicyId}?${backQuery}`
+                      )}
+                    >
+                      {profile.certificatePolicy?.name ?? profile.certificatePolicyId}
+                    </a>
+                  </Button>
                 ],
                 ...(profile.certificatePolicy?.description
                   ? ([["Policy description", profile.certificatePolicy.description]] as const)
