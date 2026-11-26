@@ -72,6 +72,7 @@ export const PamApprovalRequestsPage = () => {
       header: "Requester",
       primary: true,
       grow: true,
+      minWidth: 128,
       text: (request) => request.requesterName,
       render: (request) => (
         <RowLink
