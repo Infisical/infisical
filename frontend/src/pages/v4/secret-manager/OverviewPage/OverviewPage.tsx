@@ -133,7 +133,7 @@ import {
 } from "./secrets/batch/pending";
 import { commitLabel, ReviewSheet } from "./secrets/batch/review-sheet";
 import {
-  draftKey,
+  changeKey,
   type UnsavedChange,
   UnsavedEditsContext,
   useUnsavedEdits
@@ -997,6 +997,7 @@ export const OverviewPage = () => {
   const unsavedCount = single ? 0 : unsavedEdits.count;
   useEffect(() => {
     unsavedEdits.registry.dropHeldDrafts();
+    setSaveStage(undefined);
   }, [projectId, path]);
   const saveUnsaved = async (message: string) => {
     const edits = unsavedEdits.registry
@@ -1004,29 +1005,44 @@ export const OverviewPage = () => {
       .map((edit) => ({ edit, changes: edit.getChanges() }));
     const changes = edits.flatMap((entry) => entry.changes);
     if (!changes.length || unsavedEdits.committing) return;
-    const generation = unsavedEdits.registry.generation();
     unsavedEdits.setCommitting(true);
     try {
-      const updateEnvironments = [
-        ...new Set(changes.filter((change) => !change.isCreate).map((change) => change.environment))
+      const groupOf = (change: UnsavedChange) =>
+        JSON.stringify([change.projectId, change.environment, change.secretPath]);
+      const commitGroups = [
+        ...new Map(
+          changes.map((change) => [
+            groupOf(change),
+            {
+              projectId: change.projectId,
+              environment: change.environment,
+              secretPath: change.secretPath
+            }
+          ])
+        ).entries()
       ];
+      const where = ({ environment, secretPath }: { environment: string; secretPath: string }) =>
+        secretPath === path
+          ? environmentLabel(environment)
+          : `${environmentLabel(environment)} at ${secretPath}`;
+      const reads = commitGroups.filter(([key]) =>
+        changes.some((change) => !change.isCreate && groupOf(change) === key)
+      );
       const fetched = await Promise.allSettled(
-        updateEnvironments.map((environment) =>
-          fetchSecretsAt({ projectId, environment, secretPath: path, viewSecretValue: false })
-        )
+        reads.map(([, group]) => fetchSecretsAt({ ...group, viewSecretValue: false }))
       );
       const current = new Map(
-        updateEnvironments.flatMap((environment, index) => {
+        reads.flatMap(([key], index) => {
           const result = fetched[index];
-          return result.status === "fulfilled" ? [[environment, result.value] as const] : [];
+          return result.status === "fulfilled" ? [[key, result.value] as const] : [];
         })
       );
-      const unreadable = updateEnvironments.filter((environment) => !current.has(environment));
+      const unreadable = reads.filter(([key]) => !current.has(key));
       const missing = changes.filter(
         (change) =>
           !change.isCreate &&
-          current.has(change.environment) &&
-          !current.get(change.environment)?.some((secret) => secret.key === change.secretKey)
+          current.has(groupOf(change)) &&
+          !current.get(groupOf(change))?.some((secret) => secret.key === change.secretKey)
       );
       if (missing.length)
         warned(
@@ -1036,53 +1052,52 @@ export const OverviewPage = () => {
             : "Their secrets weren't found, so the changes stay pending. Discard them if the secrets were deleted."
         );
       const savable = changes.filter(
-        (change) => !missing.includes(change) && !unreadable.includes(change.environment)
+        (change) =>
+          !missing.includes(change) && !unreadable.some(([key]) => key === groupOf(change))
       );
       const knownTags = await ensureTags(
-        savable.flatMap((change) => change.annotations?.tags ?? [])
+        savable
+          .filter((change) => change.projectId === projectId)
+          .flatMap((change) => change.annotations?.tags ?? [])
       );
-      const environments = [...new Set(savable.map((change) => change.environment))];
+      const targets = commitGroups.filter(([key]) =>
+        savable.some((change) => groupOf(change) === key)
+      );
+      const inGroup = (key: string) => savable.filter((change) => groupOf(change) === key);
       const results = await Promise.allSettled(
-        environments.map((environment) =>
+        targets.map(([key, group]) =>
           createCommit.mutateAsync({
-            projectId,
-            environment,
-            secretPath: path,
+            ...group,
             message,
             pendingChanges: toUnsavedPendingChanges(
-              savable.filter((change) => change.environment === environment),
-              current.get(environment) ?? [],
-              knownTags
+              inGroup(key),
+              current.get(key) ?? [],
+              group.projectId === projectId ? knownTags : []
             )
           })
         )
       );
-      const review = environments.filter((_, index) => {
+      const committed = targets.flatMap(([key], index) =>
+        results[index].status === "fulfilled" ? inGroup(key) : []
+      );
+      const reviewed = targets.flatMap(([key], index) => {
         const result = results[index];
-        return result.status === "fulfilled" && Boolean(result.value.approval);
+        return result.status === "fulfilled" && result.value.approval ? inGroup(key) : [];
       });
-      const unsaved = [
-        ...unreadable,
-        ...environments.filter((_, index) => results[index].status === "rejected")
-      ];
-      if (unsavedEdits.registry.generation() === generation)
-        edits.forEach(({ edit, changes: editChanges }) => {
-          const committed = editChanges.filter(
-            (change) => savable.includes(change) && !unsaved.includes(change.environment)
-          );
-          if (committed.length) edit.settle(committed, review, editChanges);
-        });
-      unreadable.forEach((environment) =>
+      edits.forEach(({ edit, changes: submitted }) => {
+        const done = submitted.filter((change) => committed.includes(change));
+        if (done.length) edit.settle(done, reviewed, submitted);
+      });
+      unreadable.forEach(([, group]) =>
         toast({
           tone: "bad",
-          title: `Couldn't save changes in ${environmentLabel(environment)}`,
+          title: `Couldn't save changes in ${where(group)}`,
           description: "Couldn't read the environment's secrets. Try again."
         })
       );
-      environments.forEach((environment, index) => {
+      targets.forEach(([key, group], index) => {
         const result = results[index];
-        const label = environmentLabel(environment);
-        const count = savable.filter((change) => change.environment === environment).length;
+        const label = where(group);
         if (result.status === "rejected") {
           if (!wasErrorReported(result.reason))
             toast({
@@ -1100,16 +1115,17 @@ export const OverviewPage = () => {
           });
           return;
         }
-        toast({ tone: "ok", title: `Saved ${changeCount(count)} in ${label}` });
+        toast({ tone: "ok", title: `Saved ${changeCount(inGroup(key).length)} in ${label}` });
       });
-      const created = savable.filter(
-        (change) =>
-          change.isCreate &&
-          !unsaved.includes(change.environment) &&
-          !review.includes(change.environment)
-      );
+      const created = committed.filter((change) => change.isCreate && !reviewed.includes(change));
       if (created.length) {
-        [...new Set(created.map((change) => change.secretKey))].forEach(pinQuickAdded);
+        [
+          ...new Set(
+            created
+              .filter((change) => change.projectId === projectId && change.secretPath === path)
+              .map((change) => change.secretKey)
+          )
+        ].forEach(pinQuickAdded);
         activationNudge.checkActivation();
       }
     } catch (error) {
@@ -1129,16 +1145,14 @@ export const OverviewPage = () => {
     if (unsavedEdits.committing) return;
     unsavedEdits.registry.getEdits().forEach((edit) => edit.discard());
   };
-  const unsavedId = (change: UnsavedChange) =>
-    draftKey(change.environment, change.secretPath, change.secretKey);
   const discardUnsaved = (id: string) => {
     if (unsavedEdits.committing) return;
     const edit = unsavedEdits.registry
       .getEdits()
-      .find((entry) => entry.getChanges().some((change) => unsavedId(change) === id));
+      .find((entry) => entry.getChanges().some((change) => changeKey(change) === id));
     if (!edit) return;
     if (unsavedEdits.changes().length === 1) setUnsavedReviewOpen(false);
-    const others = edit.getChanges().filter((change) => unsavedId(change) !== id);
+    const others = edit.getChanges().filter((change) => changeKey(change) !== id);
     edit.discard();
     if (others.length) unsavedEdits.registry.holdDrafts(others);
   };
@@ -1149,7 +1163,7 @@ export const OverviewPage = () => {
       ? `in ${environmentLabel(unsavedEnvironments[0])}`
       : `across ${unsavedEnvironments.length} environments`;
   const unsavedPending = unsavedChanges.map((change): PendingChange => {
-    const id = unsavedId(change);
+    const id = changeKey(change);
     const timestamp = new Date().toISOString();
     const base: Secret = resources.find(
       (resource): resource is Secret =>
@@ -1160,7 +1174,7 @@ export const OverviewPage = () => {
     ) ?? {
       kind: "secret",
       id,
-      project,
+      project: change.projectId,
       environment: change.environment,
       path: change.secretPath,
       name: change.secretKey,
@@ -1666,6 +1680,7 @@ export const OverviewPage = () => {
         applied.forEach((secret) => {
           if (
             unsavedEdits.registry.renameDraft(
+              secret.project,
               secret.environment,
               secret.path,
               secret.name,
@@ -2582,7 +2597,6 @@ export const OverviewPage = () => {
               />
               {saveStage?.stage === "lookup" && (
                 <DependentsLookup
-                  project={project}
                   changes={saveStage.changes}
                   onDone={(dependents) => {
                     const { message } = saveStage;

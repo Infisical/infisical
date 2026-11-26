@@ -31,7 +31,7 @@ import { v4Path } from "../../../links";
 import { withoutDefaults } from "../../search-defaults";
 import { useRequestBreadth } from "../bridge/scopes";
 import type { ResourceKind, Scope, Secret } from "../secrets-model";
-import { type UnsavedChange, useHeldDraft, useUnsavedEdit } from "./batch/unsaved-edits";
+import { changeKey, type UnsavedChange, useHeldDraft, useUnsavedEdit } from "./batch/unsaved-edits";
 import {
   type ExternalImportSource,
   externalImportSources
@@ -567,6 +567,7 @@ export function QuickAddRow({
   const name = key.trim();
   const pendingChanges = (): UnsavedChange[] =>
     environments.map((environment) => ({
+      projectId: scope.project,
       environment,
       secretPath: scope.path,
       secretKey: name,
@@ -595,14 +596,14 @@ export function QuickAddRow({
       getChanges: pendingChanges,
       settle: (committed, _review, submitted) => {
         release();
-        holdDrafts(
-          [
-            ...submitted,
-            ...pendingChanges().filter(
-              (change) => !submitted.some(({ environment }) => environment === change.environment)
+        const added = name
+          ? pendingChanges().filter(
+              (change) => !submitted.some((entry) => changeKey(entry) === changeKey(change))
             )
-          ].filter(
-            (change) => !committed.some(({ environment }) => environment === change.environment)
+          : [];
+        holdDrafts(
+          [...submitted, ...added].filter(
+            (change) => !committed.some((entry) => changeKey(entry) === changeKey(change))
           )
         );
         reset();

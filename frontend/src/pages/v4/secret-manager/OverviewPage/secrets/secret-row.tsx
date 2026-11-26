@@ -281,19 +281,11 @@ function InlineEditor({
   const save = () => {
     if (saving || committing) return;
     const submitted = unsaved?.change(draft);
-    const generation = registry?.generation();
     setSaving(true);
     onSave(draft, setError)
       .catch(() => false)
       .then((ok) => {
-        if (
-          !ok &&
-          submitted &&
-          registry &&
-          !mounted.current &&
-          registry.generation() === generation
-        )
-          registry.holdDrafts([submitted]);
+        if (!ok && submitted && !mounted.current) registry?.holdDrafts([submitted]);
       })
       .finally(() => setSaving(false));
   };
@@ -1309,8 +1301,9 @@ function EnvironmentValueEditor({
         saveLabel="Save"
         undoLabel="Discard"
         unsaved={{
-          key: draftKey(secret.environment, secret.path, secret.name),
+          key: draftKey(secret.project, secret.environment, secret.path, secret.name),
           change: (value) => ({
+            projectId: secret.project,
             environment: secret.environment,
             secretPath: secret.path,
             secretKey: secret.name,
@@ -1358,7 +1351,7 @@ function EnvironmentValueCell({
   const [editing, setEditing] = useState<{ initial: string; draft?: string }>();
   const loader = useValueLoader();
   const canEdit = canEditInline(secret, ctx);
-  useHeldDraft(draftKey(secret.environment, secret.path, secret.name), ([held]) => {
+  useHeldDraft(draftKey(secret.project, secret.environment, secret.path, secret.name), ([held]) => {
     if (held) setEditing({ initial: held.originalValue, draft: held.secretValue });
   });
   const begin = async () => {
@@ -1755,7 +1748,8 @@ function SecretRowView({
   const { name } = first;
   const unsaved = useUnsavedEditsState();
   const pendingIn = (environment: string, present: boolean) => {
-    if (!unsaved?.keys.has(draftKey(environment, first.path, name))) return undefined;
+    if (!unsaved?.keys.has(draftKey(first.project, environment, first.path, name)))
+      return undefined;
     return present ? "update" : "create";
   };
   const stopCreating = (environment: string) =>

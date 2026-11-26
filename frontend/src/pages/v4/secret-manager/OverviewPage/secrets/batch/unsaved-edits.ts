@@ -12,6 +12,7 @@ import {
 import type { QuickAddAnnotations } from "../toolbar";
 
 export type UnsavedChange = {
+  projectId: string;
   environment: string;
   secretPath: string;
   secretKey: string;
@@ -24,7 +25,7 @@ export type UnsavedEdit = {
   getChanges: () => UnsavedChange[];
   settle: (
     committed: UnsavedChange[],
-    reviewEnvironments: string[],
+    inReview: UnsavedChange[],
     submitted: UnsavedChange[]
   ) => void;
   discard: () => void;
@@ -36,8 +37,9 @@ type UnsavedEditRegistry = {
   takeDraft: (key: string) => UnsavedChange[] | undefined;
   holdDrafts: (changes: UnsavedChange[]) => void;
   dropHeldDrafts: () => void;
-  generation: () => number;
+  refresh: () => void;
   renameDraft: (
+    projectId: string,
     environment: string,
     secretPath: string,
     from: string,
@@ -50,8 +52,15 @@ type UnsavedEditsState = {
   committing: boolean;
 };
 
-export const draftKey = (environment: string, secretPath: string, secretKey: string) =>
-  JSON.stringify([environment, secretPath, secretKey]);
+export const draftKey = (
+  projectId: string,
+  environment: string,
+  secretPath: string,
+  secretKey: string
+) => JSON.stringify([projectId, environment, secretPath, secretKey]);
+
+export const changeKey = (change: UnsavedChange) =>
+  draftKey(change.projectId, change.environment, change.secretPath, change.secretKey);
 
 export const UnsavedEditsContext = createContext<UnsavedEditsState | undefined>(undefined);
 
@@ -64,7 +73,6 @@ export const useUnsavedEdits = () => {
   const [committing, setCommitting] = useState(false);
   const registry = useMemo<UnsavedEditRegistry>(() => {
     const all = edits.current;
-    let generation = 0;
     const sync = () =>
       setSnapshot({
         count: [...all.values()].reduce((total, edit) => total + edit.getChanges().length, 0),
@@ -74,22 +82,17 @@ export const useUnsavedEdits = () => {
       if (!changes.length) return;
       const held: RegisteredEdit = {
         getChanges: () => changes,
-        settle: (committed, reviewEnvironments) => {
+        settle: (committed, inReview) => {
           const remaining = changes.flatMap((change) => {
-            const done = committed.find(
-              ({ environment, secretKey }) =>
-                environment === change.environment && secretKey === change.secretKey
-            );
+            const done = committed.find((entry) => changeKey(entry) === changeKey(change));
             if (!done) return [change];
             if (done.secretValue === change.secretValue) return [];
-            if (reviewEnvironments.includes(change.environment)) return [change];
+            if (inReview.some((entry) => changeKey(entry) === changeKey(change))) return [change];
             return [{ ...change, isCreate: false, originalValue: done.secretValue }];
           });
           if (all.get(key) === held) {
             all.delete(key);
-            remaining.forEach((change) =>
-              hold(draftKey(change.environment, change.secretPath, change.secretKey), [change])
-            );
+            remaining.forEach((change) => hold(changeKey(change), [change]));
           }
           sync();
         },
@@ -117,9 +120,9 @@ export const useUnsavedEdits = () => {
           getChanges: () => edit.getChanges(),
           settle: (
             committed: UnsavedChange[],
-            reviewEnvironments: string[],
+            inReview: UnsavedChange[],
             submitted: UnsavedChange[]
-          ) => (all.get(key) ?? edit).settle(committed, reviewEnvironments, submitted),
+          ) => (all.get(key) ?? edit).settle(committed, inReview, submitted),
           discard: () => all.get(key)?.discard()
         })),
       takeDraft: (key) => {
@@ -131,24 +134,23 @@ export const useUnsavedEdits = () => {
       },
       holdDrafts: (changes) => {
         changes.forEach((change) => {
-          const key = draftKey(change.environment, change.secretPath, change.secretKey);
+          const key = changeKey(change);
           if (!all.has(key)) hold(key, [change]);
         });
         sync();
       },
       dropHeldDrafts: () => {
-        generation += 1;
         all.forEach((edit, key) => {
           if (edit.held) all.delete(key);
         });
         sync();
       },
-      generation: () => generation,
-      renameDraft: (environment, secretPath, from, to) => {
-        const key = draftKey(environment, secretPath, from);
+      refresh: sync,
+      renameDraft: (projectId, environment, secretPath, from, to) => {
+        const key = draftKey(projectId, environment, secretPath, from);
         const edit = all.get(key);
         if (!edit) return "none";
-        const target = draftKey(environment, secretPath, to);
+        const target = draftKey(projectId, environment, secretPath, to);
         all.delete(key);
         const existing = all.get(target);
         if (existing) {
@@ -219,12 +221,16 @@ export const useUnsavedEdit = (key: string | undefined, dirty: boolean, edit: Un
     if (!registry || !key || !dirty) return undefined;
     const unregister = registry.register(key, {
       getChanges: () => latest.current.getChanges(),
-      settle: (committed, reviewEnvironments, submitted) =>
-        latest.current.settle(committed, reviewEnvironments, submitted),
+      settle: (committed, inReview, submitted) =>
+        latest.current.settle(committed, inReview, submitted),
       discard: () => latest.current.discard()
     });
     return () => unregister(keep.current && keyRef.current === key);
   }, [registry, key, dirty]);
+  const changeTotal = key && dirty ? edit.getChanges().length : 0;
+  useEffect(() => {
+    if (changeTotal) registry?.refresh();
+  }, [registry, changeTotal]);
   return {
     committing: Boolean(state?.committing),
     release: useCallback(() => {
