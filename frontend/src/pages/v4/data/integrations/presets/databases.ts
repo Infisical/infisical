@@ -97,7 +97,7 @@ const sqlFields = (databaseDescription?: string): readonly AppConnectionFieldPre
   ...sslFields(sslEnabled)
 ];
 
-const platformManagedField: AppConnectionFieldPreset = {
+export const platformManagedField: AppConnectionFieldPreset = {
   name: "isPlatformManagedCredentials",
   label: "Let Infisical manage credentials",
   kind: "switch",

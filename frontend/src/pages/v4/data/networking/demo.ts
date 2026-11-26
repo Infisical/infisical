@@ -274,7 +274,8 @@ const enrollment = () => ({
 });
 
 export const networkingDemo: NetworkingAdapter = {
-  useSubscription: () => ok({ gateway: true, gatewayPool: true } as SubscriptionPlan),
+  useSubscription: () =>
+    ok({ gateway: true, gatewayPool: true, enterpriseAppConnections: true } as SubscriptionPlan),
   useGateways: () => ok(gateways.use()),
   useConnectedGateways: () => ok(gateways.use().filter((gw) => gw.heartbeat || gw.directHeartbeat)),
   useGateway: (gatewayId) => ok(gateways.use().find((gw) => gw.id === gatewayId)),

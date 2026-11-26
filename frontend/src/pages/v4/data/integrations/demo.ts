@@ -584,6 +584,11 @@ export const integrationsDemo: IntegrationsAdapter = {
       error: null
     };
   },
+  useSlackIntegrationAlertCount: (id) => ({
+    data: id ? 2 : undefined,
+    isPending: false,
+    error: null
+  }),
   useMicrosoftTeamsIntegration: (id) => {
     const entry = findWorkflow(id);
     return {
