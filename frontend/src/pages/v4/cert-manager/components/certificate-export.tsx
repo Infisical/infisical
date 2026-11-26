@@ -163,7 +163,7 @@ const ExportCertificateForm = ({
           {
             title: "Export",
             completeIcon: "download",
-            disabledReason: format === "pkcs12" ? noKey : undefined,
+            disabledReason: format === "pkcs12" || format === "key" ? noKey : undefined,
             validate,
             content: (
               <Stack gap={16}>
@@ -175,6 +175,12 @@ const ExportCertificateForm = ({
                     options={[
                       { value: "pem", label: exportFormatLabel.pem },
                       { value: "chain", label: exportFormatLabel.chain },
+                      {
+                        value: "key",
+                        label: exportFormatLabel.key,
+                        description: noKey,
+                        disabled: Boolean(noKey)
+                      },
                       {
                         value: "pkcs12",
                         label: exportFormatLabel.pkcs12,

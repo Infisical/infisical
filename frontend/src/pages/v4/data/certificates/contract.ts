@@ -53,7 +53,7 @@ import type { V4Mutation, V4QueryResult } from "../contract";
 
 export type TListCertificatesDTO = Parameters<typeof useListWorkspaceCertificates>[0];
 
-export type TCertificateExportFormat = "pem" | "chain" | "pkcs12";
+export type TCertificateExportFormat = "pem" | "chain" | "key" | "pkcs12";
 
 export type TExportCertificateDTO = {
   certificateId: string;

@@ -27,9 +27,11 @@ import { getSanPlaceholder } from "@app/helpers/certificateUtils";
 import type { TCustomExtensionRule } from "@app/hooks/api/certificatePolicies/types";
 import type { TProfileCustomExtension } from "@app/hooks/api/certificateProfiles/types";
 import {
+  certKeyAlgorithmToNameMap,
   getCaSignatureIncompatibilityReason,
   isPqcAlgorithm
 } from "@app/hooks/api/certificates/constants";
+import type { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import type { TIssuerModifiedField } from "@app/hooks/api/certificates/types";
 
 import { useOrgId } from "../../../access/permissions";
@@ -444,7 +446,10 @@ export const AlgorithmSelectors = ({
       )}
       <AlgorithmSelect
         label="Key algorithm"
-        options={keyOptions}
+        options={keyOptions.map((option) => ({
+          ...option,
+          label: certKeyAlgorithmToNameMap[option.value as CertKeyAlgorithm] ?? option.label
+        }))}
         value={keyAlgorithm}
         onChange={(value) => onChange({ keyAlgorithm: value })}
         error={keyError}
