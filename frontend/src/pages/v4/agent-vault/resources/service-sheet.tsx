@@ -775,6 +775,10 @@ export const ServiceSheet = ({
     service?.credential.type === form.credentialType &&
     !storedMemberProvided(service, AgentVaultVariableReferenceField.CredentialUsername);
   const isBearer = form.credentialType === AgentVaultCredentialType.Bearer;
+  const hasCertificateToKeep =
+    form.credentialType === AgentVaultCredentialType.SshKey &&
+    service?.credential.type === AgentVaultCredentialType.SshKey &&
+    service.credential.hasCertificate;
   const variableField = (
     key: "secret" | "username",
     label: string,
@@ -785,13 +789,20 @@ export const ServiceSheet = ({
       label={label}
       description={allowsVariables ? "Paste the value, or type {{ to use a variable." : undefined}
       error={err(key)}
+      help={
+        form.credentialType === AgentVaultCredentialType.Basic && hasStored && form[key] !== "" ? (
+          <Button variant="ghost" size="xs" onClick={() => set(key, "")}>
+            {`Clear ${label.toLowerCase()}`}
+          </Button>
+        ) : undefined
+      }
       wide
     >
       <VariableSecretInput
         projectId={projectId}
         label={label}
         value={form[key]}
-        hasStored={hasStored}
+        hasStored={hasStored && form[key] !== ""}
         allowsVariables={allowsVariables}
         invalid={Boolean(err(key))}
         onChange={(value) => set(key, value)}
@@ -899,18 +910,43 @@ export const ServiceSheet = ({
               onChange={(value) => set("sshPrivateKey", value)}
             />
           </Field>
-          <Field label="Certificate" optional error={err("sshCertificate")} wide>
-            <StoredSecretInput
-              label="Certificate"
-              multiline
-              value={form.sshCertificate}
-              hasStored={
-                service?.credential.type === AgentVaultCredentialType.SshKey &&
-                service.credential.hasCertificate
-              }
-              invalid={Boolean(err("sshCertificate"))}
-              onChange={(value) => set("sshCertificate", value)}
-            />
+          <Field
+            label="Certificate"
+            optional
+            error={err("sshCertificate")}
+            description={
+              hasCertificateToKeep && form.sshCertificateRemoved
+                ? "The stored certificate is removed when you save."
+                : undefined
+            }
+            help={
+              hasCertificateToKeep ? (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() =>
+                    patch({
+                      sshCertificateRemoved: !form.sshCertificateRemoved,
+                      sshCertificate: UNCHANGED_SECRET
+                    })
+                  }
+                >
+                  {form.sshCertificateRemoved ? "Keep certificate" : "Remove certificate"}
+                </Button>
+              ) : undefined
+            }
+            wide
+          >
+            {!(hasCertificateToKeep && form.sshCertificateRemoved) && (
+              <StoredSecretInput
+                label="Certificate"
+                multiline
+                value={form.sshCertificate}
+                hasStored={hasCertificateToKeep}
+                invalid={Boolean(err("sshCertificate"))}
+                onChange={(value) => set("sshCertificate", value)}
+              />
+            )}
           </Field>
         </>
       )}
