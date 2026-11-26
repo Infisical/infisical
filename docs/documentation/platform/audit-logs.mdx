@@ -110,7 +110,7 @@ Each log contains the following fields:
 </ResponseField>
 
 <ResponseField name="userAgentType" type="string">
-  The client category: `web`, `cli`, `k8-operator`, `terraform`, `InfisicalPythonSDK`, `InfisicalNodeSDK`, or `other`.
+  The client category: `web`, `cli`, `k8-operator`, `terraform`, `InfisicalPythonSDK`, `InfisicalNodeSDK`, `remote-mcp` (the [Infisical MCP server](/documentation/platform/mcp-server)), or `other`.
 </ResponseField>
 
 <ResponseField name="expiresAt" type="string">
@@ -351,7 +351,7 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
     | `class`       | One or more [event classes](#event-classes) (for example, `data-access`, `authorization`)      |                                                              |
     | `actor`       | The actor type (for example, `user`, `identity`, `platform`, `kmipClient`, `scimClient`, and so on)         |                                                              |
     | `actor_id`    | A specific actor ID                                                                            | `actor` set to a type that carries an ID (see below)         |
-    | `source`      | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                                              |
+    | `source`      | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, `remote-mcp`, or `other` |                                                              |
     | `project`     | A single project                                                                               |                                                              |
     | `environment` | An environment slug in that project (for example, `prod`)                                      | `project`; applies to secret events only                     |
     | `secret_path` | The folder path a secret event touched (for example, `/db`)                                    | `project`; applies to secret events only                     |
@@ -366,7 +366,7 @@ Every filter is an exact match, so wildcards like `*` aren't supported.
     | `eventClass`    | One or more [event classes](#event-classes), comma-separated (for example, `data-access,authorization`) |                                                          |
     | `actorType`     | The actor type (for example, `user`, `identity`, `platform`, `kmipClient`, `scimClient`)         |                                                                   |
     | `actor`         | A specific actor ID                                                                            | `actorType` set to a type that carries an ID (see below)          |
-    | `userAgentType` | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, or `other` |                                                                   |
+    | `userAgentType` | The client that made the request: `web`, `cli`, `k8-operator`, `terraform`, an SDK, `remote-mcp`, or `other` |                                                                   |
     | `projectId`     | A single project                                                                               |                                                                   |
     | `environment`   | An environment slug in that project (for example, `prod`)                                      | `projectId`; applies to secret events only                        |
     | `secretPath`    | The folder path a secret event touched (for example, `/db`)                                    | `projectId`; applies to secret events only                        |
