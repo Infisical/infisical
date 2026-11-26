@@ -20,7 +20,6 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { ArrowRightIcon, UserRoundXIcon } from "lucide-react";
 
@@ -163,7 +162,6 @@ const AddGroupDialog = ({
 };
 
 export const PamGroupsTab = () => {
-  const go = useGo();
   const scope = useProjectScope();
   const { projectId } = scope;
   const pam = useV4Adapter("pam");
@@ -199,14 +197,7 @@ export const PamGroupsTab = () => {
       header: "Group",
       sortable: true,
       grow: true,
-      render: (row) => (
-        <RowLink
-          link={go.link(accessLinks.projectGroup(scope, row.group.id))}
-          title={row.group.name}
-        >
-          {row.group.name}
-        </RowLink>
-      )
+      render: (row) => <span title={row.group.name}>{row.group.name}</span>
     },
     {
       id: "role",

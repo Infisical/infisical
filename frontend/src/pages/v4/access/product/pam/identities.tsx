@@ -8,21 +8,21 @@ import {
   type DataTableColumn,
   type DataTableRowActions
 } from "@infisical/cipher/ui/data-table";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@infisical/cipher/ui/dialog";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@infisical/cipher/ui/sheet";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -141,7 +141,7 @@ const AddIdentityForm = ({
 
   return (
     <>
-      <SheetBody>
+      <DialogBody>
         <form
           id="add-pam-identity"
           onSubmit={(event) => {
@@ -175,7 +175,6 @@ const AddIdentityForm = ({
             {currentMode === "create" ? (
               <Field label="Name" error={errors.name}>
                 <Input
-                  autoFocus
                   placeholder="Machine 1"
                   autoComplete="off"
                   name="pam-identity-name"
@@ -211,22 +210,20 @@ const AddIdentityForm = ({
             </Field>
           </Stack>
         </form>
-      </SheetBody>
-      <SheetFooter>
-        <Inline gap={8} justify="end">
-          <Button variant="ghost" disabled={pending} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit" form="add-pam-identity" loading={pending}>
-            {currentMode === "assign" ? "Add" : "Create"}
-          </Button>
-        </Inline>
-      </SheetFooter>
+      </DialogBody>
+      <DialogFooter>
+        <Button variant="ghost" disabled={pending} onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="primary" type="submit" form="add-pam-identity" loading={pending}>
+          {currentMode === "assign" ? "Add" : "Create"}
+        </Button>
+      </DialogFooter>
     </>
   );
 };
 
-const AddIdentitySheet = ({
+const AddIdentityDialog = ({
   existing,
   open,
   onOpenChange
@@ -237,11 +234,11 @@ const AddIdentitySheet = ({
 }) => {
   const [pending, setPending] = useState(false);
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent pending={pending}>
-        <SheetHeader>
-          <SheetTitle>Add machine identity</SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent pending={pending}>
+        <DialogHeader>
+          <DialogTitle>Add machine identity</DialogTitle>
+        </DialogHeader>
         {open && (
           <AddIdentityForm
             existing={existing}
@@ -250,8 +247,8 @@ const AddIdentitySheet = ({
             onClose={() => onOpenChange(false)}
           />
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -441,7 +438,7 @@ export const PamIdentitiesTab = () => {
         }
         pagination={identities.isPending ? undefined : list.pagination}
       />
-      <AddIdentitySheet existing={rows} open={adding} onOpenChange={setAdding} />
+      <AddIdentityDialog existing={rows} open={adding} onOpenChange={setAdding} />
       <ProductRoleDialog
         key={editing?.membershipId}
         open={Boolean(editing)}
