@@ -87,8 +87,12 @@ export const createMcpToolContext = (
 
         return { content: [{ type: "text" as const, text: JSON.stringify(await run(args)) }] };
       } catch (error) {
-        // The error never reaches the route's onError hook, which records denials for REST routes.
-        const denial = getPermissionDenialDetails(error);
+        // The error never reaches the route's onError hook, which records denials for REST routes. Unlike that hook,
+        // a ForbiddenRequestError counts: in a tool it is always a refusal of what the user asked for, such as
+        // create-project without the org permission or a tool the connection's scopes don't cover.
+        const denial =
+          getPermissionDenialDetails(error) ??
+          (error instanceof ForbiddenRequestError ? { errorName: error.name } : undefined);
         if (denial) {
           void server.services.auditLog.recordPermissionDenied({
             ...auditLogInfo,
