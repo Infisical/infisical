@@ -98,8 +98,7 @@ const CertificateParts = ({ cert, projectId }: { cert: TCertificate; projectId: 
   const canReadPrivateKey = !usePkcs12Block(cert, projectId);
   const bundle = certificates.useCertificateBundle(canReadPrivateKey ? cert.serialNumber : "");
   const body = certificates.useCertificateBody(cert.serialNumber);
-  const isBundleLoading = canReadPrivateKey && bundle.isPending && !bundle.error;
-  const data = bundle.data ?? (isBundleLoading ? undefined : body.data);
+  const data = bundle.data ?? body.data;
   if (!data && body.error) return <Alert tone="bad">Couldn&apos;t load this certificate.</Alert>;
   if (!data) return <Loader label="Loading certificate" />;
   return (
