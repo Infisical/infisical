@@ -19,7 +19,7 @@ import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dr
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
+import { Tooltip, TooltipText } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
 import { UnlinkIcon } from "lucide-react";
 
@@ -136,13 +136,11 @@ const OAuthAttention = ({ service }: { service: TAgentVaultService }) => {
     return null;
   if (!credential.variable) return <OAuthStatusBadge status={credential.status} />;
   return (
-    <Tooltip
+    <TooltipText
       content={`Uses the ${credential.variable.key} variable. Authorize it on the Variables page.`}
     >
-      <span tabIndex={0}>
-        <OAuthStatusBadge status={credential.status} />
-      </span>
-    </Tooltip>
+      <OAuthStatusBadge status={credential.status} />
+    </TooltipText>
   );
 };
 

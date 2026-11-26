@@ -52,13 +52,13 @@ import { failed, saved } from "../../access/toast";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { AgentVaultDocs } from "../resources/agent-vault-utils";
-import { OAuthStatusBadge } from "../resources/service-oauth";
 import {
-  ClassicVariablesLink,
+  AgentVaultDocs,
   openClassicVariables,
   useClassicVariablesHref
-} from "../resources/service-oauth-variable";
+} from "../resources/agent-vault-utils";
+import { OAuthStatusBadge } from "../resources/service-oauth";
+import { ClassicVariablesLink } from "../resources/service-oauth-variable";
 import { DateCell } from "../resources/shared";
 import { VariableDialog } from "../resources/variable-dialog";
 
@@ -185,6 +185,58 @@ const VariableMenu = ({
   </>
 );
 
+const DeleteVariableDialog = ({
+  projectId,
+  isPersonal,
+  variable,
+  onClose
+}: {
+  projectId: string;
+  isPersonal: boolean;
+  variable?: TAgentVaultVariable;
+  onClose: () => void;
+}) => {
+  const remove = useV4Adapter("agentVaultResources").useDeleteVariable(projectId);
+  const usedBy = variable?.usedByServices ?? [];
+  const inUse = usedBy.length > 0;
+  let deleteDescription = "Its value is deleted with it. This cannot be undone.";
+  if (inUse)
+    deleteDescription = isPersonal
+      ? `Your personal values for ${usedBy.length === 1 ? "a service use" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove it from ${usedBy.length === 1 ? "the service" : "those services"} before you delete it.`
+      : `${usedBy.length === 1 ? "A service uses" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove the reference before you delete it.`;
+
+  return (
+    <AlertDialog open={Boolean(variable)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Delete ${variable?.key ?? ""}?`}</AlertDialogTitle>
+          <AlertDialogDescription>{deleteDescription}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{inUse ? "Close" : "Cancel"}</AlertDialogCancel>
+          {!inUse && (
+            <AlertDialogAction
+              variant="destructive"
+              onClick={async () => {
+                if (!variable) return;
+                try {
+                  await remove.mutateAsync(variable.id);
+                  saved(`Variable ${variable.key} deleted`);
+                } catch (error) {
+                  failed("Failed to delete variable", error);
+                }
+                onClose();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
 const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultVariableScope }) => {
   const resources = useV4Adapter("agentVaultResources");
   const reveal = resources.useRevealVariableValue();
@@ -227,7 +279,6 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     scope,
     limit: 1
   });
-  const remove = resources.useDeleteVariable(projectId);
   const variables = data?.variables ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
@@ -368,14 +419,6 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
         }
       : undefined;
 
-  const usedBy = deleting?.usedByServices ?? [];
-  const inUse = usedBy.length > 0;
-  let deleteDescription = "Its value is deleted with it. This cannot be undone.";
-  if (inUse)
-    deleteDescription = isPersonal
-      ? `Your personal values for ${usedBy.length === 1 ? "a service use" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove it from ${usedBy.length === 1 ? "the service" : "those services"} before you delete it.`
-      : `${usedBy.length === 1 ? "A service uses" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove the reference before you delete it.`;
-
   return (
     <Stack gap={24}>
       <FilterBar
@@ -478,37 +521,12 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
           onOpenChange={(open) => !open && setDialog(undefined)}
         />
       )}
-      <AlertDialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => !open && setDeleting(undefined)}
-      >
-        <AlertDialogContent tone="danger">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Delete ${deleting?.key ?? ""}?`}</AlertDialogTitle>
-            <AlertDialogDescription>{deleteDescription}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{inUse ? "Close" : "Cancel"}</AlertDialogCancel>
-            {!inUse && (
-              <AlertDialogAction
-                variant="destructive"
-                onClick={async () => {
-                  if (!deleting) return;
-                  try {
-                    await remove.mutateAsync(deleting.id);
-                    saved(`Variable ${deleting.key} deleted`);
-                  } catch (error) {
-                    failed("Failed to delete variable", error);
-                  }
-                  setDeleting(undefined);
-                }}
-              >
-                Delete
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteVariableDialog
+        projectId={projectId}
+        isPersonal={isPersonal}
+        variable={deleting}
+        onClose={() => setDeleting(undefined)}
+      />
     </Stack>
   );
 };

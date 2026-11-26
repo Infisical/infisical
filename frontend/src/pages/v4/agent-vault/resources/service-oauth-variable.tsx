@@ -20,19 +20,10 @@ import {
 import type { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
-import { useOrgId, useProjectPermission } from "../../access/permissions";
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
+import { openClassicVariables, useClassicVariablesHref } from "./agent-vault-utils";
 import type { TServiceFormApi } from "./service-form";
-
-// v4 can't sign an OAuth variable in yet. The tab opens with an opener so it inherits the session's classic paths,
-// and the half-filled service sheet stays open here.
-export const useClassicVariablesHref = (projectId: string) =>
-  `/organizations/${useOrgId()}/projects/agent-vault/${projectId}/variables`;
-
-export const openClassicVariables = (href: string) => {
-  keepInClassic(href);
-  window.open(href, "_blank");
-};
 
 export const ClassicVariablesLink = ({
   projectId,

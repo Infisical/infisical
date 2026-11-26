@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { DatabaseIcon, SquareTerminalIcon } from "lucide-react";
 
 import { isNativeService } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { keepInClassic } from "@app/helpers/v4Bridge";
 import {
   AgentVaultMemberType,
   AgentVaultServiceType,
@@ -14,6 +15,8 @@ import type {
   TAgentVaultProductActor,
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
+
+import { useOrgId } from "../../access/permissions";
 
 const DOCS = "https://infisical.com/docs/documentation/platform/agent-vault";
 
@@ -104,4 +107,14 @@ export const nativeTargetText = ({
 export const targetOf = (service: TAgentVaultService) => {
   if (isNativeService(service)) return nativeTargetText(service);
   return service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
+};
+
+// v4 can't sign an OAuth variable in yet. The tab opens with an opener so it inherits the session's classic paths,
+// and whatever is half-filled here stays open.
+export const useClassicVariablesHref = (projectId: string) =>
+  `/organizations/${useOrgId()}/projects/agent-vault/${projectId}/variables`;
+
+export const openClassicVariables = (href: string) => {
+  keepInClassic(href);
+  window.open(href, "_blank");
 };
