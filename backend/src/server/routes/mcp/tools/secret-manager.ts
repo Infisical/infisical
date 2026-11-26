@@ -486,7 +486,7 @@ export const registerSecretManagerTools = ({
   registerTool(
     "update-secret",
     {
-      description: "Change a secret's value or comment, or rename it.",
+      description: "Modify an existing secret's key, value, or comment.",
       inputSchema: SecretLocationSchema.extend({
         secretName: SecretLookupNameSchema,
         newSecretName: NewSecretNameSchema.optional(),
