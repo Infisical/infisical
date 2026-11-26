@@ -117,6 +117,17 @@ func SeedParameter(name, value string) Fragment {
 	return Fragment{SSM, map[string]any{"parameters": map[string]any{name: map[string]any{"value": value}}}}
 }
 
+// SeedParameterWithKey seeds a SecureString parameter encrypted with the named KMS key.
+func SeedParameterWithKey(name, value, keyID string) Fragment {
+	return Fragment{SSM, map[string]any{"parameters": map[string]any{name: map[string]any{"value": value, "keyId": keyID}}}}
+}
+
+// SeedUnusableKey makes a KMS key one the caller may not decrypt with, so reading a
+// parameter encrypted with it is refused.
+func SeedUnusableKey(keyID string) Fragment {
+	return Fragment{SSM, map[string]any{"unusableKeys": []string{keyID}}}
+}
+
 // SeedSecret seeds a Secrets Manager secret holding a string.
 func SeedSecret(name, value string) Fragment {
 	return Fragment{SecretsManager, map[string]any{"secrets": map[string]any{name: map[string]any{"secretString": value}}}}
