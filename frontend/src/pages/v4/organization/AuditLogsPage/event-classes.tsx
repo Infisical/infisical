@@ -30,6 +30,7 @@ export const EventClassesCard = ({
   isPending,
   error,
   locked,
+  upgradeBlocked,
   onSave
 }: {
   description: string;
@@ -37,6 +38,7 @@ export const EventClassesCard = ({
   isPending: boolean;
   error: unknown;
   locked?: string;
+  upgradeBlocked?: () => boolean;
   onSave: (eventClasses: TAuditLogEventClassSetting[]) => Promise<unknown>;
 }) => {
   const { organization } = useV4Session();
@@ -108,13 +110,14 @@ export const EventClassesCard = ({
                   Boolean(value.find((entry) => entry.eventClass === eventClass)?.isEnabled))
               }
               disabled={always || needsPrivileges || Boolean(locked) || pending}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked) => {
+                if (upgradeBlocked?.()) return;
                 save(
                   value.map((entry) =>
                     entry.eventClass === eventClass ? { ...entry, isEnabled: checked } : entry
                   )
-                )
-              }
+                );
+              }}
             />
           );
         })}

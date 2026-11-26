@@ -328,12 +328,7 @@ export const ProjectIdentitiesTab = () => {
           ) : undefined
         }
       />
-      <AddProjectIdentitySheet
-        orgId={orgId}
-        projectId={projectId}
-        open={adding}
-        onOpenChange={setAdding}
-      />
+      <AddProjectIdentitySheet projectId={projectId} open={adding} onOpenChange={setAdding} />
       <AssumePrivilegesDialog
         orgId={orgId}
         projectId={projectId}
