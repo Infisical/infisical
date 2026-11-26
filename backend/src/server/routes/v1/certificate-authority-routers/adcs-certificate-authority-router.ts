@@ -33,7 +33,7 @@ export const registerADCSCertificateAuthorityRouter = async (server: FastifyZodP
       operationId: "getAdcsTemplates",
       description: "Get available certificate templates from ADCS CA",
       params: z.object({
-        caId: z.string().describe("ADCS CA ID")
+        caId: z.string().trim().uuid().describe("ADCS CA ID")
       }),
       response: {
         200: z.object({

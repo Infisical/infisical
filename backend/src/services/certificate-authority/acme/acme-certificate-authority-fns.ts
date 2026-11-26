@@ -802,7 +802,10 @@ export const AcmeCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
-      throw caAppConnectionNotFoundError(dnsAppConnectionId);
+      throw caAppConnectionNotFoundError(
+        dnsAppConnectionId,
+        ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProviderConfig.provider]
+      );
     }
 
     validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
@@ -889,7 +892,10 @@ export const AcmeCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
       if (!appConnection) {
-        throw caAppConnectionNotFoundError(dnsAppConnectionId);
+        throw caAppConnectionNotFoundError(
+          dnsAppConnectionId,
+          ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProviderConfig.provider]
+        );
       }
 
       validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);

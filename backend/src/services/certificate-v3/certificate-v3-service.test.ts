@@ -1266,7 +1266,7 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow(
-        "This certificate profile uses EST enrollment, not API. Use a profile configured for API enrollment, or request the certificate over EST."
+        "This certificate profile's enrollment method is EST, not API. Use a profile whose enrollment method is API, or request the certificate through EST."
       );
     });
 
@@ -1292,7 +1292,52 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow(
-        "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles to find the right ID."
+        "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID."
+      );
+    });
+
+    it("lists a missing key algorithm with the other policy violations in one error", async () => {
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue({
+        id: "profile-123",
+        projectId: "project-123",
+        enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
+        caId: "ca-123",
+        certificatePolicyId: "policy-123",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        slug: "test-profile",
+        apiConfigId: "api-config-legacy"
+      } as any);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
+        id: "ca-123",
+        projectId: "project-123",
+        name: "Test CA",
+        status: "ACTIVE",
+        enableDirectIssuance: true,
+        internalCa: { id: "internal-ca-123", type: "ROOT", keyAlgorithm: "RSA_2048", activeCaCertId: "cert-123" }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue({
+        id: "policy-123",
+        projectId: "project-123",
+        algorithms: { keyAlgorithm: ["RSA-2048"] }
+      } as any);
+      vi.mocked(mockCertificatePolicyService.validateCertificateRequest).mockResolvedValue({
+        isValid: false,
+        errors: ["dns_name SAN value 'forbidden.com' does not match allowed patterns: '*.example.com'"],
+        warnings: []
+      });
+
+      const { keyAlgorithm: _omitted, ...requestWithoutKeyAlgorithm } = mockCertificateRequest;
+
+      await expect(
+        service.issueCertificateFromProfile({
+          profileId: "profile-123",
+          certificateRequest: requestWithoutKeyAlgorithm,
+          ...mockActor
+        })
+      ).rejects.toThrow(
+        "Certificate request does not meet the certificate policy: dns_name SAN value 'forbidden.com' does not match allowed patterns: '*.example.com'; The certificate policy restricts key algorithms, so the request must set one. Add keyAlgorithm to the request, or set a default key algorithm on the certificate profile. Allowed key algorithms: RSA_2048."
       );
     });
 
@@ -1545,7 +1590,7 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow(
-        "This certificate profile uses EST enrollment, not API. Use a profile configured for API enrollment, or request the certificate over EST."
+        "This certificate profile's enrollment method is EST, not API. Use a profile whose enrollment method is API, or request the certificate through EST."
       );
     });
   });
@@ -2044,7 +2089,7 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow(
-        "This certificate profile uses EST enrollment, not API. Use a profile configured for API enrollment, or request the certificate over EST."
+        "This certificate profile's enrollment method is EST, not API. Use a profile whose enrollment method is API, or request the certificate through EST."
       );
     });
 

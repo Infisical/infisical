@@ -312,19 +312,30 @@ export const describeValueNotAllowed = ({
     : `${fieldName} value '${value}' is not in the allowed values: ${allowed}`;
 };
 
-export const describeDisallowedSan = (
+// One violation per SAN type, so the allowed list is written once however many of the request's SANs it rejects.
+export const describeDisallowedSans = (
   sanType: string,
-  sanValue: string,
+  sanValues: string[],
   allowed: string[],
   commonName?: string | null
-): string =>
-  describeValueNotAllowed({
-    fieldName: `${sanType} SAN`,
-    value: sanValue,
-    allowedValues: allowed,
-    formatValue: (ruleValue) => formatSanRuleValue(ruleValue, commonName),
-    hasPatterns: allowed.some((ruleValue) => isRequestReference(ruleValue) || isWildcardPattern(ruleValue))
-  });
+): string => {
+  const formatValue = (ruleValue: string) => formatSanRuleValue(ruleValue, commonName);
+  const hasPatterns = allowed.some((ruleValue) => isRequestReference(ruleValue) || isWildcardPattern(ruleValue));
+  if (sanValues.length === 1) {
+    return describeValueNotAllowed({
+      fieldName: `${sanType} SAN`,
+      value: sanValues[0],
+      allowedValues: allowed,
+      formatValue,
+      hasPatterns
+    });
+  }
+  const values = quotePolicyValues(sanValues);
+  const allowedList = allowed.map(formatValue).join(", ");
+  return hasPatterns
+    ? `${sanType} SAN values ${values} do not match allowed patterns: ${allowedList}`
+    : `${sanType} SAN values ${values} are not in the allowed values: ${allowedList}`;
+};
 
 const allowsCommonName = (policy: Pick<TCertificatePolicy, "subject">): boolean => {
   if (!policy.subject) return true;
@@ -379,5 +390,5 @@ export const describePolicyViolations = (errors: string[]): string =>
 
 export const certificatePolicyNotFoundError = (policyId: string) =>
   new NotFoundError({
-    message: `Certificate policy with ID '${policyId}' not found. List your organization's certificate policies to find the right ID.`
+    message: `Certificate policy with ID '${policyId}' not found. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right ID.`
   });

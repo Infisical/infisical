@@ -8,7 +8,7 @@ import { ENROLLMENT_TYPE_NAME_MAP, EnrollmentType } from "./certificate-profile-
 
 export const certificateProfileNotFoundError = (profileId: string) =>
   new NotFoundError({
-    message: `Certificate profile with ID '${profileId}' not found. List your organization's certificate profiles to find the right ID.`
+    message: `Certificate profile with ID '${profileId}' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID.`
   });
 
 export const enrollmentTypeMismatchError = (profileEnrollmentType: string, requiredEnrollmentType: string) => {
@@ -17,7 +17,7 @@ export const enrollmentTypeMismatchError = (profileEnrollmentType: string, requi
   const required =
     ENROLLMENT_TYPE_NAME_MAP[requiredEnrollmentType as EnrollmentType] ?? requiredEnrollmentType.toUpperCase();
   return new ForbiddenRequestError({
-    message: `This certificate profile uses ${actual} enrollment, not ${required}. Use a profile configured for ${required} enrollment, or request the certificate over ${actual}.`
+    message: `This certificate profile's enrollment method is ${actual}, not ${required}. Use a profile whose enrollment method is ${required}, or request the certificate through ${actual}.`
   });
 };
 

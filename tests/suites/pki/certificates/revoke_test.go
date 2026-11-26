@@ -81,7 +81,7 @@ func TestCertificate_Revoke(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "Certificate with ID '"+issued.ID.String()+"' not found. List your organization's certificates to find the right one.", apierr.Message(res.Body))
+		require.Equal(t, "Certificate with ID '"+issued.ID.String()+"' not found. Search your organization's certificates with POST /api/v1/cert-manager/certificates/search to find the right one.", apierr.Message(res.Body))
 		require.Equal(t, "active", pki.ReadCertificate(t, g.Operator, issued.ID).JSON200.Certificate.Status)
 	})
 }

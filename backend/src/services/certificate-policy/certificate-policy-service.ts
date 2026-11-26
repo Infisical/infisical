@@ -35,11 +35,13 @@ import {
   TCustomExtensionRule,
   validateCustomExtensionValue
 } from "../certificate-common/certificate-extension-fns";
+import { assertPkiResourceInActorOrg } from "../certificate-common/pki-org-scope-fns";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
   certificatePolicyNotFoundError,
   describeDeniedSan,
-  describeDisallowedSan,
+  describeDisallowedSans,
   describeCommonNameSanRuleWithoutCommonName,
   describeMissingRequiredSan,
   describeTtlExceedsMax,
@@ -68,6 +70,7 @@ import {
 type TCertificatePolicyServiceFactoryDep = {
   certificatePolicyDAL: TCertificatePolicyDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 const findDuplicates = (values: string[]): string[] => {
@@ -82,7 +85,8 @@ const findDuplicates = (values: string[]): string[] => {
 
 export const certificatePolicyServiceFactory = ({
   certificatePolicyDAL,
-  permissionService
+  permissionService,
+  projectDAL
 }: TCertificatePolicyServiceFactoryDep) => {
   const consolidateAttributeArray = <T extends { type: string }>(attributes: T[]): T[] => {
     const consolidated = new Map<string, T>();
@@ -504,10 +508,11 @@ export const certificatePolicyServiceFactory = ({
         // Check ALLOWED values - if present, all SANs must match at least one allowed pattern
         if (sanPolicy.allowed && sanPolicy.allowed.length > 0 && requestSans.length > 0) {
           const permittedValues = [...(sanPolicy.required ?? []), ...sanPolicy.allowed];
-          for (const sanValue of requestSans) {
-            if (!permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))) {
-              errors.push(describeDisallowedSan(sanPolicy.type, sanValue, permittedValues, request.commonName));
-            }
+          const disallowedSans = requestSans.filter(
+            (sanValue) => !permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))
+          );
+          if (disallowedSans.length > 0) {
+            errors.push(describeDisallowedSans(sanPolicy.type, disallowedSans, permittedValues, request.commonName));
           }
         }
       }
@@ -833,6 +838,12 @@ export const certificatePolicyServiceFactory = ({
     if (!existingTemplate) {
       throw certificatePolicyNotFoundError(policyId);
     }
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: existingTemplate.projectId,
+      actorOrgId,
+      notFoundError: () => certificatePolicyNotFoundError(policyId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -992,6 +1003,13 @@ export const certificatePolicyServiceFactory = ({
         throw new BadRequestError({ message: "Actor is required" });
       }
 
+      await assertPkiResourceInActorOrg({
+        projectDAL,
+        projectId: template.projectId,
+        actorOrgId,
+        notFoundError: () => certificatePolicyNotFoundError(policyId)
+      });
+
       if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
         const { permission } = await permissionService.getResourcePermission({
           actor,
@@ -1056,7 +1074,7 @@ export const certificatePolicyServiceFactory = ({
     const template = await certificatePolicyDAL.findByNameAndProjectId(slug, projectId);
     if (!template) {
       throw new NotFoundError({
-        message: `Certificate policy named '${slug}' not found in this organization. List your organization's certificate policies to find the right name.`
+        message: `Certificate policy named '${slug}' not found in this organization. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right name.`
       });
     }
 
@@ -1137,6 +1155,12 @@ export const certificatePolicyServiceFactory = ({
     if (!template) {
       throw certificatePolicyNotFoundError(policyId);
     }
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: template.projectId,
+      actorOrgId,
+      notFoundError: () => certificatePolicyNotFoundError(policyId)
+    });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,

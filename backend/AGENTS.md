@@ -909,7 +909,9 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 ### PKI error messages
 
 Certificate Manager errors are written for an agent fixing its own request: quote the value sent, give the allowed
-values or limit, and say the next step in product words (no API paths, projects, templates or subscribers).
+values or limit, and say the next step in product words (no projects, templates or subscribers). A not-found message
+names the list or search endpoint to call for the right ID (for an app connection, its `/available` endpoint, which
+needs only Connect); other messages name no API paths.
 - Throw the shared constructors instead of writing a new message for a case they cover:
   `certificate-authority/certificate-authority-errors.ts`, `certificate-common/certificate-errors.ts` and
   `certificate-profile/certificate-profile-errors.ts`.

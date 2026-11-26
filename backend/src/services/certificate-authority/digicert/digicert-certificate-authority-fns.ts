@@ -159,7 +159,7 @@ export const DigiCertCertificateAuthorityFns = ({
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw caAppConnectionNotFoundError(appConnectionId);
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
     }
     if (appConnection.app !== AppConnection.DigiCert) {
       throw new BadRequestError({
@@ -246,7 +246,7 @@ export const DigiCertCertificateAuthorityFns = ({
       const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
-        throw caAppConnectionNotFoundError(appConnectionId);
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
       }
       if (appConnection.app !== AppConnection.DigiCert) {
         throw new BadRequestError({

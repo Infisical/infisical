@@ -48,10 +48,12 @@ import {
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import {
+  awsInstanceCredentialsMissingError,
   caAppConnectionNotFoundError,
   caNotFoundError,
   duplicateCaNameError,
-  externalCaNotSavedError
+  externalCaNotSavedError,
+  isAwsInstanceCredentialsMissing
 } from "../certificate-authority-errors";
 import { buildRoute53Client, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
@@ -168,7 +170,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
   }) => {
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw caAppConnectionNotFoundError(appConnectionId);
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.AWS);
     }
     if (appConnection.app !== AppConnection.AWS) {
       throw new BadRequestError({
@@ -214,8 +216,13 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       // Building the client also assumes the connection's role through STS, which is the caller's to fix, but it
       // decrypts the connection and reads instance config too; only errors AWS returned become a 400.
       const isAwsError = error instanceof Error && "$metadata" in error;
+      const logMessage = `AWS ACM setup check failed [region=${region}] [appConnectionId=${appConnectionId}]`;
+      if (!acmClient && isAwsInstanceCredentialsMissing(error)) {
+        logger.warn(error, logMessage);
+        throw awsInstanceCredentialsMissingError("AWS connection");
+      }
       if (!acmClient && !isAwsError) throw error;
-      logger.warn(error, `AWS ACM setup check failed [region=${region}] [appConnectionId=${appConnectionId}]`);
+      logger.warn(error, logMessage);
       // AWS denial text names the calling principal and the role ARN, so only the error name is returned.
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
       if (!acmClient) {
@@ -244,14 +251,9 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       const isAwsError = error instanceof Error && "$metadata" in error;
       const shownZoneId = hostedZoneId.length > 64 ? `${hostedZoneId.slice(0, 64)}...` : hostedZoneId;
       const logMessage = `Route 53 hosted zone setup check failed [hostedZoneId=${shownZoneId}] [dnsAppConnectionId=${dnsAppConnectionId}]`;
-      // The SDK's default credential chain fails with no metadata when the instance has no AWS credentials to assume
-      // the role with.
-      if (!route53Client && error instanceof Error && error.name === "CredentialsProviderError") {
+      if (!route53Client && isAwsInstanceCredentialsMissing(error)) {
         logger.warn(error, logMessage);
-        throw new BadRequestError({
-          message:
-            "Infisical has no AWS credentials of its own to assume the Route 53 connection's role. Ask your instance administrator to set INF_APP_CONNECTION_AWS_ACCESS_KEY_ID and INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY, or to run Infisical with an AWS role, then try again."
-        });
+        throw awsInstanceCredentialsMissingError("Route 53 connection");
       }
       if (!route53Client && !isAwsError) throw error;
       logger.warn(error, logMessage);

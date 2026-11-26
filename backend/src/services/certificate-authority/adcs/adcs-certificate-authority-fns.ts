@@ -192,7 +192,7 @@ export const ADCSCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(appConnectionId);
 
     if (!appConnection) {
-      throw caAppConnectionNotFoundError(appConnectionId);
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.ADCS);
     }
 
     if (appConnection.app !== AppConnection.ADCS) {
@@ -279,7 +279,7 @@ export const ADCSCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(appConnectionId);
 
       if (!appConnection) {
-        throw caAppConnectionNotFoundError(appConnectionId);
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.ADCS);
       }
 
       if (appConnection.app !== AppConnection.ADCS) {

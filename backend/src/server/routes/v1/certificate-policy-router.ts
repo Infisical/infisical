@@ -14,7 +14,9 @@ import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   pkiDescriptionSchema,
+  POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES,
   POLICY_KEY_ALGORITHM_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES,
   POLICY_SIGNATURE_ALGORITHM_VALUES
 } from "@app/services/certificate-common/certificate-constants";
 import {
@@ -150,30 +152,44 @@ const policyValiditySchema = z.object({
     .describe(CERTIFICATE_POLICIES.validityMax)
 });
 
-const policyAlgorithmValueSchema = (kind: string, values: string[]) =>
+const policyAlgorithmValueSchema = (kind: string, values: string[], documentedValues: string[]) =>
   // Zod copies the rejected value into the issue's `received`, which the 422 response and the logs include, so a long
   // value is clipped before the enum check. No allowed value is that long, so clipping never turns a value valid.
   z.preprocess(
     (value) => (typeof value === "string" && value.length > 64 ? `${value.slice(0, 64)}...` : value),
     z.enum(values as [string, ...string[]], {
       errorMap: (issue, ctx) => {
+        if (issue.code === z.ZodIssueCode.invalid_type) {
+          return { message: `Each ${kind} algorithm must be a string. Use one of: ${documentedValues.join(", ")}.` };
+        }
         if (issue.code !== z.ZodIssueCode.invalid_enum_value) return { message: ctx.defaultError };
         return {
-          message: `Unsupported ${kind} algorithm '${String(issue.received)}'. Use one of: ${values.join(", ")}.`
+          message: `Unsupported ${kind} algorithm '${String(issue.received)}'. Use one of: ${documentedValues.join(", ")}.`
         };
       }
     })
   );
 
+// Every rejected item gets its own issue listing the allowed values, so a list over the limit is cut to one item past it
+// before the items are checked: the length check still fails, and the 422 stays bounded however long the list is.
+const policyAlgorithmListSchema = (kind: string, values: string[], documentedValues: string[]) =>
+  z.preprocess(
+    (list) => (Array.isArray(list) && list.length > values.length ? list.slice(0, values.length + 1) : list),
+    z
+      .array(policyAlgorithmValueSchema(kind, values, documentedValues))
+      .min(1, `At least one ${kind} algorithm must be provided`)
+      .max(values.length, `List at most ${values.length} ${kind} algorithms, each once.`)
+  );
+
 const policyAlgorithmsSchema = z.object({
-  signature: z
-    .array(policyAlgorithmValueSchema("signature", POLICY_SIGNATURE_ALGORITHM_VALUES))
-    .min(1, "At least one signature algorithm must be provided")
+  signature: policyAlgorithmListSchema(
+    "signature",
+    POLICY_SIGNATURE_ALGORITHM_VALUES,
+    POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES
+  )
     .optional()
     .describe(CERTIFICATE_POLICIES.signatureAlgorithms),
-  keyAlgorithm: z
-    .array(policyAlgorithmValueSchema("key", POLICY_KEY_ALGORITHM_VALUES))
-    .min(1, "At least one key algorithm must be provided")
+  keyAlgorithm: policyAlgorithmListSchema("key", POLICY_KEY_ALGORITHM_VALUES, POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES)
     .optional()
     .describe(CERTIFICATE_POLICIES.keyAlgorithms)
 });

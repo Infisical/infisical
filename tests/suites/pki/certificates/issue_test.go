@@ -132,7 +132,7 @@ func TestCertificate_Issue(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "Certificate profile with ID '"+missing.ID.String()+"' not found. List your organization's certificate profiles to find the right ID.", apierr.Message(res.Body))
+		require.Equal(t, "Certificate profile with ID '"+missing.ID.String()+"' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, g.Project, g.Profile))
 	})
 
@@ -148,7 +148,7 @@ func TestCertificate_Issue(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "Certificate profile with ID '"+g.Profile.ID.String()+"' not found. List your organization's certificate profiles to find the right ID.", apierr.Message(res.Body))
+		require.Equal(t, "Certificate profile with ID '"+g.Profile.ID.String()+"' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, g.Project, g.Profile))
 	})
 }

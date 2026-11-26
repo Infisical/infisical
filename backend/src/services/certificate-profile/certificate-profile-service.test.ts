@@ -524,7 +524,7 @@ describe("CertificateProfileService", () => {
       ).rejects.toThrow(
         new NotFoundError({
           message:
-            "Certificate policy with ID 'policy-123' not found. List your organization's certificate policies to find the right ID."
+            "Certificate policy with ID 'policy-123' not found. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right ID."
         })
       );
     });
@@ -813,7 +813,7 @@ describe("CertificateProfileService", () => {
       });
 
       await expect(service.getProfileById({ ...mockActor, profileId: "profile-123" })).rejects.toThrow(
-        "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles to find the right ID."
+        "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID."
       );
       expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
     });
@@ -1392,7 +1392,7 @@ describe("CertificateProfileService", () => {
 
   describe("a profile in another organization", () => {
     const notFoundMessage =
-      "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles to find the right ID.";
+      "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID.";
 
     it.each([
       [
@@ -1487,7 +1487,7 @@ describe("CertificateProfileService", () => {
         ForbiddenRequestError
       );
       await expect(service.getEstConfigurationByProfile({ ...mockActor, profileId })).rejects.toThrow(
-        "This certificate profile uses API enrollment, not EST. Use a profile configured for EST enrollment, or request the certificate over API."
+        "This certificate profile's enrollment method is API, not EST. Use a profile whose enrollment method is EST, or request the certificate through API."
       );
     });
 
@@ -1530,7 +1530,7 @@ describe("profileDefaultsViolationError", () => {
 describe("enrollmentTypeMismatchError", () => {
   it("names enrollment types by their display names", () => {
     expect(enrollmentTypeMismatchError("microsoft-autoenrollment", "api").message).toBe(
-      "This certificate profile uses Microsoft Autoenrollment enrollment, not API. Use a profile configured for API enrollment, or request the certificate over Microsoft Autoenrollment."
+      "This certificate profile's enrollment method is Microsoft Autoenrollment, not API. Use a profile whose enrollment method is API, or request the certificate through Microsoft Autoenrollment."
     );
   });
 });

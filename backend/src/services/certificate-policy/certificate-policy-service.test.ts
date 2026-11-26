@@ -141,8 +141,14 @@ describe("CertificatePolicyService", () => {
     })
   };
 
+  const mockProjectDAL = {
+    findById: vi.fn()
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockProjectDAL.findById.mockResolvedValue({ id: "project-123", orgId: "org-123" });
 
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
       throwUnlessCan: vi.fn()
@@ -157,7 +163,8 @@ describe("CertificatePolicyService", () => {
 
     service = certificatePolicyServiceFactory({
       certificatePolicyDAL: mockCertificatePolicyDAL as TCertificatePolicyDALFactory,
-      permissionService: mockPermissionService
+      permissionService: mockPermissionService,
+      projectDAL: mockProjectDAL
     });
   });
 
@@ -575,6 +582,22 @@ describe("CertificatePolicyService", () => {
         })
       ).rejects.toThrow(NotFoundError);
     });
+
+    it("answers a policy in another organization with the same 404 as a missing one, before the permission check", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockProjectDAL.findById.mockResolvedValue({ id: "project-123", orgId: "other-org" });
+
+      const notFound =
+        "Certificate policy with ID 'policy-123' not found. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right ID.";
+
+      await expect(service.getPolicyById({ ...mockActor, policyId: "policy-123" })).rejects.toThrow(notFound);
+      await expect(
+        service.updatePolicy({ ...mockActor, policyId: "policy-123", data: { description: "x" } })
+      ).rejects.toThrow(notFound);
+      await expect(service.deletePolicy({ ...mockActor, policyId: "policy-123" })).rejects.toThrow(notFound);
+      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(mockPermissionService.getResourcePermission).not.toHaveBeenCalled();
+    });
   });
 
   describe("listPolicies", () => {
@@ -899,6 +922,25 @@ describe("CertificatePolicyService", () => {
       expect(result.errors).toContain(
         "dns_name SAN value 'forbidden.com' does not match allowed patterns: 'api.example.com', '*.example.com', '*.api.example.com'"
       );
+    });
+
+    it("should list the allowed patterns once for several disallowed SANs of one type", async () => {
+      const invalidRequest: TCertificateRequest = {
+        ...validRequest,
+        subjectAlternativeNames: [
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "forbidden.com" },
+          { type: CertSubjectAlternativeNameType.DNS_NAME, value: "other.org" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "admin@example.com" }
+        ]
+      };
+
+      const result = await service.validateCertificateRequest("template-123", invalidRequest);
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toContain(
+        "dns_name SAN values 'forbidden.com', 'other.org' do not match allowed patterns: 'api.example.com', '*.example.com', '*.api.example.com'"
+      );
+      expect(result.errors.filter((error) => error.startsWith("dns_name SAN"))).toHaveLength(1);
     });
 
     it("should detect denied SAN values", async () => {

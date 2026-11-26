@@ -1965,7 +1965,8 @@ export const registerRoutes = async (
 
   const certificatePolicyService = certificatePolicyServiceFactory({
     certificatePolicyDAL,
-    permissionService
+    permissionService,
+    projectDAL
   });
 
   const pkiApplicationService = pkiApplicationServiceFactory({

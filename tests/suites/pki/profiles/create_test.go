@@ -65,7 +65,7 @@ func TestCertificateProfile_Create(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "Certificate authority with ID '"+missing.String()+"' not found. List your organization's certificate authorities to find the right ID.", apierr.Message(res.Body))
+		require.Equal(t, "Certificate authority with ID '"+missing.String()+"' not found. List your organization's certificate authorities with GET /api/v1/cert-manager/ca to find the right ID.", apierr.Message(res.Body))
 		require.Empty(t, profileSlugs(t, tn))
 	})
 
@@ -94,9 +94,9 @@ func TestCertificateProfile_Create(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusNotFound, cross.StatusCode(), "answered: %s", apierr.Body(cross.Body))
-		require.Equal(t, "Certificate policy with ID '"+foreign.ID.String()+"' not found. List your organization's certificate policies to find the right ID.", apierr.Message(cross.Body))
+		require.Equal(t, "Certificate policy with ID '"+foreign.ID.String()+"' not found. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right ID.", apierr.Message(cross.Body))
 		require.Equalf(t, http.StatusNotFound, absent.StatusCode(), "answered: %s", apierr.Body(absent.Body))
-		require.Equal(t, "Certificate policy with ID '"+missing.String()+"' not found. List your organization's certificate policies to find the right ID.", apierr.Message(absent.Body))
+		require.Equal(t, "Certificate policy with ID '"+missing.String()+"' not found. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right ID.", apierr.Message(absent.Body))
 		require.Empty(t, profileSlugs(t, other))
 	})
 }

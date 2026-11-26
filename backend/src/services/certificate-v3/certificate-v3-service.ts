@@ -895,30 +895,32 @@ export const certificateV3ServiceFactory = ({
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
-    if (!validationResult.isValid) {
-      throw new BadRequestError({
-        message: describePolicyViolations(validationResult.errors)
-      });
-    }
-
-    const { resolvedCustomExtensions } = validationResult;
-
     const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
       | CertSignatureAlgorithm
       | undefined;
     const effectiveKeyAlgorithm = certificateRequestWithDefaults.keyAlgorithm as CertKeyAlgorithm | undefined;
 
+    // The policy validator only checks an algorithm the request sets, so a missing one is added here to report every
+    // violation in one response.
+    const policyViolations = [...validationResult.errors];
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
+      policyViolations.push(
+        `The certificate policy restricts key algorithms, so the request must set one. Add keyAlgorithm to the request, or set a default key algorithm on the certificate profile. Allowed key algorithms: ${policy.algorithms.keyAlgorithm.map((algorithm) => POLICY_KEY_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}`
+      );
+    }
+    if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
+      policyViolations.push(
+        `The certificate policy restricts signature algorithms, so the request must set one. Add signatureAlgorithm to the request, or set a default signature algorithm on the certificate profile. Allowed signature algorithms: ${policy.algorithms.signature.map((algorithm) => POLICY_SIGNATURE_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}`
+      );
+    }
+
+    if (policyViolations.length > 0) {
       throw new BadRequestError({
-        message: `The certificate policy restricts key algorithms, so the request must set one. Add keyAlgorithm to the request, or set a default key algorithm on the certificate profile. Allowed key algorithms: ${policy.algorithms.keyAlgorithm.map((algorithm) => POLICY_KEY_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}.`
+        message: describePolicyViolations(policyViolations)
       });
     }
 
-    if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
-      throw new BadRequestError({
-        message: `The certificate policy restricts signature algorithms, so the request must set one. Add signatureAlgorithm to the request, or set a default signature algorithm on the certificate profile. Allowed signature algorithms: ${policy.algorithms.signature.map((algorithm) => POLICY_SIGNATURE_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}.`
-      });
-    }
+    const { resolvedCustomExtensions } = validationResult;
 
     const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(

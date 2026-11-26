@@ -1,6 +1,7 @@
 import { RequestAlreadyProcessedException } from "@aws-sdk/client-acm-pca";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -26,6 +27,8 @@ vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
 }));
 
 const CA_ID = "ca-1";
+
+type TCreateArgs = Parameters<ReturnType<typeof AwsPcaCertificateAuthorityFns>["createCertificateAuthority"]>[0];
 
 const buildFns = () =>
   AwsPcaCertificateAuthorityFns({
@@ -70,5 +73,38 @@ describe("AWS PCA revokeCertificate", () => {
     await expect(
       buildFns().revokeCertificate({ caId: CA_ID, serialNumber: "0a1b", reason: CrlReason.KEY_COMPROMISE })
     ).rejects.toBe(throttled);
+  });
+});
+
+describe("AWS PCA createCertificateAuthority setup check", () => {
+  beforeEach(() => {
+    send.mockReset();
+  });
+
+  it("answers a 400 naming the missing instance credentials when the role can't be assumed", async () => {
+    const missingCredentials = new Error("Could not load credentials from any providers");
+    missingCredentials.name = "CredentialsProviderError";
+    send.mockRejectedValue(missingCredentials);
+
+    const fns = AwsPcaCertificateAuthorityFns({
+      appConnectionDAL: { findById: vi.fn().mockResolvedValue({ id: "connection-1", app: "aws" }) },
+      appConnectionService: { validateAppConnectionUsageById: vi.fn().mockResolvedValue({}) },
+      certificateAuthorityDAL: {}
+    } as unknown as Parameters<typeof AwsPcaCertificateAuthorityFns>[0]);
+
+    const setup = fns.createCertificateAuthority({
+      name: "private-aws",
+      projectId: "project-1",
+      status: CaStatus.ACTIVE,
+      configuration: {
+        appConnectionId: "connection-1",
+        certificateAuthorityArn: "arn:aws:acm-pca:us-east-1:111122223333:certificate-authority/example",
+        region: "us-east-1"
+      } as TCreateArgs["configuration"],
+      actor: {} as TCreateArgs["actor"]
+    });
+
+    await expect(setup).rejects.toBeInstanceOf(BadRequestError);
+    await expect(setup).rejects.toThrow("could not load its own AWS credentials to assume the AWS connection's role");
   });
 });

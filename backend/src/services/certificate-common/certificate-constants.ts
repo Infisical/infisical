@@ -428,6 +428,22 @@ export const POLICY_SIGNATURE_ALGORITHM_VALUES = [
 ];
 export const POLICY_KEY_ALGORITHM_VALUES = [...Object.keys(POLICY_KEY_ALGORITHM_TO_REQUEST), ...KEY_ALGORITHM_OPTIONS];
 
+// A policy accepts both spellings of the RSA and ECDSA algorithms, but errors and docs list one per algorithm: the
+// policy spelling the UI stores, then the algorithms that have no alias.
+const withoutAliasedValues = (aliases: Record<string, string>, values: string[]) => {
+  const aliased = new Set(Object.values(aliases));
+  return [...Object.keys(aliases), ...values.filter((value) => !aliased.has(value))];
+};
+
+export const POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES = withoutAliasedValues(
+  POLICY_SIGNATURE_ALGORITHM_TO_REQUEST,
+  SIGNATURE_ALGORITHM_OPTIONS
+);
+export const POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES = withoutAliasedValues(
+  POLICY_KEY_ALGORITHM_TO_REQUEST,
+  KEY_ALGORITHM_OPTIONS
+);
+
 export enum CertExtensionCriticality {
   CRITICAL = "critical",
   NOT_CRITICAL = "not_critical"

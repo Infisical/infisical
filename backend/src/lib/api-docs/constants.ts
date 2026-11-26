@@ -16,8 +16,8 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import {
   KEY_USAGE_OPTIONS,
-  POLICY_KEY_ALGORITHM_VALUES,
-  POLICY_SIGNATURE_ALGORITHM_VALUES,
+  POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES,
   SAN_TYPE_OPTIONS,
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "@app/services/certificate-common/certificate-constants";
@@ -2538,7 +2538,7 @@ export const CERTIFICATES = {
       "The ID of the certificate profile to issue through. The profile decides the certificate authority, the certificate policy and the defaults applied to missing attributes.",
     applicationId:
       "The ID of the application to issue through, when the profile is attached to applications. Required for a profile that is only attached to applications.",
-    csr: "A PEM-encoded PKCS#10 certificate signing request. Its subject, key and extensions are used, so attributes may only set ttl, notBefore, notAfter and basicConstraints alongside it, and can't carry customExtensions. An external certificate authority takes basic constraints from the csr, or from the profile's defaults when the csr has none, and ignores attributes.basicConstraints. With an external certificate authority, a csr whose key usage includes keyCertSign is treated as a request for a CA certificate, even without basic constraints. Of the external certificate authorities, only AWS Private CA can issue a CA certificate.",
+    csr: "A PEM-encoded PKCS#10 certificate signing request. Its subject, key and extensions are used, so attributes may only set ttl, notBefore, notAfter and basicConstraints alongside it, and can't carry customExtensions. An external certificate authority takes basic constraints from the csr, or from the profile's defaults when the csr has none, and ignores attributes.basicConstraints. A csr whose key usage includes keyCertSign is treated as a request for a CA certificate, even without basic constraints. Of the external certificate authorities, only AWS Private CA can issue a CA certificate.",
     attributes: "The certificate fields to request. Anything omitted falls back to the profile's defaults.",
     removeRootsFromChain:
       "Whether to leave the root certificate out of the returned certificate chain. Defaults to false.",
@@ -2726,8 +2726,8 @@ export const CERTIFICATE_POLICIES = {
   usageRequired: "Usages every request must include.",
   usageDenied: "Usages a request must not include.",
   algorithms: "The signature and key algorithms certificates may use. Omit to allow any algorithm.",
-  signatureAlgorithms: `Allowed signature algorithms, at least one: ${POLICY_SIGNATURE_ALGORITHM_VALUES.join(", ")}.`,
-  keyAlgorithms: `Allowed key algorithms, at least one: ${POLICY_KEY_ALGORITHM_VALUES.join(", ")}.`,
+  signatureAlgorithms: `Allowed signature algorithms, at least one: ${POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES.join(", ")}.`,
+  keyAlgorithms: `Allowed key algorithms, at least one: ${POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES.join(", ")}.`,
   validity: "Validity limits for certificates issued under the policy.",
   validityMax:
     "The longest validity a certificate may request, as a number followed by h (hours), d (days), m (months, 30 days each) or y (years), such as 24h, 90d or 1y. Omit for no limit.",
@@ -2772,6 +2772,8 @@ export const CERTIFICATE_PROFILES = {
   description: "A description of the profile, up to 255 characters.",
   issuerType:
     "Who signs certificates issued through the profile: ca for the certificate authority in caId, or self-signed for certificates signed by their own key. Defaults to ca.",
+  updateIssuerType:
+    "Who signs certificates issued through the profile. Omit it to keep the current value. It must match the profile: ca when the profile has a certificate authority, self-signed when it has none.",
   externalConfigs:
     "Settings for an external certificate authority. For Microsoft AD CS and Azure AD CS, set template to the name of the Microsoft certificate template to issue from. Omit for other certificate authorities.",
   defaults:

@@ -618,7 +618,7 @@ export const registerCertificateProfilesRouter = async (
             .describe(CERTIFICATE_PROFILES.slug),
           description: pkiDescriptionSchema.nullable().optional().describe(CERTIFICATE_PROFILES.description),
           enrollmentType: z.enum(PROFILE_ENROLLMENT_TYPES).optional().describe(openApiHidden()),
-          issuerType: z.nativeEnum(IssuerType).optional().describe(CERTIFICATE_PROFILES.issuerType),
+          issuerType: z.nativeEnum(IssuerType).optional().describe(CERTIFICATE_PROFILES.updateIssuerType),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),

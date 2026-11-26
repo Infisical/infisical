@@ -128,7 +128,7 @@ const getVenafiTppConnection = async (
   const appConnection = await appConnectionDAL.findById(appConnectionId);
   if (!appConnection) {
     logger.error({ appConnectionId }, "Venafi TPP: App connection not found for credential decryption");
-    throw caAppConnectionNotFoundError(appConnectionId);
+    throw caAppConnectionNotFoundError(appConnectionId, AppConnection.VenafiTpp);
   }
 
   if (appConnection.app !== AppConnection.VenafiTpp) {
@@ -389,7 +389,7 @@ export const VenafiTppCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(appConnectionId);
 
     if (!appConnection) {
-      throw caAppConnectionNotFoundError(appConnectionId);
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.VenafiTpp);
     }
 
     if (appConnection.app !== AppConnection.VenafiTpp) {

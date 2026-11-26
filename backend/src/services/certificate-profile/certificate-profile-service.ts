@@ -1304,7 +1304,7 @@ export const certificateProfileServiceFactory = ({
     const profile = await certificateProfileDAL.findBySlugAndProjectId(slug, projectId);
     if (!profile) {
       throw new NotFoundError({
-        message: `Certificate profile named '${slug}' not found in this organization. List your organization's certificate profiles to find the right name.`
+        message: `Certificate profile named '${slug}' not found in this organization. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right name.`
       });
     }
 
