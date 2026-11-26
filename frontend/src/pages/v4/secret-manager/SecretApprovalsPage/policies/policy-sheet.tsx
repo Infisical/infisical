@@ -786,7 +786,7 @@ const PolicyForm = ({
                         <Switch
                           layout="row"
                           label="Require approval for imported secrets"
-                          description="Imports from this project into this path need approval to change their values."
+                          description="Changes to secrets imported into this path need approval."
                           checked={value}
                           onCheckedChange={onChange}
                         />

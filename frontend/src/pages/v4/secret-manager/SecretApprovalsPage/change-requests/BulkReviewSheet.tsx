@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import {
   DropdownMenu,
@@ -31,13 +32,19 @@ import {
   type TBulkChangeRequestResult
 } from "@app/hooks/api/secretApprovalRequest/types";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
-import { formatReservedPaths } from "@app/lib/fn/string";
 
 import { toast } from "../../../access/toast";
 import { useV4Adapter, useV4Mode } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
 import { ChangeItem } from "./ChangeItem";
-import { approvedCount, authorName, type ChangeRequest, changeTitle, plural } from "./parts";
+import {
+  approvedCount,
+  authorName,
+  type ChangeRequest,
+  changeTitle,
+  pathOf,
+  plural
+} from "./parts";
 
 import styles from "./bulk-review.module.css";
 
@@ -103,6 +110,74 @@ const OutcomeText = ({ outcome }: { outcome?: Outcome }) => {
         {outcome.status === "approved" ? "Approved, not merged" : "Failed"}
       </StatusText>
     </Tooltip>
+  );
+};
+
+const GroupHeading = ({
+  request,
+  environmentName
+}: {
+  request: ChangeRequest;
+  environmentName: (slug: string) => string;
+}) => (
+  <Inline gap={8} align="center">
+    <strong>{environmentName(request.environment)}</strong>
+    <Meta>{pathOf(request)}</Meta>
+    {request.isReplicated && <Badge size="sm">Replication</Badge>}
+  </Inline>
+);
+
+const DecideAllMenu = ({
+  blocked,
+  disabled,
+  remaining,
+  total,
+  onDecide
+}: {
+  blocked?: string;
+  disabled: boolean;
+  remaining: number;
+  total: number;
+  onDecide: (decision: Decision, onlyRemaining: boolean) => void;
+}) => {
+  const remainingBlock = remaining ? undefined : "Every request has a decision";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button layout="trigger" variant="outline" disabled={disabled} disabledReason={blocked}>
+          Decide all
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          disabledReason={remainingBlock}
+          description="Keeps the decisions you already made."
+          onSelect={() => onDecide("approve", true)}
+        >
+          {`Approve remaining (${remaining})`}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabledReason={remainingBlock}
+          description="Keeps the decisions you already made."
+          onSelect={() => onDecide("reject", true)}
+        >
+          {`Reject remaining (${remaining})`}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          description="Replaces every decision, including rejections."
+          onSelect={() => onDecide("approve", false)}
+        >
+          {`Approve all ${total}`}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          description="Replaces every decision, including approvals."
+          onSelect={() => onDecide("reject", false)}
+        >
+          {`Reject all ${total}`}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 
@@ -376,16 +451,13 @@ const ReviewContent = ({
       <SheetBody>
         <Stack gap={24}>
           {groups.map((group) => {
-            const [{ id, environment, folderId, policy }] = group;
-            const folderPath = details[id]?.secretPath ?? policy.secretPath ?? "/";
+            const [first] = group;
             return (
-              <Stack key={`${environment}-${folderId}`} gap={12}>
-                <Inline gap={8}>
-                  <strong>{environmentName(environment)}</strong>
-                  {formatReservedPaths(folderPath) !== "/" && (
-                    <Meta>{formatReservedPaths(folderPath)}</Meta>
-                  )}
-                </Inline>
+              <Stack key={`${first.environment}-${first.folderId}`} gap={12}>
+                <GroupHeading
+                  request={details[first.id] ?? first}
+                  environmentName={environmentName}
+                />
                 {group.map((request, index) => {
                   const detail = details[request.id];
                   const query = detailQueries[requests.indexOf(request)];
@@ -512,49 +584,13 @@ const ReviewContent = ({
               <Button variant="ghost" disabled={submitting} onClick={onClose}>
                 Cancel
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    layout="trigger"
-                    variant="outline"
-                    disabled={submitting}
-                    disabledReason={
-                      existing ? undefined : "Wait for every request's changes to load"
-                    }
-                  >
-                    Decide all
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    disabledReason={remaining ? undefined : "Every request has a decision"}
-                    description="Keeps the decisions you already made."
-                    onSelect={() => decideAll("approve", true)}
-                  >
-                    {`Approve remaining (${remaining})`}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabledReason={remaining ? undefined : "Every request has a decision"}
-                    description="Keeps the decisions you already made."
-                    onSelect={() => decideAll("reject", true)}
-                  >
-                    {`Reject remaining (${remaining})`}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    description="Replaces every decision, including rejections."
-                    onSelect={() => decideAll("approve", false)}
-                  >
-                    {`Approve all ${requests.length}`}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    description="Replaces every decision, including approvals."
-                    onSelect={() => decideAll("reject", false)}
-                  >
-                    {`Reject all ${requests.length}`}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <DecideAllMenu
+                blocked={existing ? undefined : "Wait for every request's changes to load"}
+                disabled={submitting}
+                remaining={remaining}
+                total={requests.length}
+                onDecide={decideAll}
+              />
               <Button
                 variant="outline"
                 loading={submitting}
