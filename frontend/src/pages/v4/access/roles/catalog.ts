@@ -2821,6 +2821,11 @@ export const AGENT_VAULT_SUBJECTS: PermissionSubject[] = [
         value: "create-with-inline-services",
         label: "Create with inline services",
         description: "Send services with a session instead of only naming an access bundle"
+      },
+      {
+        value: "create-with-inline-skills",
+        label: "Create with inline skills",
+        description: "Send skills with a session instead of only naming an access bundle"
       }
     ]
   },
@@ -2860,6 +2865,18 @@ export const AGENT_VAULT_SUBJECTS: PermissionSubject[] = [
       { value: "create", label: "Create", description: "Add skills" },
       { value: "edit", label: "Modify", description: "Publish and restore skill versions" },
       { value: "delete", label: "Remove", description: "Delete skills" }
+    ]
+  },
+  {
+    subject: "agent-vault-hooks",
+    title: "Hooks",
+    description: "The servers a proxy asks before it attaches credentials",
+    conditional: false,
+    actions: [
+      { value: "read", label: "Read", description: "View hooks and the services that use them" },
+      { value: "create", label: "Create", description: "Add hooks" },
+      { value: "edit", label: "Modify", description: "Change a hook's URL or secret" },
+      { value: "delete", label: "Remove", description: "Delete hooks" }
     ]
   },
   {
