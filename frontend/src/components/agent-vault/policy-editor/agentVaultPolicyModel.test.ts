@@ -71,9 +71,6 @@ const ADMIN_RULES: TProjectPermission[] = [
       "create",
       "edit",
       "revoke",
-      "read-any",
-      "edit-any",
-      "revoke-any",
       "create-with-inline-services",
       "create-with-inline-skills",
       "manage-delegations"
@@ -133,9 +130,14 @@ const ADMIN_RULES: TProjectPermission[] = [
   { subject: "audit-logs", action: ["read", "edit"] }
 ];
 
-// The Member role the role migration makes: own sessions, with skills sent along, and viewing proxies and hooks.
+const SELF = "{{identity.id}}";
+const OWN_SESSIONS = { actorId: { $eq: SELF } };
+const OTHERS_SESSIONS = { actorId: { $ne: SELF } };
+
+// The Member role the role migrations make: own sessions, with skills sent along, and viewing proxies and hooks.
 const MEMBER_RULES: TProjectPermission[] = [
-  { subject: SESSIONS, action: ["read", "create", "edit", "revoke", "create-with-inline-skills"] },
+  { subject: SESSIONS, action: ["create", "create-with-inline-skills"] },
+  { subject: SESSIONS, action: ["read", "edit", "revoke"], conditions: OWN_SESSIONS },
   { subject: PROXIES, action: ["read"] },
   { subject: HOOKS, action: ["read"] }
 ];
@@ -218,13 +220,29 @@ describe("the catalog", () => {
       row.actions.map((action) => `${action.subject}|${action.action}`)
     )
   );
+  // The editor lists everyone's sessions as actions of its own, which a role holds as the plain session actions.
+  const EVERYONE_KEYS: Record<string, string> = {
+    "read-any": "read",
+    "edit-any": "edit",
+    "revoke-any": "revoke"
+  };
+  const shownAsApi = new Set(
+    PERMISSION_ROWS.flatMap((row) =>
+      row.actions.map(
+        (action) =>
+          `${action.subject}|${action.subject === SESSIONS ? (EVERYONE_KEYS[action.action] ?? action.action) : action.action}`
+      )
+    )
+  );
 
   it("shows every action the admin role holds, apart from the ones nothing checks", () => {
-    expect([...admin].filter((id) => !shown.has(id)).sort()).toEqual([...IGNORED_ACTIONS].sort());
+    expect([...admin].filter((id) => !shownAsApi.has(id)).sort()).toEqual(
+      [...IGNORED_ACTIONS].sort()
+    );
   });
 
   it("shows nothing the admin role doesn't hold", () => {
-    expect([...shown].filter((id) => !admin.has(id))).toEqual([]);
+    expect([...shownAsApi].filter((id) => !admin.has(id))).toEqual([]);
   });
 
   it("names each action once", () => {
@@ -236,6 +254,50 @@ describe("the catalog", () => {
         expect(level.allow.every((key) => keys.includes(key))).toBe(true)
       );
     });
+  });
+});
+
+describe("session rules", () => {
+  const ME = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
+  const SOMEONE = "7b1e4f2a-9c3d-4a6b-8e5f-1d2c3b4a5e6f";
+  // The API fills in {{identity.id}} with the caller's id before it checks anything.
+  const asCaller = (rules: TProjectPermission[]) =>
+    JSON.parse(JSON.stringify(rules).replaceAll(SELF, ME)) as TProjectPermission[];
+  const reachOf = (sets: TActionSets) => {
+    const rules = asCaller(policyToRules(withRow("sessions", sets)));
+    return {
+      own: canDoWith(rules, "read", SESSIONS, { actorId: ME }),
+      others: canDoWith(rules, "read", SESSIONS, { actorId: SOMEONE })
+    };
+  };
+
+  it.each([
+    [
+      { allow: ["read"], deny: [] },
+      { own: true, others: false }
+    ],
+    [
+      { allow: ["read", "read-any"], deny: [] },
+      { own: true, others: true }
+    ],
+    [
+      { allow: ["read-any"], deny: [] },
+      { own: false, others: true }
+    ],
+    [
+      { allow: ["read", "read-any"], deny: ["read-any"] },
+      { own: true, others: false }
+    ],
+    [
+      { allow: ["read", "read-any"], deny: ["read"] },
+      { own: false, others: true }
+    ],
+    [
+      { allow: ["read", "read-any"], deny: ["read", "read-any"] },
+      { own: false, others: false }
+    ]
+  ])("lets %j view the sessions the API says (%j)", (sets, expected) => {
+    expect(reachOf(sets)).toEqual(expected);
   });
 });
 
@@ -253,8 +315,9 @@ describe("policyToRules", () => {
     };
 
     expect(policyToRules(policy)).toEqual([
-      { subject: SESSIONS, action: ["read", "create", "create-with-inline-services"] },
-      { subject: SESSIONS, action: ["revoke-any"], inverted: true },
+      { subject: SESSIONS, action: ["create", "create-with-inline-services"] },
+      { subject: SESSIONS, action: ["read"], conditions: OWN_SESSIONS },
+      { subject: SESSIONS, action: ["revoke"], inverted: true, conditions: OTHERS_SESSIONS },
       { subject: PROXIES, action: ["read"] },
       { subject: PROXIES, action: ["delete"], inverted: true }
     ]);
@@ -611,7 +674,8 @@ describe("rulesToPolicy", () => {
     const { policy, unsupported } = rulesToPolicy([
       { subject: SERVICES, action: ["use"], conditions: { serviceId: { $in: [GITHUB] } } },
       { subject: SKILLS, action: ["use"] },
-      { subject: SESSIONS, action: ["create", "edit-any"] },
+      { subject: SESSIONS, action: ["create"] },
+      { subject: SESSIONS, action: ["edit"], conditions: OTHERS_SESSIONS },
       { subject: VARIABLES, action: ["read-value"] }
     ]);
 
@@ -734,7 +798,7 @@ describe("rulesToPolicy", () => {
       { subject: SERVICES, action: ["use"], conditions: { serviceId: GITHUB } },
       { subject: SERVICES, action: ["use"], conditions: { serviceId: { $in: [LINEAR, GITHUB] } } },
       { subject: SERVICES, action: ["create"], conditions: {} },
-      { subject: SESSIONS, action: ["read"] },
+      { subject: SESSIONS, action: ["read"], conditions: { actorId: SELF } },
       { subject: SESSIONS, action: ["create-with-inline-services", "create"], inverted: false }
     ]);
 
@@ -868,11 +932,14 @@ describe("rulesToPolicy reports what a role can't hold", () => {
     ]);
   });
 
-  it("reports a condition on anything but a bundle, service or skill id", () => {
+  it("reports a condition the row doesn't take", () => {
     expect(
       reasonsOf([
         { subject: "member", action: ["read"], conditions: { userEmail: "a@b.c" } },
         { subject: SESSIONS, action: ["read"], conditions: { serviceId: GITHUB } },
+        { subject: SESSIONS, action: ["read"], conditions: { actorId: { $eq: GITHUB } } },
+        { subject: SESSIONS, action: ["read", "create"], conditions: OWN_SESSIONS },
+        { subject: SESSIONS, action: ["read-any"] },
         { subject: SERVICES, action: ["read"], conditions: { name: "github" } },
         { subject: SKILLS, action: ["read"], conditions: { serviceId: GITHUB } },
         { subject: SERVICES, action: ["read"], conditions: { serviceId: { $glob: "*" } } },
@@ -889,7 +956,10 @@ describe("rulesToPolicy reports what a role can't hold", () => {
       ])
     ).toEqual([
       'Limits "member" with a condition, which only access bundles, services and skills take.',
-      `Limits "${SESSIONS}" with a condition, which only access bundles, services and skills take.`,
+      'Limits sessions by "serviceId". Only actorId is supported.',
+      `Limits sessions by actorId with something other than $eq or $ne on ${SELF}.`,
+      "Limits create on sessions by who started them, which only read, edit and revoke take.",
+      `Uses read-any on "${SESSIONS}", which isn't an action a role can hold there.`,
       'Limits services by "name". Only serviceId is supported.',
       'Limits skills by "serviceId". Only skillId is supported.',
       "Limits services with the $glob operator.",
@@ -946,7 +1016,7 @@ describe("rulesToPolicy reports what a role can't hold", () => {
     const { policy, unsupported } = rulesToPolicy([
       { subject: PROXIES, action: ["read", "bogus"] },
       bad,
-      { subject: SESSIONS, action: ["read"] }
+      { subject: SESSIONS, action: ["read"], conditions: OWN_SESSIONS }
     ]);
 
     expect(unsupported.map(({ rule }) => rule)).toEqual([
@@ -1220,7 +1290,10 @@ describe("editing", () => {
 
 describe("warnings", () => {
   it("says sessions never work when a role can start them but not view its own", () => {
-    const { policy } = rulesToPolicy([{ subject: SESSIONS, action: ["create", "edit"] }]);
+    const { policy } = rulesToPolicy([
+      { subject: SESSIONS, action: ["create"] },
+      { subject: SESSIONS, action: ["edit"], conditions: OWN_SESSIONS }
+    ]);
 
     expect(getRowWarnings(policy, "sessions")).toEqual([
       {
@@ -1233,10 +1306,9 @@ describe("warnings", () => {
 
   it("names what else stored rules are missing, in the row that misses it", () => {
     const { policy } = rulesToPolicy([
-      {
-        subject: SESSIONS,
-        action: ["read", "edit-any", "revoke-any", "create-with-inline-services"]
-      },
+      { subject: SESSIONS, action: ["read"], conditions: OWN_SESSIONS },
+      { subject: SESSIONS, action: ["edit", "revoke"], conditions: OTHERS_SESSIONS },
+      { subject: SESSIONS, action: ["create-with-inline-services"] },
       { subject: VARIABLES, action: ["read-value"] },
       { subject: SERVICES, action: ["edit"], conditions: { serviceId: { $in: [GITHUB] } } },
       { subject: PROXIES, action: ["read", "delete"] },
@@ -1482,24 +1554,25 @@ describe("templates", () => {
   });
 
   it("grant what their names say", () => {
-    const ownSessions = ["read", "create", "edit", "revoke", "create-with-inline-skills"];
+    const ownSessions: TProjectPermission[] = [
+      { subject: SESSIONS, action: ["create", "create-with-inline-skills"] },
+      { subject: SESSIONS, action: ["read", "edit", "revoke"], conditions: OWN_SESSIONS }
+    ];
     expect(policyToRules(template("service-user"))).toEqual([
-      { subject: SESSIONS, action: ownSessions },
+      ...ownSessions,
       { subject: PROXIES, action: ["read"] },
       { subject: HOOKS, action: ["read"] }
     ]);
     expect(policyToRules(template("builder"))).toEqual([
       { subject: SERVICES, action: ["read", "use", "edit", "create"] },
       { subject: BUNDLES, action: ["read", "use", "edit", "create"] },
-      { subject: SESSIONS, action: ownSessions },
+      ...ownSessions,
       { subject: PROXIES, action: ["read"] },
       { subject: HOOKS, action: ["read"] }
     ]);
     expect(policyToRules(template("auditor"))).toEqual([
-      {
-        subject: SESSIONS,
-        action: ["read", "create", "edit", "revoke", "read-any", "create-with-inline-skills"]
-      },
+      { subject: SESSIONS, action: ["create", "create-with-inline-skills", "read"] },
+      { subject: SESSIONS, action: ["edit", "revoke"], conditions: OWN_SESSIONS },
       { subject: PROXIES, action: ["read"] },
       { subject: HOOKS, action: ["read"] },
       { subject: "member", action: ["read"] },

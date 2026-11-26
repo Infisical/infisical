@@ -117,7 +117,8 @@ export const convertAgentVaultMemberRows = async (projectId: string) => {
         description: AGENT_VAULT_MEMBER_ROLE_DESCRIPTION,
         projectId,
         permissions: JSON.stringify([
-          ["read,create,edit,revoke,create-with-inline-skills", "agent-vault-sessions"],
+          ["create,create-with-inline-skills", "agent-vault-sessions"],
+          ["read,edit,revoke", "agent-vault-sessions", { actorId: { $eq: "{{identity.id}}" } }],
           ["read", "agent-vault-proxies"],
           ["read", "agent-vault-hooks"]
         ])

@@ -309,16 +309,14 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
   Delete = "delete"
 }
 
-// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's. ManageDelegations sets which
-// users a machine identity may start sessions on behalf of, whose sessions then send those users' personal values.
+// Read, Edit and Revoke reach every session, or with an actorId condition only the caller's own (or only everyone
+// else's). ManageDelegations sets which users a machine identity may start sessions on behalf of, whose sessions then
+// send those users' personal values.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Revoke = "revoke",
-  ReadAny = "read-any",
-  EditAny = "edit-any",
-  RevokeAny = "revoke-any",
   CreateWithInlineServices = "create-with-inline-services",
   CreateWithInlineSkills = "create-with-inline-skills",
   ManageDelegations = "manage-delegations"
@@ -520,6 +518,11 @@ export type AgentVaultServiceSubjectFields = {
 
 export type AgentVaultSkillSubjectFields = {
   skillId: string;
+};
+
+// The user or machine identity that started the session, null once it is deleted.
+export type AgentVaultSessionSubjectFields = {
+  actorId: string | null;
 };
 
 export type SecretSubjectFields = {
@@ -806,7 +809,13 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.AgentVaultServices> & AgentVaultServiceSubjectFields)
       )
     ]
-  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [
+      ProjectPermissionAgentVaultSessionActions,
+      (
+        | ProjectPermissionSub.AgentVaultSessions
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSessions> & AgentVaultSessionSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [
       ProjectPermissionAgentVaultSkillActions,
@@ -1082,6 +1091,29 @@ const AgentVaultAccessBundleConditionSchema = z.object({ accessBundleId: AGENT_V
 const AgentVaultServiceConditionSchema = z.object({ serviceId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
 
 const AgentVaultSkillConditionSchema = z.object({ skillId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
+
+// Filled in with the caller's user or machine identity id when their permission is built.
+export const AGENT_VAULT_SESSION_SELF = "{{identity.id}}";
+
+// The actions that act on a session someone already started, the only ones a condition on who started it can limit.
+export const AGENT_VAULT_SESSION_ACTOR_ACTIONS: string[] = [
+  ProjectPermissionAgentVaultSessionActions.Read,
+  ProjectPermissionAgentVaultSessionActions.Edit,
+  ProjectPermissionAgentVaultSessionActions.Revoke
+];
+
+// A rule names whose sessions it covers only relative to the caller: their own ($eq) or everyone else's ($ne). The
+// services decide a check by asking about the caller's session and one other actor's, which is exact only while nothing
+// else can be named here.
+const AgentVaultSessionConditionSchema = z
+  .object({
+    actorId: z.union([
+      z.literal(AGENT_VAULT_SESSION_SELF),
+      z.object({ [PermissionConditionOperators.$EQ]: z.literal(AGENT_VAULT_SESSION_SELF) }).strict(),
+      z.object({ [PermissionConditionOperators.$NEQ]: z.literal(AGENT_VAULT_SESSION_SELF) }).strict()
+    ])
+  })
+  .strict();
 
 const ProxiedServiceConditionSchema = z
   .object({
@@ -1815,7 +1847,10 @@ const GeneralPermissionSchema = [
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSessionActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: AgentVaultSessionConditionSchema.describe(
+      `When specified, only the sessions the caller started (actorId: { $eq: "${AGENT_VAULT_SESSION_SELF}" }) or only everyone else's ($ne) are covered.`
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AgentVaultProxies).describe("The entity this permission pertains to."),

@@ -9,11 +9,13 @@ import {
 import { ProjectMembershipRole, TProjectPermission } from "@app/hooks/api/roles/types";
 
 import {
+  AGENT_VAULT_SESSION_SELF,
   CUSTOM_LEVEL,
   DENIED_LEVEL,
   NONE_LEVEL,
   PERMISSION_ROWS,
   RESOURCE_NOUNS,
+  SessionEveryoneAction,
   SUBJECT_RULES,
   SUBJECTS_WITHOUT_DENY,
   TActionSets,
@@ -389,6 +391,70 @@ const groupedRules = (
     });
 };
 
+// The session actions the editor lists twice, for the caller's own sessions and for everyone's, keyed by the action.
+const EVERYONE_KEY_OF: Record<string, string> = {
+  [SessionAction.Read]: SessionEveryoneAction.Read,
+  [SessionAction.Edit]: SessionEveryoneAction.Edit,
+  [SessionAction.Revoke]: SessionEveryoneAction.Revoke
+};
+const EVERYONE_KEYS: string[] = Object.values(EVERYONE_KEY_OF);
+const ACTOR_ACTIONS = Object.keys(EVERYONE_KEY_OF);
+
+const sessionRule = (
+  actions: string[],
+  isInverted: boolean,
+  operator?: PermissionConditionOperators.$EQ | PermissionConditionOperators.$NEQ
+): TProjectPermission[] =>
+  actions.length
+    ? [
+        {
+          subject: Sub.AgentVaultSessions,
+          action: actions,
+          ...(isInverted ? { inverted: true } : {}),
+          ...(operator ? { conditions: { actorId: { [operator]: AGENT_VAULT_SESSION_SELF } } } : {})
+        } as TProjectPermission
+      ]
+    : [];
+
+// Writes the editor's session keys as the API takes them: an action on the caller's own sessions and on everyone's
+// takes no condition, on their own alone is limited to them ($eq), and on everyone's alone to sessions other people
+// started ($ne). Allows and denies alike.
+const toApiSessionRules = (rule: TProjectPermission): TProjectPermission[] => {
+  const {
+    subject: ruleSubject,
+    action,
+    inverted
+  } = rule as {
+    subject: string;
+    action: string | string[];
+    inverted?: boolean;
+  };
+  if (ruleSubject !== Sub.AgentVaultSessions) return [rule];
+  const keys = typeof action === "string" ? [action] : action;
+  const isInverted = Boolean(inverted);
+  const hasOwn = (name: string) => keys.includes(name);
+  const hasEveryone = (name: string) => keys.includes(EVERYONE_KEY_OF[name]);
+  return [
+    ...sessionRule(
+      [
+        ...keys.filter((key) => !EVERYONE_KEYS.includes(key) && !ACTOR_ACTIONS.includes(key)),
+        ...ACTOR_ACTIONS.filter((name) => hasOwn(name) && hasEveryone(name))
+      ],
+      isInverted
+    ),
+    ...sessionRule(
+      ACTOR_ACTIONS.filter((name) => hasOwn(name) && !hasEveryone(name)),
+      isInverted,
+      PermissionConditionOperators.$EQ
+    ),
+    ...sessionRule(
+      ACTOR_ACTIONS.filter((name) => !hasOwn(name) && hasEveryone(name)),
+      isInverted,
+      PermissionConditionOperators.$NEQ
+    )
+  ];
+};
+
 /**
  * The fewest rules that say exactly what the policy does, always written the same way: per subject one allow and one
  * deny, and for bundles, services and skills one rule per distinct set of extra actions and of denied actions.
@@ -444,13 +510,15 @@ export const policyToRules = (policy: TAgentVaultPolicy): TProjectPermission[] =
     }
 
     return rules;
-  }).concat(
-    (normalized.hidden ?? []).map(({ subject, action, inverted }) => ({
-      subject,
-      action,
-      ...(inverted ? { inverted } : {})
-    }))
-  );
+  })
+    .concat(
+      (normalized.hidden ?? []).map(({ subject, action, inverted }) => ({
+        subject,
+        action,
+        ...(inverted ? { inverted } : {})
+      }))
+    )
+    .flatMap(toApiSessionRules);
 };
 
 export type TUnsupportedRule = { rule: TProjectPermission; reason: string };
@@ -511,6 +579,52 @@ const normalizeRule = (rule: unknown): TNormalizedRule | string => {
       isPlainObject(conditions) && Object.keys(conditions).length ? conditions : undefined,
     isInverted: inverted === true
   };
+};
+
+// Whose sessions a rule covers: every session (no condition), the caller's own ($eq) or everyone else's ($ne). A
+// string says why the editor can't show the condition.
+const actorOperatorOf = (conditions?: Record<string, unknown>) => {
+  if (!conditions) return null;
+  const otherKey = Object.keys(conditions).find((key) => key !== "actorId");
+  if (otherKey) return `Limits sessions by "${otherKey}". Only actorId is supported.`;
+  const value = conditions.actorId;
+  if (value === AGENT_VAULT_SESSION_SELF) return PermissionConditionOperators.$EQ;
+  if (isPlainObject(value) && Object.keys(value).length === 1) {
+    if (value[PermissionConditionOperators.$EQ] === AGENT_VAULT_SESSION_SELF) {
+      return PermissionConditionOperators.$EQ;
+    }
+    if (value[PermissionConditionOperators.$NEQ] === AGENT_VAULT_SESSION_SELF) {
+      return PermissionConditionOperators.$NEQ;
+    }
+  }
+  return `Limits sessions by actorId with something other than $eq or $ne on ${AGENT_VAULT_SESSION_SELF}.`;
+};
+
+// Reads a session rule into the editor's keys, the inverse of toApiSessionRules, or says why it can't.
+const sessionKeysOf = ({ actions, conditions }: TNormalizedRule): string[] | string => {
+  const editorOnly = actions.filter((name) => EVERYONE_KEYS.includes(name));
+  if (editorOnly.length) {
+    return `Uses ${editorOnly.join(", ")} on "${Sub.AgentVaultSessions}", which isn't an action a role can hold there.`;
+  }
+  const operator = actorOperatorOf(conditions);
+  if (operator === null) {
+    return actions.flatMap((name) =>
+      ACTOR_ACTIONS.includes(name) ? [name, EVERYONE_KEY_OF[name]] : [name]
+    );
+  }
+  if (
+    operator !== PermissionConditionOperators.$EQ &&
+    operator !== PermissionConditionOperators.$NEQ
+  ) {
+    return operator;
+  }
+  const outside = actions.filter((name) => !ACTOR_ACTIONS.includes(name));
+  if (outside.length) {
+    return `Limits ${outside.join(", ")} on sessions by who started them, which only read, edit and revoke take.`;
+  }
+  return operator === PermissionConditionOperators.$EQ
+    ? actions
+    : actions.map((name) => EVERYONE_KEY_OF[name]);
 };
 
 const idsFromValue = (value: unknown): unknown[] | string => {
@@ -578,10 +692,18 @@ export const rulesToPolicy = (rules: TProjectPermission[]): TParsedAgentVaultPol
   };
 
   rules.forEach((rule, index) => {
-    const normalized = normalizeRule(rule);
+    let normalized = normalizeRule(rule);
     if (typeof normalized === "string") {
       report(index, normalized);
       return;
+    }
+    if (normalized.subject === Sub.AgentVaultSessions) {
+      const keys = sessionKeysOf(normalized);
+      if (typeof keys === "string") {
+        report(index, keys);
+        return;
+      }
+      normalized = { ...normalized, actions: keys, conditions: undefined };
     }
 
     const subject = normalized.subject as ProjectPermissionSub;

@@ -4,11 +4,20 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
+import { interpolatePermissionRules } from "@app/ee/services/permission/permission-fns";
 import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionSet, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  AGENT_VAULT_SESSION_SELF,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { conditionsMatcher } from "@app/lib/casl";
 
 import {
+  agentVaultSessionActorIdOf,
+  agentVaultSessionReachOf,
+  agentVaultSessionSubject,
   allowedAmong,
   intersectIds,
   intersectReach,
@@ -42,6 +51,73 @@ const denyUse = (subjectType: ProjectPermissionSub, conditions?: Record<string, 
   action: ["use"],
   inverted: true,
   ...(conditions ? { conditions } : {})
+});
+
+describe("whose sessions a role reaches", () => {
+  const ME = "3c90c3cc-0d44-4b50-8888-8dd25736052a";
+  const SOMEONE = "7b1e4f2a-9c3d-4a6b-8e5f-1d2c3b4a5e6f";
+  const { Read, Edit, Revoke } = ProjectPermissionAgentVaultSessionActions;
+
+  // Built as the permission service builds a caller's permission: the roles' rules, then {{identity.id}} filled in.
+  const permissionOf = (...rules: TRule[]) =>
+    createMongoAbility<ProjectPermissionSet>(
+      interpolatePermissionRules(
+        buildProjectPermissionRules(
+          [{ role: ProjectMembershipRole.Custom, permissions: packRules(rules as never) }],
+          ProjectType.AgentVault
+        ),
+        { identity: { id: ME, username: "me", metadata: {} } }
+      ),
+      { conditionsMatcher }
+    );
+  const sessions = (action: string[], operator?: "$eq" | "$ne", inverted = false): TRule => ({
+    subject: ProjectPermissionSub.AgentVaultSessions,
+    action,
+    ...(operator ? { conditions: { actorId: { [operator]: AGENT_VAULT_SESSION_SELF } } } : {}),
+    ...(inverted ? { inverted } : {})
+  });
+
+  test.each([
+    ["no condition", [sessions([Read])], { own: true, others: true }],
+    ["$eq, the caller's own", [sessions([Read], "$eq")], { own: true, others: false }],
+    ["$ne, everyone else's", [sessions([Read], "$ne")], { own: false, others: true }],
+    [
+      "every one but a deny on the caller's own",
+      [sessions([Read]), sessions([Read], "$eq", true)],
+      { own: false, others: true }
+    ],
+    [
+      "every one but a deny on everyone else's",
+      [sessions([Read]), sessions([Read], "$ne", true)],
+      { own: true, others: false }
+    ],
+    [
+      "the caller's own, denied everywhere",
+      [sessions([Read], "$eq"), sessions([Read], undefined, true)],
+      { own: false, others: false }
+    ]
+  ])("%s", (_label, rules, expected) => {
+    expect(agentVaultSessionReachOf(permissionOf(...rules), Read, ME)).toEqual(expected);
+  });
+
+  test("checks a session by who started it, so another actor's session is decided like everyone else's", () => {
+    const permission = permissionOf(sessions([Read]), sessions([Edit, Revoke], "$eq"));
+    expect(permission.can(Edit, agentVaultSessionSubject(ME))).toBe(true);
+    expect(permission.can(Edit, agentVaultSessionSubject(SOMEONE))).toBe(false);
+    expect(permission.can(Revoke, agentVaultSessionSubject(SOMEONE))).toBe(false);
+    expect(permission.can(Read, agentVaultSessionSubject(SOMEONE))).toBe(true);
+    // A session whose actor was deleted is no one's own.
+    expect(permission.can(Edit, agentVaultSessionSubject(null))).toBe(false);
+    expect(permission.can(Read, agentVaultSessionSubject(null))).toBe(true);
+    // Ids from a request can arrive in capitals.
+    expect(permission.can(Edit, agentVaultSessionSubject(ME.toUpperCase()))).toBe(true);
+  });
+
+  test("a session started on a user's behalf is the machine identity's, never the user's own", () => {
+    expect(agentVaultSessionActorIdOf({ userId: null, identityId: SOMEONE })).toBe(SOMEONE);
+    expect(agentVaultSessionActorIdOf({ userId: ME, identityId: null })).toBe(ME);
+    expect(agentVaultSessionActorIdOf({ userId: null, identityId: null })).toBeNull();
+  });
 });
 
 describe("intersectIds", () => {

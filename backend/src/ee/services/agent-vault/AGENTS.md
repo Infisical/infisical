@@ -110,13 +110,25 @@ Read `src/domains/agent-vault/agent-vault/AGENTS.md`, which owns the free tier, 
 ## Permissions
 
 - **Every gate checks a CASL action, never the role.** The actions that stand in for what used to be role checks:
-  `read-any`, `edit-any` and `revoke-any` on sessions (other actors' sessions and their session logs; plain `read`,
-  `edit` and `revoke` reach only your own), `create-with-inline-services` on sessions, the `agent-vault-variables`
+  `read`, `edit` and `revoke` on other actors' sessions (see the next rule), `create-with-inline-services` on
+  sessions, the `agent-vault-variables`
   subject (global variables), the project's `Settings` subject (session log settings, `read` to view and `edit` to
   change), `edit` on proxies (the proxy list carries a proxy's settings only for it), and `create`, `edit` and `delete`
   on members, groups or identities, for only the kinds a membership change names. Typing a global variable reference
   into a service or an MCP tool load also takes `read-value` on `agent-vault-variables`, checked before the key lookup
   so a missing key can't be told apart.
+- **Check a session against who started it, never against the bare subject type.** `read`, `edit` and `revoke` on
+  sessions can carry an `actorId` condition, and CASL answers a check of the subject type with true for any rule,
+  conditional or not. Build the subject with `agentVaultSessionSubject(agentVaultSessionActorIdOf(session))`. The
+  condition only names the caller, as `{{identity.id}}`, which the permission service fills in: `$eq` for their own
+  sessions, `$ne` for everyone else's. That is what lets a check that isn't about one session ask about the caller's
+  own (`agentVaultSessionSubject(callerId)`) and about another actor's (`agentVaultOtherActorSessionSubject`), which
+  `agentVaultSessionReachOf` does for the list; allowing any other `actorId` value would make those answers wrong. Only
+  those three actions take the condition (`sessionActionsOutsideActorCondition` refuses the rest on save), so the other
+  session actions are checked on the subject type. A check that an actor still holds a live role (resolve, and minting
+  on a user's behalf) asks whether they can read their own sessions. In an org on the legacy privilege system, the
+  boundary check compares a granted role's `{{identity.id}}` as text against the granter's filled-in rules, as it does
+  for templated roles in Secrets Management, so only someone who can reach every session can grant an own-sessions role.
 - **Admin and No Access are the only built-in roles, and a custom role is exactly its own rules.**
   `resolveAgentVaultProjectRoleRules` (`permission-service.ts`) gives admin `buildAgentVaultProjectAdminPermissionRules`,
   unpacks a custom role, and gives any other slug nothing, a leftover `member` row included.
@@ -349,8 +361,8 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
 `agent_vault_delegation_subjects` rows naming users and groups. Both reference an Agent Vault membership (`membershipId`,
 `ON DELETE CASCADE`): the delegation its identity's, and each subject the user's or group's.
 
-- **Never put the user in `userId`.** Ownership is `userId` or `identityId` alone (`isSessionOwnedBy`, the list's actor
-  filter), so a user in `userId` would see the session and its logs. The DB check
+- **Never put the user in `userId`.** Ownership is `userId` or `identityId` alone (`agentVaultSessionActorIdOf`, the
+  list's actor filter), so a user in `userId` would see the session and its logs. The DB check
   `agent_vault_sessions_on_behalf_of_check` keeps an on-behalf-of session an identity's.
 - **`onBehalfOfUserName` is what marks the session on-behalf-of** once deleting the user sets the id to NULL, the
   same lesson as `actorType`. A session with the name and no id is orphaned: it reads as revoked

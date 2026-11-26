@@ -38,7 +38,6 @@ import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultServiceActions,
-  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
@@ -47,6 +46,7 @@ import {
 import {
   canOnAgentVaultAccessBundle,
   canOnAgentVaultService,
+  canReadOthersAgentVaultSessions,
   canUseAgentVaultAccessBundle,
   canUseNewAgentVaultService
 } from "@app/helpers/agentVaultPermissions";
@@ -92,17 +92,14 @@ export const AgentVaultAccessBundleDetailPage = () => {
     ) &&
     canUseNewAgentVaultService(permission);
   const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
-  const canReadAnySession = permission.can(
-    ProjectPermissionAgentVaultSessionActions.ReadAny,
-    ProjectPermissionSub.AgentVaultSessions
-  );
+  const canReadAnySession = canReadOthersAgentVaultSessions(permission);
 
   const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(projectId, accessBundleId);
   const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
-  // Listing every session takes Read Any on sessions, and so does the note that reads this.
+  // Listing everyone's sessions takes read on sessions other people started, and so does the note that reads this.
   const { data: sessions } = useListAgentVaultSessions(
     projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },

@@ -1449,7 +1449,7 @@ const GRANTER_RULES: RawRuleOf<MongoAbility>[] = [
   }
 ];
 const AUDITOR_RULES: RawRuleOf<MongoAbility>[] = [
-  { action: ProjectPermissionAgentVaultSessionActions.ReadAny, subject: ProjectPermissionSub.AgentVaultSessions }
+  { action: ProjectPermissionAgentVaultSessionActions.Read, subject: ProjectPermissionSub.AgentVaultSessions }
 ];
 const grantDTO = {
   projectId: PROJECT_ID,

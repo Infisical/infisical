@@ -22,9 +22,13 @@ import { ObjectStorageType } from "@app/services/object-storage/object-storage-t
 
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { isOrphanedSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
+import { isOrphanedSession } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionStatsDALFactory } from "../agent-vault-session/agent-vault-session-stats-dal";
-import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
+import {
+  agentVaultSessionActorIdOf,
+  agentVaultSessionSubject,
+  getAgentVaultPermission
+} from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS,
@@ -312,9 +316,10 @@ export const agentVaultSessionLogServiceFactory = ({
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
     if (
       !session ||
-      permission.cannot(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions) ||
-      (!isSessionOwnedBy(ctx, session) &&
-        permission.cannot(ProjectPermissionAgentVaultSessionActions.ReadAny, ProjectPermissionSub.AgentVaultSessions))
+      permission.cannot(
+        ProjectPermissionAgentVaultSessionActions.Read,
+        agentVaultSessionSubject(agentVaultSessionActorIdOf(session))
+      )
     ) {
       throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }

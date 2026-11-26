@@ -35,7 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
@@ -197,17 +197,12 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const { user } = useUser();
 
   const isOwnerDeleted = session?.actor.id === null;
   // The API refuses edits once the owner, or the user it acts on behalf of, is deleted.
   const isEditable = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
-  const canEdit = Boolean(
-    session && canActOnAgentVaultSession(permission, user.id, session, "edit")
-  );
-  const canRevoke = Boolean(
-    session && canActOnAgentVaultSession(permission, user.id, session, "revoke")
-  );
+  const canEdit = Boolean(session && canActOnAgentVaultSession(permission, session, "edit"));
+  const canRevoke = Boolean(session && canActOnAgentVaultSession(permission, session, "revoke"));
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()

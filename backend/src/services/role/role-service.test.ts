@@ -182,6 +182,36 @@ describe("Agent Vault role names", () => {
   });
 });
 
+describe("Agent Vault session conditions", () => {
+  const withSessionRules = (rules: unknown[]) =>
+    ({
+      ...createDto,
+      data: { ...createDto.data, permissions: JSON.stringify(rules) }
+    }) as unknown as TCreateRoleDTO;
+  const OWN = { actorId: { $eq: "{{identity.id}}" } };
+
+  test("takes read, edit and revoke limited to the caller's own sessions", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await service.createRole(
+      withSessionRules([
+        ["create", "agent-vault-sessions"],
+        ["read,edit,revoke", "agent-vault-sessions", OWN]
+      ])
+    );
+    expect(roleDAL.create).toHaveBeenCalled();
+  });
+
+  test("refuses a rule that limits create by who started a session", async () => {
+    const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });
+    await expect(
+      service.createRole(withSessionRules([["read,create,manage-delegations", "agent-vault-sessions", OWN]]))
+    ).rejects.toThrow(
+      "A rule that limits Agent Vault sessions by actorId can only hold read, edit and revoke, not create, manage-delegations."
+    );
+    expect(roleDAL.create).not.toHaveBeenCalled();
+  });
+});
+
 describe("Agent Vault role size", () => {
   test("refuses more rules than an Agent Vault role can hold, as the routes send them", async () => {
     const { service, roleDAL } = build({ projectType: ProjectType.AgentVault });

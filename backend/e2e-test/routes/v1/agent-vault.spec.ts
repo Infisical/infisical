@@ -334,8 +334,11 @@ const createAgentVaultRole = async (projectId: string, slug: string, permissions
   return res.json().role as { id: string; slug: string };
 };
 
-// What a role needs to start sessions on bundles someone else gives it.
-const SESSION_RULES: TRoleRule[] = [{ subject: "agent-vault-sessions", action: ["read", "create"] }];
+// What a role needs to start sessions on bundles someone else gives it, and to see the ones it started.
+const SESSION_RULES: TRoleRule[] = [
+  { subject: "agent-vault-sessions", action: ["create"] },
+  { subject: "agent-vault-sessions", action: ["read"], conditions: { actorId: { $eq: "{{identity.id}}" } } }
+];
 
 // Sees every bundle, service and skill, and can use none of them.
 const READ_ONLY_RULES: TRoleRule[] = [
@@ -6533,7 +6536,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const everyone = await member.as("GET", "/api/v1/agent-vault/sessions?scope=all");
         expect(everyone.statusCode).toBe(403);
-        expect(everyone.json().message).toBe("You are not allowed to read-any on agent-vault-sessions");
+        expect(everyone.json().message).toBe("You are not allowed to read on agent-vault-sessions");
         const own = await member.as("GET", "/api/v1/agent-vault/sessions?limit=100");
         expect(own.statusCode).toBe(200);
         expect((own.json().sessions as { id: string }[]).map((row) => row.id)).toEqual([memberSession.id]);
@@ -6564,6 +6567,100 @@ describe("Agent Vault V1 Router", async () => {
       } finally {
         await member.cleanup();
       }
+    });
+
+    test("a role reaches every session with no condition, the caller's own with $eq, and everyone else's with $ne", async () => {
+      const stamp = Date.now();
+      const bundle = await createAccessBundle(`session-reach-${stamp}`);
+      const adminMint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(adminMint.statusCode).toBe(200);
+      const adminSession = adminMint.json().session as { id: string };
+
+      const self = "{{identity.id}}";
+      const sessions = (action: string[], conditions?: Record<string, unknown>): TRoleRule => ({
+        subject: "agent-vault-sessions",
+        action,
+        ...(conditions ? { conditions } : {})
+      });
+      const memberWith = async (label: string, sessionRules: TRoleRule[]) => {
+        const role = await createAgentVaultRole(agentVaultProjectId, `session-reach-${label}-${stamp}`, [
+          { subject: "agent-vault-access-bundles", action: ["read", "use"], conditions: { accessBundleId: bundle.id } },
+          sessions(["create"]),
+          ...sessionRules
+        ]);
+        const member = await createMemberIdentity(`session-reach-${label}-${stamp}`);
+        await setMemberRoles({ machineIdentityIds: [member.id] }, [role.slug]);
+        const mint = await member.as("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+        expect(mint.statusCode, mint.payload).toBe(200);
+        return { member, ownSessionId: (mint.json().session as { id: string }).id };
+      };
+      const idsOf = (res: { json: () => { sessions: { id: string }[] } }) => res.json().sessions.map((row) => row.id);
+
+      const own = await memberWith("own", [sessions(["read", "edit"], { actorId: { $eq: self } })]);
+      const others = await memberWith("others", [sessions(["read"], { actorId: { $ne: self } })]);
+      const every = await memberWith("every", [sessions(["read"]), sessions(["edit"], { actorId: { $eq: self } })]);
+      try {
+        // The caller's own: everyone's list is refused, another's session reads as missing, their own can be edited.
+        const ownAll = await own.member.as("GET", "/api/v1/agent-vault/sessions?scope=all");
+        expect(ownAll.statusCode).toBe(403);
+        expect(ownAll.json().message).toBe("You are not allowed to read on agent-vault-sessions");
+        expect(idsOf(await own.member.as("GET", "/api/v1/agent-vault/sessions?limit=100"))).toEqual([own.ownSessionId]);
+        expect((await own.member.as("GET", `/api/v1/agent-vault/sessions/${adminSession.id}`)).statusCode).toBe(404);
+        expect(
+          (await own.member.as("PATCH", `/api/v1/agent-vault/sessions/${own.ownSessionId}`, { label: "mine" })).statusCode
+        ).toBe(200);
+
+        // Everyone else's: the list leaves out the caller's own, and their own reads as missing.
+        const othersAll = await others.member.as("GET", "/api/v1/agent-vault/sessions?scope=all&limit=100");
+        expect(othersAll.statusCode, othersAll.payload).toBe(200);
+        expect(idsOf(othersAll)).toContain(adminSession.id);
+        expect(idsOf(othersAll)).not.toContain(others.ownSessionId);
+        expect((await others.member.as("GET", "/api/v1/agent-vault/sessions")).statusCode).toBe(403);
+        expect((await others.member.as("GET", `/api/v1/agent-vault/sessions/${others.ownSessionId}`)).statusCode).toBe(
+          404
+        );
+        expect((await others.member.as("GET", `/api/v1/agent-vault/sessions/${adminSession.id}`)).statusCode).toBe(200);
+
+        // Every session, editing only their own: another's session reads, and editing it is a 403.
+        const everyAll = await every.member.as("GET", "/api/v1/agent-vault/sessions?scope=all&limit=100");
+        expect(idsOf(everyAll)).toEqual(expect.arrayContaining([adminSession.id, every.ownSessionId, own.ownSessionId]));
+        expect((await every.member.as("GET", `/api/v1/agent-vault/sessions/${adminSession.id}`)).statusCode).toBe(200);
+        const editTheirs = await every.member.as("PATCH", `/api/v1/agent-vault/sessions/${adminSession.id}`, {
+          label: "not mine"
+        });
+        expect(editTheirs.statusCode).toBe(403);
+        expect(editTheirs.json().message).toBe("You are not allowed to edit on agent-vault-sessions");
+        expect(
+          (await every.member.as("PATCH", `/api/v1/agent-vault/sessions/${every.ownSessionId}`, { label: "mine" }))
+            .statusCode
+        ).toBe(200);
+      } finally {
+        await Promise.all([own.member.cleanup(), others.member.cleanup(), every.member.cleanup()]);
+      }
+    });
+
+    test("a session condition names only the caller, on read, edit and revoke alone", async () => {
+      const stamp = Date.now();
+      const save = (slug: string, permissions: TRoleRule[]) =>
+        testServer.inject({
+          method: "POST",
+          url: `/api/v1/projects/${agentVaultProjectId}/roles`,
+          headers: { authorization: `Bearer ${jwtAuthToken}` },
+          body: { slug, name: slug, permissions }
+        });
+
+      const onCreate = await save(`session-condition-create-${stamp}`, [
+        { subject: "agent-vault-sessions", action: ["read", "create"], conditions: { actorId: { $eq: "{{identity.id}}" } } }
+      ]);
+      expect(onCreate.statusCode).toBe(400);
+      expect(onCreate.json().message).toBe(
+        "A rule that limits Agent Vault sessions by actorId can only hold read, edit and revoke, not create. Move it to a rule without conditions."
+      );
+
+      const namesSomeone = await save(`session-condition-id-${stamp}`, [
+        { subject: "agent-vault-sessions", action: ["read"], conditions: { actorId: { $eq: crypto.randomUUID() } } }
+      ]);
+      expect(namesSomeone.statusCode).toBe(422);
     });
 
     test("the bundle comes only from the session row", async () => {

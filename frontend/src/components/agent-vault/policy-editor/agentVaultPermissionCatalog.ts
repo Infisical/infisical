@@ -90,6 +90,19 @@ export const SUBJECTS_WITHOUT_DENY: ReadonlySet<string> = new Set([
 // Access bundles and skills take the same action names as services.
 const ResourceAction = ProjectPermissionAgentVaultServiceActions;
 const SessionAction = ProjectPermissionAgentVaultSessionActions;
+
+// Filled in with the caller's user or machine identity id when the API builds their permission.
+export const AGENT_VAULT_SESSION_SELF = "{{identity.id}}";
+
+// The editor lists acting on sessions other people started as actions of their own. A role holds them as read, edit
+// and revoke with no condition, while the caller's own sessions alone are those actions limited by actorId to
+// AGENT_VAULT_SESSION_SELF. The model translates between the two when it reads and writes rules.
+export const SessionEveryoneAction = {
+  Read: "read-any",
+  Edit: "edit-any",
+  Revoke: "revoke-any"
+} as const;
+const SessionEveryone = SessionEveryoneAction;
 const BundleAction = ProjectPermissionAgentVaultAccessBundleActions;
 const VariableAction = ProjectPermissionAgentVaultVariableActions;
 const ProxyAction = ProjectPermissionAgentVaultProxyActions;
@@ -120,9 +133,9 @@ export const SUBJECT_RULES: Partial<Record<ProjectPermissionSub, TSubjectRules>>
   [Sub.AgentVaultSessions]: {
     readAction: SessionAction.Read,
     requires: {
-      [SessionAction.ReadAny]: [SessionAction.Read],
-      [SessionAction.EditAny]: [SessionAction.Edit, SessionAction.ReadAny],
-      [SessionAction.RevokeAny]: [SessionAction.Revoke, SessionAction.ReadAny],
+      [SessionEveryone.Read]: [SessionAction.Read],
+      [SessionEveryone.Edit]: [SessionAction.Edit, SessionEveryone.Read],
+      [SessionEveryone.Revoke]: [SessionAction.Revoke, SessionEveryone.Read],
       [SessionAction.CreateWithInlineServices]: [SessionAction.Create],
       [SessionAction.CreateWithInlineSkills]: [SessionAction.Create]
     }
@@ -426,21 +439,21 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
       ),
       single(
         Sub.AgentVaultSessions,
-        SessionAction.ReadAny,
+        SessionEveryone.Read,
         "View Everyone's",
-        "See every session in the project and its logs."
+        "See the sessions other people started, and their logs."
       ),
       single(
         Sub.AgentVaultSessions,
-        SessionAction.EditAny,
+        SessionEveryone.Edit,
         "Edit Everyone's",
-        "Rename anyone's session."
+        "Rename the sessions other people started."
       ),
       single(
         Sub.AgentVaultSessions,
-        SessionAction.RevokeAny,
+        SessionEveryone.Revoke,
         "Revoke Everyone's",
-        "End anyone's session."
+        "End the sessions other people started."
       )
     ],
     levels: [
@@ -450,22 +463,17 @@ export const PERMISSION_ROWS: TPermissionRow[] = [
         value: "see-all",
         label: "See Everyone's",
         summary: "Own sessions, and view everyone's",
-        allow: [...SESSION_OWN, SessionAction.ReadAny]
+        allow: [...SESSION_OWN, SessionEveryone.Read]
       },
       {
         value: "manage-all",
         label: "Manage Everyone's",
         summary: "Own sessions, and view, rename and end everyone's",
-        allow: [
-          ...SESSION_OWN,
-          SessionAction.ReadAny,
-          SessionAction.EditAny,
-          SessionAction.RevokeAny
-        ]
+        allow: [...SESSION_OWN, SessionEveryone.Read, SessionEveryone.Edit, SessionEveryone.Revoke]
       }
     ],
     risk: {
-      actions: [SessionAction.EditAny, SessionAction.RevokeAny],
+      actions: [SessionEveryone.Edit, SessionEveryone.Revoke],
       message: "Can rename or end anyone's session, which stops agents other people run."
     }
   },

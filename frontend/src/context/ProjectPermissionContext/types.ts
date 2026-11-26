@@ -333,16 +333,13 @@ export enum ProjectPermissionAgentVaultServiceActions {
   Delete = "delete"
 }
 
-// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's. ManageDelegations sets
-// which users a machine identity may start sessions on behalf of.
+// Read, Edit and Revoke reach every session, or with an actorId condition only the caller's own (or only everyone
+// else's). ManageDelegations sets which users a machine identity may start sessions on behalf of.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Revoke = "revoke",
-  ReadAny = "read-any",
-  EditAny = "edit-any",
-  RevokeAny = "revoke-any",
   CreateWithInlineServices = "create-with-inline-services",
   CreateWithInlineSkills = "create-with-inline-skills",
   ManageDelegations = "manage-delegations"
@@ -538,6 +535,11 @@ export type AgentVaultAccessBundleSubjectFields = {
 
 export type AgentVaultServiceSubjectFields = {
   serviceId: string;
+};
+
+// The user or machine identity that started the session, null once it is deleted.
+export type AgentVaultSessionSubjectFields = {
+  actorId: string | null;
 };
 
 export type AgentVaultSkillSubjectFields = {
@@ -827,7 +829,13 @@ export type ProjectPermissionSet =
             AgentVaultAccessBundleSubjectFields)
       )
     ]
-  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [
+      ProjectPermissionAgentVaultSessionActions,
+      (
+        | ProjectPermissionSub.AgentVaultSessions
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSessions> & AgentVaultSessionSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
   | [
       ProjectPermissionAgentVaultSkillActions,

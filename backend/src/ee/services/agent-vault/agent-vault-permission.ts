@@ -6,6 +6,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultServiceActions,
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
@@ -61,6 +62,33 @@ export const agentVaultServiceSubject = (serviceId: string) =>
 
 export const agentVaultSkillSubject = (skillId: string) =>
   subject(ProjectPermissionSub.AgentVaultSkills, { skillId: skillId.toLowerCase() });
+
+// A session's subject is who started it, null once that user or identity is deleted.
+export const agentVaultSessionSubject = (actorId: string | null) =>
+  subject(ProjectPermissionSub.AgentVaultSessions, { actorId: actorId?.toLowerCase() ?? null });
+
+// A session started on a user's behalf is the machine identity's alone, so it is never the user's own session.
+export const agentVaultSessionActorIdOf = (session: { userId?: string | null; identityId?: string | null }) =>
+  session.userId ?? session.identityId ?? null;
+
+// Stands in for every actor but the caller. A rule can name whose sessions it covers only as the caller ($eq) or
+// everyone else ($ne), so any other actor's session is decided the same way as this id's.
+const ANOTHER_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+
+// A session started by someone other than the caller, for a check that isn't about one session.
+export const agentVaultOtherActorSessionSubject = () => agentVaultSessionSubject(ANOTHER_ACTOR_ID);
+
+export type TAgentVaultSessionReach = { own: boolean; others: boolean };
+
+// Whose sessions an action reaches for the caller: the ones they started, everyone else's, both or neither.
+export const agentVaultSessionReachOf = (
+  permission: TAbility,
+  action: ProjectPermissionAgentVaultSessionActions,
+  callerId: string
+): TAgentVaultSessionReach => ({
+  own: permission.can(action, agentVaultSessionSubject(callerId)),
+  others: permission.can(action, agentVaultOtherActorSessionSubject())
+});
 
 // A bundle gives everything it holds whatever a role says on the item, so a deny on a service or skill only stops it
 // being named on its own. True when a role explicitly denies `use` on this one.

@@ -201,10 +201,10 @@ const setup = (
     projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
     userDAL: { findById: async () => undefined as never },
     permissionService: {
-      getProjectPermission: async () =>
+      getProjectPermission: async ({ actorId }: { actorId: string }) =>
         ({
           permission: createMongoAbility(
-            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultMemberTestRules()
+            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultMemberTestRules([], actorId)
           ),
           hasRole: () => isOwnerAdmin,
           memberships: []
@@ -660,7 +660,7 @@ describe("resolve for a session on a user's behalf", () => {
           }
           const roleRules = actor(actorId).isAdmin
             ? agentVaultProjectAdminPermissions
-            : agentVaultMemberTestRules(actor(actorId).grants);
+            : agentVaultMemberTestRules(actor(actorId).grants, actorId);
           return {
             permission: createMongoAbility(actor(actorId).canRead === false ? [] : roleRules),
             hasRole: () => Boolean(actor(actorId).isAdmin),

@@ -191,7 +191,7 @@ const build = (overrides: TOverrides = {}) => {
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility(
-          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultMemberTestRules()
+          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultMemberTestRules([], "user-1")
         ),
         hasRole: () => overrides.isAdmin ?? true
       }))

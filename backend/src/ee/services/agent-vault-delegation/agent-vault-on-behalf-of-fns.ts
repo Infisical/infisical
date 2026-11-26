@@ -1,9 +1,6 @@
 import { OrgMembershipStatus } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionAgentVaultSessionActions } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -12,6 +9,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
+  agentVaultSessionSubject,
   getAgentVaultReachability,
   intersectReach,
   REACHES_NOTHING,
@@ -109,14 +107,9 @@ export const resolveOnBehalfOfUser = async (
     }
     throw error;
   }
-  // Read, the check resolve repeats: the identity starts the session, so the user only needs a live Agent Vault role.
-  // Not thrown through CASL: the denial would be recorded against the identity making the request.
-  if (
-    !reachability.permission.can(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    )
-  ) {
+  // Read on their own sessions, the check resolve repeats: the identity starts the session, so the user only needs a
+  // live Agent Vault role. Not thrown through CASL: the denial would be recorded against the identity making the request.
+  if (!reachability.permission.can(ProjectPermissionAgentVaultSessionActions.Read, agentVaultSessionSubject(user.id))) {
     throw new ForbiddenRequestError({
       message: `'${identifier}' doesn't have an active Agent Vault role, so no session can be started on their behalf. An Agent Vault admin can give them one under Access Control.`
     });

@@ -308,9 +308,6 @@ const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.Create]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.ReadAny]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.EditAny]: z.boolean().optional(),
-  [ProjectPermissionAgentVaultSessionActions.RevokeAny]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.ManageDelegations]: z.boolean().optional()
@@ -2597,7 +2594,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Read",
         value: ProjectPermissionAgentVaultSessionActions.Read,
-        description: "View your own sessions"
+        description: "View sessions and their session logs"
       },
       {
         label: "Create",
@@ -2607,27 +2604,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       {
         label: "Edit",
         value: ProjectPermissionAgentVaultSessionActions.Edit,
-        description: "Change the label of your own sessions"
+        description: "Change the label and metadata of sessions"
       },
       {
         label: "Revoke",
         value: ProjectPermissionAgentVaultSessionActions.Revoke,
-        description: "Revoke your own sessions"
-      },
-      {
-        label: "Read Any",
-        value: ProjectPermissionAgentVaultSessionActions.ReadAny,
-        description: "View everyone's sessions and their session logs"
-      },
-      {
-        label: "Edit Any",
-        value: ProjectPermissionAgentVaultSessionActions.EditAny,
-        description: "Change the label of anyone's session"
-      },
-      {
-        label: "Revoke Any",
-        value: ProjectPermissionAgentVaultSessionActions.RevokeAny,
-        description: "Revoke anyone's session"
+        description: "Revoke sessions"
       },
       {
         label: "Create With Inline Services",

@@ -12,7 +12,6 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext";
-import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
 // The library is for anyone who can read or use some skill, which its list needs. Skills reached only through a bundle
@@ -235,6 +234,20 @@ export const canOpenAgentVaultAccessControl = (permission: MongoAbility<ProjectP
   canReadAgentVaultMembers(permission) ||
   permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
 
+export const agentVaultSessionSubject = (actorId: string | null) =>
+  subject(ProjectPermissionSub.AgentVaultSessions, { actorId });
+
+// Stands in for every actor but the caller. A role names whose sessions it covers only as the caller or as everyone
+// else, so any other actor's session is decided the same way as this id's.
+const ANOTHER_ACTOR_ID = "00000000-0000-0000-0000-000000000000";
+
+// Whether the caller can see sessions other people started, which listing everyone's sessions takes.
+export const canReadOthersAgentVaultSessions = (permission: MongoAbility<ProjectPermissionSet>) =>
+  permission.can(
+    ProjectPermissionAgentVaultSessionActions.Read,
+    agentVaultSessionSubject(ANOTHER_ACTOR_ID)
+  );
+
 // The setup checklist walks through a proxy, a bundle, a service created into it and the project's first session, and
 // checks the last by listing everyone's sessions, so it is only for someone who can do all of that.
 export const canSetUpAgentVault = (permission: MongoAbility<ProjectPermissionSet>) =>
@@ -254,34 +267,17 @@ export const canSetUpAgentVault = (permission: MongoAbility<ProjectPermissionSet
     ProjectPermissionAgentVaultServiceActions.Create,
     ProjectPermissionSub.AgentVaultServices
   ) &&
-  permission.can(
-    ProjectPermissionAgentVaultSessionActions.ReadAny,
-    ProjectPermissionSub.AgentVaultSessions
-  );
+  canReadOthersAgentVaultSessions(permission);
 
 const SESSION_ACTIONS = {
-  edit: [
-    ProjectPermissionAgentVaultSessionActions.Edit,
-    ProjectPermissionAgentVaultSessionActions.EditAny
-  ],
-  revoke: [
-    ProjectPermissionAgentVaultSessionActions.Revoke,
-    ProjectPermissionAgentVaultSessionActions.RevokeAny
-  ]
+  edit: ProjectPermissionAgentVaultSessionActions.Edit,
+  revoke: ProjectPermissionAgentVaultSessionActions.Revoke
 } as const;
 
-// The API takes the plain action for every session and the -any one on top for a session someone else owns. The
-// dashboard always acts as a user, so a session is the caller's own when a user with their id holds it.
+// The permission comes with the caller's id filled in where a role names {{identity.id}}, so a session is checked by
+// who started it.
 export const canActOnAgentVaultSession = (
   permission: MongoAbility<ProjectPermissionSet>,
-  userId: string,
   session: Pick<TAgentVaultSession, "actor">,
   change: keyof typeof SESSION_ACTIONS
-) => {
-  const [own, any] = SESSION_ACTIONS[change];
-  const isOwn = session.actor.type === AgentVaultMemberType.User && session.actor.id === userId;
-  return (
-    permission.can(own, ProjectPermissionSub.AgentVaultSessions) &&
-    (isOwn || permission.can(any, ProjectPermissionSub.AgentVaultSessions))
-  );
-};
+) => permission.can(SESSION_ACTIONS[change], agentVaultSessionSubject(session.actor.id));

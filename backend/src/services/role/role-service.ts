@@ -14,7 +14,8 @@ import {
   AGENT_VAULT_MAX_ROLE_IDS,
   AGENT_VAULT_MAX_ROLE_RULES,
   countAgentVaultRoleIds,
-  normalizeAgentVaultRoleName
+  normalizeAgentVaultRoleName,
+  sessionActionsOutsideActorCondition
 } from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -136,6 +137,17 @@ export const roleServiceFactory = ({
     });
   };
 
+  const assertSessionConditions = (permissions: unknown) => {
+    // The role routes pass the packed rules as JSON text.
+    const rules: unknown = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
+    if (!Array.isArray(rules)) return;
+    const outside = sessionActionsOutsideActorCondition(rules);
+    if (!outside.length) return;
+    throw new BadRequestError({
+      message: `A rule that limits Agent Vault sessions by actorId can only hold read, edit and revoke, not ${outside.join(", ")}. Move ${outside.length === 1 ? "it" : "them"} to a rule without conditions.`
+    });
+  };
+
   // Agent Vault members pick roles by name, so a name there is trimmed and checked (normalizeAgentVaultRoleName).
   const agentVaultRoleNameOf = async (scopeData: TCreateRoleDTO["scopeData"], name: string | undefined) => {
     if (name === undefined || scopeData.scope !== AccessScope.Project) return name;
@@ -153,6 +165,7 @@ export const roleServiceFactory = ({
     await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
     const name = (await agentVaultRoleNameOf(scopeData, data.name)) ?? data.name;
     await assertAgentVaultRuleCount(scopeData, data.permissions);
+    assertSessionConditions(data.permissions);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
@@ -195,6 +208,7 @@ export const roleServiceFactory = ({
     await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
     const name = await agentVaultRoleNameOf(scopeData, data?.name);
     await assertAgentVaultRuleCount(scopeData, data?.permissions);
+    assertSessionConditions(data?.permissions);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
     if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {

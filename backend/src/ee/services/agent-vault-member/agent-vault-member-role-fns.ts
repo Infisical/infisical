@@ -4,6 +4,7 @@ import { v5 as uuidv5 } from "uuid";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
 import {
+  AGENT_VAULT_SESSION_ACTOR_ACTIONS,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
@@ -90,6 +91,32 @@ export const countAgentVaultRoleIds = (rules: unknown[]) =>
       Object.values(conditions as Record<string, unknown>).reduce<number>((sum, c) => sum + idsInCondition(c), 0)
     );
   }, 0);
+
+const listOf = (value: unknown): string[] => {
+  if (typeof value === "string") return value.split(",");
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+};
+
+// Who started a session only tells sessions apart once they exist, so a rule that limits sessions by it can hold only
+// read, edit and revoke. The other session actions act on no session yet, so they're checked without one and the
+// condition would be ignored.
+// Rules are packed (actions, subject, conditions) or not. Returns the actions such a rule can't hold.
+export const sessionActionsOutsideActorCondition = (rules: unknown[]) => [
+  ...new Set(
+    rules.flatMap((rule) => {
+      const [action, ruleSubject, conditions] = Array.isArray(rule)
+        ? (rule as unknown[])
+        : [
+            (rule as { action?: unknown } | null)?.action,
+            (rule as { subject?: unknown } | null)?.subject,
+            (rule as { conditions?: unknown } | null)?.conditions
+          ];
+      if (!listOf(ruleSubject).includes(ProjectPermissionSub.AgentVaultSessions)) return [];
+      if (!conditions || typeof conditions !== "object") return [];
+      return listOf(action).filter((name) => !AGENT_VAULT_SESSION_ACTOR_ACTIONS.includes(name));
+    })
+  )
+];
 
 // A role's name is what members pick it by, so it can't pass for a built-in role or for another role that only differs by
 // a character no one can see. RE2 sees a lone surrogate only as U+FFFD, so isWellFormed catches those.

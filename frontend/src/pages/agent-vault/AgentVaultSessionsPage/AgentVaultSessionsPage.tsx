@@ -77,17 +77,16 @@ import { cn } from "@app/components/v3/utils";
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultServiceActions,
-  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useSubscription,
-  useProject,
-  useUser
+  useProject
 } from "@app/context";
 import {
   canActOnAgentVaultSession,
   canReadAgentVaultSessions,
+  canReadOthersAgentVaultSessions,
   canUseAgentVaultAccessBundles,
   canUseAgentVaultServices,
   canUseAgentVaultSkills
@@ -188,11 +187,7 @@ const AgentVaultSessionsPageContent = () => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const { user } = useUser();
-  const canReadAnySession = permission.can(
-    ProjectPermissionAgentVaultSessionActions.ReadAny,
-    ProjectPermissionSub.AgentVaultSessions
-  );
+  const canReadAnySession = canReadOthersAgentVaultSessions(permission);
   const canReadSessionLogSettings = permission.can(
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
@@ -686,7 +681,7 @@ const AgentVaultSessionsPageContent = () => {
                               {session.actor.id !== null && session.onBehalfOf?.id !== null && (
                                 <DisabledReasonMenuItem
                                   disabledReason={deniedReason(
-                                    canActOnAgentVaultSession(permission, user.id, session, "edit"),
+                                    canActOnAgentVaultSession(permission, session, "edit"),
                                     "You don't have permission to edit this session"
                                   )}
                                   onClick={() => setSessionToEdit(session)}
@@ -698,7 +693,7 @@ const AgentVaultSessionsPageContent = () => {
                               <DisabledReasonMenuItem
                                 variant="danger"
                                 disabledReason={deniedReason(
-                                  canActOnAgentVaultSession(permission, user.id, session, "revoke"),
+                                  canActOnAgentVaultSession(permission, session, "revoke"),
                                   "You don't have permission to revoke this session"
                                 )}
                                 isDisabled={session.status !== AgentVaultSessionStatus.Active}

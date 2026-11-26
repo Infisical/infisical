@@ -77,6 +77,7 @@ import {
 import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config-schemas";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
+  agentVaultSessionSubject,
   deniesUseOnItsOwn,
   intersectReach,
   reachOf,
@@ -902,9 +903,7 @@ export const agentVaultProxyServiceFactory = ({
         actorOrgId: orgId,
         actionProjectType: ActionProjectType.AgentVault
       }));
-      if (
-        !userPermission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)
-      ) {
+      if (!userPermission.can(ProjectPermissionAgentVaultSessionActions.Read, agentVaultSessionSubject(userId))) {
         throw refused();
       }
     } catch (error) {
@@ -981,7 +980,8 @@ export const agentVaultProxyServiceFactory = ({
         actorOrgId: orgId,
         actionProjectType: ActionProjectType.AgentVault
       });
-      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+      // A live role that can still read the actor's own sessions, the same check mint's on-behalf-of user passes.
+      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, agentVaultSessionSubject(actor.id))) {
         throw new UnauthorizedError({ message: "The role this session's actor held has expired" });
       }
       ownerPermission = permission;

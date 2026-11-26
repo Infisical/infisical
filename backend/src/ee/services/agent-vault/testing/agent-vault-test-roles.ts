@@ -1,6 +1,7 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 
 import {
+  AGENT_VAULT_SESSION_SELF,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
@@ -9,22 +10,30 @@ import {
 } from "@app/ee/services/permission/project-permission";
 
 /**
- * For tests: the rules of the "Member" role the role migration makes, plus the role of each bundle in `accessBundleIds`,
- * which lets its holder use that bundle, as one role set.
+ * For tests: the rules of the "Member" role the role migrations make, plus the role of each bundle in `accessBundleIds`,
+ * which lets its holder use that bundle, as one role set. `selfId` is the id the permission service fills in for
+ * {{identity.id}}, the actor whose own sessions the role reaches; left out, the rules stay as a role stores them.
  */
 export const agentVaultMemberTestRules = (
-  accessBundleIds: string[] = []
+  accessBundleIds: string[] = [],
+  selfId: string = AGENT_VAULT_SESSION_SELF
 ): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => [
   {
     action: [
-      ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
-      ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionAgentVaultSessionActions.Revoke,
       ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills
     ],
     subject: ProjectPermissionSub.AgentVaultSessions
   },
+  {
+    action: [
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ],
+    subject: ProjectPermissionSub.AgentVaultSessions,
+    conditions: { actorId: { $eq: selfId } }
+  } as RawRuleOf<MongoAbility<ProjectPermissionSet>>,
   { action: [ProjectPermissionAgentVaultProxyActions.Read], subject: ProjectPermissionSub.AgentVaultProxies },
   ...(accessBundleIds.length
     ? [

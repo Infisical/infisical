@@ -43,6 +43,10 @@ import { findHostPatternConflicts } from "../agent-vault/agent-vault-conflict-fn
 import { isForeignKeyViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultMemberType, AgentVaultServiceType, AgentVaultSessionScope } from "../agent-vault/agent-vault-enums";
 import {
+  agentVaultOtherActorSessionSubject,
+  agentVaultSessionActorIdOf,
+  agentVaultSessionReachOf,
+  agentVaultSessionSubject,
   deniesUseOnItsOwn,
   getAgentVaultPermission,
   getAgentVaultReachability,
@@ -976,22 +980,21 @@ export const agentVaultSessionServiceFactory = ({
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
     const { permission } = reachability;
     const reader = { permission, reach: reachability, projectId };
+    const caller = requireSessionActor(ctx);
+    const read = agentVaultSessionReachOf(permission, ProjectPermissionAgentVaultSessionActions.Read, caller.id);
+
+    // Mine is the caller's own sessions. All is every session the caller can read, and is refused when they can read no
+    // one else's, since it would then list only what Mine does.
+    const isAll = scope === AgentVaultSessionScope.All;
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
+      isAll ? agentVaultOtherActorSessionSubject() : agentVaultSessionSubject(caller.id)
     );
 
-    if (scope === AgentVaultSessionScope.All) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultSessionActions.ReadAny,
-        ProjectPermissionSub.AgentVaultSessions
-      );
-    }
-
-    const actor = scope === AgentVaultSessionScope.All ? undefined : requireSessionActor(ctx);
     const { sessions, totalCount } = await agentVaultSessionDAL.findForList({
       projectId,
-      actor,
+      ...(!isAll && { actor: caller }),
+      ...(isAll && !read.own && { exceptActor: caller }),
       statuses,
       search,
       metadataFilter,
@@ -1002,81 +1005,43 @@ export const agentVaultSessionServiceFactory = ({
     return { sessions: await withServicesSkillsAndMetadata(sessions.map(toSessionView), reader), totalCount };
   };
 
-  // A session you may not see reads exactly like one that does not exist.
-  const findVisibleSession = async ({
-    projectId,
-    ctx,
-    sessionId,
-    reachesAnySession
-  }: TGetSessionByIdDTO & { reachesAnySession: boolean }) => {
-    const {
-      sessions: [session]
-    } = await agentVaultSessionDAL.findForList({
-      projectId,
-      sessionId,
-      actor: reachesAnySession ? undefined : requireSessionActor(ctx),
-      limit: 1,
-      offset: 0
-    });
-    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
-    return session;
-  };
-
-  // By id, a caller without the action is refused with 403 only for a session they can see; otherwise the session reads
-  // like a missing one, so a 403 never confirms that an id exists.
-  const requireSessionAction = async (
+  // By id, a session the caller can't read reads like a missing one, so a 403 never confirms that an id exists; one they
+  // can read but not take the action on is a 403. Returns the session.
+  const findSessionFor = async (
     permission: Awaited<ReturnType<typeof getAgentVaultPermission>>["permission"],
     action: ProjectPermissionAgentVaultSessionActions,
-    dto: TGetSessionByIdDTO
+    { projectId, sessionId }: Pick<TGetSessionByIdDTO, "projectId" | "sessionId">
   ) => {
-    if (permission.can(action, ProjectPermissionSub.AgentVaultSessions)) return;
-    if (permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
-      await findVisibleSession({
-        ...dto,
-        reachesAnySession: permission.can(
-          ProjectPermissionAgentVaultSessionActions.ReadAny,
-          ProjectPermissionSub.AgentVaultSessions
-        )
-      });
-      ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultSessions);
+    const {
+      sessions: [session]
+    } = await agentVaultSessionDAL.findForList({ projectId, sessionId, limit: 1, offset: 0 });
+    const target = session && agentVaultSessionSubject(agentVaultSessionActorIdOf(session));
+    if (!target || permission.cannot(ProjectPermissionAgentVaultSessionActions.Read, target)) {
+      throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
     }
-    throw new NotFoundError({ message: `Session with ID '${dto.sessionId}' not found` });
+    ForbiddenError.from(permission).throwUnlessCan(action, target);
+    return session;
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
     const { permission } = reachability;
     const reader = { permission, reach: reachability, projectId };
-    await requireSessionAction(permission, ProjectPermissionAgentVaultSessionActions.Read, {
+    const found = await findSessionFor(permission, ProjectPermissionAgentVaultSessionActions.Read, {
       projectId,
-      ctx,
       sessionId
     });
-    const reachesAnySession = permission.can(
-      ProjectPermissionAgentVaultSessionActions.ReadAny,
-      ProjectPermissionSub.AgentVaultSessions
-    );
 
-    const [session] = await withServicesSkillsAndMetadata(
-      [toSessionView(await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession }))],
-      reader
-    );
+    const [session] = await withServicesSkillsAndMetadata([toSessionView(found)], reader);
     return { session };
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
     const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    await requireSessionAction(permission, ProjectPermissionAgentVaultSessionActions.Revoke, {
+    const session = await findSessionFor(permission, ProjectPermissionAgentVaultSessionActions.Revoke, {
       projectId,
-      ctx,
       sessionId
     });
-    const reachesAnySession = permission.can(
-      ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionSub.AgentVaultSessions
-    );
-
-    const session = await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession });
 
     const metadata = (await findSessionMetadata([session.id])).get(session.id) ?? {};
 
@@ -1127,17 +1092,10 @@ export const agentVaultSessionServiceFactory = ({
     const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
     const { permission } = reachability;
     const reader = { permission, reach: reachability, projectId };
-    await requireSessionAction(permission, ProjectPermissionAgentVaultSessionActions.Edit, {
+    const session = await findSessionFor(permission, ProjectPermissionAgentVaultSessionActions.Edit, {
       projectId,
-      ctx,
       sessionId
     });
-    const reachesAnySession = permission.can(
-      ProjectPermissionAgentVaultSessionActions.EditAny,
-      ProjectPermissionSub.AgentVaultSessions
-    );
-
-    const session = await findVisibleSession({ projectId, ctx, sessionId, reachesAnySession });
     // The visible session can come from a replica that lags, so the owner check, the previous label and the previous
     // metadata come from the write itself, which holds the session's row lock until the metadata is written too.
     type TEditResult = {

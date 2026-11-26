@@ -40,15 +40,26 @@ const abilityFor = (role: string, permissions?: unknown) =>
     ) as never
   );
 
+const OTHER_ACTOR_ID = "6f1c3a9e-2d4b-4c7a-8e1f-9b3d5a7c0e24";
+
 // Each of these replaced a check on the admin role, so the admin set has to hold every one and no other role any.
 const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
   Object.fromEntries([
     ...[
-      ProjectPermissionAgentVaultSessionActions.ReadAny,
-      ProjectPermissionAgentVaultSessionActions.EditAny,
-      ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
-    ].map((action) => [`sessions ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultSessions)]),
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ].map((action) => [
+      `sessions ${action} another actor's`,
+      ability.can(action, subject(ProjectPermissionSub.AgentVaultSessions, { actorId: OTHER_ACTOR_ID }))
+    ]),
+    [
+      "sessions create-with-inline-services",
+      ability.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      )
+    ],
     ...Object.values(ProjectPermissionAgentVaultVariableActions).map((action) => [
       `variables ${action}`,
       ability.can(action, ProjectPermissionSub.AgentVaultVariables)
