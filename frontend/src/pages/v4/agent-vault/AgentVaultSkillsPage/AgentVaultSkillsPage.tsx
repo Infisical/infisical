@@ -16,7 +16,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -83,6 +83,7 @@ const Skills = ({ projectId }: { projectId: string }) => {
   const canEdit = can(ProjectPermissionAgentVaultSkillActions.Edit);
   const canDelete = can(ProjectPermissionAgentVaultSkillActions.Delete);
   const { id: skillId, openSheet, closeSheet } = useAgentVaultSheetState("skillId");
+  const navigate = useNavigate({ from: route });
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
@@ -292,6 +293,9 @@ const Skills = ({ projectId }: { projectId: string }) => {
         canEdit={canEdit}
         canDelete={canDelete}
         onOpenChange={(open) => !open && closeSheet()}
+        onDeleted={() =>
+          navigate({ search: (prev) => ({ ...prev, skillId: undefined }), replace: true })
+        }
       />
     </>
   );

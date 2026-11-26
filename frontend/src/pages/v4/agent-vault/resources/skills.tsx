@@ -38,6 +38,7 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Heading, Meta } from "@infisical/cipher/ui/text";
+import axios from "axios";
 
 import {
   formatSkillBytes,
@@ -666,7 +667,7 @@ type TSkillSheetProps = {
   setEdit: Dispatch<SetStateAction<TSkillEdit | undefined>>;
   saving: boolean;
   setSaving: (saving: boolean) => void;
-  onClose: () => void;
+  onDeleted: () => void;
 };
 
 const SkillSheetEditor = ({
@@ -678,7 +679,7 @@ const SkillSheetEditor = ({
   setEdit,
   saving,
   setSaving,
-  onClose
+  onDeleted
 }: TSkillSheetProps & { skill: TAgentVaultSkillDetail }) => {
   const resources = useV4Adapter("agentVaultResources");
   const skillId = skill.id;
@@ -894,7 +895,7 @@ const SkillSheetEditor = ({
         projectId={projectId}
         skill={deleting ? skill : undefined}
         onOpenChange={setDeleting}
-        onDeleted={onClose}
+        onDeleted={onDeleted}
       />
       <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
@@ -902,11 +903,29 @@ const SkillSheetEditor = ({
 };
 
 const SkillSheetBody = ({ skillId, ...props }: TSkillSheetProps & { skillId: string }) => {
-  const { data: skill, isPending } = useV4Adapter("agentVaultResources").useSkill(
-    props.projectId,
-    skillId
-  );
+  const {
+    data: skill,
+    isPending,
+    error,
+    refetch
+  } = useV4Adapter("agentVaultResources").useSkill(props.projectId, skillId);
   if (isPending) return <Loader size="page" label="Loading skill" />;
+  if (!skill && error && !(axios.isAxiosError(error) && error.response?.status === 404))
+    return (
+      <SheetBody>
+        <EmptyState
+          icon="alert"
+          title="Couldn't load this skill"
+          actions={
+            refetch ? (
+              <Button variant="outline" onClick={() => refetch()}>
+                Try again
+              </Button>
+            ) : undefined
+          }
+        />
+      </SheetBody>
+    );
   if (!skill)
     return (
       <SheetBody>
@@ -925,13 +944,15 @@ export const SkillSheet = ({
   skillId,
   canEdit,
   canDelete,
-  onOpenChange
+  onOpenChange,
+  onDeleted
 }: {
   projectId: string;
   skillId?: string;
   canEdit: boolean;
   canDelete: boolean;
   onOpenChange: (open: boolean) => void;
+  onDeleted?: () => void;
 }) => {
   const [storedEdit, setEdit] = useState<TSkillEdit>();
   const [saving, setSaving] = useState(false);
@@ -961,7 +982,11 @@ export const SkillSheet = ({
               setEdit={setEdit}
               saving={saving}
               setSaving={setSaving}
-              onClose={close}
+              onDeleted={() => {
+                if (!onDeleted) return close();
+                setEdit(undefined);
+                return onDeleted();
+              }}
             />
           )}
         </SheetContent>
