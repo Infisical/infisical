@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Link } from "@infisical/cipher/ui/link";
@@ -34,7 +34,13 @@ export const openClassicVariables = (href: string) => {
   window.open(href, "_blank");
 };
 
-export const ClassicVariablesLink = ({ projectId }: { projectId: string }) => {
+export const ClassicVariablesLink = ({
+  projectId,
+  children = "classic variables page"
+}: {
+  projectId: string;
+  children?: ReactNode;
+}) => {
   const href = useClassicVariablesHref(projectId);
   return (
     <Link
@@ -49,7 +55,7 @@ export const ClassicVariablesLink = ({ projectId }: { projectId: string }) => {
         openClassicVariables(href);
       }}
     >
-      classic variables page
+      {children}
     </Link>
   );
 };

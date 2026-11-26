@@ -437,14 +437,16 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
               icon="braces"
               title="No variables yet"
               description={
-                isPersonal ? (
-                  "Reuse one of your values across the services you set up."
-                ) : (
-                  <>
-                    Store a value once and use it in any service as {"{{KEY}}"}. To add an OAuth
-                    variable, use the <ClassicVariablesLink projectId={projectId} />.
-                  </>
-                )
+                isPersonal
+                  ? "Reuse one of your values across the services you set up."
+                  : "Store a value once and use it in any service as {{KEY}}."
+              }
+              actions={
+                !isPersonal && canCreate ? (
+                  <ClassicVariablesLink projectId={projectId}>
+                    Add an OAuth variable on the classic page
+                  </ClassicVariablesLink>
+                ) : undefined
               }
             />
           )
