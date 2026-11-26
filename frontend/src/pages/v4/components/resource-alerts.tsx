@@ -185,7 +185,7 @@ const AlertSheet = ({
   onOpenChange
 }: Omit<TResourceAlertsProps, "canEdit" | "readOnly"> & {
   alert?: TAlert;
-  used: AlertEventType[];
+  used: Set<string>;
   onOpenChange: (open: boolean) => void;
 }) => {
   const settings = useV4Adapter("certManagerSettings");
@@ -194,7 +194,7 @@ const AlertSheet = ({
   const members = useAlertMembers(projectId);
   const groupOptions = useAlertGroups(projectId);
   const eventTypes = ALERT_RESOURCE_EVENT_TYPES[resourceType];
-  const firstFree = eventTypes.find((event) => !used.includes(event)) ?? eventTypes[0];
+  const firstFree = eventTypes.find((event) => !used.has(event)) ?? eventTypes[0];
   const [initial] = useState((): TDraft => ({
     eventType: (alert?.eventType as AlertEventType) ?? firstFree,
     name: alert?.name ?? DEFAULT_NAMES[firstFree],
@@ -306,7 +306,7 @@ const AlertSheet = ({
                     options={eventTypes.map((event) => ({
                       value: event,
                       label: EVENT_LABELS[event],
-                      disabled: used.includes(event)
+                      disabled: used.has(event)
                     }))}
                     onChange={(value) => {
                       const next = value as AlertEventType;
@@ -498,9 +498,9 @@ const ResourceAlertMenu = ({
   const [listOpen, setListOpen] = useState(false);
   const [editing, setEditing] = useState<{ alert?: TAlert }>();
   const [deleting, setDeleting] = useState<TAlert>();
-  const used = resourceId ? alerts.map(({ eventType }) => eventType as AlertEventType) : [];
+  const used = new Set(resourceId ? alerts.map(({ eventType }) => eventType) : []);
   const enabledCount = alerts.filter(({ enabled }) => enabled).length;
-  const canAdd = ALERT_RESOURCE_EVENT_TYPES[resourceType].some((event) => !used.includes(event));
+  const canAdd = ALERT_RESOURCE_EVENT_TYPES[resourceType].some((event) => !used.has(event));
   const editable = !readOnly;
 
   const open = (alert?: TAlert) => {
@@ -575,7 +575,7 @@ const ResourceAlertMenu = ({
           resourceId={resourceId}
           projectId={projectId}
           alert={editing.alert}
-          used={used.filter((event) => event !== editing.alert?.eventType)}
+          used={new Set([...used].filter((event) => event !== editing.alert?.eventType))}
           onOpenChange={(next) => !next && setEditing(undefined)}
         />
       )}
