@@ -571,6 +571,29 @@ const Details = ({
   );
 };
 
+const TabPanels = ({
+  orgId,
+  projectId,
+  session,
+  tab,
+  inputRef
+}: {
+  orgId: string;
+  projectId: string;
+  session: TAgentVaultSession;
+  tab: "logs" | "details";
+  inputRef: React.Ref<HTMLInputElement>;
+}) => (
+  <>
+    <div hidden={tab !== "logs"}>
+      <SessionLogsPanel key={session.id} orgId={orgId} projectId={projectId} session={session} />
+    </div>
+    {tab === "details" && (
+      <Details orgId={orgId} projectId={projectId} session={session} inputRef={inputRef} />
+    )}
+  </>
+);
+
 const RevokeFooter = ({
   projectId,
   session,
@@ -663,17 +686,15 @@ export const SessionDetailsSheet = ({
             "aria-labelledby": `${tabsId}-${tab}`
           })}
         >
-          {session &&
-            (tab === "logs" ? (
-              <SessionLogsPanel
-                key={session.id}
-                orgId={orgId}
-                projectId={projectId}
-                session={session}
-              />
-            ) : (
-              <Details orgId={orgId} projectId={projectId} session={session} inputRef={labelRef} />
-            ))}
+          {session && (
+            <TabPanels
+              orgId={orgId}
+              projectId={projectId}
+              session={session}
+              tab={tab}
+              inputRef={labelRef}
+            />
+          )}
           {!session && isPending && <Loader label="Loading session" />}
           {!session && !isPending && (
             <EmptyState
