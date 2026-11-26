@@ -2691,14 +2691,10 @@ const OverviewPageContent = () => {
           ?.some(({ secretKey }) => secretKey === change.secretKey);
       const deletedChanges = sendableChanges.filter(isDeleted);
       const savableChanges = sendableChanges.filter((change) => !isDeleted(change));
-      edits.forEach(({ edit, changes: editChanges }) => {
-        if (editChanges.length && editChanges.every((change) => deletedChanges.includes(change)))
-          edit.discard();
-      });
       if (deletedChanges.length) {
         createNotification({
-          type: "info",
-          text: `Skipped ${deletedChanges.length} change${deletedChanges.length === 1 ? "" : "s"} to deleted secrets`
+          type: "warning",
+          text: `${deletedChanges.length} change${deletedChanges.length === 1 ? " wasn't" : "s weren't"} saved because the secret wasn't found. Discard ${deletedChanges.length === 1 ? "it" : "them"} if the secret was deleted.`
         });
       }
       const { commits: sentCommits } = savableChanges.length
