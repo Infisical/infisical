@@ -27,11 +27,9 @@ export const useAgentVaultNav = (orgId: string, projectId: string | undefined) =
   const canReadSettings =
     enabled && permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
   const settingsAdapter = useV4Adapter("agentVaultSettings");
-  const { data: grantedRequiringSetup } = useV4Adapter("agentVaultResources").useServices(
-    id,
-    { requiresSetup: true, granted: true, limit: 1 },
-    { enabled }
-  );
+  const { data: grantedRequiringSetup } = useV4Adapter(
+    "agentVault"
+  ).useGrantedServicesRequiringSetupCount(orgId, id, enabled);
   const { data: sessionLogState } = settingsAdapter.useSessionLogSettings(
     orgId,
     id,
@@ -67,7 +65,7 @@ export const useAgentVaultNav = (orgId: string, projectId: string | undefined) =
   return {
     hidden: allowed.filter(([, isAllowed]) => !isAllowed).map(([itemId]) => itemId),
     badges: {
-      services: grantedRequiringSetup?.totalCount ? attention("warn") : undefined,
+      services: grantedRequiringSetup ? attention("warn") : undefined,
       settings: canReadSettings ? settingsAlert : undefined
     }
   };

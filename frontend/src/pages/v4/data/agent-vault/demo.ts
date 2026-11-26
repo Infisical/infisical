@@ -41,8 +41,13 @@ import {
   type TDemoProject,
   updateDemoProject
 } from "../agent-vault-demo-store";
+import { agentVaultResourcesDemo } from "../agent-vault-resources/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
-import type { AgentVaultAdapter, TAgentVaultSessionLogs } from "./contract";
+import {
+  type AgentVaultAdapter,
+  GRANTED_SERVICES_REQUIRING_SETUP,
+  type TAgentVaultSessionLogs
+} from "./contract";
 
 const uuid = (prefix: string, index: number) =>
   `${prefix}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -929,6 +934,13 @@ export const agentVaultDemo: AgentVaultAdapter = {
         )
       }));
     })(),
+  useGrantedServicesRequiringSetupCount: (_orgId, projectId) => {
+    const services = agentVaultResourcesDemo.useServices(
+      projectId,
+      GRANTED_SERVICES_REQUIRING_SETUP
+    );
+    return { ...services, data: services.data?.totalCount };
+  },
   useIdentityUniversalAuth: (identityId) => {
     if (!identityId) return { data: undefined, isPending: true, error: null };
     if (!universalAuthIdentities.has(identityId))
