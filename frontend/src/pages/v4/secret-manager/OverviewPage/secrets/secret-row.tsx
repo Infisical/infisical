@@ -253,6 +253,14 @@ function InlineEditor({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const registry = useUnsavedEditsState()?.registry;
   const dirty = dirtyFromStart || draft !== initial;
   const { committing, release } = useUnsavedEdit(unsaved?.key, dirty && !saving, {
     getChanges: () => (unsaved ? [unsaved.change(draft)] : []),
@@ -272,8 +280,14 @@ function InlineEditor({
   };
   const save = () => {
     if (saving || committing) return;
+    const submitted = unsaved?.change(draft);
     setSaving(true);
-    onSave(draft, setError).finally(() => setSaving(false));
+    onSave(draft, setError)
+      .catch(() => false)
+      .then((ok) => {
+        if (!ok && submitted && !mounted.current) registry?.holdDrafts([submitted]);
+      })
+      .finally(() => setSaving(false));
   };
   const control = {
     autoFocus: true,

@@ -1068,7 +1068,7 @@ export const OverviewPage = () => {
         const committed = editChanges.filter(
           (change) => savable.includes(change) && !unsaved.includes(change.environment)
         );
-        if (committed.length) edit.settle(committed, review);
+        if (committed.length) edit.settle(committed, review, editChanges);
       });
       unreadable.forEach((environment) =>
         toast({
@@ -1663,7 +1663,7 @@ export const OverviewPage = () => {
         if (!ok) return ok;
         applied.forEach((secret) => {
           if (
-            unsavedEdits.registry.renameHeldDraft(
+            unsavedEdits.registry.renameDraft(
               secret.environment,
               secret.path,
               secret.name,

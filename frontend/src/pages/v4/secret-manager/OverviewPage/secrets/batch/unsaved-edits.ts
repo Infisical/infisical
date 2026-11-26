@@ -22,7 +22,11 @@ export type UnsavedChange = {
 };
 export type UnsavedEdit = {
   getChanges: () => UnsavedChange[];
-  settle: (committed: UnsavedChange[], reviewEnvironments: string[]) => void;
+  settle: (
+    committed: UnsavedChange[],
+    reviewEnvironments: string[],
+    submitted: UnsavedChange[]
+  ) => void;
   discard: () => void;
 };
 type RegisteredEdit = UnsavedEdit & { held?: boolean };
@@ -32,7 +36,7 @@ type UnsavedEditRegistry = {
   takeDraft: (key: string) => UnsavedChange[] | undefined;
   holdDrafts: (changes: UnsavedChange[]) => void;
   dropHeldDrafts: () => void;
-  renameHeldDraft: (
+  renameDraft: (
     environment: string,
     secretPath: string,
     from: string,
@@ -109,8 +113,11 @@ export const useUnsavedEdits = () => {
       getEdits: () =>
         [...all.entries()].map(([key, edit]) => ({
           getChanges: () => edit.getChanges(),
-          settle: (committed: UnsavedChange[], reviewEnvironments: string[]) =>
-            (all.get(key) ?? edit).settle(committed, reviewEnvironments),
+          settle: (
+            committed: UnsavedChange[],
+            reviewEnvironments: string[],
+            submitted: UnsavedChange[]
+          ) => (all.get(key) ?? edit).settle(committed, reviewEnvironments, submitted),
           discard: () => all.get(key)?.discard()
         })),
       takeDraft: (key) => {
@@ -132,10 +139,10 @@ export const useUnsavedEdits = () => {
         });
         sync();
       },
-      renameHeldDraft: (environment, secretPath, from, to) => {
+      renameDraft: (environment, secretPath, from, to) => {
         const key = draftKey(environment, secretPath, from);
         const edit = all.get(key);
-        if (!edit?.held) return "none";
+        if (!edit) return "none";
         const target = draftKey(environment, secretPath, to);
         all.delete(key);
         const existing = all.get(target);
@@ -207,8 +214,8 @@ export const useUnsavedEdit = (key: string | undefined, dirty: boolean, edit: Un
     if (!registry || !key || !dirty) return undefined;
     const unregister = registry.register(key, {
       getChanges: () => latest.current.getChanges(),
-      settle: (committed, reviewEnvironments) =>
-        latest.current.settle(committed, reviewEnvironments),
+      settle: (committed, reviewEnvironments, submitted) =>
+        latest.current.settle(committed, reviewEnvironments, submitted),
       discard: () => latest.current.discard()
     });
     return () => unregister(keep.current && keyRef.current === key);

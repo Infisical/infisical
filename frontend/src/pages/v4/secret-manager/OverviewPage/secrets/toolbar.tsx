@@ -593,10 +593,15 @@ export function QuickAddRow({
     multiple && validName.test(name) && !existing.includes(name) && !saving,
     {
       getChanges: pendingChanges,
-      settle: (committed) => {
+      settle: (committed, _review, submitted) => {
         release();
         holdDrafts(
-          pendingChanges().filter(
+          [
+            ...submitted,
+            ...pendingChanges().filter(
+              (change) => !submitted.some(({ environment }) => environment === change.environment)
+            )
+          ].filter(
             (change) => !committed.some(({ environment }) => environment === change.environment)
           )
         );
