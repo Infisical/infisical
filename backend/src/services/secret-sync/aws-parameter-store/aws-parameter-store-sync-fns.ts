@@ -7,6 +7,7 @@ import {
   type DeleteParametersCommandOutput,
   DescribeParametersCommand,
   GetParametersByPathCommand,
+  GetParametersCommand,
   ListTagsForResourceCommand,
   type Parameter,
   type ParameterMetadata,
@@ -23,6 +24,7 @@ import handlebars from "handlebars";
 
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { isAwsError } from "@app/lib/aws/error";
+import { logger } from "@app/lib/logger";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema, preservesFolderStructure } from "@app/services/secret-sync/secret-sync-fns";
@@ -108,8 +110,7 @@ const getParametersByPath = async (
   ssm: SSMClient,
   path: string,
   keySchema: string | undefined,
-  environment: string,
-  { recursive = false }: { recursive?: boolean } = {}
+  environment: string
 ): Promise<TAWSParameterStoreRecord> => {
   const awsParameterStoreSecretsRecord: TAWSParameterStoreRecord = {};
   let hasNext = true;
@@ -124,7 +125,7 @@ const getParametersByPath = async (
       const parameters = await ssm.send(
         new GetParametersByPathCommand({
           Path: fullPath,
-          Recursive: recursive,
+          Recursive: false,
           WithDecryption: true,
           MaxResults: BATCH_SIZE,
           NextToken: nextToken
@@ -151,6 +152,93 @@ const getParametersByPath = async (
         // eslint-disable-next-line no-continue
         continue;
       }
+
+      throw e;
+    }
+  }
+
+  return awsParameterStoreSecretsRecord;
+};
+
+// GetParameters refuses a whole batch when the connection may not read one of its parameters, so each
+// name is read alone to find the ones to name in the error. AWS's own message stays in the logs: it
+// names the account and key ARNs, and not the parameter.
+const buildUnreadableParametersError = async (ssm: SSMClient, names: string[], error: unknown) => {
+  logger.warn(error, `AWS Parameter Store sync couldn't read parameters [names=${names.join(",")}]`);
+
+  const unreadable: string[] = [];
+  let isKmsDenial = false;
+
+  for await (const name of names) {
+    try {
+      await ssm.send(new GetParametersCommand({ Names: [name], WithDecryption: true }));
+    } catch (e) {
+      if (!isAwsError(e, "AccessDeniedException")) throw e;
+      unreadable.push(name);
+      if ((e as Error).message?.includes("kms:")) isKmsDenial = true;
+    }
+  }
+
+  if (!unreadable.length) {
+    return new SecretSyncError({
+      message:
+        "This sync's AWS connection isn't allowed to read some parameters in the folders this sync manages. Check that the connection allows ssm:GetParameters, and kms:Decrypt on the KMS keys those parameters are encrypted with.",
+      shouldRetry: false
+    });
+  }
+
+  const many = unreadable.length > 1;
+  const list = unreadable.map((name) => `"${name}"`).join(", ");
+  const location = `${many ? "These parameters are" : "The parameter is"} in a folder this sync manages`;
+  const fix = `or move ${many ? "them" : "it"} to a folder this sync doesn't manage.`;
+
+  return new SecretSyncError({
+    message: isKmsDenial
+      ? `This sync's AWS connection isn't allowed to decrypt ${list} with the KMS key ${many ? "they're" : "it's"} encrypted with. ${location}, so allow kms:Decrypt on that key for the connection, ${fix}`
+      : `This sync's AWS connection isn't allowed to read ${list}. ${location}, so allow ssm:GetParameters on ${many ? "them" : "it"} for the connection, ${fix}`,
+    shouldRetry: false
+  });
+};
+
+// Reads the values of the named parameters only. A sync that preserves folder structure lists every
+// level below its path, which can hold other syncs' or teams' parameters: it has no reason to decrypt
+// those, and its role may not be allowed to use their KMS keys.
+const getParametersByName = async (
+  ssm: SSMClient,
+  names: string[],
+  path: string
+): Promise<TAWSParameterStoreRecord> => {
+  const awsParameterStoreSecretsRecord: TAWSParameterStoreRecord = {};
+  let index = 0;
+  let attempt = 0;
+
+  while (index < names.length) {
+    const batch = names.slice(index, index + BATCH_SIZE);
+
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const { Parameters } = await ssm.send(new GetParametersCommand({ Names: batch, WithDecryption: true }));
+
+      attempt = 0;
+
+      Parameters?.forEach((parameter) => {
+        if (parameter.Name) {
+          awsParameterStoreSecretsRecord[getParameterKey(parameter.Name, path)] = parameter;
+        }
+      });
+
+      index += BATCH_SIZE;
+    } catch (e) {
+      if (isAwsError(e, "ThrottlingException") && attempt < MAX_RETRIES) {
+        attempt += 1;
+        // eslint-disable-next-line no-await-in-loop
+        await sleep();
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      // eslint-disable-next-line no-await-in-loop
+      if (isAwsError(e, "AccessDeniedException")) throw await buildUnreadableParametersError(ssm, batch, e);
 
       throw e;
     }
@@ -346,7 +434,7 @@ const removeTagsFromParameter = async (
 
 const deleteParametersBatch = async (
   ssm: SSMClient,
-  parameters: Parameter[],
+  parameters: Pick<Parameter, "Name">[],
   attempt = 0
 ): Promise<DeleteParametersCommandOutput[]> => {
   const results: DeleteParametersCommandOutput[] = [];
@@ -391,16 +479,6 @@ export const AwsParameterStoreSyncFns = {
 
     const ssm = await getSSM(secretSync, instanceConfigService);
 
-    // A sync that preserves folder structure writes to every level below its path, so it reads them
-    // all. That can include parameters of folders it doesn't mirror, which deletion leaves alone.
-    const awsParameterStoreSecretsRecord = await getParametersByPath(
-      ssm,
-      destinationConfig.path,
-      syncOptions.keySchema,
-      environment!.slug,
-      { recursive: preserveFolderStructure }
-    );
-
     const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(
       ssm,
       destinationConfig.path,
@@ -408,6 +486,23 @@ export const AwsParameterStoreSyncFns = {
       environment!.slug,
       { recursive: preserveFolderStructure }
     );
+
+    // A sync that preserves folder structure writes to every level below its path, so it lists them
+    // all, but it reads values only for the names it owns. A name it writes is always its own, even
+    // one matchesSchema misses because a stored key containing "/" added folders to it.
+    const awsParameterStoreSecretsRecord = preserveFolderStructure
+      ? await getParametersByName(
+          ssm,
+          Object.entries(awsParameterStoreMetadataRecord).flatMap(([key, { Name }]) =>
+            Name &&
+            (key in secretMap ||
+              matchesSchema(key, environment?.slug || "", syncOptions.keySchema, { mirroredFolders }))
+              ? [Name]
+              : []
+          ),
+          destinationConfig.path
+        )
+      : await getParametersByPath(ssm, destinationConfig.path, syncOptions.keySchema, environment!.slug);
 
     // Tags are only read back for the parameters this sync writes. The listing can hold many more,
     // every level below the path when folders are preserved, and each costs a call.
@@ -547,17 +642,17 @@ export const AwsParameterStoreSyncFns = {
 
     const ssm = await getSSM(secretSync, instanceConfigService);
 
-    const awsParameterStoreSecretsRecord = await getParametersByPath(
-      ssm,
-      destinationConfig.path,
-      syncOptions.keySchema,
-      environment!.slug,
-      { recursive: preserveFolderStructure }
-    );
+    // Removal needs only names, so a sync that preserves folder structure lists every level below its
+    // path without reading any values.
+    const awsParameterStoreRecord: Record<string, Pick<Parameter, "Name">> = preserveFolderStructure
+      ? await getParameterMetadataByPath(ssm, destinationConfig.path, syncOptions.keySchema, environment!.slug, {
+          recursive: true
+        })
+      : await getParametersByPath(ssm, destinationConfig.path, syncOptions.keySchema, environment!.slug);
 
-    const parametersToDelete: Parameter[] = [];
+    const parametersToDelete: Pick<Parameter, "Name">[] = [];
 
-    for (const entry of Object.entries(awsParameterStoreSecretsRecord)) {
+    for (const entry of Object.entries(awsParameterStoreRecord)) {
       const [key, param] = entry;
 
       if (key in secretMap) {

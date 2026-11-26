@@ -7,6 +7,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
@@ -270,6 +271,101 @@ func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
 			"/app/api/nested/MANUAL": "theirs",
 			"/app/team-a/DB_PASS":    "a",
 		}, parameterValues(t, cp))
+	})
+
+	t.Run("should not decrypt parameters below its path outside the folders it mirrors", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `They belong to something else, such as another team's parameters. The sync has
+			no use for their values, and its role may not be allowed to use their KMS key.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t,
+			aws.SeedParameter("/app/api/KEEP", "old"),
+			aws.SeedParameter("/app/team-a/DB_PASS", "theirs"),
+		)
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		cp.SSM.ExpectEvent[aws.ParameterDecrypted](t, func(e aws.ParameterDecrypted) bool { return e.Name == "/app/api/KEEP" })
+		cp.SSM.ExpectNoEvent[aws.ParameterDecrypted](t, func(e aws.ParameterDecrypted) bool { return e.Name == "/app/team-a/DB_PASS" })
+		require.Equal(t, map[string]string{"/app/api/KEEP": "v", "/app/team-a/DB_PASS": "theirs"}, parameterValues(t, cp))
+	})
+
+	t.Run("should sync when a parameter below its path outside the folders it mirrors uses a KMS key it cannot use", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Another team's parameter can sit below the path, encrypted with a key this
+			connection may not use. AWS refuses a whole read that includes it, so reading
+			everything below the path would fail every run.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t,
+			aws.SeedUnusableKey("alias/team-a"),
+			aws.SeedParameterWithKey("/app/team-a/DB_PASS", "theirs", "alias/team-a"),
+		)
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{"/app/api/KEEP": "v", "/app/team-a/DB_PASS": "theirs"}, parameterValues(t, cp))
+	})
+
+	t.Run("should fail naming the parameter and write nothing when one in a folder it mirrors uses a KMS key it cannot use", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The sync manages that folder, so it has to read the parameter. AWS's refusal
+			names the key and the account, not the parameter, so the message names it instead.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t,
+			aws.SeedUnusableKey("alias/team-a"),
+			aws.SeedParameterWithKey("/app/api/LOCKED", "theirs", "alias/team-a"),
+		)
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		got := s.triggerExpectingFailure(t)
+
+		// Assert
+		require.Equal(t, "failed", got.status)
+		require.Contains(t, got.message, "/app/api/LOCKED")
+		require.Contains(t, got.message, "kms:Decrypt")
+		require.NotContains(t, got.message, "arn:aws")
+		require.Equal(t, map[string]string{"/app/api/LOCKED": "theirs"}, parameterValues(t, cp))
+	})
+
+	t.Run("should decrypt no parameter when its secrets are removed", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Removal deletes by name, so it has no use for any value below the path.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t, aws.SeedParameter("/app/team-a/DB_PASS", "theirs"))
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+		s.trigger(t)
+		mark := cp.SSM.Mark(t)
+
+		// Action
+		got := s.removeSecrets(t)
+
+		// Assert
+		require.Equalf(t, "succeeded", got.status, "the remove failed: %s", got.message)
+		cp.SSM.ExpectNoEvent[aws.ParameterDecrypted](t, nil, fakenet.Since(mark))
+		require.Equal(t, map[string]string{"/app/team-a/DB_PASS": "theirs"}, parameterValues(t, cp))
 	})
 
 	t.Run("should delete every parameter it wrote, including both copies of a shared key, when its secrets are removed", func(t *testing.T) {

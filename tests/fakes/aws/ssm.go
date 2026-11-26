@@ -18,6 +18,8 @@ import (
 type ParameterStore struct {
 	Policy
 	Parameters map[string]*Parameter `json:"parameters"`
+	// UnusableKeys are KMS keys the caller may not decrypt with, such as another team's.
+	UnusableKeys []string `json:"unusableKeys,omitempty"`
 
 	mu     sync.Mutex
 	events fakenet.Emitter
@@ -39,6 +41,7 @@ type Parameter struct {
 const (
 	ssmDefaultKeyID     = "alias/aws/ssm"
 	ssmMaxByPath        = 10
+	ssmMaxGetBatch      = 10
 	ssmMaxDescribe      = 50
 	ssmMaxDeleteBatch   = 10
 	ssmMaxValueLength   = 4096
@@ -48,6 +51,7 @@ const (
 func newParameterStore(svc service, events fakenet.Emitter) fakenet.Fake {
 	ps := &ParameterStore{Parameters: map[string]*Parameter{}, events: events}
 	ps.h = handler{svc: svc, mu: &ps.mu, policy: func() *Policy { return &ps.Policy }, actions: map[string]func(call) (any, *apiError){
+		"GetParameters":          ps.getParameters,
 		"GetParametersByPath":    ps.getParametersByPath,
 		"DescribeParameters":     ps.describeParameters,
 		"PutParameter":           ps.putParameter,
@@ -66,8 +70,9 @@ func (ps *ParameterStore) Snapshot() ([]byte, error) {
 	defer ps.mu.Unlock()
 	return json.Marshal(struct {
 		Policy
-		Parameters map[string]*Parameter `json:"parameters"`
-	}{ps.Policy, ps.Parameters})
+		Parameters   map[string]*Parameter `json:"parameters"`
+		UnusableKeys []string              `json:"unusableKeys,omitempty"`
+	}{ps.Policy, ps.Parameters, ps.UnusableKeys})
 }
 
 // Seed merges parameters that exist before Infisical touches the store. It skips the
@@ -75,7 +80,8 @@ func (ps *ParameterStore) Snapshot() ([]byte, error) {
 func (ps *ParameterStore) Seed(raw []byte) error {
 	var in struct {
 		Policy
-		Parameters map[string]*Parameter `json:"parameters"`
+		Parameters   map[string]*Parameter `json:"parameters"`
+		UnusableKeys []string              `json:"unusableKeys"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -83,6 +89,11 @@ func (ps *ParameterStore) Seed(raw []byte) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	ps.merge(in.Policy)
+	for _, key := range in.UnusableKeys {
+		if !slices.Contains(ps.UnusableKeys, key) {
+			ps.UnusableKeys = append(ps.UnusableKeys, key)
+		}
+	}
 	for name, p := range in.Parameters {
 		name = normalizeParameterName(name)
 		if p.Type == "" {
@@ -234,28 +245,89 @@ func (ps *ParameterStore) getParametersByPath(c call) (any, *apiError) {
 		return nil, err
 	}
 
+	if in.WithDecryption {
+		for _, name := range got {
+			if err := ps.decryptable(c, ps.Parameters[name]); err != nil {
+				return nil, err
+			}
+		}
+	}
 	out := make([]map[string]any, 0, len(got))
 	for _, name := range got {
-		p := ps.Parameters[name]
-		value := p.Value
-		if p.Type == "SecureString" && !in.WithDecryption {
-			value = base64.StdEncoding.EncodeToString([]byte("kms:" + p.KeyID + ":" + p.Value))
-		}
-		out = append(out, map[string]any{
-			"Name":             p.Name,
-			"Type":             p.Type,
-			"Value":            value,
-			"Version":          p.Version,
-			"LastModifiedDate": epoch(p.LastModifiedDate),
-			"ARN":              ps.arn(c, p.Name),
-			"DataType":         "text",
-		})
+		out = append(out, ps.read(c, ps.Parameters[name], in.WithDecryption))
 	}
 	res := map[string]any{"Parameters": out}
 	if next != "" {
 		res["NextToken"] = next
 	}
 	return res, nil
+}
+
+func (ps *ParameterStore) getParameters(c call) (any, *apiError) {
+	var in struct {
+		Names          []string
+		WithDecryption bool
+	}
+	if err := decodeJSON(c, &in); err != nil {
+		return nil, err
+	}
+	if len(in.Names) < 1 || len(in.Names) > ssmMaxGetBatch {
+		return nil, errf(http.StatusBadRequest, "ValidationException",
+			"1 validation error detected: Value at 'names' failed to satisfy constraint: Member must have length less than or equal to 10")
+	}
+	found, invalid := []*Parameter{}, []string{}
+	for _, raw := range in.Names {
+		p, ok := ps.Parameters[normalizeParameterName(raw)]
+		if !ok {
+			invalid = append(invalid, raw)
+			continue
+		}
+		if in.WithDecryption {
+			if err := ps.decryptable(c, p); err != nil {
+				return nil, err
+			}
+		}
+		found = append(found, p)
+	}
+	out := make([]map[string]any, 0, len(found))
+	for _, p := range found {
+		out = append(out, ps.read(c, p, in.WithDecryption))
+	}
+	return map[string]any{"Parameters": out, "InvalidParameters": invalid}, nil
+}
+
+// decryptable refuses a SecureString encrypted with a key the caller may not use. AWS
+// refuses the whole Get call for it, not only that parameter, and names the key, not the
+// parameter.
+func (ps *ParameterStore) decryptable(c call, p *Parameter) *apiError {
+	if p.Type != "SecureString" || !slices.Contains(ps.UnusableKeys, p.KeyID) {
+		return nil
+	}
+	return errf(http.StatusBadRequest, "AccessDeniedException",
+		"User: arn:aws:iam::%s:user/infisical is not authorized to perform: kms:Decrypt on resource: %s "+
+			"because no identity-based policy allows the kms:Decrypt action", c.account(), p.KeyID)
+}
+
+// read renders a parameter as a Get call returns it. A SecureString returned in the clear
+// was decrypted with its KMS key, which AWS records as a KMS Decrypt call.
+func (ps *ParameterStore) read(c call, p *Parameter, withDecryption bool) map[string]any {
+	value := p.Value
+	if p.Type == "SecureString" {
+		if withDecryption {
+			ps.events.Publish(ParameterDecrypted{ParameterDetail{Name: p.Name}})
+		} else {
+			value = base64.StdEncoding.EncodeToString([]byte("kms:" + p.KeyID + ":" + p.Value))
+		}
+	}
+	return map[string]any{
+		"Name":             p.Name,
+		"Type":             p.Type,
+		"Value":            value,
+		"Version":          p.Version,
+		"LastModifiedDate": epoch(p.LastModifiedDate),
+		"ARN":              ps.arn(c, p.Name),
+		"DataType":         "text",
+	}
 }
 
 func (ps *ParameterStore) describeParameters(c call) (any, *apiError) {
