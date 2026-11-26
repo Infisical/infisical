@@ -81,12 +81,11 @@ export const ProjectMemberDetail = () => {
   const { user } = member;
   const isSelf = user.email === session.user.email;
   const name = personName(user) ?? user.email;
-  const canAssume =
-    canAssumeUserIn(scope.projectType) &&
-    permission.can(
-      ProjectPermissionMemberActions.AssumePrivileges,
-      subject(ProjectPermissionSub.Member, { userEmail: user.email })
-    );
+  const assumable = canAssumeUserIn(scope.projectType);
+  const canAssume = permission.can(
+    ProjectPermissionMemberActions.AssumePrivileges,
+    subject(ProjectPermissionSub.Member, { userEmail: user.email })
+  );
   const canDelete = permission.can(
     ProjectPermissionMemberActions.Delete,
     ProjectPermissionSub.Member
@@ -152,14 +151,16 @@ export const ProjectMemberDetail = () => {
                     <Icon name="copy" />
                     Copy user ID
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!canAssume}
-                    description={canAssume ? undefined : RESTRICTED}
-                    onSelect={() => setAssuming({ id: user.id, type: ActorType.USER })}
-                  >
-                    <Icon name="user" />
-                    Assume privileges
-                  </DropdownMenuItem>
+                  {assumable && (
+                    <DropdownMenuItem
+                      disabled={!canAssume}
+                      description={canAssume ? undefined : RESTRICTED}
+                      onSelect={() => setAssuming({ id: user.id, type: ActorType.USER })}
+                    >
+                      <Icon name="user" />
+                      Assume privileges
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     variant="destructive"
@@ -210,6 +211,7 @@ export const ProjectMemberDetail = () => {
             projectId={projectId}
             projectType={scope.projectType}
             readOnly={isSelf}
+            roles={member.roles}
             target={{
               type: "user",
               membershipId: member.id,

@@ -15,20 +15,24 @@ import {
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@infisical/cipher/ui/hover-card";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { Meta, SmallText, StatusText } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format } from "date-fns";
 
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { canManageAgentVaultServices } from "@app/helpers/agentVaultPermissions";
@@ -45,7 +49,8 @@ import {
 import type {
   TAgentVaultSession,
   TAgentVaultSessionInlineService,
-  TAgentVaultSessionService
+  TAgentVaultSessionService,
+  TAgentVaultSessionSkill
 } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -55,6 +60,7 @@ import { NoExpiry } from "../../components/no-expiry";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { ServiceIcon } from "../resources/shared";
 import { CreateSessionSheet } from "./create-session-sheet";
 import { RevokeSessionDialog } from "./revoke-session-dialog";
 import { SessionDetailsSheet } from "./session-details-sheet";
@@ -66,12 +72,17 @@ import {
   describeActor,
   formatSessionExpiry,
   formatTimestamp,
+  inlineServiceHookText,
   inlineServicesLabel,
+  inlineServiceTarget,
+  inlineSkillsLabel,
   metadataRowsToRecord,
   SESSION_STATUS as STATUS,
-  sessionMetadataErrors,
   sessionInlineServices,
+  sessionInlineSkills,
+  sessionMetadataErrors,
   sessionNamedServices,
+  sessionNamedSkills,
   useCanActOnSession
 } from "./sessions";
 
@@ -136,30 +147,69 @@ const Identity = ({ session }: { session: TAgentVaultSession }) => (
 type TAccessItem =
   | { kind: "bundle"; bundle: NonNullable<TAgentVaultSession["accessBundle"]> }
   | { kind: "service"; service: Extract<TAgentVaultSessionService, { isInline: false }> }
-  | { kind: "inline"; services: TAgentVaultSessionInlineService[] };
+  | { kind: "inline"; services: TAgentVaultSessionInlineService[] }
+  | { kind: "skill"; skill: TAgentVaultSessionSkill }
+  | { kind: "inline-skills"; skills: TAgentVaultSessionSkill[] };
 
 const ACCESS_ITEMS_SHOWN = 2;
 
 const toAccessItems = (session: TAgentVaultSession): TAccessItem[] => {
   const inline = sessionInlineServices(session);
+  const inlineSkills = sessionInlineSkills(session);
   return [
     ...(session.accessBundle ? [{ kind: "bundle" as const, bundle: session.accessBundle }] : []),
     ...sessionNamedServices(session).map((service) => ({ kind: "service" as const, service })),
-    ...(inline.length ? [{ kind: "inline" as const, services: inline }] : [])
+    ...(inline.length ? [{ kind: "inline" as const, services: inline }] : []),
+    ...sessionNamedSkills(session).map((skill) => ({ kind: "skill" as const, skill })),
+    ...(inlineSkills.length ? [{ kind: "inline-skills" as const, skills: inlineSkills }] : [])
   ];
 };
 
 const accessItemKey = (item: TAccessItem) => {
   if (item.kind === "bundle") return `bundle:${item.bundle.id ?? item.bundle.name}`;
   if (item.kind === "service") return `service:${item.service.id}`;
-  return "inline";
+  if (item.kind === "skill") return `skill:${item.skill.id}`;
+  return item.kind;
 };
 
 const accessItemLabel = (item: TAccessItem) => {
   if (item.kind === "bundle") return item.bundle.name;
   if (item.kind === "service") return item.service.name;
+  if (item.kind === "skill") return item.skill.name;
+  if (item.kind === "inline-skills") return inlineSkillsLabel(item.skills.length);
   return inlineServicesLabel(item.services.length);
 };
+
+const InlineAccessHoverCard = ({
+  label,
+  rows,
+  children
+}: {
+  label: string;
+  rows: { id: string; name: string; detail?: string; media: React.ReactNode }[];
+  children: React.ReactNode;
+}) => (
+  <HoverCard openDelay={150} closeDelay={100}>
+    <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+    <HoverCardContent align="start">
+      <Stack gap={8}>
+        <SmallText muted>Sent with the session when it was created.</SmallText>
+        <List label={label} variant="bare" size="sm">
+          {rows.map((row) => (
+            <ListRow
+              key={row.id}
+              value={row.id}
+              label={row.name}
+              title={row.name}
+              description={row.detail}
+              media={row.media}
+            />
+          ))}
+        </List>
+      </Stack>
+    </HoverCardContent>
+  </HoverCard>
+);
 
 const AccessBadge = ({
   item,
@@ -202,13 +252,53 @@ const AccessBadge = ({
         </Badge>
       </Tooltip>
     );
+  if (item.kind === "skill")
+    return (
+      <Tooltip content={item.skill.description}>
+        <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
+          <Icon name="book" className="shrink-0" />
+          <span className="truncate">{item.skill.name}</span>
+        </Badge>
+      </Tooltip>
+    );
+  if (item.kind === "inline-skills")
+    return (
+      <InlineAccessHoverCard
+        label="Inline skills"
+        rows={item.skills.map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+          detail: skill.description,
+          media: <Icon name="book" />
+        }))}
+      >
+        <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
+          <Icon name="book" className="shrink-0" />
+          <span className="truncate">{accessItemLabel(item)}</span>
+        </Badge>
+      </InlineAccessHoverCard>
+    );
   return (
-    <Tooltip content={item.services.map((service) => service.name).join(", ")}>
+    <InlineAccessHoverCard
+      label="Inline services"
+      rows={item.services.map((service) => {
+        const target = inlineServiceTarget(service);
+        return {
+          id: service.id,
+          name: service.name,
+          detail:
+            [target === service.name ? null : target, inlineServiceHookText(service)]
+              .filter(Boolean)
+              .join(" · ") || undefined,
+          media: <ServiceIcon hostPattern={hostPatternOf(service)} serviceType={service.type} />
+        };
+      })}
+    >
       <Badge tone="outline" tabIndex={0} style={{ minWidth: 0 }}>
         <Icon name="proxy" className="shrink-0" />
         <span className="truncate">{accessItemLabel(item)}</span>
       </Badge>
-    </Tooltip>
+    </InlineAccessHoverCard>
   );
 };
 
@@ -385,13 +475,27 @@ const SessionsEmpty = ({
 };
 
 const useCanStartSession = (orgId: string, projectId: string) => {
+  const { permission } = useProjectPermission(projectId);
+  const resources = useV4Adapter("agentVaultResources");
   const { data: accessBundles } = useV4Adapter("agentVault").useAccessBundles(orgId, projectId, {
     limit: 1
   });
-  const { data: nameableServices } = useV4Adapter("agentVaultResources").useServices(projectId, {
-    limit: 1
-  });
-  return (accessBundles?.totalCount ?? 0) > 0 || (nameableServices?.totalCount ?? 0) > 0;
+  const { data: nameableServices } = resources.useServices(projectId, { limit: 1 });
+  const { data: nameableSkills } = resources.useSkills(
+    projectId,
+    { limit: 1 },
+    {
+      enabled: permission.can(
+        ProjectPermissionAgentVaultSkillActions.Read,
+        ProjectPermissionSub.AgentVaultSkills
+      )
+    }
+  );
+  return (
+    (accessBundles?.totalCount ?? 0) > 0 ||
+    (nameableServices?.totalCount ?? 0) > 0 ||
+    (nameableSkills?.totalCount ?? 0) > 0
+  );
 };
 
 const sessionColumns = ({
@@ -566,7 +670,7 @@ const Sessions = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
               disabledReason={
                 canStartSession
                   ? undefined
-                  : "Sessions need an access bundle or a service you can use"
+                  : "Sessions need an access bundle, a service, or a skill you can use"
               }
               onClick={() => setIsCreateOpen(true)}
             >

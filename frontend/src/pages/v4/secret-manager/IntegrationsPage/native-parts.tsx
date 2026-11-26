@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { StatusText } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -224,14 +225,19 @@ export const CreationBlockedDialog = ({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Use secret syncs instead</DialogTitle>
+          <DialogTitle
+            badges={
+              <DocumentationLink
+                href={MIGRATION_DOCS}
+                subject="migrating native integrations to secret syncs"
+              />
+            }
+          >
+            Use secret syncs instead
+          </DialogTitle>
           <DialogDescription>
             Native integrations are being retired on {NATIVE_INTEGRATION_DEPRECATION_DATE}, and new
-            ones can no longer be created. Your existing integrations keep syncing until then.{" "}
-            <a href={MIGRATION_DOCS} target="_blank" rel="noreferrer">
-              Read the migration guide
-            </a>
-            .
+            ones can no longer be created. Your existing integrations keep syncing until then.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

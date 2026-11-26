@@ -18,9 +18,54 @@ export const enrollmentLabel: Record<EnrollmentType, string> = {
   [EnrollmentType.MICROSOFT_AUTOENROLLMENT]: "Microsoft Autoenrollment"
 };
 
+type InventoryMetadata = NonNullable<TListCertificatesDTO["metadataFilter"]>;
+
+const metadataToText = (metadata: InventoryMetadata) =>
+  metadata.map(({ key, value }) => (value ? `${key}=${value}` : key)).join(", ");
+
+const textToMetadata = (text: string): InventoryMetadata =>
+  text
+    .split(",")
+    .map((pair) => {
+      const [key, ...rest] = pair.split("=");
+      const value = rest.join("=").trim();
+      return { key: key.trim(), ...(value ? { value } : {}) };
+    })
+    .filter(({ key }) => key);
+
+const pairsOf = (metadata: InventoryMetadata) =>
+  JSON.stringify(metadata.map(({ key, value }) => [key, value ?? null]));
+
+const parseMetadataPairs = (text: string): InventoryMetadata | undefined => {
+  if (!text.startsWith("[")) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!Array.isArray(parsed)) return undefined;
+    const pairs = parsed.filter(
+      (entry): entry is InventoryMetadata[number] =>
+        typeof entry?.key === "string" &&
+        (entry.value === undefined || typeof entry.value === "string")
+    );
+    return pairs.length === parsed.length && pairs.length ? pairs : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Metadata the "key=value, ..." text can't express (commas, "=" in keys, empty values) stays
+// as JSON in the filter so a saved view keeps returning the same certificates.
+export const metadataToFilterValue = (metadata: InventoryMetadata) => {
+  const text = metadataToText(metadata);
+  return pairsOf(textToMetadata(text)) === pairsOf(metadata) ? text : JSON.stringify(metadata);
+};
+
+export const filterValueToMetadata = (value: string): InventoryMetadata =>
+  parseMetadataPairs(value) ?? textToMetadata(value);
+
 export const inventoryFields = (
   authorities: TUnifiedCertificateAuthority[],
-  profiles: { value: string; label: string }[]
+  profiles: { value: string; label: string }[],
+  applications?: { value: string; label: string }[]
 ): FilterBarField[] => [
   {
     key: "status",
@@ -77,7 +122,19 @@ export const inventoryFields = (
     type: "multi-select",
     options: authorities.map((ca) => ({ value: ca.id, label: ca.name || ca.id }))
   },
-  { key: "profileId", label: "Profile", type: "multi-select", options: profiles }
+  { key: "profileId", label: "Profile", type: "multi-select", options: profiles },
+  ...(applications
+    ? [
+        {
+          key: "applicationId",
+          label: "Application",
+          type: "multi-select",
+          searchable: true,
+          options: applications
+        } satisfies FilterBarField
+      ]
+    : []),
+  { key: "metadata", label: "Metadata", type: "text", placeholder: "key or key=value", verb: "is" }
 ];
 
 export const filterParams = (filters: FilterBarFilter[]): Partial<TListCertificatesDTO> => {
@@ -97,6 +154,8 @@ export const filterParams = (filters: FilterBarFilter[]): Partial<TListCertifica
     if (field === "source") params.source = values;
     if (field === "caId") params.caIds = values;
     if (field === "profileId") params.profileIds = values;
+    if (field === "applicationId") params.applicationIds = values;
+    if (field === "metadata") params.metadataFilter = filterValueToMetadata(values[0]);
   });
   return params;
 };

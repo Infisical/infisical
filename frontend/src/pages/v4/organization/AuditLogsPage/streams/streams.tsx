@@ -30,12 +30,14 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { getProviderUrl } from "@app/helpers/auditLogStreams";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import type { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import type { TAuditLogStream } from "@app/hooks/api/auditLogStreams/types";
 
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
+import { ResourceAlertAction } from "../../../components/resource-alerts";
 import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
@@ -52,10 +54,11 @@ const compare = (a: TAuditLogStream, b: TAuditLogStream, columnId: string) =>
 
 const Products = ({ stream }: { stream: TAuditLogStream }) => {
   const products = sortProducts(stream.filters?.products ?? []);
-  if (!products.length) return <Meta mono={false}>All products</Meta>;
+  const pamSessionActivity = stream.filters?.pamSessionActivity;
   const overflow = products.slice(MAX_PRODUCTS);
   return (
     <Inline gap={4} align="center" wrap={false}>
+      {!products.length && <Meta mono={false}>All products</Meta>}
       {products.slice(0, MAX_PRODUCTS).map((product) => (
         <Badge key={product} tone="outline">
           {PRODUCT_LABELS[product]}
@@ -65,6 +68,19 @@ const Products = ({ stream }: { stream: TAuditLogStream }) => {
         <Tooltip content={overflow.map((product) => PRODUCT_LABELS[product]).join(", ")}>
           <Badge tone="soft" tabIndex={0}>
             +{overflow.length}
+          </Badge>
+        </Tooltip>
+      )}
+      {pamSessionActivity && (
+        <Tooltip
+          content={
+            pamSessionActivity.includeOutput
+              ? "Commands, queries and requests from PAM sessions, including their output."
+              : "Commands, queries and requests from PAM sessions, without their output."
+          }
+        >
+          <Badge tone="outline" tabIndex={0}>
+            PAM Sessions
           </Badge>
         </Tooltip>
       )}
@@ -209,20 +225,26 @@ export const AuditLogStreamsTab = () => {
           />
         }
         actions={
-          <Button
-            variant="accent"
-            icon="plus"
-            disabledReason={canEdit ? undefined : RESTRICTED}
-            onClick={() => {
-              if (plan && !plan.auditLogStreams) {
-                setUpgrade("organization.audit-log-stream");
-                return;
-              }
-              setSheet({ mode: "create" });
-            }}
-          >
-            Add log stream
-          </Button>
+          <Inline gap={8} wrap={false}>
+            <ResourceAlertAction
+              resourceType={AlertResourceType.AuditLogStream}
+              canEdit={canEdit}
+            />
+            <Button
+              variant="accent"
+              icon="plus"
+              disabledReason={canEdit ? undefined : RESTRICTED}
+              onClick={() => {
+                if (plan && !plan.auditLogStreams) {
+                  setUpgrade("organization.audit-log-stream");
+                  return;
+                }
+                setSheet({ mode: "create" });
+              }}
+            >
+              Add log stream
+            </Button>
+          </Inline>
         }
       />
       <DataTable

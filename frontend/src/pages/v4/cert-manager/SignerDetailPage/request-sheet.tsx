@@ -313,16 +313,16 @@ const RequestSheet = ({
         variant="sheet"
         size="md"
         title={isPreApprove ? "Pre-approve signing" : "Request to sign"}
+        badges={
+          <DocumentationLink
+            href={isPreApprove ? CODE_SIGNING_DOCS.preApprove : CODE_SIGNING_DOCS.requestToSign}
+            subject="Signer approvals"
+          />
+        }
         description={
-          <>
-            {isPreApprove
-              ? "Grant an operator or machine identity signing access without a review. It appears with the other approvals, and you can revoke it any time."
-              : "Your request goes to this signer's approvers. The approval window starts when it's approved, so waiting for a review doesn't use it up."}{" "}
-            <DocumentationLink
-              href={isPreApprove ? CODE_SIGNING_DOCS.preApprove : CODE_SIGNING_DOCS.requestToSign}
-              subject="Signer approvals"
-            />
-          </>
+          isPreApprove
+            ? "Grant an operator or machine identity signing access without a review. It appears with the other approvals, and you can revoke it any time."
+            : "Your request goes to this signer's approvers. The approval window starts when it's approved, so waiting for a review doesn't use it up."
         }
         open
         onOpenChange={(next) => {

@@ -100,7 +100,6 @@ const subscription: SubscriptionPlan = {
   secretRotation: true,
   tier: 3,
   workspaceLimit: 0,
-  workspacesUsed: 9,
   environmentLimit: 0,
   samlSSO: true,
   secretAccessInsights: true,

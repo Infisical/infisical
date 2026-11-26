@@ -294,7 +294,7 @@ const LiveSelectOrg = () => {
         })
       );
       setAuthToken(token);
-      navigate({ to: "/cli-redirect", search: { org_id: targetOrgId } });
+      navigate({ to: v4Path("/cli-redirect"), search: { org_id: targetOrgId } });
       return;
     }
 
@@ -343,6 +343,12 @@ const LiveSelectOrg = () => {
         email={user.email as string}
         method={requiredMfaMethod}
         onChangeAccount={handleLogout}
+        onSessionExpired={async () => {
+          setShouldShowMfa(false);
+          if (!mfaOrgInfo.current) return;
+          toast.info("Your verification session expired, so we started a new one.");
+          await handleSelectOrganization(mfaOrgInfo.current.rootOrg, mfaOrgInfo.current.subOrgId);
+        }}
         successCallback={(options) =>
           mfaOrgInfo.current
             ? handleSelectOrganization(

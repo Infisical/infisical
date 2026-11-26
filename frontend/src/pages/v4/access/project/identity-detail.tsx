@@ -38,11 +38,13 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { supportsAssumePrivileges } from "@app/helpers/project";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import type { Identity } from "@app/hooks/api/identities/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { copyText } from "../../clipboard";
+import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
@@ -53,7 +55,6 @@ import { formatDateTime } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, EditDetailsButton, Muted } from "../ui";
 import { ProjectAccessExtras } from "./access-extras";
-import { IdentityAlertAction } from "./identity-alerts";
 import { ProjectIdentityAuthSection } from "./identity-auth";
 import {
   AssumePrivilegesDialog,
@@ -382,8 +383,9 @@ const IdentityHeaderInsights = ({
   const scope = useProjectScope();
   return (
     <>
-      <IdentityAlertAction
-        identityId={identity.id}
+      <ResourceAlertAction
+        resourceType={AlertResourceType.IdentityAuthentication}
+        resourceId={identity.id}
         projectId={isProjectManaged(identity) ? scope.projectId : undefined}
         canEdit={canEdit}
         readOnly={!isProjectManaged(identity)}
@@ -519,6 +521,7 @@ export const ProjectIdentityDetail = () => {
           <ProjectAccessExtras
             projectId={projectId}
             projectType={scope.projectType}
+            roles={membership.roles}
             target={{ type: "identity", identityId: identity.id, name: identity.name }}
           />
         </Stack>

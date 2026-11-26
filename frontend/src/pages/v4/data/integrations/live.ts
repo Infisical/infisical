@@ -29,6 +29,7 @@ import {
   fetchSlackReinstallUrl,
   useGetMicrosoftTeamsClientId,
   useGetMicrosoftTeamsIntegrationById,
+  useGetSlackIntegrationAlertCount,
   useGetSlackIntegrationById,
   useGetWorkflowIntegrations
 } from "@app/hooks/api/workflowIntegrations/queries";
@@ -45,6 +46,7 @@ export const integrationsLive: IntegrationsAdapter = {
   useGitHubApps: useListGitHubApps,
   useWorkflowIntegrations: useGetWorkflowIntegrations,
   useSlackIntegration: useGetSlackIntegrationById,
+  useSlackIntegrationAlertCount: useGetSlackIntegrationAlertCount,
   useMicrosoftTeamsIntegration: useGetMicrosoftTeamsIntegrationById,
   useMicrosoftTeamsClientId: useGetMicrosoftTeamsClientId,
   fetchSlackInstallUrl,

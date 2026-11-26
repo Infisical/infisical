@@ -1,0 +1,24 @@
+// sandbox_image.go
+package main
+
+import (
+	"context"
+
+	modal "github.com/modal-labs/modal-client/go"
+)
+
+func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image, error) {
+	app, err := mc.Apps.FromName(ctx, "agent-vault-sandboxes", &modal.AppFromNameParams{CreateIfMissing: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	image, err := mc.Images.FromRegistry("node:24-bookworm-slim", nil).DockerfileCommands([]string{
+		"RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*",
+		"RUN npm install -g @infisical/cli @anthropic-ai/claude-code",
+		"RUN useradd --create-home --uid 2000 agent",
+	}, nil).Build(ctx, app, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return app, image, nil
+}

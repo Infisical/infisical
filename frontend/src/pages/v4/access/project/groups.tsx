@@ -28,6 +28,7 @@ import { formatDate } from "../roles";
 import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
+import { useProjectPlanGates } from "./plan-gates";
 import { accessLabel, accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 
@@ -37,6 +38,7 @@ export const ProjectGroupsTab = () => {
   const { projectId } = scope;
   const { permission } = useProjectPermission(projectId);
   const groups = useV4Adapter("access").useProjectGroups(projectId, scope.projectType);
+  const gates = useProjectPlanGates();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<TGroupMembership>();
   const canCreate = permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Groups);
@@ -124,7 +126,9 @@ export const ProjectGroupsTab = () => {
               variant="accent"
               icon="plus"
               disabled={!canCreate}
-              onClick={() => setAdding(true)}
+              onClick={() => {
+                if (!gates.groupsBlocked()) setAdding(true);
+              }}
             >
               {`Add group to ${accessNoun(scope.projectType)}`}
             </Button>
@@ -169,6 +173,7 @@ export const ProjectGroupsTab = () => {
         group={removing?.group}
         onOpenChange={(open) => !open && setRemoving(undefined)}
       />
+      {gates.upgradeGate}
     </Stack>
   );
 };

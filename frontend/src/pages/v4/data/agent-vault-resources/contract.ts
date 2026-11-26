@@ -48,7 +48,10 @@ import type {
   useListAgentVaultVariables,
   useListAvailableAgentVaultAccessBundleMembers
 } from "@app/hooks/api/agentVault/queries";
-import type { TAgentVaultProxyCa } from "@app/hooks/api/agentVault/types";
+import type {
+  TAgentVaultProxyCa,
+  TAgentVaultSkillVersionWithFiles
+} from "@app/hooks/api/agentVault/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 
@@ -112,6 +115,11 @@ export type AgentVaultResourcesAdapter = {
   useSkill: QueryOf<typeof useGetAgentVaultSkill>;
   useSkillVersions: QueryOf<typeof useListAgentVaultSkillVersions>;
   useSkillVersion: QueryOf<typeof useGetAgentVaultSkillVersion>;
+  useFetchSkillVersion: (
+    projectId: string
+  ) => ReturnType<
+    V4Mutation<{ skillId: string; version: number }, TAgentVaultSkillVersionWithFiles>
+  >;
   useAccessBundleSkills: QueryOf<typeof useListAgentVaultAccessBundleSkills>;
   useCreateSkill: ProjectMutationOf<typeof useCreateAgentVaultSkill>;
   useUpdateSkill: ProjectMutationOf<typeof useUpdateAgentVaultSkill>;

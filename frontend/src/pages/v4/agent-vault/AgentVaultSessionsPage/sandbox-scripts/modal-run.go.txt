@@ -1,0 +1,149 @@
+// run_agent.go
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"time"
+
+	infisical "github.com/infisical/go-sdk"
+	modal "github.com/modal-labs/modal-client/go"
+)
+
+const (
+	infisicalURL = "https://app.infisical.com"
+	projectID    = "<project-id>"
+	accessBundle = "<access-bundle-name>"
+)
+
+const waitForProxy = "for i in $(seq 60); do " +
+	"curl -fs http://agent-proxy:17323/_agent-vault/ca > /dev/null && exit 0; " +
+	"sleep 0.5; done; exit 1"
+
+// Reads the session token from the first line of stdin, and leaves the rest of
+// stdin, the prompt, for Claude Code.
+const startAgent = `
+IFS= read -r INFISICAL_AGENT_VAULT_SESSION_TOKEN
+export INFISICAL_AGENT_VAULT_SESSION_TOKEN
+exec infisical agent-vault run --telemetry=false --proxy agent-proxy:17323 \
+  -- claude -p --permission-mode bypassPermissions
+`
+
+var agentEnv = map[string]string{
+	// Claude Code won't start without a key; the proxy replaces this one.
+	"ANTHROPIC_API_KEY": "agent-vault",
+	// Makes the fetch built into Node.js send requests through the proxy.
+	"NODE_USE_ENV_PROXY": "1",
+	// Skips Claude Code's update checks and telemetry, which fail without internet access.
+	"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+	"DISABLE_AUTOUPDATER":                      "1",
+}
+
+func runAgent(ctx context.Context, mc *modal.Client, app *modal.App, image *modal.Image, prompt string) (output string, err error) {
+	// Cancelling the context stops the Infisical client's token refresh when the run ends.
+	clientCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// The machine identity's credentials stay here and never enter the sandbox.
+	infisicalClient := infisical.NewInfisicalClient(clientCtx, infisical.Config{SiteUrl: infisicalURL})
+	_, err = infisicalClient.Auth().UniversalAuthLogin(
+		os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_ID"),
+		os.Getenv("INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET"),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	// One session per run. The ttl outlasts the sandbox's 15-minute timeout, so
+	// the agent can't lose access mid-run.
+	session, err := infisicalClient.AgentVault().Sessions().Create(infisical.AgentVaultCreateSessionOptions{
+		ProjectID:    projectID,
+		AccessBundle: accessBundle,
+		TTL:          "20m",
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var sandbox *modal.Sandbox
+	// Deferred calls run last-in, first-out, so the session is revoked first
+	// and ends even if terminating fails.
+	defer func() {
+		if sandbox != nil {
+			_, terminateErr := sandbox.Terminate(context.Background(), nil)
+			err = errors.Join(err, terminateErr)
+		}
+	}()
+	defer func() {
+		_, revokeErr := infisicalClient.AgentVault().Sessions().Revoke(session.ID)
+		err = errors.Join(err, revokeErr)
+	}()
+
+	sandbox, err = mc.Sandboxes.Create(ctx, app, image, &modal.SandboxCreateParams{
+		Command: []string{"sleep", "infinity"},
+		Timeout: 15 * time.Minute,
+		// An empty allowlist blocks the internet but not the sidecar.
+		OutboundCIDRAllowlist: &modal.Allowlist{},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	proxySecret, err := mc.Secrets.FromName(ctx, "agent-vault-proxy", nil)
+	if err != nil {
+		return "", err
+	}
+	// The agent reaches the proxy at agent-proxy:17323. Nothing outside the
+	// sandbox can reach it.
+	proxy, err := sandbox.ExperimentalSidecars.Create(ctx, "agent-proxy", image, &modal.SidecarCreateParams{
+		// If the proxy exits, the sidecar stays up so its log can still be read.
+		Command: []string{"sh", "-c", "infisical agent-vault proxy > /tmp/proxy.log 2>&1 || sleep 600"},
+		Secrets: []*modal.Secret{proxySecret},
+	})
+	if err != nil {
+		return "", err
+	}
+	// The proxy serves only after it has loaded its settings from Infisical.
+	wait, err := sandbox.Exec(ctx, []string{"sh", "-c", waitForProxy}, nil)
+	if err != nil {
+		return "", err
+	}
+	if code, err := wait.Wait(ctx, nil); err != nil || code != 0 {
+		log, _ := proxy.Filesystem.ReadText(ctx, "/tmp/proxy.log", nil)
+		return "", fmt.Errorf("the Agent Vault proxy didn't start: %v\n%s", err, log)
+	}
+
+	// Claude Code won't skip its permission prompts as root, which is how
+	// Modal runs commands.
+	agent, err := sandbox.Exec(ctx, []string{"runuser", "-u", "agent", "--", "sh", "-c", startAgent}, &modal.SandboxExecParams{
+		Env:     agentEnv,
+		Workdir: "/home/agent",
+	})
+	if err != nil {
+		return "", err
+	}
+	// Modal shows each command's arguments in its dashboard, so the token
+	// and the prompt go on stdin instead.
+	if _, err := io.WriteString(agent.Stdin, session.Token+"\n"+prompt); err != nil {
+		return "", err
+	}
+	if err := agent.Stdin.Close(); err != nil {
+		return "", err
+	}
+	stdout, err := io.ReadAll(agent.Stdout)
+	if err != nil {
+		return "", err
+	}
+	code, err := agent.Wait(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	if code != 0 {
+		stderr, _ := io.ReadAll(agent.Stderr)
+		return "", fmt.Errorf("the agent failed with exit code %d:\n%s", code, stderr)
+	}
+	return string(stdout), nil
+}

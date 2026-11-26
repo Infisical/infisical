@@ -51,7 +51,7 @@ const seededOptions: { app: AppConnection; methods: string[]; [key: string]: unk
     oauthClientId: "infisical-gitlab-demo"
   },
   { app: AppConnection.Vercel, methods: [VercelConnectionMethod.ApiToken] },
-  { app: AppConnection.GCP, methods: [GcpConnectionMethod.ServiceAccountImpersonation] },
+  { app: AppConnection.GCP, methods: Object.values(GcpConnectionMethod) },
   {
     app: AppConnection.AzureKeyVault,
     methods: Object.values(AzureKeyVaultConnectionMethod)
@@ -108,10 +108,23 @@ export const deleteDemoGitHubApp = (id: string) => {
 };
 
 /** What the server sends back for a managed identity connection; the issuer follows SITE_URL. */
-const federatedCredential = (connectionId: string) => ({
+const federatedCredential = (connectionId: string, audience = "api://AzureADTokenExchange") => ({
   issuerUrl: `${window.location.origin}/api/v1/oidc-issuer/organizations/${V4_DEMO_ORG_ID}`,
   subjectIdentifier: `app-connection:${connectionId}`,
-  audience: "api://AzureADTokenExchange"
+  audience
+});
+
+const gcpAudience = (workloadIdentityProvider: unknown) =>
+  `https://iam.googleapis.com/${String(workloadIdentityProvider)}`;
+
+const gcpWorkloadIdentity = (
+  connectionId: string,
+  workloadIdentityProvider: string,
+  serviceAccountEmail?: string
+) => ({
+  workloadIdentityProvider,
+  ...(serviceAccountEmail && { serviceAccountEmail }),
+  federatedCredential: federatedCredential(connectionId, gcpAudience(workloadIdentityProvider))
 });
 
 /** The API never returns secrets, so the fixtures keep only what a read would show. */
@@ -188,6 +201,35 @@ const store = createFixtureStore<TAppConnection[]>([
     "gcp-platform-core",
     GcpConnectionMethod.ServiceAccountImpersonation,
     "2026-03-19T12:10:00Z"
+  ),
+  connection(
+    "7c1e3a5b-9d2f-4a6c-8e0b-2d4f6a8c0e31",
+    AppConnection.GCP,
+    "gcp-secret-manager-wif",
+    GcpConnectionMethod.WorkloadIdentityFederation,
+    "2026-11-02T09:40:00Z",
+    {
+      description: "Keyless access to Secret Manager in the platform project",
+      credentials: gcpWorkloadIdentity(
+        "7c1e3a5b-9d2f-4a6c-8e0b-2d4f6a8c0e31",
+        "projects/482915063127/locations/global/workloadIdentityPools/infisical-3fa29c1d/providers/infisical-8b71e0f4",
+        "infisical-sync@acme-platform-prod.iam.gserviceaccount.com"
+      )
+    } as Partial<TAppConnection>
+  ),
+  connection(
+    "8d2f4b6c-0e3a-4b7d-9f1c-3e5a7b9d1f42",
+    AppConnection.GCP,
+    "payments-gcp-secret-manager-workload-identity-europe-west4",
+    GcpConnectionMethod.WorkloadIdentityFederation,
+    "2026-11-20T15:25:00Z",
+    {
+      credentials: gcpWorkloadIdentity(
+        "8d2f4b6c-0e3a-4b7d-9f1c-3e5a7b9d1f42",
+        "projects/90817263544019/locations/global/workloadIdentityPools/payments-federation-pool-eu/providers/payments-oidc-provider-eu"
+      ),
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
   ),
   connection(
     "f4a6c8e0-2b4d-4f6a-9c8e-0a2b4c6d8e15",
@@ -502,6 +544,14 @@ export const integrationsDemo: IntegrationsAdapter = {
         ...readableCredentials(input.credentials as Record<string, unknown>),
         ...(input.method === AzureKeyVaultConnectionMethod.ManagedIdentity && {
           federatedCredential: federatedCredential(id)
+        }),
+        ...(input.method === GcpConnectionMethod.WorkloadIdentityFederation && {
+          federatedCredential: federatedCredential(
+            id,
+            gcpAudience(
+              (input.credentials as { workloadIdentityProvider: string }).workloadIdentityProvider
+            )
+          )
         })
       },
       ...(isAutoRotationEnabled &&
@@ -531,7 +581,16 @@ export const integrationsDemo: IntegrationsAdapter = {
                 ...entry,
                 ...changes,
                 credentials: credentials
-                  ? { ...entry.credentials, ...credentials }
+                  ? {
+                      ...entry.credentials,
+                      ...credentials,
+                      ...(entry.method === GcpConnectionMethod.WorkloadIdentityFederation && {
+                        federatedCredential: federatedCredential(
+                          entry.id,
+                          gcpAudience(credentials.workloadIdentityProvider)
+                        )
+                      })
+                    }
                   : entry.credentials,
                 ...(schedule && {
                   rotation: {
@@ -584,6 +643,11 @@ export const integrationsDemo: IntegrationsAdapter = {
       error: null
     };
   },
+  useSlackIntegrationAlertCount: (id) => ({
+    data: id ? 2 : undefined,
+    isPending: false,
+    error: null
+  }),
   useMicrosoftTeamsIntegration: (id) => {
     const entry = findWorkflow(id);
     return {

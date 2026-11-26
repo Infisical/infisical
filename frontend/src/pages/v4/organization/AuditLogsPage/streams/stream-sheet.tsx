@@ -51,6 +51,7 @@ import { useV4Adapter } from "../../../data/adapters";
 import {
   DATADOG_ENDPOINTS,
   type FormProvider as StreamProvider,
+  hasPamSessionActivity,
   hasStreamMode,
   PRODUCT_LABELS,
   PRODUCTS,
@@ -406,6 +407,36 @@ const ProductsField = () => {
   );
 };
 
+const PamSessionActivityField = () => {
+  const { control } = useFormContext<StreamFormValues>();
+  return (
+    <Controller
+      name="pamSessionActivity"
+      control={control}
+      render={({ field }) => (
+        <Stack gap={8}>
+          <Switch
+            layout="row"
+            label="Include PAM Session Activity"
+            description="Also send each command, query and request run in a PAM session (Windows sessions aren't included)."
+            checked={Boolean(field.value)}
+            onChange={(checked) => field.onChange(checked ? { includeOutput: false } : null)}
+          />
+          {field.value && (
+            <Switch
+              layout="row"
+              label="Include Output"
+              description="Also send command output, query results and request and response bodies, which can contain sensitive data."
+              checked={field.value.includeOutput}
+              onChange={(includeOutput) => field.onChange({ includeOutput })}
+            />
+          )}
+        </Stack>
+      )}
+    />
+  );
+};
+
 const StreamForm = ({
   provider,
   stream,
@@ -442,7 +473,9 @@ const StreamForm = ({
 
   const submit = async (values: StreamFormValues) => {
     const credentials = values.credentials as TCreateAuditLogStreamDTO["credentials"];
-    const filters = values.products.length ? { products: values.products } : null;
+    const products = values.products.length ? values.products : undefined;
+    const pamSessionActivity = values.pamSessionActivity ?? undefined;
+    const filters = products || pamSessionActivity ? { products, pamSessionActivity } : null;
     try {
       if (stream)
         await update.mutateAsync({
@@ -465,11 +498,10 @@ const StreamForm = ({
     <SheetSections
       header={
         <SheetHeader>
-          <SheetTitle>
+          <SheetTitle badges={<DocumentationLink href={PROVIDERS_DOCS} subject="log streams" />}>
             <Inline gap={8} align="center" wrap={false}>
               <ProviderMedia provider={provider} size="lg" />
               {stream ? `Edit ${name} log stream` : `Add ${name} log stream`}
-              <DocumentationLink href={PROVIDERS_DOCS} subject="log streams" />
             </Inline>
           </SheetTitle>
         </SheetHeader>
@@ -513,6 +545,7 @@ const StreamForm = ({
                 />
               )}
               <ProductsField />
+              {hasPamSessionActivity(provider) && <PamSessionActivityField />}
             </Stack>
           </form>
         </FormProvider>

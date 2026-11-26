@@ -27,7 +27,7 @@ export const PRODUCTS: Product[] = [
   { type: ProjectType.KMS, isSingleton: false },
   { type: ProjectType.SecretScanning, isSingleton: false },
   { type: ProjectType.PAM, isSingleton: true, roles: PAM_PRODUCT_ROLE_OPTIONS },
-  { type: ProjectType.AgentVault, isSingleton: true, roles: AGENT_VAULT_PRODUCT_ROLE_OPTIONS }
+  { type: ProjectType.AgentVault, isSingleton: false, roles: AGENT_VAULT_PRODUCT_ROLE_OPTIONS }
 ];
 
 export const builtInProjectRoles = (type?: ProjectType): RoleOption[] => [

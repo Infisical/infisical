@@ -36,11 +36,8 @@ import {
 } from "../components/certificate";
 import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
 import { filterParams, inventoryFields } from "../InventoryPage/inventory-filters";
-import {
-  type InventoryView,
-  InventoryViewsMenu,
-  type InventoryViewScope
-} from "../InventoryPage/inventory-views";
+import { type InventoryView, InventoryViewsMenu } from "../InventoryPage/inventory-views";
+import { ExportCsvButton } from "../InventoryPage/InventoryPage";
 import { appCan, plural } from "./shared";
 
 const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
@@ -67,7 +64,6 @@ export const CertificatesTab = ({
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
-  const [viewScope, setViewScope] = useState<InventoryViewScope>();
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
     columnId: "expires",
     direction: "asc"
@@ -93,7 +89,6 @@ export const CertificatesTab = ({
     search: query.trim() || undefined,
     ...filterParams(filters),
     includeDeleted: includeDeleted || undefined,
-    metadataFilter: viewScope?.metadata,
     sortBy: sort.columnId === "issued" ? "notBefore" : "notAfter",
     sortOrder: sort.direction
   });
@@ -180,14 +175,12 @@ export const CertificatesTab = ({
     setFilters([]);
     setIncludeDeleted(false);
     setActiveViewId(null);
-    setViewScope(undefined);
     setPage(1);
   };
   const applyView = (viewId: string | null, view: InventoryView) => {
     setActiveViewId(viewId);
     setFilters(view.filters);
     setIncludeDeleted(view.includeDeleted);
-    setViewScope(view.scope);
     setPage(1);
   };
 
@@ -203,7 +196,6 @@ export const CertificatesTab = ({
         onChange={(next) => {
           setFilters(next);
           setActiveViewId(null);
-          setViewScope(undefined);
           setPage(1);
         }}
         search={
@@ -226,9 +218,10 @@ export const CertificatesTab = ({
               applicationId={application.id}
               applicationPermission={access.permission}
               activeViewId={activeViewId}
-              current={{ filters, includeDeleted, scope: viewScope }}
+              current={{ filters, includeDeleted }}
               onSelect={applyView}
             />
+            <ExportCsvButton rows={rows} />
             <Button
               variant="outline"
               icon="upload"

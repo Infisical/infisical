@@ -55,6 +55,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
+import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
 import { accessLinks } from "../links";
@@ -62,7 +63,14 @@ import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { formatDateTime, orgRoleName, orgRoleSlug, roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
-import { EditDetailsButton, Gate, ListToolbar, usePagedList, RESTRICTED } from "../ui";
+import {
+  AccessRestricted,
+  EditDetailsButton,
+  Gate,
+  ListToolbar,
+  usePagedList,
+  RESTRICTED
+} from "../ui";
 import { useCustomRoleGate } from "./custom-role-gate";
 import { Dash, MetadataBadges, VerifiedMark } from "./detail-parts";
 import { type InviteLink, InviteUsersSheet } from "./invite-users-sheet";
@@ -298,7 +306,8 @@ export const OrgMemberDetail = () => {
   const orgId = useOrgId();
   const go = useGo();
   const isSelf = useIsSelf();
-  const { permission } = useOrgPermission();
+  const isSubOrg = useV4Session().organization.isSubOrganization;
+  const { permission, isPending: permissionPending } = useOrgPermission();
   const { data: membership, isPending } = access.useOrgMembership(orgId, membershipId);
   const { data: roles = [] } = access.useOrgRoles(orgId);
   const update = access.useUpdateOrgMembership();
@@ -311,7 +320,9 @@ export const OrgMemberDetail = () => {
   const [inviteLinks, setInviteLinks] = useState<readonly InviteLink[]>();
   const backHref = accessLinks.org(orgId, OrgAccessControlTabSections.Member);
   const back = () => go(backHref);
-  if (isPending) return <Loader size="page" label="Loading user" />;
+  if (permissionPending || isPending) return <Loader size="page" label="Loading user" />;
+  if (!permission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member))
+    return <AccessRestricted requirement="read Member" />;
   if (!membership)
     return (
       <EmptyState
@@ -487,6 +498,7 @@ export const OrgMemberDetail = () => {
                   ]}
                 />
                 {membership.isActive &&
+                  !isSubOrg &&
                   (membership.status === "invited" || membership.status === "verified") && (
                     <Gate allowed={canCreate}>
                       <Button
@@ -511,6 +523,7 @@ export const OrgMemberDetail = () => {
               username={user.username}
               canEdit={canEdit}
               canAdd={!self}
+              addAllowed
             />
             <UserGroupsSection username={user.username} />
             <MemberAuditLogs userId={user.id} />

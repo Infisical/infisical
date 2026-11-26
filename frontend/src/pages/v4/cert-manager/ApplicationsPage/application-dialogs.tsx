@@ -59,8 +59,11 @@ export const useProfileCreation = (onCreated: (profileId: string) => void) => {
     canCreate,
     comboboxProps: canCreate
       ? {
-          onCreate: (next: string) => setQuery(next),
-          createLabel: (next: string) => `Create profile ${next}`
+          creation: {
+            mode: "action" as const,
+            label: "Create profile",
+            onSelect: ({ query: next }: { query: string }) => setQuery(next)
+          }
         }
       : {},
     sheet:

@@ -31,12 +31,14 @@ import {
   assertFolderMoveAllowed,
   assertFolderRenameAllowed,
   assertFolderSubtreeDeleteAllowed,
+  assertNoDirectImportEnteringEnforcedPath,
   buildFolderPath,
   buildToAbsPath,
   canActorReadBlock,
   checkFolderHasRbacPolicies,
   checkFolderMoveBlock,
   checkFolderMovePolicyBlock,
+  findDirectImportEnteringEnforcedPath,
   findFoldersWithContent,
   findPolicyProtectedFolder,
   resolveBatchFolderEntries,
@@ -129,7 +131,10 @@ type TSecretFolderServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports" | "findImportByFolderIds">;
+  secretImportDAL: Pick<
+    TSecretImportDALFactory,
+    "findFolderIdsWithImports" | "findImportByFolderIds" | "findFolderIdsWithDirectSameProjectImports"
+  >;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
@@ -469,6 +474,27 @@ export const secretFolderServiceFactory = ({
       tx
     );
     assertFolderRenameAllowed(destination, "destination", permission);
+
+    const directImportFolderIds = await secretImportDAL.findFolderIdsWithDirectSameProjectImports(
+      subtreeIds,
+      projectId,
+      tx
+    );
+    const enforcedImportDestination = await findDirectImportEnteringEnforcedPath(
+      {
+        folders: subtree.map((folder) => ({
+          id: folder.id,
+          path: toNewPath(folder.path),
+          contentPath: toOldPath(folder.path)
+        })),
+        directImportFolderIds: new Set(directImportFolderIds),
+        projectId,
+        environment
+      },
+      { secretChangePolicyService },
+      tx
+    );
+    assertNoDirectImportEnteringEnforcedPath(enforcedImportDestination, permission);
   };
 
   const updateManyFolders = async ({

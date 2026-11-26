@@ -22,7 +22,7 @@ import type {
 
 import { failed } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
-import { overviewLink, plural } from "./insights.utils";
+import { overviewLink, plural, updatesIn } from "./insights.utils";
 
 const DuplicateGroups = ({
   orgId,
@@ -192,5 +192,13 @@ export const DuplicatedSecretsCard = ({
     body = <EmptyState size="sm" icon="check-c" title="No duplicated secrets found" />;
   else body = <DuplicateGroups orgId={orgId} projectId={projectId} groups={groups} />;
 
-  return <Card title="Duplicated Secrets">{body}</Card>;
+  const refresh = updatesIn(data?.remainingTtl);
+  return (
+    <Card
+      title="Duplicated Secrets"
+      badges={refresh && blindIndexEnabled ? <Badge tone="soft">{refresh}</Badge> : undefined}
+    >
+      {body}
+    </Card>
+  );
 };

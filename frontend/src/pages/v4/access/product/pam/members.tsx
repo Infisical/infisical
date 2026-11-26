@@ -21,8 +21,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Stack } from "@infisical/cipher/ui/layout";
-import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useSearch } from "@tanstack/react-router";
 import { UserXIcon } from "lucide-react";
@@ -167,7 +166,6 @@ const AddMemberDialog = ({
 };
 
 export const PamMembersTab = () => {
-  const go = useGo();
   const scope = useProjectScope();
   const { projectId } = scope;
   const pam = useV4Adapter("pam");
@@ -229,17 +227,16 @@ export const PamMembersTab = () => {
       sortable: true,
       grow: true,
       render: (member) => (
-        <RowLink
-          link={go.link(accessLinks.projectMember(scope, member.id))}
-          title={displayName(member) ?? undefined}
-        >
-          {displayName(member) ?? <Muted>-</Muted>}
+        <Inline gap={8} align="center">
+          <span title={displayName(member) ?? undefined}>
+            {displayName(member) ?? <Muted>-</Muted>}
+          </span>
           {member.user.isOrgMembershipPending && (
             <Tooltip content="Access begins once they accept their organization invitation.">
               <Badge tone="outline">Pending invitation</Badge>
             </Tooltip>
           )}
-        </RowLink>
+        </Inline>
       )
     },
     {

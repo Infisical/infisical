@@ -24,14 +24,19 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { WrenchIcon } from "lucide-react";
 
+import { CustomRolesUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
+import { FolderAccessControlsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { isCustomProjectRole } from "@app/helpers/roles";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { UpgradeGate } from "../../license";
+import { useBillingSubscription } from "../../license/product-icon";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
@@ -59,12 +64,22 @@ export const ProjectRolesTab = () => {
     key: 0
   });
   const [deleting, setDeleting] = useState<ProjectRoleRow>();
+  const [upgrade, setUpgrade] = useState<"rbac" | "folder-access">();
+  const subscription = useBillingSubscription();
+  const isCertManager = scope.projectType === ProjectType.CertificateManager;
+  const canOfferFolderAccess =
+    scope.projectType === ProjectType.SecretManager && !subscription?.secretsFolderRbac;
   const canCreate = permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
   const canEdit = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
   const canDelete = permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
-  const openSheet = (mode: RoleSheetMode) =>
+  const openSheet = (mode: RoleSheetMode) => {
+    if (subscription && !subscription.rbac) {
+      setUpgrade("rbac");
+      return;
+    }
     setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
+  };
   const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
   const list = usePagedList<ProjectRoleRow>({
@@ -129,14 +144,16 @@ export const ProjectRolesTab = () => {
   ];
 
   const rowActions: DataTableRowActions<ProjectRoleRow> = {
-    inline: [
-      {
-        label: "Duplicate role",
-        icon: "copy",
-        disabledReason: () => (canCreate ? undefined : RESTRICTED),
-        onSelect: (role) => openSheet({ kind: "duplicate", source: role })
-      }
-    ],
+    inline: isCertManager
+      ? []
+      : [
+          {
+            label: "Duplicate role",
+            icon: "copy",
+            disabledReason: () => (canCreate ? undefined : RESTRICTED),
+            onSelect: (role) => openSheet({ kind: "duplicate", source: role })
+          }
+        ],
     renderMenu: (role) => {
       const custom = isCustomProjectRole(role.slug);
       return (
@@ -184,16 +201,18 @@ export const ProjectRolesTab = () => {
           />
         }
         actions={
-          <Gate allowed={canCreate}>
-            <Button
-              variant="accent"
-              icon="plus"
-              disabled={!canCreate}
-              onClick={() => openSheet({ kind: "create" })}
-            >
-              {`Add ${accessLabel(scope.projectType, "role").toLowerCase()}`}
-            </Button>
-          </Gate>
+          !isCertManager && (
+            <Gate allowed={canCreate}>
+              <Button
+                variant="accent"
+                icon="plus"
+                disabled={!canCreate}
+                onClick={() => openSheet({ kind: "create" })}
+              >
+                {`Add ${accessLabel(scope.projectType, "role").toLowerCase()}`}
+              </Button>
+            </Gate>
+          )
         }
       />
       <DataTable
@@ -231,6 +250,29 @@ export const ProjectRolesTab = () => {
           onOpenChange={(open) => setSheet((current) => ({ ...current, open }))}
         />
       )}
+      <UpgradeGate
+        paywallKey="project.role"
+        isOpen={upgrade === "rbac"}
+        onOpenChange={(open) => !open && setUpgrade(undefined)}
+        intent={{ ...CustomRolesUpgradeIntent, isEnterpriseFeature: false }}
+        alternative={
+          canOfferFolderAccess
+            ? {
+                title: "Only need folder-level access?",
+                description:
+                  "Folder access controls grant users and machine identities access to specific environments and folders without a custom role. They're included with Secrets Management Pro.",
+                actionLabel: "View Pro plan",
+                onSelect: () => setUpgrade("folder-access")
+              }
+            : undefined
+        }
+      />
+      <UpgradeGate
+        paywallKey="project.role.folder-access"
+        isOpen={upgrade === "folder-access"}
+        onOpenChange={(open) => !open && setUpgrade(undefined)}
+        intent={FolderAccessControlsUpgradeIntent}
+      />
       <AlertDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}

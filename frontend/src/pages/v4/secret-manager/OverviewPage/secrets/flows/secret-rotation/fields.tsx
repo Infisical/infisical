@@ -67,6 +67,7 @@ export function InfoTip({ content }: { content: ReactNode }) {
 export function RotationField({
   label,
   tooltip,
+  help,
   optional,
   description,
   error,
@@ -74,6 +75,7 @@ export function RotationField({
 }: {
   label: ReactNode;
   tooltip?: ReactNode;
+  help?: ReactNode;
   optional?: boolean;
   description?: ReactNode;
   error?: string;
@@ -96,6 +98,7 @@ export function RotationField({
           {optional && " (optional)"}
         </FieldLabel>
         {tooltip && <InfoTip content={tooltip} />}
+        {help}
       </Inline>
       {control}
       {error ? (

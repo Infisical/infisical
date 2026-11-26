@@ -139,6 +139,10 @@ import type {
   useListProjectIdentityMemberships
 } from "@app/hooks/api/projectIdentityMembership/queries";
 import type {
+  TAvailableProjectIdentities,
+  TListAvailableProjectIdentitiesDTO
+} from "@app/hooks/api/projectIdentityMembership/types";
+import type {
   useAddGroupToWorkspace,
   useDeleteGroupFromWorkspace,
   useUpdateGroupWorkspaceRole
@@ -329,7 +333,9 @@ export type AccessAdapter = {
     options?: { enabled?: boolean }
   ) => V4QueryResult<IdentityAuthTemplate[]>;
 
-  useOrgGroups: QueryOf<typeof useSearchOrganizationGroups>;
+  useOrgGroups: (
+    ...args: Parameters<typeof useSearchOrganizationGroups>
+  ) => ReturnType<QueryOf<typeof useSearchOrganizationGroups>> & { isFetching?: boolean };
   useGroup: QueryOf<typeof useGetGroupById>;
   useGroupMembers: QueryOf<typeof useListGroupMembers>;
   useGroupProjects: (groupId: string) => V4QueryResult<TGroupProject[]>;
@@ -349,6 +355,9 @@ export type AccessAdapter = {
   useProjectUsers: QueryOf<typeof useGetWorkspaceUsers>;
   useProjectUser: QueryOf<typeof useGetWorkspaceUserDetails>;
   useAvailableProjectUsers: QueryOf<typeof useGetAvailableProjectUsers>;
+  useAvailableProjectIdentities: (
+    params: TListAvailableProjectIdentitiesDTO
+  ) => V4QueryResult<TAvailableProjectIdentities>;
   useAddProjectUsers: MutationOf<typeof useAddUserToWsNonE2EE>;
   useUpdateProjectUserRoles: MutationOf<typeof useUpdateUserWorkspaceRole>;
   useRemoveProjectUsers: MutationOf<typeof useDeleteUserFromWorkspace>;

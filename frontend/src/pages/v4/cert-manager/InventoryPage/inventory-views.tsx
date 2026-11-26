@@ -52,14 +52,12 @@ import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { useV4Session } from "../../data/session/contract";
+import { filterValueToMetadata, metadataToFilterValue } from "./inventory-filters";
 import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
-
-export type InventoryViewScope = Pick<TInventoryViewFilters, "applicationIds" | "metadata">;
 
 export type InventoryView = {
   filters: FilterBarFilter[];
   includeDeleted: boolean;
-  scope?: InventoryViewScope;
 };
 
 type ViewFilters = TInventoryViewFilters & Omit<TSystemViewFilters, "status">;
@@ -97,22 +95,13 @@ const viewToFilters = (viewId: string, view: ViewFilters): InventoryView => {
   add("caId", view.caIds ?? []);
   add("profileId", view.profileIds ?? []);
   add("source", listOf(view.source));
-  const scope: InventoryViewScope = {};
-  if (view.applicationIds?.length) scope.applicationIds = view.applicationIds;
-  if (view.metadata?.length) scope.metadata = view.metadata;
-  return {
-    filters,
-    includeDeleted: Boolean(view.includeDeleted),
-    scope: Object.keys(scope).length ? scope : undefined
-  };
+  add("applicationId", view.applicationIds ?? []);
+  if (view.metadata?.length) add("metadata", [metadataToFilterValue(view.metadata)]);
+  return { filters, includeDeleted: Boolean(view.includeDeleted) };
 };
 
-const filtersToView = ({
-  filters,
-  includeDeleted,
-  scope
-}: InventoryView): TInventoryViewFilters => {
-  const view: TInventoryViewFilters = { ...scope, ...(includeDeleted ? { includeDeleted } : {}) };
+const filtersToView = ({ filters, includeDeleted }: InventoryView): TInventoryViewFilters => {
+  const view: TInventoryViewFilters = includeDeleted ? { includeDeleted } : {};
   filters.forEach(({ field, operator, values }) => {
     if (!values.length) return;
     if (field === "notAfter" || field === "notBefore") {
@@ -127,6 +116,8 @@ const filtersToView = ({
     if (field === "source") view.source = values;
     if (field === "caId") view.caIds = values;
     if (field === "profileId") view.profileIds = values;
+    if (field === "applicationId") view.applicationIds = values;
+    if (field === "metadata") view.metadata = filterValueToMetadata(values[0]);
   });
   return view;
 };

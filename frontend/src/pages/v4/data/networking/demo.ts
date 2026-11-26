@@ -274,7 +274,8 @@ const enrollment = () => ({
 });
 
 export const networkingDemo: NetworkingAdapter = {
-  useSubscription: () => ok({ gateway: true, gatewayPool: true } as SubscriptionPlan),
+  useSubscription: () =>
+    ok({ gateway: true, gatewayPool: true, enterpriseAppConnections: true } as SubscriptionPlan),
   useGateways: () => ok(gateways.use()),
   useConnectedGateways: () => ok(gateways.use().filter((gw) => gw.heartbeat || gw.directHeartbeat)),
   useGateway: (gatewayId) => ok(gateways.use().find((gw) => gw.id === gatewayId)),
@@ -306,7 +307,10 @@ export const networkingDemo: NetworkingAdapter = {
       }))
     );
   }),
-  useTriggerGatewayHeartbeat: fixtureMutation((gatewayId: string) => {
+  useTriggerGatewayHeartbeat: fixtureMutation(async (gatewayId: string) => {
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 1500);
+    });
     const gw = gateways.get().find((entry) => entry.id === gatewayId);
     if (!gw || !healthy(gw)) throw new Error("Gateway is unreachable");
   }),

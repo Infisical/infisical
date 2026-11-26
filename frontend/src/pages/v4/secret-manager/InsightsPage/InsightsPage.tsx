@@ -7,6 +7,7 @@ import { useParams } from "@tanstack/react-router";
 import { SecretAccessInsightsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import {
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
@@ -22,6 +23,7 @@ import { AuditReportsCard } from "./audit-reports-card";
 import { AuthMethodCard } from "./auth-method-card";
 import { CalendarCard } from "./calendar-card";
 import { DuplicatedSecretsCard } from "./duplicated-secrets-card";
+import { plural } from "./insights.utils";
 import { InsightsSummaryCards } from "./summary-cards";
 import { UnusedAccessCard } from "./unused-access-card";
 
@@ -35,6 +37,7 @@ const Insights = () => {
   const { data: subscription, isPending: isSubscriptionPending } = insights.useSubscription(orgId);
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const hasInsightsPlan = Boolean(subscription?.secretAccessInsights);
+  const { data: counts } = insights.useCounts(projectId, { enabled: hasInsightsPlan });
 
   const handleUpgrade = useCallback(
     () =>
@@ -53,10 +56,30 @@ const Insights = () => {
   const environments = project?.environments ?? [];
   const environmentName = (slug: string) =>
     environments.find((environment) => environment.slug === slug)?.name ?? slug;
+  const canReadHoneyTokens = permission.can(
+    ProjectPermissionHoneyTokenActions.Read,
+    ProjectPermissionSub.HoneyTokens
+  );
+  const statParts =
+    hasInsightsPlan && counts
+      ? (
+          [
+            [counts.secretCount, "secret"],
+            [environments.length, "environment"],
+            [counts.folderCount, "folder"],
+            [counts.secretRotationCount, "rotation"],
+            [counts.dynamicSecretCount, "dynamic secret"],
+            [canReadHoneyTokens ? (counts.honeyTokenCount ?? 0) : 0, "honey token"]
+          ] satisfies [number, string][]
+        )
+          .filter(([count]) => count > 0)
+          .map(([count, noun]) => plural(count, noun))
+      : [];
+  const stats = statParts.length ? statParts.join(", ") : undefined;
 
   return (
     <Stack gap={24}>
-      <PageHeader title="Secret Insights" />
+      <PageHeader title="Secret Insights" description={stats} />
       {hasInsightsPlan ? (
         <>
           <InsightsSummaryCards orgId={orgId} projectId={projectId} />

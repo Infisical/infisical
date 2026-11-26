@@ -348,6 +348,51 @@ const identityAlerts = () => [
   })
 ];
 
+const ORG_SCOPED_RESOURCE_TYPES: string[] = [
+  AlertResourceType.IdentityAuthentication,
+  AlertResourceType.AuditLogStream,
+  AlertResourceType.Gateway
+];
+
+const orgAlerts = () => [
+  alert({
+    id: "8f3c1e2a-4b6d-4e9f-a7c0-5d2b8e1f9a61",
+    name: "Stream delivery failure alert",
+    eventType: AlertEventType.AuditLogStreamDeliveryFailed,
+    resourceType: AlertResourceType.AuditLogStream,
+    projectId: null,
+    condition: null,
+    channels: [
+      {
+        id: "c1a2b3c4-0301-4000-8000-000000000001",
+        name: "Email",
+        channelType: AlertChannelType.Email,
+        enabled: true,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.User, principalId: "u-sarah" }]
+      }
+    ]
+  }),
+  alert({
+    id: "9a4d2f3b-5c7e-4fa0-b8d1-6e3c9f2a0b72",
+    name: "Gateway offline alert",
+    eventType: AlertEventType.GatewayOffline,
+    resourceType: AlertResourceType.Gateway,
+    projectId: null,
+    condition: null,
+    channels: [
+      {
+        id: "c1a2b3c4-0302-4000-8000-000000000001",
+        name: "Email",
+        channelType: AlertChannelType.Email,
+        enabled: true,
+        config: {},
+        recipients: [{ principalType: AlertPrincipalType.User, principalId: "u-sarah" }]
+      }
+    ]
+  })
+];
+
 const alerts = createFixtureStore<TAlert[]>([
   alert({
     id: "a1f3c5e7-2b4d-4f6a-8c0e-1d3f5a7c9e01",
@@ -490,7 +535,8 @@ const alerts = createFixtureStore<TAlert[]>([
     ]
   }),
   ...identityAlerts(),
-  ...syncAlerts()
+  ...syncAlerts(),
+  ...orgAlerts()
 ]);
 
 const byId = (alertId: string) => alerts.get().find((entry) => entry.id === alertId) as TAlert;
@@ -520,9 +566,7 @@ export const alertsDemo: CertManagerAlertsAdapter = {
       resourceId: dto.resourceId ?? null,
       enabled: dto.enabled ?? true,
       projectId:
-        dto.resourceType === AlertResourceType.IdentityAuthentication
-          ? (dto.projectId ?? null)
-          : (dto.projectId ?? PROJECT_ID),
+        dto.projectId ?? (ORG_SCOPED_RESOURCE_TYPES.includes(dto.resourceType) ? null : PROJECT_ID),
       condition,
       channels: dto.channels.map((channel) => toStoredChannel(channel)),
       createdAt: now,

@@ -16,7 +16,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
-import { Icon } from "@infisical/cipher/ui/icon";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Input } from "@infisical/cipher/ui/input";
 import { Media } from "@infisical/cipher/ui/item";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
@@ -144,17 +144,6 @@ function ProviderLogo({ type, size = "md" }: { type: SecretRotation; size?: "sm"
   );
 }
 
-function DocsLink({ type }: { type: SecretRotation }) {
-  return (
-    <Button asChild variant="link" size="sm">
-      <a href={docsHref(type)} target="_blank" rel="noopener noreferrer">
-        Docs
-        <Icon name="external" />
-      </a>
-    </Button>
-  );
-}
-
 function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void }) {
   const items = Object.values(SecretRotation)
     .sort((first, second) =>
@@ -254,24 +243,16 @@ function ConfigurationFields({
         render={({ field, fieldState: { error } }) => (
           <RotationField
             label={connectionLabel}
-            error={error?.message ?? error?.root?.message}
-            description={
-              isUpdate ? (
-                "Cannot be updated"
-              ) : (
-                <>
-                  See{" "}
-                  <a
-                    href={`https://infisical.com/docs/integrations/app-connections/${field.value?.app ?? app}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    our docs
-                  </a>{" "}
-                  for the permissions this connection needs.
-                </>
+            help={
+              isUpdate ? undefined : (
+                <DocumentationLink
+                  href={`https://infisical.com/docs/integrations/app-connections/${field.value?.app ?? app}`}
+                  subject={`${connectionLabel} permissions`}
+                />
               )
             }
+            error={error?.message ?? error?.root?.message}
+            description={isUpdate ? "Cannot be updated" : undefined}
           >
             <Combobox
               label={connectionLabel}
@@ -714,10 +695,16 @@ export function SecretRotationFlow({
                 <Inline gap={12} wrap={false} align="start">
                   <ProviderLogo type={type} />
                   <Stack gap={4}>
-                    <Inline gap={8}>
-                      <SheetTitle>{SECRET_ROTATION_MAP[type].name} secret rotation</SheetTitle>
-                      <DocsLink type={type} />
-                    </Inline>
+                    <SheetTitle
+                      badges={
+                        <DocumentationLink
+                          href={docsHref(type)}
+                          subject={`${SECRET_ROTATION_MAP[type].name} secret rotation`}
+                        />
+                      }
+                    >
+                      {SECRET_ROTATION_MAP[type].name} secret rotation
+                    </SheetTitle>
                     {!isUpdate && (
                       <SheetDescription>
                         Infisical replaces these credentials on a schedule and writes each new value

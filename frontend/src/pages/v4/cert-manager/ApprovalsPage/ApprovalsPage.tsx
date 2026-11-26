@@ -25,6 +25,7 @@ export const ApprovalsPage = () => {
       <Stack gap={24}>
         <PageHeader
           title="Certificate approvals"
+          description="Approval policies hold certificate issuance and revocation until approvers sign off, like the registration authority review in a traditional PKI."
           tabs={
             <Tabs
               label="Certificate approval sections"

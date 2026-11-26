@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { subject } from "@casl/ability";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -19,11 +18,6 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionPkiSyncActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import { CaType, InternalCaType } from "@app/hooks/api/ca/enums";
 import type { TUnifiedCertificateAuthority } from "@app/hooks/api/ca/types";
@@ -36,15 +30,9 @@ import {
 import { CertKeyAlgorithm, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import type { TPkiInstallation } from "@app/hooks/api/pkiDiscovery/types";
-import {
-  getApplicationCertificateAccess,
-  getCertSourceLabel,
-  DELETED_CERTIFICATE_NO_ACTIONS
-} from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
+import { getCertSourceLabel } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
-import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
-import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
@@ -58,6 +46,7 @@ import {
   RevokeCertificateDialog,
   shortDate,
   type CertificateRevocation,
+  useCertificateReasons,
   useCertManagerProjectId,
   useRevocationApprovals
 } from "../components/certificate";
@@ -154,6 +143,12 @@ const DownloadMenu = ({
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => exporter.download(cert, "chain")}>
             {exportFormatLabel.chain}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabledReason={pkcs12Block}
+            onSelect={() => exporter.download(cert, "key")}
+          >
+            {exportFormatLabel.key}
           </DropdownMenuItem>
           <DropdownMenuItem disabledReason={pkcs12Block} onSelect={() => setExportingPkcs12(true)}>
             {exportFormatLabel.pkcs12}
@@ -265,56 +260,6 @@ const CertificateAside = ({ cert, orgId }: { cert: TCertificate; orgId: string }
     />
   </Card>
 );
-
-const reasonFor = (allowed: boolean, blocked?: string) =>
-  allowed ? undefined : (blocked ?? RESTRICTED);
-
-const useCertificateReasons = (
-  cert: TCertificate,
-  projectId: string,
-  blocks: ReturnType<typeof certificateBlocks>,
-  revocation: CertificateRevocation
-) => {
-  const { data: appAccess } = useV4Adapter("pkiApplications").useApplicationPermissions(
-    cert.applicationId ?? ""
-  );
-  const { permission } = useProjectPermission(projectId);
-  const access = cert.applicationId
-    ? getApplicationCertificateAccess({
-        applicationName: cert.applicationName ?? "this application",
-        permission: appAccess?.permission,
-        isRevocationApprovalRequired: revocation.isRevocationApprovalRequired
-      })
-    : undefined;
-  const certSubject = subject(ProjectPermissionSub.Certificates, {
-    commonName: cert.commonName,
-    altNames: cert.altNames?.split(",").map((name) => name.trim()),
-    serialNumber: cert.serialNumber,
-    friendlyName: cert.friendlyName,
-    metadata: cert.metadata
-  });
-  const canEdit =
-    access?.canEdit ?? permission.can(ProjectPermissionCertificateActions.Edit, certSubject);
-  const canDelete =
-    access?.canDelete ?? permission.can(ProjectPermissionCertificateActions.Delete, certSubject);
-  const canManageSyncs =
-    access?.canManagePkiSyncs ??
-    permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
-  const editReason = reasonFor(canEdit, access?.editBlockedReason);
-  return {
-    canDelete,
-    editReason,
-    renewReason: blocks.renew ?? reasonFor(access?.canRenew ?? canEdit, access?.renewBlockedReason),
-    autoRenewReason: blocks.autoRenew ?? editReason,
-    syncReason: blocks.sync ?? reasonFor(canManageSyncs, access?.managePkiSyncsBlockedReason),
-    revokeReason:
-      blocks.revoke ?? reasonFor(access?.canRevoke ?? canDelete, access?.revokeBlockedReason),
-    deleteReason: blocks.delete ?? reasonFor(canDelete, access?.deleteBlockedReason),
-    metadataReason: cert.deletedAt
-      ? DELETED_CERTIFICATE_NO_ACTIONS
-      : reasonFor(canEdit, access?.editMetadataBlockedReason)
-  };
-};
 
 const CertificateActionsMenu = ({
   cert,

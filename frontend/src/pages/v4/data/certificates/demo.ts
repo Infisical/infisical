@@ -1007,6 +1007,13 @@ export const certificatesDemo: CertificatesAdapter = {
       );
       return;
     }
+    if (format === "key") {
+      FileSaver.saveAs(
+        new Blob([`${demoPem(cert, "PRIVATE KEY")}\n`], { type: "application/x-pem-file" }),
+        `${fileName}-key.pem`
+      );
+      return;
+    }
     const chain = authorities.map((ca) => demoPem({ ...cert, commonName: ca.name }, "CERTIFICATE"));
     const body = [demoPem(cert, "CERTIFICATE"), ...(format === "chain" ? chain : [])].join("\n");
     FileSaver.saveAs(

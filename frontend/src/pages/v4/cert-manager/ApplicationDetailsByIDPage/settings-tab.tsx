@@ -100,6 +100,7 @@ const methodsOf = (profile: TPkiApplicationProfile) => {
   if (profile.estConfigId) methods.push("est");
   if (profile.acmeConfigId) methods.push("acme");
   if (profile.scepConfigId) methods.push("scep");
+  if (profile.microsoftAutoenrollmentConfigId) methods.push("microsoft-autoenrollment");
   return methods;
 };
 

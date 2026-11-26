@@ -32,7 +32,10 @@ export type OrgAdapter = {
   useProductStats: (orgId: string) => V4QueryResult<TOrgProductStats>;
   useUpdateOrganization: V4Mutation<UpdateOrgDTO, object>;
   useDeleteOrganization: V4Mutation<{ organizationId: string }>;
-  useRoles: (orgId: string) => V4QueryResult<Pick<TOrgRole, "id" | "name" | "slug">[]>;
+  useRoles: (
+    orgId: string,
+    enabled?: boolean
+  ) => V4QueryResult<Pick<TOrgRole, "id" | "name" | "slug">[]>;
   useIncidentContacts: (orgId: string) => V4QueryResult<IncidentContact[]>;
   useAddIncidentContact: V4Mutation<AddIncidentContactDTO, object>;
   useDeleteIncidentContact: V4Mutation<DeleteIncidentContactDTO, object>;

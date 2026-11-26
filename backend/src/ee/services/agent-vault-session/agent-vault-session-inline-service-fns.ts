@@ -64,7 +64,7 @@ import {
   TAgentVaultInlineSubstitutionSummary
 } from "./agent-vault-session-types";
 
-export const AGENT_VAULT_MAX_SESSION_INLINE_SERVICES = 20;
+export const AGENT_VAULT_MAX_SESSION_INLINE_SERVICES = 30;
 
 // An OAuth credential is stored as an OAuth variable's id (no sealed value), or as the connection of the tokens sent
 // with the session, whose tokens are sealed like any other credential.

@@ -13,6 +13,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -151,16 +152,8 @@ function EditHoneyTokenSheet({
       open={open}
       onRequestClose={() => onOpenChange(false)}
       media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
-      title={
-        <span className={styles.titleLink}>
-          Edit AWS honey token
-          <Button asChild variant="ghost" size="xs" iconRight="external">
-            <a href={HONEY_TOKEN_DOCS_URL} target="_blank" rel="noopener noreferrer">
-              Docs
-            </a>
-          </Button>
-        </span>
-      }
+      title="Edit AWS honey token"
+      badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
       steps={EDIT_STEPS.map((entry) => ({ title: entry.name }))}
       current={step}
       onStepClick={(index) => {

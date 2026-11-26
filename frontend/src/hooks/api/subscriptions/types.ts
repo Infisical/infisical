@@ -58,7 +58,6 @@ export type SubscriptionPlan = {
   secretRotation: boolean;
   tier: number;
   workspaceLimit: number;
-  workspacesUsed: number;
   environmentLimit: number;
   samlSSO: boolean;
   secretAccessInsights: boolean;

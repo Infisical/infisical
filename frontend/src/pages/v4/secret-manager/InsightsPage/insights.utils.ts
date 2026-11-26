@@ -17,6 +17,13 @@ export const fromNow = (date: string) => formatDistanceToNow(parseISO(date), { a
 export const plural = (count: number, noun: string, many = `${noun}s`) =>
   `${count.toLocaleString()} ${count === 1 ? noun : many}`;
 
+export const updatesIn = (remainingTtl?: number | null) => {
+  if (remainingTtl == null || remainingTtl < 0) return undefined;
+  if (remainingTtl < 60) return `Updates in ${plural(Math.max(1, remainingTtl), "second")}`;
+  if (remainingTtl < 3600) return `Updates in ${plural(Math.ceil(remainingTtl / 60), "minute")}`;
+  return `Updates in ${plural(Math.ceil(remainingTtl / 3600), "hour")}`;
+};
+
 export const AUDIT_REPORT_OPTIONS = [
   {
     type: AuditReportType.StaleSecrets,

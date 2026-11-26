@@ -30,7 +30,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Heading } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
@@ -178,14 +178,15 @@ const ScimTokenDialog = ({
         <DialogContent pending={isSubmitting} className="sm:max-w-3xl">
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader>
-              <DialogTitle>
-                <Inline gap={8} align="center">
-                  Manage SCIM credentials
+              <DialogTitle
+                badges={
                   <DocumentationLink
                     href="https://infisical.com/docs/documentation/platform/scim/overview"
                     subject="SCIM"
                   />
-                </Inline>
+                }
+              >
+                Manage SCIM credentials
               </DialogTitle>
               <DialogDescription>
                 Generate and manage the tokens your SCIM provider uses to authenticate.

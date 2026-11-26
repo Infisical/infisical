@@ -20,6 +20,7 @@ import { grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RoleBadges, RESTRICTED } from "../ui";
 import { type ProjectRoleOption, useGroupRoleAccess } from "./member-access";
+import { useProjectPlanGates } from "./plan-gates";
 import { useProjectScope } from "./scope";
 import {
   draftOf,
@@ -103,12 +104,14 @@ const GroupRolesForm = ({
   groupId,
   roles,
   catalog,
+  blocked,
   onClose
 }: {
   projectId: string;
   groupId: string;
   roles: readonly Grant[];
   catalog: readonly ProjectRoleOption[];
+  blocked: (slugs: readonly string[]) => boolean;
   onClose: () => void;
 }) => {
   const scope = useProjectScope();
@@ -128,13 +131,15 @@ const GroupRolesForm = ({
     const chosen = catalog
       .filter((role) => draft[role.slug]?.checked)
       .map((role) => draft[role.slug].grant);
+    const next = [...kept, ...chosen];
+    if (blocked(next.map((grant) => grant.role))) return;
     setPending(true);
     try {
       await updateRoles.mutateAsync({
         projectId,
         projectType: scope.projectType,
         groupId,
-        roles: toRolesDto([...kept, ...chosen])
+        roles: toRolesDto(next)
       });
       saved("Successfully updated group role");
       onClose();
@@ -216,6 +221,7 @@ export const GroupRoles = ({
   wrap?: boolean;
 }) => {
   const { assignable, canEdit } = useGroupRoleAccess(projectId, groupName);
+  const gates = useProjectPlanGates();
   const [open, setOpen] = useState(false);
   return (
     <span
@@ -248,10 +254,16 @@ export const GroupRoles = ({
             groupId={groupId}
             roles={roles}
             catalog={assignable}
+            blocked={(slugs) => {
+              if (!gates.customRolesBlocked(slugs, "project.group-roles")) return false;
+              setOpen(false);
+              return true;
+            }}
             onClose={() => setOpen(false)}
           />
         </PopoverContent>
       </Popover>
+      {gates.upgradeGate}
     </span>
   );
 };

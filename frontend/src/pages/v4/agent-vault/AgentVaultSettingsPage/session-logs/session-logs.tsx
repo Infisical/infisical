@@ -392,12 +392,11 @@ const SessionLogSettingsCard = ({
     <>
       <SettingsCard
         title={
-          <Inline gap={8} align="center">
-            Session logs
-            <DocumentationLink href={SESSION_LOGS_DOCS} subject="session logs" />
-            <Badge tone={isRecording ? "ok" : "outline"}>{isRecording ? "On" : "Off"}</Badge>
-          </Inline>
+          <>
+            Session logs <DocumentationLink href={SESSION_LOGS_DOCS} subject="session logs" />
+          </>
         }
+        badges={<Badge tone={isRecording ? "ok" : "outline"}>{isRecording ? "On" : "Off"}</Badge>}
         dirty={dirty}
         locked={
           canEditSettings ? undefined : "You don't have permission to change session log settings"

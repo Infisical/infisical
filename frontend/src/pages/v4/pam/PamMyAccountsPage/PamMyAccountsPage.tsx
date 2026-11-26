@@ -37,7 +37,6 @@ export const PamMyAccountsPage = () => {
           badges={<DocumentationLink href={PAM_ACCOUNTS_DOCS} subject="accounts" />}
         />
         <AccountList
-          orgId={orgId}
           label="My accounts"
           accounts={accounts}
           loading={isPending}

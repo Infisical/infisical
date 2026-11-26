@@ -19,10 +19,6 @@ export class FakeLicenseService implements TLicenseService {
 
   defaultPlan: TPlanFeatures = testFeatures();
 
-  fallbackOrgs = new Set<string>();
-
-  lastKnown = new Map<string, { plan: TPlanFeatures; fetchedAt: number }>();
-
   setPlan(orgId: string, plan: Partial<TPlanFeatures>) {
     this.plans.set(orgId, { ...testFeatures(), ...plan });
     return this;
@@ -33,20 +29,10 @@ export class FakeLicenseService implements TLicenseService {
   refreshInstanceEntitlements = async () => undefined;
 
   getPlan = async (orgId: string) => {
-    const plan = Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
-    return this.fallbackOrgs.has(orgId) ? plan.asFallback() : plan;
+    return Plan.restore(this.plans.get(orgId) ?? this.defaultPlan);
   };
 
   refreshPlan = async () => undefined;
-
-  invalidatePlan = async () => undefined;
-
-  refreshWorkspacesUsed = async () => undefined;
-
-  getLastKnownPlan = async (orgId: string) => {
-    const lastKnown = this.lastKnown.get(orgId);
-    return lastKnown ? { plan: Plan.restore(lastKnown.plan), fetchedAt: lastKnown.fetchedAt } : null;
-  };
 
   getSeatUsage: TLicenseService["getSeatUsage"] = async () => noSeatsUsed();
 

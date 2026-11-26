@@ -159,6 +159,7 @@ import {
 import { PendingApprovalsLine } from "./secrets/pending-approvals-line";
 import { usePlanGateHost } from "./secrets/plan-gates";
 import { ProjectUpgradeState } from "./secrets/project-upgrade";
+import { RequestAccessLine } from "./secrets/request-access-line";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
@@ -1900,7 +1901,6 @@ export const OverviewPage = () => {
                   description={projectQuery.data?.description || undefined}
                   actions={
                     <>
-                      {addNewMenu()}
                       <EnvironmentAction
                         label="Commit history"
                         icon="history"
@@ -1908,6 +1908,7 @@ export const OverviewPage = () => {
                         disabledReason={writeBlock}
                         onSelect={viewCommits}
                       />
+                      {addNewMenu()}
                     </>
                   }
                 />
@@ -2082,6 +2083,14 @@ export const OverviewPage = () => {
                     />
                     {!unavailableState && (
                       <PendingApprovalsLine orgId={orgId} projectId={projectId} />
+                    )}
+                    {!unavailableState && single && (
+                      <RequestAccessLine
+                        orgId={orgId}
+                        projectId={projectId}
+                        environment={activeEnvironment}
+                        secretPath={path}
+                      />
                     )}
                     {unavailableState ?? (
                       <Table

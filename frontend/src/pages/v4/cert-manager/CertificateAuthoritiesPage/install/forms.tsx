@@ -97,7 +97,11 @@ export const InternalInstallForm = ({
   onDone
 }: InstallFormProps) => {
   const adapter = useV4Adapter("certificateAuthorities");
-  const { data: cas = [], isPending } = adapter.useProjectCas({
+  const {
+    data: cas = [],
+    isPending,
+    error: loadError
+  } = adapter.useProjectCas({
     projectId,
     status: CaStatus.ACTIVE
   });
@@ -145,18 +149,30 @@ export const InternalInstallForm = ({
       }, onPendingChange)}
     >
       <Stack gap={16}>
-        <Field label="Parent CA" error={errors.parent}>
+        <Field
+          label="Parent CA"
+          error={
+            errors.parent ??
+            (loadError ? "Couldn't load the CAs that can sign this one" : undefined)
+          }
+          description={
+            !isPending && !loadError && parents.length === 0
+              ? "No active CA can sign this one. Create a root CA first."
+              : undefined
+          }
+        >
           {isPending ? (
             <Skeleton height={32} />
           ) : (
             <Select
               aria-label="Parent CA"
               placeholder="Select a parent CA"
+              descriptionLayout="stacked"
               value={parent?.id ?? ""}
               invalid={Boolean(errors.parent)}
               options={parents.map((entry) => ({
                 value: entry.id,
-                label: entry.friendlyName || entry.commonName || entry.id,
+                label: entry.name,
                 description: `${caTypeToNameMap[entry.type]}: ${entry.dn}`
               }))}
               onValueChange={(next) => {

@@ -38,7 +38,7 @@ import { secretRequestLink, sharedSecretLink, writeLink } from "./links";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
-export const formatDate = (value: Date | string) => format(new Date(value), "MMM d, yyyy h:mm a");
+const formatDate = (value: Date | string) => format(new Date(value), "MMM d, yyyy h:mm a");
 
 const muted = (text: string) => <SmallText muted>{text}</SmallText>;
 
@@ -70,17 +70,19 @@ const DeleteDialog = ({
   target,
   title,
   description,
+  pending,
   onClose,
   onConfirm
 }: {
   target?: TSharedSecret;
   title: string;
   description: string;
+  pending: boolean;
   onClose: () => void;
   onConfirm: (row: TSharedSecret) => Promise<void>;
 }) => (
   <AlertDialog open={Boolean(target)} onOpenChange={(open) => !open && onClose()}>
-    <AlertDialogContent tone="danger">
+    <AlertDialogContent tone="danger" pending={pending}>
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -89,7 +91,8 @@ const DeleteDialog = ({
         <AlertDialogCancel>Cancel</AlertDialogCancel>
         <AlertDialogAction
           variant="destructive"
-          onClick={async () => {
+          onClick={async (event) => {
+            event.preventDefault();
             if (target) await onConfirm(target);
             onClose();
           }}
@@ -192,7 +195,8 @@ export const SharedSecretsTable = ({ subOrganization }: { subOrganization?: stri
       <DeleteDialog
         target={deleting}
         title={`Delete ${deleting?.name || "this shared secret"}?`}
-        description="The link stops working for everyone. You cannot undo this."
+        description="The link stops working for everyone. You can't undo this."
+        pending={deleteSharedSecret.isPending}
         onClose={() => setDeleting(undefined)}
         onConfirm={async (row) => {
           try {
@@ -328,7 +332,8 @@ export const SecretRequestsTable = ({ subOrganization }: { subOrganization?: str
       <DeleteDialog
         target={deleting}
         title={`Delete ${deleting?.name || "this secret request"}?`}
-        description="The link stops accepting a secret. You cannot undo this."
+        description="The link stops accepting a secret. You can't undo this."
+        pending={deleteSecretRequest.isPending}
         onClose={() => setDeleting(undefined)}
         onConfirm={async (row) => {
           try {

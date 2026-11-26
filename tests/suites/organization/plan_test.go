@@ -17,21 +17,17 @@ func TestOrganizationPlan_Read(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
 
-	t.Run("should return the root org's plan with its slug, billable projects and rate limits", func(t *testing.T) {
+	t.Run("should return the root org's plan with its slug and rate limits", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
-		fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		fixture.NewProject(t, tn, fixture.WithProjectType("kms"))
-		fixture.NewProject(t, tn, fixture.WithProjectType("cert-manager"))
 
 		// Action
 		plan := fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
 
 		// Assert
 		require.Equal(t, "enterprise", plan["slug"])
-		require.EqualValues(t, 2, plan["workspacesUsed"], "cert-manager projects are not billable")
 		require.EqualValues(t, license.RateLimitCeiling, plan["rateLimits"].(map[string]any)["readLimit"])
 	})
 

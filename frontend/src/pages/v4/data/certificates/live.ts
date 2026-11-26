@@ -52,6 +52,17 @@ const useExportCertificate = () => {
   const pkcs12 = useDownloadCertPkcs12();
   const pem = useMutation({
     mutationFn: async ({ serialNumber, fileName, format }: TExportCertificateDTO) => {
+      if (format === "key") {
+        const { data: bundle } = await apiRequest.get<{ privateKey: string | null }>(
+          `/api/v1/pki/certificates/${serialNumber}/bundle`
+        );
+        if (!bundle.privateKey) throw new Error("No private key is stored for this certificate");
+        FileSaver.saveAs(
+          new Blob([`${bundle.privateKey.trim()}\n`], { type: "application/x-pem-file" }),
+          `${fileName}-key.pem`
+        );
+        return;
+      }
       const { data } = await apiRequest.get<{
         certificate: string;
         certificateChain: string | null;

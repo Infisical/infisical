@@ -228,12 +228,8 @@ const InternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
       <Card
         variant="framed"
         flush
-        title={
-          <Inline gap={8} align="center">
-            Internal certificate authorities
-            <DocumentationLink href={CA_DOCS.internal} subject="internal CAs" />
-          </Inline>
-        }
+        title="Internal certificate authorities"
+        badges={<DocumentationLink href={CA_DOCS.internal} subject="internal CAs" />}
         action={
           <Inline gap={8} align="center">
             <ListToolbar
@@ -401,12 +397,8 @@ const ExternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
       <Card
         variant="framed"
         flush
-        title={
-          <Inline gap={8} align="center">
-            External certificate authorities
-            <DocumentationLink href={CA_DOCS.external} subject="external CAs" />
-          </Inline>
-        }
+        title="External certificate authorities"
+        badges={<DocumentationLink href={CA_DOCS.external} subject="external CAs" />}
         action={
           <Inline gap={8} align="center">
             <ListToolbar
@@ -490,6 +482,7 @@ const CertificateAuthoritiesScreen = () => {
       <Stack gap={24}>
         <PageHeader
           title="Certificate authorities"
+          description="The CAs that sign your certificates: internal CAs you run in Infisical and external CAs you connect, such as ACME or AD CS."
           tabs={
             readBlocked ? undefined : (
               <Tabs

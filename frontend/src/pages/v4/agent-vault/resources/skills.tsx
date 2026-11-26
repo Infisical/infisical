@@ -26,6 +26,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { List, ListRow } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import {
@@ -38,6 +39,7 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Heading, Meta } from "@infisical/cipher/ui/text";
+import axios from "axios";
 
 import {
   formatSkillBytes,
@@ -433,21 +435,41 @@ export const DeleteSkillDialog = ({
   onDeleted
 }: {
   projectId: string;
-  skill?: { id: string; name: string };
+  skill?: { id: string; name: string; accessBundles: { id: string; name: string }[] };
   onOpenChange: (open: boolean) => void;
   onDeleted?: () => void;
 }) => {
   const remove = useV4Adapter("agentVaultResources").useDeleteSkill(projectId);
+  const bundles = skill?.accessBundles ?? [];
   return (
     <AlertDialog open={Boolean(skill)} onOpenChange={onOpenChange}>
       <AlertDialogContent tone="danger" confirmText={skill?.name}>
         <AlertDialogHeader>
           <AlertDialogTitle>{`Delete ${skill?.name ?? ""}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            It leaves every access bundle it&apos;s in and every version is deleted. Agents that
-            already started keep their copy. This cannot be undone.
+            {bundles.length
+              ? "Deleting it removes it from every access bundle below and deletes every version. This cannot be undone."
+              : "This skill isn't in any access bundle. Every version of it is deleted. This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {bundles.length > 0 && (
+          <List
+            label="Access bundles"
+            title={`Used by ${bundles.length} access bundle${bundles.length === 1 ? "" : "s"}`}
+            variant="framed"
+            size="sm"
+          >
+            {bundles.map((bundle) => (
+              <ListRow
+                key={bundle.id}
+                value={bundle.id}
+                label={bundle.name}
+                title={bundle.name}
+                media={<Icon name="package" />}
+              />
+            ))}
+          </List>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
@@ -473,20 +495,22 @@ export const DeleteSkillDialog = ({
 };
 
 const SkillVersionsTable = ({
+  projectId,
   skill,
-  versions,
-  loading,
   viewed,
   disabled,
   onView
 }: {
-  skill: { name: string; latestVersion: number };
-  versions: TAgentVaultSkillVersion[];
-  loading: boolean;
+  projectId: string;
+  skill: { id: string; name: string; latestVersion: number };
   viewed: number | null;
   disabled: boolean;
   onView: (version: number) => void;
 }) => {
+  const { data: versions = [], isPending } = useV4Adapter("agentVaultResources").useSkillVersions(
+    projectId,
+    skill.id
+  );
   const columns: DataTableColumn<TAgentVaultSkillVersion>[] = [
     {
       id: "version",
@@ -531,7 +555,7 @@ const SkillVersionsTable = ({
       columns={columns}
       getRowId={(version) => version.id}
       rowLabel={(version) => `v${version.version}`}
-      loading={loading}
+      loading={isPending}
       loadingRows={2}
       focusedRowId={
         versions.find((version) => version.version === (viewed ?? skill.latestVersion))?.id
@@ -661,7 +685,7 @@ type TSkillSheetProps = {
   setEdit: Dispatch<SetStateAction<TSkillEdit | undefined>>;
   saving: boolean;
   setSaving: (saving: boolean) => void;
-  onClose: () => void;
+  onDeleted: () => void;
 };
 
 const SkillSheetEditor = ({
@@ -673,14 +697,10 @@ const SkillSheetEditor = ({
   setEdit,
   saving,
   setSaving,
-  onClose
+  onDeleted
 }: TSkillSheetProps & { skill: TAgentVaultSkillDetail }) => {
   const resources = useV4Adapter("agentVaultResources");
   const skillId = skill.id;
-  const { data: versions = [], isPending: isVersionsPending } = resources.useSkillVersions(
-    projectId,
-    skillId
-  );
   const update = resources.useUpdateSkill(projectId);
   const [viewed, setViewed] = useState<number | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(SKILL_ENTRY_FILE);
@@ -768,7 +788,7 @@ const SkillSheetEditor = ({
       setViewed(null);
     } catch (error) {
       if (error instanceof SkillVersionConflictError) setConflict(error.latestVersion);
-      failed("Failed to save skill", error);
+      else failed("Failed to save skill", error);
     } finally {
       setSaving(false);
     }
@@ -816,19 +836,20 @@ const SkillSheetEditor = ({
               />
             )}
           </Stack>
-          <Stack gap={8}>
-            <Heading level={3} size="subsection">
-              Versions
-            </Heading>
-            <SkillVersionsTable
-              skill={skill}
-              versions={versions}
-              loading={isVersionsPending}
-              viewed={viewed}
-              disabled={hasChanges}
-              onView={setViewed}
-            />
-          </Stack>
+          {canEdit && (
+            <Stack gap={8}>
+              <Heading level={3} size="subsection">
+                Versions
+              </Heading>
+              <SkillVersionsTable
+                skill={skill}
+                projectId={projectId}
+                viewed={viewed}
+                disabled={hasChanges}
+                onView={setViewed}
+              />
+            </Stack>
+          )}
         </Stack>
       </SheetBody>
       <SheetFooter>
@@ -872,7 +893,10 @@ const SkillSheetEditor = ({
           projectId={projectId}
           skill={skill}
           onOpenChange={setUploading}
-          onSaved={() => setViewed(null)}
+          onSaved={() => {
+            setEdit(undefined);
+            setViewed(null);
+          }}
         />
       )}
       <RollBackSkillDialog
@@ -880,13 +904,16 @@ const SkillSheetEditor = ({
         skill={skill}
         version={rollingBack}
         onClose={() => setRollingBack(undefined)}
-        onRolledBack={() => setViewed(null)}
+        onRolledBack={() => {
+          setEdit(undefined);
+          setViewed(null);
+        }}
       />
       <DeleteSkillDialog
         projectId={projectId}
         skill={deleting ? skill : undefined}
         onOpenChange={setDeleting}
-        onDeleted={onClose}
+        onDeleted={onDeleted}
       />
       <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
@@ -894,11 +921,29 @@ const SkillSheetEditor = ({
 };
 
 const SkillSheetBody = ({ skillId, ...props }: TSkillSheetProps & { skillId: string }) => {
-  const { data: skill, isPending } = useV4Adapter("agentVaultResources").useSkill(
-    props.projectId,
-    skillId
-  );
+  const {
+    data: skill,
+    isPending,
+    error,
+    refetch
+  } = useV4Adapter("agentVaultResources").useSkill(props.projectId, skillId);
   if (isPending) return <Loader size="page" label="Loading skill" />;
+  if (!skill && error && !(axios.isAxiosError(error) && error.response?.status === 404))
+    return (
+      <SheetBody>
+        <EmptyState
+          icon="alert"
+          title="Couldn't load this skill"
+          actions={
+            refetch ? (
+              <Button variant="outline" onClick={() => refetch()}>
+                Try again
+              </Button>
+            ) : undefined
+          }
+        />
+      </SheetBody>
+    );
   if (!skill)
     return (
       <SheetBody>
@@ -917,13 +962,15 @@ export const SkillSheet = ({
   skillId,
   canEdit,
   canDelete,
-  onOpenChange
+  onOpenChange,
+  onDeleted
 }: {
   projectId: string;
   skillId?: string;
   canEdit: boolean;
   canDelete: boolean;
   onOpenChange: (open: boolean) => void;
+  onDeleted?: () => void;
 }) => {
   const [storedEdit, setEdit] = useState<TSkillEdit>();
   const [saving, setSaving] = useState(false);
@@ -953,7 +1000,11 @@ export const SkillSheet = ({
               setEdit={setEdit}
               saving={saving}
               setSaving={setSaving}
-              onClose={close}
+              onDeleted={() => {
+                if (!onDeleted) return close();
+                setEdit(undefined);
+                return onDeleted();
+              }}
             />
           )}
         </SheetContent>
