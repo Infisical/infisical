@@ -109,16 +109,23 @@ export const AgentVaultPolicyEditor = ({
   const warning = getPolicyWarning(policy, noun);
   // Scopes picked as Custom while their actions still match a level stay open, across tabs too, until a level is picked.
   const [openScopes, setOpenScopes] = useState<string[]>([]);
+  // Custom scopes show their actions until collapsed, and picking Custom again shows them.
+  const [collapsedScopes, setCollapsedScopes] = useState<string[]>([]);
+  const toggled = (keys: string[], scopeKey: string, isIn: boolean) =>
+    isIn ? [...new Set([...keys, scopeKey])] : keys.filter((key) => key !== scopeKey);
   const scopeProps = {
     noun,
     policy,
     onChange: onPolicyChange,
     isReadOnly: isVisualReadOnly,
     isScopeOpen: (scopeKey: string) => openScopes.includes(scopeKey),
-    onScopeOpenChange: (scopeKey: string, isOpen: boolean) =>
-      setOpenScopes((prev) =>
-        isOpen ? [...new Set([...prev, scopeKey])] : prev.filter((key) => key !== scopeKey)
-      )
+    onScopeOpenChange: (scopeKey: string, isOpen: boolean) => {
+      setOpenScopes((prev) => toggled(prev, scopeKey, isOpen));
+      if (isOpen) setCollapsedScopes((prev) => toggled(prev, scopeKey, false));
+    },
+    isScopeCollapsed: (scopeKey: string) => collapsedScopes.includes(scopeKey),
+    onScopeCollapsedChange: (scopeKey: string, isCollapsed: boolean) =>
+      setCollapsedScopes((prev) => toggled(prev, scopeKey, isCollapsed))
   };
 
   return (

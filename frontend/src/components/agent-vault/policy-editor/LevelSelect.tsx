@@ -28,8 +28,8 @@ type Props = {
   placeholder?: string;
   className?: string;
   onLevelChange: (level: string) => void;
-  // Custom isn't a set of actions to apply, so picking it only opens the actions to tick.
-  onCustom: () => void;
+  // Custom isn't a set of actions to apply, so picking it only opens the actions to set. Left out, Custom isn't offered.
+  onCustom?: () => void;
 };
 
 export const LevelSelect = ({
@@ -45,7 +45,7 @@ export const LevelSelect = ({
   <Select
     value={value}
     disabled={isDisabled}
-    onValueChange={(next) => (next === CUSTOM_LEVEL ? onCustom() : onLevelChange(next))}
+    onValueChange={(next) => (next === CUSTOM_LEVEL ? onCustom?.() : onLevelChange(next))}
   >
     <SelectTrigger size="sm" className={cn("w-40", className)} aria-label={ariaLabel}>
       <SelectValue placeholder={placeholder} />
@@ -63,10 +63,14 @@ export const LevelSelect = ({
           </SelectItem>
         </Fragment>
       ))}
-      <SelectSeparator />
-      <SelectItem value={CUSTOM_LEVEL} description="Allow or deny actions one by one">
-        Custom
-      </SelectItem>
+      {onCustom && (
+        <>
+          <SelectSeparator />
+          <SelectItem value={CUSTOM_LEVEL} description="Allow or deny actions one by one">
+            Custom
+          </SelectItem>
+        </>
+      )}
     </SelectContent>
   </Select>
 );

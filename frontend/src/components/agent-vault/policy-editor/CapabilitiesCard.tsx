@@ -14,7 +14,7 @@ import {
   TableRow
 } from "@app/components/v3";
 
-import { ActionRows } from "./ActionRows";
+import { ActionRows, ExpandToggle } from "./ActionRows";
 import {
   CUSTOM_LEVEL,
   getRowLevel,
@@ -53,6 +53,8 @@ type Props = {
   isReadOnly: boolean;
   isScopeOpen: (scopeKey: string) => boolean;
   onScopeOpenChange: (scopeKey: string, isOpen: boolean) => void;
+  isScopeCollapsed: (scopeKey: string) => boolean;
+  onScopeCollapsedChange: (scopeKey: string, isCollapsed: boolean) => void;
 };
 
 export const CapabilitiesCard = ({
@@ -61,7 +63,9 @@ export const CapabilitiesCard = ({
   onChange,
   isReadOnly,
   isScopeOpen,
-  onScopeOpenChange
+  onScopeOpenChange,
+  isScopeCollapsed,
+  onScopeCollapsedChange
 }: Props) => (
   <Card>
     <CardHeader>
@@ -78,7 +82,8 @@ export const CapabilitiesCard = ({
       <TableBody>
         {CAPABILITY_ROWS.map((row) => {
           const level = getRowLevel(policy, row.key);
-          const isOpen = level === CUSTOM_LEVEL || isScopeOpen(row.key);
+          const isCustom = level === CUSTOM_LEVEL || isScopeOpen(row.key);
+          const isExpanded = isCustom && !isScopeCollapsed(row.key);
           const risk = getRowRisk(policy, row.key);
           const warnings = getRowWarnings(policy, row.key, noun).map(({ message }) => message);
 
@@ -86,16 +91,28 @@ export const CapabilitiesCard = ({
             <Fragment key={row.key}>
               <TableRow>
                 <TableCell isWrappable className="max-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span>{row.label}</span>
-                    {risk && <PrivilegedMarker risk={risk} />}
+                  <div className="flex items-start gap-3">
+                    <div className="pt-px">
+                      <ExpandToggle
+                        isVisible={isCustom}
+                        isExpanded={isExpanded}
+                        label={row.label}
+                        onToggle={() => onScopeCollapsedChange(row.key, isExpanded)}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{row.label}</span>
+                        {risk && <PrivilegedMarker risk={risk} />}
+                      </div>
+                      <p className="text-xs leading-4 text-muted">{row.description}</p>
+                      <RowWarnings warnings={warnings} />
+                    </div>
                   </div>
-                  <p className="text-xs leading-4 text-muted">{row.description}</p>
-                  <RowWarnings warnings={warnings} />
                 </TableCell>
                 <TableCell>
                   <LevelSelect
-                    value={isOpen ? CUSTOM_LEVEL : level}
+                    value={isCustom ? CUSTOM_LEVEL : level}
                     options={row.levels.map(({ value, label }) => ({
                       value,
                       label,
@@ -114,7 +131,7 @@ export const CapabilitiesCard = ({
                   />
                 </TableCell>
               </TableRow>
-              {isOpen && (
+              {isExpanded && (
                 <ActionRows
                   policy={policy}
                   scope={{ rowKey: row.key }}

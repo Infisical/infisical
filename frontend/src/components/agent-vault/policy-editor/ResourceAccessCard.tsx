@@ -37,6 +37,10 @@ import {
   DetailLabel,
   DetailValue,
   DocumentationLinkBadge,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -68,7 +72,7 @@ import {
 } from "@app/hooks/api/agentVaultRoles";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
-import { ActionRows } from "./ActionRows";
+import { ActionRows, ExpandToggle } from "./ActionRows";
 import {
   addResourceItems,
   CUSTOM_LEVEL,
@@ -97,6 +101,8 @@ const CREATE_KEY = "create";
 // Creating new ones counts as part of Full Control over every one of them, the only level that holds it.
 const FULL_CONTROL_LEVEL = "manage";
 const ALL_OPTION = "all";
+// The width of the expand toggle and the icon before a name, with their gaps, so actions line up under the name.
+const ITEM_NAME_INDENT = "pl-14";
 // Every one of them starts at Use when added from the picker, as a picked item does.
 const ADDED_ALL_LEVEL = "use";
 
@@ -204,6 +210,8 @@ type TViewProps = {
   isReadOnly: boolean;
   isScopeOpen: (scopeKey: string) => boolean;
   onScopeOpenChange: (scopeKey: string, isOpen: boolean) => void;
+  isScopeCollapsed: (scopeKey: string) => boolean;
+  onScopeCollapsedChange: (scopeKey: string, isCollapsed: boolean) => void;
   itemsById: Map<string, TPolicyResourceItem>;
   isCatalogPending: boolean;
   // The catalog stops loading past a set number of rows, so an item it lacks may simply not be loaded.
@@ -374,6 +382,8 @@ const ResourceAccessCardView = ({
   isReadOnly,
   isScopeOpen,
   onScopeOpenChange,
+  isScopeCollapsed,
+  onScopeCollapsedChange,
   itemsById,
   isCatalogPending,
   isCatalogCutShort,
@@ -404,9 +414,10 @@ const ResourceAccessCardView = ({
   // custom.
   const rowLevel = getRowLevel(policy, rowKey);
   const allLevel = canCreate === (rowLevel === FULL_CONTROL_LEVEL) ? rowLevel : CUSTOM_LEVEL;
-  const isAllOpen = allLevel === CUSTOM_LEVEL || isScopeOpen(allScopeKey(rowKey));
+  const isAllCustom = allLevel === CUSTOM_LEVEL || isScopeOpen(allScopeKey(rowKey));
+  const isAllExpanded = isAllCustom && !isScopeCollapsed(allScopeKey(rowKey));
   const isAllShown =
-    isAllAdded || isAllOpen || resource.allow.length > 0 || resource.deny.length > 0;
+    isAllAdded || isAllCustom || resource.allow.length > 0 || resource.deny.length > 0;
   const allOptions: TLevelOption[] = row.levels
     .filter((level) => level.value !== NONE_LEVEL)
     .map((level) => ({
@@ -490,9 +501,12 @@ const ResourceAccessCardView = ({
 
       {!isAllShown && !items.length ? (
         <CardContent>
-          <div className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
-            This role has no access to {plural}.
-          </div>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>No {plural}</EmptyTitle>
+              <EmptyDescription>This role has no access to {plural}.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </CardContent>
       ) : (
         <Table>
@@ -510,6 +524,12 @@ const ResourceAccessCardView = ({
               <TableRow>
                 <TableCell isTruncatable className="min-w-56">
                   <div className="flex min-w-0 items-center gap-2.5">
+                    <ExpandToggle
+                      isVisible={isAllCustom}
+                      isExpanded={isAllExpanded}
+                      label={`all ${plural}`}
+                      onToggle={() => onScopeCollapsedChange(allScopeKey(rowKey), isAllExpanded)}
+                    />
                     <BoxesIcon className="size-4 shrink-0 text-muted" />
                     <div className="min-w-0">
                       <div className="truncate">All {label}</div>
@@ -527,7 +547,7 @@ const ResourceAccessCardView = ({
                 </TableCell>
                 <TableCell>
                   <LevelSelect
-                    value={isAllOpen ? CUSTOM_LEVEL : allLevel}
+                    value={isAllCustom ? CUSTOM_LEVEL : allLevel}
                     placeholder="No Access"
                     options={allOptions}
                     ariaLabel={`Access to all ${plural}`}
@@ -553,7 +573,7 @@ const ResourceAccessCardView = ({
                 </TableCell>
               </TableRow>
             )}
-            {isAllShown && isAllOpen && (
+            {isAllShown && isAllExpanded && (
               <ActionRows
                 policy={policy}
                 scope={{ rowKey }}
@@ -561,6 +581,7 @@ const ResourceAccessCardView = ({
                 isReadOnly={isReadOnly}
                 onChange={onChange}
                 hasTrailingCell
+                indentClassName={ITEM_NAME_INDENT}
               />
             )}
             {items.map((item) => {
@@ -568,7 +589,8 @@ const ResourceAccessCardView = ({
               const name = nameOf(item.id);
               const level = getItemLevel(policy, rowKey, item.id);
               const scopeKey = itemScopeKey(rowKey, item.id);
-              const isOpen = level === CUSTOM_LEVEL || isScopeOpen(scopeKey);
+              const isCustom = level === CUSTOM_LEVEL || isScopeOpen(scopeKey);
+              const isExpanded = isCustom && !isScopeCollapsed(scopeKey);
               const warning = warnings.find(({ itemId }) => itemId === item.id)?.message;
               let subtitle: string | null = known?.description || null;
               if (!known && !isCatalogPending) {
@@ -584,6 +606,12 @@ const ResourceAccessCardView = ({
                   <TableRow>
                     <TableCell isTruncatable className="min-w-56">
                       <div className="flex min-w-0 items-center gap-2.5">
+                        <ExpandToggle
+                          isVisible={isCustom}
+                          isExpanded={isExpanded}
+                          label={name}
+                          onToggle={() => onScopeCollapsedChange(scopeKey, isExpanded)}
+                        />
                         <ItemIcon item={known} rowKey={rowKey} />
                         <div className="min-w-0">
                           {!known && isCatalogPending ? (
@@ -623,7 +651,7 @@ const ResourceAccessCardView = ({
                     </TableCell>
                     <TableCell>
                       <LevelSelect
-                        value={isOpen ? CUSTOM_LEVEL : level}
+                        value={isCustom ? CUSTOM_LEVEL : level}
                         placeholder="No Access"
                         options={itemOptions}
                         ariaLabel={`Access to ${name}`}
@@ -651,7 +679,7 @@ const ResourceAccessCardView = ({
                       )}
                     </TableCell>
                   </TableRow>
-                  {isOpen && (
+                  {isExpanded && (
                     <ActionRows
                       policy={policy}
                       scope={{ rowKey, itemId: item.id }}
@@ -659,6 +687,7 @@ const ResourceAccessCardView = ({
                       isReadOnly={isReadOnly}
                       onChange={onChange}
                       hasTrailingCell
+                      indentClassName={ITEM_NAME_INDENT}
                     />
                   )}
                 </Fragment>
