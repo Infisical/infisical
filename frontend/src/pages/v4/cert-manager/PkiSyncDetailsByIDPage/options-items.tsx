@@ -103,11 +103,7 @@ export const pkiSyncFieldMappingItems = (pkiSync: TPkiSync): DataListItem[] => {
 };
 
 export function SyncErrorMessage({ message }: { message: string }) {
-  return (
-    <Code block wrap format="plain" maxHeight={240}>
-      {message}
-    </Code>
-  );
+  return <Code style={wrapAnywhere}>{message}</Code>;
 }
 
 function HostCommandValue({
