@@ -1,17 +1,33 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-import type { TPkiApplicationEnrollmentState } from "@app/hooks/api/pkiApplications/types";
+import type {
+  TMicrosoftAutoenrollmentGroup,
+  TMicrosoftAutoenrollmentOtherProfile,
+  TPkiApplicationEnrollmentState
+} from "@app/hooks/api/pkiApplications/types";
 
-export type EnrollmentMethod = "api" | "est" | "acme" | "scep";
+export type EnrollmentMethod = "api" | "est" | "acme" | "scep" | "microsoft-autoenrollment";
 
-export const ENROLLMENT_METHODS: EnrollmentMethod[] = ["api", "est", "acme", "scep"];
+export const ENROLLMENT_METHODS: EnrollmentMethod[] = [
+  "api",
+  "est",
+  "acme",
+  "scep",
+  "microsoft-autoenrollment"
+];
 
 export const METHOD_LABELS: Record<EnrollmentMethod, string> = {
   api: "API",
   est: "EST",
   acme: "ACME",
-  scep: "SCEP"
+  scep: "SCEP",
+  "microsoft-autoenrollment": "Microsoft Autoenrollment"
 };
+
+export const methodTitle = (method: EnrollmentMethod) =>
+  method === "microsoft-autoenrollment"
+    ? METHOD_LABELS[method]
+    : `${METHOD_LABELS[method]} enrollment`;
 
 const DOCS_BASE_URL = "https://infisical.com/docs/documentation/platform/pki/applications";
 
@@ -19,7 +35,8 @@ export const ENROLLMENT_DOCS = {
   overview: `${DOCS_BASE_URL}/enrollment-methods/overview`,
   apiReference:
     "https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate",
-  intune: "https://infisical.com/docs/integrations/app-connections/microsoft-intune"
+  intune: "https://infisical.com/docs/integrations/app-connections/microsoft-intune",
+  microsoftAutoenrollment: `${DOCS_BASE_URL}/enrollment-methods/microsoft-autoenrollment`
 };
 
 export const isMethodConfigured = (
@@ -29,7 +46,8 @@ export const isMethodConfigured = (
   if (method === "api") return Boolean(state.api);
   if (method === "est") return state.estConfigured;
   if (method === "acme") return state.acmeConfigured;
-  return state.scepConfigured;
+  if (method === "scep") return state.scepConfigured;
+  return state.microsoftAutoenrollmentConfigured;
 };
 
 export type ApiDraft = { autoRenew: boolean; renewBeforeDays: string };
@@ -49,11 +67,22 @@ export type ScepDraft = {
   validationConnectionId: string;
   signRaWithCa: boolean;
 };
+export type MicrosoftAutoenrollmentDraft = {
+  connectionId: string;
+  allowedGroups: TMicrosoftAutoenrollmentGroup[];
+  renewBeforeDays: string;
+  keytabFile: File | null;
+  reuseFrom: TMicrosoftAutoenrollmentOtherProfile | null;
+  connectionBeforeReuse: string;
+  replacingKeytab: boolean;
+  allowAnyChannelBinding: boolean;
+};
 export type EnrollmentDrafts = {
   api?: ApiDraft;
   est?: EstDraft;
   acme?: AcmeDraft;
   scep?: ScepDraft;
+  "microsoft-autoenrollment"?: MicrosoftAutoenrollmentDraft;
 };
 
 export type EnrollmentBodyProps = HTMLAttributes<HTMLDivElement> & { lead?: ReactNode };
