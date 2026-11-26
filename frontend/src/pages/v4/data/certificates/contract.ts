@@ -63,6 +63,13 @@ export type TExportCertificateDTO = {
   pkcs12?: { password: string; alias: string };
 };
 
+export type TCertificatePem = {
+  certificate: string;
+  certificateChain: string;
+  serialNumber: string;
+  privateKey?: string | null;
+};
+
 export const certificateFileName = (name: string) =>
   name.replace(/^\*\./, "wildcard.").replace(/[^a-zA-Z0-9._-]+/g, "_") || "certificate";
 
@@ -106,6 +113,8 @@ export type CertificatesAdapter = {
     TUnifiedCertificateIssuanceDTO,
     TUnifiedCertificateIssuanceResponse
   >;
+  useCertificateBody: (serialNumber: string) => V4QueryResult<TCertificatePem>;
+  useCertificateBundle: (serialNumber: string) => V4QueryResult<TCertificatePem>;
   useExportCertificate: V4Mutation<TExportCertificateDTO, void>;
   useUpdateCertificateMetadata: V4Mutation<
     TUpdateCertificateDTO,
