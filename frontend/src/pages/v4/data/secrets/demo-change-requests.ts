@@ -7,6 +7,7 @@ import {
   CommitType,
   SecretApprovalRequestOrderBy,
   type TBulkChangeRequestResult,
+  type TGetSecretApprovalRequestList,
   type TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
 
@@ -157,8 +158,9 @@ const merge = (store: DemoStore, id: string, bypassReason?: string, requireAppro
   });
 };
 
-export const secretsChangeRequestsDemo: SecretsChangeRequestsAdapter = {
-  useApprovalRequests: ({
+const listApprovals = (
+  approvals: TSecretApprovalRequest[],
+  {
     projectId,
     status,
     environment,
@@ -168,34 +170,40 @@ export const secretsChangeRequestsDemo: SecretsChangeRequestsAdapter = {
     limit = 20,
     orderBy,
     orderDirection
-  }) => {
-    const needle = (search ?? "").trim().toLowerCase();
-    const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
-    const matched = useApprovals(projectId)
-      .filter(
-        (request) =>
-          (!status || request.status === status) &&
-          (!environment || request.environment === environment) &&
-          (!committer || request.committerUserId === committer) &&
-          (!needle ||
-            [request.environment, request.secretPath, committerOf(request)].some((text) =>
-              text.toLowerCase().includes(needle)
-            ) ||
-            request.commits.some((commit) => commit.secretKey.toLowerCase().includes(needle)))
-      )
-      .sort(
-        (a, b) =>
-          direction * sortValue(a, orderBy).localeCompare(sortValue(b, orderBy)) ||
-          b.createdAt.localeCompare(a.createdAt)
-      );
+  }: TGetSecretApprovalRequestList
+) => {
+  const needle = (search ?? "").trim().toLowerCase();
+  const direction = orderDirection === OrderByDirection.ASC ? 1 : -1;
+  const matched = approvals
+    .filter(
+      (request) =>
+        request.project === projectId &&
+        (!status || request.status === status) &&
+        (!environment || request.environment === environment) &&
+        (!committer || request.committerUserId === committer) &&
+        (!needle ||
+          [request.environment, request.secretPath, committerOf(request)].some((text) =>
+            text.toLowerCase().includes(needle)
+          ) ||
+          request.commits.some((commit) => commit.secretKey.toLowerCase().includes(needle)))
+    )
+    .sort(
+      (a, b) =>
+        direction * sortValue(a, orderBy).localeCompare(sortValue(b, orderBy)) ||
+        b.createdAt.localeCompare(a.createdAt)
+    );
+  return { approvals: matched.slice(offset, offset + limit), totalCount: matched.length };
+};
+
+export const secretsChangeRequestsDemo: SecretsChangeRequestsAdapter = {
+  useApprovalRequests: (dto) => {
+    const approvals = useApprovals();
     const { isPending, error } = usePendingState();
-    return {
-      data: isPending
-        ? undefined
-        : { approvals: matched.slice(offset, offset + limit), totalCount: matched.length },
-      isPending,
-      error
-    };
+    return { data: isPending ? undefined : listApprovals(approvals, dto), isPending, error };
+  },
+  useFetchApprovalRequests: () => {
+    const approvals = useApprovals();
+    return async (dto) => listApprovals(approvals, dto);
   },
   useApprovalRequestCount: ({ projectId }) => {
     const requests = useApprovals(projectId);
@@ -220,7 +228,14 @@ export const secretsChangeRequestsDemo: SecretsChangeRequestsAdapter = {
     const approvals = useApprovals();
     return ids.map((id) => {
       const data = approvals.find((entry) => entry.id === id);
-      return { data, isPending: false, isError: !data, error: null, refetch: () => undefined };
+      return {
+        data,
+        isPending: false,
+        isFetching: false,
+        isError: !data,
+        error: null,
+        refetch: () => undefined
+      };
     });
   },
   useSecretImports: ({ projectId, environment, path, enabled }) => {

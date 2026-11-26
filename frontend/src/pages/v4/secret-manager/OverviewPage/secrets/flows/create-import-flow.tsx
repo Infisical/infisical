@@ -92,7 +92,8 @@ export function CreateImportFlow({
           resource.environment === destination &&
           resource.path === scope.path &&
           resource.source.environment === environment &&
-          resource.source.path === sourcePath
+          resource.source.path === sourcePath &&
+          Boolean(resource.replicated) === replication
       )
     ) {
       onError({
