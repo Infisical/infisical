@@ -309,6 +309,32 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // the source environment is not filtered on deleteAfter: an environment pending deletion can be restored, and its
+  // imports then read the source directly again.
+  const findFolderIdsWithDirectSameProjectImports = async (folderIds: string[], projectId: string, tx?: Knex) => {
+    try {
+      if (!folderIds.length) return [];
+      const docs = await (tx || db.replicaNode())(TableName.SecretImport)
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .whereIn(`${TableName.SecretImport}.folderId`, folderIds)
+        .where(`${TableName.Environment}.projectId`, projectId)
+        .where((bd) => {
+          void bd
+            .where(`${TableName.SecretImport}.isReplication`, false)
+            .orWhereNull(`${TableName.SecretImport}.isReplication`);
+        })
+        .where((bd) => {
+          void bd
+            .where(`${TableName.SecretImport}.isReserved`, false)
+            .orWhereNull(`${TableName.SecretImport}.isReserved`);
+        })
+        .distinct(`${TableName.SecretImport}.folderId`);
+      return (docs as { folderId: string }[]).map((doc) => doc.folderId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find folder ids with direct same-project imports" });
+    }
+  };
+
   const getFolderImports = async (secretPath: string, environmentId: string, tx?: Knex) => {
     try {
       const folderImports = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -698,6 +724,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findByFolderIds,
     findImportByFolderIds,
     findFolderIdsWithImports,
+    findFolderIdsWithDirectSameProjectImports,
     findLastImportPosition,
     updateAllPosition,
     bulkUpdatePosition,

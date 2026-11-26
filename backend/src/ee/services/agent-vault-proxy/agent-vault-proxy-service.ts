@@ -1274,8 +1274,7 @@ export const agentVaultProxyServiceFactory = ({
       sessionLogConfig?.enabled && Boolean(session.encryptedSessionLogKey)
         ? (await getSessionLogEntitlement(licenseService, proxy.orgId, sessionLogConfig.storage.type)).entitlement
         : "unlicensed";
-    // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
-    const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);
+    const sessionLogsEnabled = entitlement === "licensed";
     const sessionLogKeyNeeded = entitlement === "licensed" && !hasSessionLogKey;
 
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be

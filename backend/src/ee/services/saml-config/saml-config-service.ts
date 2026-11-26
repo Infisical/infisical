@@ -356,7 +356,8 @@ export const samlConfigServiceFactory = ({
     authProvider,
     enableGroupSync,
     mfaSignalAttribute,
-    mfaAuthnContexts
+    mfaAuthnContexts,
+    mfaAttributeValues
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -414,7 +415,8 @@ export const samlConfigServiceFactory = ({
       encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
       enableGroupSync: enableGroupSync || false,
       mfaSignalAttribute,
-      mfaAuthnContexts
+      mfaAuthnContexts,
+      mfaAttributeValues
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
@@ -435,7 +437,8 @@ export const samlConfigServiceFactory = ({
     authProvider,
     enableGroupSync,
     mfaSignalAttribute,
-    mfaAuthnContexts
+    mfaAuthnContexts,
+    mfaAttributeValues
   }) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.ParentOrganization,
@@ -496,6 +499,9 @@ export const samlConfigServiceFactory = ({
     }
     if (mfaAuthnContexts !== undefined) {
       updateQuery.mfaAuthnContexts = mfaAuthnContexts;
+    }
+    if (mfaAttributeValues !== undefined) {
+      updateQuery.mfaAttributeValues = mfaAttributeValues;
     }
     const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
@@ -611,7 +617,8 @@ export const samlConfigServiceFactory = ({
       lastUsed: samlConfig.lastUsed,
       enableGroupSync: samlConfig.enableGroupSync,
       mfaSignalAttribute: samlConfig.mfaSignalAttribute,
-      mfaAuthnContexts: samlConfig.mfaAuthnContexts
+      mfaAuthnContexts: samlConfig.mfaAuthnContexts,
+      mfaAttributeValues: samlConfig.mfaAttributeValues
     };
   };
 

@@ -621,14 +621,14 @@ The command needs `--project-id`, even if you've set the project in an environme
   flags={[
     { name: "--domain", value: "<string>", type: "string", required: true, description: "The URL of the Infisical instance to bootstrap. Can also be set with `INFISICAL_DOMAIN`, or the older `INFISICAL_API_URL`." },
     { name: "--email", value: "<string>", type: "string", required: true, description: "The email address of the admin user to create. Can also be set with `INFISICAL_ADMIN_EMAIL`." },
-    { name: "--ignore-if-bootstrapped", type: "bool", description: "Exit without an error message if bootstrapping fails, for example because the instance is already bootstrapped. Use it to make scripts safe to run twice." },
+    { name: "--ignore-if-bootstrapped", type: "bool", description: "Exit successfully without bootstrapping when the instance is already bootstrapped. Any other failure, such as a missing or wrong setup token, still exits with status `1`. Use it to make scripts safe to run twice." },
     { name: "--k8-secret-name", value: "<string>", type: "string", description: "The name of the Kubernetes secret to create or update. Required with `--output=k8-secret`." },
     { name: "--k8-secret-namespace", value: "<string>", type: "string", description: "The namespace of the Kubernetes secret. Required with `--output=k8-secret`." },
     { name: "--k8-secret-template", value: "<string>", type: "string", default: "{\"data\":{\"token\":\"{{.Identity.Credentials.Token}}\"}}", description: "A Go template that renders the secret's `data` and `stringData` as JSON, for `--output=k8-secret`. It can read the response fields, such as `.Identity.Credentials.Token`, `.Organization.ID`, and `.User.Email`, and use the `encodeBase64` function." },
     { name: "--organization", value: "<string>", type: "string", required: true, description: "The name of the organization to create. Can also be set with `INFISICAL_ADMIN_ORGANIZATION`." },
     { name: "--output", value: "<string>", type: "string", description: "Where to send the result. `k8-secret` writes it to a Kubernetes secret. Any other value, or none, prints it as JSON." },
     { name: "--password", value: "<string>", type: "string", required: true, description: "The password of the admin user to create. Can also be set with `INFISICAL_ADMIN_PASSWORD`." },
-    { name: "--setup-token", value: "<string>", type: "string", description: "The setup token of the instance. Required when the instance sets [`INSTANCE_SETUP_TOKEN`](/self-hosting/configuration/envars#param-instance-setup-token). Can also be set with `INFISICAL_INSTANCE_SETUP_TOKEN`." },
+    { name: "--setup-token", value: "<string>", type: "string", description: "The setup token of the instance. Required when the instance sets [`INSTANCE_SETUP_TOKEN`](/self-hosting/configuration/envars#param-instance-setup-token). Can also be set with `INSTANCE_SETUP_TOKEN`." },
   ]}
   examples={[
     { title: "Bootstrap an instance", code: "infisical bootstrap \\\n  --domain=https://infisical.example.com \\\n  --email=admin@example.com \\\n  --password=<password> \\\n  --organization=<organization>" },

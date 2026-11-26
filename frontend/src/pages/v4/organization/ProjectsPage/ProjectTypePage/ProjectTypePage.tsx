@@ -54,7 +54,6 @@ import { Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { LayoutGridIcon, ListIcon, StarIcon } from "lucide-react";
 
-import { ProjectLimitUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
@@ -80,8 +79,6 @@ import { failed, saved } from "../../../access/toast";
 import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSearchedProject } from "../../../data/projects/contract";
-import { useUpgradeGate } from "../../../license";
-import { useBillingSubscription } from "../../../license/product-icon";
 import { v4Path } from "../../../links";
 import { productHome, productOf } from "../../../shell/navigation";
 
@@ -1122,19 +1119,7 @@ const ProjectTypeContent = ({
       : ProjectListView.MyProjects
   );
   const [creating, setCreating] = useState(false);
-  const subscription = useBillingSubscription();
-  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
-  const isAddingProjectsAllowed =
-    projectType === ProjectType.AgentVault || !subscription?.workspaceLimit
-      ? true
-      : subscription.workspacesUsed < subscription.workspaceLimit;
-  const startCreate = () => {
-    if (isAddingProjectsAllowed) {
-      setCreating(true);
-      return;
-    }
-    openUpgradeGate({ intent: ProjectLimitUpgradeIntent, paywallKey: "organization.project-type" });
-  };
+  const startCreate = () => setCreating(true);
   const props: ListProps = {
     orgId,
     projectType,
@@ -1183,7 +1168,6 @@ const ProjectTypeContent = ({
         open={creating}
         onOpenChange={setCreating}
       />
-      {upgradeGate}
     </AccessFrame>
   );
 };

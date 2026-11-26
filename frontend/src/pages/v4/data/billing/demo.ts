@@ -466,7 +466,7 @@ export const billingDemo: BillingAdapter = {
     const scenario = useBillingScenario();
     const overrides: Record<string, Partial<SubscriptionPlan>> = {
       "self-hosted": { slug: SubscriptionPlanTypes.Enterprise, subOrganization: true },
-      "limits-reached": { workspaceLimit: 3, workspacesUsed: 3, rbac: false },
+      "limits-reached": { workspaceLimit: 3, rbac: false },
       empty: { productPlans: [], secretScanning: false }
     };
     return query(plan(overrides[scenario] ?? {}), scenario === "error" ? "default" : scenario);

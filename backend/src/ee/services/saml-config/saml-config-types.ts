@@ -22,6 +22,7 @@ export type TCreateSamlCfgDTO = {
   enableGroupSync?: boolean;
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
+  mfaAttributeValues?: string[] | null;
 } & TOrgPermission;
 
 export type TUpdateSamlCfgDTO = Partial<{
@@ -33,6 +34,7 @@ export type TUpdateSamlCfgDTO = Partial<{
   enableGroupSync?: boolean;
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
+  mfaAttributeValues?: string[] | null;
 }> &
   TOrgPermission;
 
@@ -89,6 +91,7 @@ export type TSamlConfigServiceFactory = {
     enableGroupSync?: boolean;
     mfaSignalAttribute?: string | null;
     mfaAuthnContexts?: string[] | null;
+    mfaAttributeValues?: string[] | null;
   }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<TProviderAuthResult & { userId: string; orgId: string; orgName: string }>;
   consumeSamlAssertion: (arg: { samlConfigId: string; parsedAssertion: unknown }) => Promise<void>;
