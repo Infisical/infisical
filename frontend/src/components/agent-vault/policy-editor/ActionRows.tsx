@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { BanIcon, CheckIcon, ChevronRightIcon } from "lucide-react";
 
-import { TableCell, TableRow } from "@app/components/v3";
+import { IconButton, TableCell, TableRow } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 
 import {
@@ -9,6 +9,7 @@ import {
   getPermissionRow,
   isActionListed,
   setActionAllowed,
+  setActionCleared,
   setActionDenied,
   SUBJECTS_WITHOUT_DENY,
   TAgentVaultPolicy,
@@ -18,7 +19,7 @@ import {
 import { LevelSelect, TLevelOption } from "./LevelSelect";
 
 // Indents a sub-row's label under the row above it, inside the cell's own padding.
-const SUB_ROW_INDENT = "pl-8";
+const SUB_ROW_INDENT = "pl-9";
 // A darker shade sets the actions apart from the card's rows around them. No surface token is darker than the
 // table's in both themes, so this shades whatever is below.
 const SUB_ROW = "bg-black/15";
@@ -36,27 +37,27 @@ export const ExpandToggle = ({
   onToggle: () => void;
 }) =>
   isVisible ? (
-    <button
-      type="button"
+    <IconButton
+      variant="ghost"
+      size="2xs"
       aria-expanded={isExpanded}
       aria-label={`${isExpanded ? "Hide" : "Show"} the actions of ${label}`}
-      className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-muted outline-hidden hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
       onClick={onToggle}
     >
-      <ChevronRightIcon
-        className={cn("size-3.5 transition-transform", isExpanded && "rotate-90")}
-      />
-    </button>
+      <ChevronRightIcon className={cn("transition-transform", isExpanded && "rotate-90")} />
+    </IconButton>
   ) : (
-    <span className="block size-5 shrink-0" />
+    <span className="block size-6 shrink-0" />
   );
 
 const NOT_ALLOWED = "not-allowed";
 const ALLOWED = "allowed";
 const DENIED = "denied";
 
-// A deny on one service or skill only stops it being picked on its own: an access bundle that holds it still gives it.
-const DENY_REACHES_BUNDLES = new Set(["services", "skills"]);
+// A deny on viewing or using one service or skill only stops that on its own: an access bundle that holds it still
+// shows and gives it. A deny on editing or deleting it holds everywhere.
+const DENY_LEFT_TO_BUNDLES = new Set(["read", "use"]);
+const BUNDLE_HELD_ROWS = new Set(["services", "skills"]);
 
 const optionsFor = (
   scope: TPermissionScope,
@@ -96,7 +97,7 @@ const optionsFor = (
             ),
             description:
               (!isDenied && denyLock) ||
-              (DENY_REACHES_BUNDLES.has(scope.rowKey)
+              (BUNDLE_HELD_ROWS.has(scope.rowKey) && DENY_LEFT_TO_BUNDLES.has(action.action)
                 ? "Overrides other roles, but not an access bundle that holds it"
                 : "Overrides every other role"),
             isDisabled: Boolean(!isDenied && denyLock)
@@ -140,11 +141,10 @@ export const ActionRows = ({
   const groups = [...new Set(actions.map((action) => action.group ?? ""))];
   const trailing = hasTrailingCell && <TableCell />;
 
-  const setState = (key: string, next: string, isDenied: boolean) => {
+  const setState = (key: string, next: string) => {
     if (next === ALLOWED) onChange(setActionAllowed(policy, scope, key, true));
     else if (next === DENIED) onChange(setActionDenied(policy, scope, key, true));
-    else if (isDenied) onChange(setActionDenied(policy, scope, key, false));
-    else onChange(setActionAllowed(policy, scope, key, false));
+    else onChange(setActionCleared(policy, scope, key));
   };
 
   return (
@@ -182,7 +182,7 @@ export const ActionRows = ({
                       ariaLabel={`${name} on ${scopeLabel}`}
                       isDisabled={isReadOnly}
                       className={accessClassName}
-                      onLevelChange={(next) => setState(action.key, next, state.isDenied)}
+                      onLevelChange={(next) => setState(action.key, next)}
                     />
                   </TableCell>
                   {trailing}

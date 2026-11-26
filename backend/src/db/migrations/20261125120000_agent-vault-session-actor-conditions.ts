@@ -96,7 +96,10 @@ const toTwinActions = (rules: TRule[]): TRule[] | null => {
       return;
     }
     hasSessionRule = true;
-    const operator = Object.keys((rule.conditions?.actorId as Record<string, string> | undefined) ?? {})[0];
+    // A bare value is $eq: the schema takes both forms.
+    const actorCondition = rule.conditions?.actorId;
+    const operator =
+      actorCondition === SELF ? "$eq" : Object.keys((actorCondition as Record<string, string> | undefined) ?? {})[0];
     listOf(rule.action).forEach((action) => {
       const isActorAction = ACTOR_ACTIONS.includes(action);
       const target = rule.inverted ? denied : allowed;

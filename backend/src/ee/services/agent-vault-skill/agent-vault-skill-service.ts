@@ -27,6 +27,7 @@ import {
   TAgentVaultReach,
   unionWithin,
   usableSkillIdsOf,
+  withoutDeniedOnItsOwn,
   visibleIdsWithin
 } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
@@ -487,13 +488,18 @@ export const agentVaultSkillServiceFactory = ({
     let scopeReach: TAgentVaultReach = reachability;
     let skillIds = visibleSkillIds;
     if (onBehalfOf) {
-      scopeReach = (
-        await findOnBehalfOfListScope(
-          { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, agentVaultReachDAL },
-          { ...scoped, onBehalfOf, callerReach: reachability }
-        )
-      ).reach;
-      skillIds = await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, scopeReach, scoped.projectId);
+      const scope = await findOnBehalfOfListScope(
+        { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, agentVaultReachDAL },
+        { ...scoped, onBehalfOf, callerReach: reachability }
+      );
+      scopeReach = scope.reach;
+      // Mint refuses a skill either side denies on its own, so the list leaves those out.
+      skillIds = await withoutDeniedOnItsOwn(
+        scope.userPermission ? [reachability.permission, scope.userPermission] : [reachability.permission],
+        "skill",
+        await usableSkillIdsOf({ agentVaultSkillBundleDAL, agentVaultReachDAL }, scopeReach, scoped.projectId),
+        () => agentVaultReachDAL.findSkillIds(scoped.projectId)
+      );
     }
 
     const { skills, totalCount } = await agentVaultSkillDAL.findForList({

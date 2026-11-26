@@ -938,6 +938,21 @@ export const setActionDenied = (
   return withSets(policy, scope, { ...sets, deny: without(sets.deny, [key]) });
 };
 
+/**
+ * Leaves an action neither allowed nor denied. A saved role can hold both on one action, so the deny goes and then the
+ * allow, rather than only the one the editor shows.
+ */
+export const setActionCleared = (
+  policy: TAgentVaultPolicy,
+  scope: TPermissionScope,
+  key: string
+) => {
+  const withoutDeny = setActionDenied(policy, scope, key, false);
+  return getSets(withoutDeny, scope).allow.includes(key)
+    ? setActionAllowed(withoutDeny, scope, key, false)
+    : withoutDeny;
+};
+
 export type TActionState = {
   isAllowed: boolean;
   isDenied: boolean;

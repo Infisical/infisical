@@ -36,6 +36,7 @@ import {
   policyToRules,
   rulesToPolicy,
   setActionAllowed,
+  setActionCleared,
   setActionDenied,
   setItemLevel,
   setRowLevel,
@@ -298,6 +299,19 @@ describe("session rules", () => {
     ]
   ])("lets %j view the sessions the API says (%j)", (sets, expected) => {
     expect(reachOf(sets)).toEqual(expected);
+  });
+});
+
+describe("setActionCleared", () => {
+  it("takes off both an allow and a deny a saved role holds on one action", () => {
+    const { policy } = rulesToPolicy([
+      { subject: VARIABLES, action: ["read", "read-value"] },
+      { subject: VARIABLES, action: ["read-value"], inverted: true }
+    ]);
+    const cleared = setActionCleared(policy, { rowKey: "variables" }, "read-value");
+
+    expect(cleared.variables).toEqual({ allow: ["read"], deny: [] });
+    expect(canDoWith(policyToRules(cleared), "read-value", VARIABLES, {})).toBe(false);
   });
 });
 

@@ -13,6 +13,7 @@ import {
   getAgentVaultReachability,
   intersectReach,
   REACHES_NOTHING,
+  TAgentVaultPermission,
   TAgentVaultReach,
   TAgentVaultReachDep
 } from "../agent-vault/agent-vault-permission";
@@ -136,12 +137,21 @@ export const findOnBehalfOfListScope = async (
     onBehalfOf: TOnBehalfOfUser;
     callerReach: TAgentVaultReach;
   }
-): Promise<{ reach: TAgentVaultReach; owner: { userId: string } | null }> => {
+): Promise<{
+  reach: TAgentVaultReach;
+  owner: { userId: string } | null;
+  // The user's permission, whose denies the session's lists also leave out, as mint does.
+  userPermission: TAgentVaultPermission["permission"] | null;
+}> => {
   const delegation = await findCallerDelegation(deps, { projectId, ctx });
   if (reachesNothing(callerReach)) {
-    return { reach: REACHES_NOTHING, owner: null };
+    return { reach: REACHES_NOTHING, owner: null, userPermission: null };
   }
 
-  const { user, reach: userReach } = await resolveOnBehalfOfUser(deps, { projectId, ctx, onBehalfOf, delegation });
-  return { reach: intersectReach(userReach, callerReach), owner: { userId: user.id } };
+  const {
+    user,
+    reach: userReach,
+    permission: userPermission
+  } = await resolveOnBehalfOfUser(deps, { projectId, ctx, onBehalfOf, delegation });
+  return { reach: intersectReach(userReach, callerReach), owner: { userId: user.id }, userPermission };
 };

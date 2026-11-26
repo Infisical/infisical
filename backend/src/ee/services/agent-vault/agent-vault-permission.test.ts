@@ -24,7 +24,8 @@ import {
   reachOf,
   usableServiceIdsOf,
   usableSkillIdsOf,
-  visibleIdsWithin
+  visibleIdsWithin,
+  withoutDeniedOnItsOwn
 } from "./agent-vault-permission";
 import { agentVaultMemberTestRules, agentVaultTestReachDAL } from "./testing/agent-vault-test-roles";
 
@@ -117,6 +118,31 @@ describe("whose sessions a role reaches", () => {
     expect(agentVaultSessionActorIdOf({ userId: null, identityId: SOMEONE })).toBe(SOMEONE);
     expect(agentVaultSessionActorIdOf({ userId: ME, identityId: null })).toBe(ME);
     expect(agentVaultSessionActorIdOf({ userId: null, identityId: null })).toBeNull();
+  });
+});
+
+describe("withoutDeniedOnItsOwn", () => {
+  const LISTED = "1f5a3bd4-04b0-4759-9bf9-006e9649c66d";
+  const DENIED = "5b8f2c7a-3d4e-4f1a-9b6c-2e7d8a9f0c13";
+  const useEvery = { subject: ProjectPermissionSub.AgentVaultServices, action: ["use"] };
+
+  test("leaves the list alone, null included, while no role denies a service on its own", async () => {
+    const loadAllIds = vi.fn(async () => [LISTED, DENIED]);
+    expect(await withoutDeniedOnItsOwn([permissionOfRoles([useEvery])], "service", null, loadAllIds)).toBeNull();
+    expect(loadAllIds).not.toHaveBeenCalled();
+  });
+
+  test("drops what any of the namers denies, loading every one when the list covered them all", async () => {
+    const caller = permissionOfRoles([useEvery]);
+    const user = permissionOfRoles(
+      [useEvery],
+      [denyUse(ProjectPermissionSub.AgentVaultServices, { serviceId: DENIED })]
+    );
+    const loadAllIds = vi.fn(async () => [LISTED, DENIED]);
+    expect(await withoutDeniedOnItsOwn([caller, user], "service", null, loadAllIds)).toEqual([LISTED]);
+    expect(await withoutDeniedOnItsOwn([caller, user], "service", [DENIED], loadAllIds)).toEqual([]);
+    // A deny on a service says nothing about skills.
+    expect(await withoutDeniedOnItsOwn([caller, user], "skill", [DENIED], loadAllIds)).toEqual([DENIED]);
   });
 });
 

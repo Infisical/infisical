@@ -99,6 +99,16 @@ export const assertIdentityAuthAccessAllowed = async (
             "Only an Agent Vault admin can manage the credentials or authentication of a machine identity that has the Admin role."
         });
       }
+      // The target's lookup set the request's permission metadata, and the audit log reads the caller's from there.
+      // Running the caller's check again, memoized so it costs no query, puts it back.
+      await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
     }
     if (shouldUseNewPrivilegeSystem) return;
 

@@ -43,7 +43,7 @@ export const AddPoliciesPopover = ({ isRowShown, onToggleRow }: Props) => {
       <PopoverContent align="end" className="w-72 p-0" onWheel={(event) => event.stopPropagation()}>
         <Command>
           <CommandInput aria-label="Search policies" placeholder="Search policies..." />
-          <CommandList className="max-h-80 overscroll-contain">
+          <CommandList className="overscroll-contain">
             <CommandEmpty>No policies found.</CommandEmpty>
             {GROUPS.map(({ heading, rows }) => (
               <CommandGroup key={heading} heading={heading}>

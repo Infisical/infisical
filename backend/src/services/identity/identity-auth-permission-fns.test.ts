@@ -1,6 +1,6 @@
 import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, ProjectType } from "@app/db/schemas";
 import { projectAdminPermissions, projectMemberPermissions } from "@app/ee/services/permission/default-roles";
 import {
   orgAdminPermissions,
@@ -308,5 +308,40 @@ describe("assertIdentityAuthAccessAllowed", () => {
         })
       ).resolves.toBeUndefined();
     });
+  });
+});
+
+describe("an Agent Vault project", () => {
+  // The audit log reads the permission metadata of the last permission lookup in the request, which has to be the
+  // caller's, not that of the identity whose auth they change.
+  test("the caller's permission is looked up last, after the target's admin check", async () => {
+    const lookups: string[] = [];
+    const deps = {
+      permissionService: {
+        getProjectPermission: ({ actorId }: { actorId: string }) => {
+          lookups.push(actorId);
+          return Promise.resolve({
+            permission: projectAdmin,
+            projectType: ProjectType.AgentVault,
+            hasRole: () => false
+          });
+        }
+      },
+      orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem: true }) }
+    } as unknown as Parameters<typeof assertIdentityAuthAccessAllowed>[0];
+
+    await assertIdentityAuthAccessAllowed(deps, {
+      identityId: "identity-1",
+      orgId: "org-1",
+      projectId: "project-1",
+      action: OrgPermissionIdentityActions.EditAuth,
+      baseMessage: "Failed to edit the identity's auth",
+      actor: ActorType.USER,
+      actorId: "user-1",
+      actorAuthMethod: null,
+      actorOrgId: "org-1"
+    });
+
+    expect(lookups).toEqual(["user-1", "identity-1", "user-1"]);
   });
 });

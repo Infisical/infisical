@@ -140,6 +140,7 @@ import {
   TAgentVaultReach,
   unionWithin,
   usableServiceIdsOf,
+  withoutDeniedOnItsOwn,
   visibleIdsWithin
 } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
@@ -3086,17 +3087,26 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const { reachability, visibility } = await $readServicesAccess({ projectId, ctx });
     let scopeReach: TAgentVaultReach = reachability;
     let owner = ownerOrNullOf(ctx);
+    let namerPermissions = [reachability.permission];
     if (onBehalfOf) {
       const scope = await $onBehalfOfListScope({ projectId, ctx, onBehalfOf, callerReach: reachability });
       scopeReach = scope.reach;
       owner = scope.owner;
+      if (scope.userPermission) namerPermissions = [...namerPermissions, scope.userPermission];
     }
 
     const usableDeps = { agentVaultServiceDAL, agentVaultReachDAL };
     let serviceIds: string[] | null;
     let excludeServiceIds: string[] = [];
-    if (onBehalfOf) serviceIds = await usableServiceIdsOf(usableDeps, scopeReach, projectId);
-    else if (assigned) {
+    // Mint refuses a service either side denies on its own, so the list leaves those out.
+    if (onBehalfOf) {
+      serviceIds = await withoutDeniedOnItsOwn(
+        namerPermissions,
+        "service",
+        await usableServiceIdsOf(usableDeps, scopeReach, projectId),
+        () => agentVaultReachDAL.findServiceIds(projectId)
+      );
+    } else if (assigned) {
       // As in the bundle list, `assigned` keeps what the caller's roles give them one by one, directly or through a
       // bundle they pick out, so a role that can use everything doesn't ask its holder to set up every service.
       const { permission } = reachability;

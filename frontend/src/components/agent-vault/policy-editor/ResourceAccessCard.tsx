@@ -102,7 +102,7 @@ const CREATE_KEY = "create";
 const FULL_CONTROL_LEVEL = "manage";
 const ALL_OPTION = "all";
 // The width of the expand toggle and the icon before a name, with their gaps, so actions line up under the name.
-const ITEM_NAME_INDENT = "pl-14";
+const ITEM_NAME_INDENT = "pl-15";
 // Every one of them starts at Use when added from the picker, as a picked item does.
 const ADDED_ALL_LEVEL = "use";
 
@@ -128,7 +128,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
     use: "Put it in a session",
     edit: "Also change it, including where it sends its credential",
     manage: "Also delete it",
-    [DENIED_LEVEL]: "Overrides other roles, but not an access bundle that holds it"
+    [DENIED_LEVEL]: "Overrides other roles, though an access bundle that holds it still gives it"
   },
   skills: {
     [NONE_LEVEL]: "Only the skills picked below",
@@ -136,7 +136,7 @@ const LEVEL_DESCRIPTIONS: Record<TResourceRowKey, Record<string, string>> = {
     use: "Put it in a session",
     edit: "Also change its files",
     manage: "Also delete it",
-    [DENIED_LEVEL]: "Overrides other roles, but not an access bundle that holds it"
+    [DENIED_LEVEL]: "Overrides other roles, though an access bundle that holds it still gives it"
   }
 };
 
@@ -293,10 +293,7 @@ const AddResourcesPopover = ({
             aria-label={`Search ${plural}`}
           />
           {/* The editor can sit in a sheet, whose scroll lock would otherwise swallow the wheel over this portaled list */}
-          <CommandList
-            className="max-h-72 overscroll-contain"
-            onWheel={(event) => event.stopPropagation()}
-          >
+          <CommandList className="overscroll-contain" onWheel={(event) => event.stopPropagation()}>
             {!isSearching && !isAllListed && (
               <CommandEmpty>No {plural} match that search</CommandEmpty>
             )}

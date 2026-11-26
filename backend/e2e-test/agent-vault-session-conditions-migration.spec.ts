@@ -116,7 +116,14 @@ describe("Migration: Agent Vault session actions take an actorId condition", () 
       await up(trx);
       expect(await rulesOf(trx, auditor)).toEqual(afterFirstRun);
 
+      // A role saved in the new form, with the bare value the schema also takes for the caller's own sessions.
+      const bareSelf = await addRole(trx, [
+        { action: ["read", "edit"], subject: SESSIONS, conditions: { actorId: "{{identity.id}}" } }
+      ]);
+
       await down(trx);
+
+      expect(await sessionRulesOf(trx, bareSelf)).toEqual([{ action: ["edit", "read"] }]);
 
       expect(await sessionRulesOf(trx, member)).toEqual([
         { action: ["create", "create-with-inline-skills", "edit", "read", "revoke"] }

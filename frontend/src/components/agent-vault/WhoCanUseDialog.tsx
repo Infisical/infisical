@@ -22,22 +22,24 @@ export type TWhoCanUseTarget = {
 };
 
 // Each role is listed for what it allows on its own. A deny in another role a member holds still wins for that
-// member, which a list of roles can't show.
-const DENIED_ELSEWHERE =
-  "A holder who also has a role that denies Use on it still can't use it. Open a role to change what it allows or who holds it.";
+// member, which a list of roles can't show. On a service or skill, that deny only stops picking it on its own: an access
+// bundle that holds it still gives it.
+const OPEN_A_ROLE = "Open a role to change what it allows or who holds it.";
+const DENIED_ITEM_ELSEWHERE = (noun: string) =>
+  `A holder who also has a role that denies Use on it can't pick the ${noun} on its own, but still gets it from an access bundle they can use that holds it. ${OPEN_A_ROLE}`;
 
 const COPY: Record<TWhoCanUseTarget["kind"], { noun: string; description: string }> = {
   accessBundle: {
     noun: "bundle",
-    description: `These roles allow starting sessions from this bundle, with the services and skills in it. ${DENIED_ELSEWHERE}`
+    description: `These roles allow starting sessions from this bundle, with the services and skills in it. A holder who also has a role that denies Use on it still can't use it. ${OPEN_A_ROLE}`
   },
   service: {
     noun: "service",
-    description: `These roles allow putting this service in a session, directly or through an access bundle that holds it. ${DENIED_ELSEWHERE}`
+    description: `These roles allow putting this service in a session, directly or through an access bundle that holds it. ${DENIED_ITEM_ELSEWHERE("service")}`
   },
   skill: {
     noun: "skill",
-    description: `These roles allow putting this skill in a session, directly or through an access bundle that holds it. ${DENIED_ELSEWHERE}`
+    description: `These roles allow putting this skill in a session, directly or through an access bundle that holds it. ${DENIED_ITEM_ELSEWHERE("skill")}`
   }
 };
 

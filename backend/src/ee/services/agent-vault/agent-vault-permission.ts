@@ -106,6 +106,26 @@ export const deniesUseOnItsOwn = (permission: TAbility, kind: "service" | "skill
 const rulesOf = (permission: TAbility, action: string, subjectType: ProjectPermissionSub) =>
   (permission as unknown as MongoAbility).rulesFor(action, subjectType);
 
+/**
+ * The ids a session can name on their own: those no namer's roles deny using directly, as mint checks
+ * (`deniesUseOnItsOwn`). Null is every one in the project, loaded only when some role denies one of them.
+ */
+export const withoutDeniedOnItsOwn = async (
+  permissions: TAbility[],
+  kind: "service" | "skill",
+  ids: string[] | null,
+  loadAllIds: () => Promise<string[]>
+): Promise<string[] | null> => {
+  const subjectType =
+    kind === "service" ? ProjectPermissionSub.AgentVaultServices : ProjectPermissionSub.AgentVaultSkills;
+  const anyDeny = permissions.some((permission) =>
+    rulesOf(permission, ProjectPermissionAgentVaultServiceActions.Use, subjectType).some((rule) => rule.inverted)
+  );
+  if (!anyDeny) return ids;
+  const candidates = ids ?? (await loadAllIds());
+  return candidates.filter((id) => !permissions.some((permission) => deniesUseOnItsOwn(permission, kind, id)));
+};
+
 // Whether the rules for this action cover every id without checking one: an unconditioned allow and no deny. CASL
 // keeps the last matching rule, so any deny among them can take an id back and the ids have to be checked one by one.
 const coverageOf = (permission: TAbility, action: string, subjectType: ProjectPermissionSub) => {
