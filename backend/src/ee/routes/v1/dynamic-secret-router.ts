@@ -99,14 +99,14 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.create({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretCreated,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             provider: dynamicSecretCfg.type,
@@ -205,7 +205,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { dynamicSecret, updatedFields, projectId, environment, secretPath } =
         await server.services.dynamicSecret.updateByName({
-          actor: req.permission,
+          actor: req.actor,
           name: req.params.name,
           path: req.body.path,
           projectSlug: req.body.projectSlug,
@@ -234,7 +234,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { provider: dynamicSecret.type, projectId, environment, secretPath }
         })
         .catch(() => {});
@@ -271,7 +271,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.deleteByName({
-        actor: req.permission,
+        actor: req.actor,
         name: req.params.name,
         ...req.body
       });
@@ -279,7 +279,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretDeleted,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             provider: dynamicSecretCfg.type,
@@ -340,7 +340,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const dynamicSecretCfg = await server.services.dynamicSecret.getDetails({
-        actor: req.permission,
+        actor: req.actor,
         name: req.params.name,
         ...req.query
       });
@@ -390,7 +390,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { dynamicSecrets, environment, secretPath, projectId } =
         await server.services.dynamicSecret.listDynamicSecretsByEnv({
-          actor: req.permission,
+          actor: req.actor,
           ...req.query
         });
 
@@ -444,7 +444,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { leases, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.listLeases({
-          actor: req.permission,
+          actor: req.actor,
           name: req.params.name,
           ...req.query
         });
@@ -490,7 +490,7 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
     handler: async (req, reply) => {
       const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
         dynamicSecretId: req.params.dynamicSecretId,
-        actor: req.permission
+        actor: req.actor
       });
 
       const setupScript = `#!/bin/bash
@@ -588,7 +588,7 @@ echo ""
     handler: async (req) => {
       const { caPublicKey } = await server.services.dynamicSecret.getSshCaPublicKey({
         dynamicSecretId: req.params.dynamicSecretId,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { caPublicKey };
@@ -630,7 +630,7 @@ echo ""
         clientId: req.body.clientId,
         clientSecret: req.body.clientSecret,
         projectSlug: req.body.projectSlug,
-        actor: req.permission
+        actor: req.actor
       });
       return data;
     }
@@ -675,7 +675,7 @@ echo ""
         clientSecret: req.body.clientSecret,
         orgId: req.params.orgId,
         projectSlug: req.body.projectSlug,
-        actor: req.permission
+        actor: req.actor
       });
       return data;
     }
@@ -723,7 +723,7 @@ echo ""
         orgId: req.params.orgId,
         catalogId: req.params.catalogId,
         projectSlug: req.body.projectSlug,
-        actor: req.permission
+        actor: req.actor
       });
       return data;
     }
@@ -762,7 +762,7 @@ echo ""
         applicationId: req.body.applicationId,
         clientSecret: req.body.clientSecret,
         projectSlug: req.body.projectSlug,
-        actor: req.permission
+        actor: req.actor
       });
       return data;
     }

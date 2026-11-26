@@ -64,7 +64,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secretPath, environment, projectId, includeAllEntities } = req.query;
 
       return server.services.secret.getSecretAccessList({
-        actor: req.permission,
+        actor: req.actor,
         secretPath,
         environment,
         projectId,

@@ -64,10 +64,10 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { data: memberships } = await server.services.membershipUser.listMemberships({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.workspaceId
         },
         data: {}
@@ -127,13 +127,13 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
       const membership = await server.services.membershipUser.getMembershipByUserId({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.workspaceId
         },
         selector: {
@@ -197,7 +197,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.getProjectMembershipByUsername({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId,
         username: req.body.username
       });
@@ -235,7 +235,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const data = await server.services.projectMembership.addUsersToProject({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId,
         members: req.body.members
       });
@@ -257,7 +257,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       return {
         data: data.map((el) => ({
           ...el,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           role: OrgMembershipRole.Member,
           status: el.status || OrgMembershipStatus.Accepted
         })),
@@ -317,14 +317,14 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
       const { membership } = await server.services.membershipUser.updateMembership({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.workspaceId
         },
         selector: {
@@ -367,14 +367,14 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       const { userId } = await server.services.convertor.userMembershipIdToUserId(
         req.params.membershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
       const { membership } = await server.services.membershipUser.deleteMembership({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.workspaceId
         },
         selector: {

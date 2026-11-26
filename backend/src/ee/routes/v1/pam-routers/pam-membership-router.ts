@@ -41,23 +41,23 @@ const MemberResultSchema = z.object({
 
 export const FolderMemberResultSchema = MemberResultSchema.extend({ folderId: z.string().uuid() });
 
-const actorCtx = (req: { internalPamProjectId: string; permission: TActorContext }) => ({
+const actorCtx = (req: { internalPamProjectId: string; actor: TActorContext }) => ({
   projectId: req.internalPamProjectId,
-  actor: req.permission
+  actor: req.actor
 });
 
 const emitAuditLog = async (
   server: FastifyZodProvider,
   req: FastifyRequest & {
     auditLogInfo: Pick<TCreateAuditLogDTO, "userAgent" | "userAgentType" | "ipAddress" | "actor">;
-    permission: { orgId: string };
+    actor: { orgId: string };
   },
   type: EventType,
   metadata: Record<string, unknown>
 ) => {
   await server.services.auditLog.createAuditLog({
     ...req.auditLogInfo,
-    orgId: req.permission.orgId,
+    orgId: req.actor.orgId,
     projectId: req.internalPamProjectId,
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     event: { type, metadata } as TCreateAuditLogDTO["event"]
@@ -66,15 +66,15 @@ const emitAuditLog = async (
 
 const emitTelemetry = (
   server: FastifyZodProvider,
-  req: FastifyRequest & { permission: { orgId: string } },
+  req: FastifyRequest & { actor: { orgId: string } },
   event: PostHogEventTypes,
   properties: Record<string, unknown> = {}
 ) => {
   void server.services.telemetry.sendPostHogEvents({
     event,
     distinctId: getTelemetryDistinctId(req),
-    organizationId: req.permission.orgId,
-    properties: { orgId: req.permission.orgId, ...properties }
+    organizationId: req.actor.orgId,
+    properties: { orgId: req.actor.orgId, ...properties }
   } as Parameters<typeof server.services.telemetry.sendPostHogEvents>[0]);
 };
 

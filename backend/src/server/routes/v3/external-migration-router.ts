@@ -58,14 +58,14 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       await server.services.migration.importEnvKeyData({
         decryptionKey,
         encryptedJson: parsedJsonFile,
-        actor: req.permission
+        actor: req.actor
       });
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.ExternalMigrationCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { sourcePlatform: "env-key" }
         })
         .catch(() => {});
@@ -92,7 +92,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.migration.importVaultData({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -100,7 +100,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         .sendPostHogEvents({
           event: PostHogEventTypes.ExternalMigrationCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { sourcePlatform: "hashicorp-vault" }
         })
         .catch(() => {});
@@ -127,7 +127,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const enabled = await server.services.migration.hasCustomVaultMigration({
-        actor: req.permission,
+        actor: req.actor,
         provider: req.params.provider
       });
       return { enabled };
@@ -154,7 +154,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const namespaces = await server.services.migration.getVaultNamespaces({
-        actor: req.permission,
+        actor: req.actor,
         connectionId: req.query.connectionId
       });
 
@@ -183,7 +183,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const policies = await server.services.migration.getVaultPolicies({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         connectionId: req.query.connectionId
       });
@@ -213,7 +213,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const mounts = await server.services.migration.getVaultMounts({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         connectionId: req.query.connectionId
       });
@@ -244,7 +244,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const mounts = await server.services.migration.getVaultAuthMounts({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         authType: req.query.authType,
         connectionId: req.query.connectionId
@@ -303,7 +303,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const result = await server.services.migration.importVaultSecrets({
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo,
         ...req.body
       });
@@ -377,7 +377,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const roles = await server.services.migration.getVaultKubernetesRoles({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath,
         connectionId: req.query.connectionId
@@ -429,7 +429,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const roles = await server.services.migration.getVaultDatabaseRoles({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath,
         connectionId: req.query.connectionId
@@ -462,7 +462,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.migration.getVaultSecretPaths({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath,
         connectionId: req.query.connectionId
@@ -520,7 +520,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const roles = await server.services.migration.getVaultKubernetesAuthRoles({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath,
         connectionId: req.query.connectionId
@@ -568,7 +568,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const roles = await server.services.migration.getVaultLdapRoles({
-        actor: req.permission,
+        actor: req.actor,
         namespace: req.query.namespace,
         mountPath: req.query.mountPath,
         connectionId: req.query.connectionId
@@ -606,7 +606,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const projects = await server.services.migration.getDopplerProjects({
         connectionId: req.query.connectionId,
-        actor: req.permission
+        actor: req.actor
       });
       return { projects };
     }
@@ -641,7 +641,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const environments = await server.services.migration.getDopplerEnvironments({
         connectionId: req.query.connectionId,
         projectSlug: req.query.projectSlug,
-        actor: req.permission
+        actor: req.actor
       });
       return { environments };
     }
@@ -676,7 +676,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
       const configs = await server.services.migration.getDopplerConfigs({
         connectionId: req.query.connectionId,
         projectSlug: req.query.projectSlug,
-        actor: req.permission
+        actor: req.actor
       });
       return { configs };
     }
@@ -704,7 +704,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const result = await server.services.migration.importDopplerSecrets({
         ...req.body,
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo
       });
 
@@ -712,7 +712,7 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         .sendPostHogEvents({
           event: PostHogEventTypes.ExternalMigrationCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { sourcePlatform: "doppler" }
         })
         .catch(() => {});

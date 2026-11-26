@@ -49,7 +49,7 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const accounts = await server.services.appConnection.checkly.listAccounts(connectionId, req.permission);
+      const accounts = await server.services.appConnection.checkly.listAccounts(connectionId, req.actor);
 
       return { accounts };
     }
@@ -82,7 +82,7 @@ export const registerChecklyConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId, accountId } = req.params;
 
-      const groups = await server.services.appConnection.checkly.listGroups(connectionId, accountId, req.permission);
+      const groups = await server.services.appConnection.checkly.listGroups(connectionId, accountId, req.actor);
 
       return { groups };
     }

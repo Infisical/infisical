@@ -221,7 +221,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.attachAliCloudAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -326,7 +326,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.updateAliCloudAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         allowedArns: req.body.allowedArns,
@@ -397,7 +397,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.getAliCloudAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -442,7 +442,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.revokeIdentityAliCloudAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

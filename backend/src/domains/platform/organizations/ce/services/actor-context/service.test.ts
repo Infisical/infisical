@@ -3,16 +3,21 @@ import { randomUUID } from "node:crypto";
 import { EntityNotFoundError, PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
+import { ActorOrgCache } from "../../data-access/actor-org-cache";
 import { FOREIGN_SSO_SESSION_ERROR_NAME, SSO_REQUIRED_ERROR_NAME } from "../../models/sso-policy";
-import { actorOrg, userPrincipal } from "../../testing/actor-context-fixture";
+import { actorOrg, identityPrincipal, userPrincipal } from "../../testing/actor-context-fixture";
 import { FakeOrgPermissionService } from "../../testing/fake-org-permission-service";
 import { InMemoryOrganizationStore } from "../../testing/in-memory-organization-store";
 import { SsoSessionService } from "../sso-session/service";
 import { ActorContextService } from "./service";
 
-const arrange = () => {
+const arrange = ({ cacheTtlSeconds = 0 }: { cacheTtlSeconds?: number } = {}) => {
   const organizationStore = new InMemoryOrganizationStore();
-  const service = new ActorContextService(organizationStore, new SsoSessionService(new FakeOrgPermissionService()));
+  const service = new ActorContextService(
+    organizationStore,
+    new SsoSessionService(new FakeOrgPermissionService()),
+    new ActorOrgCache(cacheTtlSeconds)
+  );
   const org = actorOrg();
   organizationStore.add(org);
   return { service, organizationStore, org };
@@ -25,10 +30,11 @@ describe("ActorContextService.forRequest", () => {
     const principal = userPrincipal();
 
     // Action
-    const { actor, ssoRefusal } = await service.forRequest({ principal, orgId: org.id });
+    const { actor, org: scopedTo, ssoRefusal } = await service.forRequest({ principal, orgId: org.id });
 
     // Assert
     expect(actor).toEqual({ principal, org });
+    expect(scopedTo).toEqual(org);
     expect(ssoRefusal).toBeNull();
   });
 
@@ -94,6 +100,96 @@ describe("ActorContextService.forRequest", () => {
 
     // Assert
     expect(ssoRefusal?.message).toMatch(/Login with Google SSO/);
+  });
+
+  test("should use the org the request already read and not read it again", async () => {
+    // Setup
+    const { service, organizationStore, org } = arrange();
+    const findActorOrg = vi.spyOn(organizationStore, "findActorOrg");
+    const principal = userPrincipal();
+
+    // Action
+    const { actor } = await service.forRequest({ principal, org });
+
+    // Assert
+    expect(actor).toEqual({ principal, org });
+    expect(findActorOrg).not.toHaveBeenCalled();
+  });
+
+  test("should give an unscoped context when the request already found no org", async () => {
+    // Setup
+    const { service, organizationStore } = arrange();
+    const findActorOrg = vi.spyOn(organizationStore, "findActorOrg");
+
+    // Action
+    const { actor, org: scopedTo } = await service.forRequest({ principal: userPrincipal(), org: null });
+
+    // Assert
+    expect(() => actor.org).toThrow(RuleViolationError);
+    expect(scopedTo).toBeNull();
+    expect(findActorOrg).not.toHaveBeenCalled();
+  });
+
+  test("should check the sign-in policy of the org the request already read", async () => {
+    // Setup
+    const { service } = arrange();
+    const enforced = actorOrg({ ssoPolicy: { authEnforced: true } });
+
+    // Action
+    const { ssoRefusal } = await service.forRequest({ principal: userPrincipal(), org: enforced });
+
+    // Assert
+    expect(ssoRefusal?.name).toBe(SSO_REQUIRED_ERROR_NAME);
+  });
+
+  test("should read a machine actor's org once while it is cached", async () => {
+    // Setup
+    const { service, organizationStore, org } = arrange({ cacheTtlSeconds: 10 });
+    const findActorOrg = vi.spyOn(organizationStore, "findActorOrg");
+    const principal = identityPrincipal();
+
+    // Action
+    const first = await service.forRequest({ principal, orgId: org.id });
+    const second = await service.forRequest({ principal, orgId: org.id });
+
+    // Assert
+    expect(first.actor.org).toEqual(org);
+    expect(second.actor.org).toEqual(org);
+    expect(second.actor.org).not.toBe(first.actor.org);
+    expect(findActorOrg).toHaveBeenCalledTimes(1);
+  });
+
+  test("should read a user's org on every request, so a sign-in policy change applies at once", async () => {
+    // Setup
+    const { service, organizationStore } = arrange({ cacheTtlSeconds: 10 });
+    const org = actorOrg();
+    organizationStore.add(org);
+    await service.forRequest({ principal: identityPrincipal(), orgId: org.id });
+    await service.forRequest({ principal: userPrincipal(), orgId: org.id });
+
+    // Action
+    organizationStore.add({ ...org, ssoPolicy: { ...org.ssoPolicy, authEnforced: true } });
+    const { ssoRefusal } = await service.forRequest({ principal: userPrincipal(), orgId: org.id });
+
+    // Assert
+    expect(ssoRefusal?.name).toBe(SSO_REQUIRED_ERROR_NAME);
+  });
+});
+
+describe("ActorContextService.findActorOrg", () => {
+  test("should return the org, and null for an id that is not an org id or names no org", async () => {
+    // Setup
+    const { service, org } = arrange();
+
+    // Action
+    const results = await Promise.all([
+      service.findActorOrg(org.id),
+      service.findActorOrg("API_KEY"),
+      service.findActorOrg(randomUUID())
+    ]);
+
+    // Assert
+    expect(results).toEqual([org, null, null]);
   });
 });
 

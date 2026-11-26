@@ -52,7 +52,7 @@ export const registerCoolifyConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const resources = await server.services.appConnection.coolify.listResources(connectionId, req.permission);
+      const resources = await server.services.appConnection.coolify.listResources(connectionId, req.actor);
 
       return { resources };
     }

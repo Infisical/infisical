@@ -48,7 +48,7 @@ export const registerKeeperConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const sharedFolders = await server.services.appConnection.keeper.listSharedFolders(connectionId, req.permission);
+      const sharedFolders = await server.services.appConnection.keeper.listSharedFolders(connectionId, req.actor);
       return { sharedFolders };
     }
   });

@@ -27,11 +27,11 @@ export class GrantStore implements TGrantStore {
       if (scope.scope === RESOURCE_SCOPE) {
         return ActorGrants.restore({ memberships, privileges: [], attributes: [] });
       }
-      const [privileges, attributes] = await Promise.all([
+      const [privileges, { attributes, actorName }] = await Promise.all([
         GrantStore.findPrivileges(knex, actor, scope),
         GrantStore.findAttributes(knex, actor, scope.orgId)
       ]);
-      return ActorGrants.restore({ memberships, privileges, attributes });
+      return ActorGrants.restore({ memberships, privileges, attributes, actorName });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find actor grants" });
     }
@@ -80,9 +80,10 @@ export class GrantStore implements TGrantStore {
         )
         .orderBy("id");
 
-      const attributeRows = await GrantStore.attributeQuery(knex, actor, scope.orgId)
-        .select("id", "updatedAt")
-        .orderBy("id");
+      const attributeRows = (await GrantStore.attributeQuery(knex, actor, scope.orgId, [
+        "id",
+        "updatedAt"
+      ])) as unknown[];
 
       return generateCacheKeyFromData({ membershipRows, privilegeRows, attributeRows });
     } catch (error) {
@@ -463,18 +464,38 @@ export class GrantStore implements TGrantStore {
     return query.select("*").orderBy("id");
   }
 
-  private static attributeQuery(knex: Knex, actor: TGrantActor, orgId: string) {
-    // User attributes are per org. An identity is in one org, so no org filter needed.
-    return actor.type === ActorType.USER
-      ? knex(TableName.IdentityMetadata).where({ userId: actor.id, orgId })
-      : knex(TableName.IdentityMetadata).where({ identityId: actor.id });
+  // User attributes are per org. An identity is in one org, so no org filter needed. Its rows start from the
+  // identity, so its name comes back in the same round trip whether or not it has attributes.
+  private static attributeQuery(knex: Knex, actor: TGrantActor, orgId: string, columns: string[]): Knex.QueryBuilder {
+    const attributeColumns = columns.map((column) => knex.ref(column).withSchema(TableName.IdentityMetadata));
+    if (actor.type === ActorType.USER) {
+      return knex(TableName.IdentityMetadata)
+        .where({ userId: actor.id, orgId })
+        .select(attributeColumns)
+        .orderBy(`${TableName.IdentityMetadata}.id`);
+    }
+    return knex(TableName.Identity)
+      .leftJoin(TableName.IdentityMetadata, `${TableName.IdentityMetadata}.identityId`, `${TableName.Identity}.id`)
+      .where(`${TableName.Identity}.id`, actor.id)
+      .select(attributeColumns)
+      .select(knex.ref("name").withSchema(TableName.Identity).as("actorName"))
+      .orderBy(`${TableName.IdentityMetadata}.id`);
   }
 
   private static async findAttributes(
     knex: Knex,
     actor: TGrantActor,
     orgId: string
-  ): Promise<TIdentityAttributeRecord[]> {
-    return GrantStore.attributeQuery(knex, actor, orgId).select("id", "key", "value").orderBy("id");
+  ): Promise<{ attributes: TIdentityAttributeRecord[]; actorName: string | null }> {
+    const rows = (await GrantStore.attributeQuery(knex, actor, orgId, ["id", "key", "value"])) as {
+      id: string | null;
+      key: string;
+      value: string;
+      actorName?: string;
+    }[];
+    return {
+      attributes: rows.flatMap(({ id, key, value }) => (id ? [{ id, key, value }] : [])),
+      actorName: rows[0]?.actorName ?? null
+    };
   }
 }

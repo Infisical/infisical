@@ -41,7 +41,7 @@ export const registerHCVaultConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const mounts = await server.services.appConnection.hcvault.listMounts(connectionId, req.permission);
+      const mounts = await server.services.appConnection.hcvault.listMounts(connectionId, req.actor);
       return mounts;
     }
   });

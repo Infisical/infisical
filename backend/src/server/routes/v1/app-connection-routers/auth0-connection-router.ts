@@ -44,7 +44,7 @@ export const registerAuth0ConnectionRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const clients = await server.services.appConnection.auth0.listClients(connectionId, req.permission);
+      const clients = await server.services.appConnection.auth0.listClients(connectionId, req.actor);
 
       return { clients };
     }

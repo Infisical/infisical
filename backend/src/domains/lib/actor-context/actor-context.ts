@@ -17,7 +17,7 @@ export type TActorOrg = {
   ssoPolicy: TActorOrgSsoPolicy;
 };
 
-// Built once per request by the auth middleware (req.permission), or by actorContextService for queues, crons and
+// Built once per request by the auth middleware (req.actor), or by actorContextService for queues, crons and
 // consumers. No project here on purpose: it depends on the call, not the request, so permission services load it.
 export type TActorContext = {
   principal: TPrincipal;

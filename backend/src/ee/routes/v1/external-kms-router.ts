@@ -76,7 +76,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.create({
-        actor: req.permission,
+        actor: req.actor,
         name: req.body.name,
         provider: req.body.provider,
         description: req.body.description
@@ -84,7 +84,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_KMS,
           metadata: {
@@ -125,7 +125,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.updateById({
-        actor: req.permission,
+        actor: req.actor,
         name: req.body.name,
         provider: req.body.provider,
         description: req.body.description,
@@ -134,7 +134,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_KMS,
           metadata: {
@@ -170,13 +170,13 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.deleteById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_KMS,
           metadata: {
@@ -210,13 +210,13 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.findById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_KMS,
           metadata: {
@@ -247,7 +247,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const externalKmsList = await server.services.externalKms.list({
-        actor: req.permission
+        actor: req.actor
       });
       return { externalKmsList };
     }
@@ -273,7 +273,7 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.findByName({
-        actor: req.permission,
+        actor: req.actor,
         name: req.params.name
       });
       return { externalKms };

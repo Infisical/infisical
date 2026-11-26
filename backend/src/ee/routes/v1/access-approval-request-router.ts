@@ -67,7 +67,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { request, projectId } = await server.services.secretAccessApprovalRequest.createAccessApprovalRequest({
-        actor: req.permission,
+        actor: req.actor,
         permissions: req.body.permissions,
         projectSlug: req.query.projectSlug,
         temporaryRange: req.body.temporaryRange,
@@ -77,7 +77,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.ACCESS_APPROVAL_REQUEST_CREATE,
@@ -96,7 +96,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalRequestCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             requestId: request.id,
             projectId,
@@ -132,7 +132,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       const { count } = await server.services.secretAccessApprovalRequest.getCount({
         projectSlug: req.query.projectSlug,
         policyId: req.query.policyId,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { ...count };
@@ -212,7 +212,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         projectSlug: req.query.projectSlug,
         authorUserId: req.query.authorUserId,
         envSlug: req.query.envSlug,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { requests };
@@ -241,7 +241,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { projectId, policyId, isBypass, ...review } =
         await server.services.secretAccessApprovalRequest.reviewAccessRequest({
-          actor: req.permission,
+          actor: req.actor,
           requestId: req.params.requestId,
           status: req.body.status,
           bypassReason: req.body.bypassReason
@@ -249,7 +249,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.ACCESS_APPROVAL_REQUEST_REVIEW,
@@ -267,7 +267,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalRequestReviewed,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             requestId: review.requestId,
             projectId,
@@ -302,12 +302,12 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const result = await server.services.secretAccessApprovalRequest.revokeAccessRequest({
         requestId: req.params.requestId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: result.projectId,
         event: {
           type: EventType.ACCESS_APPROVAL_REQUEST_REVOKE,
@@ -344,12 +344,12 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const result = await server.services.secretAccessApprovalRequest.retryDelegatedApprovalDispatch({
         requestId: req.params.requestId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: result.projectId,
         event: {
           type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY,
@@ -394,12 +394,12 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const result = await server.services.secretAccessApprovalRequest.cancelAccessRequest({
         requestId: req.params.requestId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: result.projectId,
         event: {
           type: EventType.ACCESS_APPROVAL_REQUEST_CANCEL,

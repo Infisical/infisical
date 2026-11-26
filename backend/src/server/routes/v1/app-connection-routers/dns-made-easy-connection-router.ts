@@ -45,7 +45,7 @@ export const registerDNSMadeEasyConnectionRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const zones = await server.services.appConnection.dnsMadeEasy.listZones(connectionId, req.permission);
+      const zones = await server.services.appConnection.dnsMadeEasy.listZones(connectionId, req.actor);
       return zones;
     }
   });

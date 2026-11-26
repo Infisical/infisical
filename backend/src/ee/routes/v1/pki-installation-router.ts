@@ -56,7 +56,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -121,7 +121,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.getInstallation({
         installationId: req.params.installationId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -176,7 +176,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         installationId: req.params.installationId,
         name: req.body.name,
         keystorePassword: req.body.keystorePassword,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -221,7 +221,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.deleteInstallation({
         installationId: req.params.installationId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

@@ -44,7 +44,7 @@ export const registerPowerDnsConnectionRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const zones = await server.services.appConnection.powerDns.listZones(connectionId, req.permission);
+      const zones = await server.services.appConnection.powerDns.listZones(connectionId, req.actor);
       return zones;
     }
   });

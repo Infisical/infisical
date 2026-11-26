@@ -89,12 +89,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accessType: req.body.accessType,
         breakGlass: req.body.breakGlass,
         autoApprovalInputs: req.body.autoApprovalInputs,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCESS_REQUEST_CREATE,
@@ -117,7 +117,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         const bypass = result.breakGlassMetadata;
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_ACCESS_POLICY_BYPASSED,
@@ -127,7 +127,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
               policyName: bypass.policyName,
               requestId: result.request.id,
               grantId: bypass.grantId,
-              granteeUserId: req.permission.id,
+              granteeUserId: req.actor.id,
               granteeName: bypass.granteeName ?? undefined,
               granteeEmail: bypass.granteeEmail ?? undefined,
               accountId: bypass.accountId,
@@ -147,13 +147,13 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         const autoApprovedEvent = await server.services.approvalPolicy.buildAuditEvent({
           action: ApprovalAuditAction.RequestAutoApproved,
           request: result.request,
-          actorId: req.permission.id
+          actorId: req.actor.id
         });
         if (autoApprovedEvent) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             actor: { type: ActorType.PLATFORM, metadata: {} },
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: req.internalPamProjectId,
             event: autoApprovedEvent
           });
@@ -164,10 +164,10 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccessRequestCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: result.accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -202,7 +202,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         status: req.query.status,
         offset: req.query.offset,
         limit: req.query.limit,
-        actor: req.permission
+        actor: req.actor
       });
       return result;
     }
@@ -227,7 +227,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       const result = await server.services.pamAccessRequest.listPendingMyApproval({
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
-        actor: req.permission
+        actor: req.actor
       });
       return result;
     }
@@ -249,7 +249,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getCount({
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
       return result;
     }
@@ -291,7 +291,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         accessType: req.query.accessType,
-        actor: req.permission
+        actor: req.actor
       });
       return result;
     }

@@ -8,11 +8,11 @@ import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { SuperAdminErrorCode } from "./super-admin-types";
 
 export const isSuperAdmin = (auth: TAuthMode) => {
-  if (auth.actor === ActorType.USER && auth.user.superAdmin) {
+  if (auth.actorType === ActorType.USER && auth.user.superAdmin) {
     return true;
   }
 
-  if (auth.actor === ActorType.IDENTITY && auth.isInstanceAdmin) {
+  if (auth.actorType === ActorType.IDENTITY && auth.isInstanceAdmin) {
     return true;
   }
 

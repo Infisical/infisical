@@ -26,12 +26,10 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const mappings = await server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(
-        req.permission
-      );
+      const mappings = await server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(req.actor);
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS
@@ -67,15 +65,15 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { body, permission } = req;
+      const { body, actor } = req;
 
       const mappings = await server.services.externalGroupOrgRoleMapping.updateExternalGroupOrgRoleMappings(
         body,
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
-        orgId: permission.orgId,
+        orgId: actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS,

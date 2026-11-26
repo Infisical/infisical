@@ -57,7 +57,7 @@ export const registerImpervaPkiSyncRouter = async (server: FastifyZodProvider, e
     handler: async (req) => {
       const { connectionId } = req.query;
 
-      const sites = await server.services.appConnection.imperva.listSites(connectionId, req.permission);
+      const sites = await server.services.appConnection.imperva.listSites(connectionId, req.actor);
 
       return { sites };
     }

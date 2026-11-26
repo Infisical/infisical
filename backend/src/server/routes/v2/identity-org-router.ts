@@ -72,7 +72,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV1.listOrgIdentities({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.orgId,
         limit: req.query.limit,
         offset: req.query.offset,

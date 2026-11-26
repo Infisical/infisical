@@ -15,7 +15,7 @@ const makeReq = (auth: FakeAuth | undefined, opts?: { orgId?: string; method?: s
     auth,
     method: opts?.method ?? "GET",
     url: "/api/v1/secrets",
-    permission: { orgId: opts?.orgId },
+    actor: { orgId: opts?.orgId },
     shouldForwardWritesToPrimaryInstance: false
   }) as unknown as FastifyRequest;
 

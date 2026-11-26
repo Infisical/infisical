@@ -61,13 +61,13 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
+      if (req.auth.actorType !== ActorType.USER) return;
 
       const { signUpTokens: completeInviteLinks } = await server.services.membershipUser.createMembership({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           usernames: req.body.inviteeEmails,
@@ -77,13 +77,13 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
 
       const projects = req.body.projectIds?.length
         ? await server.services.project.getProjectNamesByIds({
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectIds: req.body.projectIds
           })
         : undefined;
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.INVITE_ORG_MEMBERS,
           metadata: {
@@ -103,7 +103,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
         // Agent Vault projects go through its own member service, as its Access Control page does, so invitees are
         // audited and metered as Agent Vault members.
         const agentVaultProjectIds = await server.services.agentVaultProjectResolver.filterAgentVaultProjectIds(
-          req.permission.orgId,
+          req.actor.orgId,
           req.body.projectIds
         );
 
@@ -112,7 +112,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             if (agentVaultProjectIds.has(projectId)) {
               const { members } = await server.services.agentVaultMembership.addProductMembers({
                 projectId,
-                ctx: req.permission,
+                ctx: req.actor,
                 userIds: [],
                 groupIds: [],
                 machineIdentityIds: [],
@@ -123,7 +123,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
               for await (const member of members) {
                 await server.services.auditLog.createAuditLog({
                   ...req.auditLogInfo,
-                  orgId: req.permission.orgId,
+                  orgId: req.actor.orgId,
                   projectId,
                   event: {
                     type: EventType.AGENT_VAULT_MEMBER_ADD,
@@ -140,10 +140,10 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             }
 
             const { memberships } = await server.services.membershipUser.createMembership({
-              actor: req.permission,
+              actor: req.actor,
               scopeData: {
                 scope: AccessScope.Project,
-                orgId: req.permission.orgId,
+                orgId: req.actor.orgId,
                 projectId
               },
               data: {
@@ -155,7 +155,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             if (memberships.length) {
               await server.services.auditLog.createAuditLog({
                 ...req.auditLogInfo,
-                orgId: req.permission.orgId,
+                orgId: req.actor.orgId,
                 projectId,
                 event: {
                   type: EventType.ADD_BATCH_PROJECT_MEMBER,
@@ -180,10 +180,10 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       // and access-request cleanup apply.
       if (req.body.grantPamAccess) {
         try {
-          const pamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
+          const pamProjectId = await server.services.pamProjectResolver.resolve(req.actor.orgId);
           const { memberships } = await server.services.pamMembership.addProductUserMembers({
             projectId: pamProjectId,
-            actor: req.permission,
+            actor: req.actor,
             userIds: [],
             emails: req.body.inviteeEmails,
             role: PamProductRole.Member
@@ -192,7 +192,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           for await (const membership of memberships) {
             await server.services.auditLog.createAuditLog({
               ...req.auditLogInfo,
-              orgId: req.permission.orgId,
+              orgId: req.actor.orgId,
               projectId: pamProjectId,
               event: {
                 type: EventType.PAM_PRODUCT_MEMBER_ADD,
@@ -202,8 +202,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             void server.services.telemetry.sendPostHogEvents({
               event: PostHogEventTypes.PamProductMemberAdded,
               distinctId: getTelemetryDistinctId(req),
-              organizationId: req.permission.orgId,
-              properties: { orgId: req.permission.orgId }
+              organizationId: req.actor.orgId,
+              properties: { orgId: req.actor.orgId }
             });
           }
         } catch (err) {
@@ -215,7 +215,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.UserOrgInvitation,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           inviteeEmails: req.body.inviteeEmails,
           organizationRoleSlug: req.body.organizationRoleSlug,
@@ -267,8 +267,8 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.org.resendOrgMemberInvitation({
-        orgId: req.permission.orgId,
-        actor: req.permission,
+        orgId: req.actor.orgId,
+        actor: req.actor,
         membershipId: req.body.membershipId
       });
     }

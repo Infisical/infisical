@@ -54,7 +54,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
           connectionId,
           ...req.query
         },
-        req.permission
+        req.actor
       );
 
       return { kmsKeys };
@@ -91,7 +91,7 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
         {
           connectionId
         },
-        req.permission
+        req.actor
       );
 
       return {

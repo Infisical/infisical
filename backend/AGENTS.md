@@ -297,7 +297,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
 
 - `inject-identity.ts` — detects auth mode from request headers and attaches identity to request
 - `verify-auth.ts` — middleware that checks if the request's auth mode is in the route's allowed strategies
-- `inject-permission.ts`: builds `req.permission`: the actor context (`TActorContext`: principal and org) from `actorContextService.forRequest`, plus the flat `type`/`id`/`orgId`/`authMethod` fields existing services still read. New code passes `actor: req.permission` and reads `principal` / `org`. It refuses with 401 a session the org's SSO policy no longer allows.
+- `inject-actor-context.ts`: builds `req.actor`: the actor context (`TActorContext`: principal and org) from `actorContextService.forRequest`, plus the flat `type`/`id`/`orgId`/`authMethod` fields existing services still read. New code passes `actor: req.actor` and reads `principal` / `org`. It refuses with 401 a session the org's SSO policy no longer allows. Keep it to that: it may refuse a request on facts about the session and its org, never on what the actor may do, and it does no read a single permission service needs (see `src/domains/platform/organizations/AGENTS.md` for how the org is read once).
 - `inject-assume-privilege.ts` — privilege escalation support
 - `superAdmin.ts` — super admin flag injection
 
@@ -324,7 +324,7 @@ Token detection logic in `inject-identity.ts` checks `x-api-key` header first, t
 A session minted by a SAML, OIDC or LDAP login carries `issuingRootOrgId`, the root org whose IdP
 issued it (`processProviderCallback` sets it; own-credential sessions never have it). An org that
 enforces SSO admits only sessions its own IdP issued. Enforcement is a property of the session, not a
-permission: `inject-permission.ts` asks the Organizations domain once per request
+permission: `inject-actor-context.ts` asks the Organizations domain once per request
 (`actorContextService.forRequest`, which reads the org and its root's `authEnforced`,
 `googleSsoAuthEnforced` and `bypassOrgAuthEnabled`, then `SsoPolicy.refusalFor` the session's auth method
 and `issuingRootOrgId`), and answers a refused session with 401 (`OrgSsoRequired` or `ForeignSsoSession`),
@@ -478,7 +478,7 @@ builds its own permission; read `src/domains/platform/access-control/AGENTS.md` 
   `pamPermissionService`, `accessBundlePermissionService`, `applicationPermissionService`,
   `signerPermissionService`, `kmsPermissionService`. A product whose roles mean something else passes Projects a
   `TProjectRoles` (PAM, Agent Vault, KMS); resource roles are a product's `TResourceRoles`.
-- Services take `actor: TActorContext` (`req.permission` in a router) and check with
+- Services take `actor: TActorContext` (`req.actor` in a router) and check with
   `permission.assert({ action, subject, fields })`.
 
 **Project permission actions** include standard CRUD plus specialized ones like `DescribeSecret` (see metadata without value), `ReadValue`, `GrantPrivileges`, `AssumePrivileges`, `Lease` (for dynamic secrets). See `ProjectPermissionActions`, `ProjectPermissionSecretActions`, `ProjectPermissionDynamicSecretActions`, and `ProjectPermissionIdentityActions` enums in `project-permission-set.ts`.

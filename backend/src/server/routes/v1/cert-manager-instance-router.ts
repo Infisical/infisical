@@ -42,12 +42,12 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const state = await server.services.certManagerInstance.getInstanceState({
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_CERT_MANAGER_INSTANCE_STATE,
           metadata: {
@@ -82,7 +82,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.certManagerInstance.listLegacyInstances({
-        actor: req.permission
+        actor: req.actor
       });
     }
   });
@@ -110,14 +110,14 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const result = await server.services.certManagerInstance.setActiveProject(
         {
-          actor: req.permission
+          actor: req.actor
         },
         req.body.projectId
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.SET_CERT_MANAGER_ACTIVE_PROJECT,
           metadata: {

@@ -56,7 +56,7 @@ export const registerGcpKmsRouter = async (server: FastifyZodProvider) => {
         credentialJson = req.body.credential;
       } else if (authMethod === KmsGcpKeyFetchAuthType.Kms && "kmsId" in req.body) {
         const externalKms = await server.services.externalKms.findById({
-          actor: req.permission,
+          actor: req.actor,
           id: req.body.kmsId
         });
 
@@ -75,7 +75,7 @@ export const registerGcpKmsRouter = async (server: FastifyZodProvider) => {
       }
 
       const results = await server.services.externalKms.fetchGcpKeys({
-        actor: req.permission,
+        actor: req.actor,
         credential: credentialJson,
         gcpRegion: region
       });

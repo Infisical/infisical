@@ -84,10 +84,10 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
       if (!role && !roles) throw new BadRequestError({ message: "You must provide either role or roles field" });
 
       const { membership } = await server.services.membershipIdentity.createMembership({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -161,10 +161,10 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.updateMembership({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -209,10 +209,10 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.deleteMembership({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -305,7 +305,7 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityProject.listProjectIdentities({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         limit: req.query.limit,
         offset: req.query.offset,
@@ -371,7 +371,7 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     },
     handler: async (req) => {
       const identityMembership = await server.services.identityProject.getProjectIdentityByIdentityId({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         identityId: req.params.identityId
       });
@@ -423,7 +423,7 @@ export const registerDeprecatedIdentityProjectMembershipRouter = async (server: 
     },
     handler: async (req) => {
       const identityMembership = await server.services.identityProject.getProjectIdentityByMembershipId({
-        actor: req.permission,
+        actor: req.actor,
         identityMembershipId: req.params.identityMembershipId
       });
       return { identityMembership };

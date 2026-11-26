@@ -56,7 +56,7 @@ export const registerWindowsLocalAccountRotationRouter = async (server: FastifyZ
 
       const result = await server.services.secretRotationV2.reconcileLocalAccountRotation(
         { rotationId, type: SecretRotation.WindowsLocalAccount },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({

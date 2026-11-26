@@ -40,7 +40,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.gitHubApp.initiateManifestCreation({
-        actor: req.permission,
+        actor: req.actor,
         name: req.body.name,
         instanceType: req.body.instanceType,
         githubOrg: req.body.githubOrg,
@@ -101,7 +101,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const gitHubApps = await server.services.gitHubApp.listGitHubApps({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.query.projectId
       });
 
@@ -128,13 +128,13 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const gitHubApp = await server.services.gitHubApp.deleteGitHubApp({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...(gitHubApp.projectId ? { projectId: gitHubApp.projectId } : {}),
         event: {
           type: EventType.DELETE_GITHUB_APP,

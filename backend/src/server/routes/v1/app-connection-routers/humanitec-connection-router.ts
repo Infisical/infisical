@@ -61,7 +61,7 @@ export const registerHumanitecConnectionRouter = async (server: FastifyZodProvid
 
       const organizations: HumanitecOrgWithApps[] = await server.services.appConnection.humanitec.listOrganizations(
         connectionId,
-        req.permission
+        req.actor
       );
 
       return organizations;

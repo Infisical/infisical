@@ -256,7 +256,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       const oidc = await server.services.oidc.getOidc({
         organizationId: req.query.organizationId,
         type: "external",
-        actor: req.permission
+        actor: req.actor
       });
 
       return oidc;
@@ -337,7 +337,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const oidc = await server.services.oidc.updateOidcCfg({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -345,11 +345,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "oidc",
             action: "update",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -475,7 +475,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
 
     handler: async (req) => {
       const oidc = await server.services.oidc.createOidcCfg({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -483,11 +483,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "oidc",
             action: "create",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -511,7 +511,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.permission);
+      const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.actor);
 
       return { isEnabled };
     }

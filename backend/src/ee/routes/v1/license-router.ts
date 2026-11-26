@@ -10,11 +10,11 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   // Any member of the org can read its plan, which is always its root org's.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
-    await server.services.orgPermissionService.getOrgPermission({ actor: req.permission, orgId });
+    await server.services.orgPermissionService.getOrgPermission({ actor: req.actor, orgId });
     if (refreshCache) {
-      await server.services.licenseService.refreshPlan(req.permission.rootOrgId);
+      await server.services.licenseService.refreshPlan(req.actor.rootOrgId);
     }
-    return server.services.licenseService.getPlan(req.permission.rootOrgId);
+    return server.services.licenseService.getPlan(req.actor.rootOrgId);
   };
 
   server.route({

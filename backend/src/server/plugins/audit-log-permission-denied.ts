@@ -52,7 +52,7 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
     if (!denial && !isCaslDenial && !isBoundaryRefusal) return;
     if (!req.auth || !req.auditLogInfo?.actor) return;
 
-    const orgId = req.auditLogInfo.orgId ?? req.permission?.orgId;
+    const orgId = req.auditLogInfo.orgId ?? req.actor?.orgId;
     if (!orgId) return;
 
     const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;

@@ -4,6 +4,7 @@ import fp from "fastify-plugin";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
+import type { TActorOrg } from "@app/domains/lib/actor-context";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { ActorType, AuthMethod, AuthMode, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -26,13 +27,16 @@ import { invalidSignatureMessage } from "./invalid-signature-message";
 export type TAuthMode =
   | {
       authMode: AuthMode.JWT | AuthMode.OAUTH;
-      actor: ActorType.USER;
+      actorType: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
       user: TUsers;
       orgId: string;
       rootOrgId: string;
       parentOrgId: string;
+      // Read by the session check; null when the session has no org. injectActorContext builds the actor context
+      // from it, so the org is read once.
+      actorOrg: TActorOrg | null;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
@@ -43,7 +47,7 @@ export type TAuthMode =
   | {
       authMode: AuthMode.API_KEY;
       authMethod: null;
-      actor: ActorType.USER;
+      actorType: ActorType.USER;
       userId: string;
       user: TUsers;
       orgId: string;
@@ -54,7 +58,7 @@ export type TAuthMode =
   | {
       authMode: AuthMode.SERVICE_TOKEN;
       serviceToken: TServiceTokens & { createdByEmail: string };
-      actor: ActorType.SERVICE;
+      actorType: ActorType.SERVICE;
       serviceTokenId: string;
       orgId: string;
       rootOrgId: string;
@@ -64,7 +68,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.IDENTITY_ACCESS_TOKEN;
-      actor: ActorType.IDENTITY;
+      actorType: ActorType.IDENTITY;
       identityId: string;
       identityName: string;
       orgId: string;
@@ -76,7 +80,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.SCIM_TOKEN;
-      actor: ActorType.SCIM_CLIENT;
+      actorType: ActorType.SCIM_CLIENT;
       scimTokenId: string;
       orgId: string;
       rootOrgId: string;
@@ -85,7 +89,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.GATEWAY_ACCESS_TOKEN;
-      actor: ActorType.GATEWAY;
+      actorType: ActorType.GATEWAY;
       gatewayId: string;
       orgId: string;
       rootOrgId: string;
@@ -95,7 +99,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.RELAY_ACCESS_TOKEN;
-      actor: ActorType.RELAY;
+      actorType: ActorType.RELAY;
       relayId: string;
       orgId: string;
       rootOrgId: string;
@@ -105,7 +109,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN;
-      actor: ActorType.KMIP_SERVER;
+      actorType: ActorType.KMIP_SERVER;
       kmipServerId: string;
       orgId: string;
       rootOrgId: string;
@@ -115,7 +119,7 @@ export type TAuthMode =
     }
   | {
       authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN;
-      actor: ActorType.AGENT_VAULT_PROXY;
+      actorType: ActorType.AGENT_VAULT_PROXY;
       agentVaultProxyId: string;
       orgId: string;
       rootOrgId: string;
@@ -135,7 +139,7 @@ export const isUserSessionAuth = (
 export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const apiKey = req.headers?.["x-api-key"];
   if (apiKey) {
-    return { authMode: AuthMode.API_KEY, token: apiKey, actor: ActorType.USER } as const;
+    return { authMode: AuthMode.API_KEY, token: apiKey, actorType: ActorType.USER } as const;
   }
   const authHeader = req.headers?.authorization;
   if (!authHeader) return { authMode: null, token: null };
@@ -145,7 +149,7 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     return {
       authMode: AuthMode.SERVICE_TOKEN,
       token: authTokenValue,
-      actor: ActorType.SERVICE
+      actorType: ActorType.SERVICE
     } as const;
   }
 
@@ -176,61 +180,61 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
         return {
           authMode: AuthMode.OAUTH,
           token: decodedToken as AuthModeJwtTokenPayload,
-          actor: ActorType.USER
+          actorType: ActorType.USER
         } as const;
       }
 
       return {
         authMode: AuthMode.JWT,
         token: decodedToken as AuthModeJwtTokenPayload,
-        actor: ActorType.USER
+        actorType: ActorType.USER
       } as const;
     }
     case AuthTokenType.API_KEY:
       // throw new Error("API Key auth is no longer supported.");
-      return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
+      return { authMode: AuthMode.API_KEY, token: decodedToken, actorType: ActorType.USER } as const;
     case AuthTokenType.IDENTITY_ACCESS_TOKEN:
       return {
         authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
         token: decodedToken as TIdentityAccessTokenJwtPayload,
-        actor: ActorType.IDENTITY
+        actorType: ActorType.IDENTITY
       } as const;
     case AuthTokenType.SCIM_TOKEN:
       return {
         authMode: AuthMode.SCIM_TOKEN,
         token: decodedToken as TScimTokenJwtPayload,
-        actor: ActorType.SCIM_CLIENT
+        actorType: ActorType.SCIM_CLIENT
       } as const;
     case AuthTokenType.GATEWAY_ACCESS_TOKEN:
       return {
         authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
         token: decodedToken as TGatewayAccessTokenJwtPayload,
-        actor: ActorType.GATEWAY
+        actorType: ActorType.GATEWAY
       } as const;
     case AuthTokenType.RELAY_ACCESS_TOKEN:
       return {
         authMode: AuthMode.RELAY_ACCESS_TOKEN,
         token: decodedToken as TRelayAccessTokenJwtPayload,
-        actor: ActorType.RELAY
+        actorType: ActorType.RELAY
       } as const;
     case AuthTokenType.KMIP_SERVER_ACCESS_TOKEN:
       return {
         authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
         token: decodedToken as TKmipServerAccessTokenJwtPayload,
-        actor: ActorType.KMIP_SERVER
+        actorType: ActorType.KMIP_SERVER
       } as const;
     case AuthTokenType.AGENT_VAULT_PROXY_ACCESS_TOKEN:
       return {
         authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
         token: decodedToken as TAgentVaultProxyAccessTokenJwtPayload,
-        actor: ActorType.AGENT_VAULT_PROXY
+        actorType: ActorType.AGENT_VAULT_PROXY
       } as const;
     default:
       return { authMode: null, token: null } as const;
   }
 };
 
-// ! Important: You can only 100% count on the `req.permission.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
+// ! Important: You can only 100% count on the `req.actor.orgId` field being present when the auth method is Identity Access Token (Machine Identity).
 export const injectIdentity = fp(
   async (server: FastifyZodProvider, opt: { shouldForwardWritesToPrimaryInstance?: boolean }) => {
     server.decorateRequest("auth");
@@ -321,13 +325,13 @@ export const injectIdentity = fp(
         return;
       }
 
-      const { authMode, token, actor } = await extractAuth(req, appCfg.AUTH_SECRET);
+      const { authMode, token, actorType } = await extractAuth(req, appCfg.AUTH_SECRET);
 
       if (!authMode) return;
 
       switch (authMode) {
         case AuthMode.JWT: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId, org } =
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
@@ -341,10 +345,11 @@ export const injectIdentity = fp(
             user,
             userId: user.id,
             tokenVersionId,
-            actor,
+            actorType,
             orgId,
             rootOrgId,
             parentOrgId,
+            actorOrg: org,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
             token,
@@ -355,7 +360,7 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.OAUTH: {
-          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId, org } =
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);
           requestContext.set(RequestContextKey.OrgName, orgName);
@@ -372,10 +377,11 @@ export const injectIdentity = fp(
             user,
             userId: user.id,
             tokenVersionId,
-            actor,
+            actorType,
             orgId,
             rootOrgId,
             parentOrgId,
+            actorOrg: org,
             authMethod: token.authMethod,
             isMfaVerified: token.isMfaVerified,
             mfaMethod: token.mfaMethod,
@@ -398,7 +404,7 @@ export const injectIdentity = fp(
           requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {
             authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
-            actor,
+            actorType,
             orgId: identity.orgId,
             rootOrgId: identity.rootOrgId,
             parentOrgId: identity.parentOrgId,
@@ -449,7 +455,7 @@ export const injectIdentity = fp(
             authMode: AuthMode.SERVICE_TOKEN as const,
             serviceToken,
             serviceTokenId: serviceToken.id,
-            actor,
+            actorType,
             authMethod: null,
             token
           };
@@ -466,7 +472,7 @@ export const injectIdentity = fp(
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,
-            actor,
+            actorType,
             scimTokenId,
             orgId,
             authMethod: null,
@@ -487,7 +493,7 @@ export const injectIdentity = fp(
 
           req.auth = {
             authMode: AuthMode.GATEWAY_ACCESS_TOKEN,
-            actor,
+            actorType,
             gatewayId: token.gatewayId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
@@ -512,7 +518,7 @@ export const injectIdentity = fp(
 
           req.auth = {
             authMode: AuthMode.RELAY_ACCESS_TOKEN,
-            actor,
+            actorType,
             relayId: token.relayId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
@@ -536,7 +542,7 @@ export const injectIdentity = fp(
 
           req.auth = {
             authMode: AuthMode.KMIP_SERVER_ACCESS_TOKEN,
-            actor,
+            actorType,
             kmipServerId: token.kmipServerId,
             orgId: token.orgId,
             rootOrgId: token.orgId,
@@ -568,7 +574,7 @@ export const injectIdentity = fp(
 
           req.auth = {
             authMode: AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN,
-            actor,
+            actorType,
             agentVaultProxyId: token.agentVaultProxyId,
             orgId: token.orgId,
             rootOrgId: token.orgId,

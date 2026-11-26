@@ -111,7 +111,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_CREATE,
@@ -166,7 +166,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_UPDATE,
@@ -301,7 +301,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_DELETE,
@@ -352,7 +352,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,

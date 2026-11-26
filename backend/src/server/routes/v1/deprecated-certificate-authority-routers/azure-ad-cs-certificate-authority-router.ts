@@ -54,7 +54,7 @@ export const registerAzureAdCsCertificateAuthorityRouter = async (server: Fastif
       const templates = await server.services.certificateAuthority.getAzureAdcsTemplates({
         caId: req.params.caId,
         projectId: req.query.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

@@ -53,7 +53,7 @@ export const registerTeamCityConnectionRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const projects = await server.services.appConnection.teamcity.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.teamcity.listProjects(connectionId, req.actor);
 
       return projects;
     }

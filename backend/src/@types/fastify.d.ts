@@ -93,7 +93,7 @@ import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip
 import { ActorAuthMethod, ActorType, MfaMethod } from "@app/lib/auth/actor-types";
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
-import type { TRequestPermission } from "@app/lib/types";
+import type { TRequestActor } from "@app/lib/types";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
@@ -296,7 +296,7 @@ declare module "fastify" {
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
     shouldForwardWritesToPrimaryInstance: boolean;
-    permission: TRequestPermission;
+    actor: TRequestActor;
     rateLimits: RateLimitConfiguration;
     passportUser: TProviderAuthCallback;
     passportMachineIdentity: {

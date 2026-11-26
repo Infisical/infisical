@@ -28,7 +28,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const trustedIps = await server.services.trustedIp.listIpsByProjectId({
         projectId: req.params.projectId,
-        actor: req.permission
+        actor: req.actor
       });
       return { trustedIps };
     }
@@ -60,7 +60,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.addProjectIp({
         projectId: req.params.projectId,
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
       await server.services.auditLog.createAuditLog({
@@ -106,7 +106,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.updateProjectIp({
         projectId: req.params.projectId,
-        actor: req.permission,
+        actor: req.actor,
         trustedIpId: req.params.trustedIpId,
         ...req.body
       });
@@ -149,7 +149,7 @@ export const registerTrustedIpRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { trustedIp, project } = await server.services.trustedIp.deleteProjectIp({
         projectId: req.params.projectId,
-        actor: req.permission,
+        actor: req.actor,
         trustedIpId: req.params.trustedIpId
       });
       await server.services.auditLog.createAuditLog({

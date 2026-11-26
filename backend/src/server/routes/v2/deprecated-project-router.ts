@@ -50,7 +50,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onResponse: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.OAUTH]),
     handler: async (req) => {
       const key = await server.services.projectKey.getLatestProjectKey({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId
       });
 
@@ -116,7 +116,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const project = await server.services.project.createProject({
-        actor: req.permission,
+        actor: req.actor,
         projectName: req.body.projectName,
         projectDescription: req.body.projectDescription,
         slug: req.body.slug,
@@ -130,7 +130,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.ProjectCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           orgId: project.orgId,
           name: project.name,
@@ -140,7 +140,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: project.id,
         event: {
           type: EventType.CREATE_PROJECT,
@@ -186,14 +186,14 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         filter: {
           type: ProjectFilterType.SLUG,
           slug: req.params.slug,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: project.id,
         event: {
           type: EventType.DELETE_PROJECT,
@@ -234,10 +234,10 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       const project = await server.services.project.getAProject({
         filter: {
           slug: req.params.slug,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           type: ProjectFilterType.SLUG
         },
-        actor: req.permission
+        actor: req.actor
       });
 
       return project;
@@ -281,7 +281,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         filter: {
           type: ProjectFilterType.SLUG,
           slug: req.params.slug,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         update: {
           name: req.body.name,
@@ -289,12 +289,12 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           autoCapitalization: req.body.autoCapitalization,
           hasDeleteProtection: req.body.hasDeleteProtection
         },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: project.id,
         event: {
           type: EventType.UPDATE_PROJECT,
@@ -336,10 +336,10 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       const cas = await server.services.project.listProjectCas({
         filter: {
           slug: req.params.slug,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           type: ProjectFilterType.SLUG
         },
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
       return { cas };
@@ -378,10 +378,10 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
       const { certificates, totalCount } = await server.services.project.listProjectCertificates({
         filter: {
           slug: req.params.slug,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           type: ProjectFilterType.SLUG
         },
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
       return { certificates, totalCount };
@@ -410,7 +410,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { alerts } = await server.services.project.listProjectAlerts({
         projectId: req.params.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { alerts };
@@ -439,7 +439,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { pkiCollections } = await server.services.project.listProjectPkiCollections({
         projectId: req.params.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { collections: pkiCollections };
@@ -467,7 +467,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const subscribers = await server.services.project.listProjectPkiSubscribers({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId
       });
 
@@ -497,7 +497,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { certificateTemplates } = await server.services.project.listProjectCertificateTemplates({
         projectId: req.params.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { certificateTemplates };

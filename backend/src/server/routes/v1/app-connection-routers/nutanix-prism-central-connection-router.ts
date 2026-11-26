@@ -47,7 +47,7 @@ export const registerNutanixPrismCentralConnectionRouter = async (server: Fastif
     handler: async (req) => {
       const clusters = await server.services.appConnection.nutanixPrismCentral.listClusters(
         { connectionId: req.params.connectionId },
-        req.permission
+        req.actor
       );
       return { clusters };
     }

@@ -39,7 +39,7 @@ export const registerOrgAiConfigRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const aiConfig = await server.services.ai.getOrgAiConfig(req.permission);
+      const aiConfig = await server.services.ai.getOrgAiConfig(req.actor);
       return { aiConfig };
     }
   });
@@ -67,11 +67,11 @@ export const registerOrgAiConfigRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const aiConfig = await server.services.ai.updateOrgAiConfig(req.body, req.permission);
+      const aiConfig = await server.services.ai.updateOrgAiConfig(req.body, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_ORG_AI_CONFIG,
           metadata: {

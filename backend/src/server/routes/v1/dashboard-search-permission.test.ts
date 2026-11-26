@@ -67,8 +67,8 @@ test.each(["/team", "/team/team"])("deep search checks the actual path for a gra
   await registerDashboardRouter(server);
   const result = await routes.get("/secrets-deep-search")!({
     body: { projectId: "project", environments: ["dev"], secretPath: "/team", search: "KEY", limit: 25, offset: 0 },
-    permission: { orgId: "org" },
-    auth: { actor: "user", user: { username: "review-test" } },
+    actor: { orgId: "org" },
+    auth: { actorType: "user", user: { username: "review-test" } },
     auditLogInfo: {},
     headers: {}
   });

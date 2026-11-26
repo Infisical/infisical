@@ -130,7 +130,7 @@ export type TPamAccessApprovalResource = TApprovalResource<
 };
 
 // Safe cast: the approval service passes back the caller's actor, which is always a request actor context
-// (req.permission, or one built with toApprovalActorContext).
+// (req.actor, or one built with toApprovalActorContext).
 const toActorContext = (actor: TApprovalActor): TActorContext => actor as TApprovalActorContext;
 
 type TBreakGlassSubject = {

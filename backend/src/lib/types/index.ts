@@ -2,7 +2,7 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
-// Pass req.permission, or in a background job a context built with actorContextService.system or forPrincipal.
+// Pass req.actor, or in a background job a context built with actorContextService.system or forPrincipal.
 export type TActorInput = { actor: TActorContext };
 
 export type TGenericPermission = {
@@ -87,7 +87,7 @@ export type OrgServiceActor = {
 };
 
 // The actor context plus the flat fields services still read until they take the context itself.
-export type TRequestPermission = OrgServiceActor & TActorContext;
+export type TRequestActor = OrgServiceActor & TActorContext;
 
 // For a migrated service calling one that still takes the flat fields.
 export const toOrgServiceActor = ({ principal, org }: TActorContext): OrgServiceActor => ({

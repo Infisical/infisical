@@ -40,7 +40,7 @@ read lives on `pamPermissionService` in the PAM domain (`getPamPermission`, `ass
 `within(tx)` for a re-check that must see the caller's uncommitted membership change); never read PAM memberships
 or evaluate PAM roles outside it. `pam/pam-permission.ts` keeps only positional adapters over it and
 `verifyProductMembership`. PAM services take the request's actor context
-(`actor: req.permission`); never rebuild one from flat actor fields, which drops a delegated token's scope
+(`actor: req.actor`); never rebuild one from flat actor fields, which drops a delegated token's scope
 narrowing. Every list/mutation endpoint checks an **action**, not just
 membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
 (never a machine identity) holding the org Admin role (the role itself, checked with `hasRole`, not a

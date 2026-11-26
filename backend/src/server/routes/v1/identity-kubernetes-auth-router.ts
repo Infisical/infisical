@@ -242,7 +242,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.attachKubernetesAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -391,7 +391,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.updateKubernetesAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -464,7 +464,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.getKubernetesAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -513,7 +513,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identityKubernetesAuth = await server.services.identityKubernetesAuth.revokeIdentityKubernetesAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

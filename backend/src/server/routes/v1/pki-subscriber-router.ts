@@ -47,7 +47,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const subscriber = await server.services.pkiSubscriber.getSubscriber({
         subscriberName: req.params.subscriberName,
         projectId: req.query.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -208,7 +208,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -375,7 +375,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.updateSubscriber({
         subscriberName: req.params.subscriberName,
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -428,7 +428,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberName: req.params.subscriberName,
         projectId: req.body.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -477,7 +477,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const subscriber = await server.services.pkiSubscriber.orderSubscriberCert({
         subscriberName: req.params.subscriberName,
         projectId: req.body.projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -494,7 +494,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           subscriberId: subscriber.id,
@@ -544,7 +544,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         await server.services.pkiSubscriber.issueSubscriberCert({
           subscriberName: req.params.subscriberName,
           projectId: req.body.projectId,
-          actor: req.permission
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -563,7 +563,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           subscriberId: subscriber.id,
           commonName: subscriber.commonName,
@@ -617,7 +617,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           subscriberName: req.params.subscriberName,
           projectId: req.body.projectId,
           csr: req.body.csr,
-          actor: req.permission
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -636,7 +636,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignCert,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           subscriberId: subscriber.id,
           commonName: subscriber.commonName,
@@ -690,7 +690,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
         await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
           subscriberName: req.params.subscriberName,
-          actor: req.permission,
+          actor: req.actor,
           ...req.query
         });
 
@@ -751,7 +751,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { totalCount, certificates } = await server.services.pkiSubscriber.listSubscriberCerts({
         subscriberName: req.params.subscriberName,
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
 

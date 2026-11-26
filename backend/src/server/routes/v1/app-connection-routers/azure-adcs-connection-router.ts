@@ -42,7 +42,7 @@ export const registerAzureADCSConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const templates = await server.services.appConnection.azureAdcs.listTemplates(connectionId, req.permission);
+      const templates = await server.services.appConnection.azureAdcs.listTemplates(connectionId, req.actor);
       return { templates };
     }
   });

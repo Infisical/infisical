@@ -42,7 +42,7 @@ export const registerAzureClientSecretsConnectionRouter = async (server: Fastify
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const clients = await server.services.appConnection.azureClientSecrets.listApps(connectionId, req.permission);
+      const clients = await server.services.appConnection.azureClientSecrets.listApps(connectionId, req.actor);
 
       return { clients };
     }

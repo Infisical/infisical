@@ -49,7 +49,7 @@ export const registerAwsHoneyTokenRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const deploymentOptions = await server.services.honeyTokenConfig.aws.listDeploymentOptions({
-        actor: req.permission
+        actor: req.actor
       });
       return { deploymentOptions };
     }

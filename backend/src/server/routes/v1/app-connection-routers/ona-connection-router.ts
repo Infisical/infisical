@@ -46,7 +46,7 @@ export const registerOnaConnectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.ona.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.ona.listProjects(connectionId, req.actor);
 
       return projects;
     }

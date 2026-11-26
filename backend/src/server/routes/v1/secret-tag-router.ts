@@ -32,7 +32,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const tags = await server.services.secretTag.getProjectTags({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId
       });
       return { tags };
@@ -63,7 +63,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const tag = await server.services.secretTag.getTagById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.tagId
       });
       return { tag };
@@ -94,7 +94,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const tag = await server.services.secretTag.getTagBySlug({
-        actor: req.permission,
+        actor: req.actor,
         slug: req.params.tagSlug,
         projectId: req.params.projectId
       });
@@ -128,7 +128,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const tag = await server.services.secretTag.createTag({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         ...req.body
       });
@@ -137,7 +137,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretTagCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { projectId: req.params.projectId, tagId: tag.id }
         })
         .catch(() => {});
@@ -173,7 +173,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const tag = await server.services.secretTag.updateTag({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         id: req.params.tagId
       });
@@ -182,7 +182,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretTagUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             projectId: req.params.projectId,
             tagId: tag.id
@@ -217,7 +217,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const tag = await server.services.secretTag.deleteTag({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.tagId
       });
 
@@ -225,7 +225,7 @@ export const registerSecretTagRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretTagDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             projectId: req.params.projectId,
             tagId: tag.id

@@ -220,7 +220,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.attachSpiffeAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -280,7 +280,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.updateSpiffeAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -338,7 +338,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.getSpiffeAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -385,7 +385,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.refreshSpiffeBundle({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -431,7 +431,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.revokeSpiffeAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

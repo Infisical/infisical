@@ -112,11 +112,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { client, clientSecret } = await server.services.oauthClient.createOauthClient(req.body, req.permission);
+      const { client, clientSecret } = await server.services.oauthClient.createOauthClient(req.body, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_OAUTH_CLIENT,
           metadata: {
@@ -151,7 +151,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const clients = await server.services.oauthClient.listOauthClients(req.permission);
+      const clients = await server.services.oauthClient.listOauthClients(req.actor);
       return { clients };
     }
   });
@@ -175,7 +175,7 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const client = await server.services.oauthClient.getOauthClientById(req.params.clientDbId, req.permission);
+      const client = await server.services.oauthClient.getOauthClientById(req.params.clientDbId, req.actor);
       return { client };
     }
   });
@@ -211,12 +211,12 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const client = await server.services.oauthClient.updateOauthClient(
         { clientDbId: req.params.clientDbId, ...req.body },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_OAUTH_CLIENT,
           metadata: {
@@ -257,12 +257,12 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { client, clientSecret } = await server.services.oauthClient.rotateOauthClientSecret(
         req.params.clientDbId,
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.ROTATE_OAUTH_CLIENT_SECRET,
           metadata: {
@@ -296,11 +296,11 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const client = await server.services.oauthClient.deleteOauthClient(req.params.clientDbId, req.permission);
+      const client = await server.services.oauthClient.deleteOauthClient(req.params.clientDbId, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_OAUTH_CLIENT,
           metadata: {

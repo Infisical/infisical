@@ -50,7 +50,7 @@ export const registerDigitalOceanConnectionRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const apps = await server.services.appConnection.digitalOcean.listApps(connectionId, req.permission);
+      const apps = await server.services.appConnection.digitalOcean.listApps(connectionId, req.actor);
 
       return { apps };
     }

@@ -33,7 +33,7 @@ export const registerProjectKeyRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.projectKey.uploadProjectKeys({
         projectId: req.params.workspaceId,
-        actor: req.permission,
+        actor: req.actor,
         nonce: req.body.key.nonce,
         receiverId: req.body.key.userId,
         encryptedKey: req.body.key.encryptedKey

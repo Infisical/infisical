@@ -44,7 +44,7 @@ export const registerCamundaConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const clusters = await server.services.appConnection.camunda.listClusters(connectionId, req.permission);
+      const clusters = await server.services.appConnection.camunda.listClusters(connectionId, req.actor);
 
       return { clusters };
     }

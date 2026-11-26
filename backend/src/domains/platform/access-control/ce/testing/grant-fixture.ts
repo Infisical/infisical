@@ -48,6 +48,7 @@ export type TGrantSeeder = {
   group(input: { orgId: string }): Promise<TGroups>;
   groupMember(input: { groupId: string } & TSeedActor): Promise<void>;
   attribute(input: { orgId: string; actor: TSeedActor; key: string; value: string }): Promise<TIdentityMetadata>;
+  renameIdentity(identityId: string, name: string): Promise<void>;
   removeMembership(membershipId: string): Promise<void>;
   deactivateMembership(membershipId: string): Promise<void>;
   // Moves a temporary role's end into the past so tests don't wait on the clock.

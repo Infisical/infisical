@@ -39,7 +39,7 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const clientId = await server.services.microsoftTeams.getClientId({
-        actor: req.permission
+        actor: req.actor
       });
 
       return {
@@ -73,12 +73,12 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
         description: req.body.description,
         redirectUri: req.body.redirectUri,
         code: req.body.code,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE,
           metadata: {
@@ -111,12 +111,12 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const microsoftTeamsIntegrations = await server.services.microsoftTeams.getMicrosoftTeamsIntegrationsByOrg({
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST,
           metadata: {}
@@ -142,13 +142,13 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const microsoftTeamsIntegration = await server.services.microsoftTeams.checkInstallationStatus({
-        actor: req.permission,
+        actor: req.actor,
         workflowIntegrationId: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS,
           metadata: {
@@ -183,13 +183,13 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedMicrosoftTeamsIntegration = await server.services.microsoftTeams.deleteMicrosoftTeamsIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE,
           metadata: {
@@ -227,13 +227,13 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const microsoftTeamsIntegration = await server.services.microsoftTeams.getMicrosoftTeamsIntegrationById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET,
           metadata: {
@@ -275,14 +275,14 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const microsoftTeamsIntegration = await server.services.microsoftTeams.updateMicrosoftTeamsIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id,
         ...req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE,
           metadata: {
@@ -328,13 +328,13 @@ export const registerMicrosoftTeamsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const microsoftTeamsIntegration = await server.services.microsoftTeams.getTeams({
-        actor: req.permission,
+        actor: req.actor,
         workflowIntegrationId: req.params.workflowIntegrationId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS,
           metadata: {

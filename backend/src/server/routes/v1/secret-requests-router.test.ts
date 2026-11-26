@@ -34,7 +34,7 @@ const buildServer = async () => {
   app.addHook("onRequest", async (req) => {
     Object.assign(req, {
       auth: { authMode: AuthMode.JWT },
-      permission: { orgId: "org-id", id: "user-id" },
+      actor: { orgId: "org-id", id: "user-id" },
       auditLogInfo: {}
     });
   });

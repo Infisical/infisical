@@ -40,7 +40,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
 
       const result = await server.services.mfaSession.verifyMfaSession({
         mfaSessionId: req.params.mfaSessionId,
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: req.auth.tokenVersionId,
         mfaToken: req.body.mfaToken,
         mfaMethod: req.body.mfaMethod
@@ -77,7 +77,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
 
       const result = await server.services.mfaSession.getMfaSessionStatus({
         mfaSessionId: req.params.mfaSessionId,
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: req.auth.tokenVersionId
       });
 

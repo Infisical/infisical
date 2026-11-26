@@ -459,7 +459,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const saml = await server.services.saml.getSaml({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.query.organizationId,
         type: "org"
       });
@@ -510,7 +510,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         mfaSignalAttribute,
         mfaAuthnContexts
       } = req.body;
-      const { permission } = req;
+      const { actor } = req;
 
       const samlCfg = await server.services.saml.createSamlCfg({
         isActive,
@@ -521,7 +521,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         enableGroupSync,
         mfaSignalAttribute,
         mfaAuthnContexts,
-        actor: permission,
+        actor,
         orgId: req.body.organizationId
       });
 
@@ -529,11 +529,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: authProvider,
             action: "create",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -587,7 +587,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         mfaSignalAttribute,
         mfaAuthnContexts
       } = req.body;
-      const { permission } = req;
+      const { actor } = req;
 
       const samlCfg = await server.services.saml.updateSamlCfg({
         isActive,
@@ -598,7 +598,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         enableGroupSync,
         mfaSignalAttribute,
         mfaAuthnContexts,
-        actor: permission,
+        actor,
         orgId: req.body.organizationId
       });
 
@@ -606,11 +606,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: authProvider ?? "saml",
             action: "update",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));

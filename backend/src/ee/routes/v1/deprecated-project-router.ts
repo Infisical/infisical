@@ -100,7 +100,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
-        actor: req.permission,
+        actor: req.actor,
 
         filter: {
           ...req.query,
@@ -119,18 +119,18 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           .sendPostHogEvents({
             event: PostHogEventTypes.AuditLogsViewed,
             distinctId,
-            organizationId: req.permission.orgId,
+            organizationId: req.actor.orgId,
             dedup: {
-              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.permission.orgId, distinctId),
+              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.actor.orgId, distinctId),
               ttlSeconds: KeyStoreTtls.TelemetryAuditLogsViewedInSeconds
             },
             properties: {
-              orgId: req.permission.orgId,
+              orgId: req.actor.orgId,
               projectId: req.params.workspaceId,
               resultCount: auditLogs.length,
               dateRangeStart: req.query.startDate || getLastMidnightDateISO(),
               dateRangeEnd: req.query.endDate || new Date().toISOString(),
-              actorType: req.permission.type
+              actorType: req.actor.type
             }
           })
           .catch(() => {});

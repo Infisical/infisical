@@ -57,7 +57,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
     handler: async (req) =>
       server.services.certificateAuthority.getCertificateAuthorityQuota(
         { projectId: req.internalCertManagerProjectId },
-        req.permission
+        req.actor
       )
   });
 
@@ -89,7 +89,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.INTERNAL
         },
-        req.permission
+        req.actor
       );
 
       const acmeCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -97,7 +97,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.ACME
         },
-        req.permission
+        req.actor
       );
 
       const azureAdCsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -105,7 +105,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.AZURE_AD_CS
         },
-        req.permission
+        req.actor
       );
 
       const adcsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -113,7 +113,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.ADCS
         },
-        req.permission
+        req.actor
       );
 
       const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -121,7 +121,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.AWS_PCA
         },
-        req.permission
+        req.actor
       );
 
       const digicertCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -129,7 +129,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.DIGICERT
         },
-        req.permission
+        req.actor
       );
 
       const awsAcmPublicCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -137,7 +137,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.AWS_ACM_PUBLIC_CA
         },
-        req.permission
+        req.actor
       );
 
       const venafiTppCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -145,7 +145,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.VENAFI_TPP
         },
-        req.permission
+        req.actor
       );
 
       const godaddyCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -153,7 +153,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.GODADDY
         },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({

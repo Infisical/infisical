@@ -85,7 +85,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
       const relay = await server.services.relay.createRelay({
         ...rest,
         authMethod: authMethodArg,
-        actor: req.permission
+        actor: req.actor
       });
 
       const view = await server.services.resourceAuthMethod.loadView({ type: "relay", id: relay.id });
@@ -93,7 +93,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RELAY_CREATE,
           metadata: { relayId: relay.id, name: relay.name }
@@ -102,7 +102,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RESOURCE_AUTH_METHOD_CREATE,
           metadata: resourceAuthMethodAuditMetadata({
@@ -136,12 +136,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const relay = await server.services.relay.getOrgRelay({
         relayId: req.params.relayId,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
 
       const view = await server.services.resourceAuthMethod.getByRelayId({
         resource: { type: "relay", id: req.params.relayId },
-        actor: req.permission
+        actor: req.actor
       });
 
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(relay, "relay");
@@ -173,7 +173,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.relay.getConnectedGateways({
         relayId: req.params.relayId,
-        orgPermission: req.permission
+        orgPermission: req.actor
       });
     }
   });
@@ -202,12 +202,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         relay = await server.services.relay.updateRelay({
           relayId: req.params.relayId,
           host: req.body.host,
-          actor: req.permission
+          actor: req.actor
         });
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           event: {
             type: EventType.RELAY_UPDATE,
             metadata: { relayId: req.params.relayId, name: relay.name, host: req.body.host }
@@ -216,7 +216,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
       } else {
         relay = await server.services.relay.getOrgRelay({
           relayId: req.params.relayId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         });
       }
 
@@ -234,12 +234,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
         const view = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "relay", id: req.params.relayId },
           authMethod: authMethodArg,
-          actor: req.permission
+          actor: req.actor
         });
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
             metadata: resourceAuthMethodAuditMetadata({
@@ -257,7 +257,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
 
       const view = await server.services.resourceAuthMethod.getByRelayId({
         resource: { type: "relay", id: req.params.relayId },
-        actor: req.permission
+        actor: req.actor
       });
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(relay, "relay");
       return { ...relay, canRevoke, authMethod: view };
@@ -280,12 +280,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "relay", id: req.params.relayId },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RELAY_ENROLLMENT_TOKEN_CREATE,
           metadata: { tokenId: result.id, name: result.resourceName }
@@ -312,12 +312,12 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "relay", id: req.params.relayId },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RESOURCE_AUTH_METHOD_REVOKE,
           metadata: {
@@ -483,10 +483,10 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.RELAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const certs = await server.services.relay.connectRelay({ relayId: req.permission.id });
+      const certs = await server.services.relay.connectRelay({ relayId: req.actor.id });
 
       return {
-        relayId: req.permission.id,
+        relayId: req.actor.id,
         ...certs
       };
     }
@@ -505,7 +505,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.RELAY_ACCESS_TOKEN]),
     handler: async (req) => {
-      await server.services.relay.heartbeatRelay({ relayId: req.permission.id });
+      await server.services.relay.heartbeatRelay({ relayId: req.actor.id });
       return { message: "Successfully triggered heartbeat" };
     }
   });

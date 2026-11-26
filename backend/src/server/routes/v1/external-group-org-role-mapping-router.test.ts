@@ -33,7 +33,7 @@ const buildServer = async ({ list, update }: { list: () => Promise<unknown>; upd
   app.addHook("onRequest", async (req) => {
     Object.assign(req, {
       auth: { authMode: AuthMode.JWT },
-      permission: { orgId: ORG_ID },
+      actor: { orgId: ORG_ID },
       auditLogInfo: {}
     });
   });

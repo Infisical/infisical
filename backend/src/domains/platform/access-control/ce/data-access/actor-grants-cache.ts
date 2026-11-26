@@ -12,9 +12,9 @@ const DATA_TTL_SECONDS = 600;
 // Bump the version when the cached shape changes so a deploy never reads an old one.
 const GrantKeys = {
   data: (projectId: string, actor: TGrantActor) =>
-    `access-control:actor-grants:v1:data:${projectId}:${actor.type}:${actor.id}`,
+    `access-control:actor-grants:v2:data:${projectId}:${actor.type}:${actor.id}`,
   marker: (projectId: string, actor: TGrantActor) =>
-    `access-control:actor-grants:v1:marker:${projectId}:${actor.type}:${actor.id}`
+    `access-control:actor-grants:v2:marker:${projectId}:${actor.type}:${actor.id}`
 };
 
 export class ActorGrantsCache implements TActorGrantsCache {

@@ -48,7 +48,7 @@ export const registerHasuraCloudConnectionRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.hasuraCloud.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.hasuraCloud.listProjects(connectionId, req.actor);
 
       return { projects: projects.map(({ id, name }) => ({ id, name })) };
     }

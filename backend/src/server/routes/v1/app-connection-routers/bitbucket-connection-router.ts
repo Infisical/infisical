@@ -50,11 +50,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
         query: { search }
       } = req;
 
-      const workspaces = await server.services.appConnection.bitbucket.listWorkspaces(
-        connectionId,
-        req.permission,
-        search
-      );
+      const workspaces = await server.services.appConnection.bitbucket.listWorkspaces(connectionId, req.actor, search);
 
       return { workspaces };
     }
@@ -90,7 +86,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
 
       const repositories = await server.services.appConnection.bitbucket.listRepositories(
         { connectionId, workspaceSlug },
-        req.permission,
+        req.actor,
         search
       );
 
@@ -128,7 +124,7 @@ export const registerBitbucketConnectionRouter = async (server: FastifyZodProvid
 
       const environments = await server.services.appConnection.bitbucket.listEnvironments(
         { connectionId, workspaceSlug, repositorySlug },
-        req.permission
+        req.actor
       );
 
       return { environments };

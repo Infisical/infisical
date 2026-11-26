@@ -47,7 +47,7 @@ export const registerJenkinsConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const folders = await server.services.appConnection.jenkins.listFolders(connectionId, req.permission);
+      const folders = await server.services.appConnection.jenkins.listFolders(connectionId, req.actor);
 
       return { folders };
     }

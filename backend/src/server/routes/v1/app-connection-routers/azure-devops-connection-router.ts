@@ -42,7 +42,7 @@ export const registerAzureDevOpsConnectionRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.azureDevOps.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.azureDevOps.listProjects(connectionId, req.actor);
 
       return { projects };
     }

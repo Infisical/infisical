@@ -53,7 +53,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { data, lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.create({
-          actor: req.permission,
+          actor: req.actor,
           name: req.body.dynamicSecretName,
           ...req.body
         });
@@ -61,7 +61,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretLeaseCreated,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             provider: dynamicSecret.type,
@@ -132,7 +132,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.revokeLease({
-          actor: req.permission,
+          actor: req.actor,
           leaseId: req.params.leaseId,
           ...req.body
         });
@@ -161,7 +161,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretLeaseRevoked,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: dynamicSecret.type,
             projectId,
@@ -222,7 +222,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.renewLease({
-          actor: req.permission,
+          actor: req.actor,
           leaseId: req.params.leaseId,
           ...req.body
         });
@@ -230,7 +230,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretLeaseRenewed,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             provider: dynamicSecret.type,
@@ -301,7 +301,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.getLeaseDetails({
-          actor: req.permission,
+          actor: req.actor,
           leaseId: req.params.leaseId,
           ...req.query
         });

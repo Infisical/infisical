@@ -14,6 +14,11 @@ export type TOrganizationStore = {
   findActorOrg(orgId: string, options?: TReadOptions): Promise<TActorOrg | null>;
 };
 
+// Per process and short-lived, for actors the org's sign-in policy never applies to.
+export type TActorOrgCache = {
+  getOrLoad(orgId: string, load: () => Promise<TActorOrg | null>): Promise<TActorOrg | null>;
+};
+
 // Null orgId = whole instance.
 export type TBillableActorStore = {
   countBillableOrgActors(orgId: string | null, options?: TReadOptions): Promise<{ users: number; identities: number }>;

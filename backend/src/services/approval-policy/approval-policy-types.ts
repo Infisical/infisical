@@ -71,7 +71,7 @@ import {
 
 export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
 
-// Also carries the actor context the service's own permission checks need. req.permission is one; without a
+// Also carries the actor context the service's own permission checks need. req.actor is one; without a
 // request, build one with toApprovalActorContext.
 export type TApprovalActorContext = TApprovalActor & TActorContext;
 

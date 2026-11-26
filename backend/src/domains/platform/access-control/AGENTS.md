@@ -7,7 +7,9 @@ permission from what Access Control returns.
 
 - **Read side only, for now.** One read-only `GrantStore` reads `memberships`, `membership_roles`, `roles`,
   `additional_privileges`, `groups`, `user_group_membership`, `identity_group_membership` and `identity_metadata`,
-  so a check costs the round trips it always has. The legacy membership, role, privilege and group services still
+  so a check costs the round trips it always has. An identity's attribute read starts from `identities`, which
+  brings back its current name (`ActorGrants.actorName`, for `{{identity.username}}` conditions) in the same
+  round trip; nothing reads the name per request, so don't add that read to the auth plugin. The legacy membership, role, privilege and group services still
   write those tables; they move here, with a store per entity, in the membership write phase. New code reads them
   only through `actorGrantsService`, `roleService` and `groupService`.
 - **`ActorGrants` is what an actor holds at one scope**, groups expanded. `active(now)` gives the `Grant`s in force
@@ -31,7 +33,7 @@ permission from what Access Control returns.
   is read as one of its custom roles, and a missing one is refused unless `ignoreUnresolvedRoles` is set.
 - **Caching:** `getCachedProjectGrants` serves an actor's project grants from `ActorGrantsCache` (Redis, marker 10s,
   data 10 min) while their fingerprint (memberships at the org, project and its resources, role assignments, custom
-  roles, project privileges, attributes) is unchanged, so a membership or role change needs no invalidation call.
+  roles, project privileges, attributes, an identity's name) is unchanged, so a membership or role change needs no invalidation call.
   Org and resource grants are read on every call.
 - **Depends on no domain** and does no permission checks: callers authorize first.
 - Tests: `testing/build-access-control.ts` builds the services on `InMemoryGrantStore`, seeded through

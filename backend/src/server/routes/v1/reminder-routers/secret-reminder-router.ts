@@ -50,7 +50,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.reminder.createReminder({
-        actor: req.permission,
+        actor: req.actor,
         reminder: {
           secretId: req.params.secretId,
           message: req.body.message,
@@ -64,7 +64,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_SECRET_REMINDER,
           metadata: {
@@ -80,7 +80,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretReminderCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           secretId: req.params.secretId,
           reminderRepeatDays: req.body.repeatDays,
@@ -117,13 +117,13 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const reminder = await server.services.reminder.getReminder({
-        actor: req.permission,
+        actor: req.actor,
         secretId: req.params.secretId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_SECRET_REMINDER,
           metadata: {
@@ -155,13 +155,13 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.reminder.deleteReminder({
-        actor: req.permission,
+        actor: req.actor,
         secretId: req.params.secretId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_SECRET_REMINDER,
           metadata: {

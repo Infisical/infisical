@@ -204,7 +204,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
 
       const profile = await server.services.certificateProfile.getProfileById({
-        actor: req.permission,
+        actor: req.actor,
         profileId: requestBody.profileId
       });
 
@@ -212,7 +212,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       if (profile?.caId) {
         const ca = await server.services.certificateAuthority.getCaById({
           caId: profile.caId,
-          actor: req.permission,
+          actor: req.actor,
           isInternal: true
         });
         const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
@@ -241,7 +241,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         };
 
         const data = await server.services.certificateV3.orderCertificate({
-          actor: req.permission,
+          actor: req.actor,
           auditLogInfo: req.auditLogInfo,
           profileId: requestBody.profileId,
           applicationId: requestBody.applicationId,
@@ -271,9 +271,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertificateRequestCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: data.projectId,
             applicationId: requestBody.applicationId,
             profileId: requestBody.profileId
@@ -292,7 +292,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         const extractedCsrData = extractCertificateRequestFromCSR(csr);
 
         const data = await server.services.certificateV3.signCertificateFromProfile({
-          actor: req.permission,
+          actor: req.actor,
           auditLogInfo: req.auditLogInfo,
           profileId: requestBody.profileId,
           applicationId: requestBody.applicationId,
@@ -327,9 +327,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertificateRequestCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: data.projectId,
             applicationId: requestBody.applicationId,
             profileId: requestBody.profileId
@@ -381,7 +381,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 
       const data = await server.services.certificateV3.issueCertificateFromProfile({
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo,
         profileId: requestBody.profileId,
         applicationId: requestBody.applicationId,
@@ -411,9 +411,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateRequestCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: data.projectId,
           applicationId: requestBody.applicationId,
           profileId: requestBody.profileId
@@ -475,7 +475,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { certificateRequest, projectId } = await server.services.certificateRequest.getCertificateFromRequest({
-        actor: req.permission,
+        actor: req.actor,
         certificateRequestId: req.params.requestId
       });
 
@@ -520,7 +520,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.certificateAuthority.triggerCertificateRequestValidation({
-        actor: req.permission,
+        actor: req.actor,
         certificateRequestId: req.params.requestId
       });
 
@@ -613,7 +613,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const projectId = req.internalCertManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
-        actor: req.permission,
+        actor: req.actor,
         projectId,
         offset: req.query.offset,
         limit: req.query.limit,
@@ -734,7 +734,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const projectId = req.internalCertManagerProjectId;
 
       const { certificateRequests, totalCount } = await server.services.certificateRequest.listCertificateRequests({
-        actor: req.permission,
+        actor: req.actor,
         projectId,
         offset: filters.offset,
         limit: filters.limit,
@@ -899,7 +899,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           projectId: req.internalCertManagerProjectId,
           type: ProjectFilterType.ID
         },
-        actor: req.permission,
+        actor: req.actor,
         ...filters,
         fromDate: createdAtFrom,
         toDate: createdAtTo,
@@ -937,7 +937,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { certificateRequest, projectId, cancelled, previousStatus, previousPendingMessage } =
         await server.services.certificateRequest.cancelCertificateRequest({
-          actor: req.permission,
+          actor: req.actor,
           certificateRequestId: req.params.requestId
         });
 
@@ -1041,7 +1041,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 
       const data = await server.services.certificateV3.issueCertificateFromProfile({
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateRequest: mappedCertificateRequest,
@@ -1133,7 +1133,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const data = await server.services.certificateV3.signCertificateFromProfile({
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         csr: req.body.csr,
@@ -1251,7 +1251,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       };
 
       const data = await server.services.certificateV3.orderCertificate({
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateOrder: certificateOrderObject,
@@ -1326,7 +1326,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req) =>
       server.services.certificateV3.getRenewalPreview({
         certificateId: req.params.id,
-        actor: req.permission
+        actor: req.actor
       })
   });
 
@@ -1379,7 +1379,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const data = await server.services.certificateV3.renewCertificate({
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo,
         certificateId: req.params.id,
         removeRootsFromChain: req.body?.removeRootsFromChain,
@@ -1415,9 +1415,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertificateRenewed,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: data.projectId
           }
         });
@@ -1468,7 +1468,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.body.enableAutoRenewal === false) {
         const data = await server.services.certificateV3.disableRenewalConfig({
-          actor: req.permission,
+          actor: req.actor,
           certificateId: req.params.id
         });
 
@@ -1489,9 +1489,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertificateUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: data.projectId,
             updatedField: "renewal-config"
           }
@@ -1504,7 +1504,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       if (req.body.renewBeforeDays !== undefined) {
         const data = await server.services.certificateV3.updateRenewalConfig({
-          actor: req.permission,
+          actor: req.actor,
           certificateId: req.params.id,
           renewBeforeDays: req.body.renewBeforeDays
         });
@@ -1527,9 +1527,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertificateUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: data.projectId,
             updatedField: "renewal-config"
           }
@@ -1623,7 +1623,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const { cert } = await server.services.certificate.getCert({
         id: req.params.id,
         includeDeleted: req.query.includeDeleted,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1680,7 +1680,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.certificateV3.updateCertificate({
         certificateId: req.params.id,
         metadata: req.body.metadata,
-        actor: req.permission
+        actor: req.actor
       });
 
       if (req.body.metadata) {
@@ -1702,9 +1702,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertificateUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: result.projectId,
             updatedField: "certificate"
           }
@@ -1737,7 +1737,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const { cert, applicationName, certPrivateKey } = await server.services.certificate.getCertPrivateKey({
         id: req.params.id,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1758,9 +1758,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePrivateKeyDownloaded,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: cert.projectId
         }
       });
@@ -1799,7 +1799,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const { certificate, certificateChain, serialNumber, cert, privateKey, applicationName } =
         await server.services.certificate.getCertBundle({
           id: req.params.id,
-          actor: req.permission
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -1820,10 +1820,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateExported,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           format: "pem-bundle",
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: cert.projectId
         }
       });
@@ -1876,7 +1876,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { certificate, certificateChain, privateKey, serialNumber, cert, profileName, caName, applicationName } =
         await server.services.certificate.importCert({
-          actor: req.permission,
+          actor: req.actor,
           projectId: req.internalCertManagerProjectId,
           ...req.body
         });
@@ -1904,9 +1904,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateImported,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: cert.projectId,
           applicationId: req.body.applicationId
         }
@@ -1946,7 +1946,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const { id: identifier } = req.params;
       const result = await server.services.certificate.revokeCert({
         ...(isUuidV4(identifier) ? { id: identifier } : { thumbprint: identifier }),
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
       if (result.status === CertificateRevocationStatus.PendingApproval) {
@@ -1975,9 +1975,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateRevoked,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: ca.projectId,
           revocationReason: req.body.revocationReason
         }
@@ -2018,7 +2018,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { deletedCert, applicationName, statusAtDeletion } = await server.services.certificate.deleteCert({
         id: req.params.id,
-        actor: req.permission,
+        actor: req.actor,
         auditLogInfo: req.auditLogInfo
       });
 
@@ -2044,9 +2044,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: deletedCert.projectId
         }
       });
@@ -2084,7 +2084,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const { certificate, application } = await server.services.certificate.assignCertificateToApplication({
         certificateId: req.params.id,
         applicationId: req.body.applicationId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -2133,7 +2133,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       const { certificate, certificateChain, serialNumber, cert, applicationName } =
         await server.services.certificate.getCertBody({
           id: req.params.id,
-          actor: req.permission
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -2195,7 +2195,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         id: req.params.id,
         password: req.body.password,
         alias: req.body.alias,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -2216,10 +2216,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateExported,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           format: "pkcs12",
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: cert.projectId
         }
       });

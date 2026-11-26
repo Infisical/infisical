@@ -201,7 +201,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.getLdapCfgWithPermissionCheck({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.query.organizationId
       });
       return ldap;
@@ -250,7 +250,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.createLdapCfg({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.body.organizationId,
         ...req.body
       });
@@ -259,11 +259,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "ldap",
             action: "create",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -312,7 +312,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.updateLdapCfg({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.body.organizationId,
         ...req.body
       });
@@ -321,11 +321,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "ldap",
             action: "update",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -363,8 +363,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMaps = await server.services.ldap.getLdapGroupMaps({
-        actor: req.permission,
-        orgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ldapConfigId: req.params.configId
       });
       return ldapGroupMaps;
@@ -393,8 +393,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMap = await server.services.ldap.createLdapGroupMap({
-        actor: req.permission,
-        orgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ldapConfigId: req.params.configId,
         ...req.body
       });
@@ -421,8 +421,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMap = await server.services.ldap.deleteLdapGroupMap({
-        actor: req.permission,
-        orgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ldapConfigId: req.params.configId,
         ldapGroupMapId: req.params.groupMapId
       });
@@ -453,8 +453,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.ldap.testLDAPConnection({
-        actor: req.permission,
-        orgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ...req.body
       });
 

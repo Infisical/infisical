@@ -253,6 +253,39 @@ export const describeGrantStoreContract = (name: string, setup: () => Promise<TG
         expect(grants.attributeMap()).toEqual({ team: "a" });
       });
 
+      test("should return an identity's current name, with or without attributes", async () => {
+        // Setup
+        const { store, seed, orgId, projectScope, projectMembership, newIdentity } = await arrange();
+        const identityId = await newIdentity(orgId);
+        const identity = { type: ActorType.IDENTITY as const, id: identityId };
+        await projectMembership({ identityId });
+        await seed.renameIdentity(identityId, "ci-runner");
+        const withoutAttributes = await store.findActorGrants(identity, projectScope);
+        await seed.attribute({ orgId, actor: { identityId }, key: "team", value: "a" });
+        await seed.attribute({ orgId, actor: { identityId }, key: "tier", value: "b" });
+
+        // Action
+        const withAttributes = await store.findActorGrants(identity, projectScope);
+
+        // Assert
+        expect(withoutAttributes.actorName).toBe("ci-runner");
+        expect(withoutAttributes.attributeMap()).toEqual({});
+        expect(withAttributes.actorName).toBe("ci-runner");
+        expect(withAttributes.attributeMap()).toEqual({ team: "a", tier: "b" });
+      });
+
+      test("should return no name for a user", async () => {
+        // Setup
+        const { store, userId, user, projectScope, projectMembership } = await arrange();
+        await projectMembership({ userId });
+
+        // Action
+        const grants = await store.findActorGrants(user, projectScope);
+
+        // Assert
+        expect(grants.actorName).toBeNull();
+      });
+
       test("should return memberships ordered by id", async () => {
         // Setup
         const { store, seed, orgId, userId, user, projectScope, projectMembership } = await arrange();
@@ -508,6 +541,22 @@ export const describeGrantStoreContract = (name: string, setup: () => Promise<TG
 
         // Assert
         expect(new Set([before, afterAttribute, afterGroupMembership]).size).toBe(3);
+      });
+
+      test("should change the fingerprint when the identity is renamed", async () => {
+        // Setup
+        const { store, seed, orgId, projectId, projectMembership, newIdentity } = await arrange();
+        const identityId = await newIdentity(orgId);
+        const identity = { type: ActorType.IDENTITY as const, id: identityId };
+        await projectMembership({ identityId });
+        const before = await store.findGrantsFingerprint(identity, { orgId, projectId });
+
+        // Action
+        await seed.renameIdentity(identityId, "renamed");
+        const after = await store.findGrantsFingerprint(identity, { orgId, projectId });
+
+        // Assert
+        expect(after).not.toBe(before);
       });
 
       test("should change the fingerprint when a temporary role ends", async () => {

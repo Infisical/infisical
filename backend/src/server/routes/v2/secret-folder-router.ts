@@ -66,7 +66,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const folder = await server.services.folder.createFolder({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         description: req.body.description
       });
@@ -88,7 +88,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretFolderCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.body.projectId,
           environment: req.body.environment,
@@ -157,7 +157,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const { folder, old } = await server.services.folder.updateFolder({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         id: req.params.folderId
       });
@@ -180,7 +180,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretFolderUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             projectId: req.body.projectId,
             environment: req.body.environment,
@@ -250,7 +250,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       const { newFolders, oldFolders, projectId } = await server.services.folder.updateManyFolders({
         ...req.body,
-        actor: req.permission
+        actor: req.actor
       });
 
       await Promise.all(
@@ -323,7 +323,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const folder = await server.services.folder.deleteFolder({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         idOrName: req.params.folderIdOrName,
         forceDelete: req.body.forceDelete
@@ -346,7 +346,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretFolderDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             projectId: req.body.projectId,
             environment: req.body.environment,
@@ -404,7 +404,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const folders = await server.services.folder.getFolders({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
       return { folders };
@@ -453,7 +453,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const folder = await server.services.folder.getFolderById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
       return { folder };
@@ -495,7 +495,7 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.folder.moveFolder({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.body.projectId,
         folderId: req.body.folderId,
         destinationEnvironment: req.body.destinationEnvironment,

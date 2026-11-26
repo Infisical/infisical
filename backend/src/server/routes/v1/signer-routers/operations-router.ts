@@ -42,7 +42,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       server.services.pkiSigner.getActivityTrend({
         ...req.query,
         projectId: req.internalCertManagerProjectId,
-        actor: req.permission
+        actor: req.actor
       })
   });
 
@@ -78,7 +78,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       const result = await server.services.pkiSigner.listOperations({
         signerId: req.params.signerId,
         ...req.query,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -123,7 +123,7 @@ export const registerSignerOperationsRouter = async (server: FastifyZodProvider)
       const result = await server.services.pkiSigner.getOperationById({
         signerId: req.params.signerId,
         operationId: req.params.operationId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

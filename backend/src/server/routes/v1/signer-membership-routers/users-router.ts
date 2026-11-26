@@ -34,7 +34,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.signerMembership.listMembers({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.User
@@ -78,7 +78,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.signerMembership.addUserMembers({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         userIds: req.body.userIds,
@@ -104,9 +104,9 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerMemberAdded,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           signerId: req.params.signerId,
           memberType: "user",
@@ -134,7 +134,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.updateMemberRole({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.User,
@@ -159,9 +159,9 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerMemberUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           signerId: req.params.signerId,
           memberType: "user",
@@ -188,7 +188,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.signerMembership.removeMember({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.User,
@@ -207,9 +207,9 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerMemberRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           signerId: req.params.signerId,
           memberType: "user"
@@ -236,7 +236,7 @@ export const registerSignerUserMembershipRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const members = await server.services.signerMembership.listEffectiveMembers({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: "user"

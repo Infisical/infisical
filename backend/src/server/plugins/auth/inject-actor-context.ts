@@ -13,7 +13,7 @@ import { TAuthMode } from "./inject-identity";
 // Built from what inject-identity and inject-assume-privilege already loaded, so permission code never re-reads
 // users or identities.
 const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: string } => {
-  switch (auth.actor) {
+  switch (auth.actorType) {
     case ActorType.USER: {
       const assumed = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
       const oauthScopes = requestContext.get(RequestContextKey.OauthScopes);
@@ -77,29 +77,31 @@ const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: s
         principal: { type: ActorType.AGENT_VAULT_PROXY, id: auth.agentVaultProxyId }
       };
     default:
-      throw new Error(`injectPermission: unhandled actor type [actor=${(auth as { actor: string }).actor}]`);
+      throw new Error(`injectActorContext: unhandled actor type [actor=${(auth as { actor: string }).actor}]`);
   }
 };
 
-// req.permission is the actor context plus the flat fields services still read.
-export const injectPermission = fp(async (server) => {
-  server.decorateRequest("permission");
+// Builds req.actor: the actor context (who is calling and the org the request is scoped to) plus the flat fields
+// services still read. It holds no permissions; permission services build those from it per call.
+export const injectActorContext = fp(async (server) => {
+  server.decorateRequest("actor");
   server.addHook("onRequest", async (req) => {
     if (!req.auth) return;
 
     const { principal, actorId } = principalFromAuth(req.auth);
-    if (principal.type === ActorType.IDENTITY) {
-      principal.name =
-        (await server.services.identityAccessToken.getCurrentIdentityName(principal.id)) ?? principal.name;
-    }
-    const { actor: actorContext, ssoRefusal } = await server.services.actorContextService.forRequest({
-      principal,
-      orgId: req.auth.orgId
-    });
     // Can't hold a user token minted without a sign-in method to the org's sign-in policy.
     if (principal.type === ActorType.USER && principal.authMethod === undefined && req.auth.orgId) {
       throw new UnauthorizedError({ name: "No auth method defined" });
     }
+    const {
+      actor: actorContext,
+      org,
+      ssoRefusal
+    } = await server.services.actorContextService.forRequest({
+      principal,
+      // The user session check already read the org; every other actor only knows its id.
+      ...("actorOrg" in req.auth ? { org: req.auth.actorOrg } : { orgId: req.auth.orgId })
+    });
     // Treat a session the org's sign-in policy no longer allows like an expired one.
     if (ssoRefusal && !req.routeOptions.config?.skipCurrentOrgSsoCheck)
       throw new UnauthorizedError({ name: ssoRefusal.name, message: ssoRefusal.message });
@@ -108,13 +110,14 @@ export const injectPermission = fp(async (server) => {
       id: actorId,
       // Deprecated API key mode has orgId "API_KEY" and a null authMethod.
       orgId: req.auth.orgId,
-      authMethod: req.auth.actor === ActorType.USER ? req.auth.authMethod : null,
-      rootOrgId: req.auth.rootOrgId,
-      parentOrgId: req.auth.parentOrgId
+      authMethod: req.auth.actorType === ActorType.USER ? req.auth.authMethod : null,
+      // From the org when there is one, so these can't disagree with actor.org.
+      rootOrgId: org?.rootOrgId ?? req.auth.rootOrgId,
+      parentOrgId: org?.parentOrgId ?? req.auth.parentOrgId
     };
     // Assign, not spread: an unscoped context's org is a getter that must stay unread.
-    req.permission = Object.assign(actorContext, flat);
+    req.actor = Object.assign(actorContext, flat);
 
-    logger.info(`injectPermission: Injecting permissions for [actorId=${actorId}] [type=${principal.type}]`);
+    logger.info(`injectActorContext: Built actor context for [actorId=${actorId}] [type=${principal.type}]`);
   });
 });

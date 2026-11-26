@@ -68,7 +68,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const registered = await server.services.gatewayV2.registerGateway({
-        actor: req.permission,
+        actor: req.actor,
         relayName: req.body.relayName,
         directAddress: req.body.directAddress,
         name: req.body.name,
@@ -78,7 +78,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_CONNECT,
           metadata: {
@@ -120,7 +120,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       return server.services.gatewayV2.reportMetrics({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         activeChannels: req.body.activeChannels
       });
     }
@@ -159,7 +159,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       await server.services.gatewayV2.heartbeat({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         capabilities: req.body?.capabilities,
         userAgent: req.headers["user-agent"]
       });
@@ -186,7 +186,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const gateways = await server.services.gatewayV2.listGateways({
-        orgPermission: req.permission
+        orgPermission: req.actor
       });
 
       return gateways;
@@ -211,13 +211,13 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.JWT]),
     handler: async (req) => {
       const gateway = await server.services.gatewayV2.deleteGatewayById({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_DELETE,
           metadata: { gatewayId: gateway.id, name: gateway.name }
@@ -248,7 +248,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await server.services.gatewayV2.triggerHeartbeat({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         id: req.params.id
       });
 
@@ -271,7 +271,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const pamSessionKey = await server.services.gatewayV2.getPamSessionKey({
-        orgPermission: req.permission
+        orgPermission: req.actor
       });
 
       return pamSessionKey;
@@ -346,7 +346,7 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const resources = await server.services.gatewayV2.getConnectedResources({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         gatewayId: req.params.id
       });
 

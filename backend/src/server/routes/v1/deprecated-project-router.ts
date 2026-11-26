@@ -63,7 +63,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { projects: workspaces, totalCount } = await server.services.project.getProjects({
         includeRoles: req.query.includeRoles,
-        actor: req.permission,
+        actor: req.actor,
         type: req.query.type,
         limit: req.query.limit,
         offset: req.query.offset
@@ -103,7 +103,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           type: ProjectFilterType.ID,
           projectId: req.params.workspaceId
         },
-        actor: req.permission
+        actor: req.actor
       });
       return { workspace };
     }
@@ -140,12 +140,12 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           type: ProjectFilterType.ID,
           projectId: req.params.workspaceId
         },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.params.workspaceId,
         event: {
           type: EventType.DELETE_PROJECT,
@@ -232,12 +232,12 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           showSnapshotsLegacy: req.body.showSnapshotsLegacy,
           secretDetectionIgnoreValues: req.body.secretDetectionIgnoreValues
         },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.params.workspaceId,
         event: {
           type: EventType.UPDATE_PROJECT,
@@ -274,18 +274,18 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workspace = await server.services.project.updateAuditLogsRetention({
-        actor: req.permission,
+        actor: req.actor,
         filter: {
           type: ProjectFilterType.SLUG,
           slug: req.params.workspaceSlug,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         auditLogsRetentionDays: req.body.auditLogsRetentionDays
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: workspace.id,
         event: {
           type: EventType.UPDATE_AUDIT_LOG_SETTINGS,
@@ -338,7 +338,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integrations = await server.services.integration.listIntegrationByProject({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId
       });
       return { integrations };
@@ -372,7 +372,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const authorizations = await server.services.integrationAuth.listIntegrationAuthByProjectId({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId
       });
       return { authorizations };
@@ -422,7 +422,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const config = await server.services.project.getProjectWorkflowIntegrationConfig({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId,
         integration: req.params.integration
       });
@@ -466,7 +466,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedIntegration = await server.services.project.deleteProjectWorkflowIntegration({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         integration: req.params.integration,
         integrationId: req.params.integrationId
@@ -543,7 +543,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const workflowIntegrationConfig = await server.services.project.updateProjectWorkflowIntegration({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.workspaceId,
         ...req.body
       });
@@ -603,7 +603,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { docs: projects, totalCount } = await server.services.project.searchProjects({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 

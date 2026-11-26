@@ -55,7 +55,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
       const projects: TGitLabProject[] = await server.services.appConnection.gitlab.listProjects(
         connectionId,
-        req.permission,
+        req.actor,
         search,
         limit
       );
@@ -97,7 +97,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
       const groups: TGitLabGroup[] = await server.services.appConnection.gitlab.listGroups(
         connectionId,
-        req.permission,
+        req.actor,
         search,
         limit
       );

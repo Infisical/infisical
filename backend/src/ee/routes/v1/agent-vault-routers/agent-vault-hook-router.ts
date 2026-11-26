@@ -46,7 +46,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_CREATE,
@@ -142,7 +142,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_UPDATE,
@@ -189,7 +189,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_DELETE,

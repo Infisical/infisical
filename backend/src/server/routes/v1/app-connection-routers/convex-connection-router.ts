@@ -49,7 +49,7 @@ export const registerConvexConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const deployments = await server.services.appConnection.convex.listDeployments(connectionId, req.permission);
+      const deployments = await server.services.appConnection.convex.listDeployments(connectionId, req.actor);
 
       return { deployments };
     }

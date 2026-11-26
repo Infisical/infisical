@@ -31,6 +31,7 @@ export type TInMemoryGrantRows = {
   userGroupMembers: Map<string, TUserGroupMembership>;
   identityGroupMembers: Map<string, TIdentityGroupMembership>;
   attributes: Map<string, TIdentityMetadata>;
+  identityNames: Map<string, string>;
 };
 
 const byId = <T extends { id: string }>(a: T, b: T) => {
@@ -54,7 +55,8 @@ export class InMemoryGrantStore implements TGrantStore {
     groups: new Map(),
     userGroupMembers: new Map(),
     identityGroupMembers: new Map(),
-    attributes: new Map()
+    attributes: new Map(),
+    identityNames: new Map()
   };
 
   async findActorGrants(actor: TGrantActor, scope: TGrantScope): Promise<ActorGrants> {
@@ -81,7 +83,8 @@ export class InMemoryGrantStore implements TGrantStore {
       privileges: this.actorPrivileges(actor).filter((privilege) =>
         scope.scope === AccessScope.Project ? privilege.projectId === scope.projectId : privilege.orgId === scope.orgId
       ),
-      attributes: this.actorAttributes(actor, scope.orgId).map(({ id, key, value }) => ({ id, key, value }))
+      attributes: this.actorAttributes(actor, scope.orgId).map(({ id, key, value }) => ({ id, key, value })),
+      actorName: this.actorName(actor)
     });
   }
 
@@ -110,7 +113,7 @@ export class InMemoryGrantStore implements TGrantStore {
       .filter((privilege) => privilege.projectId === scope.projectId && !privilege.folderId)
       .map((privilege) => ({ id: privilege.id, updatedAt: privilege.updatedAt, pExp: hasEnded(privilege, now) }));
     const attributes = this.actorAttributes(actor, scope.orgId).map(({ id, updatedAt }) => ({ id, updatedAt }));
-    return generateCacheKeyFromData({ memberships, privileges, attributes });
+    return generateCacheKeyFromData({ memberships, privileges, attributes, actorName: this.actorName(actor) });
   }
 
   async findProjectMemberGrants(scope: { orgId: string; projectId: string }): Promise<ProjectMemberGrants> {
@@ -260,6 +263,10 @@ export class InMemoryGrantStore implements TGrantStore {
     return [...this.rows.privileges.values()]
       .filter((privilege) => !privilege.folderId && ownsPrivilege(actor, privilege))
       .sort(byId);
+  }
+
+  private actorName(actor: TGrantActor): string | null {
+    return actor.type === ActorType.IDENTITY ? (this.rows.identityNames.get(actor.id) ?? null) : null;
   }
 
   // User attributes are per org. An identity lives in one org, so no org filter needed.

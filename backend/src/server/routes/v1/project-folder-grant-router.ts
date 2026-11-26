@@ -32,7 +32,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsByProject({
-        actor: req.permission,
+        actor: req.actor,
         sourceProjectId: req.query.sourceProjectId
       });
       return { grants };
@@ -65,7 +65,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsForTargetProject({
-        actor: req.permission,
+        actor: req.actor,
         targetProjectId: req.query.targetProjectId
       });
       return { grants };
@@ -91,7 +91,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const grant = await server.services.projectFolderGrant.createGrant({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -136,7 +136,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.projectFolderGrant.getGrantUsage({
-        actor: req.permission,
+        actor: req.actor,
         grantId: req.params.grantId,
         sourceProjectId: req.query.sourceProjectId
       });
@@ -162,7 +162,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const grant = await server.services.projectFolderGrant.deleteGrant({
-        actor: req.permission,
+        actor: req.actor,
         grantId: req.params.grantId,
         sourceProjectId: req.query.sourceProjectId
       });

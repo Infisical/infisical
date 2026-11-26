@@ -158,7 +158,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE,
@@ -259,7 +259,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
@@ -308,7 +308,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
@@ -371,7 +371,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         services.map((service) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD,
@@ -428,7 +428,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE,
@@ -524,7 +524,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         skills.map((skill) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD,
@@ -580,7 +580,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE,
@@ -710,7 +710,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         members.map((member) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD,
@@ -772,7 +772,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         members.map((member) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE,

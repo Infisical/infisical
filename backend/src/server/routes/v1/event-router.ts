@@ -33,7 +33,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const client = await server.services.projectEventsSSE.subscribe({
         projectId: req.body.projectId,
-        actor: req.permission,
+        actor: req.actor,
         register: req.body.register
       });
 

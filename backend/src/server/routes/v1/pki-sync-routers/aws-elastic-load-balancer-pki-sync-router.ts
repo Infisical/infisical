@@ -70,7 +70,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
 
       const loadBalancers = await server.services.appConnection.aws.listLoadBalancers(
         { connectionId, region },
-        req.permission
+        req.actor
       );
 
       return { loadBalancers };
@@ -120,7 +120,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
 
       const listeners = await server.services.appConnection.aws.listListeners(
         { connectionId, region, loadBalancerArn },
-        req.permission
+        req.actor
       );
 
       return { listeners };
@@ -157,7 +157,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
 
       const { message, pkiSyncInfo } = await server.services.pkiSync.setCertificateAsDefault(
         { pkiSyncId, certificateId },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -203,10 +203,7 @@ export const registerAwsElasticLoadBalancerPkiSyncRouter = async (
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
-      const { message, pkiSyncInfo } = await server.services.pkiSync.clearDefaultCertificate(
-        { pkiSyncId },
-        req.permission
-      );
+      const { message, pkiSyncInfo } = await server.services.pkiSync.clearDefaultCertificate({ pkiSyncId }, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

@@ -59,7 +59,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       });
     }
 
-    if (kmipClient.orgId !== req.permission.orgId) {
+    if (kmipClient.orgId !== req.actor.orgId) {
       throw new ForbiddenRequestError({
         message: "Client specified in the request does not belong in the organization"
       });
@@ -69,7 +69,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     // token) supplies the client identity in headers, so verify the presented client cert serial
     // belongs to this client before acting as it.
     await server.services.kmip.validateKmipSessionCertificates({
-      orgId: req.permission.orgId,
+      orgId: req.actor.orgId,
       kmipClientId: kmipClient.id,
       clientCertificateSerialNumber: clientCertSerialNumber,
       serverCertificateSerialNumber: serverCertSerialNumber
@@ -102,7 +102,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.create({
         ...req.kmipUser,
-        actor: req.permission,
+        actor: req.actor,
         algorithm: req.body.algorithm
       });
 
@@ -153,7 +153,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.get({
         ...req.kmipUser,
-        actor: req.permission,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -205,7 +205,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.getAttributes({
         ...req.kmipUser,
-        actor: req.permission,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -252,7 +252,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.destroy({
         ...req.kmipUser,
-        actor: req.permission,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -300,7 +300,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.activate({
         ...req.kmipUser,
-        actor: req.permission,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -348,7 +348,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.revoke({
         ...req.kmipUser,
-        actor: req.permission,
+        actor: req.actor,
         id: req.body.id
       });
 
@@ -402,7 +402,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const objects = await server.services.kmipOperation.locate({
         ...req.kmipUser,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -454,7 +454,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       const object = await server.services.kmipOperation.register({
         ...req.kmipUser,
         ...req.body,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

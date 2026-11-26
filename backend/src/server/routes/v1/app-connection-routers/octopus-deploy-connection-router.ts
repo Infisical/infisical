@@ -48,7 +48,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const spaces = await server.services.appConnection.octopusDeploy.listSpaces(connectionId, req.permission);
+      const spaces = await server.services.appConnection.octopusDeploy.listSpaces(connectionId, req.actor);
 
       return spaces;
     }
@@ -83,11 +83,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
       const { connectionId } = req.params;
       const { spaceId } = req.query;
 
-      const projects = await server.services.appConnection.octopusDeploy.listProjects(
-        connectionId,
-        spaceId,
-        req.permission
-      );
+      const projects = await server.services.appConnection.octopusDeploy.listProjects(connectionId, spaceId, req.actor);
 
       return projects;
     }
@@ -158,7 +154,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
         connectionId,
         spaceId,
         projectId,
-        req.permission
+        req.actor
       );
 
       if (!scopeValues) {

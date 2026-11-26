@@ -47,7 +47,7 @@ export const registerHerokuConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const apps: THerokuApp[] = await server.services.appConnection.heroku.listApps(connectionId, req.permission);
+      const apps: THerokuApp[] = await server.services.appConnection.heroku.listApps(connectionId, req.actor);
 
       return apps;
     }

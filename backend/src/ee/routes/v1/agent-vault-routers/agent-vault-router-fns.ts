@@ -15,7 +15,7 @@ import { pick } from "@app/lib/fn";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-export const actorContext = (req: FastifyRequest): TActorContext => req.permission;
+export const actorContext = (req: FastifyRequest): TActorContext => req.actor;
 
 // Zod validation strips keys a schema does not declare, so a body projectId on a route that reads the query is
 // recorded before validation by the preValidation hook in registerAgentVaultRouters.
@@ -49,10 +49,10 @@ export const resolveRequestedProjectId = (
     throw new BadRequestError({ message: "This route reads projectId from the request body" });
   }
 
-  return req.server.services.agentVaultProjectResolver.resolve(req.permission.orgId, projectId, {
+  return req.server.services.agentVaultProjectResolver.resolve(req.actor.orgId, projectId, {
     route: `${req.method} ${req.routeOptions.url ?? ""}`,
-    actorId: req.permission.id,
-    actorType: req.permission.type,
+    actorId: req.actor.id,
+    actorType: req.actor.type,
     userAgent: req.headers["user-agent"]
   });
 };
@@ -130,7 +130,7 @@ export const recordOauthVariableConnected = async (
 ) => {
   await req.server.services.auditLog.createAuditLog({
     ...req.auditLogInfo,
-    orgId: req.permission.orgId,
+    orgId: req.actor.orgId,
     projectId,
     event: {
       type: EventType.AGENT_VAULT_OAUTH_VARIABLE_CONNECT,

@@ -88,7 +88,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.createWebhook({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -110,7 +110,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.WebhookCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.body.projectId,
           environment: webhook.environment.slug,
@@ -162,7 +162,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.updateWebhook({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.webhookId,
         isDisabled: req.body.isDisabled,
         eventsFilter: req.body.eventsFilter
@@ -187,7 +187,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.WebhookUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { webhookId: webhook.id, projectId: webhook.projectId }
         })
         .catch(() => {});
@@ -217,7 +217,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.deleteWebhook({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.webhookId
       });
 
@@ -239,7 +239,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.WebhookDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { webhookId: webhook.id, projectId: webhook.projectId }
         })
         .catch(() => {});
@@ -269,7 +269,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.testWebhook({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.webhookId
       });
       return { message: "Successfully tested webhook", webhook };
@@ -296,7 +296,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.getWebhookById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.webhookId
       });
       return { webhook };
@@ -330,7 +330,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhooks = await server.services.webhook.listWebhooks({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.projectId
       });

@@ -54,7 +54,7 @@ export const registerFireworksConnectionRouter = async (server: FastifyZodProvid
 
       const serviceAccounts = await server.services.appConnection.fireworks.listServiceAccounts(
         connectionId,
-        req.permission
+        req.actor
       );
 
       return { serviceAccounts };

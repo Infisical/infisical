@@ -44,10 +44,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const secretScopes = await server.services.appConnection.databricks.listSecretScopes(
-        connectionId,
-        req.permission
-      );
+      const secretScopes = await server.services.appConnection.databricks.listSecretScopes(connectionId, req.actor);
 
       return { secretScopes };
     }
@@ -82,7 +79,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
 
       const servicePrincipals = await server.services.appConnection.databricks.listServicePrincipals(
         connectionId,
-        req.permission
+        req.actor
       );
 
       return { servicePrincipals };

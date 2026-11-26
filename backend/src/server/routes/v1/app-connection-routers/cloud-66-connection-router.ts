@@ -47,10 +47,7 @@ export const registerCloud66ConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const stacks: TCloud66Stack[] = await server.services.appConnection.cloud66.listStacks(
-        connectionId,
-        req.permission
-      );
+      const stacks: TCloud66Stack[] = await server.services.appConnection.cloud66.listStacks(connectionId, req.actor);
 
       return stacks;
     }

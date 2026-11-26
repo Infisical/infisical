@@ -44,7 +44,7 @@ export const registerOpenRouterConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const workspaces = await server.services.appConnection.openRouter.listWorkspaces(connectionId, req.permission);
+      const workspaces = await server.services.appConnection.openRouter.listWorkspaces(connectionId, req.actor);
 
       return { workspaces };
     }

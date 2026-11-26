@@ -435,7 +435,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.attachLdapAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -443,7 +443,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.ADD_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -466,10 +466,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityLdapAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
@@ -569,7 +569,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.updateLdapAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -577,7 +577,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -601,10 +601,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityLdapAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
@@ -653,12 +653,12 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.getLdapAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -703,14 +703,14 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.revokeIdentityLdapAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.REVOKE_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -723,10 +723,10 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityLdapAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.LDAP_AUTH
           }
         })
@@ -766,7 +766,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const clearLockoutsData = await server.services.identityLdapAuth.clearLdapAuthLockouts({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId
       });
 

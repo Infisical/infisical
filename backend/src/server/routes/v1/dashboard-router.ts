@@ -78,7 +78,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req) =>
       server.services.secret.getSecretMetadata({
         ...req.query,
-        actor: req.permission
+        actor: req.actor
       })
   });
 
@@ -147,7 +147,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         tagSlugs,
         environments: req.body.environments,
         secretPath: req.body.secretPath,
-        actor: req.permission,
+        actor: req.actor,
         projectId
       });
       const { secrets } = result;
@@ -420,7 +420,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (includeImports) {
         totalImportCount = await server.services.secretImport.getProjectImportMultiEnvCount({
-          actor: req.permission,
+          actor: req.actor,
           projectId,
           environments,
           path: secretPath
@@ -429,7 +429,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
           imports = await server.services.secretImport.getImportsMultiEnv({
-            actor: req.permission,
+            actor: req.actor,
             projectId,
             environments,
             path: secretPath,
@@ -466,7 +466,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (includeFolders) {
         // this is the unique count, ie duplicate folders across envs only count as 1
         totalFolderCount = await server.services.folder.getProjectFolderCount({
-          actor: req.permission,
+          actor: req.actor,
           projectId: req.body.projectId,
           path: secretPath,
           environments,
@@ -475,7 +475,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalFolderCount > adjustedOffset) {
           folders = await server.services.folder.getFoldersMultiEnv({
-            actor: req.permission,
+            actor: req.actor,
             projectId,
             environments,
             path: secretPath,
@@ -514,7 +514,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (includeDynamicSecrets) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalDynamicSecretCount = await server.services.dynamicSecret.getCountMultiEnv({
-          actor: req.permission,
+          actor: req.actor,
           projectId,
           search,
           environmentSlugs: environments,
@@ -524,7 +524,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
           dynamicSecrets = await server.services.dynamicSecret.listDynamicSecretsByEnvs({
-            actor: req.permission,
+            actor: req.actor,
             projectId,
             search,
             orderBy: SecretsOrderBy.Name,
@@ -569,7 +569,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environments,
             secretPath
           },
-          req.permission
+          req.actor
         );
 
         if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
@@ -584,7 +584,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             },
-            req.permission
+            req.actor
           );
 
           await server.services.auditLog.createAuditLog({
@@ -619,7 +619,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environments,
             secretPath
           },
-          req.permission
+          req.actor
         );
 
         if (remainingLimit > 0 && totalHoneyTokenCount > adjustedOffset) {
@@ -634,7 +634,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             },
-            req.permission
+            req.actor
           );
 
           const uniqueHoneyTokenCount = new Set(honeyTokens.map((ht) => ht.name)).size;
@@ -654,7 +654,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environments,
             secretPath
           },
-          req.permission
+          req.actor
         );
 
         if (remainingLimit > 0 && totalProxiedServiceCount > adjustedOffset) {
@@ -669,7 +669,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             },
-            req.permission
+            req.actor
           );
 
           // multi-env: the same service name across envs is one overview row, so decrement by unique names
@@ -685,7 +685,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (includeSecrets) {
         // this is the unique count, ie duplicate secrets across envs only count as 1
         totalSecretCount = await server.services.secret.getSecretsCountMultiEnv({
-          actor: req.permission,
+          actor: req.actor,
           environments,
           projectId,
           path: secretPath,
@@ -699,7 +699,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
             secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
             viewSecretValue: true,
-            actor: req.permission,
+            actor: req.actor,
             environments,
             projectId,
             path: secretPath,
@@ -720,7 +720,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           const revokedGrantSecretIds = await server.services.secret.getSecretsWithRevokedProjectFolderGrant({
             targetProjectId: projectId,
-            actorOrgId: req.permission.orgId,
+            actorOrgId: req.actor.orgId,
             secrets: rawSecrets.map((s) => ({
               id: s.id,
               secretValue: s.secretValue,
@@ -769,7 +769,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               await server.services.telemetry.sendPostHogEvents({
                 event: PostHogEventTypes.SecretPulled,
                 distinctId: getTelemetryDistinctId(req),
-                organizationId: req.permission.orgId,
+                organizationId: req.actor.orgId,
                 properties: {
                   numberOfSecrets: secretIds.length,
                   projectId,
@@ -791,7 +791,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           path: secretPath,
           environment,
           projectId,
-          actor: req.permission,
+          actor: req.actor,
           secrets: secrets?.filter((s) => s.environment === environment)
         });
 
@@ -808,7 +808,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       for await (const environment of environments) {
         const secretSyncs = await server.services.secretSync.listSecretSyncsBySecretPath(
           { projectId, secretPath, environment },
-          req.permission
+          req.actor
         );
         secretSyncs.forEach((sync) => {
           usedBySecretSyncs.push({
@@ -1035,7 +1035,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
       // verify folder exists and user has project permission
-      await server.services.folder.getFolderByPath({ projectId, environment, secretPath }, req.permission);
+      await server.services.folder.getFolderByPath({ projectId, environment, secretPath }, req.actor);
 
       const tags = req.body.tags ?? [];
 
@@ -1080,7 +1080,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (includeImports) {
         totalImportCount = await server.services.secretImport.getProjectImportCount({
-          actor: req.permission,
+          actor: req.actor,
           projectId,
           environment,
           path: secretPath
@@ -1089,7 +1089,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalImportCount > adjustedOffset) {
           imports = await server.services.secretImport.getImports({
-            actor: req.permission,
+            actor: req.actor,
             projectId,
             environment,
             path: secretPath,
@@ -1120,7 +1120,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (includeFolders) {
         totalFolderCount = await server.services.folder.getProjectFolderCount({
-          actor: req.permission,
+          actor: req.actor,
           projectId,
           path: secretPath,
           environments: [environment],
@@ -1129,7 +1129,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
         if (remainingLimit > 0 && totalFolderCount > adjustedOffset) {
           folders = await server.services.folder.getFolders({
-            actor: req.permission,
+            actor: req.actor,
             projectId,
             environment,
             path: secretPath,
@@ -1155,7 +1155,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environments: [environment],
             secretPath
           },
-          req.permission
+          req.actor
         );
 
         if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
@@ -1170,7 +1170,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             },
-            req.permission
+            req.actor
           );
 
           const allRotationSecretIds = rawSecretRotations
@@ -1225,7 +1225,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environments: [environment],
             secretPath
           },
-          req.permission
+          req.actor
         );
 
         if (remainingLimit > 0 && totalHoneyTokenCount > adjustedOffset) {
@@ -1240,7 +1240,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             },
-            req.permission
+            req.actor
           );
 
           remainingLimit -= honeyTokens.length;
@@ -1258,7 +1258,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             environments: [environment],
             secretPath
           },
-          req.permission
+          req.actor
         );
 
         if (remainingLimit > 0 && totalProxiedServiceCount > adjustedOffset) {
@@ -1273,7 +1273,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               limit: remainingLimit,
               offset: adjustedOffset
             },
-            req.permission
+            req.actor
           );
 
           remainingLimit -= proxiedServices.length;
@@ -1286,7 +1286,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       try {
         if (includeDynamicSecrets) {
           totalDynamicSecretCount = await server.services.dynamicSecret.getDynamicSecretCount({
-            actor: req.permission,
+            actor: req.actor,
             projectId,
             search,
             environmentSlug: environment,
@@ -1295,7 +1295,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
           if (remainingLimit > 0 && totalDynamicSecretCount > adjustedOffset) {
             const { dynamicSecrets: dynamicSecretCfgs } = await server.services.dynamicSecret.listDynamicSecretsByEnv({
-              actor: req.permission,
+              actor: req.actor,
               projectId,
               search,
               orderBy,
@@ -1338,7 +1338,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       try {
         if (includeSecrets) {
           totalSecretCount = await server.services.secret.getSecretsCount({
-            actor: req.permission,
+            actor: req.actor,
             environment,
             projectId,
             path: secretPath,
@@ -1354,7 +1354,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               await server.services.secret.getSecretsRaw({
                 personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
                 secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
-                actor: req.permission,
+                actor: req.actor,
                 viewSecretValue: true,
                 throwOnMissingReadValuePermission: false,
                 environment,
@@ -1393,13 +1393,13 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         path: secretPath,
         environment,
         projectId,
-        actor: req.permission,
+        actor: req.actor,
         secrets
       });
 
       const secretSyncs = await server.services.secretSync.listSecretSyncsBySecretPath(
         { projectId, secretPath, environment },
-        req.permission
+        req.actor
       );
       const usedBySecretSyncs = secretSyncs.map((sync) => ({
         name: sync.name,
@@ -1437,7 +1437,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           await server.services.telemetry.sendPostHogEvents({
             event: PostHogEventTypes.SecretPulled,
             distinctId: getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
+            organizationId: req.actor.orgId,
             properties: {
               numberOfSecrets: secretIds.length,
               projectId,
@@ -1562,7 +1562,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           environments,
           secretPath
         },
-        req.permission
+        req.actor
       );
 
       const { searchName, searchPath } = resolveSecretDeepSearch(
@@ -1595,7 +1595,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               includeMetadataInSearch: true
             }
           },
-          req.permission
+          req.actor
         );
 
       const { dynamicSecrets, isLimitReached: isDynamicSecretLimitReached } =
@@ -1605,7 +1605,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             folderMappings,
             filters: sharedFilters
           },
-          req.permission
+          req.actor
         );
 
       const { secretRotations, isLimitReached: isSecretRotationLimitReached } =
@@ -1615,7 +1615,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             folderMappings,
             filters: sharedFilters
           },
-          req.permission
+          req.actor
         );
 
       for await (const environment of environments) {
@@ -1641,7 +1641,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             await server.services.telemetry.sendPostHogEvents({
               event: PostHogEventTypes.SecretPulled,
               distinctId: getTelemetryDistinctId(req),
-              organizationId: req.permission.orgId,
+              organizationId: req.actor.orgId,
               properties: {
                 numberOfSecrets: secretCountForEnv,
                 projectId,
@@ -1811,7 +1811,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const { secrets } = await server.services.secret.getSecretsRaw({
         personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
         secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
-        actor: req.permission,
+        actor: req.actor,
         viewSecretValue,
         throwOnMissingReadValuePermission: !hideUnreadableValues,
         environment,
@@ -1822,8 +1822,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       if (viewSecretValue) {
         void server.services.secretReadActivity.recordRead({
-          actor: req.permission.type,
-          actorId: req.permission.id,
+          actor: req.actor.type,
+          actorId: req.actor.id,
           projectId,
           secretIds: secrets.filter((secret) => !secret.secretValueHidden).map((secret) => secret.id),
           referencesExpanded: false
@@ -1872,7 +1872,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             numberOfSecrets: secrets.length,
             projectId,
@@ -1880,7 +1880,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             secretPath,
             channel: getUserAgentType(req.headers["user-agent"]),
             ...req.auditLogInfo,
-            actorType: req.permission.type
+            actorType: req.actor.type
           }
         });
       }
@@ -1926,7 +1926,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const { projectId, environments, secretPath, secretKey } = req.query;
 
       const existingEnvironments = await server.services.secret.getSecretKeyEnvironments({
-        actor: req.permission,
+        actor: req.actor,
         projectId,
         environments,
         path: secretPath,
@@ -1972,7 +1972,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
       const secret = await server.services.secret.getSecretByNameRaw({
-        actor: req.permission,
+        actor: req.actor,
         viewSecretValue: true,
         environment,
         projectId,
@@ -1987,8 +1987,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
 
       void server.services.secretReadActivity.recordRead({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.actor.type,
+        actorId: req.actor.id,
         projectId,
         secretIds: [secret.id],
         referencesExpanded: false
@@ -2050,7 +2050,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
 
@@ -2120,7 +2120,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretVersions = await server.services.secret.getSecretVersions({
-        actor: req.permission,
+        actor: req.actor,
         limit: req.query.limit,
         offset: req.query.offset,
         secretId: req.params.secretId
@@ -2154,7 +2154,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       const { version, secretId } = req.params;
 
       const [secretVersion] = await server.services.secret.getSecretVersions({
-        actor: req.permission,
+        actor: req.actor,
         secretId,
         secretVersions: [version]
       });
@@ -2219,7 +2219,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.folder.getFolderMoveEligibility({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.folderId,
         destinationEnvironment: req.query.destinationEnvironment,
         destinationPath: req.query.destinationPath

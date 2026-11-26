@@ -35,7 +35,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const config = await server.services.certificateCleanup.getConfig({
         projectId: req.internalCertManagerProjectId,
-        actor: req.permission
+        actor: req.actor
       });
       return { config };
     }
@@ -77,7 +77,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
         isEnabled: req.body.isEnabled,
         postExpiryRetentionDays: req.body.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: req.body.skipCertsWithActiveSyncs,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -97,10 +97,10 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateCleanupConfigured,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           isEnabled: config.isEnabled,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId
         }
       });

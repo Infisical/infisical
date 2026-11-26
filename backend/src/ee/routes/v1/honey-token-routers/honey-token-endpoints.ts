@@ -66,7 +66,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       const { connectionId, config } = upsertBodySchema.parse(req.body);
       const parsedConfig = configSchema.parse(config);
       const savedConfig = await server.services.honeyTokenConfig.upsertConfig({
-        actor: req.permission,
+        actor: req.actor,
         type,
         connectionId,
         config: parsedConfig
@@ -91,7 +91,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     handler: async (req) => {
       const response = await server.services.honeyTokenConfig.testConnection({
-        actor: req.permission,
+        actor: req.actor,
         type
       });
       return testConnectionResponseSchema.parse(response);
@@ -117,7 +117,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     handler: async (req) => {
       const config = await server.services.honeyTokenConfig.getConfig({
-        actor: req.permission,
+        actor: req.actor,
         type
       });
 

@@ -73,7 +73,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.createIdentity({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         orgId: req.body.organizationId
       });
@@ -94,7 +94,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.MachineIdentityCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           orgId: req.body.organizationId,
           name: identity.name,
@@ -147,7 +147,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.updateIdentity({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.body
@@ -214,7 +214,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.deleteIdentity({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -296,7 +296,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identity = await server.services.identityV1.getIdentityById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.identityId
       });
 
@@ -344,7 +344,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV1.listOrgIdentities({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.query.orgId
       });
 
@@ -437,9 +437,9 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV1.searchOrgIdentities({
-        actor: req.permission,
+        actor: req.actor,
         searchFilter: req.body.search,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         limit: req.body.limit,
         offset: req.body.offset,
         orderBy: req.body.orderBy,
@@ -515,7 +515,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       return server.services.identityV1.listProjectIdentitiesByIdentityId({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         ...req.query
       });
@@ -553,7 +553,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN], { requireOrg: false }),
     handler: async (req) => {
-      const organization = await server.services.org.findIdentityOrganization(req.permission.id);
+      const organization = await server.services.org.findIdentityOrganization(req.actor.id);
       return { identityDetails: { organization } };
     }
   });

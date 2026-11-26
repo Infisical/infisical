@@ -10,7 +10,7 @@ import {
 import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { TRequestPermission } from "@app/lib/types";
+import { TRequestActor } from "@app/lib/types";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";
@@ -42,7 +42,7 @@ const actor = {
     ssoPolicy: { authEnforced: false, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: false }
   },
   plan: async () => ({})
-} as unknown as TRequestPermission;
+} as unknown as TRequestActor;
 
 class PermissionReached extends Error {}
 

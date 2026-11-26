@@ -45,7 +45,7 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const applications = await server.services.appConnection.venafi.listApplications(connectionId, req.permission);
+      const applications = await server.services.appConnection.venafi.listApplications(connectionId, req.actor);
       return applications;
     }
   });
@@ -81,7 +81,7 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
       const templates = await server.services.appConnection.venafi.listIssuingTemplates(
         connectionId,
         applicationId,
-        req.permission
+        req.actor
       );
       return templates;
     }

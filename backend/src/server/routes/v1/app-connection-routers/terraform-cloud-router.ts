@@ -62,7 +62,7 @@ export const registerTerraformCloudConnectionRouter = async (server: FastifyZodP
       const { connectionId } = req.params;
 
       const organizations: TTerraformCloudOrganization[] =
-        await server.services.appConnection.terraformCloud.listOrganizations(connectionId, req.permission);
+        await server.services.appConnection.terraformCloud.listOrganizations(connectionId, req.actor);
 
       return organizations;
     }

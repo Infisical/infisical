@@ -27,7 +27,7 @@ const buildServer = async () => {
   app.addHook("onRequest", async (req) => {
     Object.assign(req, {
       auth: { authMode: "jwt" },
-      permission: { orgId: ORG_ID },
+      actor: { orgId: ORG_ID },
       auditLogInfo: { actor: { type: ActorType.USER, metadata: { userId: "user-1" } }, orgId: ORG_ID }
     });
   });

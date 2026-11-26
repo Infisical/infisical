@@ -57,10 +57,10 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.createIdentity({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           name: req.body.name,
@@ -70,7 +70,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
       });
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.CREATE_IDENTITY,
@@ -119,10 +119,10 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.updateIdentity({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
@@ -136,7 +136,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
       });
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.UPDATE_IDENTITY,
@@ -180,10 +180,10 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.deleteIdentity({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
@@ -192,7 +192,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
       });
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.DELETE_IDENTITY,
@@ -233,10 +233,10 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.getIdentityById({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           identityId: req.params.identityId
@@ -277,10 +277,10 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { docs: identities, count: totalCount } = await server.services.identityV2.listIdentities({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           offset: req.query.offset,

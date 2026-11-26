@@ -91,12 +91,12 @@ const registerPerTypeEndpoints = (
         schedule: req.body.schedule,
         configuration: req.body.configuration ?? {},
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_DISCOVERY_SOURCE_CREATE,
@@ -108,8 +108,8 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamDiscoverySourceCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: { discoveryType, orgId: req.permission.orgId }
+          organizationId: req.actor.orgId,
+          properties: { discoveryType, orgId: req.actor.orgId }
         })
         .catch(() => {});
 
@@ -143,12 +143,12 @@ const registerPerTypeEndpoints = (
         discoveryType,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_DISCOVERY_SOURCE_UPDATE,
@@ -160,8 +160,8 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamDiscoverySourceUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: { discoveryType, orgId: req.permission.orgId }
+          organizationId: req.actor.orgId,
+          properties: { discoveryType, orgId: req.actor.orgId }
         })
         .catch(() => {});
 
@@ -186,7 +186,7 @@ const registerPerTypeEndpoints = (
         sourceId: req.params.sourceId,
         discoveryType,
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
       return { source };
     }
@@ -209,12 +209,12 @@ const registerPerTypeEndpoints = (
         sourceId: req.params.sourceId,
         discoveryType,
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_DISCOVERY_SOURCE_DELETE,
@@ -226,8 +226,8 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamDiscoverySourceDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: { discoveryType, orgId: req.permission.orgId }
+          organizationId: req.actor.orgId,
+          properties: { discoveryType, orgId: req.actor.orgId }
         })
         .catch(() => {});
 
@@ -252,12 +252,12 @@ const registerPerTypeEndpoints = (
         sourceId: req.params.sourceId,
         discoveryType,
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_DISCOVERY_SCAN,
@@ -269,8 +269,8 @@ const registerPerTypeEndpoints = (
         .sendPostHogEvents({
           event: PostHogEventTypes.PamDiscoveryScanTriggered,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: { discoveryType, orgId: req.permission.orgId }
+          organizationId: req.actor.orgId,
+          properties: { discoveryType, orgId: req.actor.orgId }
         })
         .catch(() => {});
 
@@ -310,7 +310,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       const sources = await server.services.pamDiscovery.list({
         projectId: req.internalPamProjectId,
         search: req.query.search,
-        actor: req.permission
+        actor: req.actor
       });
       return { sources };
     }
@@ -338,7 +338,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         projectId: req.internalPamProjectId,
         offset: req.query.offset,
         limit: req.query.limit,
-        actor: req.permission
+        actor: req.actor
       });
       return { runs };
     }
@@ -370,7 +370,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         search: req.query.search,
         offset: req.query.offset,
         limit: req.query.limit,
-        actor: req.permission
+        actor: req.actor
       });
       return { discoveredAccounts, totalCount };
     }
@@ -415,7 +415,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         search: req.query.search,
         offset: req.query.offset,
         limit: req.query.limit,
-        actor: req.permission
+        actor: req.actor
       });
       return { accounts, totalCount };
     }
@@ -480,7 +480,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         accounts: req.body.accounts,
         auditLogInfo: req.auditLogInfo,
         projectId: req.internalPamProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       const importedAccounts = results.flatMap((r) =>
@@ -491,7 +491,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_DISCOVERED_ACCOUNT_IMPORT,
@@ -508,8 +508,8 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.PamDiscoveredAccountsImported,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
-          properties: { orgId: req.permission.orgId, importedCount: importedAccounts.length }
+          organizationId: req.actor.orgId,
+          properties: { orgId: req.actor.orgId, importedCount: importedAccounts.length }
         })
         .catch(() => {});
 
@@ -519,10 +519,10 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
           .sendPostHogEvents({
             event: PostHogEventTypes.PamAccountRotationConfigured,
             distinctId: getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
+            organizationId: req.actor.orgId,
             properties: {
               accountType: r.accountType,
-              orgId: req.permission.orgId,
+              orgId: req.actor.orgId,
               hasRotationAccount: true,
               scheduledRotationEnabled: r.scheduledRotationEnabled ?? false
             }
@@ -533,8 +533,8 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
           .sendPostHogEvents({
             event: PostHogEventTypes.PamAccountRotated,
             distinctId: getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
-            properties: { accountType: r.accountType, orgId: req.permission.orgId }
+            organizationId: req.actor.orgId,
+            properties: { accountType: r.accountType, orgId: req.actor.orgId }
           })
           .catch(() => {});
       });

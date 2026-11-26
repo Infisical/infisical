@@ -24,11 +24,12 @@ export type TRoleOwner = { orgId: string } | { projectId: string };
 
 // Read-only over every table Access Control owns. One store so a check doesn't pay extra DB round trips.
 export type TGrantStore = {
-  // Memberships (direct or via groups) with roles, org/project privileges (never folder grants) and attributes.
+  // Memberships (direct or via groups) with roles, org/project privileges (never folder grants), attributes and an
+  // identity's name.
   // At a resource scope: active memberships only, no privileges.
   findActorGrants(actor: TGrantActor, scope: TGrantScope, options?: TReadOptions): Promise<ActorGrants>;
   // Covers the project, its resources and its org. Changes on any membership, role assignment, custom role,
-  // privilege or attribute change, and when a temporary grant ends.
+  // privilege or attribute change, when an identity is renamed, and when a temporary grant ends.
   findGrantsFingerprint(
     actor: TGrantActor,
     scope: { orgId: string; projectId: string },

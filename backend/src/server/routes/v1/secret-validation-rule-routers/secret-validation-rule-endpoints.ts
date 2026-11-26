@@ -57,7 +57,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
     handler: async (req) => {
       const secretValidationRules = (await server.services.secretValidationRule.listSecretValidationRules(
         { projectId: req.query.projectId, type },
-        req.permission
+        req.actor
       )) as T[];
 
       return { secretValidationRules };
@@ -82,7 +82,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
     handler: async (req) => {
       const secretValidationRule = (await server.services.secretValidationRule.findSecretValidationRuleById(
         { ruleId: req.params.ruleId, type },
-        req.permission
+        req.actor
       )) as T;
 
       return { secretValidationRule };
@@ -105,7 +105,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
     handler: async (req) => {
       const secretValidationRule = (await server.services.secretValidationRule.createSecretValidationRule(
         { ...req.body, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -128,7 +128,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretValidationRuleCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { ruleId: secretValidationRule.id, projectId: secretValidationRule.projectId, type }
         })
         .catch(() => {});
@@ -156,7 +156,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
     handler: async (req) => {
       const secretValidationRule = (await server.services.secretValidationRule.updateSecretValidationRule(
         { ...req.body, ruleId: req.params.ruleId, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -179,7 +179,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretValidationRuleUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { ruleId: secretValidationRule.id, projectId: secretValidationRule.projectId, type }
         })
         .catch(() => {});
@@ -206,7 +206,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
     handler: async (req) => {
       const secretValidationRule = (await server.services.secretValidationRule.deleteSecretValidationRule(
         { ruleId: req.params.ruleId, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -222,7 +222,7 @@ export const registerSecretValidationRuleEndpoints = <T extends TSecretValidatio
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretValidationRuleDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { ruleId: secretValidationRule.id, projectId: secretValidationRule.projectId, type }
         })
         .catch(() => {});

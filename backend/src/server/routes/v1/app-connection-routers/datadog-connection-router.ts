@@ -46,10 +46,7 @@ export const registerDatadogConnectionRouter = async (server: FastifyZodProvider
         params: { connectionId }
       } = req;
 
-      const serviceAccounts = await server.services.appConnection.datadog.listServiceAccounts(
-        connectionId,
-        req.permission
-      );
+      const serviceAccounts = await server.services.appConnection.datadog.listServiceAccounts(connectionId, req.actor);
       return { serviceAccounts };
     }
   });

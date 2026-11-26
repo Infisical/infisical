@@ -43,7 +43,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      return server.services.appConnection.qovery.listOrganizations(connectionId, req.permission);
+      return server.services.appConnection.qovery.listOrganizations(connectionId, req.actor);
     }
   });
 
@@ -67,7 +67,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
 
-      return server.services.appConnection.qovery.listProjects(connectionId, organizationId, req.permission);
+      return server.services.appConnection.qovery.listProjects(connectionId, organizationId, req.actor);
     }
   });
 
@@ -91,7 +91,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId, projectId } = req.params;
 
-      return server.services.appConnection.qovery.listEnvironments(connectionId, projectId, req.permission);
+      return server.services.appConnection.qovery.listEnvironments(connectionId, projectId, req.actor);
     }
   });
 };

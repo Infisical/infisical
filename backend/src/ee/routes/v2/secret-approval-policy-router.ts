@@ -79,7 +79,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.createSecretApprovalPolicy({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         name: req.body.name ?? `${req.body.environment || req.body.environments?.join(",")}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
@@ -89,7 +89,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -163,7 +163,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.updateSecretApprovalPolicy({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         secretPolicyId: req.params.sapId
       });
@@ -172,7 +172,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { policyId: req.params.sapId, enforceOnSecretImports: approval.enforceOnSecretImports }
         })
         .catch(() => {});
@@ -201,7 +201,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.deleteSecretApprovalPolicy({
-        actor: req.permission,
+        actor: req.actor,
         secretPolicyId: req.params.sapId
       });
 
@@ -209,7 +209,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -257,7 +257,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretChangePolicy.getSecretApprovalPolicyByProjectId({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.query.projectId
       });
       return { approvals };
@@ -299,7 +299,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.getSecretApprovalPolicyById({
-        actor: req.permission,
+        actor: req.actor,
         ...req.params
       });
 
@@ -356,7 +356,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const imports = await server.services.secretChangePolicy.listSecretApprovalPolicyImports({
-        actor: req.permission,
+        actor: req.actor,
         sapId: req.params.sapId,
         isReplication: req.query.isReplication
       });
@@ -390,7 +390,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
       return { policy };

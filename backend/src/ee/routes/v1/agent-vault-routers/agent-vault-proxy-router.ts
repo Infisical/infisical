@@ -157,7 +157,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       try {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_PROXY_REGISTER,
@@ -227,7 +227,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_UPDATE,
@@ -283,7 +283,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: { type: EventType.AGENT_VAULT_PROXY_DELETE, metadata: { proxyId: proxy.id, name: proxy.name } }
       });
@@ -327,7 +327,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       try {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE,
@@ -373,7 +373,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_REVOKE,

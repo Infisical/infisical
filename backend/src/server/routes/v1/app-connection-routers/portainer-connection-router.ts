@@ -48,7 +48,7 @@ export const registerPortainerConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const environments = await server.services.appConnection.portainer.listEnvironments(connectionId, req.permission);
+      const environments = await server.services.appConnection.portainer.listEnvironments(connectionId, req.actor);
 
       return { environments };
     }
@@ -82,7 +82,7 @@ export const registerPortainerConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const stacks = await server.services.appConnection.portainer.listStacks(connectionId, req.permission);
+      const stacks = await server.services.appConnection.portainer.listStacks(connectionId, req.actor);
 
       return { stacks };
     }

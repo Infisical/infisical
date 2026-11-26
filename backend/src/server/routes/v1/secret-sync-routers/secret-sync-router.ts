@@ -254,10 +254,10 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         query: { projectId },
-        permission
+        actor
       } = req;
 
-      const secretSyncs = await server.services.secretSync.listSecretSyncsByProjectId({ projectId }, permission);
+      const secretSyncs = await server.services.secretSync.listSecretSyncsByProjectId({ projectId }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

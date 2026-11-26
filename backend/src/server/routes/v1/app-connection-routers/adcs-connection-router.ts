@@ -48,7 +48,7 @@ export const registerADCSConnectionRouter = async (server: FastifyZodProvider) =
       const templates = await server.services.appConnection.adcs.listCertificateTemplates(
         connectionId,
         caName,
-        req.permission
+        req.actor
       );
       return { templates };
     }

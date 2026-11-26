@@ -291,7 +291,8 @@ export class ProjectPermissionService implements TProjectPermissionService {
     const isPrincipal = principal.id === grantActor.id;
     let username = "";
     if (isPrincipal && principal.type === ActorType.USER) username = principal.username;
-    if (isPrincipal && principal.type === ActorType.IDENTITY) username = principal.name;
+    // A token keeps the name it was issued with, so prefer the current one.
+    if (isPrincipal && principal.type === ActorType.IDENTITY) username = grants.actorName ?? principal.name;
     if (!isPrincipal && "assumed" in principal) username = principal.assumed?.actorName ?? "";
     // identity.auth is only known for the identity making the request.
     const auth = isPrincipal && principal.type === ActorType.IDENTITY && principal.authInfo ? principal.authInfo : null;

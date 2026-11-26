@@ -46,7 +46,7 @@ export const registerOktaConnectionRouter = async (server: FastifyZodProvider) =
         params: { connectionId }
       } = req;
 
-      const apps = await server.services.appConnection.okta.listApps(connectionId, req.permission);
+      const apps = await server.services.appConnection.okta.listApps(connectionId, req.actor);
       return { apps };
     }
   });

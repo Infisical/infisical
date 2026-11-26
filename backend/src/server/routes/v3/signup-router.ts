@@ -267,14 +267,14 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const distinctId = getTelemetryDistinctId(req);
-      const organizationId = req.permission.orgId;
+      const organizationId = req.actor.orgId;
 
       // Persisted for SQL analytics alongside the PostHog events; a DB failure must not
       // take the telemetry down with it.
       if (organizationId) {
         try {
           await server.services.signup.recordOnboardingResponse({
-            userId: req.permission.id,
+            userId: req.actor.id,
             orgId: organizationId,
             selectedProducts: req.body.selectedProducts,
             launchDestination: req.body.launchDestination,

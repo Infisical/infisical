@@ -227,7 +227,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityJwtAuth = await server.services.identityJwtAuth.attachJwtAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -309,7 +309,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityJwtAuth = await server.services.identityJwtAuth.updateJwtAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -386,7 +386,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const identityJwtAuth = await server.services.identityJwtAuth.getJwtAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -435,7 +435,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityJwtAuth = await server.services.identityJwtAuth.revokeJwtAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

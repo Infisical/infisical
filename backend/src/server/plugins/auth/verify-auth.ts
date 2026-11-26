@@ -33,7 +33,7 @@ export const verifyAuth =
     if (
       (req.auth.authMode === AuthMode.JWT || req.auth.authMode === AuthMode.OAUTH) &&
       options.requireOrg === true &&
-      !req.permission.orgId
+      !req.actor.orgId
     ) {
       throw new UnauthorizedError({ name: `${req.url} Unauthorized Access, no organization found in request` });
     }

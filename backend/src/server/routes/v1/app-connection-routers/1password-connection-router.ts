@@ -54,7 +54,7 @@ export const registerOnePassConnectionRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const vaults = await server.services.appConnection.onepass.listVaults(connectionId, req.permission);
+      const vaults = await server.services.appConnection.onepass.listVaults(connectionId, req.actor);
       return vaults;
     }
   });

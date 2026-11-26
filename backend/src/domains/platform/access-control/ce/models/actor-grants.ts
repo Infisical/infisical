@@ -8,6 +8,9 @@ export type TActorGrantsRecord = {
   memberships: TMembershipRecord[];
   privileges: TPrivilegeRecord[];
   attributes: TIdentityAttributeRecord[];
+  // An identity's current name, for `{{identity.username}}` conditions. Null for a user, whose username comes from
+  // the session, and at a resource scope.
+  actorName?: string | null;
 };
 
 // One actor's memberships (direct and via groups), privileges and attributes at a scope. What they actually grant
@@ -16,19 +19,21 @@ export class ActorGrants {
   private constructor(
     readonly memberships: Membership[],
     private readonly privileges: Privilege[],
-    private readonly attributes: TIdentityAttributeRecord[]
+    private readonly attributes: TIdentityAttributeRecord[],
+    readonly actorName: string | null
   ) {}
 
-  static restore({ memberships, privileges, attributes }: TActorGrantsRecord): ActorGrants {
+  static restore({ memberships, privileges, attributes, actorName }: TActorGrantsRecord): ActorGrants {
     return new ActorGrants(
       memberships.map((membership) => Membership.restore(membership)),
       privileges.map((privilege) => Privilege.restore(privilege)),
-      attributes.map((attribute) => ({ ...attribute }))
+      attributes.map((attribute) => ({ ...attribute })),
+      actorName ?? null
     );
   }
 
   static empty(): ActorGrants {
-    return new ActorGrants([], [], []);
+    return new ActorGrants([], [], [], null);
   }
 
   get hasMembership(): boolean {
@@ -87,7 +92,8 @@ export class ActorGrants {
     return new ActorGrants(
       [...this.memberships, ...other.memberships],
       [...this.privileges, ...other.privileges],
-      [...this.attributes, ...other.attributes]
+      [...this.attributes, ...other.attributes],
+      this.actorName ?? other.actorName
     );
   }
 
@@ -95,7 +101,8 @@ export class ActorGrants {
     return {
       memberships: this.memberships.map((membership) => membership.toJSON()),
       privileges: this.privileges.map((privilege) => privilege.toJSON()),
-      attributes: this.attributes.map((attribute) => ({ ...attribute }))
+      attributes: this.attributes.map((attribute) => ({ ...attribute })),
+      actorName: this.actorName
     };
   }
 }

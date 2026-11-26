@@ -68,7 +68,7 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
       const machines = await server.services.appConnection.ldap.listMachines(
         connectionId,
         { search, limit },
-        req.permission
+        req.actor
       );
       return { machines };
     }
@@ -109,10 +109,6 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
-      server.services.appConnection.ldap.listGroups(
-        req.params.connectionId,
-        { search: req.query.search },
-        req.permission
-      )
+      server.services.appConnection.ldap.listGroups(req.params.connectionId, { search: req.query.search }, req.actor)
   });
 };

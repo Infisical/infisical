@@ -52,7 +52,7 @@ export const registerDbtConnectionRouter = async (server: FastifyZodProvider) =>
         params: { connectionId }
       } = req;
 
-      const projects = await server.services.appConnection.dbt.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.dbt.listProjects(connectionId, req.actor);
       return { projects };
     }
   });

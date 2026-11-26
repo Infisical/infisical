@@ -44,7 +44,7 @@ export const registerSalesforceConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const apps = await server.services.appConnection.salesforce.listOauthApps(connectionId, req.permission);
+      const apps = await server.services.appConnection.salesforce.listOauthApps(connectionId, req.actor);
 
       return { apps };
     }

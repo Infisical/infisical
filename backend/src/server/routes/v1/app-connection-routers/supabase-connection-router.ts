@@ -48,7 +48,7 @@ export const registerSupabaseConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.supabase.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.supabase.listProjects(connectionId, req.actor);
 
       return { projects };
     }

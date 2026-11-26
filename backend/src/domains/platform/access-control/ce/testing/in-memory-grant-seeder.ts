@@ -144,6 +144,10 @@ export class InMemoryGrantSeeder implements TGrantSeeder {
     return row;
   }
 
+  async renameIdentity(identityId: string, name: string) {
+    this.store.rows.identityNames.set(identityId, name);
+  }
+
   async removeMembership(membershipId: string) {
     this.store.rows.memberships.delete(membershipId);
     for (const [id, assignment] of this.store.rows.membershipRoles) {

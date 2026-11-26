@@ -58,7 +58,7 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const projects = await server.services.appConnection.externalInfisical.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.externalInfisical.listProjects(connectionId, req.actor);
       return { projects };
     }
   });
@@ -85,7 +85,7 @@ export const registerExternalInfisicalConnectionRouter = async (server: FastifyZ
       return server.services.appConnection.externalInfisical.getEnvironmentFolderTree(
         connectionId,
         projectId,
-        req.permission
+        req.actor
       );
     }
   });

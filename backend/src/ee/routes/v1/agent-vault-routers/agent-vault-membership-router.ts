@@ -119,7 +119,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         members.map((member) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_MEMBER_ADD,
@@ -175,7 +175,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         members.map((member) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_MEMBER_UPDATE,
@@ -230,7 +230,7 @@ export const registerAgentVaultMembershipRouter = async (server: FastifyZodProvi
         members.map((member) =>
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_MEMBER_REMOVE,

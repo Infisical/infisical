@@ -79,7 +79,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.getIntegrationAuth({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { integrationAuth };
@@ -128,7 +128,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.updateIntegrationAuth({
-        actor: req.permission,
+        actor: req.actor,
         integrationAuthId: req.params.integrationAuthId,
         ...req.body
       });
@@ -176,7 +176,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.deleteIntegrationAuths({
-        actor: req.permission,
+        actor: req.actor,
         integration: req.query.integration,
         projectId: req.query.projectId
       });
@@ -224,7 +224,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.deleteIntegrationAuthById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
 
@@ -267,7 +267,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.oauthExchange({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.body.workspaceId,
         ...req.body
       });
@@ -326,7 +326,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.saveIntegrationToken({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.body.workspaceId,
         ...req.body
       });
@@ -375,7 +375,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const apps = await server.services.integrationAuth.getIntegrationApps({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         ...req.query
       });
@@ -407,7 +407,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const teams = await server.services.integrationAuth.getIntegrationAuthTeams({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { teams };
@@ -436,7 +436,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const branches = await server.services.integrationAuth.getVercelBranches({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         appId: req.query.appId
       });
@@ -466,7 +466,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const groups = await server.services.integrationAuth.getChecklyGroups({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         accountId: req.query.accountId
       });
@@ -493,7 +493,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const orgs = await server.services.integrationAuth.getGithubOrgs({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       if (!orgs) throw new Error("No organization found.");
@@ -524,7 +524,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const integrationAuth = await server.services.integrationAuth.duplicateIntegrationAuth({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         projectId: req.body.projectId
       });
@@ -556,7 +556,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const envs = await server.services.integrationAuth.getGithubEnvs({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         repoName: req.query.repoName,
         repoOwner: req.query.repoOwner
@@ -586,7 +586,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const orgs = await server.services.integrationAuth.getQoveryOrgs({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { orgs };
@@ -615,7 +615,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const kmsKeys = await server.services.integrationAuth.getAwsKmsKeys({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         region: req.query.region
       });
@@ -645,7 +645,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const projects = await server.services.integrationAuth.getQoveryProjects({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         orgId: req.query.orgId
       });
@@ -675,7 +675,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const environments = await server.services.integrationAuth.getQoveryEnvs({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         projectId: req.query.projectId
       });
@@ -705,7 +705,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const apps = await server.services.integrationAuth.getQoveryApps({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         environmentId: req.query.environmentId
       });
@@ -735,7 +735,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const containers = await server.services.integrationAuth.getQoveryContainers({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         environmentId: req.query.environmentId
       });
@@ -765,7 +765,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const jobs = await server.services.integrationAuth.getQoveryJobs({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         environmentId: req.query.environmentId
       });
@@ -798,7 +798,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const pipelines = await server.services.integrationAuth.getHerokuPipelines({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { pipelines };
@@ -827,7 +827,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const environments = await server.services.integrationAuth.getRailwayEnvironments({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         appId: req.query.appId
       });
@@ -857,7 +857,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const services = await server.services.integrationAuth.getRailwayServices({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         appId: req.query.appId
       });
@@ -894,7 +894,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const workspaces = await server.services.integrationAuth.getBitbucketWorkspaces({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { workspaces };
@@ -931,7 +931,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const environments = await server.services.integrationAuth.getBitbucketEnvironments({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         workspaceSlug: req.query.workspaceSlug,
         repoSlug: req.query.repoSlug
@@ -967,7 +967,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const secretGroups = await server.services.integrationAuth.getNorthFlankSecretGroups({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         appId: req.query.appId
       });
@@ -1002,7 +1002,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const buildConfigs = await server.services.integrationAuth.getTeamcityBuildConfigs({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         appId: req.query.appId
       });
@@ -1076,7 +1076,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const scopeValues = await server.services.integrationAuth.getOctopusDeployScopeValues({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         scope: req.query.scope,
         spaceId: req.query.spaceId,
@@ -1118,7 +1118,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const environments = await server.services.integrationAuth.getVercelCustomEnvironments({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId,
         teamId: req.query.teamId
       });
@@ -1152,7 +1152,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const spaces = await server.services.integrationAuth.getOctopusDeploySpaces({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { spaces };
@@ -1195,7 +1195,7 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const organizations = await server.services.integrationAuth.getCircleCIOrganizations({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationAuthId
       });
       return { organizations };

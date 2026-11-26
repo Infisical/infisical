@@ -138,7 +138,8 @@ export const createDomains = async (deps: TDomainDeps) => {
   const organizations = new OrganizationsModule({
     db: deps.db,
     actorGrantsService: accessControl.actorGrantsService,
-    roleService: accessControl.roleService
+    roleService: accessControl.roleService,
+    actorOrgCacheTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
   const { organizationsService } = organizations;
   const projects = new ProjectsModule({

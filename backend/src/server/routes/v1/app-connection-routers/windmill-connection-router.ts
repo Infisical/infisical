@@ -46,7 +46,7 @@ export const registerWindmillConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const workspaces = await server.services.appConnection.windmill.listWorkspaces(connectionId, req.permission);
+      const workspaces = await server.services.appConnection.windmill.listWorkspaces(connectionId, req.actor);
 
       return workspaces;
     }

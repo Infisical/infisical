@@ -87,10 +87,10 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.createIdentity({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -164,11 +164,11 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.updateIdentity({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: req.params.projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
@@ -228,9 +228,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.deleteIdentity({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },
@@ -284,9 +284,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.getIdentityById({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },
@@ -333,9 +333,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { docs: identities, count: totalCount } = await server.services.identityV2.listIdentities({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },

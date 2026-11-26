@@ -71,7 +71,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.createImport({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         projectId: req.body.projectId,
         data: req.body.import
@@ -96,7 +96,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretImportCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.body.projectId,
           importFromEnvironment: secretImport.importEnv.slug,
@@ -171,7 +171,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.updateImport({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.projectId,
@@ -197,7 +197,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretImportUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { importId: secretImport.id, projectId: req.body.projectId }
         })
         .catch(() => {});
@@ -250,7 +250,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.deleteImport({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.projectId
@@ -276,7 +276,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretImportDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { importId: secretImport.id, projectId: req.body.projectId }
         })
         .catch(() => {});
@@ -316,7 +316,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { message } = await server.services.secretImport.resyncSecretImportReplication({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.projectId
@@ -373,7 +373,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImports = await server.services.secretImport.getImports({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.projectId
       });
@@ -443,7 +443,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.getImportById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.secretImportId
       });
 
@@ -505,7 +505,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
       return { secrets: importedSecrets };

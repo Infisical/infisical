@@ -57,7 +57,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const users = await server.services.org.findAllOrgMembers({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId
       });
 
@@ -106,7 +106,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workspaces = await server.services.org.findAllWorkspaces({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId
       });
 
@@ -152,7 +152,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.org.getOrgMembership({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId
       });
@@ -200,7 +200,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.org.updateOrgMembership({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId,
         ...req.body
@@ -273,7 +273,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.org.deleteOrgMembership({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId
       });
@@ -341,7 +341,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const memberships = await server.services.org.bulkDeleteOrgMemberships({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId,
         membershipIds: req.body.membershipIds
       });
@@ -448,7 +448,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.org.listProjectMembershipsByOrgMembershipId({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId,
         orgMembershipId: req.params.membershipId,
         ...req.query
@@ -477,13 +477,13 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     // and a delegated token could stand up an org the client was never granted anything in.
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
-      if (req.auth.actor !== ActorType.USER) return;
+      if (req.auth.actorType !== ActorType.USER) return;
 
       // Cloud only: the limit targets signup spam, and self-hosted keeps the old behavior.
       const appCfg = getConfig();
 
       const organization = await server.services.org.createOrganization({
-        userId: req.permission.id,
+        userId: req.actor.id,
         orgName: req.body.name,
         blockIfUserHasCreatedOrg: appCfg.isCloud
       });
@@ -521,12 +521,12 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req, res) => {
-      if (req.auth.actor !== ActorType.USER) return;
+      if (req.auth.actorType !== ActorType.USER) return;
 
       const cfg = getConfig();
 
       const { organization, tokens } = await server.services.org.deleteOrganizationById({
-        actor: req.permission,
+        actor: req.actor,
         orgId: req.params.organizationId,
         authorizationHeader: req.headers.authorization,
         userAgentHeader: req.headers["user-agent"],
@@ -578,8 +578,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const organization = await server.services.org.upgradePrivilegeSystem({
-        actor: req.permission,
-        orgId: req.permission.orgId
+        actor: req.actor,
+        orgId: req.actor.orgId
       });
 
       return { organization };

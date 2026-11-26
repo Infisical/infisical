@@ -47,7 +47,7 @@ export const registerRundeckConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.rundeck.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.rundeck.listProjects(connectionId, req.actor);
 
       return { projects };
     }

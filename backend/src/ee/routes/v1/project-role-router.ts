@@ -58,10 +58,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
 
       const role = await server.services.role.createRole({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -72,7 +72,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: role.projectId as string,
         event: {
           type: EventType.CREATE_PROJECT_ROLE,
@@ -89,7 +89,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CustomRoleCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           roleId: role.id,
           name: req.body.name,
@@ -147,10 +147,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
       const role = await server.services.role.updateRole({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -164,7 +164,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: role.projectId as string,
         event: {
           type: EventType.UPDATE_PROJECT_ROLE,
@@ -181,7 +181,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CustomRoleUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           roleId: role.id,
           name: req.body.name,
@@ -224,10 +224,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const role = await server.services.role.deleteRole({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -237,7 +237,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: role.projectId as string,
         event: {
           type: EventType.DELETE_PROJECT_ROLE,
@@ -252,7 +252,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CustomRoleDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           roleId: role.id,
           name: role.name,
@@ -293,10 +293,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { roles } = await server.services.role.listRoles({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {}
@@ -328,10 +328,10 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const role = await server.services.role.getRoleBySlug({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -371,7 +371,7 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const role = await server.services.role.getProjectRoleById({
-        actor: req.permission,
+        actor: req.actor,
         selector: {
           id: req.params.roleId
         }
@@ -423,11 +423,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { permissions, memberships, assumedPrivilegeDetails } = await server.services.role.getUserPermission({
-        actor: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: req.params.projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         }
       });
 

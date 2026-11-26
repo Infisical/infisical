@@ -44,10 +44,7 @@ export const registerGitHubRadarConnectionRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const repositories = await server.services.appConnection.githubRadar.listRepositories(
-        connectionId,
-        req.permission
-      );
+      const repositories = await server.services.appConnection.githubRadar.listRepositories(connectionId, req.actor);
 
       return { repositories };
     }

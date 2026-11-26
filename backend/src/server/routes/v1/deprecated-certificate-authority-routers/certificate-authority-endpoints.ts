@@ -64,7 +64,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },
-        req.permission
+        req.actor
       )) as T[];
 
       await server.services.auditLog.createAuditLog({
@@ -109,7 +109,7 @@ export const registerCertificateAuthorityEndpoints = <
       const certificateAuthority =
         (await server.services.certificateAuthority.findCertificateAuthorityByNameAndProjectId(
           { caName, type: caType, projectId },
-          req.permission
+          req.actor
         )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -146,7 +146,7 @@ export const registerCertificateAuthorityEndpoints = <
     handler: async (req) => {
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, type: caType },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -193,7 +193,7 @@ export const registerCertificateAuthorityEndpoints = <
           type: caType,
           caName
         },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -239,7 +239,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthority = (await server.services.certificateAuthority.deprecatedDeleteCertificateAuthority(
         { caName, type: caType, projectId },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({

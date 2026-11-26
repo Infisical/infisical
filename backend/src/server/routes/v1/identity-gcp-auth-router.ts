@@ -181,7 +181,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityGcpAuth = await server.services.identityGcpAuth.attachGcpAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -281,7 +281,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityGcpAuth = await server.services.identityGcpAuth.updateGcpAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -354,7 +354,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const identityGcpAuth = await server.services.identityGcpAuth.getGcpAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -400,7 +400,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityGcpAuth = await server.services.identityGcpAuth.revokeIdentityGcpAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

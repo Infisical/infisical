@@ -11,8 +11,6 @@ import { delay } from "@app/lib/delay";
 import { UnauthorizedError } from "@app/lib/errors";
 import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordTokenRenewalMetric } from "@app/lib/telemetry/metrics";
 
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -880,11 +878,6 @@ export const identityAccessTokenServiceFactory = ({
     await bumpRevocationVersion(identityId);
   };
 
-  // Tokens keep their issue-time name (renewal copies it), so read the current name here for
-  // `{{identity.username}}` conditions.
-  const getCurrentIdentityName = async (identityId: string) =>
-    (await requestMemoize(requestMemoKeys.identityFindById(identityId), () => identityDAL.findById(identityId)))?.name;
-
   return {
     issueIdentityAccessToken,
     renewAccessToken,
@@ -898,7 +891,6 @@ export const identityAccessTokenServiceFactory = ({
     bumpIdentityRevocationVersion,
     markPerTokenRevocation,
     invalidateTrustedIpsCache,
-    fnValidateIdentityAccessTokenFast,
-    getCurrentIdentityName
+    fnValidateIdentityAccessTokenFast
   };
 };

@@ -567,15 +567,11 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.query;
-      const appConnections = await server.services.appConnection.listAppConnections(
-        req.permission,
-        undefined,
-        projectId
-      );
+      const appConnections = await server.services.appConnection.listAppConnections(req.actor, undefined, projectId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.GET_APP_CONNECTIONS,

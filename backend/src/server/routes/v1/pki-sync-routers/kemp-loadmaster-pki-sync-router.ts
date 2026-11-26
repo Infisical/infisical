@@ -64,7 +64,7 @@ export const registerKempLoadMasterPkiSyncRouter = async (
 
       const virtualServices = await server.services.appConnection.kempLoadMaster.listVirtualServices(
         connectionId,
-        req.permission
+        req.actor
       );
 
       return { virtualServices };

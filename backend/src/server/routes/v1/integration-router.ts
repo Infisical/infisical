@@ -131,7 +131,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.updateIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationId,
         ...req.body
       });
@@ -173,7 +173,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.getIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationId
       });
 
@@ -189,7 +189,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         integration.integration === Integrations.AWS_PARAMETER_STORE
       ) {
         const awsRoleDetails = await server.services.integration.getIntegrationAWSIamRole({
-          actor: req.permission,
+          actor: req.actor,
           id: req.params.integrationId
         });
 
@@ -239,7 +239,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.deleteIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationId,
         shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
       });
@@ -276,7 +276,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IntegrationDeleted,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           ...deleteIntegrationEventProperty,
@@ -317,7 +317,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const integration = await server.services.integration.syncIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.integrationId
       });
 
@@ -349,7 +349,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IntegrationSynced,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           ...syncIntegrationEventProperty,

@@ -42,7 +42,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.envId
       });
 
@@ -90,7 +90,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.getEnvironmentBySlug({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         slug: req.params.envSlug
       });
@@ -145,7 +145,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.createEnvironment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         ...req.body
       });
@@ -165,7 +165,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnvironmentCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.params.projectId,
           environmentName: environment.name,
@@ -217,7 +217,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { environment, old } = await server.services.projectEnv.updateEnvironment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         id: req.params.id,
         ...req.body
@@ -243,7 +243,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.EnvironmentUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { environmentId: environment.id, projectId: environment.projectId }
         })
         .catch(() => {});
@@ -290,7 +290,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.deleteEnvironment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         id: req.params.id,
         hardDelete: req.query.hardDelete
@@ -313,7 +313,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.EnvironmentDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { environmentId: environment.id, projectId: environment.projectId }
         })
         .catch(() => {});
@@ -357,7 +357,7 @@ export const registerProjectEnvRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const environment = await server.services.projectEnv.restoreEnvironment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         id: req.params.id
       });

@@ -47,7 +47,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const repositories = await server.services.appConnection.travisCI.listRepositories(connectionId, req.permission);
+      const repositories = await server.services.appConnection.travisCI.listRepositories(connectionId, req.actor);
 
       return repositories;
     }
@@ -81,11 +81,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
       const { connectionId } = req.params;
       const { repositoryId } = req.query;
 
-      const branches = await server.services.appConnection.travisCI.listBranches(
-        connectionId,
-        repositoryId,
-        req.permission
-      );
+      const branches = await server.services.appConnection.travisCI.listBranches(connectionId, repositoryId, req.actor);
 
       return branches;
     }

@@ -43,10 +43,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
-      server.services.appConnection.paloAltoNetworks.listTemplates(
-        { connectionId: req.params.connectionId },
-        req.permission
-      )
+      server.services.appConnection.paloAltoNetworks.listTemplates({ connectionId: req.params.connectionId }, req.actor)
   });
 
   server.route({
@@ -80,7 +77,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     handler: async (req) => {
       const sslTlsServiceProfiles = await server.services.appConnection.paloAltoNetworks.listSslTlsServiceProfiles(
         { connectionId: req.params.connectionId, template: req.query.template },
-        req.permission
+        req.actor
       );
       return { sslTlsServiceProfiles };
     }
@@ -117,7 +114,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     handler: async (req) => {
       const certificates = await server.services.appConnection.paloAltoNetworks.listCertificates(
         { connectionId: req.params.connectionId, template: req.query.template },
-        req.permission
+        req.actor
       );
       return { certificates };
     }

@@ -41,7 +41,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setScepEnrollment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId,
@@ -68,9 +68,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnrollmentMethodConfigured,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           enrollmentMethod: "scep"
         }
@@ -95,7 +95,7 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.clearScepEnrollment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
@@ -115,9 +115,9 @@ export const registerPkiApplicationScepEnrollmentRouter = async (server: Fastify
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnrollmentMethodRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           enrollmentMethod: "scep"
         }

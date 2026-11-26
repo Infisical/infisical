@@ -84,7 +84,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         ...req.body,
         ipAddress: req.realIp,
         actorName,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -103,9 +103,9 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CodeSigningOperation,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: result.projectId,
           signerId: req.params.signerId
         }
@@ -136,7 +136,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const result = await server.services.pkiSigner.getPublicKey({
         signerId: req.params.signerId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

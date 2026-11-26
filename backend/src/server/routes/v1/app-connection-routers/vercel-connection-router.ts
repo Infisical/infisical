@@ -73,7 +73,7 @@ export const registerVercelConnectionRouter = async (server: FastifyZodProvider)
 
       const projects: VercelOrgWithApps[] = await server.services.appConnection.vercel.listProjects(
         connectionId,
-        req.permission,
+        req.actor,
         projectSearch
       );
 

@@ -45,7 +45,7 @@ export const registerZabbixConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const hosts = await server.services.appConnection.zabbix.listHosts(connectionId, req.permission);
+      const hosts = await server.services.appConnection.zabbix.listHosts(connectionId, req.actor);
       return hosts;
     }
   });

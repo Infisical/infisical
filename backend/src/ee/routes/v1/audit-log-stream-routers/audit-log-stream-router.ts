@@ -85,7 +85,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const auditLogStreams = await server.services.auditLogStream.list(req.permission);
+      const auditLogStreams = await server.services.auditLogStream.list(req.actor);
 
       return { auditLogStreams };
     }

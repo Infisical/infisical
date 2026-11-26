@@ -8,10 +8,15 @@ What every request and every domain needs about orgs.
   non-member and the wrong org level with the legacy messages. A delegated OAuth token keeps only what its scopes
   allow and holds no roles (`hasRole` is false). `getOrgPermissionByRoles` and `getGrantPermissions` build
   permissions from roles and from another member's grants, for privilege boundaries.
-- **Actor context:** `actorContextService.forRequest({ principal, orgId })` builds `req.permission` once per
+- **Actor context:** `actorContextService.forRequest({ principal, org } | { principal, orgId })` builds `req.actor` once per
   request (the org with its root's SSO policy, read through `OrganizationStore.findActorOrg`) and returns any SSO
   refusal for the auth plugin to turn into a 401; `forPrincipal` and `system` build one for queues, crons and
   consumers. An unscoped request's `org` throws when read.
+- **A request reads its org at most once.** The user session check (`validateTokenOrgScope`) reads it with
+  `actorContextService.findActorOrg` and the auth plugin hands it to `forRequest` as `org`, so don't add a second
+  org read to either. Every other actor's org comes from `ActorOrgCache` (per process, 10s, off in tests): the
+  sign-in policy never applies to them, and a user's org is never served from it, so a policy change applies on
+  the user's next request.
 - **SSO is a session property, checked once per request, never in a permission service.**
   `ssoSessionService.findSsoSessionRefusal({ principal, org })` applies the root org's `SsoPolicy` and looks the
   bypass up (the user's root org roles) only when the policy refuses. Flows that act on another org than the

@@ -56,7 +56,7 @@ export const registerUnixLinuxLocalAccountRotationRouter = async (server: Fastif
 
       const result = await server.services.secretRotationV2.reconcileLocalAccountRotation(
         { rotationId, type: SecretRotation.UnixLinuxLocalAccount },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({

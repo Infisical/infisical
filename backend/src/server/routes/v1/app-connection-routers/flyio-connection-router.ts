@@ -45,7 +45,7 @@ export const registerFlyioConnectionRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const apps = await server.services.appConnection.flyio.listApps(connectionId, req.permission);
+      const apps = await server.services.appConnection.flyio.listApps(connectionId, req.actor);
       return apps;
     }
   });

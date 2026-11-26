@@ -4,6 +4,7 @@ import { poolStoreConnection, singleStoreConnection } from "@app/domains/lib/dat
 import { TransactionRunner } from "@app/domains/lib/transactions";
 import { TActorGrantsService, TRoleService } from "@app/domains/platform/access-control/ce/module";
 
+import { ActorOrgCache } from "./data-access/actor-org-cache";
 import { BillableActorStore } from "./data-access/billable-actor-store";
 import { OrganizationStore } from "./data-access/organization-store";
 import { ActorContextService, TActorContextService } from "./services/actor-context/service";
@@ -32,6 +33,8 @@ export type TOrganizationsDeps = {
   db: TDbClient;
   actorGrantsService: TActorGrantsService;
   roleService: TRoleService;
+  // Tests pass 0 so an org change shows up on the next request.
+  actorOrgCacheTtlSeconds?: number;
 };
 
 export class OrganizationsModule {
@@ -43,12 +46,16 @@ export class OrganizationsModule {
 
   readonly actorContextService: TActorContextService;
 
-  constructor({ db, actorGrantsService, roleService }: TOrganizationsDeps) {
+  constructor({ db, actorGrantsService, roleService, actorOrgCacheTtlSeconds }: TOrganizationsDeps) {
     const connection = poolStoreConnection(db);
     const organizationStore = new OrganizationStore(connection);
     this.orgPermissionService = new OrgPermissionService(actorGrantsService, roleService, new ActorContextMemo());
     this.ssoSessionService = new SsoSessionService(this.orgPermissionService);
-    this.actorContextService = new ActorContextService(organizationStore, this.ssoSessionService);
+    this.actorContextService = new ActorContextService(
+      organizationStore,
+      this.ssoSessionService,
+      new ActorOrgCache(actorOrgCacheTtlSeconds)
+    );
     this.organizationsService = new OrganizationsService(
       organizationStore,
       new BillableActorStore(connection),

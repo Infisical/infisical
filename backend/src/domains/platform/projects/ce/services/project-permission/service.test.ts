@@ -276,6 +276,31 @@ describe("ProjectPermissionService.getProjectPermission", () => {
     expect(permission.can(createMember)).toBe(false);
   });
 
+  test("should fill {{identity.username}} with an identity's current name, not the one its token was issued with", async () => {
+    // Setup
+    const { service, as, addRole, addCustomRole, seed, projectId } = arrange();
+    const identityId = randomUUID();
+    const role = await addCustomRole([
+      {
+        action: ProjectPermissionSecretActions.ReadValue,
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { secretPath: "/{{identity.username}}" }
+      }
+    ]);
+    await addRole("custom", { customRoleId: role.id, who: { identityId } });
+    await seed.renameIdentity(identityId, "renamed-bot");
+
+    // Action
+    const permission = await service.getProjectPermission({
+      actor: as({ type: ActorType.IDENTITY, id: identityId, name: "bot", isInstanceAdmin: false }),
+      projectId
+    });
+
+    // Assert
+    expect(permission.can(readValueAt("/renamed-bot"))).toBe(true);
+    expect(permission.can(readValueAt("/bot"))).toBe(false);
+  });
+
   test("should use the assumed actor's grants inside its project and fill in the assumed actor's name", async () => {
     // Setup
     const { service, actor, addRole, addCustomRole, projectId } = arrange();

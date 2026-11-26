@@ -96,7 +96,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.relay.registerRelay({
         ...req.body,
-        actor: req.permission
+        actor: req.actor
       });
     }
   });
@@ -122,7 +122,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     ]),
     handler: async (req) => {
       return server.services.relay.getRelays({
-        actor: req.permission
+        actor: req.actor
       });
     }
   });
@@ -146,12 +146,12 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const relay = await server.services.relay.deleteRelay({
         id: req.params.id,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RELAY_DELETE,
           metadata: { relayId: relay.id, name: relay.name }
@@ -237,7 +237,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.relay.heartbeat({
         name: req.body.name,
-        actor: req.permission
+        actor: req.actor
       });
 
       return { message: "Successfully triggered heartbeat" };

@@ -49,7 +49,7 @@ export const registerAnthropicConnectionRouter = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const models = await server.services.appConnection.anthropic.listModels(req.params.connectionId, req.permission);
+      const models = await server.services.appConnection.anthropic.listModels(req.params.connectionId, req.actor);
 
       return { models };
     }

@@ -46,7 +46,7 @@ export class FakeProjectPermissionService implements TProjectPermissionService {
     if (!grants.hasMembership) return null;
     let username = "";
     if (principal.type === ActorType.USER) username = principal.username;
-    if (principal.type === ActorType.IDENTITY) username = principal.name;
+    if (principal.type === ActorType.IDENTITY) username = grants.actorName ?? principal.name;
     const assumedName = "assumed" in principal ? principal.assumed?.actorName : undefined;
     return ProjectAccess.create({
       project,

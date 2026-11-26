@@ -119,12 +119,12 @@ export const registerSecretRotationV2Router = async (server: FastifyZodProvider)
     handler: async (req) => {
       const {
         query: { projectId },
-        permission
+        actor
       } = req;
 
       const secretRotations = await server.services.secretRotationV2.listSecretRotationsByProjectId(
         { projectId },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({

@@ -30,7 +30,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const kmsKey = await server.services.project.getProjectKmsKeys({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId
       });
 
@@ -67,7 +67,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { secretManagerKmsKey } = await server.services.project.updateProjectKmsKey({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         ...req.body
       });
@@ -111,7 +111,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const backup = await server.services.project.getProjectKmsBackup({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId
       });
 
@@ -154,7 +154,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const backup = await server.services.project.loadProjectKmsBackup({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId,
         backup: req.body.backup
       });
@@ -192,7 +192,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const migration = await server.services.secret.startSecretV2Migration({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId
       });
 

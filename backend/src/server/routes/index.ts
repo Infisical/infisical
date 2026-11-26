@@ -615,9 +615,9 @@ import { workflowIntegrationServiceFactory } from "@app/services/workflow-integr
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-denied";
+import { injectActorContext } from "../plugins/auth/inject-actor-context";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
-import { injectPermission } from "../plugins/auth/inject-permission";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
@@ -904,7 +904,14 @@ export const registerRoutes = async (
     projectEnvDAL
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL, keyStore });
+  const tokenService = tokenServiceFactory({
+    tokenDAL: authTokenDAL,
+    userDAL,
+    membershipUserDAL,
+    orgDAL,
+    actorContextService,
+    keyStore
+  });
   const emailDispatchGuard = emailDispatchGuardFactory({ keyStore });
 
   const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
@@ -5382,7 +5389,7 @@ export const registerRoutes = async (
 
   await server.register(injectIdentity, { shouldForwardWritesToPrimaryInstance });
   await server.register(injectAssumePrivilege);
-  await server.register(injectPermission);
+  await server.register(injectActorContext);
   await server.register(injectPamProjectId);
   await server.register(injectRateLimits);
   await server.register(injectAuditLogInfo);

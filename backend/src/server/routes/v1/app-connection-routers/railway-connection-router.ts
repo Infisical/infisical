@@ -60,7 +60,7 @@ export const registerRailwayConnectionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.railway.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.railway.listProjects(connectionId, req.actor);
 
       return { projects };
     }

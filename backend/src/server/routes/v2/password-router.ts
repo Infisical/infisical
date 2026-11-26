@@ -52,7 +52,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
       await server.services.password.resetPasswordV2({
         type: ResetPasswordV2Type.LoggedInReset,
-        userId: req.permission.id,
+        userId: req.actor.id,
         newPassword: req.body.newPassword,
         oldPassword: req.body.oldPassword
       });

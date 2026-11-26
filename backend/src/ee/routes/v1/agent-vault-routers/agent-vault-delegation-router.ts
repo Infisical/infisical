@@ -258,7 +258,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       // Before the missing bundles are worked out, so a failure there still leaves the committed save audited.
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: { type: EventType.AGENT_VAULT_DELEGATION_SET, metadata: auditDelegationFields(saved) }
       });
@@ -345,7 +345,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       if (isChanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: { type: EventType.AGENT_VAULT_DELEGATION_SET, metadata: auditDelegationFields(saved) }
         });
@@ -405,7 +405,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
       if (isChanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: saved
             ? { type: EventType.AGENT_VAULT_DELEGATION_SET, metadata: auditDelegationFields(saved) }
@@ -455,7 +455,7 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_DELEGATION_DELETE,

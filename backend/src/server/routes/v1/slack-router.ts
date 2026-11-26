@@ -46,13 +46,13 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const url = await server.services.slack.getInstallUrl({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION,
           metadata: {
@@ -89,13 +89,13 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const url = await server.services.slack.getReinstallUrl({
-        actor: req.permission,
+        actor: req.actor,
         id: req.query.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.ATTEMPT_REINSTALL_SLACK_INTEGRATION,
           metadata: {
@@ -128,7 +128,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const slackIntegrations = await server.services.slack.getSlackIntegrationsByOrg({
-        actor: req.permission
+        actor: req.actor
       });
 
       return slackIntegrations;
@@ -158,7 +158,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alertCount = await server.services.slack.getSlackIntegrationAlertCount({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
@@ -189,7 +189,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const deletedSlackIntegration = await server.services.slack.deleteSlackIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
@@ -231,7 +231,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const slackIntegration = await server.services.slack.getSlackIntegrationById({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
@@ -279,7 +279,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const slackChannels = await server.services.slack.getSlackIntegrationChannels({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
@@ -314,7 +314,7 @@ export const registerSlackRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const slackIntegration = await server.services.slack.updateSlackIntegration({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id,
         ...req.body
       });

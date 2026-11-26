@@ -389,7 +389,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SESSION_MINT,
@@ -511,7 +511,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       if (isChanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_UPDATE,
@@ -558,7 +558,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       if (revokedNow) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,

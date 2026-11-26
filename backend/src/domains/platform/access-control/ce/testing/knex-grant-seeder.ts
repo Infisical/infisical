@@ -98,6 +98,10 @@ export class KnexGrantSeeder implements TGrantSeeder {
     return row;
   }
 
+  async renameIdentity(identityId: string, name: string) {
+    await this.db(TableName.Identity).where({ id: identityId }).update({ name });
+  }
+
   async removeMembership(membershipId: string) {
     await this.db(TableName.Membership).where({ id: membershipId }).delete();
   }

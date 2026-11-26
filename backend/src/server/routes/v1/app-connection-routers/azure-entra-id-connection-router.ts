@@ -48,7 +48,7 @@ export const registerAzureEntraIdConnectionRouter = async (server: FastifyZodPro
 
       const servicePrincipals = await server.services.appConnection.azureEntraId.listScimServicePrincipals(
         connectionId,
-        req.permission,
+        req.actor,
         search
       );
 

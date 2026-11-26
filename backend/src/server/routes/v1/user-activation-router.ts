@@ -30,7 +30,7 @@ export const registerUserActivationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.userActivation.getSecretsActivationStatus({
-        actor: req.permission
+        actor: req.actor
       });
     }
   });

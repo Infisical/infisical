@@ -52,7 +52,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.createTemplate({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body
       });
 
@@ -102,7 +102,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.updateTemplate({
-        actor: req.permission,
+        actor: req.actor,
         templateName: req.params.templateName,
         ...req.body
       });
@@ -139,7 +139,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.deleteTemplate({
-        actor: req.permission,
+        actor: req.actor,
         templateName: req.params.templateName,
         projectId: req.body.projectId
       });
@@ -178,7 +178,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.pkiTemplate.getTemplateByName({
-        actor: req.permission,
+        actor: req.actor,
         templateName: req.params.templateName,
         projectId: req.query.projectId
       });
@@ -217,7 +217,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { certificateTemplates, totalCount } = await server.services.pkiTemplate.listTemplate({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query
       });
 
@@ -264,7 +264,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.pkiTemplate.issueCertificate({
-        actor: req.permission,
+        actor: req.actor,
         templateName: req.params.templateName,
         ...req.body
       });
@@ -306,7 +306,7 @@ export const registerPkiTemplatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.pkiTemplate.signCertificate({
-        actor: req.permission,
+        actor: req.actor,
         templateName: req.params.templateName,
         ...req.body
       });

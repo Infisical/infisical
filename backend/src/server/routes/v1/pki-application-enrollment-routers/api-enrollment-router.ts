@@ -43,7 +43,7 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setApiEnrollment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId,
@@ -71,9 +71,9 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnrollmentMethodConfigured,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           enrollmentMethod: "api"
         }
@@ -106,7 +106,7 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.clearApiEnrollment({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
@@ -128,9 +128,9 @@ export const registerPkiApplicationApiEnrollmentRouter = async (server: FastifyZ
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnrollmentMethodRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           enrollmentMethod: "api"
         }

@@ -67,7 +67,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     { bypassReason, requireApprovals }: { bypassReason?: string; requireApprovals?: boolean }
   ) =>
     server.services.secretChangeRequest.mergeSecretApprovalRequest({
-      actor: req.permission,
+      actor: req.actor,
       approvalId,
       bypassReason,
       requireApprovals
@@ -85,12 +85,12 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   ) => {
     await server.services.auditLog.createAuditLog({
       ...req.auditLogInfo,
-      orgId: req.permission.orgId,
+      orgId: req.actor.orgId,
       projectId,
       event: {
         type: EventType.SECRET_APPROVAL_MERGED,
         metadata: {
-          mergedBy: req.permission.id,
+          mergedBy: req.actor.id,
           secretApprovalRequestSlug: approval.slug,
           secretApprovalRequestId: approval.id,
           isMergedViaBypass,
@@ -103,7 +103,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         actor: requestedByActor ?? req.auditLogInfo.actor,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event
       });
@@ -114,7 +114,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestMerged,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           requestId: approval.id,
           projectId,
@@ -132,7 +132,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     { status, comment }: { status: ApprovalStatus.APPROVED | ApprovalStatus.REJECTED; comment?: string }
   ) =>
     server.services.secretChangeRequest.reviewApproval({
-      actor: req.permission,
+      actor: req.actor,
       approvalId,
       status,
       comment
@@ -141,7 +141,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
   const recordReview = async (req: FastifyRequest, review: Awaited<ReturnType<typeof reviewRequest>>) => {
     await server.services.auditLog.createAuditLog({
       ...req.auditLogInfo,
-      orgId: req.permission.orgId,
+      orgId: req.actor.orgId,
       projectId: review.projectId,
       event: {
         type: EventType.SECRET_APPROVAL_REQUEST_REVIEW,
@@ -158,7 +158,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestReviewed,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           requestId: review.requestId,
           projectId: review.projectId,
@@ -235,7 +235,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { approvals, totalCount } = await server.services.secretChangeRequest.getSecretApprovals({
-        actor: req.permission,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.projectId
       });
@@ -267,7 +267,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretChangeRequest.requestCount({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.query.projectId,
         policyId: req.query.policyId
       });
@@ -455,7 +455,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const approval = await server.services.secretChangeRequest.updateApprovalStatus({
-        actor: req.permission,
+        actor: req.actor,
         approvalId: req.params.id,
         status: req.body.status
       });
@@ -481,7 +481,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalRequestStatusChanged,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             requestId: approval.id,
             projectId: approval.projectId,
@@ -595,7 +595,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretChangeRequest.getSecretApprovalDetails({
-        actor: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
       return { approval };

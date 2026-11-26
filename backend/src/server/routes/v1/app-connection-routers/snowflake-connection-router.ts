@@ -44,7 +44,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const databases = await server.services.appConnection.snowflake.listDatabases(connectionId, req.permission);
+      const databases = await server.services.appConnection.snowflake.listDatabases(connectionId, req.actor);
 
       return { databases };
     }
@@ -77,7 +77,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
         query: { database }
       } = req;
 
-      const schemas = await server.services.appConnection.snowflake.listSchemas(connectionId, database, req.permission);
+      const schemas = await server.services.appConnection.snowflake.listSchemas(connectionId, database, req.actor);
 
       return { schemas };
     }
@@ -104,7 +104,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const users = await server.services.appConnection.snowflake.listUsers(connectionId, req.permission);
+      const users = await server.services.appConnection.snowflake.listUsers(connectionId, req.actor);
 
       return { users };
     }

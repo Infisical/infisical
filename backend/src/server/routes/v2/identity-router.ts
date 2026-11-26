@@ -143,7 +143,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV2.searchOrgIdentities({
-        actor: req.permission,
+        actor: req.actor,
         searchFilter: req.body.search,
         scope: req.body.scope ?? [SearchIdentitiesScope.OrganizationScope],
         limit: req.body.limit,
@@ -229,7 +229,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const counts = await server.services.identityV2.countOrgIdentities({
-        actor: req.permission,
+        actor: req.actor,
         searchFilter: req.body.search,
         scope: req.body.scope
       });

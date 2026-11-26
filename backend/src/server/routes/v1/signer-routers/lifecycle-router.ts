@@ -110,7 +110,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = await server.services.pkiSigner.create({
         ...req.body,
         projectId: req.body.projectId ?? req.internalCertManagerProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -135,9 +135,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id
         }
@@ -183,7 +183,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const { signers, totalCount } = await server.services.pkiSigner.list({
         ...req.query,
         projectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -221,7 +221,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.getById({
         signerId: req.params.signerId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -271,7 +271,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const data = await server.services.pkiSigner.getMyPermissions({
         signerId: req.params.signerId,
-        actor: req.permission
+        actor: req.actor
       });
       return { data };
     }
@@ -296,7 +296,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.checkIssuanceNow({
         signerId: req.params.signerId,
-        actor: req.permission
+        actor: req.actor
       });
       return signer;
     }
@@ -326,7 +326,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = await server.services.pkiSigner.update({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -344,9 +344,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id
         }
@@ -374,7 +374,7 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const signer = await server.services.pkiSigner.delete({
         signerId: req.params.signerId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -392,9 +392,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id
         }
@@ -423,11 +423,11 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       const signer = wantDisabled
         ? await server.services.pkiSigner.disable({
             signerId: req.params.signerId,
-            actor: req.permission
+            actor: req.actor
           })
         : await server.services.pkiSigner.enable({
             signerId: req.params.signerId,
-            actor: req.permission
+            actor: req.actor
           });
 
       await server.services.auditLog.createAuditLog({
@@ -442,9 +442,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: signer.projectId,
           signerId: signer.id,
           status: req.body.status

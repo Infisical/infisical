@@ -46,7 +46,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const repositories = await server.services.appConnection.github.listRepositories(connectionId, req.permission);
+      const repositories = await server.services.appConnection.github.listRepositories(connectionId, req.actor);
 
       return { repositories };
     }
@@ -73,7 +73,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const organizations = await server.services.appConnection.github.listOrganizations(connectionId, req.permission);
+      const organizations = await server.services.appConnection.github.listOrganizations(connectionId, req.actor);
 
       return { organizations };
     }
@@ -111,7 +111,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
           repo,
           owner
         },
-        req.permission
+        req.actor
       );
 
       return { environments };

@@ -253,7 +253,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       const authMethodArg = toCreateAuthMethodArg(req.body.authMethod);
 
       const gateway = await server.services.gatewayV2.createGateway({
-        actor: req.permission,
+        actor: req.actor,
         name: req.body.name,
         authMethod: authMethodArg
       });
@@ -263,7 +263,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_CREATE,
           metadata: { gatewayId: gateway.id, name: gateway.name }
@@ -273,7 +273,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       // The allowlist is the authorization, so it belongs in the log at creation, not only on edit.
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RESOURCE_AUTH_METHOD_CREATE,
           metadata: resourceAuthMethodAuditMetadata({
@@ -308,7 +308,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       const gateway = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
-        actor: req.permission
+        actor: req.actor
       });
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
       return { ...gateway, canRevoke, authMethod: view };
@@ -336,7 +336,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       // Before the auth method is touched, so the usual rejection leaves nothing applied.
       if (req.body.name) {
         await server.services.gatewayV2.assertGatewayNameAvailable({
-          orgPermission: req.permission,
+          orgPermission: req.actor,
           gatewayId: req.params.gatewayId,
           name: req.body.name
         });
@@ -347,7 +347,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         const result = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "gateway", id: req.params.gatewayId },
           authMethod: toSetAuthMethodArg(req.body.authMethod),
-          actor: req.permission
+          actor: req.actor
         });
 
         const updated = await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId });
@@ -355,7 +355,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         // Before the rename, so a failed rename cannot lose the record.
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
             metadata: resourceAuthMethodAuditMetadata({
@@ -371,11 +371,11 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
           .sendPostHogEvents({
             event: PostHogEventTypes.ResourceAuthMethodUpdated,
             distinctId: getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
+            organizationId: req.actor.orgId,
             properties: {
               resourceType: "gateway",
               resourceId: req.params.gatewayId,
-              orgId: req.permission.orgId,
+              orgId: req.actor.orgId,
               method: result.method as TSettableAuthMethod
             }
           })
@@ -389,7 +389,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       let renamed;
       if (req.body.name) {
         const result = await server.services.gatewayV2.renameGateway({
-          orgPermission: req.permission,
+          orgPermission: req.actor,
           gatewayId: req.params.gatewayId,
           name: req.body.name
         });
@@ -398,7 +398,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
         if (result.previousName !== renamed.name) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             event: {
               type: EventType.GATEWAY_UPDATE,
               metadata: { gatewayId: renamed.id, name: renamed.name, previousName: result.previousName }
@@ -410,7 +410,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       const gateway = renamed ?? (await server.services.gatewayV2.getGatewayById({ gatewayId: req.params.gatewayId }));
       const view = await server.services.resourceAuthMethod.getByGatewayId({
         resource: { type: "gateway", id: req.params.gatewayId },
-        actor: req.permission
+        actor: req.actor
       });
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(gateway);
       return { ...gateway, canRevoke, authMethod: view };
@@ -438,12 +438,12 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "gateway", id: req.params.gatewayId },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_ENROLLMENT_TOKEN_CREATE,
           metadata: { tokenId: result.id, name: result.resourceName }
@@ -474,12 +474,12 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "gateway", id: req.params.gatewayId },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RESOURCE_AUTH_METHOD_REVOKE,
           metadata: {
@@ -903,9 +903,9 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const connected = await server.services.gatewayV2.connectGateway({
-        orgId: req.permission.orgId,
-        actorId: req.permission.id,
-        actorType: req.permission.type,
+        orgId: req.actor.orgId,
+        actorId: req.actor.id,
+        actorType: req.actor.type,
         relayName: req.body.relayName,
         directAddress: req.body.directAddress,
         tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined,
@@ -914,7 +914,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_CONNECT,
           metadata: {

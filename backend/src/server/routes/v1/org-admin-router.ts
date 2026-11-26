@@ -36,7 +36,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         limit: req.query.limit,
         offset: req.query.offset,
         search: req.query.search,
-        actor: req.permission
+        actor: req.actor
       });
       return { projects, count };
     }
@@ -62,7 +62,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { membership } = await server.services.orgAdmin.grantProjectAdminAccess({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.params.projectId
       });
       if (isUserSessionAuth(req.auth)) {
@@ -81,7 +81,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      return { membership: { ...membership, userId: req.permission.id, projectId: req.params.projectId } };
+      return { membership: { ...membership, userId: req.actor.id, projectId: req.params.projectId } };
     }
   });
 };

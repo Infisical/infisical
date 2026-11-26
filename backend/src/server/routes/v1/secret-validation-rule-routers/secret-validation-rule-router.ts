@@ -33,7 +33,7 @@ export const registerSecretValidationRuleRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const secretValidationRules = await server.services.secretValidationRule.listSecretValidationRules(
         { projectId: req.query.projectId },
-        req.permission
+        req.actor
       );
       return { secretValidationRules };
     }

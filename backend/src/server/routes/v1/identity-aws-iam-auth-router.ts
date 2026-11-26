@@ -192,7 +192,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityAwsAuth = await server.services.identityAwsAuth.attachAwsAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -290,7 +290,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityAwsAuth = await server.services.identityAwsAuth.updateAwsAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -362,7 +362,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const identityAwsAuth = await server.services.identityAwsAuth.getAwsAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -407,7 +407,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityAwsAuth = await server.services.identityAwsAuth.revokeIdentityAwsAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

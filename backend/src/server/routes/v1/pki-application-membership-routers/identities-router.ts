@@ -33,7 +33,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.pkiApplicationMembership.listMembers({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.Identity
@@ -68,7 +68,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.addMember({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         identityId: req.params.identityId,
@@ -94,10 +94,10 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationMemberAdded,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           applicationId: req.params.applicationId,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           memberType: "identity",
           role: req.body.role
@@ -124,7 +124,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.updateMemberRole({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.Identity,
@@ -151,10 +151,10 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationMemberUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           applicationId: req.params.applicationId,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           memberType: "identity",
           role: req.body.role
@@ -180,7 +180,7 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationMembership.removeMember({
-        actor: req.permission,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.Identity,
@@ -205,10 +205,10 @@ export const registerPkiApplicationIdentityMembershipRouter = async (server: Fas
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationMemberRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           applicationId: req.params.applicationId,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           memberType: "identity"
         }

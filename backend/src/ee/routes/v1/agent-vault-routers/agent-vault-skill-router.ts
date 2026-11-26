@@ -60,7 +60,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_CREATE,
@@ -202,7 +202,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW,
@@ -252,7 +252,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       if (!unchanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_SKILL_VERSION_CREATE,
@@ -263,7 +263,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         if (previousName) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             event: {
               type: EventType.AGENT_VAULT_SKILL_RENAME,
@@ -314,7 +314,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_DELETE,
@@ -389,7 +389,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW,
@@ -437,7 +437,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SKILL_VERSION_RESTORE,

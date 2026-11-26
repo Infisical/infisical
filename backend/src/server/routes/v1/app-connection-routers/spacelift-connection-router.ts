@@ -44,7 +44,7 @@ export const registerSpaceliftConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const contexts = await server.services.appConnection.spacelift.listContexts(connectionId, req.permission);
+      const contexts = await server.services.appConnection.spacelift.listContexts(connectionId, req.actor);
 
       return contexts;
     }

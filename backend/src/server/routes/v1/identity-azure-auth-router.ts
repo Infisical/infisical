@@ -185,7 +185,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityAzureAuth = await server.services.identityAzureAuth.attachAzureAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -289,7 +289,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityAzureAuth = await server.services.identityAzureAuth.updateAzureAuth({
-        actor: req.permission,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -360,7 +360,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const identityAzureAuth = await server.services.identityAzureAuth.getAzureAuth({
         identityId: req.params.identityId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -406,7 +406,7 @@ export const registerIdentityAzureAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityAzureAuth = await server.services.identityAzureAuth.revokeIdentityAzureAuth({
-        actor: req.permission,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

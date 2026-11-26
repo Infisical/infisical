@@ -53,7 +53,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       if (typeof uploadToken !== "string" || !uploadToken) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
@@ -74,14 +74,14 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
             isKeyframe: req.body.isKeyframe,
             uploadToken
           },
-          req.permission
+          req.actor
         );
       } catch (err) {
         const msg = (err as Error)?.message ?? "";
         if (msg.includes("Invalid upload token")) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: req.internalPamProjectId,
             event: {
               type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
@@ -127,7 +127,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       if (typeof uploadToken !== "string" || !uploadToken) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
@@ -164,14 +164,14 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
             ciphertext: ciphertextBuf,
             uploadToken
           },
-          req.permission
+          req.actor
         );
       } catch (err) {
         const msg = (err as Error)?.message ?? "";
         if (msg.includes("Invalid upload token")) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: req.internalPamProjectId,
             event: {
               type: EventType.PAM_SESSION_UPLOAD_TOKEN_INVALID,
@@ -184,7 +184,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: result.projectId,
         event: {
           type: EventType.PAM_SESSION_CHUNK_UPLOAD,
@@ -199,7 +199,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       });
 
       await server.services.pamSessionActivity.queueChunkExport({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         sessionId: req.params.sessionId,
         chunkIndex: req.body.chunkIndex
       });
@@ -229,7 +229,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const result = await server.services.pamSessionChunk.getSessionPlayback(req.params.sessionId, req.permission);
+      const result = await server.services.pamSessionChunk.getSessionPlayback(req.params.sessionId, req.actor);
       return {
         sessionComplete: result.sessionComplete,
         sessionKey: result.sessionKey,
@@ -258,7 +258,7 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
       const { ciphertext } = await server.services.pamSessionChunk.getChunkCiphertext(
         req.params.sessionId,
         req.params.chunkIndex,
-        req.permission
+        req.actor
       );
       void reply.header("Content-Type", "application/octet-stream");
       void reply.header("Cache-Control", "no-store");

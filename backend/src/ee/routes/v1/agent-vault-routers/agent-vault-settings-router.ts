@@ -52,7 +52,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => ({
-      access: (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+      access: (await server.services.agentVaultAccessService.getAccess(req.actor.orgId)).toJSON()
     })
   });
 
@@ -102,7 +102,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
       const metadata = buildSessionLogSettingsAuditMetadata({ settings, appConnectionName, previous });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: { type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE, metadata }
       });

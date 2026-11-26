@@ -57,12 +57,12 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const result = await server.services.certManagerExport.exportCertManagerProject({
         sourceProjectId: req.body.sourceProjectId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: result.destinationProjectId,
         event: {
           type: EventType.EXPORT_CERT_MANAGER_PROJECT,
@@ -83,9 +83,9 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerProjectExported,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           sourceProjectId: result.sourceProjectId,
           destinationProjectId: result.destinationProjectId,
           numberOfCertificateAuthorities: result.exportedCertificateAuthorities,

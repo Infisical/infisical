@@ -88,7 +88,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       const secretSyncs = (await server.services.secretSync.listSecretSyncsByProjectId(
         { projectId, destination },
-        req.permission
+        req.actor
       )) as T[];
 
       await server.services.auditLog.createAuditLog({
@@ -130,10 +130,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     handler: async (req) => {
       const { syncId } = req.params;
 
-      const secretSync = (await server.services.secretSync.findSecretSyncById(
-        { syncId, destination },
-        req.permission
-      )) as T;
+      const secretSync = (await server.services.secretSync.findSecretSyncById({ syncId, destination }, req.actor)) as T;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -183,7 +180,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       const secretSync = (await server.services.secretSync.findSecretSyncByName(
         { syncName, projectId, destination },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -224,18 +221,18 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
     handler: async (req) => {
       const secretSync = (await server.services.secretSync.createSecretSync(
         { ...req.body, destination },
-        req.permission
+        req.actor
       )) as T;
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretSyncCreated,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             syncDestination: destination,
             syncId: secretSync.id,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: secretSync.projectId,
             environment: secretSync.environment?.slug ?? "",
             secretPath: secretSync.folder?.path ?? "/",
@@ -286,18 +283,18 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       const secretSync = (await server.services.secretSync.updateSecretSync(
         { ...req.body, syncId, destination },
-        req.permission
+        req.actor
       )) as T;
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretSyncUpdated,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             syncDestination: destination,
             syncId: secretSync.id,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: secretSync.projectId,
             environment: secretSync.environment?.slug ?? "",
             secretPath: secretSync.folder?.path ?? "/",
@@ -355,18 +352,18 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       const secretSync = (await server.services.secretSync.deleteSecretSync(
         { destination, syncId, removeSecrets },
-        req.permission
+        req.actor
       )) as T;
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretSyncDeleted,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             syncDestination: destination,
             syncId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: secretSync.projectId,
             environment: secretSync.environment?.slug ?? "",
             secretPath: secretSync.folder?.path ?? "/",
@@ -377,7 +374,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_SECRET_SYNC,
           metadata: {
@@ -420,7 +417,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           destination,
           auditLogInfo: req.auditLogInfo
         },
-        req.permission
+        req.actor
       )) as T;
 
       return { secretSync };
@@ -462,7 +459,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           importBehavior,
           auditLogInfo: req.auditLogInfo
         },
-        req.permission
+        req.actor
       )) as T;
 
       return { secretSync };
@@ -497,7 +494,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           destination,
           auditLogInfo: req.auditLogInfo
         },
-        req.permission
+        req.actor
       )) as T;
 
       return { secretSync };
@@ -539,7 +536,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
           excludeSyncId,
           projectId
         },
-        req.permission
+        req.actor
       );
 
       return result;
@@ -585,7 +582,7 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
 
       const result = await server.services.secretSync.findRecursiveConflicts(
         { projectId, environment, secretPath, keySchema },
-        req.permission
+        req.actor
       );
 
       return result;

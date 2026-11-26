@@ -54,7 +54,7 @@ export const registerHpIloRotationRouter = async (server: FastifyZodProvider) =>
 
       const result = await server.services.secretRotationV2.reconcileLocalAccountRotation(
         { rotationId, type: SecretRotation.HpIloLocalAccount },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
