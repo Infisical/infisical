@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { ProjectType, SecretType, TSecretApprovalRequests } from "@app/db/schemas";
 import { EventType, SecretApprovalEvent, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { FOLDERS, PROJECTS, RAW_SECRETS } from "@app/lib/api-docs";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
@@ -199,9 +200,9 @@ export const registerSecretManagerTools = ({
     {
       description: "Create a Secrets Management project with the default environments.",
       inputSchema: z.object({
-        projectName: GenericResourceNameSchema,
-        description: z.string().trim().max(256).optional(),
-        slug: slugSchema({ max: 64, field: "Project slug" }).optional()
+        projectName: GenericResourceNameSchema.describe(PROJECTS.CREATE.projectName),
+        description: z.string().trim().max(256).optional().describe(PROJECTS.CREATE.projectDescription),
+        slug: slugSchema({ max: 64, field: "Project slug" }).optional().describe(PROJECTS.CREATE.slug)
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
@@ -245,7 +246,7 @@ export const registerSecretManagerTools = ({
     {
       description: "List the folders in a folder.",
       inputSchema: SecretLocationSchema.extend({
-        recursive: z.boolean().default(false).describe("Include folders in all subfolders.")
+        recursive: z.boolean().default(false).describe(FOLDERS.LIST.recursive)
       }),
       annotations: { readOnlyHint: true }
     },
@@ -274,8 +275,9 @@ export const registerSecretManagerTools = ({
           .trim()
           .min(1)
           .max(64)
-          .refine(isValidFolderName, "Folder names can only contain letters, numbers, dashes and underscores."),
-        description: z.string().trim().max(256).optional()
+          .refine(isValidFolderName, "Folder names can only contain letters, numbers, dashes and underscores.")
+          .describe(FOLDERS.CREATE.name),
+        description: z.string().trim().max(256).optional().describe(FOLDERS.CREATE.description)
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
@@ -322,9 +324,9 @@ export const registerSecretManagerTools = ({
         ? "List the secrets in a folder, with their values where you have permission to read them."
         : "List the secret names in a folder. Values are hidden because this connection was not granted secrets:read.",
       inputSchema: SecretLocationSchema.extend({
-        recursive: z.boolean().default(false).describe("Include secrets in all subfolders."),
-        expandSecretReferences: z.boolean().default(true),
-        includeImports: z.boolean().default(true)
+        recursive: z.boolean().default(false).describe(RAW_SECRETS.LIST.recursive),
+        expandSecretReferences: z.boolean().default(true).describe(RAW_SECRETS.LIST.expand),
+        includeImports: z.boolean().default(true).describe(RAW_SECRETS.LIST.includeImports)
       }),
       annotations: { readOnlyHint: true }
     },
@@ -396,9 +398,9 @@ export const registerSecretManagerTools = ({
         ? "Get a secret by name, with its value if you have permission to read it."
         : "Get a secret by name, without its value, because this connection was not granted secrets:read.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: SecretLookupNameSchema,
-        expandSecretReferences: z.boolean().default(true),
-        includeImports: z.boolean().default(true)
+        secretName: SecretLookupNameSchema.describe(RAW_SECRETS.GET.secretName),
+        expandSecretReferences: z.boolean().default(true).describe(RAW_SECRETS.GET.expand),
+        includeImports: z.boolean().default(true).describe(RAW_SECRETS.GET.includeImports)
       }),
       annotations: { readOnlyHint: true }
     },
@@ -457,9 +459,9 @@ export const registerSecretManagerTools = ({
     {
       description: "Create a secret.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: NewSecretNameSchema,
-        secretValue: SecretValueSchema,
-        secretComment: SecretCommentSchema.optional()
+        secretName: NewSecretNameSchema.describe(RAW_SECRETS.CREATE.secretName),
+        secretValue: SecretValueSchema.describe(RAW_SECRETS.CREATE.secretValue),
+        secretComment: SecretCommentSchema.optional().describe(RAW_SECRETS.CREATE.secretComment)
       }),
       annotations: { readOnlyHint: false, destructiveHint: false }
     },
@@ -490,10 +492,10 @@ export const registerSecretManagerTools = ({
     {
       description: "Modify an existing secret's key, value, or comment.",
       inputSchema: SecretLocationSchema.extend({
-        secretName: SecretLookupNameSchema,
-        newSecretName: NewSecretNameSchema.optional(),
-        secretValue: SecretValueSchema.optional(),
-        secretComment: SecretCommentSchema.optional()
+        secretName: SecretLookupNameSchema.describe(RAW_SECRETS.UPDATE.secretName),
+        newSecretName: NewSecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
+        secretValue: SecretValueSchema.optional().describe(RAW_SECRETS.UPDATE.secretValue),
+        secretComment: SecretCommentSchema.optional().describe(RAW_SECRETS.UPDATE.secretComment)
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
@@ -524,7 +526,9 @@ export const registerSecretManagerTools = ({
     "delete-secret",
     {
       description: "Delete a secret from one environment and folder.",
-      inputSchema: SecretLocationSchema.extend({ secretName: SecretLookupNameSchema }),
+      inputSchema: SecretLocationSchema.extend({
+        secretName: SecretLookupNameSchema.describe(RAW_SECRETS.DELETE.secretName)
+      }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true }
     },
     async (args) => {
