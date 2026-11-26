@@ -1,12 +1,9 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Link } from "@infisical/cipher/ui/link";
 
-import {
-  OAUTH_STATUS_LABELS,
-  storedOAuthVariableKey
-} from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { storedOAuthVariableKey } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import {
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
@@ -20,26 +17,37 @@ import {
 import type { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
-import { useOrgId, useProjectPermission } from "../../access/permissions";
+import { useProjectPermission } from "../../access/permissions";
 import { useV4Adapter } from "../../data/adapters";
+import {
+  OAUTH_STATUS_TEXT,
+  openClassicVariables,
+  useClassicVariablesHref
+} from "./agent-vault-utils";
 import type { TServiceFormApi } from "./service-form";
 
-// v4 can't sign an OAuth variable in yet. The tab opens with an opener so it inherits the session's classic paths,
-// and the half-filled service sheet stays open here.
-const ClassicVariablesLink = ({ projectId }: { projectId: string }) => {
-  const href = `/organizations/${useOrgId()}/projects/agent-vault/${projectId}/variables`;
+export const ClassicVariablesLink = ({
+  projectId,
+  children = "classic variables page"
+}: {
+  projectId: string;
+  children?: ReactNode;
+}) => {
+  const href = useClassicVariablesHref(projectId);
   return (
     <Link
       href={href}
       data-open-classic
       onClick={(event) => {
-        keepInClassic(href);
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) {
+          keepInClassic(href);
+          return;
+        }
         event.preventDefault();
-        window.open(href, "_blank");
+        openClassicVariables(href);
       }}
     >
-      classic variables page
+      {children}
     </Link>
   );
 };
@@ -86,7 +94,7 @@ export const OAuthVariableField = ({
     label: variable.key,
     meta:
       variable.oauth?.status && variable.oauth.status !== AgentVaultOauthStatus.Connected
-        ? OAUTH_STATUS_LABELS[variable.oauth.status]
+        ? OAUTH_STATUS_TEXT[variable.oauth.status]
         : undefined
   }));
   if (selectedKey && !options.some((option) => option.value === selectedKey))

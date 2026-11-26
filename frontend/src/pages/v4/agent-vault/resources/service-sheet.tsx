@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
   DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, InlineGrow, Stack } from "@infisical/cipher/ui/layout";
@@ -57,6 +58,11 @@ import {
   TRANSPORT_LABELS,
   UNCHANGED_SECRET
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
+import { AgentVaultHooksUpgradeIntent } from "@app/components/license/UpgradeGate";
+import {
+  ProjectPermissionAgentVaultHookActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import {
   type AgentVaultTemplate,
   guessServiceTypeForRequest
@@ -77,8 +83,10 @@ import type {
 import { ApiErrorTypes, type TApiErrors } from "@app/hooks/api/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { useUpgradeGate } from "../../license";
 import { NATIVE_SERVICE_META } from "./agent-vault-utils";
 import { serverMessage } from "./oauth";
 import {
@@ -207,7 +215,19 @@ export const ServiceSheet = ({
   const resources = useV4Adapter("agentVaultResources");
   const create = resources.useCreateService(projectId);
   const update = resources.useUpdateService(projectId);
-  const savedHooks = resources.useHooks(projectId, { limit: HOOK_PICKER_LIMIT });
+  const { permission } = useProjectPermission(projectId);
+  const canReadHooks = permission.can(
+    ProjectPermissionAgentVaultHookActions.Read,
+    ProjectPermissionSub.AgentVaultHooks
+  );
+  const savedHooks = resources.useHooks(
+    projectId,
+    { limit: HOOK_PICKER_LIMIT },
+    { enabled: canReadHooks }
+  );
+  const { data: subscription } = useV4Adapter("shell").useSubscription(useOrgId());
+  const isHooksOnPlan = subscription?.agentVaultHooks !== false;
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isCreate = !service;
   const fromRequest = isCreate ? request : undefined;
   const [prefilled] = useState(
@@ -368,7 +388,7 @@ export const ServiceSheet = ({
     ServiceStep.Details,
     ServiceStep.Credential,
     ...(isMcp ? [ServiceStep.Tools] : []),
-    ServiceStep.Hook,
+    ...(canReadHooks ? [ServiceStep.Hook] : []),
     ServiceStep.Review
   ];
   const goTo = (key: ServiceStep) => {
@@ -466,6 +486,77 @@ export const ServiceSheet = ({
       setErrors({ [field]: message.slice(prefix.length + 2) });
       goTo(ServiceStep.Details);
       return false;
+    }
+
+    if (response?.error === ApiErrorTypes.ValidationError) {
+      const STEP_OF_FIELD: Record<string, ServiceStep> = {
+        name: ServiceStep.Details,
+        description: ServiceStep.Details,
+        hostPattern: ServiceStep.Details,
+        serverUrl: ServiceStep.Details,
+        transport: ServiceStep.Details,
+        host: ServiceStep.Details,
+        port: ServiceStep.Details,
+        database: ServiceStep.Details,
+        tls: ServiceStep.Details,
+        allowedMethods: ServiceStep.Details,
+        allowedPathPrefixes: ServiceStep.Details,
+        allowedTools: ServiceStep.Tools,
+        credential: ServiceStep.Credential,
+        customHeaders: ServiceStep.Credential,
+        substitutions: ServiceStep.Credential
+      };
+      const FORM_FIELD_OF: Record<string, keyof TServiceForm> = {
+        hostPattern: isMcp ? "serverUrl" : "hosts",
+        allowedMethods: "methods",
+        allowedPathPrefixes: "pathPrefixes",
+        tls: "tlsCa",
+        credential: (() => {
+          if (isOAuthVariableCredential(form)) return "oauthVariableKey";
+          return form.credentialType === AgentVaultCredentialType.OAuth
+            ? "oauthAuthorizationId"
+            : "secret";
+        })()
+      };
+      const FORM_FIELD_OF_CREDENTIAL_PART: Record<string, keyof TServiceForm> = {
+        username: "username",
+        password: "secret",
+        value: "secret",
+        privateKey: "sshPrivateKey",
+        certificate: "sshCertificate",
+        headerName: "headerName",
+        headerPrefix: "headerPrefix"
+      };
+      const next: TServiceErrors = {};
+      let earliest: number | null = null;
+      let unmapped = false;
+      response.message.forEach((issue) => {
+        const root = String(issue.path[0]);
+        const issueStep = STEP_OF_FIELD[root];
+        if (!issueStep) {
+          unmapped = true;
+          return;
+        }
+        const credentialPart =
+          root === "credential" ? FORM_FIELD_OF_CREDENTIAL_PART[String(issue.path[1])] : undefined;
+        const target =
+          issue.path.length > 1 && (root === "customHeaders" || root === "substitutions")
+            ? issue.path.join(".")
+            : (credentialPart ?? FORM_FIELD_OF[root] ?? root);
+        if (
+          target === "secret" &&
+          memberProvides(AgentVaultVariableReferenceField.CredentialValue)
+        ) {
+          unmapped = true;
+          return;
+        }
+        next[target] = next[target] ?? issue.message;
+        const index = stepKeys.indexOf(issueStep);
+        if (index !== -1 && (earliest === null || index < earliest)) earliest = index;
+      });
+      setErrors(next);
+      if (earliest !== null) setStep(earliest);
+      return unmapped;
     }
 
     return true;
@@ -855,18 +946,42 @@ export const ServiceSheet = ({
   const hookContent = (
     <Field
       label="Hook"
-      description="Your server allows or refuses what agents send before the proxy adds the credential."
+      description={
+        isHooksOnPlan ? (
+          "Your server allows or refuses what agents send before the proxy adds the credential."
+        ) : (
+          <>
+            Hooks aren&apos;t included in your plan, so this service&apos;s hook can&apos;t be set
+            or changed. You can still remove it. A hook it already has keeps working.{" "}
+            <Button
+              variant="link"
+              onClick={() =>
+                openUpgradeGate({
+                  intent: AgentVaultHooksUpgradeIntent,
+                  paywallKey: "agent-vault.hooks"
+                })
+              }
+            >
+              Upgrade
+            </Button>
+          </>
+        )
+      }
     >
       <Select
         label="Hook"
         value={form.hook.hookId || NO_HOOK}
+        disabled={!isHooksOnPlan && !form.hook.hookId}
         options={[
           { value: NO_HOOK, label: "No hook" },
           ...(form.hook.hookId &&
-          !savedHooks.data?.hooks.some((hook) => hook.id === form.hook.hookId)
+          (!isHooksOnPlan || !savedHooks.data?.hooks.some((hook) => hook.id === form.hook.hookId))
             ? [{ value: form.hook.hookId, label: form.hook.hookName || "Current hook" }]
             : []),
-          ...(savedHooks.data?.hooks ?? []).map((hook) => ({ value: hook.id, label: hook.name }))
+          ...(isHooksOnPlan ? (savedHooks.data?.hooks ?? []) : []).map((hook) => ({
+            value: hook.id,
+            label: hook.name
+          }))
         ]}
         onChange={(next) => {
           if (next === form.hook.hookId) return;
@@ -936,7 +1051,7 @@ export const ServiceSheet = ({
           ] as [string, string]
         ]
       : []),
-    ["Hook", form.hook.hookName || "Off"]
+    ...(canReadHooks ? [["Hook", form.hook.hookName || "Off"] as [string, string]] : [])
   ];
 
   const isAuthorizationMissing = isOAuthAuthorizationMissing(form, service);
@@ -1045,12 +1160,16 @@ export const ServiceSheet = ({
           }
         ]
       : []),
-    {
-      title: "Hook",
-      summary: form.hook.hookName || "Off",
-      validate: () => validateStep(ServiceStep.Hook),
-      content: hookContent
-    },
+    ...(canReadHooks
+      ? [
+          {
+            title: "Hook",
+            summary: form.hook.hookName || "Off",
+            validate: () => validateStep(ServiceStep.Hook),
+            content: hookContent
+          }
+        ]
+      : []),
     {
       title: "Review",
       validate: async () => {
@@ -1096,6 +1215,7 @@ export const ServiceSheet = ({
         steps={steps}
       />
       <DiscardChangesAlertDialog open={discarding} onOpenChange={setDiscarding} onDiscard={close} />
+      {upgradeGate}
       <DiscardChangesAlertDialog
         open={Boolean(switchingTo)}
         onOpenChange={(open) => !open && setSwitchingTo(null)}

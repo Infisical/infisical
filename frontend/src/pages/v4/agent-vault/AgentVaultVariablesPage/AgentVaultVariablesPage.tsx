@@ -28,7 +28,7 @@ import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -37,7 +37,11 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { MAX_PERSONAL_VARIABLES, MAX_VARIABLES } from "@app/helpers/agentVaultVariables";
 import { copyToClipboard } from "@app/helpers/clipboard";
-import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
+import {
+  AgentVaultOauthStatus,
+  AgentVaultVariableScope,
+  AgentVaultVariableType
+} from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -48,28 +52,57 @@ import { failed, saved } from "../../access/toast";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { AgentVaultDocs } from "../resources/agent-vault-utils";
+import {
+  AgentVaultDocs,
+  openClassicVariables,
+  useClassicVariablesHref
+} from "../resources/agent-vault-utils";
+import { OAuthStatusBadge } from "../resources/service-oauth";
+import { ClassicVariablesLink } from "../resources/service-oauth-variable";
 import { DateCell } from "../resources/shared";
 import { VariableDialog } from "../resources/variable-dialog";
 
 const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/variables");
+const servicesRoute = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/services");
 const TABLE = "agentVaultVariablesTable";
 const MASK = "\u2022".repeat(8);
 const SERVICES_SHOWN = 2;
 
 const revealSlot = (variable: TAgentVaultVariable) => `${variable.id}:${variable.updatedAt}`;
 
+const isOAuthVariable = (variable: TAgentVaultVariable) =>
+  variable.type === AgentVaultVariableType.OAuth;
+
 const UsedBy = ({ variable }: { variable: TAgentVaultVariable }) => {
+  const { orgId, projectId } = useParams({ from: route });
   const services = variable.usedByServices;
-  if (!services.length) return <Meta>-</Meta>;
+  if (!services.length) return <Meta>Unused</Meta>;
   const hidden = services.slice(SERVICES_SHOWN);
   return (
     <Inline gap={4} align="center" wrap={false}>
-      {services.slice(0, SERVICES_SHOWN).map((service) => (
-        <Badge key={service.id} tone="outline">
-          {service.name}
-        </Badge>
-      ))}
+      {services.slice(0, SERVICES_SHOWN).map((service) => {
+        const bundles = service.accessBundles ?? [];
+        return (
+          <Tooltip
+            key={service.id}
+            content={
+              bundles.length
+                ? `In ${bundles.map((bundle) => bundle.name).join(", ")}`
+                : "Not in an access bundle yet"
+            }
+          >
+            <Badge tone="outline" asChild>
+              <Link
+                to={servicesRoute}
+                params={{ orgId, projectId }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {service.name}
+              </Link>
+            </Badge>
+          </Tooltip>
+        );
+      })}
       {hidden.length > 0 && (
         <Tooltip content={hidden.map((service) => service.name).join(", ")}>
           <Meta tabIndex={0}>+{hidden.length}</Meta>
@@ -116,13 +149,17 @@ const VariableValue = ({
 
 const VariableMenu = ({
   canCopy,
+  canAuthorize,
   canDelete,
   onCopy,
+  onAuthorize,
   onDelete
 }: {
   canCopy: boolean;
+  canAuthorize: boolean;
   canDelete: boolean;
   onCopy: () => void;
+  onAuthorize: () => void;
   onDelete: () => void;
 }) => (
   <>
@@ -132,7 +169,13 @@ const VariableMenu = ({
         Copy value
       </DropdownMenuItem>
     )}
-    {canCopy && canDelete && <DropdownMenuSeparator />}
+    {canAuthorize && (
+      <DropdownMenuItem onSelect={onAuthorize}>
+        <Icon name="key" />
+        Authorize in classic
+      </DropdownMenuItem>
+    )}
+    {(canCopy || canAuthorize) && canDelete && <DropdownMenuSeparator />}
     {canDelete && (
       <DropdownMenuItem variant="destructive" onSelect={onDelete}>
         <Icon name="trash" />
@@ -141,6 +184,58 @@ const VariableMenu = ({
     )}
   </>
 );
+
+const DeleteVariableDialog = ({
+  projectId,
+  isPersonal,
+  variable,
+  onClose
+}: {
+  projectId: string;
+  isPersonal: boolean;
+  variable?: TAgentVaultVariable;
+  onClose: () => void;
+}) => {
+  const remove = useV4Adapter("agentVaultResources").useDeleteVariable(projectId);
+  const usedBy = variable?.usedByServices ?? [];
+  const inUse = usedBy.length > 0;
+  let deleteDescription = "Its value is deleted with it. This cannot be undone.";
+  if (inUse)
+    deleteDescription = isPersonal
+      ? `Your personal values for ${usedBy.length === 1 ? "a service use" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove it from ${usedBy.length === 1 ? "the service" : "those services"} before you delete it.`
+      : `${usedBy.length === 1 ? "A service uses" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove the reference before you delete it.`;
+
+  return (
+    <AlertDialog open={Boolean(variable)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Delete ${variable?.key ?? ""}?`}</AlertDialogTitle>
+          <AlertDialogDescription>{deleteDescription}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{inUse ? "Close" : "Cancel"}</AlertDialogCancel>
+          {!inUse && (
+            <AlertDialogAction
+              variant="destructive"
+              onClick={async () => {
+                if (!variable) return;
+                try {
+                  await remove.mutateAsync(variable.id);
+                  saved(`Variable ${variable.key} deleted`);
+                } catch (error) {
+                  failed("Failed to delete variable", error);
+                }
+                onClose();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
 
 const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultVariableScope }) => {
   const resources = useV4Adapter("agentVaultResources");
@@ -170,6 +265,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingId, setRevealingId] = useState<string>();
   const searchTerm = debouncedSearch.trim();
+  const classicHref = useClassicVariablesHref(projectId);
 
   const { data, isPending } = resources.useVariables(projectId, {
     scope,
@@ -183,7 +279,6 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     scope,
     limit: 1
   });
-  const remove = resources.useDeleteVariable(projectId);
   const variables = data?.variables ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
@@ -248,20 +343,35 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
       text: (variable) => variable.key,
       render: (variable) => <span title={variable.key}>{variable.key}</span>
     },
+    ...(isPersonal
+      ? []
+      : [
+          {
+            id: "type",
+            header: "Type",
+            width: 96,
+            render: (variable: TAgentVaultVariable) => (
+              <span>{isOAuthVariable(variable) ? "OAuth" : "Text"}</span>
+            )
+          } satisfies DataTableColumn<TAgentVaultVariable>
+        ]),
     {
       id: "value",
       header: "Value",
       grow: true,
       minWidth: 200,
-      render: (variable) => (
-        <VariableValue
-          variableKey={variable.key}
-          value={revealed[revealSlot(variable)]}
-          canReveal={canReadValue}
-          isRevealing={revealingId === variable.id}
-          onToggle={() => toggleReveal(variable)}
-        />
-      )
+      render: (variable) =>
+        isOAuthVariable(variable) ? (
+          <OAuthStatusBadge status={variable.oauth?.status ?? AgentVaultOauthStatus.NotConnected} />
+        ) : (
+          <VariableValue
+            variableKey={variable.key}
+            value={revealed[revealSlot(variable)]}
+            canReveal={canReadValue}
+            isRevealing={revealingId === variable.id}
+            onToggle={() => toggleReveal(variable)}
+          />
+        )
     },
     {
       id: "serviceCount",
@@ -278,7 +388,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     }
   ];
 
-  const hasMenu = canReadValue || canDelete;
+  const hasMenu = canReadValue || canEdit || canDelete;
   const rowActions: DataTableRowActions<TAgentVaultVariable> | undefined =
     canEdit || hasMenu
       ? {
@@ -295,23 +405,19 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
           renderMenu: hasMenu
             ? (variable) => (
                 <VariableMenu
-                  canCopy={canReadValue}
+                  canCopy={canReadValue && !isOAuthVariable(variable)}
+                  canAuthorize={
+                    canEdit && isOAuthVariable(variable) && !variable.oauth?.redirectUri
+                  }
                   canDelete={canDelete}
                   onCopy={() => copyValue(variable)}
+                  onAuthorize={() => openClassicVariables(classicHref)}
                   onDelete={() => setDeleting(variable)}
                 />
               )
             : undefined
         }
       : undefined;
-
-  const usedBy = deleting?.usedByServices ?? [];
-  const inUse = usedBy.length > 0;
-  let deleteDescription = "Its value is deleted with it. This cannot be undone.";
-  if (inUse)
-    deleteDescription = isPersonal
-      ? `Your personal values for ${usedBy.length === 1 ? "a service use" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove it from ${usedBy.length === 1 ? "the service" : "those services"} before you delete it.`
-      : `${usedBy.length === 1 ? "A service uses" : `${usedBy.length} services use`} this variable: ${usedBy.map((service) => service.name).join(", ")}. Remove the reference before you delete it.`;
 
   return (
     <Stack gap={24}>
@@ -378,6 +484,13 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
                   ? "Reuse one of your values across the services you set up."
                   : "Store a value once and use it in any service as {{KEY}}."
               }
+              actions={
+                !isPersonal && canCreate ? (
+                  <ClassicVariablesLink projectId={projectId}>
+                    Add an OAuth variable in classic
+                  </ClassicVariablesLink>
+                ) : undefined
+              }
             />
           )
         }
@@ -408,37 +521,12 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
           onOpenChange={(open) => !open && setDialog(undefined)}
         />
       )}
-      <AlertDialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => !open && setDeleting(undefined)}
-      >
-        <AlertDialogContent tone="danger">
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Delete ${deleting?.key ?? ""}?`}</AlertDialogTitle>
-            <AlertDialogDescription>{deleteDescription}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{inUse ? "Close" : "Cancel"}</AlertDialogCancel>
-            {!inUse && (
-              <AlertDialogAction
-                variant="destructive"
-                onClick={async () => {
-                  if (!deleting) return;
-                  try {
-                    await remove.mutateAsync(deleting.id);
-                    saved(`Variable ${deleting.key} deleted`);
-                  } catch (error) {
-                    failed("Failed to delete variable", error);
-                  }
-                  setDeleting(undefined);
-                }}
-              >
-                Delete
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteVariableDialog
+        projectId={projectId}
+        isPersonal={isPersonal}
+        variable={deleting}
+        onClose={() => setDeleting(undefined)}
+      />
     </Stack>
   );
 };
