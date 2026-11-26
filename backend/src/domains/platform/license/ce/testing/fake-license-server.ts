@@ -76,7 +76,7 @@ export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer 
     return Plan.restore(this.plans.get(rootOrgId) ?? enterprisePlan());
   };
 
-  fallbackPlan = () => Plan.restore({ ...InstanceEntitlements.restore(this.instance).plan().toJSON(), slug: null });
+  freePlan = () => Plan.restore({ ...InstanceEntitlements.restore(this.instance).plan().toJSON(), slug: null });
 
   isEnabled = () => this.meteringEnabled;
 
