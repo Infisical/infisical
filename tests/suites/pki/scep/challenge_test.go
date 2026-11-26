@@ -1,12 +1,18 @@
 package scep_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/smallstep/scep"
 	"github.com/stretchr/testify/require"
 )
@@ -111,7 +117,7 @@ func TestScepEnrollment_DynamicChallenge(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
-		p := newStandaloneScepProfile(t, tn)
+		p := newStandaloneScepProfile(t, tn, 60)
 		member := tn.NewUser(t, harness.WithName("product-member"))
 		p.project.Grant(t, member)
 
@@ -127,5 +133,46 @@ func TestScepEnrollment_DynamicChallenge(t *testing.T) {
 		got := p.mustEnroll(t, "standalone-device.example.com", string(res.Body))
 		require.NoError(t, got.cert.CheckSignatureFrom(p.ca))
 		require.Contains(t, p.certificates(t), serial(got.cert))
+	})
+
+	t.Run("should refuse an expired challenge with badRequest and issue nothing", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The shortest expiry is one minute and nothing can move the instance's clock, so
+			this waits it out, longer than a Shared package test normally may. The signal is a second
+			profile allowing one pending challenge, issued one just after the first: it grants another
+			only once that one has expired, so the first has too. Generating a challenge deletes the
+			expired ones of its own profile, so polling the enrolling profile would remove the first
+			challenge and the test would pass without the expiry check.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newStandaloneScepProfile(t, tn, 1)
+		clock := newStandaloneScepProfile(t, tn, 1)
+		first, err := tn.Admin.API.GenerateScepDynamicChallengeWithResponse(t.Context(), p.profile.ID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, first.StatusCode(), "generating a challenge: %s", apierr.Body(first.Body))
+		ticked, err := tn.Admin.API.GenerateScepDynamicChallengeWithResponse(t.Context(), clock.profile.ID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, ticked.StatusCode(), "generating the clock challenge: %s", apierr.Body(ticked.Body))
+		expired, err := wait.For(t.Context(), func(ctx context.Context) (*api.GenerateScepDynamicChallengeResponse, bool, error) {
+			res, err := tn.Admin.API.GenerateScepDynamicChallengeWithResponse(ctx, clock.profile.ID)
+			if err != nil {
+				return nil, false, err
+			}
+			if res.StatusCode() == http.StatusBadRequest {
+				return nil, false, fmt.Errorf("the clock challenge is still pending: %s", apierr.Body(res.Body))
+			}
+			return res, true, nil
+		}, wait.Timeout(90*time.Second), wait.Interval(2*time.Second))
+		require.NoError(t, err, "waiting for the clock challenge to expire")
+		require.Equalf(t, http.StatusOK, expired.StatusCode(), "generating a challenge after expiry: %s", apierr.Body(expired.Body))
+
+		// Action
+		got, _ := p.enroll(t, newDevice(t, "expired-device.example.com"), "expired-device.example.com", string(first.Body))
+
+		// Assert
+		require.Equal(t, scep.FAILURE, got.status)
+		require.Equal(t, scep.BadRequest, got.failInfo)
+		require.Empty(t, p.certificates(t))
 	})
 }

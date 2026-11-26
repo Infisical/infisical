@@ -166,7 +166,9 @@ func TestAcmeUpstreamDNS_Issue(t *testing.T) {
 			require.Equal(t, []string{name}, cert.DNSNames)
 			records.created(t, name)
 			records.deleted(t, name)
-			require.Len(t, up.State(t).Issued, 1)
+			issued := up.State(t).Issued
+			require.Len(t, issued, 1)
+			require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
 		})
 	}
 }

@@ -27,12 +27,19 @@ import (
 // delegated responder's, so the signature is checked here instead.
 func askOcsp(t *testing.T, tn *harness.Tenant, ca pki.CA, cert, issuer *x509.Certificate) *ocsp.Response {
 	t.Helper()
+	got, _ := askOcspByPost(t, tn, ca, cert, issuer)
+	return got
+}
+
+// askOcspByPost is askOcsp, also returning the response headers.
+func askOcspByPost(t *testing.T, tn *harness.Tenant, ca pki.CA, cert, issuer *x509.Certificate) (*ocsp.Response, http.Header) {
+	t.Helper()
 	req, err := ocsp.CreateRequest(cert, issuer, nil)
 	require.NoError(t, err)
 	res, err := tn.Anonymous(t).PostOcspRequestWithBodyWithResponse(t.Context(), ca.ID, "application/ocsp-request", bytes.NewReader(req))
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-	return parseSigned(t, res.Body, issuer)
+	return parseSigned(t, res.Body, issuer), res.HTTPResponse.Header
 }
 
 // askOcspByGet sends the same request as askOcsp in the URL path, base64 encoded as
@@ -65,6 +72,23 @@ func requireCacheable(t *testing.T, header http.Header) {
 	n, err := strconv.Atoi(maxAge)
 	require.NoErrorf(t, err, "Cache-Control: %q", cc)
 	require.Positive(t, n)
+}
+
+// requireNotCacheable checks that a shared cache may not store the response. No-store
+// or no-cache is fine; a public or positive max-age directive is not.
+func requireNotCacheable(t *testing.T, header http.Header) {
+	t.Helper()
+	cc := header.Get("Cache-Control")
+	for directive := range strings.SplitSeq(cc, ",") {
+		directive = strings.ToLower(strings.TrimSpace(directive))
+		require.NotEqualf(t, "public", directive, "Cache-Control: %q", cc)
+		for _, prefix := range []string{"max-age=", "s-maxage="} {
+			if age, ok := strings.CutPrefix(directive, prefix); ok {
+				n, err := strconv.Atoi(age)
+				require.Falsef(t, err == nil && n > 0, "Cache-Control: %q", cc)
+			}
+		}
+	}
 }
 
 func TestInternalCA_Ocsp(t *testing.T) {
@@ -152,7 +176,7 @@ func TestInternalCA_Ocsp(t *testing.T) {
 		requireMalformed(t, res.HTTPResponse, res.Body)
 	})
 
-	t.Run("should answer a GET exactly as a POST, signed by the CA, for an active and a revoked certificate", func(t *testing.T) {
+	t.Run("should answer a GET exactly as a POST, signed by the CA, for an active and a revoked certificate, and mark only the GET cacheable", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -169,8 +193,8 @@ func TestInternalCA_Ocsp(t *testing.T) {
 			status int
 		}{{active, ocsp.Good}, {revoked, ocsp.Revoked}} {
 			// Action
-			byGet, header := askOcspByGet(t, tn, g.CA, c.leaf, issuer)
-			byPost := askOcsp(t, tn, g.CA, c.leaf, issuer)
+			byGet, getHeader := askOcspByGet(t, tn, g.CA, c.leaf, issuer)
+			byPost, postHeader := askOcspByPost(t, tn, g.CA, c.leaf, issuer)
 
 			// Assert
 			require.Equal(t, c.status, byGet.Status)
@@ -179,7 +203,8 @@ func TestInternalCA_Ocsp(t *testing.T) {
 			require.Equal(t, byPost.SerialNumber, byGet.SerialNumber)
 			require.Equal(t, byPost.RevocationReason, byGet.RevocationReason)
 			require.True(t, byPost.RevokedAt.Equal(byGet.RevokedAt), "revoked at %s by GET, %s by POST", byGet.RevokedAt, byPost.RevokedAt)
-			requireCacheable(t, header)
+			requireCacheable(t, getHeader)
+			requireNotCacheable(t, postHeader)
 		}
 	})
 

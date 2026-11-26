@@ -82,8 +82,9 @@ func newScepProfile(t *testing.T, tn *harness.Tenant, enrollment api.SetPkiAppli
 }
 
 // newStandaloneScepProfile is a profile with SCEP enrollment of its own, outside any
-// application, that takes one-time challenge passwords, at most one of them unused at once.
-func newStandaloneScepProfile(t *testing.T, tn *harness.Tenant) scepProfile {
+// application, that takes one-time challenge passwords valid for expiryMinutes, at most
+// one of them unused at once.
+func newStandaloneScepProfile(t *testing.T, tn *harness.Tenant, expiryMinutes int) scepProfile {
 	t.Helper()
 	proj := pki.CertManager(t, tn)
 	ca := pki.NewInternalCA(t, proj)
@@ -92,8 +93,8 @@ func newStandaloneScepProfile(t *testing.T, tn *harness.Tenant) scepProfile {
 	require.NoError(t, json.Unmarshal(fmt.Appendf(nil, `{
 		"projectId": %q, "slug": "profile-%s", "caId": %q, "certificatePolicyId": %q,
 		"enrollmentType": "scep",
-		"scepConfig": {"challengeType": "dynamic", "dynamicChallengeMaxPending": 1, "includeCaCertInResponse": true, "allowCertBasedRenewal": true}
-	}`, proj.ID, id.Short(), ca.ID, policy.ID), &body))
+		"scepConfig": {"challengeType": "dynamic", "dynamicChallengeMaxPending": 1, "dynamicChallengeExpiryMinutes": %d, "includeCaCertInResponse": true, "allowCertBasedRenewal": true}
+	}`, proj.ID, id.Short(), ca.ID, policy.ID, expiryMinutes), &body))
 	res, err := tn.Admin.API.CreateCertificateProfileWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating the SCEP profile returned %d: %s", res.StatusCode(), apierr.Body(res.Body))

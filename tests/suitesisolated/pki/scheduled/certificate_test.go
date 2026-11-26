@@ -45,8 +45,8 @@ func TestCertificateAutoRenewalJob(t *testing.T) {
 		runJob(t, h, api.CertificateV3AutoRenewal)
 
 		// Assert
-		renewedID := renewedBy(t, o.Operator, due)
-		renewed := pki.ReadCertificate(t, o.Operator, renewedID).JSON200.Certificate
+		renewedID, res := renewedBy(t, o.Operator, due)
+		renewed := res.JSON200.Certificate
 		require.Equal(t, original.CommonName, renewed.CommonName)
 		require.Equal(t, original.AltNames, renewed.AltNames)
 		require.Equal(t, profile.ID, *renewed.ProfileId)
@@ -110,7 +110,7 @@ func TestCertificateAutoRenewalJob(t *testing.T) {
 // renewedBy waits for a certificate to be renewed and returns the certificate that
 // replaced it, once `as` can read it. An external CA's renewal is linked before it is
 // attached to the application, so an application member is refused it at first.
-func renewedBy(t *testing.T, as *harness.Principal, certID uuid.UUID) uuid.UUID {
+func renewedBy(t *testing.T, as *harness.Principal, certID uuid.UUID) (uuid.UUID, *api.GetCertificateResponse) {
 	t.Helper()
 	res := pki.Poll(t, "reading the certificate", func(ctx context.Context) (*api.GetCertificateResponse, int, []byte, error) {
 		res, status, body, err := pki.ReadResponse(ctx, func(ctx context.Context) (*http.Response, error) {
@@ -124,18 +124,18 @@ func renewedBy(t *testing.T, as *harness.Principal, certID uuid.UUID) uuid.UUID 
 		return res.JSON200.Certificate.RenewedByCertificateId != nil
 	})
 	renewedID := *res.JSON200.Certificate.RenewedByCertificateId
-	_, err := wait.For(t.Context(), func(ctx context.Context) (struct{}, bool, error) {
+	renewed, err := wait.For(t.Context(), func(ctx context.Context) (*api.GetCertificateResponse, bool, error) {
 		res, err := as.API.GetCertificateWithResponse(ctx, renewedID, nil)
 		if err != nil {
-			return struct{}{}, false, err
+			return nil, false, err
 		}
-		if res.StatusCode() != http.StatusOK {
-			return struct{}{}, false, fmt.Errorf("reading the renewed certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		if res.JSON200 == nil {
+			return nil, false, fmt.Errorf("reading the renewed certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		}
-		return struct{}{}, true, nil
+		return res, true, nil
 	})
 	require.NoError(t, err, "waiting for the renewed certificate to be readable")
-	return renewedID
+	return renewedID, renewed
 }
 
 // bundleOf is the PEM body of a certificate as `as` reads it.

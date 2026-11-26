@@ -60,7 +60,9 @@ func TestAwsAcmPublicCA_Issue(t *testing.T) {
 		spec.Why(t, `The fake holds the certificate in PENDING_VALIDATION until the test releases it.
 			Infisical checks again only on ACM's fixed 60 second retry, which nothing can trigger,
 			so the wait after release is orderWait: that retry plus the issuance queue the
-			instance shares.`)
+			instance shares. Only that retry describes the certificate as ISSUED, so requiring
+			that describe proves the issuance came from the retry and not from an export that
+			raced the release.`)
 
 		// Setup
 		tn := h.NewTenant(t)
@@ -71,9 +73,6 @@ func TestAwsAcmPublicCA_Issue(t *testing.T) {
 		r.acct.ACM.ExpectEvent[aws.CertificateDescribed](t, func(e aws.CertificateDescribed) bool {
 			return e.DomainName == name && e.Status == "PENDING_VALIDATION"
 		}, fakenet.Within(orderWait))
-		held := r.o.Settled(t, requestID, api.GetCertificateRequest200JSONResponseBodyStatusPending)
-		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPending, held.JSON200.Status)
-		require.Nil(t, held.JSON200.Certificate)
 
 		// Action
 		r.acct.Seed(t, aws.ReleaseACMValidation())
@@ -81,6 +80,9 @@ func TestAwsAcmPublicCA_Issue(t *testing.T) {
 		// Assert
 		got := r.o.Settled(t, requestID)
 		require.Equalf(t, api.GetCertificateRequest200JSONResponseBodyStatusIssued, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
+		r.acct.ACM.ExpectEvent[aws.CertificateDescribed](t, func(e aws.CertificateDescribed) bool {
+			return e.DomainName == name && e.Status == "ISSUED"
+		})
 		issued := r.onlyCertificate(t)
 		leaf := pki.ParseLeaf(t, *got.JSON200.Certificate)
 		require.Equal(t, pki.ParseLeaf(t, issued.Certificate).Raw, leaf.Raw)
