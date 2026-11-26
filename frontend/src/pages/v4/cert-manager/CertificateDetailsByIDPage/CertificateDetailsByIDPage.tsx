@@ -508,7 +508,7 @@ const CertificateDetail = ({
               <a
                 href={orgHref(
                   orgId,
-                  `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&from=root-requests`
+                  `/cert-manager/approvals/${revocation.requestId}?policyType=${ApprovalPolicyType.CertRevocation}&${applicationName ? `applicationName=${encodeURIComponent(applicationName)}` : "from=root-requests"}`
                 )}
               >
                 revocation request
