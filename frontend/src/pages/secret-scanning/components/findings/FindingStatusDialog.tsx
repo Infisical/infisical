@@ -74,7 +74,11 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
     }
 
     const names = findings[0].resources.map((resource) => resource.name);
-    return `This secret was found in ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}. The status applies to all of them.`;
+    const foundIn =
+      names.length > 2
+        ? `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`
+        : names.join(" and ");
+    return `This secret was found in ${foundIn}. The status applies to all of them.`;
   };
 
   const onSubmit = ({ comment }: TFormData) => {
