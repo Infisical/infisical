@@ -455,6 +455,7 @@ function QuickAddValue({
   ref,
   scope,
   multiple,
+  readOnly,
   value,
   onChange,
   onSave,
@@ -463,6 +464,7 @@ function QuickAddValue({
   ref: Ref<HTMLTextAreaElement & HTMLInputElement>;
   scope: Scope;
   multiple: boolean;
+  readOnly: boolean;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -479,6 +481,7 @@ function QuickAddValue({
       scope={scope}
       onValueChange={onChange}
       onKeyDown={(event) => {
+        if (readOnly) return;
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
           onSave();
@@ -491,6 +494,7 @@ function QuickAddValue({
           {...control}
           onFocusCapture={() => setEditing(true)}
           onBlurCapture={() => setEditing(false)}
+          readOnly={readOnly}
           rows={1}
           className={styles.inlineInput}
           aria-label="New secret value"
@@ -794,6 +798,7 @@ export function QuickAddRow({
             ref={valueRef}
             scope={scope}
             multiple={multiple}
+            readOnly={committing}
             value={value}
             onChange={setValue}
             onSave={save}
