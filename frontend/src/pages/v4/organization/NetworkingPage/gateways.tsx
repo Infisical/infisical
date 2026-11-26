@@ -274,12 +274,9 @@ export const GatewaysPanel = ({
               {
                 label: "Trigger health check",
                 icon: HeartPulseIcon,
-                disabledReason: (gateway) => {
-                  if (healthCheck.isChecking(gateway.id)) return "Checking health…";
-                  return isGatewayRegistered(gateway)
-                    ? undefined
-                    : "This gateway is not registered yet";
-                },
+                disabledReason: (gateway) =>
+                  isGatewayRegistered(gateway) ? undefined : "This gateway is not registered yet",
+                loading: (gateway) => healthCheck.isChecking(gateway.id),
                 onSelect: healthCheck.run
               }
             ],

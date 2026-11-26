@@ -209,7 +209,6 @@ const InboxBody = ({
             size="sm"
             icon={notificationIcon(latest.type)}
             tone={group.tone}
-            className={styles.tile}
           />
         }
         unread={group.unread > 0}
