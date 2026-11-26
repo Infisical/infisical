@@ -86,12 +86,14 @@ describe("secretScanningV2DAL findings", () => {
       findingId,
       resourceId,
       scanId,
-      createdAt = new Date()
+      createdAt = new Date(),
+      details = {}
     }: {
       findingId: string;
       resourceId: string;
       scanId: string;
       createdAt?: Date;
+      details?: Record<string, unknown>;
     }) => {
       // createdAt isn't insertable in the app's types, but these rows need it to have an order
       const [created] = await h
@@ -102,7 +104,7 @@ describe("secretScanningV2DAL findings", () => {
           scanId,
           fingerprint: `fp-${randomId()}`,
           rule: "generic-api-key",
-          details: {},
+          details,
           createdAt
         } as TSecretScanningFindingLocationsInsert)
         .returning("*");
@@ -352,6 +354,34 @@ describe("secretScanningV2DAL findings", () => {
       expect(inEmpty).toEqual({ ids: [], totalCount: 0 });
       expect(inDataSource.totalCount).toBe(2);
       expect(counts).toEqual({ [named.id]: 1, [other.id]: 2, [empty.id]: 0 });
+    });
+
+    test("should describe a finding with its newest location's rule description", async () => {
+      // Setup
+      const s = await setup();
+      const repo = await s.resource();
+      const scan = await s.scan(repo.id);
+      const described = await s.finding({ resourceId: repo.id, scanId: scan.id, blindIndex: "value-a" });
+      await s.location({
+        findingId: described.id,
+        resourceId: repo.id,
+        scanId: scan.id,
+        createdAt: new Date("2026-01-01"),
+        details: { description: "older" }
+      });
+      await s.location({
+        findingId: described.id,
+        resourceId: repo.id,
+        scanId: scan.id,
+        createdAt: new Date("2026-02-01"),
+        details: { description: "Detected a Generic API Key" }
+      });
+
+      // Action
+      const found = await s.dal.findings.findByIdWithDetails(described.id);
+
+      // Assert
+      expect(found?.description).toBe("Detected a Generic API Key");
     });
 
     test("should list the resource a list was filtered by first", async () => {

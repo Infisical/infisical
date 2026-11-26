@@ -232,6 +232,8 @@ export type TSecretScanningFinding = {
   triagedAt?: string | null;
   resolvedAt?: string | null;
   locationCount: number;
+  // what the matching rule detects, from the newest location
+  description: string | null;
   projectId: string;
   lastDetectedAt: string;
   createdAt: string;

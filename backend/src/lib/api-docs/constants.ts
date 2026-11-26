@@ -4483,6 +4483,7 @@ export const SecretScanningFindings = {
     "Deprecated: describes only one of the resources the secret was found in. Use `resources` instead.",
   RESOURCES:
     "Every resource the secret was found in, with how many places in each. The resource a list was filtered by comes first.",
+  DESCRIPTION: "What the rule that matched the secret detects, from the most recent place the secret was found.",
   LIST_LOCATIONS: {
     findingId: "The ID of the Secret Scanning Finding to list the locations of.",
     resourceId: "Only return the places the secret was found in this resource.",

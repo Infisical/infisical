@@ -53,6 +53,7 @@ import {
 } from "@app/helpers/secretScanningV2";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SecretScanningDataSource,
   SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   TSecretScanningDataSource,
@@ -77,6 +78,19 @@ const DEFAULT_SORT: TSort = {
 };
 
 const ALL_OPTION = "all";
+
+// GitLab calls its repositories projects; a secret found in both kinds is counted in repositories
+const formatResourceCount = (resources: TSecretScanningFinding["resources"]) => {
+  const isAllProjects =
+    resources.length > 0 &&
+    resources.every(({ dataSourceType }) => dataSourceType === SecretScanningDataSource.GitLab);
+  const { singularNoun, pluralNoun } =
+    RESOURCE_DESCRIPTION_HELPER[
+      isAllProjects ? SecretScanningDataSource.GitLab : SecretScanningDataSource.GitHub
+    ];
+
+  return `in ${resources.length} ${resources.length === 1 ? singularNoun : pluralNoun}`;
+};
 
 type ResourceFilterProps = {
   dataSource: Pick<TSecretScanningDataSource, "id" | "type">;
@@ -479,6 +493,7 @@ export const SecretScanningFindingsTable = ({
                     />
                   </TableHead>
                   {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
+                  <TableHead className="w-36">Locations</TableHead>
                   {renderSortableHead(
                     SecretScanningFindingOrderBy.LastDetectedAt,
                     "Last Detected",
@@ -494,7 +509,7 @@ export const SecretScanningFindingsTable = ({
                       <TableCell>
                         <Skeleton className="size-4" />
                       </TableCell>
-                      {Array.from({ length: 3 }).map((__, j) => (
+                      {Array.from({ length: 4 }).map((__, j) => (
                         <TableCell key={`finding-skeleton-cell-${j + 1}`}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
@@ -527,10 +542,20 @@ export const SecretScanningFindingsTable = ({
                         </TableCell>
                         <TableCell isTruncatable>
                           <p className="truncate">{finding.rule}</p>
-                          <p className="truncate text-xs text-muted">
+                          {finding.description && (
+                            <p className="truncate text-xs text-muted" title={finding.description}>
+                              {finding.description}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <p className="whitespace-nowrap">
                             {finding.locationCount === 1
                               ? "1 location"
                               : `${finding.locationCount} locations`}
+                          </p>
+                          <p className="text-xs whitespace-nowrap text-muted">
+                            {formatResourceCount(finding.resources)}
                           </p>
                         </TableCell>
                         <TableCell>
