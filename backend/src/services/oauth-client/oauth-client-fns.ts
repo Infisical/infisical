@@ -165,11 +165,12 @@ export const OauthClientMetadataDocumentSchema = z
     token_endpoint_auth_method: z.string().max(64).optional(),
     token_endpoint_auth_methods_supported: z.string().max(64).array().max(16).optional()
   })
+  // The list of supported methods, when present, is the full answer; the single method is only read without it.
   .refine(
     (document) =>
-      !document.token_endpoint_auth_method ||
-      document.token_endpoint_auth_method === "none" ||
-      Boolean(document.token_endpoint_auth_methods_supported?.includes("none")),
+      document.token_endpoint_auth_methods_supported
+        ? document.token_endpoint_auth_methods_supported.includes("none")
+        : (document.token_endpoint_auth_method ?? "none") === "none",
     "The client must support token_endpoint_auth_method 'none'."
   );
 

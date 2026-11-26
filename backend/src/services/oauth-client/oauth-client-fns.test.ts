@@ -189,6 +189,20 @@ describe("OauthClientMetadataDocumentSchema", () => {
     });
     expect(parsed.success).toBe(true);
   });
+
+  test("rejects a client whose supported methods leave out none, even without a single method", () => {
+    const { token_endpoint_auth_method: _, ...withoutMethod } = document;
+    const parsed = OauthClientMetadataDocumentSchema.safeParse({
+      ...withoutMethod,
+      token_endpoint_auth_methods_supported: ["private_key_jwt"]
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("accepts a client that names no method", () => {
+    const { token_endpoint_auth_method: _, ...withoutMethod } = document;
+    expect(OauthClientMetadataDocumentSchema.safeParse(withoutMethod).success).toBe(true);
+  });
 });
 
 describe("hasClientAuthorityChanged", () => {
