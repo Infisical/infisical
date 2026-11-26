@@ -586,7 +586,10 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const { data: role, isPending } = access.useProjectRole(projectId, roleSlug, scope.projectType);
   const { data: roles } = access.useProjectRoles(projectId, scope.projectType);
   const { data: project } = access.useProject(projectId);
-  const { data: tags } = access.useProjectTags(projectId);
+  const { data: tags } = access.useProjectTags(
+    projectId,
+    scope.projectType !== ProjectType.AgentVault
+  );
   const canEdit = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
   const { data: vaultConnections } = access.useAvailableAppConnections(
     AppConnection.HCVault,
@@ -597,7 +600,11 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const createRole = access.useCreateProjectRole();
   const deleteRole = access.useDeleteProjectRole();
   const gates = useProjectPlanGates();
-  const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
+  const isAgentVault = scope.projectType === ProjectType.AgentVault;
+  const backHref = accessLinks.project(
+    scope,
+    isAgentVault ? ProjectAccessControlTabs.Member : ProjectAccessControlTabs.Roles
+  );
   const writeType =
     scope.projectType === ProjectType.CertificateManager ? undefined : scope.projectType;
 
@@ -616,6 +623,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         isDefault={false}
         taken={(roles ?? []).map((item) => item.slug)}
         backHref={backHref}
+        backLabel={isAgentVault ? "Project access control" : undefined}
         projectType={scope.projectType}
         readOnlyReason={
           ADMIN_OR_MEMBER_PRODUCTS.has(scope.projectType)

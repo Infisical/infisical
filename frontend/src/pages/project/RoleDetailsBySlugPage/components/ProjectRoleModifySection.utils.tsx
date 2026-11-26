@@ -1084,6 +1084,7 @@ const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition
 // convert role permission to form compatible data structure
 const AGENT_VAULT_FORM_SUBJECTS = new Set<ProjectPermissionSub>([
   ProjectPermissionSub.AgentVaultAccessBundles,
+  ProjectPermissionSub.AgentVaultHooks,
   ProjectPermissionSub.AgentVaultSessions,
   ProjectPermissionSub.AgentVaultProxies,
   ProjectPermissionSub.AgentVaultSkills,

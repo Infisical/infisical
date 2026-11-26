@@ -338,6 +338,12 @@ const SettingsLink = ({
   </Button>
 );
 
+const StorageErrorSettingsLink = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
+  const { data } = useV4Adapter("agentVaultSettings").useSessionLogSettings(orgId, projectId);
+  if (data?.settings?.storage.type === AgentVaultSessionLogStorageType.Default) return null;
+  return <SettingsLink orgId={orgId} projectId={projectId} />;
+};
+
 export const SessionLogsPanel = ({
   orgId,
   projectId,
@@ -604,8 +610,8 @@ export const SessionLogsPanel = ({
         actions={
           <Inline gap={8}>
             {retryButton}
-            {canEditSessionLogSettings && !isDefaultStorage && (
-              <SettingsLink orgId={orgId} projectId={projectId} />
+            {canEditSessionLogSettings && (
+              <StorageErrorSettingsLink orgId={orgId} projectId={projectId} />
             )}
           </Inline>
         }
