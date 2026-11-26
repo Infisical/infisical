@@ -437,34 +437,28 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [upgrading, setUpgrading] = useState(false);
   const { data: subscription } = useV4Adapter("billing").useSubscription(orgId);
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
-  const canCreate =
-    permissionPending ||
-    permission.can(
-      ProjectPermissionSecretScanningDataSourceActions.Create,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+  const canCreate = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Create,
+    ProjectPermissionSub.SecretScanningDataSources
+  );
   const canRead =
     permissionPending ||
     permission.can(
       ProjectPermissionSecretScanningDataSourceActions.Read,
       ProjectPermissionSub.SecretScanningDataSources
     );
-  const editReason =
-    permissionPending ||
-    permission.can(
-      ProjectPermissionSecretScanningDataSourceActions.Edit,
-      ProjectPermissionSub.SecretScanningDataSources
-    )
-      ? undefined
-      : RESTRICTED;
-  const deleteReason =
-    permissionPending ||
-    permission.can(
-      ProjectPermissionSecretScanningDataSourceActions.Delete,
-      ProjectPermissionSub.SecretScanningDataSources
-    )
-      ? undefined
-      : RESTRICTED;
+  const editReason = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Edit,
+    ProjectPermissionSub.SecretScanningDataSources
+  )
+    ? undefined
+    : RESTRICTED;
+  const deleteReason = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Delete,
+    ProjectPermissionSub.SecretScanningDataSources
+  )
+    ? undefined
+    : RESTRICTED;
   const createDisabledReason = canCreate
     ? undefined
     : "You don't have permission to add data sources";
