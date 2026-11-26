@@ -37,7 +37,11 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { MAX_PERSONAL_VARIABLES, MAX_VARIABLES } from "@app/helpers/agentVaultVariables";
 import { copyToClipboard } from "@app/helpers/clipboard";
-import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
+import {
+  AgentVaultOauthStatus,
+  AgentVaultVariableScope,
+  AgentVaultVariableType
+} from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -49,6 +53,12 @@ import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
+import { OAuthStatusBadge } from "../resources/service-oauth";
+import {
+  ClassicVariablesLink,
+  openClassicVariables,
+  useClassicVariablesHref
+} from "../resources/service-oauth-variable";
 import { DateCell } from "../resources/shared";
 import { VariableDialog } from "../resources/variable-dialog";
 
@@ -58,6 +68,9 @@ const MASK = "\u2022".repeat(8);
 const SERVICES_SHOWN = 2;
 
 const revealSlot = (variable: TAgentVaultVariable) => `${variable.id}:${variable.updatedAt}`;
+
+const isOAuthVariable = (variable: TAgentVaultVariable) =>
+  variable.type === AgentVaultVariableType.OAuth;
 
 const UsedBy = ({ variable }: { variable: TAgentVaultVariable }) => {
   const services = variable.usedByServices;
@@ -116,13 +129,17 @@ const VariableValue = ({
 
 const VariableMenu = ({
   canCopy,
+  canAuthorize,
   canDelete,
   onCopy,
+  onAuthorize,
   onDelete
 }: {
   canCopy: boolean;
+  canAuthorize: boolean;
   canDelete: boolean;
   onCopy: () => void;
+  onAuthorize: () => void;
   onDelete: () => void;
 }) => (
   <>
@@ -132,7 +149,13 @@ const VariableMenu = ({
         Copy value
       </DropdownMenuItem>
     )}
-    {canCopy && canDelete && <DropdownMenuSeparator />}
+    {canAuthorize && (
+      <DropdownMenuItem onSelect={onAuthorize}>
+        <Icon name="key" />
+        Authorize in classic
+      </DropdownMenuItem>
+    )}
+    {(canCopy || canAuthorize) && canDelete && <DropdownMenuSeparator />}
     {canDelete && (
       <DropdownMenuItem variant="destructive" onSelect={onDelete}>
         <Icon name="trash" />
@@ -170,6 +193,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealingId, setRevealingId] = useState<string>();
   const searchTerm = debouncedSearch.trim();
+  const classicHref = useClassicVariablesHref(projectId);
 
   const { data, isPending } = resources.useVariables(projectId, {
     scope,
@@ -248,20 +272,35 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
       text: (variable) => variable.key,
       render: (variable) => <span title={variable.key}>{variable.key}</span>
     },
+    ...(isPersonal
+      ? []
+      : [
+          {
+            id: "type",
+            header: "Type",
+            width: 96,
+            render: (variable: TAgentVaultVariable) => (
+              <span>{isOAuthVariable(variable) ? "OAuth" : "Text"}</span>
+            )
+          } satisfies DataTableColumn<TAgentVaultVariable>
+        ]),
     {
       id: "value",
       header: "Value",
       grow: true,
       minWidth: 200,
-      render: (variable) => (
-        <VariableValue
-          variableKey={variable.key}
-          value={revealed[revealSlot(variable)]}
-          canReveal={canReadValue}
-          isRevealing={revealingId === variable.id}
-          onToggle={() => toggleReveal(variable)}
-        />
-      )
+      render: (variable) =>
+        isOAuthVariable(variable) ? (
+          <OAuthStatusBadge status={variable.oauth?.status ?? AgentVaultOauthStatus.NotConnected} />
+        ) : (
+          <VariableValue
+            variableKey={variable.key}
+            value={revealed[revealSlot(variable)]}
+            canReveal={canReadValue}
+            isRevealing={revealingId === variable.id}
+            onToggle={() => toggleReveal(variable)}
+          />
+        )
     },
     {
       id: "serviceCount",
@@ -278,7 +317,7 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
     }
   ];
 
-  const hasMenu = canReadValue || canDelete;
+  const hasMenu = canReadValue || canEdit || canDelete;
   const rowActions: DataTableRowActions<TAgentVaultVariable> | undefined =
     canEdit || hasMenu
       ? {
@@ -295,9 +334,13 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
           renderMenu: hasMenu
             ? (variable) => (
                 <VariableMenu
-                  canCopy={canReadValue}
+                  canCopy={canReadValue && !isOAuthVariable(variable)}
+                  canAuthorize={
+                    canEdit && isOAuthVariable(variable) && !variable.oauth?.redirectUri
+                  }
                   canDelete={canDelete}
                   onCopy={() => copyValue(variable)}
+                  onAuthorize={() => openClassicVariables(classicHref)}
                   onDelete={() => setDeleting(variable)}
                 />
               )
@@ -374,9 +417,14 @@ const Variables = ({ projectId, scope }: { projectId: string; scope: AgentVaultV
               icon="braces"
               title="No variables yet"
               description={
-                isPersonal
-                  ? "Reuse one of your values across the services you set up."
-                  : "Store a value once and use it in any service as {{KEY}}."
+                isPersonal ? (
+                  "Reuse one of your values across the services you set up."
+                ) : (
+                  <>
+                    Store a value once and use it in any service as {"{{KEY}}"}. To add an OAuth
+                    variable, use the <ClassicVariablesLink projectId={projectId} />.
+                  </>
+                )
               }
             />
           )

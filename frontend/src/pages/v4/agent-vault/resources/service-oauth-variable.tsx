@@ -26,17 +26,27 @@ import type { TServiceFormApi } from "./service-form";
 
 // v4 can't sign an OAuth variable in yet. The tab opens with an opener so it inherits the session's classic paths,
 // and the half-filled service sheet stays open here.
-const ClassicVariablesLink = ({ projectId }: { projectId: string }) => {
-  const href = `/organizations/${useOrgId()}/projects/agent-vault/${projectId}/variables`;
+export const useClassicVariablesHref = (projectId: string) =>
+  `/organizations/${useOrgId()}/projects/agent-vault/${projectId}/variables`;
+
+export const openClassicVariables = (href: string) => {
+  keepInClassic(href);
+  window.open(href, "_blank");
+};
+
+export const ClassicVariablesLink = ({ projectId }: { projectId: string }) => {
+  const href = useClassicVariablesHref(projectId);
   return (
     <Link
       href={href}
       data-open-classic
       onClick={(event) => {
-        keepInClassic(href);
-        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) {
+          keepInClassic(href);
+          return;
+        }
         event.preventDefault();
-        window.open(href, "_blank");
+        openClassicVariables(href);
       }}
     >
       classic variables page
