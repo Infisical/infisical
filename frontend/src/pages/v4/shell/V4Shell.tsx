@@ -16,9 +16,18 @@ import {
   useRouterState
 } from "@tanstack/react-router";
 
+import {
+  ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { useProjectPermission } from "../access/permissions";
 import { useAgentVaultSetupSidebar } from "../agent-vault/setup-checklist/SetupChecklist";
 import {
   useHasProjectCertificateSyncs,
@@ -198,8 +207,42 @@ export const V4Shell = ({
         session.organization.isSubOrganization
       );
   const hasCertificateSyncs = useHasProjectCertificateSyncs(orgId, located.level === "pki");
-  const at =
-    located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located;
+  const isAgentVault = located.level === "agent-vault";
+  const { permission: agentVaultPermission } = useProjectPermission(
+    isAgentVault ? (located.projectId ?? "") : ""
+  );
+  const agentVaultHidden: [string, boolean][] = isAgentVault
+    ? [
+        [
+          "access",
+          agentVaultPermission.can(
+            ProjectPermissionMemberActions.Read,
+            ProjectPermissionSub.Member
+          ) ||
+            agentVaultPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
+            agentVaultPermission.can(
+              ProjectPermissionIdentityActions.Read,
+              ProjectPermissionSub.Identity
+            )
+        ],
+        [
+          "audit",
+          agentVaultPermission.can(
+            ProjectPermissionAuditLogsActions.Read,
+            ProjectPermissionSub.AuditLogs
+          )
+        ],
+        ["skills", canManageAgentVaultSkills(agentVaultPermission)],
+        [
+          "session-logs",
+          agentVaultPermission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Settings)
+        ]
+      ]
+    : [];
+  const at = agentVaultHidden.reduce(
+    (location, [itemId, allowed]) => (allowed ? location : withoutNavItem(location, itemId)),
+    located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located
+  );
   const go = (href: string) => navigate({ href: resolve(href) });
   const product = at.product ? productOf(at.product) : undefined;
   const hue = hueOf(product);
