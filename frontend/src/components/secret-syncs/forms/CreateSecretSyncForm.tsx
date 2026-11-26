@@ -86,7 +86,6 @@ type FormTab = {
   rightExtra?: {
     title: string;
     description: string;
-    examples: { path: string; result: string; tone: "warning" | "success" }[];
   };
   fields: FieldPath<TSecretSyncForm>[];
 };
@@ -94,17 +93,12 @@ type FormTab = {
 const getFormTabs = (
   destination: SecretSync,
   destinationName: string,
-  supportsFolderStructure: boolean,
-  preservesFolderStructure: boolean
+  supportsFolderStructure: boolean
 ): FormTab[] => {
   const sourceFields: (keyof TSecretSyncForm)[] =
     destination === SecretSync.AzureEntraIdScim
       ? ["secretPath", "environment", "includeAllSubFolders", "syncOptions"]
       : ["secretPath", "environment", "includeAllSubFolders"];
-
-  const mirroredPrefix = destination === SecretSync.AWSParameterStore ? "/prod/" : "";
-  // A Secrets Manager name in a folder starts with "/", as a Parameter Store path does.
-  const mirroredFolderPrefix = mirroredPrefix || "/";
 
   return [
     {
@@ -124,20 +118,7 @@ const getFormTabs = (
         rightExtra: {
           title: "About duplicate keys",
           description:
-            "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: preserving the folder structure keeps every value at its own path, while flattening needs each name to be unique.",
-          examples: preservesFolderStructure
-            ? [
-                { path: "/backend/API_KEY", result: `${mirroredPrefix}API_KEY`, tone: "success" },
-                {
-                  path: "/backend/api/API_KEY",
-                  result: `${mirroredFolderPrefix}api/API_KEY`,
-                  tone: "success"
-                }
-              ]
-            : [
-                { path: "/backend/API_KEY", result: "duplicate", tone: "warning" },
-                { path: "/backend/api/API_KEY", result: "duplicate", tone: "warning" }
-              ]
+            "The same key can exist in several folders. What happens to duplicates is decided by the folder mapping in the Destination step: preserving the folder structure keeps every value at its own path, while flattening needs each name to be unique."
         }
       })
     },
@@ -156,19 +137,7 @@ const getFormTabs = (
           description:
             destination === SecretSync.AWSParameterStore
               ? "Preserving the folder structure recreates your Infisical folder tree under the base path, one-to-one. Every key keeps its own path, so duplicate keys never collide."
-              : "Preserving the folder structure prefixes each secret's name with its folder, one-to-one. Every key keeps its own name, so duplicate keys never collide.",
-          examples: [
-            {
-              path: "/backend/api/API_KEY",
-              result: `${mirroredFolderPrefix}api/API_KEY`,
-              tone: "success"
-            },
-            {
-              path: "/backend/workers/API_KEY",
-              result: `${mirroredFolderPrefix}workers/API_KEY`,
-              tone: "success"
-            }
-          ]
+              : "Preserving the folder structure prefixes each secret's name with its folder, one-to-one. Every key keeps its own name, so duplicate keys never collide."
         }
       })
     },
@@ -278,12 +247,7 @@ export const CreateSecretSyncForm = ({
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
   const preservesFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
-  const formTabs = getFormTabs(
-    destination,
-    destinationName,
-    supportsFolderStructure,
-    preservesFolderStructure
-  );
+  const formTabs = getFormTabs(destination, destinationName, supportsFolderStructure);
   const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
   const {
     confirmDiscard,
@@ -567,16 +531,6 @@ export const CreateSecretSyncForm = ({
                   <p className="mt-2 text-sm leading-relaxed text-muted">
                     {currentTab.rightExtra.description}
                   </p>
-                  <div className="mt-4 flex flex-col gap-3 rounded-md border border-border bg-container p-4 font-mono text-xs">
-                    {currentTab.rightExtra.examples.map(({ path, result, tone }) => (
-                      <div key={path}>
-                        <p className="text-label">{path}</p>
-                        <p className={tone === "warning" ? "text-warning" : "text-success"}>
-                          → {result}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
                 </>
               )}
             </div>

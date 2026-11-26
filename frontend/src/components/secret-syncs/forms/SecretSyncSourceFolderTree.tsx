@@ -128,9 +128,8 @@ export const SecretSyncSourceFolderTree = ({
                             className="cursor-default text-left underline decoration-dotted underline-offset-2"
                           >
                             Secret key{" "}
-                            <span className="font-mono font-semibold">{conflict.key}</span> is
-                            duplicated {conflict.paths.length}{" "}
-                            {conflict.paths.length > 1 ? "times" : "time"}
+                            <span className="font-mono font-semibold">{conflict.key}</span> is in{" "}
+                            {conflict.paths.length} folders
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top" align="start">

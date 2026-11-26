@@ -9,7 +9,10 @@ import {
   FieldContent,
   FieldDescription,
   Label,
-  Toggle
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
@@ -23,6 +26,21 @@ import { TSecretSyncForm } from "../schemas";
 import { SecretSyncRecursiveConflictsAlert } from "../SecretSyncRecursiveConflictsAlert";
 
 const MAX_DISPLAYED_ROWS = 8;
+
+// Each row is its own grid, so the badge column has a fixed width to keep the columns aligned.
+const ROW_COLUMNS = "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]";
+const ROW_COLUMNS_WITH_BADGE = "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_6rem]";
+
+const PathCell = ({ path }: { path: string }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="truncate font-mono">{path}</span>
+    </TooltipTrigger>
+    <TooltipContent side="top" align="start" className="max-w-md font-mono break-all">
+      {path}
+    </TooltipContent>
+  </Tooltip>
+);
 
 type Props = {
   // Prepended to every destination name, eg a Parameter Store path.
@@ -97,6 +115,7 @@ export const SecretSyncPreserveFolderStructureField = ({
     ? getSecretSyncRelativeFolder(nestedFolder.path, secretPath)
     : "api";
   const sourceRoot = secretPath === "/" ? "" : secretPath;
+  const rowColumns = rows.some((row) => row.isDuplicate) ? ROW_COLUMNS_WITH_BADGE : ROW_COLUMNS;
 
   return (
     <>
@@ -158,7 +177,9 @@ export const SecretSyncPreserveFolderStructureField = ({
             </p>
           </div>
           <div className="overflow-hidden rounded-md border border-border text-sm">
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-3 border-b border-border px-4 py-2 text-xs text-muted">
+            <div
+              className={`grid ${rowColumns} gap-3 border-b border-border px-4 py-2 text-xs text-muted`}
+            >
               <span>Infisical</span>
               <span className="w-3.5" />
               <span>{destinationName}</span>
@@ -166,21 +187,19 @@ export const SecretSyncPreserveFolderStructureField = ({
             {rows.slice(0, MAX_DISPLAYED_ROWS).map((row) => (
               <div
                 key={row.source}
-                className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0"
+                className={`grid ${rowColumns} items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0`}
               >
-                <span className="truncate font-mono">{row.source}</span>
+                <PathCell path={row.source} />
                 <ArrowRight className="size-3.5 text-muted" />
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate font-mono">{row.destination}</span>
-                  {row.isDuplicate && (
-                    <Badge
-                      className="ml-auto shrink-0"
-                      variant={preserveFolderStructure ? "success" : "danger"}
-                    >
-                      {preserveFolderStructure ? "No Collision" : "Collision"}
-                    </Badge>
-                  )}
-                </span>
+                <PathCell path={row.destination} />
+                {row.isDuplicate && (
+                  <Badge
+                    className="justify-self-end"
+                    variant={preserveFolderStructure ? "success" : "danger"}
+                  >
+                    {preserveFolderStructure ? "No Collision" : "Collision"}
+                  </Badge>
+                )}
               </div>
             ))}
             {rows.length > MAX_DISPLAYED_ROWS && (
