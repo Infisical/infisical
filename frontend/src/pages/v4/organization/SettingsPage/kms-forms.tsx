@@ -28,8 +28,7 @@ import {
   type ExternalKmsGcpCredentialSchemaType,
   ExternalKmsProvider,
   type Kms,
-  KmsAwsCredentialType,
-  UpdateExternalKmsSchema
+  KmsAwsCredentialType
 } from "@app/hooks/api/kms/types";
 
 import { useOrgId } from "../../access/permissions";
@@ -52,6 +51,8 @@ export type KmsFormProps = {
 };
 
 type Errors = Record<string, string | undefined>;
+
+const KmsDetailsSchema = AddExternalKmsSchema.pick({ name: true, description: true });
 
 const issuesOf = (error?: ZodError): Errors =>
   Object.fromEntries(
@@ -261,7 +262,7 @@ export const AwsKmsForm = ({
         configuration: { type: ExternalKmsProvider.Aws, inputs }
       });
     else if (mode === "details")
-      parsed = UpdateExternalKmsSchema.safeParse({
+      parsed = KmsDetailsSchema.safeParse({
         name: draft.name,
         description: draft.description
       });
@@ -531,7 +532,7 @@ const gcpErrorsOf = ({
 }): Errors => {
   const next: Errors = {};
   if (mode !== "credentials") {
-    Object.assign(next, issuesOf(UpdateExternalKmsSchema.safeParse({ name, description }).error));
+    Object.assign(next, issuesOf(KmsDetailsSchema.safeParse({ name, description }).error));
     if (!name.trim()) next.name = "Alias is required.";
   }
   if (mode === "details") return next;

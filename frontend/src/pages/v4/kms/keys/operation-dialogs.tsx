@@ -362,7 +362,12 @@ export const VerifyDialog = ({ cmek, onClose }: DialogProps) => {
   const [signature, setSignature] = useState("");
   const [isBase64Encoded, setIsBase64Encoded] = useState(false);
   const [errors, setErrors] = useState<{ data?: string; signature?: string }>({});
-  const [result, setResult] = useState<{ valid: boolean; algorithm: string }>();
+  const [result, setResult] = useState<{
+    valid: boolean;
+    algorithm: string;
+    signature: string;
+    data: string;
+  }>();
   const submit = () => {
     const next = {
       data: data ? undefined : "Data cannot be empty",
@@ -378,7 +383,12 @@ export const VerifyDialog = ({ cmek, onClose }: DialogProps) => {
         signingAlgorithm,
         isBase64Encoded
       });
-      setResult({ valid: response.signatureValid, algorithm: response.signingAlgorithm });
+      setResult({
+        valid: response.signatureValid,
+        algorithm: response.signingAlgorithm,
+        signature: signature.trim(),
+        data: isBase64Encoded ? decodeBase64Text(data) : data
+      });
       if (response.signatureValid) saved("Signature is valid");
       else toast({ tone: "bad", title: "Signature is invalid", description: SIGNATURE_INVALID });
     }, "Failed to verify signature");
@@ -395,11 +405,15 @@ export const VerifyDialog = ({ cmek, onClose }: DialogProps) => {
       onSubmit={submit}
     >
       {result ? (
-        <Verdict
-          valid={result.valid}
-          algorithmLabel="Signing algorithm"
-          algorithm={result.algorithm}
-        />
+        <>
+          <Verdict
+            valid={result.valid}
+            algorithmLabel="Signing algorithm"
+            algorithm={result.algorithm}
+          />
+          <Result label="Signature" value={result.signature} />
+          <Result label="Data" value={result.data} />
+        </>
       ) : (
         <>
           <Field label="Data to verify" error={errors.data} wide>

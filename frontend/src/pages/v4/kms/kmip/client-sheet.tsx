@@ -112,20 +112,22 @@ export const KmipClientSheet = ({
               </Field>
               <Field label="Permissions" group wide>
                 <div className={css.permissions}>
-                  {Object.values(KmipPermission).map((permission) => (
-                    <Checkbox
-                      key={permission}
-                      label={kmipPermissionLabels[permission]}
-                      checked={permissions.includes(permission)}
-                      onChange={(checked) =>
-                        setPermissions((current) =>
-                          checked
-                            ? [...current, permission]
-                            : current.filter((entry) => entry !== permission)
-                        )
-                      }
-                    />
-                  ))}
+                  {(Object.entries(kmipPermissionLabels) as [KmipPermission, string][]).map(
+                    ([permission, label]) => (
+                      <Checkbox
+                        key={permission}
+                        label={label}
+                        checked={permissions.includes(permission)}
+                        onChange={(checked) =>
+                          setPermissions((current) =>
+                            checked
+                              ? [...current, permission]
+                              : current.filter((entry) => entry !== permission)
+                          )
+                        }
+                      />
+                    )
+                  )}
                 </div>
               </Field>
             </Stack>

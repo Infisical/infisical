@@ -20,6 +20,7 @@ export const kmipLinks = {
     orgHref(orgId, `/projects/kms/kmip-servers/${kmipServerId}`)
 };
 
+export const KMIP_CLI_DOCS = "https://infisical.com/docs/cli/overview";
 export const KMIP_SERVER_DOCS = "https://infisical.com/docs/documentation/platform/kms/kmip-server";
 export const KMIP_CLIENT_DOCS =
   "https://infisical.com/docs/documentation/platform/kms/kmip-clients";
