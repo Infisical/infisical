@@ -20,10 +20,10 @@ export const enrollmentLabel: Record<EnrollmentType, string> = {
 
 type InventoryMetadata = NonNullable<TListCertificatesDTO["metadataFilter"]>;
 
-export const metadataToText = (metadata: InventoryMetadata) =>
+const metadataToText = (metadata: InventoryMetadata) =>
   metadata.map(({ key, value }) => (value ? `${key}=${value}` : key)).join(", ");
 
-export const textToMetadata = (text: string): InventoryMetadata =>
+const textToMetadata = (text: string): InventoryMetadata =>
   text
     .split(",")
     .map((pair) => {
@@ -32,6 +32,35 @@ export const textToMetadata = (text: string): InventoryMetadata =>
       return { key: key.trim(), ...(value ? { value } : {}) };
     })
     .filter(({ key }) => key);
+
+const pairsOf = (metadata: InventoryMetadata) =>
+  JSON.stringify(metadata.map(({ key, value }) => [key, value ?? null]));
+
+const parseMetadataPairs = (text: string): InventoryMetadata | undefined => {
+  if (!text.startsWith("[")) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!Array.isArray(parsed)) return undefined;
+    const pairs = parsed.filter(
+      (entry): entry is InventoryMetadata[number] =>
+        typeof entry?.key === "string" &&
+        (entry.value === undefined || typeof entry.value === "string")
+    );
+    return pairs.length === parsed.length && pairs.length ? pairs : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Metadata the "key=value, ..." text can't express (commas, "=" in keys, empty values) stays
+// as JSON in the filter so a saved view keeps returning the same certificates.
+export const metadataToFilterValue = (metadata: InventoryMetadata) => {
+  const text = metadataToText(metadata);
+  return pairsOf(textToMetadata(text)) === pairsOf(metadata) ? text : JSON.stringify(metadata);
+};
+
+export const filterValueToMetadata = (value: string): InventoryMetadata =>
+  parseMetadataPairs(value) ?? textToMetadata(value);
 
 export const inventoryFields = (
   authorities: TUnifiedCertificateAuthority[],
@@ -126,7 +155,7 @@ export const filterParams = (filters: FilterBarFilter[]): Partial<TListCertifica
     if (field === "caId") params.caIds = values;
     if (field === "profileId") params.profileIds = values;
     if (field === "applicationId") params.applicationIds = values;
-    if (field === "metadata") params.metadataFilter = textToMetadata(values[0]);
+    if (field === "metadata") params.metadataFilter = filterValueToMetadata(values[0]);
   });
   return params;
 };

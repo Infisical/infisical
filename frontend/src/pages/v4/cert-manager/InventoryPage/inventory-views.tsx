@@ -52,7 +52,7 @@ import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { useV4Session } from "../../data/session/contract";
-import { metadataToText, textToMetadata } from "./inventory-filters";
+import { filterValueToMetadata, metadataToFilterValue } from "./inventory-filters";
 import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
 
 export type InventoryView = {
@@ -96,7 +96,7 @@ const viewToFilters = (viewId: string, view: ViewFilters): InventoryView => {
   add("profileId", view.profileIds ?? []);
   add("source", listOf(view.source));
   add("applicationId", view.applicationIds ?? []);
-  if (view.metadata?.length) add("metadata", [metadataToText(view.metadata)]);
+  if (view.metadata?.length) add("metadata", [metadataToFilterValue(view.metadata)]);
   return { filters, includeDeleted: Boolean(view.includeDeleted) };
 };
 
@@ -117,7 +117,7 @@ const filtersToView = ({ filters, includeDeleted }: InventoryView): TInventoryVi
     if (field === "caId") view.caIds = values;
     if (field === "profileId") view.profileIds = values;
     if (field === "applicationId") view.applicationIds = values;
-    if (field === "metadata") view.metadata = textToMetadata(values[0]);
+    if (field === "metadata") view.metadata = filterValueToMetadata(values[0]);
   });
   return view;
 };

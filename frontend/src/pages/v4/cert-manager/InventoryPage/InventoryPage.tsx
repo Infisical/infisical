@@ -54,7 +54,9 @@ import {
   RevokeCertificateDialog,
   shortDate,
   CertManagerNotSetUp,
-  useCertManagerProjectId
+  useCertificateReasons,
+  useCertManagerProjectId,
+  useRevocationApprovals
 } from "../components/certificate";
 import { ExportCertificateDialog } from "../components/certificate-export";
 import { AutoRenewalDialog } from "../components/certificate-requests/auto-renewal-dialog";
@@ -250,17 +252,26 @@ type RowAction = { kind: RowActionKind; cert: TCertificate };
 const InventoryRowMenu = ({
   cert,
   caType,
+  projectId,
   isAdmin,
   onView,
   onAction
 }: {
   cert: TCertificate;
   caType?: CaType;
+  projectId: string;
   isAdmin: boolean;
   onView: () => void;
   onAction: (kind: RowActionKind) => void;
 }) => {
-  const blocks = certificateBlocks(cert, { isInventoryView: !cert.applicationName, caType });
+  const revocation = useRevocationApprovals(cert.applicationId)(cert);
+  const blocks = certificateBlocks(cert, {
+    isInventoryView: !cert.applicationName,
+    caType,
+    revocation
+  });
+  const { editReason, renewReason, autoRenewReason, syncReason, revokeReason, deleteReason } =
+    useCertificateReasons(cert, projectId, blocks, revocation);
   const updateRenewal = useV4Adapter("certificates").useUpdateRenewalConfig();
   const isAutoRenewalEnabled = Boolean(cert.renewBeforeDays && cert.renewBeforeDays > 0);
   const disableAutoRenewal = async () => {
@@ -281,21 +292,21 @@ const InventoryRowMenu = ({
         <Icon name="download" />
         Export certificate
       </DropdownMenuItem>
-      <DropdownMenuItem disabledReason={blocks.renew} onSelect={() => onAction("renew")}>
+      <DropdownMenuItem disabledReason={renewReason} onSelect={() => onAction("renew")}>
         <Icon name="sync" />
         Renew now
       </DropdownMenuItem>
-      <DropdownMenuItem disabledReason={blocks.autoRenew} onSelect={() => onAction("autoRenew")}>
+      <DropdownMenuItem disabledReason={autoRenewReason} onSelect={() => onAction("autoRenew")}>
         <Icon name="clock" />
         {isAutoRenewalEnabled ? "Manage auto renewal" : "Enable auto renewal"}
       </DropdownMenuItem>
       {isAutoRenewalEnabled && !blocks.autoRenew && (
-        <DropdownMenuItem onSelect={disableAutoRenewal}>
+        <DropdownMenuItem disabledReason={editReason} onSelect={disableAutoRenewal}>
           <Icon name="x" />
           Disable auto renewal
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem disabledReason={blocks.sync} onSelect={() => onAction("sync")}>
+      <DropdownMenuItem disabledReason={syncReason} onSelect={() => onAction("sync")}>
         <Icon name="link" />
         Manage certificate syncs
       </DropdownMenuItem>
@@ -311,15 +322,15 @@ const InventoryRowMenu = ({
       <DropdownMenuSeparator />
       <DropdownMenuItem
         variant="destructive"
-        disabledReason={blocks.revoke}
+        disabledReason={revokeReason}
         onSelect={() => onAction("revoke")}
       >
         <Icon name="x" />
-        Revoke certificate
+        {revocation.isRevocationApprovalRequired ? "Request revocation" : "Revoke certificate"}
       </DropdownMenuItem>
       <DropdownMenuItem
         variant="destructive"
-        disabledReason={blocks.delete}
+        disabledReason={deleteReason}
         onSelect={() => onAction("delete")}
       >
         <Icon name="trash" />
@@ -369,6 +380,7 @@ const InventoryRowDialogs = ({
   projectId: string;
   onClose: () => void;
 }) => {
+  const { isRevocationApprovalRequired } = useRevocationApprovals(cert.applicationId)(cert);
   switch (kind) {
     case "export":
       return <ExportCertificateDialog cert={cert} projectId={projectId} onClose={onClose} />;
@@ -388,7 +400,13 @@ const InventoryRowDialogs = ({
     case "assign":
       return <AssignApplicationDialog cert={cert} onClose={onClose} />;
     case "revoke":
-      return <RevokeCertificateDialog cert={cert} onClose={onClose} />;
+      return (
+        <RevokeCertificateDialog
+          cert={cert}
+          isRevocationApprovalRequired={isRevocationApprovalRequired}
+          onClose={onClose}
+        />
+      );
     default:
       return (
         <DeleteCertificateDialog
@@ -521,7 +539,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const { data: profiles } = certificates.useCertificateProfiles({
     limit: 100
   });
-  const { data: applications } = useV4Adapter("pkiApplications").useApplications({ limit: 100 });
+  const { data: applications } = useV4Adapter("pkiApplications").useAllApplications();
 
   const rows = data?.certificates ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -572,7 +590,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               value: entry.id,
               label: entry.slug
             })),
-            (applications?.applications ?? []).map((app) => ({ value: app.id, label: app.name }))
+            (applications ?? []).map((app) => ({ value: app.id, label: app.name }))
           )}
           value={filters}
           onChange={(next) => {
@@ -619,6 +637,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               <InventoryRowMenu
                 cert={r}
                 caType={caType(r)}
+                projectId={projectId}
                 isAdmin={isAdmin}
                 onView={() => open(r.id)}
                 onAction={(kind) => setAction({ kind, cert: r })}
