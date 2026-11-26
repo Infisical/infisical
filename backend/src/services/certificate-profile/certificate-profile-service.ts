@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 
 import { ProjectType } from "@app/db/schemas";
 import {
@@ -15,6 +16,12 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import {
+  assertProfileCaSupportsMicrosoftAutoenrollment,
+  describeApplicationList,
+  loadTemplateSigningCa
+} from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
@@ -54,7 +61,7 @@ import { TCertificatePolicy, TCertificateRequest } from "../certificate-policy/c
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertStatus } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import {
@@ -334,7 +341,7 @@ type TCertificateProfileServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiApplicationProfileDAL?: Pick<
     TPkiApplicationProfileDALFactory,
-    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId"
+    "findOneByApplicationAndProfile" | "findByApplicationId" | "findAllByProfileId" | "primaryNode"
   >;
 };
 
@@ -757,6 +764,53 @@ export const certificateProfileServiceFactory = ({
     return convertDalToService(profile);
   };
 
+  const $assertMicrosoftAutoenrollmentStillWorks = async (
+    {
+      profileId,
+      profileSlug,
+      certificatePolicyId,
+      caId,
+      keyAlgorithm,
+      signatureAlgorithm
+    }: {
+      profileId: string;
+      profileSlug: string;
+      certificatePolicyId: string;
+      caId?: string | null;
+      keyAlgorithm?: CertKeyAlgorithm;
+      signatureAlgorithm?: CertSignatureAlgorithm;
+    },
+    tx?: Knex
+  ) => {
+    if (!pkiApplicationProfileDAL) return;
+    const enabledInApplicationNames = (
+      await pkiApplicationProfileDAL.findAllByProfileId(profileId, tx ?? pkiApplicationProfileDAL.primaryNode())
+    )
+      .filter((attachment) => attachment.microsoftAutoenrollmentConfigId)
+      .map((attachment) => attachment.applicationName);
+    if (!enabledInApplicationNames.length) return;
+    await assertProfileCaSupportsMicrosoftAutoenrollment(
+      { profileSlug, caId, keyAlgorithm, enabledInApplicationNames },
+      certificateAuthorityDAL,
+      tx
+    );
+    const policy = await certificatePolicyDAL.findById(certificatePolicyId, tx);
+    const signingCa = await loadTemplateSigningCa(caId, { certificateAuthorityDAL, certificateAuthoritySecretDAL }, tx);
+    const keyProblem =
+      policy &&
+      findTemplatePolicyProblem(
+        { slug: profileSlug, defaults: { keyAlgorithm, signatureAlgorithm } },
+        signingCa,
+        (request) =>
+          certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true }).isValid
+      );
+    if (keyProblem) {
+      throw new BadRequestError({
+        message: `Microsoft Autoenrollment is on for profile '${profileSlug}' in ${describeApplicationList(enabledInApplicationNames)}. This change would stop it working: ${keyProblem} You can also turn Microsoft Autoenrollment off there first.`
+      });
+    }
+  };
+
   const updateProfile = async ({
     actor,
     profileId,
@@ -832,6 +886,22 @@ export const certificateProfileServiceFactory = ({
 
     await validateAcmEnrollmentType(finalCaId, finalEnrollmentType, externalCertificateAuthorityDAL);
 
+    const existingKeyAlgorithm = (existingProfile.defaults as TCertificateProfileDefaults | null)?.keyAlgorithm;
+    const finalKeyAlgorithm = data.defaults !== undefined ? data.defaults?.keyAlgorithm : existingKeyAlgorithm;
+    const isWindowsTemplateChange =
+      Boolean(pkiApplicationProfileDAL) && (finalCaId !== existingProfile.caId || data.defaults !== undefined);
+    const windowsTemplate = {
+      profileId,
+      profileSlug: data.slug ?? existingProfile.slug,
+      certificatePolicyId: existingProfile.certificatePolicyId,
+      caId: finalCaId,
+      keyAlgorithm: finalKeyAlgorithm,
+      signatureAlgorithm:
+        data.defaults !== undefined
+          ? data.defaults?.signatureAlgorithm
+          : (existingProfile.defaults as TCertificateProfileDefaults | null)?.signatureAlgorithm
+    };
+    if (isWindowsTemplateChange) await $assertMicrosoftAutoenrollmentStillWorks(windowsTemplate);
     // Validate external configs only if they are provided in the update
     if (data.externalConfigs !== undefined) {
       await validateExternalConfigs(
@@ -1008,6 +1078,10 @@ export const certificateProfileServiceFactory = ({
         }
       }
 
+      if (isWindowsTemplateChange) {
+        await certificatePolicyDAL.lockById(existingProfile.certificatePolicyId, tx);
+        await $assertMicrosoftAutoenrollmentStillWorks(windowsTemplate, tx);
+      }
       const profileResult = await certificateProfileDAL.updateById(profileId, profileUpdateData, tx);
       return profileResult;
     });

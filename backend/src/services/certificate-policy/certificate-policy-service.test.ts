@@ -48,8 +48,10 @@ describe("CertificatePolicyService", () => {
     countByProjectId: vi.fn(),
     isPolicyInUse: vi.fn(),
     getProfilesUsingPolicy: vi.fn(),
+    findMicrosoftAutoenrollmentProfiles: vi.fn(),
+    lockById: vi.fn(),
     findByNameAndProjectId: vi.fn(),
-    transaction: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback("tx")),
     find: vi.fn(),
     findOne: vi.fn(),
     findMany: vi.fn(),
@@ -389,11 +391,90 @@ describe("CertificatePolicyService", () => {
       });
 
       expect(mockCertificatePolicyDAL.findById).toHaveBeenCalledWith("policy-123");
-      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith("policy-123", {
-        ...updateData,
-        name: expect.any(String)
-      });
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalledWith(
+        "policy-123",
+        {
+          ...updateData,
+          name: expect.any(String)
+        },
+        "tx"
+      );
       expect(result).toEqual(updatedTemplate);
+    });
+
+    it("refuses custom extension rules that leave out the extensions a Microsoft Autoenrollment profile on the policy adds", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { customExtensions: [{ oid: "1.3.6.1.4.1.311.25.2", allowed: ["*"] }] }
+        })
+      ).rejects.toThrow("Allow 1.3.6.1.4.1.311.21.7 in the policy's custom extension rules");
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses removing the key algorithm a Microsoft Autoenrollment profile on the policy asks Windows for", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        { profileName: "windows-computers", profileDefaults: null, applicationName: "fleet" }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { algorithms: { keyAlgorithm: ["RSA-4096"] } }
+        })
+      ).rejects.toThrow(
+        /'windows-computers' uses this policy with Microsoft Autoenrollment in Application 'fleet'.*no default key algorithm/
+      );
+      expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("refuses a signature-only edit that drops the algorithm a Microsoft Autoenrollment profile has Windows sign with", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([
+        {
+          profileName: "windows-computers",
+          profileDefaults: { keyAlgorithm: "RSA_2048", signatureAlgorithm: "RSA-SHA384" },
+          applicationName: "fleet"
+        }
+      ]);
+
+      await expect(
+        service.updatePolicy({
+          ...mockActor,
+          policyId: "policy-123",
+          data: { algorithms: { signature: ["SHA256-RSA"] } }
+        })
+      ).rejects.toThrow(/asks Windows to sign its requests with RSA-SHA384/);
+      expect(mockCertificatePolicyDAL.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lets a policy restrict custom extensions when no Microsoft Autoenrollment profile uses it", async () => {
+      mockCertificatePolicyDAL.findById.mockResolvedValue(sampleTemplate);
+      mockCertificatePolicyDAL.getProfilesUsingPolicy.mockResolvedValue([]);
+      mockCertificatePolicyDAL.findMicrosoftAutoenrollmentProfiles.mockResolvedValue([]);
+      mockCertificatePolicyDAL.updateById.mockResolvedValue(sampleTemplate);
+
+      await service.updatePolicy({
+        ...mockActor,
+        policyId: "policy-123",
+        data: { customExtensions: [{ oid: "1.2.3.4", allowed: ["*"] }] }
+      });
+
+      expect(mockCertificatePolicyDAL.updateById).toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when template does not exist", async () => {

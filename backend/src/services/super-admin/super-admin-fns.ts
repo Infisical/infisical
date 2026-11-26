@@ -32,8 +32,8 @@ export const validateIdentityUpdateForSuperAdminPrivileges = async (
   }
 };
 
-export const assertInitialSetupActivationToken = (providedToken?: string) => {
-  const expectedToken = getConfig().INITIAL_SETUP_ACTIVATION_TOKEN;
+export const assertInstanceSetupToken = (providedToken?: string) => {
+  const expectedToken = getConfig().INSTANCE_SETUP_TOKEN;
   if (!expectedToken) return;
 
   const sha256 = (value: string) => crypto.nativeCrypto.createHash("sha256").update(value).digest();
@@ -42,8 +42,8 @@ export const assertInitialSetupActivationToken = (providedToken?: string) => {
 
   if (!isValid) {
     throw new ForbiddenRequestError({
-      name: SuperAdminErrorCode.InvalidActivationToken,
-      message: "The activation token is missing or incorrect."
+      name: SuperAdminErrorCode.InvalidSetupToken,
+      message: "The setup token is missing or incorrect."
     });
   }
 };

@@ -1,18 +1,22 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
+import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
-import { TSecretFolders } from "@app/db/schemas";
-import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ProjectMembershipRole, ProjectType, SecretFolderRole, TSecretFolders } from "@app/db/schemas";
+import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
+  ProjectAccess,
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  StandardProjectRoles
 } from "@app/domains/platform/projects/ce/module";
+import { FolderGrant, FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -22,6 +26,7 @@ import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   assertFolderDeleteAllowed,
   assertFolderRenameAllowed,
+  assertFolderSubtreeDeleteAllowed,
   assertNoOverlappingFolderEntries,
   buildChildrenMap,
   buildFolderIdMap,
@@ -653,6 +658,138 @@ describe("assertFolderDeleteAllowed", () => {
 
   test("allows a delete when nothing is protected", () => {
     expect(assertFolderDeleteAllowed(null, canReadNothing)).toBeUndefined();
+  });
+});
+
+describe("assertFolderSubtreeDeleteAllowed", () => {
+  const folderGrant = (
+    role: SecretFolderRole,
+    secretPath: string,
+    appliesToSubfolders = false,
+    environmentSlug = "dev"
+  ) =>
+    FolderGrant.restore({
+      id: `grant-${secretPath}`,
+      name: "",
+      actorId: null,
+      folderId: `folder-${secretPath}`,
+      role,
+      environmentSlug,
+      secretPath,
+      appliesToSubfolders,
+      isTemporary: false,
+      temporaryAccessStartTime: null,
+      temporaryAccessEndTime: null
+    });
+
+  const folderDeleteRole = (conditions: object, inverted = false) => ({
+    role: ProjectMembershipRole.Custom,
+    permissions: packRules([
+      { action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretFolders, conditions, inverted }
+    ])
+  });
+
+  const accessOf = (roles: { role: string; permissions?: unknown }[], grants: FolderGrant[] = []) =>
+    Permission.fromRules<ProjectPermissionSet>({
+      rules: ProjectAccess.rulesOf(
+        roles.map(({ role, permissions }) =>
+          role === ProjectMembershipRole.Custom ? Grant.custom(permissions) : Grant.restore({ slug: role })
+        ),
+        StandardProjectRoles.generic(ProjectType.SecretManager)
+      ).then(FolderGrants.of(grants).rules())
+    });
+
+  const noAccess = [{ role: ProjectMembershipRole.NoAccess, permissions: [] }];
+  const member = [{ role: ProjectMembershipRole.Member, permissions: [] }];
+  const scratchTree = [{ path: "/apps/scratch" }, { path: "/apps/scratch/x" }, { path: "/apps/scratch/x/y" }];
+
+  test("refuses a caller held to a lower role on the folder under full access applied from above", () => {
+    const caller = accessOf(noAccess, [
+      folderGrant(SecretFolderRole.FullAccess, "/apps", true),
+      folderGrant(SecretFolderRole.List, "/apps/scratch", true)
+    ]);
+
+    const error = thrown(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree));
+
+    expect(error).toBeInstanceOf(PermissionBoundaryError);
+    expect(error).toMatchObject({
+      message:
+        "Deleting the folder '/apps/scratch' requires permission to delete folders in it and in every folder below it in environment with slug 'dev'. Your access on '/apps/scratch' does not allow deleting folders. Ask someone who can delete folders there to delete it.",
+      details: {
+        missingPermissions: [
+          {
+            action: ProjectPermissionActions.Delete,
+            subject: ProjectPermissionSub.SecretFolders,
+            conditions: { environment: "dev", secretPath: "/apps/scratch" }
+          }
+        ]
+      }
+    });
+  });
+
+  test.each([SecretFolderRole.List, SecretFolderRole.Read, SecretFolderRole.Edit, SecretFolderRole.Manage])(
+    "refuses a project member held to %s on the folder only",
+    (role) => {
+      const caller = accessOf(member, [folderGrant(role, "/apps/scratch")]);
+
+      expect(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree)).toThrow(ForbiddenRequestError);
+    }
+  );
+
+  test("refuses when the lower role sits on a folder below the one being deleted and names that folder", () => {
+    const caller = accessOf(noAccess, [
+      folderGrant(SecretFolderRole.FullAccess, "/apps", true),
+      folderGrant(SecretFolderRole.Read, "/apps/scratch/x/y")
+    ]);
+
+    const error = thrown(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree));
+
+    expect(error).toBeInstanceOf(ForbiddenRequestError);
+    expect((error as Error).message).toContain("Your access on '/apps/scratch/x/y' does not allow deleting folders.");
+  });
+
+  test("refuses a custom role that denies folder delete below the folder being deleted", () => {
+    const caller = accessOf([
+      folderDeleteRole({ environment: "dev" }),
+      folderDeleteRole({ environment: "dev", secretPath: { $glob: "/apps/scratch/x/**" } }, true)
+    ]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree)).toThrow(ForbiddenRequestError);
+  });
+
+  test("allows full access applied to subfolders with nothing lower inside, and full access restored below", () => {
+    const unrestricted = accessOf(noAccess, [folderGrant(SecretFolderRole.FullAccess, "/apps", true)]);
+    const restoredBelow = accessOf(noAccess, [
+      folderGrant(SecretFolderRole.FullAccess, "/apps", true),
+      folderGrant(SecretFolderRole.FullAccess, "/apps/scratch/x")
+    ]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(unrestricted, "dev", scratchTree)).not.toThrow();
+    expect(() => assertFolderSubtreeDeleteAllowed(restoredBelow, "dev", scratchTree)).not.toThrow();
+  });
+
+  test("allows a caller whose access does not reach below the folder being deleted", () => {
+    const fullAccessOnParentOnly = accessOf(noAccess, [folderGrant(SecretFolderRole.FullAccess, "/apps")]);
+    const customRoleOnParentOnly = accessOf([folderDeleteRole({ environment: "dev", secretPath: "/apps" })]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(fullAccessOnParentOnly, "dev", scratchTree)).not.toThrow();
+    expect(() => assertFolderSubtreeDeleteAllowed(customRoleOnParentOnly, "dev", scratchTree)).not.toThrow();
+  });
+
+  test("allows a project admin and a project member with no folder access of their own", () => {
+    const admin = accessOf([{ role: ProjectMembershipRole.Admin, permissions: [] }]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(admin, "dev", scratchTree)).not.toThrow();
+    expect(() => assertFolderSubtreeDeleteAllowed(accessOf(member), "dev", scratchTree)).not.toThrow();
+  });
+
+  test("ignores a lower role held in another environment or on a sibling folder", () => {
+    const caller = accessOf(member, [
+      folderGrant(SecretFolderRole.List, "/apps/scratch", true, "prod"),
+      folderGrant(SecretFolderRole.List, "/apps/web", true)
+    ]);
+
+    expect(() => assertFolderSubtreeDeleteAllowed(caller, "dev", scratchTree)).not.toThrow();
   });
 });
 

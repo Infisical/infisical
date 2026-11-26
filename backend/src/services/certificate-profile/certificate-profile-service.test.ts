@@ -20,7 +20,7 @@ import type { TCertificatePolicyDALFactory } from "../certificate-policy/certifi
 import { RequestReference } from "../certificate-policy/certificate-policy-fns";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertStatus } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
@@ -73,6 +73,7 @@ describe("CertificateProfileService", () => {
 
   const mockCertificatePolicyDAL = {
     findById: vi.fn(),
+    lockById: vi.fn(),
     create: vi.fn(),
     updateById: vi.fn(),
     deleteById: vi.fn(),
@@ -228,6 +229,13 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TCertificateSecretDALFactory;
 
+  const mockPkiApplicationProfileDAL = {
+    findOneByApplicationAndProfile: vi.fn(),
+    findByApplicationId: vi.fn(),
+    findAllByProfileId: vi.fn(),
+    primaryNode: vi.fn()
+  };
+
   const mockCertificateAuthorityDAL = {
     create: vi.fn(),
     findById: vi.fn(),
@@ -266,6 +274,8 @@ describe("CertificateProfileService", () => {
       projectId: "project-123"
     });
 
+    mockPkiApplicationProfileDAL.findAllByProfileId.mockResolvedValue([]);
+
     service = certificateProfileServiceFactory({
       certificateProfileDAL: mockCertificateProfileDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
@@ -286,7 +296,8 @@ describe("CertificateProfileService", () => {
       applicationPermissionService: mockApplicationPermissionService,
       kmsDataKeyService: mockKmsService,
       kmsKeyService: mockKmsService,
-      resourceMetadataDAL: mockResourceMetadataDAL
+      resourceMetadataDAL: mockResourceMetadataDAL,
+      pkiApplicationProfileDAL: mockPkiApplicationProfileDAL
     });
   });
 
@@ -569,6 +580,120 @@ describe("CertificateProfileService", () => {
   });
 
   describe("updateProfile", () => {
+    describe("on a profile with Microsoft Autoenrollment turned on", () => {
+      beforeEach(() => {
+        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
+        (mockCertificateProfileDAL.updateById as any).mockResolvedValue(sampleProfile);
+        mockPkiApplicationProfileDAL.findAllByProfileId.mockResolvedValue([
+          {
+            applicationId: "application-123",
+            applicationName: "Windows fleet",
+            profileId: "profile-123",
+            microsoftAutoenrollmentConfigId: "msae-123"
+          }
+        ]);
+        (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+          id: "ca-123",
+          externalCa: null,
+          internalCa: { keyAlgorithm: "RSA_2048" }
+        });
+      });
+
+      it("refuses an elliptic curve default key on its RSA certificate authority", async () => {
+        await expect(
+          service.updateProfile({
+            ...mockActor,
+            profileId: "profile-123",
+            data: { defaults: { keyAlgorithm: CertKeyAlgorithm.ECDSA_P256 } }
+          })
+        ).rejects.toThrow(/on for profile 'test-profile' in application 'Windows fleet'.*ECDSA P256 keys/);
+        expect(mockCertificateProfileDAL.updateById).not.toHaveBeenCalled();
+      });
+
+      it("refuses clearing the defaults when the policy does not allow the RSA 2048 key Windows then asks for", async () => {
+        (mockCertificateProfileDAL.findById as any).mockResolvedValue({
+          ...sampleProfile,
+          defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_4096 }
+        });
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ id: "policy-123" });
+        mockCertificatePolicyService.validateRequestAgainstPolicy.mockImplementationOnce(
+          (_policy: unknown, request: { keyAlgorithm?: string }) => ({
+            isValid: request.keyAlgorithm !== CertKeyAlgorithm.RSA_2048,
+            errors: [],
+            warnings: []
+          })
+        );
+
+        await expect(
+          service.updateProfile({ ...mockActor, profileId: "profile-123", data: { defaults: null } })
+        ).rejects.toThrow(
+          /profile 'test-profile' in application 'Windows fleet'\. This change would stop it working: .*no default key algorithm, so Windows requests RSA 2048 keys/
+        );
+        expect(mockCertificateProfileDAL.transaction).not.toHaveBeenCalled();
+      });
+
+      it("re-checks under a lock on the policy, reading inside the transaction", async () => {
+        (mockCertificateProfileDAL.findById as any).mockResolvedValue({
+          ...sampleProfile,
+          defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_4096 }
+        });
+        (mockCertificateProfileDAL.transaction as any).mockImplementationOnce(
+          async (fn: (tx: string) => Promise<unknown>) => fn("tx")
+        );
+        (mockCertificatePolicyDAL.findById as any)
+          .mockResolvedValueOnce({ id: "policy-123", allowsRsa2048: true })
+          .mockResolvedValueOnce({ id: "policy-123", allowsRsa2048: true })
+          .mockResolvedValue({ id: "policy-123", allowsRsa2048: false });
+        const allowsKeyOnPolicy = (policy: { allowsRsa2048?: boolean }, request: { keyAlgorithm?: string }) => ({
+          isValid: request.keyAlgorithm !== CertKeyAlgorithm.RSA_2048 || policy.allowsRsa2048 !== false,
+          errors: [],
+          warnings: []
+        });
+        mockCertificatePolicyService.validateRequestAgainstPolicy
+          .mockImplementationOnce(allowsKeyOnPolicy)
+          .mockImplementationOnce(allowsKeyOnPolicy)
+          .mockImplementationOnce(allowsKeyOnPolicy);
+
+        await expect(
+          service.updateProfile({ ...mockActor, profileId: "profile-123", data: { defaults: null } })
+        ).rejects.toThrow(/This change would stop it working: /);
+        expect(mockCertificatePolicyDAL.lockById).toHaveBeenCalledWith("policy-123", "tx");
+        expect(mockPkiApplicationProfileDAL.findAllByProfileId).toHaveBeenLastCalledWith("profile-123", "tx");
+        expect(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).toHaveBeenLastCalledWith("ca-123", "tx");
+        expect(mockCertificatePolicyDAL.findById).toHaveBeenLastCalledWith("policy-123", "tx");
+        expect(mockCertificateProfileDAL.updateById).not.toHaveBeenCalled();
+      });
+
+      it("refuses a default signature algorithm the policy does not allow", async () => {
+        (mockCertificatePolicyDAL.findById as any).mockResolvedValue({ id: "policy-123" });
+        const refusesSha384 = (_policy: unknown, request: { signatureAlgorithm?: string }) => ({
+          isValid: request.signatureAlgorithm !== "RSA-SHA384",
+          errors: [],
+          warnings: []
+        });
+        mockCertificatePolicyService.validateRequestAgainstPolicy
+          .mockImplementationOnce(refusesSha384)
+          .mockImplementationOnce(refusesSha384)
+          .mockImplementationOnce(refusesSha384);
+
+        await expect(
+          service.updateProfile({
+            ...mockActor,
+            profileId: "profile-123",
+            data: { defaults: { keyAlgorithm: CertKeyAlgorithm.RSA_2048, signatureAlgorithm: "RSA-SHA384" } as never }
+          })
+        ).rejects.toThrow(/asks Windows to sign its requests with RSA-SHA384/);
+        expect(mockCertificateProfileDAL.updateById).not.toHaveBeenCalled();
+      });
+
+      it("allows edits that keep the certificate authority and key algorithm", async () => {
+        await service.updateProfile({ ...mockActor, profileId: "profile-123", data: { description: "New" } });
+
+        expect(mockPkiApplicationProfileDAL.findAllByProfileId).not.toHaveBeenCalled();
+        expect(mockCertificateProfileDAL.updateById).toHaveBeenCalled();
+      });
+    });
+
     const updateData = {
       slug: "updated-profile",
       description: "Updated description"

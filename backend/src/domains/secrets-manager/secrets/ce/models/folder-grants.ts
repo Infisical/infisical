@@ -1,6 +1,5 @@
 import { RuleSet } from "@app/domains/platform/access-control/ce/module";
-import { TProjectRule } from "@app/domains/platform/projects/ce/module";
-import { logger } from "@app/lib/logger";
+import { TProjectPermissionAuditSource, TProjectRule } from "@app/domains/platform/projects/ce/module";
 
 import { FolderGrant } from "./folder-grant";
 
@@ -11,6 +10,11 @@ export class FolderGrants {
   // The grants active at `now`: a temporary grant stops applying the moment it ends.
   static inForce(grants: FolderGrant[], now: Date = new Date()): FolderGrants {
     return new FolderGrants(grants.filter((grant) => grant.isActive(now)));
+  }
+
+  // The grants as given, active or not.
+  static of(grants: FolderGrant[]): FolderGrants {
+    return new FolderGrants([...grants]);
   }
 
   static none(): FolderGrants {
@@ -25,34 +29,42 @@ export class FolderGrants {
     return this.grants.length === 0;
   }
 
-  // The grants that apply to subfolders, then the exact ones; within each, every grant's deny block before every
-  // grant's allow block. Each grant resets what is allowed at its folders, the exact grant on a subfolder overrides a
-  // root grant at that folder only, and putting all denies first keeps one grant from undoing another's allow. An
-  // exact grant uses the recursive role tables when a recursive grant in its environment already lets the holder
-  // create and edit folders, so a higher exact role on a subfolder never takes that away.
-  rules(): RuleSet<TProjectRule> {
-    this.grants
-      .filter((grant) => grant.isIgnored)
-      .forEach((grant) =>
-        logger.warn(
-          `FolderGrants: ignoring a folder access grant that applies to subfolders outside the root folder [grantId=${grant.id}] [environment=${grant.environmentSlug}] [secretPath=${grant.secretPath}]`
-        )
-      );
-    const folderEditingEnvironments = new Set(
-      this.grants.filter((grant) => grant.editsFoldersAcrossEnvironment).map((grant) => grant.environmentSlug)
+  // Each grant with the rules it contributes, in the order they apply: the grants that apply to subfolders,
+  // shallowest first, then the exact ones, each grant's denies right before its own allows. So the deepest recursive
+  // grant above a folder decides it, and an exact grant overrides every recursive grant at its own folder only.
+  // Grouping every deny ahead of every allow would let a shallow grant's allows override a deeper grant's denies. An
+  // exact grant keeps the recursive tables' folder create and edit only when the nearest recursive grant above it
+  // gives them.
+  rulesByGrant(): { grant: FolderGrant; rules: RuleSet<TProjectRule> }[] {
+    const recursive = this.grants.filter((grant) => grant.appliesToSubfolders).sort((a, b) => a.depth - b.depth);
+    const exact = this.grants.filter((grant) => !grant.appliesToSubfolders);
+
+    const recursiveByFolder = new Map(
+      recursive.map((grant) => [`${grant.environmentSlug}:${grant.folderPath}`, grant])
     );
-    const blocks = (grants: FolderGrant[]) => {
-      const options = (grant: FolderGrant) => ({
-        recursiveTables: grant.appliesToSubfolders || folderEditingEnvironments.has(grant.environmentSlug)
-      });
-      return [
-        ...grants.flatMap((grant) => grant.denyBlock(options(grant)).rules),
-        ...grants.flatMap((grant) => grant.allowBlock(options(grant)).rules)
-      ];
+    const usesRecursiveTables = (grant: FolderGrant) => {
+      if (grant.appliesToSubfolders) return true;
+      const segments = grant.folderPath.split("/").filter(Boolean);
+      for (let depth = segments.length - 1; depth >= 0; depth -= 1) {
+        const deciding = recursiveByFolder.get(`${grant.environmentSlug}:/${segments.slice(0, depth).join("/")}`);
+        if (deciding) return deciding.editsFolders;
+      }
+      return false;
     };
-    return RuleSet.of([
-      ...blocks(this.grants.filter((grant) => grant.appliesToSubfolders)),
-      ...blocks(this.grants.filter((grant) => !grant.appliesToSubfolders))
-    ]);
+
+    return [...recursive, ...exact].map((grant) => ({
+      grant,
+      rules: grant.rules({ recursiveTables: usesRecursiveTables(grant) })
+    }));
+  }
+
+  rules(): RuleSet<TProjectRule> {
+    return RuleSet.of(this.rulesByGrant().flatMap(({ rules }) => rules.rules));
+  }
+
+  // Each grant as a permission audit source, in the order held, with the rules it contributes beside the others.
+  auditSources(): TProjectPermissionAuditSource[] {
+    const rulesById = new Map(this.rulesByGrant().map(({ grant, rules }) => [grant.id, rules]));
+    return this.grants.map((grant) => grant.toAuditSource(rulesById.get(grant.id)));
   }
 }

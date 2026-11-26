@@ -636,9 +636,9 @@ export const pamSessionServiceFactory = ({
         accountFolderId: account.folderId,
         projectId
       });
-      if (!grant) {
-        // Distinguish "no request yet" from "request awaiting review" and from "folder has no
-        // approvers", so the CLI can guide the user instead of prompting into a 400
+      // Distinguish "no request yet" from "request awaiting review" and from "folder has no
+      // approvers", so the CLI can guide the user instead of prompting into a 400
+      const getApprovalGateDetails = async () => {
         const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
           pamAccessRequestService.getAccessStatusBatch(
             { actorId: actor.principal.id, actor: actor.principal.type },
@@ -647,16 +647,19 @@ export const pamSessionServiceFactory = ({
           ),
           pamAccessRequestService.getFolderPolicyConfigured(account.folderId ? [account.folderId] : [])
         ]);
+        return {
+          requireReason: policy.requireReason,
+          hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
+          hasApprovalPolicy: Boolean(
+            account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
+          )
+        };
+      };
+      if (!grant) {
         throw new ForbiddenRequestError({
           name: "PAM_APPROVAL_REQUIRED",
           message: "Access request required",
-          details: {
-            requireReason: policy.requireReason,
-            hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
-            hasApprovalPolicy: Boolean(
-              account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
-            )
-          }
+          details: await getApprovalGateDetails()
         });
       }
       // A null expiresAt means a never-expiring grant per the checkGrant contract
@@ -666,7 +669,7 @@ export const pamSessionServiceFactory = ({
           throw new ForbiddenRequestError({
             name: "PAM_GRANT_EXPIRED",
             message: "Your approved access has expired",
-            details: { requireReason: policy.requireReason }
+            details: await getApprovalGateDetails()
           });
         }
         sessionDurationMs = Math.min(sessionDurationMs, grantRemainingMs);

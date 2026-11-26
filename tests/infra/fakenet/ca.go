@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -175,7 +176,8 @@ func (c *CA) TLSConfig() *tls.Config {
 }
 
 func (c *CA) certFor(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	name := hello.ServerName
+	// DNS names are case-insensitive, and an override is stored lowercased.
+	name := strings.ToLower(hello.ServerName)
 	if name == "" {
 		// No SNI means the client dialled an IP. Nothing can be forged for that, so
 		// let the handshake fail against a name the error will report.

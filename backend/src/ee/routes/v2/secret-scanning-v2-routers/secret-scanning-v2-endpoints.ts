@@ -13,6 +13,7 @@ import {
   SecretScanningScanSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import {
+  TCreateSecretScanningDataSourceDTO,
   TSecretScanningDataSource,
   TSecretScanningDataSourceInput
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
@@ -48,6 +49,7 @@ export const registerSecretScanningEndpoints = <
     isHistoricalScanEnabled?: boolean;
     isScanNewCommitsEnabled?: boolean;
     isDiscoveryEnabled?: boolean;
+    alerts?: TCreateSecretScanningDataSourceDTO["alerts"];
   }>;
   updateSchema: z.ZodType<{
     name?: string;
@@ -291,6 +293,8 @@ export const registerSecretScanningEndpoints = <
         req.permission
       )) as T;
 
+      // Channel configs can hold webhook URLs and secrets, so the log records only where each alert is sent.
+      const { alerts, ...body } = req.body;
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: dataSource.projectId,
@@ -299,7 +303,13 @@ export const registerSecretScanningEndpoints = <
           metadata: {
             dataSourceId: dataSource.id,
             type,
-            ...req.body
+            ...body,
+            ...(alerts && {
+              alerts: alerts.map((alert) => ({
+                eventType: alert.eventType,
+                channelTypes: alert.channels.map((channel) => channel.channelType)
+              }))
+            })
           }
         }
       });

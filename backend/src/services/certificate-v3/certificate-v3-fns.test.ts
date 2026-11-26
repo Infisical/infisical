@@ -11,6 +11,7 @@ import { RequestReference } from "../certificate-policy/certificate-policy-fns";
 import { EnrollmentType, TCertificateProfileDefaults } from "../certificate-profile/certificate-profile-types";
 import {
   applyCommonNameDefaultSan,
+  applyIssuerNameOverride,
   applyProfileDefaults,
   getCommonNameCopySubjectAltNames
 } from "./certificate-v3-fns";
@@ -221,6 +222,57 @@ describe("applyProfileDefaults", () => {
     expect(request.subjectAlternativeNames).toEqual([
       { type: CertSubjectAlternativeNameType.DNS_NAME, value: "shop.example.com" }
     ]);
+  });
+});
+
+describe("applyIssuerNameOverride", () => {
+  const issuerNameOverride = {
+    commonName: "laptop01.corp.example.com",
+    altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "laptop01.corp.example.com" }]
+  };
+  const csrRequest = {
+    commonName: "anything",
+    keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+    extendedKeyUsages: [CertExtendedKeyUsageType.CODE_SIGNING]
+  };
+
+  it("takes key usages from the profile when it sets them, so the computer cannot pick its own", () => {
+    const profileDefaults = {
+      keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+      extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+    };
+
+    const result = applyProfileDefaults(
+      applyIssuerNameOverride(csrRequest, issuerNameOverride, profileDefaults),
+      profileDefaults
+    );
+
+    expect(result.keyUsages).toEqual([CertKeyUsageType.KEY_ENCIPHERMENT]);
+    expect(result.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CLIENT_AUTH]);
+    expect(result.commonName).toBe("laptop01.corp.example.com");
+  });
+
+  it("never takes the subject from the request, so a domain computer cannot pick its own organization or unit", () => {
+    const result = applyProfileDefaults(
+      applyIssuerNameOverride(
+        { ...csrRequest, organization: "Attacker Inc", organizationalUnit: "Domain Admins", country: "XX" },
+        issuerNameOverride,
+        {}
+      ),
+      { organization: "Example Corp" }
+    );
+
+    expect(result.commonName).toBe("laptop01.corp.example.com");
+    expect(result.organization).toBe("Example Corp");
+    expect(result.organizationalUnit).toBeUndefined();
+    expect(result.country).toBeUndefined();
+  });
+
+  it("keeps the request's key usages when the profile sets none", () => {
+    const result = applyProfileDefaults(applyIssuerNameOverride(csrRequest, issuerNameOverride, {}), {});
+
+    expect(result.keyUsages).toEqual([CertKeyUsageType.DIGITAL_SIGNATURE]);
+    expect(result.extendedKeyUsages).toEqual([CertExtendedKeyUsageType.CODE_SIGNING]);
   });
 });
 

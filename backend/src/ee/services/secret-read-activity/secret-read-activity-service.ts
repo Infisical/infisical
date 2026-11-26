@@ -28,6 +28,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
+  buildFolderGrantSourceRules,
   classifySecretReads,
   computeSecretReach,
   createAccessDating,
@@ -46,6 +47,7 @@ import {
   TGetSecretReadActivityDTO,
   TGetUnusedAccessActorDTO,
   TListUnusedAccessDTO,
+  TProjectFolderTree,
   TReachSecret,
   TReadActivityScope,
   TSecretActivity,
@@ -328,7 +330,12 @@ export const secretReadActivityServiceFactory = ({
   // checked with one permission merged across their direct membership and every group they are in, the way
   // getProjectPermission builds it, so a deny in one role holds against an allow in another. Until a project has a
   // full window of reads, it is judged on the reads since tracking began.
-  const $loadProjectAccess = async (projectId: string, orgId: string, windowStart: Date) => {
+  const $loadProjectAccess = async (
+    projectId: string,
+    orgId: string,
+    windowStart: Date,
+    { locationOf }: Pick<TProjectFolderTree, "locationOf">
+  ) => {
     const [
       {
         userPermissions,
@@ -431,22 +438,23 @@ export const secretReadActivityServiceFactory = ({
           )
         };
       }),
-      ...[...folderAccessByActorId].flatMap(([actorId, grants]) =>
-        grants.map((grant) => {
-          const environmentReach = { environment: grant.environmentSlug };
-          const reach = grant.appliesToSubfolders ? environmentReach : { folderId: grant.folderId };
-          // An edit can turn recursion off, and nothing records the reach the grant had before it, so an edited root
-          // grant restarts its whole environment.
-          const restartReach = grant.secretPath === "/" ? environmentReach : reach;
+      ...[...folderAccessByActorId].flatMap(([actorId, grants]) => {
+        const sourceRulesByGrantId = once(() => buildFolderGrantSourceRules(grants));
+        return grants.map((grant) => {
+          const subtreeReach = { environment: grant.environmentSlug, secretPath: grant.secretPath };
           return {
             actorId,
             date: sourceDates.privilegeDates.get(grant.id),
-            reach,
-            restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? restartReach : undefined,
-            permission: once(() => Permission.fromRules<ProjectPermissionSet>({ rules: grant.rules() }))
+            reach: grant.appliesToSubfolders ? subtreeReach : { folderId: grant.folderId },
+            // An edit can turn recursion off, and nothing records the reach the grant had before it, so an edited
+            // grant restarts its folder and every folder below it.
+            restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? subtreeReach : undefined,
+            permission: once(() =>
+              Permission.fromRules<ProjectPermissionSet>({ rules: sourceRulesByGrantId().get(grant.id) ?? [] })
+            )
           };
-        })
-      )
+        });
+      })
     ];
 
     // A group's expired temporary role reached each of its members.
@@ -459,6 +467,11 @@ export const secretReadActivityServiceFactory = ({
       });
     });
 
+    const subtreesReopened = sourceDates.subtreesReopened.flatMap(({ actorId, folderId, date }) => {
+      const location = locationOf(folderId);
+      return location ? [{ actorId, ...location, date }] : [];
+    });
+
     return {
       readersByRules: Object.values(groupBy(readers, (reader) => JSON.stringify(reader.permission.rules))),
       adminActorIds,
@@ -466,7 +479,7 @@ export const secretReadActivityServiceFactory = ({
         groupBy(sources, (source) => source.actorId),
         {
           folderReopenedAt: sourceDates.folderReopenedAt,
-          environmentReopenedAt: sourceDates.environmentReopenedAt,
+          subtreesReopenedByActorId: groupBy(subtreesReopened, (subtree) => subtree.actorId),
           accessReopenedAt
         }
       ),
@@ -512,7 +525,7 @@ export const secretReadActivityServiceFactory = ({
     const windowStart = getReadActivityWindowStart();
     const [[activity], access] = await Promise.all([
       $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName }, tree }),
-      $loadProjectAccess(projectId, actor.org.id, windowStart)
+      $loadProjectAccess(projectId, actor.org.id, windowStart, tree)
     ]);
     if (!activity) {
       throw new NotFoundError({
@@ -557,9 +570,10 @@ export const secretReadActivityServiceFactory = ({
   // secrets to keep a large project from blocking other requests.
   const $tallyUnusedAccess = async (projectId: string, orgId: string) => {
     const windowStart = getReadActivityWindowStart();
+    const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
     const [activities, access] = await Promise.all([
-      $getReadActivity({ projectId, windowStart }),
-      $loadProjectAccess(projectId, orgId, windowStart)
+      $getReadActivity({ projectId, windowStart, tree }),
+      $loadProjectAccess(projectId, orgId, windowStart, tree)
     ]);
     const tallies = new Map<string, TUnusedAccessTally>();
     for (const activity of activities) {

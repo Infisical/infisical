@@ -15,6 +15,7 @@ import {
   BUILT_IN_PROJECT_ROLE_NAMES,
   collectDistinctRoles,
   FOLDER_ACCESS_PROBES,
+  pickInheritedGrants,
   reviveFolderAccess,
   roleGrantsFolderAccess,
   splitFolderAccess,
@@ -493,5 +494,64 @@ describe("splitFolderAccess", () => {
         inheritedGrant: rootGrant
       }
     ]);
+  });
+});
+
+describe("pickInheritedGrants", () => {
+  // the folder is /team/app/api, so its ancestors nearest first are /team/app, /team and /
+  const ancestorFolderIds = ["app-folder", "team-folder", "root-folder"];
+  const recursiveGrant = (overrides: Partial<TAdditionalPrivileges>) =>
+    ({
+      id: `${overrides.folderId}-grant`,
+      role: "read",
+      actorUserId: "u",
+      appliesToSubfolders: true,
+      isTemporary: false,
+      temporaryAccessEndTime: null,
+      ...overrides
+    }) as TAdditionalPrivileges;
+  const pick = (grants: TAdditionalPrivileges[]) =>
+    pickInheritedGrants({ grants, ancestorFolderIds, actorIdOf: (row) => row.actorUserId as string, now });
+
+  test("picks the grant on the nearest ancestor, in either input order", () => {
+    const onRoot = recursiveGrant({ folderId: "root-folder" });
+    const onTeam = recursiveGrant({ folderId: "team-folder" });
+
+    expect(pick([onRoot, onTeam]).get("u")).toBe(onTeam);
+    expect(pick([onTeam, onRoot]).get("u")).toBe(onTeam);
+  });
+
+  test("picks per actor", () => {
+    const onRoot = recursiveGrant({ folderId: "root-folder" });
+    const onApp = recursiveGrant({ folderId: "app-folder" });
+    const otherOnTeam = recursiveGrant({ id: "other-grant", folderId: "team-folder", actorUserId: "other" });
+
+    expect(pick([onRoot, otherOnTeam, onApp])).toEqual(
+      new Map([
+        ["u", onApp],
+        ["other", otherOnTeam]
+      ])
+    );
+  });
+
+  test("skips an expired grant on a nearer ancestor in favor of an active one further up", () => {
+    const onRoot = recursiveGrant({ folderId: "root-folder" });
+    const expiredOnTeam = recursiveGrant({ folderId: "team-folder", isTemporary: true, temporaryAccessEndTime: past });
+    const activeOnTeam = recursiveGrant({ folderId: "team-folder", isTemporary: true, temporaryAccessEndTime: future });
+
+    expect(pick([onRoot, expiredOnTeam]).get("u")).toBe(onRoot);
+    expect(pick([onRoot, activeOnTeam]).get("u")).toBe(activeOnTeam);
+  });
+
+  test("ignores grants that do not apply to subfolders, have no role, or sit outside the ancestors", () => {
+    expect(
+      pick([
+        recursiveGrant({ folderId: "team-folder", appliesToSubfolders: false }),
+        recursiveGrant({ folderId: "app-folder", appliesToSubfolders: null }),
+        recursiveGrant({ folderId: "root-folder", role: null }),
+        recursiveGrant({ folderId: "api-folder" }),
+        recursiveGrant({ folderId: "sibling-folder" })
+      ]).size
+    ).toBe(0);
   });
 });

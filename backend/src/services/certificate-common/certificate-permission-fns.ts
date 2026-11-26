@@ -17,11 +17,15 @@ import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 
-// ACME, EST and SCEP clients enroll through a profile and hold no project permissions, so they are checked against
-// that profile instead of through the permission functions.
+// ACME, EST, SCEP and Microsoft autoenrollment clients enroll through a profile and hold no project permissions, so
+// they are checked against that profile instead of through the permission functions.
 export type TCertificateEnrollmentActor = {
-  type: ActorType.ACME_ACCOUNT | ActorType.EST_ACCOUNT | ActorType.SCEP_ACCOUNT;
-  // The ACME account, or the profile for EST and SCEP.
+  type:
+    | ActorType.ACME_ACCOUNT
+    | ActorType.EST_ACCOUNT
+    | ActorType.SCEP_ACCOUNT
+    | ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT;
+  // The ACME account, or the profile for EST, SCEP and Microsoft autoenrollment.
   id: string;
   orgId: string;
 };

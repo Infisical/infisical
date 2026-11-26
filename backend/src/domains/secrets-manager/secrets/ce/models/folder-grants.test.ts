@@ -24,7 +24,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { logger } from "@app/lib/logger";
 
 import { FolderGrant, TFolderGrantRecord } from "./folder-grant";
 import { FolderGrants } from "./folder-grants";
@@ -352,29 +351,21 @@ describe("FolderGrants.rules", () => {
   });
 
   test.each(Object.values(SecretFolderRole))(
-    "should ignore and log a recursive %s grant on a folder other than the root",
+    "should let a recursive %s grant on a folder other than the root reach that folder and every folder below it",
     (role) => {
       // Setup
-      vi.mocked(logger.warn).mockClear();
-      const recursiveSubfolder = privilege({
-        id: "subfolder-grant",
-        role,
-        secretPath: "/a",
-        appliesToSubfolders: true
-      });
-      const exactEdit = privilege({ id: "exact-grant", role: SecretFolderRole.Edit, secretPath: "/b" });
-
-      // Action
-      const alone = folderRules([recursiveSubfolder]);
-      const withExact = folderRules([recursiveSubfolder, exactEdit]);
-      const merged = roleRules(noAccessRoles).then(FolderGrants.inForce([recursiveSubfolder]).rules());
+      const ability = abilityFor(noAccessRoles, [
+        privilege({ id: "subfolder-grant", role, secretPath: "/a", appliesToSubfolders: true })
+      ]);
+      const canDescribeSecretsAt = (secretPath: string) =>
+        ability.can(
+          ProjectPermissionSecretActions.DescribeSecret,
+          subject(ProjectPermissionSub.Secrets, { environment: "dev", secretPath })
+        );
 
       // Assert
-      expect(alone).toEqual([]);
-      expect(withExact).toEqual(folderRules([exactEdit]));
-      expect(merged.rules).toEqual(roleRules(noAccessRoles).rules);
-      expect(logger.warn).toHaveBeenCalledTimes(3);
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("grantId=subfolder-grant"));
+      ["/a", "/a/b", "/a/b/c"].forEach((secretPath) => expect(canDescribeSecretsAt(secretPath)).toBe(true));
+      ["/", "/ab", "/b", "/b/a"].forEach((secretPath) => expect(canDescribeSecretsAt(secretPath)).toBe(false));
     }
   );
 
@@ -606,29 +597,264 @@ describe("FolderGrants.rules with grants that apply to subfolders", () => {
     }
   );
 
-  test("should build recursive rules before exact rules, denies before allows within each", () => {
+  test("should build recursive grants shallowest first and before exact grants, each with its denies before its allows", () => {
     // Setup
     const grants = [
-      privilege({ id: "sub-grant", role: SecretFolderRole.Edit, secretPath: "/a/b" }),
-      recursiveRoot(SecretFolderRole.Read)
+      privilege({ id: "exact-grant", role: SecretFolderRole.Edit, secretPath: "/a" }),
+      privilege({ id: "deep-grant", role: SecretFolderRole.List, secretPath: "/a/b/c", appliesToSubfolders: true }),
+      recursiveRoot(SecretFolderRole.Read),
+      privilege({ id: "mid-grant", role: SecretFolderRole.Edit, secretPath: "/a/b", appliesToSubfolders: true })
     ];
-    const isRecursiveRule = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) =>
-      typeof (rule.conditions as { secretPath?: unknown } | undefined)?.secretPath === "object";
+    const pathOf = (rule: RawRuleOf<MongoAbility<ProjectPermissionSet>>) => {
+      const { secretPath } = rule.conditions as { secretPath: string | { $glob: string } };
+      return typeof secretPath === "string" ? secretPath : secretPath.$glob;
+    };
 
     // Action
     const rules = folderRules(grants);
-    const recursiveFlags = rules.map(isRecursiveRule);
 
     // Assert
-    expect(recursiveFlags.lastIndexOf(true)).toBeGreaterThan(-1);
-    expect(recursiveFlags.indexOf(false)).toBeGreaterThan(recursiveFlags.lastIndexOf(true));
-    rules.filter(isRecursiveRule).forEach((rule) => {
-      expect(rule.conditions).toEqual({ environment: "dev", secretPath: { $glob: "/**" } });
+    // One block per run of consecutive rules on the same path, which is one grant.
+    const blocks: { path: string; inverted: boolean[] }[] = [];
+    rules.forEach((rule) => {
+      if (blocks.at(-1)?.path !== pathOf(rule)) blocks.push({ path: pathOf(rule), inverted: [] });
+      blocks.at(-1)?.inverted.push(Boolean(rule.inverted));
     });
-    [rules.filter(isRecursiveRule), rules.filter((rule) => !isRecursiveRule(rule))].forEach((group) => {
-      const inverted = group.map((rule) => Boolean(rule.inverted));
 
+    expect(blocks.map((block) => block.path)).toEqual(["/**", "/a/b/**", "/a/b/c/**", "/a"]);
+    blocks.forEach(({ inverted }) => {
+      expect(inverted.lastIndexOf(true)).toBeGreaterThan(-1);
       expect(inverted.indexOf(false)).toBeGreaterThan(inverted.lastIndexOf(true));
+    });
+  });
+});
+
+describe("FolderGrants.rules with recursive grants on nested folders", () => {
+  const secretsAt = (secretPath: string, environment = "dev") =>
+    subject(ProjectPermissionSub.Secrets, { environment, secretPath });
+  const nestedFoldersAt = (secretPath: string, environment = "dev") =>
+    subject(ProjectPermissionSub.SecretFolders, { environment, secretPath });
+  const recursiveAt = (role: SecretFolderRole, secretPath: string, environmentSlug = "dev") =>
+    privilege({
+      id: `recursive-${environmentSlug}-${secretPath}`,
+      role,
+      secretPath,
+      environmentSlug,
+      appliesToSubfolders: true
+    });
+  const exactAt = (role: SecretFolderRole, secretPath: string) =>
+    privilege({ id: `exact-${secretPath}`, role, secretPath });
+  const everyOrderOf = <T>(items: T[]): T[][] =>
+    items.length <= 1
+      ? [items]
+      : items.flatMap((item, idx) =>
+          everyOrderOf([...items.slice(0, idx), ...items.slice(idx + 1)]).map((rest) => [item, ...rest])
+        );
+  const tierAt = (ability: ReturnType<typeof abilityFor>, secretPath: string) => ({
+    describe: ability.can(ProjectPermissionSecretActions.DescribeSecret, secretsAt(secretPath)),
+    read: ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt(secretPath)),
+    edit: ability.can(ProjectPermissionSecretActions.Edit, secretsAt(secretPath)),
+    manageAccess: ability.can(ProjectPermissionSecretFolderActions.ManageAccess, nestedFoldersAt(secretPath))
+  });
+  const noTier = { describe: false, read: false, edit: false, manageAccess: false };
+  const listTier = { ...noTier, describe: true };
+  const readTier = { ...listTier, read: true };
+  const editTier = { ...readTier, edit: true };
+  const fullAccessTier = { ...editTier, manageAccess: true };
+
+  describe.each([
+    ["no-access", noAccessRoles],
+    ["member", memberRoles]
+  ] as const)("on a %s base role", (_, baseRoles) => {
+    test("should let the deepest recursive grant above a folder decide it, in every input order", () => {
+      // Setup
+      const orders = everyOrderOf([
+        recursiveRoot(SecretFolderRole.Read),
+        recursiveAt(SecretFolderRole.Edit, "/apps"),
+        recursiveAt(SecretFolderRole.List, "/apps/payments")
+      ]);
+
+      orders.forEach((privileges) => {
+        // Action
+        const ability = abilityFor(baseRoles, privileges);
+
+        // Assert
+        ["/", "/infra", "/infra/db"].forEach((secretPath) => expect(tierAt(ability, secretPath)).toEqual(readTier));
+        ["/apps", "/apps/web", "/apps/web/assets"].forEach((secretPath) =>
+          expect(tierAt(ability, secretPath)).toEqual(editTier)
+        );
+        ["/apps/payments", "/apps/payments/keys"].forEach((secretPath) =>
+          expect(tierAt(ability, secretPath)).toEqual(listTier)
+        );
+      });
+    });
+
+    test("should let a lower-tier recursive grant narrow a higher-tier one above it across its whole subtree", () => {
+      // Setup
+      const orders = everyOrderOf([recursiveRoot(SecretFolderRole.Edit), recursiveAt(SecretFolderRole.Read, "/prod")]);
+
+      orders.forEach((privileges) => {
+        // Action
+        const ability = abilityFor(baseRoles, privileges);
+
+        // Assert
+        ["/prod", "/prod/db", "/prod/db/replica"].forEach((secretPath) =>
+          expect(tierAt(ability, secretPath)).toEqual(readTier)
+        );
+        ["/", "/staging", "/production"].forEach((secretPath) => expect(tierAt(ability, secretPath)).toEqual(editTier));
+      });
+    });
+
+    test("should let a higher-tier recursive grant widen a lower-tier one above it across its whole subtree", () => {
+      // Action
+      const ability = abilityFor(baseRoles, [
+        recursiveRoot(SecretFolderRole.List),
+        recursiveAt(SecretFolderRole.FullAccess, "/team")
+      ]);
+
+      // Assert
+      ["/team", "/team/api", "/team/api/keys"].forEach((secretPath) =>
+        expect(tierAt(ability, secretPath)).toEqual(fullAccessTier)
+      );
+      ["/", "/other"].forEach((secretPath) => expect(tierAt(ability, secretPath)).toEqual(listTier));
+    });
+
+    test("should let an exact grant decide its own folder under any number of recursive grants, and nothing below it", () => {
+      // Setup
+      const orders = everyOrderOf([
+        recursiveRoot(SecretFolderRole.Read),
+        recursiveAt(SecretFolderRole.Edit, "/apps"),
+        exactAt(SecretFolderRole.List, "/apps/payments")
+      ]);
+
+      orders.forEach((privileges) => {
+        // Action
+        const ability = abilityFor(baseRoles, privileges);
+
+        // Assert
+        expect(tierAt(ability, "/apps/payments")).toEqual(listTier);
+        expect(tierAt(ability, "/apps/payments/keys")).toEqual(editTier);
+        expect(tierAt(ability, "/apps")).toEqual(editTier);
+        expect(tierAt(ability, "/")).toEqual(readTier);
+      });
+    });
+  });
+
+  test("should keep recursive grants on sibling folders, lookalike names and other environments apart", () => {
+    // Action
+    const ability = abilityFor(noAccessRoles, [
+      recursiveAt(SecretFolderRole.Read, "/a"),
+      recursiveAt(SecretFolderRole.Edit, "/b"),
+      recursiveAt(SecretFolderRole.FullAccess, "/a", "staging")
+    ]);
+
+    // Assert
+    expect(tierAt(ability, "/a/x")).toEqual(readTier);
+    expect(tierAt(ability, "/b/x")).toEqual(editTier);
+    ["/", "/ab", "/ab/x", "/c"].forEach((secretPath) => expect(tierAt(ability, secretPath)).toEqual(noTier));
+    expect(ability.can(ProjectPermissionSecretFolderActions.ManageAccess, nestedFoldersAt("/a/x", "staging"))).toBe(
+      true
+    );
+  });
+
+  test("should not let an exact grant above a recursive grant reach into its subtree", () => {
+    // Action
+    const ability = abilityFor(noAccessRoles, [
+      exactAt(SecretFolderRole.FullAccess, "/apps"),
+      recursiveAt(SecretFolderRole.Read, "/apps/payments")
+    ]);
+
+    // Assert
+    expect(tierAt(ability, "/apps")).toEqual(fullAccessTier);
+    expect(tierAt(ability, "/apps/payments")).toEqual(readTier);
+    expect(tierAt(ability, "/apps/payments/keys")).toEqual(readTier);
+    expect(tierAt(ability, "/apps/web")).toEqual(noTier);
+  });
+
+  describe("folder create and edit", () => {
+    const canCreateFoldersAt = (privileges: FolderGrant[], secretPath: string) =>
+      abilityFor(viewerRoles, privileges).can(ProjectPermissionActions.Create, nestedFoldersAt(secretPath));
+
+    test("should give them across its subtree only for a recursive grant from the edit tier up", () => {
+      // Setup
+      const privileges = [recursiveAt(SecretFolderRole.Edit, "/apps")];
+
+      // Action
+      const allowed = ["/apps", "/apps/web", "/", "/infra"].map((secretPath) =>
+        canCreateFoldersAt(privileges, secretPath)
+      );
+
+      // Assert
+      expect(allowed).toEqual([true, true, false, false]);
+    });
+
+    test("should take them away below a recursive edit grant for a recursive read grant", () => {
+      // Setup
+      const privileges = [recursiveRoot(SecretFolderRole.Edit), recursiveAt(SecretFolderRole.Read, "/apps")];
+
+      // Action
+      const allowed = ["/infra", "/apps", "/apps/web"].map((secretPath) => canCreateFoldersAt(privileges, secretPath));
+
+      // Assert
+      expect(allowed).toEqual([true, false, false]);
+    });
+
+    test("should apply a non-canonical stored path to the canonical folder and still decide the exact grant below it", () => {
+      // Setup
+      const privileges = [
+        recursiveAt(SecretFolderRole.Edit, "//apps/"),
+        exactAt(SecretFolderRole.Manage, "apps/payments/")
+      ];
+
+      // Action
+      const ability = abilityFor(noAccessRoles, privileges);
+
+      // Assert
+      ["/apps", "/apps/web"].forEach((secretPath) => {
+        expect(ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt(secretPath))).toBe(true);
+      });
+      expect(ability.can(ProjectPermissionSecretActions.ReadValue, secretsAt("/infra"))).toBe(false);
+      expect(ability.can(ProjectPermissionActions.Create, nestedFoldersAt("/apps/payments"))).toBe(true);
+    });
+
+    test("should keep them for an exact grant only when the nearest recursive grant above it gives them", () => {
+      // Setup
+      const exactManage = exactAt(SecretFolderRole.Manage, "/apps/payments");
+
+      // Action
+      const allowed = [
+        [recursiveAt(SecretFolderRole.Edit, "/apps"), exactManage],
+        [recursiveRoot(SecretFolderRole.Read), recursiveAt(SecretFolderRole.Edit, "/apps"), exactManage],
+        [recursiveRoot(SecretFolderRole.Edit), recursiveAt(SecretFolderRole.Read, "/apps"), exactManage]
+      ].map((privileges) => canCreateFoldersAt(privileges, "/apps/payments"));
+
+      // Assert
+      expect(allowed).toEqual([true, true, false]);
+    });
+
+    test("should not give them to an exact grant outside every recursive grant's subtree", () => {
+      // Setup
+      const privileges = [recursiveAt(SecretFolderRole.Edit, "/apps"), exactAt(SecretFolderRole.Manage, "/infra/db")];
+
+      // Action
+      const allowed = ["/infra/db", "/apps/web"].map((secretPath) => canCreateFoldersAt(privileges, secretPath));
+
+      // Assert
+      expect(allowed).toEqual([false, true]);
+    });
+
+    test("should not give them to an exact grant on a folder a recursive grant in another environment covers", () => {
+      // Setup
+      const privileges = [
+        recursiveAt(SecretFolderRole.Edit, "/apps", "staging"),
+        exactAt(SecretFolderRole.Manage, "/apps/payments")
+      ];
+
+      // Action
+      const allowed = canCreateFoldersAt(privileges, "/apps/payments");
+
+      // Assert
+      expect(allowed).toBe(false);
     });
   });
 });
@@ -737,6 +963,60 @@ describe("FolderGrants.rules with recursive and exact grants together", () => {
     ["/a", "/a/b"].forEach((secretPath) => {
       expect(capabilitiesAt(ability, "dev", secretPath)).toEqual(capabilitiesAt(baseOnly, "dev", secretPath));
     });
+  });
+});
+
+describe("FolderGrants.rulesByGrant", () => {
+  const exactManage = privilege({ id: "exact-manage", role: SecretFolderRole.Manage, secretPath: "/a/b" });
+  const recursiveEdit = privilege({
+    id: "recursive-edit",
+    folderId: "folder-a",
+    role: SecretFolderRole.Edit,
+    secretPath: "/a",
+    appliesToSubfolders: true
+  });
+
+  test("should join back into the rules built for the whole set, one grant at a time in build order", () => {
+    // Setup
+    const privileges = [
+      privilege({ id: "exact-grant", role: SecretFolderRole.Edit, secretPath: "/a" }),
+      privilege({ id: "deep-grant", role: SecretFolderRole.List, secretPath: "/a/b/c", appliesToSubfolders: true }),
+      recursiveRoot(SecretFolderRole.Read),
+      privilege({ id: "mid-grant", role: SecretFolderRole.Edit, secretPath: "/a/b", appliesToSubfolders: true })
+    ];
+
+    // Action
+    const byGrant = FolderGrants.inForce(privileges).rulesByGrant();
+
+    // Assert
+    expect(byGrant.map(({ grant }) => grant.id)).toEqual(["root-grant", "mid-grant", "deep-grant", "exact-grant"]);
+    expect(byGrant.flatMap(({ rules }) => rules.rules)).toEqual(folderRules(privileges));
+  });
+
+  test("should keep folder create and edit in an exact grant's own rules under a recursive edit grant", () => {
+    // Setup
+    const exactManageCanAt = (privileges: FolderGrant[], action: ProjectPermissionActions) => {
+      const ownRules = FolderGrants.inForce(privileges)
+        .rulesByGrant()
+        .find(({ grant }) => grant.id === exactManage.id)?.rules;
+      return Permission.fromRules<ProjectPermissionSet>({ rules: ownRules ?? [] }).can({
+        action,
+        subject: ProjectPermissionSub.SecretFolders,
+        fields: { environment: "dev", secretPath: "/a/b" }
+      });
+    };
+
+    // Action
+    const allowed = [ProjectPermissionActions.Create, ProjectPermissionActions.Edit].map((action) => [
+      exactManageCanAt([exactManage], action),
+      exactManageCanAt([recursiveEdit, exactManage], action)
+    ]);
+
+    // Assert
+    expect(allowed).toEqual([
+      [false, true],
+      [false, true]
+    ]);
   });
 });
 
@@ -882,6 +1162,28 @@ describe("FolderGrant.allowPermission", () => {
     ).toBe(false);
   });
 
+  test("should bound grants inside a nested recursive grant's subtree and none outside it", () => {
+    // Setup
+    const recursiveAt = (secretPath: string) =>
+      privilege({ id: `recursive-${secretPath}`, role: SecretFolderRole.Read, secretPath, appliesToSubfolders: true });
+    const actor = abilityFor(noAccessRoles, [recursiveAt("/a")]);
+    const isBoundedByActor = (privileges: FolderGrant[]) =>
+      validatePermissionBoundary(actor, grantAbility(privileges)).isValid;
+
+    // Action
+    const bounded = [
+      [recursiveAt("/a")],
+      [recursiveAt("/a/b")],
+      [privilege({ role: SecretFolderRole.Read, secretPath: "/a/b" })],
+      [recursiveRoot(SecretFolderRole.Read)],
+      [recursiveAt("/ab")],
+      [privilege({ role: SecretFolderRole.Read, secretPath: "/b" })]
+    ].map(isBoundedByActor);
+
+    // Assert
+    expect(bounded).toEqual([true, true, true, false, false, false]);
+  });
+
   test("should not let an exact root grant bound a grant below the root or a recursive one", () => {
     // Setup
     const actor = abilityFor(noAccessRoles, [privilege({ role: SecretFolderRole.Read, secretPath: "/" })]);
@@ -915,5 +1217,37 @@ describe("FolderGrant.allowPermission", () => {
       )
     ).toBe(true);
     expect(validatePermissionBoundary(actor, grantAbility([exactEdit])).isValid).toBe(false);
+  });
+
+  describe("nested recursive grants", () => {
+    const recursiveAt = (role: SecretFolderRole, secretPath: string) =>
+      privilege({
+        id: `recursive-${secretPath}`,
+        folderId: `folder-${secretPath}`,
+        role,
+        secretPath,
+        appliesToSubfolders: true
+      });
+    const manageA = recursiveAt(SecretFolderRole.Manage, "/a");
+    const listAB = recursiveAt(SecretFolderRole.List, "/a/b");
+    const listAC = recursiveAt(SecretFolderRole.List, "/a/c");
+
+    test("an actor restricted below its grant does not bound a target without that restriction", () => {
+      const actor = abilityFor(noAccessRoles, [manageA, listAB]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA])).isValid).toBe(false);
+    });
+
+    test("an actor without the restriction bounds a target restricted below its grant", () => {
+      const actor = abilityFor(noAccessRoles, [manageA]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA, listAB]))).toEqual({ isValid: true });
+    });
+
+    test("a restriction on another subtree does not excuse the actor's", () => {
+      const actor = abilityFor(noAccessRoles, [manageA, listAC]);
+
+      expect(validatePermissionBoundary(actor, grantAbility([manageA, listAB])).isValid).toBe(false);
+    });
   });
 });

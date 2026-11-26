@@ -18,6 +18,7 @@ import {
 import {
   TSecretChangePolicy,
   TSecretChangePolicyEnvironment,
+  TSecretChangePolicyImport,
   TSecretChangePolicyMethods,
   TSecretChangePolicyServiceFactoryDep
 } from "./secret-change-policy-types";
@@ -35,6 +36,8 @@ export const secretChangePolicyServiceFactory = ({
   projectEnvDAL,
   projectDAL,
   userDAL,
+  secretImportDAL,
+  folderDAL,
   secretsPermissionService,
   licenseService
 }: TSecretChangePolicyServiceFactoryDep) => {
@@ -82,6 +85,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
+    enforceOnSecretImports,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {
@@ -148,7 +152,7 @@ export const secretChangePolicyServiceFactory = ({
           enforcementLevel,
           bypassForMachineIdentities,
           conditions: { version: 1, conditions: [] },
-          constraints: { version: 1, constraints: { allowedSelfApprovals } },
+          constraints: { version: 1, constraints: { allowedSelfApprovals, enforceOnSecretImports } },
           scopeType: null,
           scopeId: null
         },
@@ -201,6 +205,7 @@ export const secretChangePolicyServiceFactory = ({
     environments,
     enforcementLevel,
     allowedSelfApprovals,
+    enforceOnSecretImports,
     bypassForMachineIdentities,
     delegatedApproval
   }) => {
@@ -254,6 +259,7 @@ export const secretChangePolicyServiceFactory = ({
       secretPath,
       enforcementLevel,
       allowedSelfApprovals,
+      enforceOnSecretImports,
       bypassForMachineIdentities,
       requestedEnvs,
       approverCount: approvers.length,
@@ -361,7 +367,65 @@ export const secretChangePolicyServiceFactory = ({
     return getSecretApprovalPolicy(projectId, environment, secretPath);
   };
 
+  // Imports from the same project in the folders this policy governs. A folder governed by a more specific
+  // policy is left out, since this one does not apply there.
+  const listSecretApprovalPolicyImports: TSecretChangePolicyMethods["listSecretApprovalPolicyImports"] = async ({
+    sapId,
+    isReplication,
+    actor
+  }) => {
+    const policy = await $findSecretChangePolicyOrThrow(sapId, actor.org.id);
+
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: policy.projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval });
+
+    const imports = await secretImportDAL.findSameProjectImportsByEnvIds(
+      policy.environments.map(({ id }) => id),
+      { isReplication }
+    );
+    if (!imports.length) return [];
+
+    const folders = await folderDAL.findSecretPathByFolderIds(policy.projectId, [
+      ...new Set(imports.map(({ folderId }) => folderId))
+    ]);
+    const folderPathById = new Map(
+      folders.filter(Boolean).map((folder) => [folder!.id, folder!.path] as [string, string])
+    );
+
+    const coveredImports: TSecretChangePolicyImport[] = [];
+    for (const env of policy.environments) {
+      // eslint-disable-next-line no-await-in-loop
+      const envPolicies = await findSecretChangePoliciesByEnvId(env.id);
+      imports
+        .filter(({ envId }) => envId === env.id)
+        .forEach((secretImport) => {
+          const folderPath = folderPathById.get(secretImport.folderId);
+          if (!folderPath) return;
+          if (resolvePolicyForPath(envPolicies, folderPath)?.id !== policy.id) return;
+          if (
+            !permission.can({
+              action: ProjectPermissionActions.Read,
+              subject: ProjectPermissionSub.SecretImports,
+              fields: { environment: env.slug, secretPath: folderPath }
+            })
+          ) {
+            return;
+          }
+          coveredImports.push({
+            id: secretImport.id,
+            environment: { slug: secretImport.environmentSlug, name: secretImport.environmentName },
+            secretPath: folderPath,
+            sourceEnvironment: { slug: secretImport.sourceEnvironmentSlug, name: secretImport.sourceEnvironmentName },
+            sourceSecretPath: secretImport.importPath,
+            isReplication: Boolean(secretImport.isReplication)
+          });
+        });
+    }
+    return coveredImports;
+  };
+
   return {
+    listSecretApprovalPolicyImports,
     findSecretChangePolicyById,
     createSecretApprovalPolicy,
     updateSecretApprovalPolicy,

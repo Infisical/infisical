@@ -152,7 +152,7 @@ export class SecretsPermissionService implements TSecretsPermissionService {
   }
 
   async getFolderGrantAuditSources(input: TFolderGrantTargetInput): Promise<TProjectPermissionAuditSource[]> {
-    return (await this.targetFolderGrants(input)).list.map((grant) => grant.toAuditSource());
+    return (await this.targetFolderGrants(input)).auditSources();
   }
 
   async getFolderGrantPermissions(input: TFolderGrantTargetInput): Promise<Permission<ProjectPermissionSet>[]> {

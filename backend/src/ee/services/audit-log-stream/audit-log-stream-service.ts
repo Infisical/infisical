@@ -1,4 +1,6 @@
+import { ProjectType } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
@@ -6,17 +8,21 @@ import {
   OrgPermissionSubjects,
   TOrgPermissionService
 } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
   encryptLogStreamCredentials,
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TPamProjectResolverFactory } from "../pam-project/pam-project-resolver";
+import { PamProductRole } from "../pam/pam-enums";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
+import { TAuditLogStreamFilters } from "./audit-log-stream-schemas";
 import { TAuditLogStream, TCreateAuditLogStreamDTO, TUpdateAuditLogStreamDTO } from "./audit-log-stream-types";
 import { TCustomProviderCredentials } from "./custom/custom-provider-types";
 import { TSplunkProviderCredentials } from "./splunk/splunk-provider-types";
@@ -25,8 +31,10 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
+  pamProjectResolver: Pick<TPamProjectResolverFactory, "findDefaultProjectId">;
 };
 
 export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServiceFactory>;
@@ -34,9 +42,41 @@ export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServ
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   orgPermissionService,
+  projectPermissionService,
   licenseService,
-  kmsDataKeyService
+  kmsDataKeyService,
+  pamProjectResolver
 }: TAuditLogStreamServiceFactoryDep) => {
+  // PAM gives org admins no session access, so only a PAM product admin may route session content.
+  const assertCanStreamPamSessionActivity = async (actor: TActorContext) => {
+    const pamProjectId = await pamProjectResolver.findDefaultProjectId(actor.org.id);
+
+    let isPamProductAdmin = false;
+    if (pamProjectId) {
+      try {
+        const permission = await projectPermissionService.getProjectPermission({
+          actor,
+          projectId: pamProjectId,
+          type: ProjectType.PAM
+        });
+        isPamProductAdmin = permission.hasRole({ slug: PamProductRole.Admin });
+      } catch (error) {
+        // Thrown for actors outside the PAM project.
+        if (!(error instanceof PermissionDeniedError)) throw error;
+      }
+    }
+
+    if (!isPamProductAdmin) {
+      throw new ForbiddenRequestError({
+        message:
+          "Only PAM product admins can send PAM session activity to a log stream or change a stream that sends it. Ask a PAM admin to make this change."
+      });
+    }
+  };
+
+  const receivesPamSessionActivity = (filters: unknown) =>
+    Boolean((filters as TAuditLogStreamFilters | null | undefined)?.pamSessionActivity);
+
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: TActorContext) => {
     const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.AuditLogStreams)) {
@@ -48,6 +88,8 @@ export const auditLogStreamServiceFactory = ({
     const permission = await orgPermissionService.getOrgPermission({ actor });
 
     permission.assert({ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogStreams });
+
+    if (receivesPamSessionActivity(filters)) await assertCanStreamPamSessionActivity(actor);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.org.id });
     if (plan.exceeds(PlanLimit.AuditLogStreams, totalStreams.length)) {
@@ -90,12 +132,18 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    const logStream = await auditLogStreamDAL.findById(logStreamId);
+    // From the primary, since a replica that hasn't seen session activity turned on would skip the PAM check.
+    const logStream = await auditLogStreamDAL.findById(logStreamId, auditLogStreamDAL.primaryNode());
     if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
     const permission = await orgPermissionService.getOrgPermission({ actor, orgId: logStream.orgId });
 
     permission.assert({ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogStreams });
+
+    const checkedPamAccess = receivesPamSessionActivity(logStream.filters) || receivesPamSessionActivity(filters);
+    if (checkedPamAccess) {
+      await assertCanStreamPamSessionActivity(actor);
+    }
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -183,7 +231,7 @@ export const auditLogStreamServiceFactory = ({
       kmsDataKeyService
     });
 
-    const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
+    const updates = {
       encryptedCredentials,
       // The credentials just passed validateCredentials, so start health tracking over. A stream that
       // is still broken then alerts again instead of staying silent behind its old failingSince.
@@ -193,6 +241,20 @@ export const auditLogStreamServiceFactory = ({
       ...(streamMode ? { streamMode } : {}),
       // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).
       ...(filters !== undefined ? { filters } : {})
+    };
+
+    const updatedLogStream = await auditLogStreamDAL.transaction(async (tx) => {
+      // Re-checked under a lock so session activity turned on during the credential test never reaches a destination no PAM admin approved.
+      const current = await auditLogStreamDAL.lockById(logStreamId, tx);
+      if (!current) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
+      if (!checkedPamAccess && receivesPamSessionActivity(current.filters)) {
+        throw new ConflictError({
+          message:
+            "PAM session activity was turned on for this log stream while you were updating it. Reload the stream and try again."
+        });
+      }
+
+      return auditLogStreamDAL.updateById(logStreamId, updates, tx);
     });
 
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;

@@ -72,7 +72,7 @@ export class FakeSecretsPermissionService implements TSecretsPermissionService {
   });
 
   getFolderGrantAuditSources = async (): Promise<TProjectPermissionAuditSource[]> =>
-    FolderGrants.inForce(this.folderGrants).list.map((grant) => grant.toAuditSource());
+    FolderGrants.inForce(this.folderGrants).auditSources();
 
   getFolderGrantPermissions = async (): Promise<Permission<ProjectPermissionSet>[]> =>
     FolderGrants.inForce(this.folderGrants).list.map((grant) => grant.allowPermission());

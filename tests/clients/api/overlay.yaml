@@ -149,3 +149,65 @@ actions:
       items:
         type: object
         additionalProperties: true
+  # Every approval policy type registers the same generic routes under the same
+  # operationIds, so only one type's can be generated. Name the certificate request
+  # ones apart, and the code signing ones the suite calls.
+  - target: $.paths['/api/v1/approval-policies/cert-request'].post
+    update:
+      operationId: createCertRequestApprovalPolicy
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests'].get
+    update:
+      operationId: listCertRequestApprovalRequests
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}/approve'].post
+    update:
+      operationId: approveCertRequestApprovalRequest
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}/reject'].post
+    update:
+      operationId: rejectCertRequestApprovalRequest
+  - target: $.paths['/api/v1/approval-policies/cert-request'].get
+    update:
+      operationId: listCertRequestApprovalPolicies
+  - target: $.paths['/api/v1/approval-policies/cert-request/{policyId}'].get
+    update:
+      operationId: getCertRequestApprovalPolicy
+  - target: $.paths['/api/v1/approval-policies/cert-request/{policyId}'].patch
+    update:
+      operationId: updateCertRequestApprovalPolicy
+  - target: $.paths['/api/v1/approval-policies/cert-request/{policyId}'].delete
+    update:
+      operationId: deleteCertRequestApprovalPolicy
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}/break-glass'].post
+    update:
+      operationId: breakGlassCertRequestApprovalRequest
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}'].get
+    update:
+      operationId: getCertRequestApprovalRequest
+  - target: $.paths['/api/v1/approval-policies/cert-request/requests/{requestId}/cancel'].post
+    update:
+      operationId: cancelCertRequestApprovalRequest
+  - target: $.paths['/api/v1/approval-policies/cert-code-signing/requests/{requestId}/approve'].post
+    update:
+      operationId: approveCertCodeSigningApprovalRequest
+  - target: $.paths['/api/v1/cert-manager/certificates/certificate-requests'].get.parameters[?(@.name == 'profileIds')].schema.allOf
+    remove: true
+  - target: $.paths['/api/v1/cert-manager/certificates/certificate-requests'].get.parameters[?(@.name == 'profileIds')].schema
+    update:
+      type: string
+  # An optional body is an anyOf of nothing and the object. The union it generates is sent
+  # as {} unless filled through its From method, which drops removalOptions.
+  - target: $.paths['/api/v1/cert-manager/syncs/palo-alto-networks-ssl-tls-profile/{pkiSyncId}/remove-certificates'].post.requestBody.content['application/json'].schema.anyOf
+    remove: true
+  - target: $.paths['/api/v1/cert-manager/syncs/palo-alto-networks-ssl-tls-profile/{pkiSyncId}/remove-certificates'].post.requestBody.content['application/json'].schema
+    update:
+      type: object
+      properties:
+        removalOptions:
+          type: object
+          properties:
+            replacementCertificateName:
+              type: string
+  # crlNumber is Unix seconds plus a counter, past float32's precision, so neighbouring
+  # numbers would decode to the same value.
+  - target: $.paths['/api/v1/cert-manager/ca/internal/{caId}/crls/regenerate'].post.responses['200'].content['application/json'].schema.properties.crl.properties.crlNumber
+    update:
+      x-go-type: int64

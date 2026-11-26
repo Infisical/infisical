@@ -1,6 +1,11 @@
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
-import { FolderGrant, SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
+import {
+  FolderGrant,
+  FolderGrants,
+  isFolderPathBelow,
+  SecretReadAccess
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -141,23 +146,55 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
   secretTags: secret.tags?.map((tag) => tag.slug)
 });
 
+export const buildFolderGrantSourceRules = (grants: FolderGrant[]) => {
+  // Every recursive grant is compared with every later one, so each path is canonicalized once up front rather
+  // than once per comparison.
+  const rulesByGrant = FolderGrants.of(grants)
+    .rulesByGrant()
+    .map(({ grant, rules }) => ({
+      grant,
+      rules: rules.rules,
+      secretPath: grant.folderPath,
+      pathsBelow: grant.folderPath === "/" ? "/" : `${grant.folderPath}/`
+    }));
+  return new Map(
+    rulesByGrant.map(({ grant, rules, secretPath, pathsBelow }, index) => [
+      grant.id,
+      grant.appliesToSubfolders
+        ? [
+            ...rules,
+            ...rulesByGrant
+              .slice(index + 1)
+              .filter(
+                (later) =>
+                  later.grant.environmentSlug === grant.environmentSlug &&
+                  later.secretPath !== secretPath &&
+                  later.secretPath.startsWith(pathsBelow)
+              )
+              .flatMap((later) => later.rules.filter((rule) => rule.inverted))
+          ]
+        : rules
+    ])
+  );
+};
+
 // Dates an actor's access to each secret from the oldest of their sources that still grants it on its own, so a
 // change only restarts the window for the secrets it opened. With no single source granting it (rules that only
 // add up together), the newest source date is used. Restrictions that ended can have given access back, so access
 // dates no earlier than an expired folder grant in its folder (folderReopenedAt, by "<actorId>:<folderId>") or, for a
-// recursive one, anywhere in its environment (environmentReopenedAt, by "<actorId>:<environment slug>"), an edited
-// folder grant within its reach, or an expired temporary role or privilege anywhere (accessReopenedAt, by actor,
-// since what it held back is not worked out). Sources are checked once per secret, shared ones (a role, a group)
-// once for every actor holding them, and only the current secret's checks are kept.
+// recursive one, in its folder and every folder below it (subtreesReopenedByActorId), an edited folder grant in its
+// folder and every folder below it, or an expired temporary role or privilege anywhere
+// (accessReopenedAt, by actor, since what it held back is not worked out). Sources are checked once per secret,
+// shared ones (a role, a group) once for every actor holding them, and only the current secret's checks are kept.
 export const createAccessDating = (
   sourcesByActorId: Record<string, TAccessSource[]>,
   {
     folderReopenedAt,
-    environmentReopenedAt,
+    subtreesReopenedByActorId,
     accessReopenedAt
   }: {
     folderReopenedAt: Map<string, Date>;
-    environmentReopenedAt: Map<string, Date>;
+    subtreesReopenedByActorId: Record<string, { environment: string; secretPath: string; date: Date }[]>;
     accessReopenedAt: Map<string, Date>;
   }
 ): Pick<TProjectAccess, "accessSinceOf" | "latestAccessChangeOf"> => {
@@ -170,7 +207,9 @@ export const createAccessDating = (
     sources.forEach((source) => raise(actorId, source.date))
   );
   folderReopenedAt.forEach((date, key) => raise(key.slice(0, key.indexOf(":")), date));
-  environmentReopenedAt.forEach((date, key) => raise(key.slice(0, key.indexOf(":")), date));
+  Object.entries(subtreesReopenedByActorId).forEach(([actorId, subtrees]) =>
+    subtrees.forEach(({ date }) => raise(actorId, date))
+  );
   accessReopenedAt.forEach((date, actorId) => raise(actorId, date));
 
   let checkedSecret: TSecretActivity | undefined;
@@ -182,9 +221,14 @@ export const createAccessDating = (
       checks = new Map();
     }
     const subject = subjectOf(activity);
-    const reaches = (reach?: TAccessReach) =>
-      !reach ||
-      ("folderId" in reach ? reach.folderId === activity.secret.folderId : reach.environment === activity.environment);
+    const reaches = (reach?: TAccessReach) => {
+      if (!reach) return true;
+      if ("folderId" in reach) return reach.folderId === activity.secret.folderId;
+      return (
+        reach.environment === activity.environment &&
+        (activity.secretPath === reach.secretPath || isFolderPathBelow(activity.secretPath, reach.secretPath))
+      );
+    };
     const grants = (source: TAccessSource) => {
       if (!reaches(source.reach)) return false;
       const permission = source.permission();
@@ -202,8 +246,8 @@ export const createAccessDating = (
       : latestByActorId.get(actorId);
     const floors = [
       folderReopenedAt.get(`${actorId}:${activity.secret.folderId}`),
-      environmentReopenedAt.get(`${actorId}:${activity.environment}`),
       accessReopenedAt.get(actorId),
+      ...(subtreesReopenedByActorId[actorId] ?? []).filter(reaches).map(({ date }) => date),
       ...sources.filter((source) => source.restartsReach && reaches(source.restartsReach)).map((source) => source.date)
     ];
     return floors.reduce((latest, floor) => (floor && (!latest || floor > latest) ? floor : latest), since);

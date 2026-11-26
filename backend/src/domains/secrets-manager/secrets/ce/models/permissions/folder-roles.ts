@@ -145,8 +145,24 @@ export const FOLDER_EDITING_ROLES = new Set([
   SecretFolderRole.FullAccess
 ]);
 
+// A folder path with no empty, leading or trailing segments: "/" for the root, "/a/b" below it.
+export const canonicalFolderPath = (folderPath: string) => {
+  const segments = folderPath.split("/").filter(Boolean);
+  return segments.length ? `/${segments.join("/")}` : "/";
+};
+
 // The glob a grant that applies to subfolders matches: the folder and everything below it.
-export const recursiveFolderPathGlob = (folderPath: string) => `${folderPath.replace(/\/$/, "")}/**`;
+export const recursiveFolderPathGlob = (folderPath: string) => {
+  const path = canonicalFolderPath(folderPath);
+  return path === "/" ? "/**" : `${path}/**`;
+};
+
+// Whether the folder is strictly below the ancestor.
+export const isFolderPathBelow = (folderPath: string, ancestorPath: string) => {
+  const folder = canonicalFolderPath(folderPath);
+  const ancestor = canonicalFolderPath(ancestorPath);
+  return folder !== ancestor && folder.startsWith(ancestor === "/" ? "/" : `${ancestor}/`);
+};
 
 const buildFolderScopedDenyRules = () => {
   const { cannot, rules } = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);

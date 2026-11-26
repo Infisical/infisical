@@ -198,6 +198,12 @@ export const registerPamSessionChunkRouter = async (server: FastifyZodProvider) 
         }
       });
 
+      await server.services.pamSessionActivity.queueChunkExport({
+        orgId: req.permission.orgId,
+        sessionId: req.params.sessionId,
+        chunkIndex: req.body.chunkIndex
+      });
+
       return { ok: true as const, storageBackend: result.storageBackend };
     }
   });
