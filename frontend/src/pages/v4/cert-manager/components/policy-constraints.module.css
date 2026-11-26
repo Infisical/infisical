@@ -1,0 +1,8 @@
+.qualifier {
+  flex: 0 0 var(--cipher-size-cell-min);
+}
+
+.values {
+  flex: 1 1 var(--cipher-size-text-min);
+  min-width: 0;
+}
