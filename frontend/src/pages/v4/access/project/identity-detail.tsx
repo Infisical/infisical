@@ -519,6 +519,7 @@ export const ProjectIdentityDetail = () => {
           <ProjectAccessExtras
             projectId={projectId}
             projectType={scope.projectType}
+            roles={membership.roles}
             target={{ type: "identity", identityId: identity.id, name: identity.name }}
           />
         </Stack>

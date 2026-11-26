@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { hasActiveProjectAdminRole } from "@app/pages/project/components/FolderAccessSection/folder-access-section.utils";
 
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
@@ -14,11 +15,13 @@ export const ProjectAccessExtras = ({
   projectId,
   projectType,
   target,
+  roles,
   readOnly = false
 }: {
   projectId: string;
   projectType: ProjectType;
   target: Target;
+  roles: Parameters<typeof hasActiveProjectAdminRole>[0];
   readOnly?: boolean;
 }) => {
   const { organization } = useV4Session();
@@ -26,7 +29,8 @@ export const ProjectAccessExtras = ({
   const hasFolderRbacPlan = Boolean(
     useV4Adapter("secrets").useOverviewPlan(organization.id).data?.secretsFolderRbac
   );
-  const isSecretManager = projectType === ProjectType.SecretManager;
+  const isSecretManager =
+    projectType === ProjectType.SecretManager && !hasActiveProjectAdminRole(roles);
   const isLegacyPrivileges = Boolean(project?.isLegacyAdditionalPrivilegesEnabled);
   const privilegesHidden =
     target.type === "user"

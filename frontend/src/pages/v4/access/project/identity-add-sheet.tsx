@@ -104,7 +104,11 @@ const AddIdentityForm = ({
   const currentMode = mode ?? (assignable.length > 0 ? "assign" : "create");
   const [name, setName] = useState("");
   const [identityId, setIdentityId] = useState("");
-  const [role, setRole] = useState<string>(ProjectMembershipRole.NoAccess);
+  const [role, setRole] = useState<string>(
+    scope.projectType === ProjectType.CertificateManager
+      ? ProjectMembershipRole.Member
+      : ProjectMembershipRole.NoAccess
+  );
   const [errors, setErrors] = useState<{ name?: string; identity?: string }>({});
 
   const submit = async () => {

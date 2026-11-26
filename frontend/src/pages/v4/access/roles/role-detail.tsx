@@ -46,6 +46,7 @@ import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgPermission, useProjectPermission } from "../permissions";
+import { useProjectPlanGates } from "../project/plan-gates";
 import { useProjectScope } from "../project/scope";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../ui";
@@ -586,6 +587,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const updateRole = access.useUpdateProjectRole();
   const createRole = access.useCreateProjectRole();
   const deleteRole = access.useDeleteProjectRole();
+  const gates = useProjectPlanGates();
   const backHref = accessLinks.project(scope, ProjectAccessControlTabs.Roles);
   const writeType =
     scope.projectType === ProjectType.CertificateManager ? undefined : scope.projectType;
@@ -596,81 +598,86 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   if (!role) return <NotFound backHref={backHref} />;
 
   return (
-    <RoleEditor
-      key={role.id}
-      scope="project"
-      role={role}
-      isCustom={isCustomProjectRole(role.slug)}
-      isDefault={false}
-      taken={(roles ?? []).map((item) => item.slug)}
-      backHref={backHref}
-      projectType={scope.projectType}
-      readOnlyReason={
-        ADMIN_OR_MEMBER_PRODUCTS.has(scope.projectType)
-          ? "This product only applies the Admin and Member roles, so rules on other roles have no effect"
-          : undefined
-      }
-      can={{
-        edit: canEdit,
-        create: permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role),
-        delete: permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role)
-      }}
-      references={{
-        environments: project?.environments.map((environment) => environment.slug),
-        tags: tags?.map((tag) => tag.slug)
-      }}
-      visualizeProjectId={scope.projectType === ProjectType.SecretManager ? projectId : undefined}
-      vaultConnections={canEdit ? (vaultConnections ?? []) : []}
-      savePermissions={async (permissions) => {
-        await updateRole.mutateAsync({
-          projectId,
-          projectType: writeType,
-          id: role.id,
-          permissions: projectToApi(permissions)
-        });
-      }}
-      update={async (draft) => {
-        try {
-          const next = await updateRole.mutateAsync({
+    <>
+      <RoleEditor
+        key={role.id}
+        scope="project"
+        role={role}
+        isCustom={isCustomProjectRole(role.slug)}
+        isDefault={false}
+        taken={(roles ?? []).map((item) => item.slug)}
+        backHref={backHref}
+        projectType={scope.projectType}
+        readOnlyReason={
+          ADMIN_OR_MEMBER_PRODUCTS.has(scope.projectType)
+            ? "This product only applies the Admin and Member roles, so rules on other roles have no effect"
+            : undefined
+        }
+        can={{
+          edit: canEdit,
+          create: permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role),
+          delete: permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role)
+        }}
+        references={{
+          environments: project?.environments.map((environment) => environment.slug),
+          tags: tags?.map((tag) => tag.slug)
+        }}
+        visualizeProjectId={scope.projectType === ProjectType.SecretManager ? projectId : undefined}
+        vaultConnections={canEdit ? (vaultConnections ?? []) : []}
+        savePermissions={async (permissions) => {
+          await updateRole.mutateAsync({
             projectId,
             projectType: writeType,
             id: role.id,
-            ...draft
+            permissions: projectToApi(permissions)
           });
-          saved(`Project role "${next.name}" updated`);
-          if (next.slug !== roleSlug) go(accessLinks.projectRole(scope, next.slug));
-          return true;
-        } catch (error) {
-          failed("Failed to update project role", error);
-          return false;
-        }
-      }}
-      duplicate={async (draft) => {
-        try {
-          const created = await createRole.mutateAsync({
-            projectId,
-            projectType: writeType,
-            ...draft,
-            permissions: sanitizeDuplicateRolePermissions(role.permissions)
-          });
-          saved(`Project role "${draft.name}" duplicated`);
-          go(accessLinks.projectRole(scope, created.slug));
-          return true;
-        } catch (error) {
-          failed("Failed to duplicate project role", error);
-          return false;
-        }
-      }}
-      remove={async () => {
-        try {
-          await deleteRole.mutateAsync({ projectId, projectType: writeType, id: role.id });
-          saved("Successfully deleted project role");
-          go(backHref);
-        } catch (error) {
-          failed("Failed to delete project role", error);
-        }
-      }}
-    />
+        }}
+        update={async (draft) => {
+          if (gates.rbacBlocked("project.edit-project-role-dialog")) return false;
+          try {
+            const next = await updateRole.mutateAsync({
+              projectId,
+              projectType: writeType,
+              id: role.id,
+              ...draft
+            });
+            saved(`Project role "${next.name}" updated`);
+            if (next.slug !== roleSlug) go(accessLinks.projectRole(scope, next.slug));
+            return true;
+          } catch (error) {
+            failed("Failed to update project role", error);
+            return false;
+          }
+        }}
+        duplicate={async (draft) => {
+          if (gates.rbacBlocked("project.duplicate-project-role")) return false;
+          try {
+            const created = await createRole.mutateAsync({
+              projectId,
+              projectType: writeType,
+              ...draft,
+              permissions: sanitizeDuplicateRolePermissions(role.permissions)
+            });
+            saved(`Project role "${draft.name}" duplicated`);
+            go(accessLinks.projectRole(scope, created.slug));
+            return true;
+          } catch (error) {
+            failed("Failed to duplicate project role", error);
+            return false;
+          }
+        }}
+        remove={async () => {
+          try {
+            await deleteRole.mutateAsync({ projectId, projectType: writeType, id: role.id });
+            saved("Successfully deleted project role");
+            go(backHref);
+          } catch (error) {
+            failed("Failed to delete project role", error);
+          }
+        }}
+      />
+      {gates.upgradeGate}
+    </>
   );
 };
 
