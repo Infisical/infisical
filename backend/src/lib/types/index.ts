@@ -92,8 +92,7 @@ export type ProjectServiceActor = {
 export enum RunMode {
   Api = "api",
   GeneralWorkers = "general-workers",
-  SecretScanning = "secret-scanning",
-  Mcp = "mcp"
+  SecretScanning = "secret-scanning"
 }
 
 export interface TDynamicSecretWithMetadata extends TDynamicSecrets {

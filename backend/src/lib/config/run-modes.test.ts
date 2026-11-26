@@ -6,21 +6,11 @@ import { runModesSchema } from "./env";
 
 describe("INFISICAL_RUN_MODES parsing", () => {
   test("defaults to every run mode when unset", () => {
-    expect(runModesSchema.parse(undefined)).toEqual([
-      RunMode.Api,
-      RunMode.GeneralWorkers,
-      RunMode.SecretScanning,
-      RunMode.Mcp
-    ]);
+    expect(runModesSchema.parse(undefined)).toEqual([RunMode.Api, RunMode.GeneralWorkers, RunMode.SecretScanning]);
   });
 
   test("defaults to every run mode when blank", () => {
-    expect(runModesSchema.parse("   ")).toEqual([
-      RunMode.Api,
-      RunMode.GeneralWorkers,
-      RunMode.SecretScanning,
-      RunMode.Mcp
-    ]);
+    expect(runModesSchema.parse("   ")).toEqual([RunMode.Api, RunMode.GeneralWorkers, RunMode.SecretScanning]);
   });
 
   test("parses a single run mode", () => {
@@ -39,7 +29,7 @@ describe("INFISICAL_RUN_MODES parsing", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toContain("api, general-workers, secret-scanning, mcp");
+      expect(result.error.issues[0].message).toContain("api, general-workers, secret-scanning");
     }
   });
 

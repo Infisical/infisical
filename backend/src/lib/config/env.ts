@@ -826,7 +826,6 @@ const envSchema = z
     isApiRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.Api),
     isGeneralWorkerRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.GeneralWorkers),
     isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
-    isMcpRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.Mcp),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isOpenApiFullSpec: data.NODE_ENV !== "production" && data.OPENAPI_FULL_SPEC,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()

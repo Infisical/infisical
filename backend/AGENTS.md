@@ -453,9 +453,7 @@ only do what a route accepting `AuthMode.OAUTH` does. The tools call services di
 route does (audit log with `UserAgentType.REMOTE_MCP`, secret read activity, the same PostHog event). Each product's tools
 live in `server/routes/mcp/tools/<product>.ts` and are registered in `PRODUCT_TOOLS` (`mcp-server.ts`) with that
 product's scopes, so a connection only lists the tools of products it was granted; register through the context's
-`registerTool`, which applies the scope check and denial audit every tool needs. `/api/mcp`
-and its resource metadata are served by the `mcp` run mode, not `api`; the OAuth pages they send clients to stay with
-`api`.
+`registerTool`, which applies the scope check and denial audit every tool needs.
 
 **Token exchange** (`oauth-token-exchange-fns.ts`) trusts the org's OIDC SSO config plus the client's
 `tokenExchangeAudience`. `getOrgPermission` is **not** a membership check (it ignores `isActive` and
