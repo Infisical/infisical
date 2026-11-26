@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
@@ -49,6 +50,46 @@ type Props = {
 };
 
 const formatDate = (date: string | Date) => format(new Date(date), "MMM d, yyyy h:mm a");
+
+const FOUND_IN_PREVIEW_COUNT = 2;
+
+const FoundInList = ({ resources }: { resources: TSecretScanningFinding["resources"] }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hiddenCount = resources.length - FOUND_IN_PREVIEW_COUNT;
+  const visible =
+    isExpanded || hiddenCount <= 0 ? resources : resources.slice(0, FOUND_IN_PREVIEW_COUNT);
+
+  return (
+    <ul className="flex flex-col gap-1">
+      {visible.map((resource) => (
+        <li key={resource.id} className="flex items-center gap-2">
+          <ProviderIcon
+            alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source ${resource.dataSourceName}`}
+            title={resource.dataSourceName}
+            icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
+            className="size-3.5"
+          />
+          <span className="truncate">{resource.name}</span>
+          <span className="shrink-0 text-xs text-muted">
+            {resource.locationCount === 1 ? "1 location" : `${resource.locationCount} locations`}
+          </span>
+        </li>
+      ))}
+      {hiddenCount > 0 && (
+        <li>
+          <Button
+            variant="link"
+            size="xs"
+            className="px-0"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? "Show less" : `${hiddenCount} more`}
+          </Button>
+        </li>
+      )}
+    </ul>
+  );
+};
 
 export const FindingDetailSheet = ({
   finding,
@@ -115,24 +156,7 @@ export const FindingDetailSheet = ({
                 <Detail className="col-span-2">
                   <DetailLabel>Found In</DetailLabel>
                   <DetailValue>
-                    <ul className="flex flex-col gap-1">
-                      {finding.resources.map((resource) => (
-                        <li key={resource.id} className="flex items-center gap-2">
-                          <ProviderIcon
-                            alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source ${resource.dataSourceName}`}
-                            title={resource.dataSourceName}
-                            icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
-                            className="size-3.5"
-                          />
-                          <span className="truncate">{resource.name}</span>
-                          <span className="shrink-0 text-xs text-muted">
-                            {resource.locationCount === 1
-                              ? "1 location"
-                              : `${resource.locationCount} locations`}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                    <FoundInList key={finding.id} resources={finding.resources} />
                   </DetailValue>
                 </Detail>
                 <Detail>
