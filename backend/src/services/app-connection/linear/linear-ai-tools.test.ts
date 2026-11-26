@@ -1,4 +1,5 @@
 import { BadRequestError } from "@app/lib/errors";
+import { AI_JUDGE_LIMITS, toUntrustedJson } from "@app/services/ai/ai-judge-fns";
 
 import { buildAppConnectionAiTools } from "../app-connection-ai-tools";
 import { AppConnection } from "../app-connection-enums";
@@ -84,9 +85,34 @@ describe("LINEAR_AI_TOOLS", () => {
       olderCommentsOmitted: boolean;
     };
 
-    expect(JSON.stringify(result).length).toBeLessThanOrEqual(7500);
+    expect(toUntrustedJson(result).length).toBeLessThanOrEqual(AI_JUDGE_LIMITS.maxToolResultLength);
     expect(olderCommentsOmitted).toBe(true);
     expect(comments.at(-1)?.body.startsWith("19 ")).toBe(true);
+  });
+
+  test("get_issue sizes the result after the judge escapes angle brackets", async () => {
+    vi.mocked(getLinearIssue).mockResolvedValue({
+      id: "uuid-1",
+      identifier: "INC-1",
+      description: "<".repeat(1500),
+      comments: {
+        nodes: [
+          { body: "approved", createdAt: "2026-01-01T00:00:00Z" },
+          ...Array.from({ length: 3 }, (_, i) => ({ body: "<".repeat(500), createdAt: `2026-01-0${i + 2}T00:00:00Z` })),
+          { body: "revoked", createdAt: "2026-01-09T00:00:00Z" }
+        ]
+      }
+    });
+
+    const { result } = await LINEAR_AI_TOOLS.get_issue.run(conn, { identifier: "INC-1" }, {});
+    const { comments, olderCommentsOmitted } = result as {
+      comments: { body: string }[];
+      olderCommentsOmitted: boolean;
+    };
+
+    expect(toUntrustedJson(result).length).toBeLessThanOrEqual(AI_JUDGE_LIMITS.maxToolResultLength);
+    expect(comments.at(-1)?.body).toBe("revoked");
+    expect(olderCommentsOmitted).toBe(true);
   });
 
   test("get_issue explains a missing issue", async () => {

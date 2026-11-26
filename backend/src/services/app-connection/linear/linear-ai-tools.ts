@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { AI_JUDGE_LIMITS, toUntrustedJson } from "@app/services/ai/ai-judge-fns";
 import { defineAiTool } from "@app/services/ai/ai-types";
 
 import {
@@ -15,8 +16,7 @@ import { TLinearConnection, TLinearIssue, TLinearUser } from "./linear-connectio
 
 const MAX_DESCRIPTION_LENGTH = 1500;
 const MAX_COMMENT_LENGTH = 500;
-// Stays under the AI judge's per-result cap, which cuts the end of a longer result
-const MAX_RESULT_LENGTH = 7500;
+
 const MAX_COMMENTS = 20;
 const MAX_SEARCH_RESULTS = 10;
 const MAX_USERS = 5;
@@ -73,14 +73,33 @@ const toIssueFields = (issue: TLinearIssue) => ({
     }))
 });
 
+// The AI judge cuts the end of a result longer than its limit, after escaping, so the result is sized the same way
+const fitsJudgeLimit = (value: unknown) => toUntrustedJson(value).length <= AI_JUDGE_LIMITS.maxToolResultLength;
+
 const toIssue = (issue: TLinearIssue) => {
-  const result = toIssueFields(issue);
-  let omitted = Boolean(issue.hasMoreComments);
-  while (result.comments.length > 1 && JSON.stringify(result).length > MAX_RESULT_LENGTH) {
-    result.comments.shift();
-    omitted = true;
+  const { comments, description, ...fields } = toIssueFields(issue);
+  let olderCommentsOmitted = Boolean(issue.hasMoreComments);
+  let kept = comments;
+  let shortDescription = description;
+  let descriptionLength = description.length;
+  const build = () => ({ olderCommentsOmitted, ...fields, description: shortDescription, comments: kept });
+  const shortenDescription = (fits: () => boolean) => {
+    while (descriptionLength && !fits()) {
+      descriptionLength = Math.floor(descriptionLength / 2);
+      shortDescription = descriptionLength ? `${description.slice(0, descriptionLength)}... (truncated)` : "";
+    }
+  };
+
+  // Comments carry the sign-off evidence, so the description gives up space first
+  shortenDescription(
+    () => toUntrustedJson({ ...build(), comments: [] }).length <= AI_JUDGE_LIMITS.maxToolResultLength / 2
+  );
+  while (kept.length > 1 && !fitsJudgeLimit(build())) {
+    kept = kept.slice(1);
+    olderCommentsOmitted = true;
   }
-  return { ...result, olderCommentsOmitted: omitted };
+  shortenDescription(() => fitsJudgeLimit(build()));
+  return build();
 };
 
 export const LINEAR_AI_TOOLS = {

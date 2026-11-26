@@ -60,7 +60,7 @@ ${instructions}
 </admin_instructions>`;
 
 // "<" is escaped so untrusted text can't close the tag it is wrapped in; the model reads the JSON escape fine
-const toUntrustedJson = (value: unknown) => JSON.stringify(value ?? null).replaceAll("<", "\\u003c");
+export const toUntrustedJson = (value: unknown) => JSON.stringify(value ?? null).replaceAll("<", "\\u003c");
 
 const truncate = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}... (truncated)` : text);
 
