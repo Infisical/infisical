@@ -134,7 +134,7 @@ const LogEntry = ({ line, query }: { line: LogLine; query: string }) => {
   const term = query.trim().toLowerCase();
   const bodyMatch = Boolean(term && line.body?.toLowerCase().includes(term));
   const showBody = Boolean(line.body) && (expanded || bodyMatch);
-  const expandable = overflows || expanded || Boolean(line.body);
+  const expandable = overflows || expanded || Boolean(line.body) || line.text.includes("\n");
   const destructive = isDestructive(line.text);
   const content = (
     <>
