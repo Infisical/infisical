@@ -230,6 +230,7 @@ const PolicyForm = ({ projectId, policy, application, onClose }: PolicySheetProp
     ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"]
   ];
   const reviewSteps = draft.steps.map((entry) => ({
+    id: entry.key,
     name: entry.name,
     requiredApprovals: Number(entry.requiredApprovals) || 0,
     approvers: [

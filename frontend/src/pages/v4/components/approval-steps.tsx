@@ -6,6 +6,7 @@ import { NameLine } from "@infisical/cipher/ui/name-line";
 import { Meta } from "@infisical/cipher/ui/text";
 
 export type ApprovalStep = {
+  id: string;
   name?: string | null;
   requiredApprovals: number;
   approvers: { id: string; name: string; kind: "user" | "group" }[];
@@ -19,7 +20,7 @@ export const ApprovalSteps = ({ steps }: { steps: ApprovalStep[] }) => (
         const name = step.name || `Step ${number}`;
         return (
           <ListRow
-            key={`${step.name ?? ""}:${step.approvers.map((approver) => approver.id).join(",")}`}
+            key={step.id}
             value={String(number)}
             label={name}
             title={name}

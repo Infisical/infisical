@@ -247,7 +247,8 @@ const PolicyCard = ({
           ]}
         />
         <ApprovalSteps
-          steps={policy.steps.map((step) => ({
+          steps={policy.steps.map((step, index) => ({
+            id: String(step.stepNumber ?? index + 1),
             name: step.name,
             requiredApprovals: step.requiredApprovals,
             approvers: step.approvers.map((approver) => ({
