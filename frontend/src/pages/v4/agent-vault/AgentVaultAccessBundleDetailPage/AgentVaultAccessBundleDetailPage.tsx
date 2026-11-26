@@ -292,7 +292,7 @@ const AccessBundleDetail = ({
   accessBundleId: string;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: route });
   const { permission } = useProjectPermission(projectId);
   const canReadSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Read,
@@ -568,6 +568,9 @@ const AccessBundleDetail = ({
           canEdit={canEditSkills}
           canDelete={canDeleteSkills}
           onOpenChange={(open) => !open && closeSheet()}
+          onDeleted={() =>
+            navigate({ search: (prev) => ({ ...prev, skillId: undefined }), replace: true })
+          }
         />
       )}
     </TooltipProvider>
