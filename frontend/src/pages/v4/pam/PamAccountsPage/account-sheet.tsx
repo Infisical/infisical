@@ -501,11 +501,13 @@ export const AccountSheet = ({
             {account ? (
               <Stack gap={16}>
                 <AccountSummary account={account} metadata={metadata} />
-                <SshCaNotice
-                  accountType={account.accountType}
-                  authMethod={account.credentials.authMethod as string | undefined}
-                  accountId={account.id}
-                />
+                {can(PamResourcePermissionActions.EditAccounts) && (
+                  <SshCaNotice
+                    accountType={account.accountType}
+                    authMethod={account.credentials.authMethod as string | undefined}
+                    accountId={account.id}
+                  />
+                )}
               </Stack>
             ) : (
               <Skeleton lines={6} />
