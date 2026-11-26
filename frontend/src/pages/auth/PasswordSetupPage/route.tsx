@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { handoffToV4 } from "@app/helpers/v4Bridge";
+
 import { PasswordSetupPage } from "./PasswordSetupPage";
 
 const PasswordSetupPageQueryParamsSchema = z.object({
@@ -11,5 +13,6 @@ const PasswordSetupPageQueryParamsSchema = z.object({
 
 export const Route = createFileRoute("/_authenticate/password-setup")({
   component: PasswordSetupPage,
-  validateSearch: zodValidator(PasswordSetupPageQueryParamsSchema)
+  validateSearch: zodValidator(PasswordSetupPageQueryParamsSchema),
+  beforeLoad: ({ location }) => handoffToV4(location)
 });

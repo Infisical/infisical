@@ -39,6 +39,7 @@ import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import type { TAgentVaultMember, TAgentVaultProductActor } from "@app/hooks/api/agentVault/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { PendingInvitationBadge } from "../../access/product/agent-vault/shared";
 import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import {
@@ -60,9 +61,12 @@ const memberKey = (member: TActor) => `${member.type}:${member.id}`;
 const MemberCell = ({ member }: { member: TActor }) => (
   <Inline gap={8} align="center" wrap={false}>
     <Icon icon={MEMBER_KIND[member.type].icon} />
-    <Stack gap={0} style={{ minWidth: 0 }}>
+    <Stack gap={0} align="start" style={{ minWidth: 0 }}>
       <span title={memberDisplayName(member)}>{memberDisplayName(member)}</span>
       <Meta mono={false}>{memberSubtitle(member)}</Meta>
+      {member.type === AgentVaultMemberType.User && member.isOrgMembershipPending && (
+        <PendingInvitationBadge />
+      )}
     </Stack>
   </Inline>
 );
@@ -83,26 +87,44 @@ const ManageAccessContent = ({
   const searchParam = debouncedSearch.trim() || undefined;
   const actorType = type === ALL ? undefined : type;
 
-  const { data, isPending } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
+  const {
+    data,
+    isPending,
+    isPlaceholderData: isMembersPlaceholder,
+    error: membersError
+  } = resources.useAccessBundleMembers(projectId, accessBundle.id, {
     actorType,
     search: searchParam,
     limit: PER_PAGE,
     offset: (page - 1) * PER_PAGE
   });
-  const { data: available, isPending: isAvailablePending } =
-    resources.useAvailableAccessBundleMembers(
-      projectId,
-      accessBundle.id,
-      { actorType, search: searchParam, limit: AVAILABLE_PREVIEW_LIMIT },
-      true
-    );
+  const {
+    data: available,
+    isPending: isAvailablePending,
+    isPlaceholderData: isAvailablePlaceholder,
+    isFetching: isAvailableFetching,
+    error: availableError
+  } = resources.useAvailableAccessBundleMembers(
+    projectId,
+    accessBundle.id,
+    { actorType, search: searchParam, limit: AVAILABLE_PREVIEW_LIMIT },
+    true
+  );
   const addMembers = resources.useAddAccessBundleMembers(projectId);
   const revokeMembers = resources.useRevokeAccessBundleMembers(projectId);
 
-  const members = data?.members ?? [];
+  const matchesType = (member: TActor) => !actorType || member.type === actorType;
+  const shownMembers = data?.members ?? [];
+  const members = shownMembers.filter(matchesType);
   const totalCount = data?.totalCount ?? 0;
-  const candidates = available?.members ?? [];
+  const shownCandidates = available?.members ?? [];
+  const candidates = shownCandidates.filter(matchesType);
   const candidateCount = available?.totalCount ?? 0;
+  const isMembersLoading =
+    isPending || (Boolean(isMembersPlaceholder) && shownMembers.length > 0 && !members.length);
+  const isAvailableLoading =
+    isAvailablePending ||
+    (Boolean(isAvailablePlaceholder) && shownCandidates.length > 0 && !candidates.length);
   const typeLabel = type === ALL ? "members" : `${MEMBER_KIND[type].label.toLowerCase()}s`;
 
   const grant = async (member: TAgentVaultProductActor) => {
@@ -170,7 +192,7 @@ const ManageAccessContent = ({
         <Button
           variant="outline"
           size="sm"
-          disabled={addMembers.isPending}
+          disabled={addMembers.isPending || isAvailableFetching}
           aria-label={`Grant access to ${memberDisplayName(member)}`}
           onClick={() => grant(member)}
         >
@@ -239,20 +261,29 @@ const ManageAccessContent = ({
               columns={memberColumns}
               getRowId={memberKey}
               rowLabel={memberDisplayName}
-              loading={isPending}
+              loading={isMembersLoading}
               loadingRows={3}
               rowActions={revokeActions}
               empty={
-                <EmptyState
-                  size="sm"
-                  media="bare"
-                  icon={searchParam ? "search" : "users"}
-                  title={
-                    searchParam || type !== ALL
-                      ? `No ${typeLabel} with access match`
-                      : "No one has access yet"
-                  }
-                />
+                membersError ? (
+                  <EmptyState
+                    size="sm"
+                    media="bare"
+                    icon="alert"
+                    title="Couldn't load members with access"
+                  />
+                ) : (
+                  <EmptyState
+                    size="sm"
+                    media="bare"
+                    icon={searchParam ? "search" : "users"}
+                    title={
+                      searchParam || type !== ALL
+                        ? `No ${typeLabel} with access match`
+                        : "No one has access yet"
+                    }
+                  />
+                )
               }
               pagination={
                 totalCount > PER_PAGE ? (
@@ -279,9 +310,20 @@ const ManageAccessContent = ({
               columns={candidateColumns}
               getRowId={memberKey}
               rowLabel={memberDisplayName}
-              loading={isAvailablePending}
+              loading={isAvailableLoading}
               loadingRows={2}
-              empty={<EmptyState size="sm" media="bare" icon="users" title={noCandidates} />}
+              empty={
+                availableError ? (
+                  <EmptyState
+                    size="sm"
+                    media="bare"
+                    icon="alert"
+                    title="Couldn't load members without access"
+                  />
+                ) : (
+                  <EmptyState size="sm" media="bare" icon="users" title={noCandidates} />
+                )
+              }
               end={
                 candidateCount > candidates.length ? (
                   <Meta mono={false}>

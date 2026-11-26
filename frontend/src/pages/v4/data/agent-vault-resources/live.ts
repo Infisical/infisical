@@ -229,7 +229,10 @@ const fetchAgentVaultVariables = async (
 const useListAgentVaultVariables = (
   projectId: string,
   params: TListAgentVaultVariablesDTO = {},
-  { enabled = true }: { enabled?: boolean } = {}
+  {
+    enabled = true,
+    refetchOnWindowFocus = false
+  }: { enabled?: boolean; refetchOnWindowFocus?: boolean } = {}
 ) => {
   const orgId = useOrgId();
 
@@ -237,7 +240,9 @@ const useListAgentVaultVariables = (
     queryKey: agentVaultKeys.variableList(orgId, projectId, params),
     queryFn: () => fetchAgentVaultVariables(projectId, params),
     placeholderData: keepPreviousInProject(projectId),
-    enabled
+    enabled,
+    refetchOnWindowFocus,
+    ...(refetchOnWindowFocus ? { staleTime: 0 } : {})
   });
 };
 
@@ -431,6 +436,19 @@ const useGetAgentVaultSkillVersion = (projectId: string, skillId: string, versio
     enabled: Boolean(skillId) && Boolean(version),
     // A version never changes once published.
     staleTime: Infinity
+  });
+};
+
+const useFetchAgentVaultSkillVersion = (projectId: string) => {
+  const orgId = useOrgId();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ skillId, version }: { skillId: string; version: number }) =>
+      queryClient.fetchQuery({
+        queryKey: agentVaultKeys.skillVersion(orgId, projectId, skillId, version),
+        queryFn: () => fetchAgentVaultSkillVersion(skillId, version),
+        staleTime: Infinity
+      })
   });
 };
 
@@ -1184,6 +1202,7 @@ export const agentVaultResourcesLive: AgentVaultResourcesAdapter = {
   useSkill: useGetAgentVaultSkill,
   useSkillVersions: useListAgentVaultSkillVersions,
   useSkillVersion: useGetAgentVaultSkillVersion,
+  useFetchSkillVersion: useFetchAgentVaultSkillVersion,
   useAccessBundleSkills: useListAgentVaultAccessBundleSkills,
   useCreateSkill: useCreateAgentVaultSkill,
   useUpdateSkill: useUpdateAgentVaultSkill,

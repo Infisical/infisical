@@ -1,6 +1,7 @@
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { z } from "zod";
 
+import { describeHookNarrowing } from "@app/components/agent-vault/hooks/hookSchema";
 import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import {
   AgentVaultMemberType,
@@ -93,6 +94,12 @@ export const inlineServiceTarget = (service: TAgentVaultSessionInlineService) =>
   return "database" in service && service.database ? `${address}/${service.database}` : address;
 };
 
+export const inlineServiceHookText = ({ hook }: Pick<TAgentVaultSessionInlineService, "hook">) => {
+  if (!hook) return null;
+  const narrowing = describeHookNarrowing(hook);
+  return `Hook: ${hook.name}${narrowing ? ` · ${narrowing}` : ""}`;
+};
+
 export const inlineServicesLabel = (count: number) =>
   count === 1 ? "1 inline service" : `${count} inline services`;
 
@@ -102,8 +109,14 @@ export const sessionInlineServices = (session: Pick<TAgentVaultSession, "service
 export const sessionNamedServices = (session: Pick<TAgentVaultSession, "services">) =>
   session.services.flatMap((service) => (service.isInline ? [] : [service]));
 
-export const isSessionServicesError = (message: string) =>
-  message.includes("both cover") || message.includes("can't name a service");
+export const inlineSkillsLabel = (count: number) =>
+  count === 1 ? "1 inline skill" : `${count} inline skills`;
+
+export const sessionNamedSkills = (session: Partial<Pick<TAgentVaultSession, "skills">>) =>
+  (session.skills ?? []).filter((skill) => !skill.isInline);
+
+export const sessionInlineSkills = (session: Partial<Pick<TAgentVaultSession, "skills">>) =>
+  (session.skills ?? []).filter((skill) => skill.isInline);
 
 export const SESSION_LABEL_MAX_LENGTH = 128;
 

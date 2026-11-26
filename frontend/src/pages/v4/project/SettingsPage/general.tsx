@@ -11,6 +11,7 @@ import {
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
+import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
@@ -142,7 +143,7 @@ const ProjectDetails = ({ project, canEdit }: { project: Project; canEdit: boole
         <Field label="Project ID">
           <Input
             mono
-            readOnly
+            disabledReason="Project IDs can't be changed"
             value={project.id}
             trailing={
               <CopyTrailing value={project.id} label="Copy project ID" done="Project ID copied" />
@@ -385,9 +386,21 @@ export const ProjectGeneralSettings = ({
   dangerNeedsDeletePermission?: boolean;
 }) => {
   const { projectId } = useProjectScope();
-  const { data: project } = useV4Adapter("projectSettings").useProject(projectId);
+  const { data: project, error } = useV4Adapter("projectSettings").useProject(projectId);
   const { permission, isPending } = useProjectPermission(projectId);
   const { data: facts } = useV4Adapter("projectSettings").useMembershipFacts(projectId);
+  if (error && !project)
+    return (
+      <SettingsCard title="Project details">
+        <EmptyState
+          size="sm"
+          media="bare"
+          icon="alert"
+          title="Couldn't load the project settings"
+          description="Refresh the page to try again."
+        />
+      </SettingsCard>
+    );
   if (!project || isPending) return <SettingsCard title="Project details" loading onSave={noop} />;
   const canDeleteProject = permission.can(
     ProjectPermissionActions.Delete,

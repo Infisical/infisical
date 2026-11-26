@@ -20,6 +20,7 @@ import {
   type Organization,
   SsoMfaTrust
 } from "@app/hooks/api/organization/types";
+import type { TListAvailableProjectIdentitiesDTO } from "@app/hooks/api/projectIdentityMembership/types";
 import {
   type Project,
   ProjectType,
@@ -1871,6 +1872,19 @@ export const accessDemo: AccessAdapter = {
     );
     return membership && workspaceUser(state, membership);
   }),
+  useAvailableProjectIdentities: demoQuery(
+    "available-project-identities",
+    (state, { projectId }: TListAvailableProjectIdentitiesDTO) =>
+      state.identities
+        .filter(
+          (identity) =>
+            !identity.projectId &&
+            !membershipsOf(state, "identity", projectId).some(
+              (entry) => entry.identityId === identity.id
+            )
+        )
+        .map((identity) => ({ id: identity.id, name: identity.name }))
+  ),
   useAvailableProjectUsers: demoQuery("available-project-users", (state, projectId: string) =>
     state.orgMemberships
       .map((entry) => userOf(state, entry.userId))

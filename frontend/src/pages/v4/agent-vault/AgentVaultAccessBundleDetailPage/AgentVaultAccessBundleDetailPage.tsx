@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import {
@@ -81,10 +91,12 @@ const COMPARE: Record<string, (a: TAgentVaultService, b: TAgentVaultService) => 
 
 const ReadyAlert = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const navigate = useNavigate();
-  const { data } = useV4Adapter("agentVault").useSessions(orgId, projectId, {
-    scope: AgentVaultSessionScope.All,
-    limit: 1
-  });
+  const { data } = useV4Adapter("agentVault").useSessions(
+    orgId,
+    projectId,
+    { scope: AgentVaultSessionScope.All, limit: 1 },
+    { pollUntil: (list) => list.totalCount > 0 }
+  );
   if (data?.totalCount !== 0) return null;
   return (
     <Alert
@@ -107,12 +119,14 @@ const ReadyAlert = ({ orgId, projectId }: { orgId: string; projectId: string }) 
 const BundleSkills = ({
   projectId,
   accessBundleId,
+  accessBundleName,
   canManage,
   canCreate,
   onOpen
 }: {
   projectId: string;
   accessBundleId: string;
+  accessBundleName: string;
   canManage: boolean;
   canCreate: boolean;
   onOpen: (skillId: string) => void;
@@ -125,7 +139,8 @@ const BundleSkills = ({
   const add = resources.useAddAccessBundleSkills(projectId);
   const remove = resources.useRemoveAccessBundleSkill(projectId);
   const [adding, setAdding] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<string>();
+  const [removing, setRemoving] = useState<TAgentVaultBundleSkill>();
 
   const rowActions: DataTableRowActions<TAgentVaultBundleSkill> = {
     inline: [
@@ -137,20 +152,7 @@ const BundleSkills = ({
     ],
     renderMenu: canManage
       ? (skill) => (
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={async () => {
-              try {
-                await remove.mutateAsync({
-                  accessBundleId,
-                  skillId: skill.id
-                });
-                saved(`Skill ${skill.name} removed`);
-              } catch (error) {
-                failed("Failed to remove skill", error);
-              }
-            }}
-          >
+          <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(skill)}>
             <Icon name="trash" />
             Remove from bundle
           </DropdownMenuItem>
@@ -226,24 +228,57 @@ const BundleSkills = ({
           projectId={projectId}
           accessBundleId={accessBundleId}
           bundleSkillIds={skills.map((skill) => skill.id)}
-          onCreateNew={canCreate ? () => setCreating(true) : undefined}
+          onCreateNew={canCreate ? setCreating : undefined}
           onOpenChange={setAdding}
         />
       )}
-      {creating && (
+      {creating !== undefined && (
         <CreateSkillDialog
           projectId={projectId}
-          onOpenChange={setCreating}
+          initialName={creating}
+          notify={false}
+          onOpenChange={(open) => !open && setCreating(undefined)}
           onCreated={async (skill) => {
             try {
               await add.mutateAsync({ accessBundleId, skillIds: [skill.id] });
-              saved(`Skill ${skill.name} added to this access bundle`);
+              saved(`Skill ${skill.name} created and added to this access bundle`);
             } catch (error) {
               failed(`Skill ${skill.name} was created but not added`, error);
             }
           }}
         />
       )}
+      <AlertDialog
+        open={Boolean(removing)}
+        onOpenChange={(open) => !open && setRemoving(undefined)}
+      >
+        <AlertDialogContent tone="danger" confirmText={removing?.name} pending={remove.isPending}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {`Remove ${removing?.name ?? ""} from ${accessBundleName}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>The skill itself is not deleted.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={async () => {
+                if (!removing) return;
+                try {
+                  await remove.mutateAsync({ accessBundleId, skillId: removing.id });
+                  saved(`Skill ${removing.name} removed`);
+                } catch (error) {
+                  failed("Failed to remove skill", error);
+                }
+                setRemoving(undefined);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
@@ -292,7 +327,7 @@ const AccessBundleDetail = ({
   accessBundleId: string;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: route });
   const { permission } = useProjectPermission(projectId);
   const canReadSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Read,
@@ -501,7 +536,25 @@ const AccessBundleDetail = ({
                       title="No services match your search"
                     />
                   ) : (
-                    <EmptyState size="sm" media="bare" icon="proxy" title="No services yet" />
+                    <EmptyState
+                      size="sm"
+                      media="bare"
+                      icon="proxy"
+                      title="No services yet"
+                      description="Add services to give this bundle access to external hosts."
+                      actions={
+                        canEditBundle ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon="plus"
+                            onClick={() => setAddingService(true)}
+                          >
+                            Add services
+                          </Button>
+                        ) : undefined
+                      }
+                    />
                   )
                 }
                 onEdit={(service) => setSheet({ service })}
@@ -512,6 +565,7 @@ const AccessBundleDetail = ({
               <BundleSkills
                 projectId={projectId}
                 accessBundleId={accessBundle.id}
+                accessBundleName={accessBundle.name}
                 canManage={canEditBundle}
                 canCreate={canCreateSkills}
                 onOpen={openSheet}
@@ -568,6 +622,9 @@ const AccessBundleDetail = ({
           canEdit={canEditSkills}
           canDelete={canDeleteSkills}
           onOpenChange={(open) => !open && closeSheet()}
+          onDeleted={() =>
+            navigate({ search: (prev) => ({ ...prev, skillId: undefined }), replace: true })
+          }
         />
       )}
     </TooltipProvider>

@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect } from "react";
-import { Outlet, useRouteContext } from "@tanstack/react-router";
+import { Outlet, useMatches, useRouteContext } from "@tanstack/react-router";
 
 import { analytics } from "@app/lib/analytics";
 
@@ -7,6 +7,12 @@ import { V4SessionContext } from "../data/session/contract";
 import { useDemoSession } from "../data/session/demo";
 import { LiveSessionProvider } from "../data/session/live";
 import { V4Shell } from "../shell/V4Shell";
+
+declare module "@tanstack/react-router" {
+  interface StaticDataRouteOption {
+    fullScreen?: boolean;
+  }
+}
 
 const SessionProvider = ({ children }: { children: ReactNode }) => {
   const context = useRouteContext({ from: "/v4/organizations/$orgId" });
@@ -21,6 +27,7 @@ const SessionProvider = ({ children }: { children: ReactNode }) => {
 
 export const V4OrganizationLayout = () => {
   const { v4Mode } = useRouteContext({ from: "/v4/organizations/$orgId" });
+  const fullScreen = useMatches({ select: (matches) => matches.at(-1)?.staticData.fullScreen });
   useEffect(() => {
     if (v4Mode !== "live") return undefined;
     analytics.registerUiVersion("v4");
@@ -28,9 +35,13 @@ export const V4OrganizationLayout = () => {
   }, [v4Mode]);
   return (
     <SessionProvider>
-      <V4Shell>
+      {fullScreen ? (
         <Outlet />
-      </V4Shell>
+      ) : (
+        <V4Shell>
+          <Outlet />
+        </V4Shell>
+      )}
     </SessionProvider>
   );
 };

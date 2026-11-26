@@ -393,7 +393,7 @@ export const OverviewPage = () => {
     columnId: "name",
     direction: "asc"
   });
-  const { data, isPending } = kms.useKeys({
+  const { data, isPending, isFetching } = kms.useKeys({
     projectId,
     offset: (page - 1) * pageSize,
     limit: pageSize,
@@ -520,6 +520,7 @@ export const OverviewPage = () => {
           rows={keys}
           columns={columns}
           loading={isPending}
+          refreshing={isFetching && !isPending}
           getRowId={(r) => r.id}
           rowLabel={(r) => r.name}
           rowActions={{

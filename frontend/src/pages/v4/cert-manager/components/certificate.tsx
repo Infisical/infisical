@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,11 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Select } from "@infisical/cipher/ui/select";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionPkiSyncActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies/types";
 import { ApprovalRequestStatus } from "@app/hooks/api/approvalRequests/types";
@@ -28,6 +34,7 @@ import {
   canRevokeAfterDeletion,
   DELETED_CERTIFICATE_NO_ACTIONS,
   getCertificateDeletionWarning,
+  getApplicationCertificateAccess,
   getCertificateDisplayStatus,
   getPendingRevocationState,
   isExpiringWithinOneDay,
@@ -35,7 +42,9 @@ import {
   RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
+import { useProjectPermission } from "../../access/permissions";
 import { failed, saved, toast } from "../../access/toast";
+import { RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -165,7 +174,7 @@ const syncBlock = (cert: TCertificate, isInventoryView: boolean) => {
   if (isInventoryView) return "Open it from its application to manage syncs";
   if (cert.status !== CertStatus.ACTIVE || cert.renewedByCertificateId)
     return "Only active certificates sync";
-  if (cert.source !== CertSource.Issued) return "Only managed certificates sync";
+  if (cert.source === CertSource.Discovered) return "Discovered certificates don't sync";
   return undefined;
 };
 
@@ -396,4 +405,54 @@ export const DeleteCertificateDialog = ({
       </AlertDialogContent>
     </AlertDialog>
   );
+};
+
+const reasonFor = (allowed: boolean, blocked?: string) =>
+  allowed ? undefined : (blocked ?? RESTRICTED);
+
+export const useCertificateReasons = (
+  cert: TCertificate,
+  projectId: string,
+  blocks: ReturnType<typeof certificateBlocks>,
+  revocation: CertificateRevocation
+) => {
+  const { data: appAccess } = useV4Adapter("pkiApplications").useApplicationPermissions(
+    cert.applicationId ?? ""
+  );
+  const { permission } = useProjectPermission(projectId);
+  const access = cert.applicationId
+    ? getApplicationCertificateAccess({
+        applicationName: cert.applicationName ?? "this application",
+        permission: appAccess?.permission,
+        isRevocationApprovalRequired: revocation.isRevocationApprovalRequired
+      })
+    : undefined;
+  const certSubject = subject(ProjectPermissionSub.Certificates, {
+    commonName: cert.commonName,
+    altNames: cert.altNames?.split(",").map((name) => name.trim()),
+    serialNumber: cert.serialNumber,
+    friendlyName: cert.friendlyName,
+    metadata: cert.metadata
+  });
+  const canEdit =
+    access?.canEdit ?? permission.can(ProjectPermissionCertificateActions.Edit, certSubject);
+  const canDelete =
+    access?.canDelete ?? permission.can(ProjectPermissionCertificateActions.Delete, certSubject);
+  const canManageSyncs =
+    access?.canManagePkiSyncs ??
+    permission.can(ProjectPermissionPkiSyncActions.Edit, ProjectPermissionSub.PkiSyncs);
+  const editReason = reasonFor(canEdit, access?.editBlockedReason);
+  return {
+    canDelete,
+    editReason,
+    renewReason: blocks.renew ?? reasonFor(access?.canRenew ?? canEdit, access?.renewBlockedReason),
+    autoRenewReason: blocks.autoRenew ?? editReason,
+    syncReason: blocks.sync ?? reasonFor(canManageSyncs, access?.managePkiSyncsBlockedReason),
+    revokeReason:
+      blocks.revoke ?? reasonFor(access?.canRevoke ?? canDelete, access?.revokeBlockedReason),
+    deleteReason: blocks.delete ?? reasonFor(canDelete, access?.deleteBlockedReason),
+    metadataReason: cert.deletedAt
+      ? DELETED_CERTIFICATE_NO_ACTIONS
+      : reasonFor(canEdit, access?.editMetadataBlockedReason)
+  };
 };

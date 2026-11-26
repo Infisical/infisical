@@ -24,11 +24,13 @@ import {
   useHasProjectCertificateSyncs,
   usePendingRequestCount
 } from "../cert-manager/components/certificate";
+import { useV4Adapter } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { usePendingApprovals } from "../secret-manager/pending-approvals";
+import { useAgentVaultNav } from "./agent-vault-nav";
 import { type ShellBannerContext, type ShellBannerScope, PageFrame, ShellBanners } from "./banners";
 import { useShellChrome } from "./chrome";
 import { CommandPalette } from "./command-palette";
@@ -198,8 +200,14 @@ export const V4Shell = ({
         session.organization.isSubOrganization
       );
   const hasCertificateSyncs = useHasProjectCertificateSyncs(orgId, located.level === "pki");
-  const at =
-    located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located;
+  const agentVaultNav = useAgentVaultNav(
+    orgId,
+    located.level === "agent-vault" ? located.projectId : undefined
+  );
+  const at = agentVaultNav.hidden.reduce(
+    (shown, itemId) => withoutNavItem(shown, itemId),
+    located.level === "pki" && !hasCertificateSyncs ? withoutNavItem(located, "syncs") : located
+  );
   const go = (href: string) => navigate({ href: resolve(href) });
   const product = at.product ? productOf(at.product) : undefined;
   const hue = hueOf(product);
@@ -211,6 +219,9 @@ export const V4Shell = ({
     at.product === ProjectType.SecretManager ? (at.projectId ?? "") : ""
   );
   const pendingCertRequests = usePendingRequestCount(orgId, at.level === "pki");
+  const { data: pendingPamRequests = 0 } = useV4Adapter("pamAccess").usePendingApprovalCount(
+    at.level === "pam"
+  );
   const trail = shellTrail({
     at,
     projectName: projectName.name,
@@ -219,7 +230,8 @@ export const V4Shell = ({
     nested: nav?.levels,
     linkTo: (path, search) => ({ to: resolve(`${base}${path}`), search }) as LinkOptions,
     projectCounts: { approvals: approvals.changesToReview + approvals.accessToReview },
-    productCounts: { requests: pendingCertRequests }
+    projectBadges: agentVaultNav.badges,
+    productCounts: { requests: pendingCertRequests, "approval-requests": pendingPamRequests }
   });
   const shown = trail[trail.length - 1];
   const parent = trail[trail.length - 2];

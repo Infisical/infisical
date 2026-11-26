@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
 import {
   FilterBar,
@@ -7,9 +7,9 @@ import {
 } from "@infisical/cipher/patterns/filter-bar";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
-import { Calendar } from "@infisical/cipher/ui/calendar";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import { DateRangePicker } from "@infisical/cipher/ui/date-range-picker";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Json, type JsonValue } from "@infisical/cipher/ui/json";
@@ -17,7 +17,6 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
-import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import {
   Sheet,
   SheetBody,
@@ -31,6 +30,7 @@ import { Heading, Meta } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { AuditLogsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   OrgPermissionAuditLogsActions,
@@ -54,7 +54,8 @@ import { useOrgPermission } from "../../access/permissions";
 import { AccessRestricted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { orgHref, v4Path } from "../../links";
+import { useUpgradeGate } from "../../license";
+import { v4Path } from "../../links";
 import { EventClassesCard } from "./event-classes";
 import { AuditLogStreamsTab } from "./streams/streams";
 
@@ -83,6 +84,11 @@ const actorTypeLabel: Partial<Record<ActorType, string>> = {
   [ActorType.SERVICE]: "Service token",
   [ActorType.PLATFORM]: "Platform",
   [ActorType.KMIP_CLIENT]: "KMIP client",
+  [ActorType.ACME_PROFILE]: "ACME profile",
+  [ActorType.ACME_ACCOUNT]: "ACME account",
+  [ActorType.EST_ACCOUNT]: "EST account",
+  [ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT]: "Microsoft autoenrollment account",
+  [ActorType.AGENT_VAULT_PROXY]: "Agent Vault proxy",
   [ActorType.UNKNOWN_USER]: "Unknown user"
 };
 
@@ -102,6 +108,14 @@ const actorName = (actor: Actor) => {
     case ActorType.SERVICE:
     case ActorType.KMIP_CLIENT:
       return actor.metadata.name;
+    case ActorType.ACME_PROFILE:
+    case ActorType.EST_ACCOUNT:
+    case ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT:
+      return actor.metadata.profileId;
+    case ActorType.ACME_ACCOUNT:
+      return actor.metadata.accountId;
+    case ActorType.AGENT_VAULT_PROXY:
+      return actor.metadata.agentVaultProxyId;
     default:
       return actorTypeLabel[actor.type] ?? actor.type;
   }
@@ -240,11 +254,16 @@ const LogDetails = ({ log, onClose }: { log: AuditLog | null; onClose: () => voi
                   ["Event ID", <Meta key="id">{log.id}</Meta>]
                 ]}
               />
-              <Json
-                label="Event metadata"
-                value={metadataOf(log) as JsonValue}
-                defaultExpandDepth={2}
-              />
+              <Stack gap={8}>
+                <Heading level={3} size="subsection">
+                  Event metadata
+                </Heading>
+                <Json
+                  label="Event metadata"
+                  value={metadataOf(log) as JsonValue}
+                  defaultExpandDepth={2}
+                />
+              </Stack>
             </Stack>
           </SheetBody>
         </>
@@ -256,6 +275,8 @@ const LogDetails = ({ log, onClose }: { log: AuditLog | null; onClose: () => voi
 export type AuditLogsProject = { id: string; type: ProjectType };
 
 const productsWithoutSecrets = new Set<ProjectType>([
+  ProjectType.CertificateManager,
+  ProjectType.SecretScanning,
   ProjectType.PAM,
   ProjectType.AgentVault,
   ProjectType.KMS
@@ -319,7 +340,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
     eventType: everyEvent ? [] : (value("event") as EventType[]),
     eventClass: value("class") as AuditLogEventClass[],
     actorType: actorType ?? ((pickedActorType || undefined) as ActorType | undefined),
-    actor: actorId ?? (pickedActor || undefined),
+    actor: actorId ?? (pickedActor || value("actor-id")[0] || undefined),
     userAgentType: value("source")[0] as UserAgentType | undefined,
     environment: (hasSecrets && value("environment")[0]) || undefined,
     secretPath: (hasSecrets && projectId && value("secret-path")[0]) || undefined,
@@ -360,7 +381,7 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
             key: "actor-type",
             label: "Actor type",
             type: "select" as const,
-            options: [ActorType.USER, ActorType.IDENTITY, ActorType.PLATFORM].map((type) => ({
+            options: Object.values(ActorType).map((type) => ({
               value: type,
               label: actorTypeLabel[type] ?? type
             }))
@@ -374,6 +395,16 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
             type: "select" as const,
             searchable: true,
             options: actorOptions
+          }
+        ]
+      : []),
+    ...(!projectId && !actorId
+      ? [
+          {
+            key: "actor-id",
+            label: "Actor ID",
+            type: "text" as const,
+            placeholder: "Actor ID"
           }
         ]
       : []),
@@ -492,33 +523,21 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" icon="calendar">
-                {preset ? "Custom" : active.title}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" aria-label="Custom date range">
-              <Calendar
-                aria-label="Custom date range"
-                mode="range"
-                disabled={{ after: new Date() }}
-                selected={custom}
-                onSelect={(next) => {
-                  setCustom(next);
-                  if (next?.from && next.to) {
-                    setRange("custom");
-                    reset();
-                  }
-                }}
-                footer={
-                  custom?.from && custom.to
-                    ? `${formatDay(custom.from)} to ${formatDay(custom.to)}`
-                    : "Choose a start and end date"
-                }
-              />
-            </PopoverContent>
-          </Popover>
+          <DateRangePicker
+            aria-label="Custom date range"
+            commit="apply"
+            align="end"
+            placeholder="Custom"
+            disabled={{ after: new Date() }}
+            value={preset ? undefined : custom}
+            formatRange={({ from, to }) => `${formatDay(from)} to ${formatDay(to)}`}
+            onValueChange={(next) => {
+              if (!next?.from || !next.to) return;
+              setCustom(next);
+              setRange("custom");
+              reset();
+            }}
+          />
         </>
       }
     />
@@ -614,17 +633,29 @@ export const AuditLogsTab = ({
 }) => {
   const { organization } = useV4Session();
   const { data: plan } = useV4Adapter("auditLogs").usePlan(organization.id);
-  if (plan && !plan.auditLogs)
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const locked = Boolean(plan && !plan.auditLogs);
+  const openGate = useCallback(
+    () => openUpgradeGate({ intent: AuditLogsUpgradeIntent, paywallKey: "organization.logs" }),
+    [openUpgradeGate]
+  );
+  useEffect(() => {
+    if (locked) openGate();
+  }, [locked, openGate]);
+  if (locked)
     return (
-      <EmptyState
-        icon="lock"
-        title="Upgrade your plan to view audit logs"
-        actions={
-          <Button variant="outline" asChild>
-            <a href={orgHref(organization.id, "/billing")}>View plans</a>
-          </Button>
-        }
-      />
+      <>
+        <EmptyState
+          icon="lock"
+          title="Upgrade your plan to view audit logs"
+          actions={
+            <Button variant="outline" onClick={openGate}>
+              View plans
+            </Button>
+          }
+        />
+        {upgradeGate}
+      </>
     );
   return <LogsTable project={project} actorId={actorId} />;
 };
@@ -636,6 +667,7 @@ const OrgAuditLogSettings = () => {
   const { data: plan } = adapter.usePlan(organization.id);
   const { data: settings, isPending, error } = adapter.useOrgSettings(organization.id);
   const update = adapter.useUpdateOrgSettings();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   if (
     !permissionPending &&
     !permission.can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs)
@@ -644,17 +676,40 @@ const OrgAuditLogSettings = () => {
   let locked: string | undefined;
   if (!permission.can(OrgPermissionAuditLogsActions.Edit, OrgPermissionSubjects.AuditLogs))
     locked = "You need the Edit permission on Audit Logs to change these settings.";
-  else if (plan && !plan.auditLogs) locked = "Choosing recorded events needs a paid plan.";
   return (
-    <EventClassesCard
-      description="Choose which organization-level events are recorded. Each project has its own setting."
-      settings={settings}
-      isPending={isPending}
-      error={error}
-      locked={locked}
-      onSave={(eventClasses) => update.mutateAsync({ eventClasses })}
-    />
+    <>
+      <EventClassesCard
+        description="Choose which organization-level events are recorded. Each project has its own setting."
+        settings={settings}
+        isPending={isPending}
+        error={error}
+        locked={locked}
+        upgradeBlocked={() => {
+          if (!plan || plan.auditLogs) return false;
+          openUpgradeGate({
+            intent: {
+              ...AuditLogsUpgradeIntent,
+              description: "Choose which audit events are recorded."
+            },
+            paywallKey: "organization.audit-log-settings"
+          });
+          return true;
+        }}
+        onSave={(eventClasses) => update.mutateAsync({ eventClasses })}
+      />
+      {upgradeGate}
+    </>
   );
+};
+
+const OrgAuditLogs = () => {
+  const { permission, isPending } = useOrgPermission();
+  if (
+    !isPending &&
+    !permission.can(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs)
+  )
+    return <AccessRestricted requirement="Read audit logs" />;
+  return <AuditLogsTab />;
 };
 
 export const AuditLogsPage = () => {
@@ -689,7 +744,7 @@ export const AuditLogsPage = () => {
           />
         }
       />
-      {activeTab === "audit-logs" && <AuditLogsTab />}
+      {activeTab === "audit-logs" && <OrgAuditLogs />}
       {activeTab === "streams" && <AuditLogStreamsTab />}
       {activeTab === "settings" && <OrgAuditLogSettings />}
     </Stack>

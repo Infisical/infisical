@@ -94,6 +94,20 @@ export const WorkflowIntegrationsTab = () => {
   const [deleting, setDeleting] = useState<WorkflowIntegration>();
   const [deletePending, setDeletePending] = useState(false);
   const [busyId, setBusyId] = useState<string>();
+  const slackDeleteId =
+    deleting?.integration === WorkflowIntegrationPlatform.SLACK ? deleting.id : undefined;
+  const {
+    data: slackAlertCount = 0,
+    error: slackAlertCountError,
+    isPending: slackAlertCountPending
+  } = integrations.useSlackIntegrationAlertCount(slackDeleteId);
+  let slackAlertWarning = "";
+  if (slackAlertCountError) {
+    slackAlertWarning =
+      " Infisical could not check which alerts post through it. Any that do will fail to send until they are edited to use another Slack integration.";
+  } else if (slackAlertCount > 0) {
+    slackAlertWarning = ` ${slackAlertCount} alert${slackAlertCount === 1 ? " posts" : "s post"} through it and will fail to send until ${slackAlertCount === 1 ? "it is" : "they are"} edited to use another Slack integration.`;
+  }
 
   const platformFilter = filters.find((filter) => filter.field === "platform")?.values ?? [];
   const visible = useMemo(() => {
@@ -334,12 +348,16 @@ export const WorkflowIntegrationsTab = () => {
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}
       >
-        <AlertDialogContent tone="danger" confirmText={deleting?.slug} pending={deletePending}>
+        <AlertDialogContent
+          tone="danger"
+          confirmText={deleting?.slug}
+          pending={deletePending || (Boolean(slackDeleteId) && slackAlertCountPending)}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete integration {deleting?.slug}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Projects using this integration will stop sending notifications to it. This can&apos;t
-              be undone.
+              Projects using this integration will stop sending notifications to it.
+              {slackAlertWarning} This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

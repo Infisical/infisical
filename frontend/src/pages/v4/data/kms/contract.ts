@@ -35,7 +35,9 @@ type KeyMaterialQuery<TData> = (
 ) => V4QueryResult<TData>;
 
 export type KmsAdapter = {
-  useKeys: (dto: TListProjectCmeksDTO) => V4QueryResult<TProjectCmeksList>;
+  useKeys: (
+    dto: TListProjectCmeksDTO
+  ) => V4QueryResult<TProjectCmeksList> & { isFetching: boolean };
   useCreateKey: V4Mutation<TCreateCmek, TCmek>;
   useUpdateKey: V4Mutation<TUpdateCmek>;
   useRotateKey: V4Mutation<TRotateCmek>;

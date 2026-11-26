@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -29,7 +29,7 @@ import {
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useProjectPermission } from "../../../access/permissions";
-import { toast } from "../../../access/toast";
+import { failed, toast } from "../../../access/toast";
 import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
@@ -93,17 +93,22 @@ export const ChangeRequests = ({
   const { data: project } = secrets.useProject(projectId);
   const environmentFilter = filters.find((filter) => filter.field === "environment")?.values[0];
   const authorFilter = filters.find((filter) => filter.field === "author")?.values[0];
-  const { data, isPending, error } = secrets.useApprovalRequests({
+  const listFilters = {
     projectId,
     status,
     environment: environmentFilter,
     committer: authorFilter,
     search: debouncedSearch,
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
     orderBy: sort ? sortable[sort.columnId] : undefined,
     orderDirection: sort?.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC
+  };
+  const { data, isPending, error } = secrets.useApprovalRequests({
+    ...listFilters,
+    limit: pageSize,
+    offset: (page - 1) * pageSize
   });
+  const fetchApprovals = secrets.useFetchApprovalRequests();
+  const selectionVersion = useRef(0);
   const { data: count } = secrets.useApprovalRequestCount({ projectId });
   const canReadMembers = permission.can(
     ProjectPermissionMemberActions.Read,
@@ -140,6 +145,7 @@ export const ChangeRequests = ({
   }, [data, page, pageSize]);
 
   const clearSelection = () => {
+    selectionVersion.current += 1;
     setSelected({});
     setFailures({});
   };
@@ -149,6 +155,7 @@ export const ChangeRequests = ({
       title: `You can select up to ${MAX_SELECTION} change requests at once`
     });
   const changeSelection = (ids: string[]) => {
+    selectionVersion.current += 1;
     const pageIds = new Set(requests.map(({ id }) => id));
     const kept = Object.values(selected).filter(({ id }) => !pageIds.has(id));
     const picked = requests.filter(({ id }) => ids.includes(id));
@@ -159,6 +166,29 @@ export const ChangeRequests = ({
     setFailures((current) =>
       Object.fromEntries(Object.entries(current).filter(([id]) => next.some((r) => r.id === id)))
     );
+  };
+  const selectAllMatching = async () => {
+    const version = selectionVersion.current;
+    let matching: ChangeRequest[];
+    let matchingCount: number;
+    try {
+      ({ approvals: matching, totalCount: matchingCount } = await fetchApprovals({
+        ...listFilters,
+        limit: MAX_SELECTION,
+        offset: 0
+      }));
+    } catch (fetchError) {
+      failed("Couldn't load the matching change requests", fetchError);
+      return;
+    }
+    if (version !== selectionVersion.current) return;
+    const unselected = matching.filter(({ id }) => !selected[id]);
+    const added = unselected.slice(0, Math.max(0, MAX_SELECTION - selectedList.length));
+    if (unselected.length > added.length || matchingCount > matching.length) tooMany();
+    setSelected((current) => ({
+      ...current,
+      ...Object.fromEntries(added.map((request) => [request.id, request]))
+    }));
   };
   const refilter = () => {
     setPage(1);
@@ -412,11 +442,8 @@ export const ChangeRequests = ({
           isOpen ? (
             <FloatingActionBar
               count={selectedList.length}
-              total={Math.min(
-                MAX_SELECTION,
-                selectedList.length + requests.filter(({ id }) => !selected[id]).length
-              )}
-              onSelectAll={() => changeSelection(requests.map(({ id }) => id))}
+              total={Math.min(MAX_SELECTION, Math.max(totalCount, selectedList.length))}
+              onSelectAll={selectAllMatching}
               onClear={clearSelection}
               noun={selectedList.length === 1 ? "change request" : "change requests"}
               actions={[

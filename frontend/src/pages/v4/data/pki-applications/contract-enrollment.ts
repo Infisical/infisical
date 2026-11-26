@@ -1,3 +1,4 @@
+import type { TLdapDirectoryGroupSearch } from "@app/hooks/api/appConnections/ldap/queries";
 import type {
   TAppConnection,
   TAvailableAppConnection,
@@ -5,17 +6,19 @@ import type {
 } from "@app/hooks/api/appConnections/types";
 import type {
   TClearEnrollmentMethodDTO,
+  TMicrosoftAutoenrollmentServicePrincipal,
   TPkiApplicationEnrollmentState,
   TRevealAcmeEabSecretResponse,
   TSetAcmeEnrollmentDTO,
   TSetApiEnrollmentDTO,
   TSetEstEnrollmentDTO,
+  TSetMicrosoftAutoenrollmentEnrollmentDTO,
   TSetScepEnrollmentDTO
 } from "@app/hooks/api/pkiApplications/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 
-export type EnrollmentPlan = { est: boolean; scep: boolean };
+export type EnrollmentPlan = { est: boolean; scep: boolean; microsoftAutoenrollment: boolean };
 
 export type PkiApplicationsEnrollmentAdapter = {
   useEnrollment: (
@@ -38,4 +41,17 @@ export type PkiApplicationsEnrollmentAdapter = {
     options?: { enabled?: boolean }
   ) => V4QueryResult<TAvailableAppConnection[]>;
   useCreateIntuneConnection: V4Mutation<TCreateAppConnectionDTO, TAppConnection>;
+  useSetMicrosoftAutoenrollmentEnrollment: V4Mutation<TSetMicrosoftAutoenrollmentEnrollmentDTO>;
+  useClearMicrosoftAutoenrollmentEnrollment: V4Mutation<TClearEnrollmentMethodDTO>;
+  useReenrollMicrosoftAutoenrollmentComputers: V4Mutation<TClearEnrollmentMethodDTO>;
+  useMicrosoftAutoenrollmentServicePrincipal: (
+    applicationId: string,
+    profileId: string
+  ) => V4QueryResult<TMicrosoftAutoenrollmentServicePrincipal>;
+  useLdapConnections: (projectId: string) => V4QueryResult<TAvailableAppConnection[]>;
+  useCreateLdapConnection: V4Mutation<TCreateAppConnectionDTO, TAppConnection>;
+  useLdapGroups: (
+    connectionId?: string,
+    search?: string
+  ) => V4QueryResult<TLdapDirectoryGroupSearch> & { isFetching: boolean };
 };

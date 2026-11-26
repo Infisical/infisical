@@ -4,6 +4,7 @@ import axios from "axios";
 import { z } from "zod";
 
 import { SessionStorageKeys } from "@app/const";
+import { handoffToV4 } from "@app/helpers/v4Bridge";
 
 import { CliRedirectPage } from "./CliRedirectPage";
 
@@ -14,7 +15,8 @@ const CliRedirectPageQueryParamsSchema = z.object({
 export const Route = createFileRoute("/cli-redirect")({
   component: CliRedirectPage,
   validateSearch: zodValidator(CliRedirectPageQueryParamsSchema),
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
+    await handoffToV4(location);
     const cliTerminalTokenInfo = sessionStorage.getItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
     if (!cliTerminalTokenInfo) return;
 

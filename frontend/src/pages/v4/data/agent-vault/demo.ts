@@ -22,7 +22,9 @@ import type {
   TAgentVaultProductMember,
   TAgentVaultSession,
   TAgentVaultSessionActor,
+  TAgentVaultServiceHook,
   TAgentVaultSessionService,
+  TAgentVaultSessionSkill,
   TChangeAgentVaultDelegationSubjectsDTO,
   TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultSessionDTO,
@@ -41,8 +43,13 @@ import {
   type TDemoProject,
   updateDemoProject
 } from "../agent-vault-demo-store";
+import { agentVaultResourcesDemo } from "../agent-vault-resources/demo";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
-import type { AgentVaultAdapter, TAgentVaultSessionLogs } from "./contract";
+import {
+  type AgentVaultAdapter,
+  GRANTED_SERVICES_REQUIRING_SETUP,
+  type TAgentVaultSessionLogs
+} from "./contract";
 
 const uuid = (prefix: string, index: number) =>
   `${prefix}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
@@ -82,8 +89,14 @@ const machines = [
   machine(uuid("a2", 3), "nightly-eval-runner")
 ];
 
-const inline = (index: number, name: string, hostPattern: string): TAgentVaultSessionService => ({
+const inline = (
+  index: number,
+  name: string,
+  hostPattern: string,
+  hook: TAgentVaultServiceHook | null = null
+): TAgentVaultSessionService => ({
   isInline: true,
+  hook,
   id: uuid("c1", index),
   name,
   description: null,
@@ -196,7 +209,12 @@ const seeds: Seed[] = [
       NAMED.notionMcp,
       NAMED.stripeTest,
       NAMED.internalBilling,
-      inline(5, "Checkout status mirror", "status-mirror.checkout.internal.acme.dev"),
+      inline(5, "Checkout status mirror", "status-mirror.checkout.internal.acme.dev", {
+        id: uuid("c3", 1),
+        name: "read-only-status",
+        methods: [AgentVaultHttpMethod.Get],
+        paths: ["/status"]
+      }),
       inline(6, "EU edge health", "edge-eu.acme.dev")
     ],
     Active,
@@ -253,6 +271,38 @@ const seeds: Seed[] = [
   ["Old billing bundle check", people[2], null, null, [], Expired, 60 * 24 * 30, -60 * 24 * 29]
 ];
 
+const projectSkill = (index: number, name: string, description: string) => ({
+  id: uuid("f1", index),
+  name,
+  description,
+  isInline: false as const
+});
+
+const inlineSkill = (index: number, name: string, description: string) => ({
+  id: uuid("f2", index),
+  name,
+  description,
+  sha256: "0".repeat(64),
+  sizeBytes: 2048,
+  fileCount: 2,
+  isInline: true as const
+});
+
+const SESSION_SKILLS: Partial<Record<number, TAgentVaultSessionSkill[]>> = {
+  1: [projectSkill(3, "refund-lookup", "Look up an order and its refunds for a support question")],
+  4: [
+    projectSkill(
+      1,
+      "incident-triage",
+      "Triage a production incident from alerts and recent deploys"
+    ),
+    projectSkill(2, "release-notes", "Draft release notes from merged pull requests"),
+    projectSkill(3, "refund-lookup", "Look up an order and its refunds for a support question"),
+    inlineSkill(1, "checkout-runbook", "Steps to roll back a checkout deploy"),
+    inlineSkill(2, "edge-cache-purge", "Purge the EU edge cache for one path")
+  ]
+};
+
 const bundleRef = (bundle: number | null, index: number): TAgentVaultSession["accessBundle"] => {
   if (bundle !== null) return { id: uuid("b1", bundle + 1), name: "" };
   return index === seeds.length - 1 ? { id: null, name: "Legacy billing" } : null;
@@ -272,7 +322,7 @@ seedDemoProject("agent-platform", {
       revokedAt: status === Revoked ? at(-created + 30) : null,
       accessBundle: bundleRef(bundle, index),
       services,
-      skills: [],
+      skills: SESSION_SKILLS[index] ?? [],
       stats: null
     })
   )
@@ -633,7 +683,7 @@ const demoUser = (
 });
 
 const orgUsers = [
-  demoUser(uuid("a1", 1), "Sarah", "Lin"),
+  demoUser(DEMO_SELF_USER_ID, "Sarah", "Lin"),
   demoUser(uuid("a1", 2), "Marcus", "Webb"),
   demoUser(uuid("a1", 3), "Priya", "Raman", true),
   demoUser(uuid("a1", 4), "Diego", "Alvarez"),
@@ -752,7 +802,14 @@ export const agentVaultDemo: AgentVaultAdapter = {
   },
   useCreateSession: (_, projectId) =>
     fixtureMutation(
-      ({ accessBundle, services = [], ttl, label, metadata }: TCreateAgentVaultSessionDTO) => {
+      ({
+        accessBundle,
+        services = [],
+        skills = [],
+        ttl,
+        label,
+        metadata
+      }: TCreateAgentVaultSessionDTO) => {
         const current = demoProject(agentVaultDemoStore.get(), projectId);
         const bundle = current.bundles.find((entry) => entry.name === accessBundle);
         const namedServices = services.flatMap((name): TAgentVaultSessionService[] => {
@@ -769,6 +826,12 @@ export const agentVaultDemo: AgentVaultAdapter = {
             }
           ];
         });
+        const namedSkills = skills.flatMap((name): TAgentVaultSessionSkill[] => {
+          const seed = current.skills.find((entry) => entry.skill.name === name);
+          if (!seed) return [];
+          const { id, description } = seed.skill;
+          return [{ id, name, description, isInline: false }];
+        });
         const minutes = ttl === "never" ? null : ttlMinutes(ttl);
         const session: TAgentVaultSession = {
           id: crypto.randomUUID(),
@@ -783,7 +846,7 @@ export const agentVaultDemo: AgentVaultAdapter = {
           revokedAt: null,
           accessBundle: bundle ? { id: bundle.id, name: bundle.name } : null,
           services: namedServices,
-          skills: [],
+          skills: namedSkills,
           stats: null
         };
         updateDemoProject(projectId, (project) => ({
@@ -929,6 +992,13 @@ export const agentVaultDemo: AgentVaultAdapter = {
         )
       }));
     })(),
+  useGrantedServicesRequiringSetupCount: (_orgId, projectId) => {
+    const services = agentVaultResourcesDemo.useServices(
+      projectId,
+      GRANTED_SERVICES_REQUIRING_SETUP
+    );
+    return { ...services, data: services.data?.totalCount };
+  },
   useIdentityUniversalAuth: (identityId) => {
     if (!identityId) return { data: undefined, isPending: true, error: null };
     if (!universalAuthIdentities.has(identityId))
@@ -1127,7 +1197,9 @@ export const agentVaultDemo: AgentVaultAdapter = {
   useDelegation: (projectId, machineIdentityId) => ({
     data: delegations.use()[delegationKey(projectId, machineIdentityId)] ?? null,
     isPending: false,
-    error: null
+    isFetching: false,
+    error: null,
+    refetch: async () => undefined
   }),
   useAvailableDelegationSubjects: (projectId, machineIdentityId, { actorType, search, limit }) => {
     const term = search?.trim().toLowerCase();

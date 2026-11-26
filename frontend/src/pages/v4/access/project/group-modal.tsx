@@ -29,6 +29,7 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
+import { useDebounced } from "../org/use-debounced";
 import { useOrgId } from "../permissions";
 import { failed, saved } from "../toast";
 import { accessNoun } from "./product";
@@ -45,7 +46,13 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
   const scope = useProjectScope();
   const go = useGo();
   const access = useV4Adapter("access");
-  const orgGroups = access.useOrgGroups({ organizationId: orgId, limit: GROUP_PAGE_SIZE });
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounced(searchInput.trim());
+  const orgGroups = access.useOrgGroups({
+    organizationId: orgId,
+    search: debouncedSearch,
+    limit: GROUP_PAGE_SIZE
+  });
   const projectGroups = access.useProjectGroups(projectId, scope.projectType);
   const roles = access.useProjectRoles(projectId, scope.projectType);
   const addGroup = access.useAddProjectGroup();
@@ -54,10 +61,14 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
 
-  const loading = orgGroups.isPending || projectGroups.isPending || roles.isPending;
+  const hasSearchTerm = Boolean(searchInput.trim() || debouncedSearch);
+  const loading =
+    (orgGroups.isPending && !hasSearchTerm) || projectGroups.isPending || roles.isPending;
   const assigned = new Set((projectGroups.data ?? []).map((membership) => membership.group.id));
-  const allGroups = orgGroups.data?.groups ?? [];
-  const available = allGroups.filter((group) => !assigned.has(group.id));
+  const totalOrgGroups = orgGroups.data?.totalCount ?? 0;
+  const available = (orgGroups.data?.groups ?? []).filter((group) => !assigned.has(group.id));
+  const searching =
+    orgGroups.isPending || Boolean(orgGroups.isFetching) || searchInput.trim() !== debouncedSearch;
 
   const submit = async () => {
     setSubmitted(true);
@@ -102,10 +113,10 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
         </Button>
       </>
     );
-  } else if (!available.length) {
+  } else if (!orgGroups.error && !hasSearchTerm && assigned.size >= totalOrgGroups) {
     body = (
       <p className={styles.notice}>
-        {allGroups.length === 0
+        {totalOrgGroups === 0
           ? "Your organization has no groups yet. Create one at the organization level first."
           : "Every organization group is already added. Create another at the organization level first."}
       </p>
@@ -124,6 +135,9 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     );
   } else {
     const groupError = submitted && !groupId ? REQUIRED : undefined;
+    let groupsEmptyText = `The first ${GROUP_PAGE_SIZE} groups are already added. Search by name to find others.`;
+    if (hasSearchTerm) groupsEmptyText = "No groups match your search";
+    if (orgGroups.error) groupsEmptyText = "Couldn't load groups. Change the search to try again.";
     const roleError = submitted && !role ? REQUIRED : undefined;
     body = (
       <form
@@ -134,14 +148,26 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
         }}
       >
         <Stack gap={16}>
-          <Field label="Group" error={groupError}>
+          <Field
+            label="Group"
+            error={groupError}
+            description={
+              totalOrgGroups > GROUP_PAGE_SIZE
+                ? "Search by name to find groups that are not listed."
+                : undefined
+            }
+          >
             <Combobox
               label="Group"
               placeholder="Select group..."
-              emptyText="No groups match your search"
-              options={available.map((group) => ({ value: group.id, label: group.name }))}
+              emptyText={groupsEmptyText}
+              loading={searching}
+              options={
+                searching ? [] : available.map((group) => ({ value: group.id, label: group.name }))
+              }
               value={groupId ?? ""}
               invalid={Boolean(groupError)}
+              onSearch={setSearchInput}
               onChange={setGroupId}
             />
           </Field>
@@ -153,7 +179,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
               options={(roles.data ?? []).map((item) => ({
                 value: item.slug,
                 label: item.name,
-                meta: item.description ?? undefined
+                description: item.description ?? undefined
               }))}
               value={role ?? ""}
               invalid={Boolean(roleError)}

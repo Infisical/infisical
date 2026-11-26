@@ -12,16 +12,31 @@ import { DataList } from "@infisical/cipher/ui/list";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
+import {
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import {
+  ALERT_CHANNEL_TYPE_LABELS,
+  ALERT_EVENT_TYPE_DESCRIPTIONS,
+  AlertChannelType,
+  AlertEventType,
+  AlertPrincipalType,
+  AlertResourceType,
+  channelFormSchema
+} from "@app/hooks/api/alerts/types";
+import { toChannelInput } from "@app/hooks/api/alerts/utils";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2/enums";
 import type { TCreateSecretScanningDataSourceDTO } from "@app/hooks/api/secretScanningV2/types";
@@ -30,8 +45,19 @@ import { slugSchema } from "@app/lib/schemas";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 
 import { useDebounced } from "../../access/org/use-debounced";
+import { useProjectPermission } from "../../access/permissions";
 import { duplicateNameMessage, readableFailure, toast } from "../../access/toast";
+import { ChannelsStep } from "../../cert-manager/SettingsPage/alert-channels";
+import { useAlertMembers } from "../../cert-manager/SettingsPage/alert-members";
+import {
+  buildNextChannel,
+  type TDraftChannel,
+  type TFieldErrors,
+  toDraftChannel,
+  validateChannels
+} from "../../cert-manager/SettingsPage/alert-model";
 import { useConnectionCreation } from "../../components/connection-creation";
+import { useAlertGroups } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { startConnectionRedirect } from "../../data/integrations/connection-redirect";
 import { orgHref } from "../../links";
@@ -246,6 +272,36 @@ const ConnectionFields = ({
   );
 };
 
+const DATA_SOURCE_ALERTS = [
+  { eventType: AlertEventType.SecretScanningSecretsDetected, label: "Secrets detected" },
+  { eventType: AlertEventType.SecretScanningScanFailed, label: "Scan failed" }
+] as const;
+
+type TAlertDrafts = Record<
+  (typeof DATA_SOURCE_ALERTS)[number]["eventType"],
+  { enabled: boolean; channels: TDraftChannel[] }
+>;
+
+const defaultAlerts = (projectId: string): TAlertDrafts => {
+  const projectAdmins = () => [
+    toDraftChannel({
+      ...buildNextChannel([], AlertChannelType.Email),
+      recipients: [{ principalType: AlertPrincipalType.ProjectAdmins, principalId: projectId }]
+    })
+  ];
+  return {
+    [AlertEventType.SecretScanningSecretsDetected]: { enabled: true, channels: projectAdmins() },
+    [AlertEventType.SecretScanningScanFailed]: { enabled: true, channels: projectAdmins() }
+  };
+};
+
+const alertSummary = ({ enabled, channels }: TAlertDrafts[keyof TAlertDrafts]) =>
+  enabled
+    ? [...new Set(channels.map(({ channelType }) => ALERT_CHANNEL_TYPE_LABELS[channelType]))].join(
+        ", "
+      )
+    : "Off";
+
 export const AddDataSourceSheet = ({
   orgId,
   projectId,
@@ -266,6 +322,16 @@ export const AddDataSourceSheet = ({
   };
   const { data: options, isPending: optionsPending } = scanning.useDataSourceOptions();
   const create = scanning.useCreateDataSource();
+  const { permission } = useProjectPermission(projectId);
+  const canChooseAlerts = permission.can(
+    ProjectPermissionSecretScanningDataSourceActions.Edit,
+    ProjectPermissionSub.SecretScanningDataSources
+  );
+  const members = useAlertMembers(projectId);
+  const groupOptions = useAlertGroups(projectId);
+  const [alerts, setAlerts] = useState(() => defaultAlerts(projectId));
+  const [alertsDirty, setAlertsDirty] = useState(false);
+  const [alertErrors, setAlertErrors] = useState<Partial<Record<AlertEventType, TFieldErrors>>>({});
   const {
     watch,
     setValue,
@@ -298,9 +364,20 @@ export const AddDataSourceSheet = ({
     clearErrors(Object.keys(changes) as (keyof Draft)[]);
   };
 
+  const changeAlert = (
+    eventType: keyof TAlertDrafts,
+    patch: Partial<TAlertDrafts[keyof TAlertDrafts]>
+  ) => {
+    setAlerts((current) => ({ ...current, [eventType]: { ...current[eventType], ...patch } }));
+    setAlertsDirty(true);
+  };
+
   const close = () => {
     sessionStorage.removeItem(draftKey);
     reset(initialDraft(SecretScanningDataSource.GitHub));
+    setAlerts(defaultAlerts(projectId));
+    setAlertsDirty(false);
+    setAlertErrors({});
     setStep(0);
     onOpenChange(false);
   };
@@ -313,7 +390,14 @@ export const AddDataSourceSheet = ({
     if (!stored) return;
     let saved: Draft;
     try {
-      saved = JSON.parse(stored) as Draft;
+      const parsed = JSON.parse(stored) as {
+        draft: Draft;
+        alerts: TAlertDrafts;
+        alertsDirty: boolean;
+      };
+      saved = parsed.draft;
+      setAlerts(parsed.alerts);
+      setAlertsDirty(parsed.alertsDirty);
     } catch {
       return;
     }
@@ -332,7 +416,7 @@ export const AddDataSourceSheet = ({
   }, [connectionId, connectionName]);
 
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
-    isDirty,
+    isDirty: isDirty || alertsDirty,
     onDiscard: close
   });
 
@@ -369,7 +453,17 @@ export const AddDataSourceSheet = ({
               config: configOf(draft),
               isHistoricalScanEnabled: draft.isHistoricalScanEnabled,
               isScanNewCommitsEnabled: draft.isScanNewCommitsEnabled,
-              isDiscoveryEnabled: draft.isDiscoveryEnabled && discovery
+              isDiscoveryEnabled: draft.isDiscoveryEnabled && discovery,
+              ...(canChooseAlerts && {
+                alerts: DATA_SOURCE_ALERTS.filter(({ eventType }) => alerts[eventType].enabled).map(
+                  ({ eventType }) => ({
+                    eventType,
+                    channels: alerts[eventType].channels.map((channel) =>
+                      toChannelInput(channelFormSchema.parse(channel))
+                    )
+                  })
+                )
+              })
             } as TCreateSecretScanningDataSourceDTO);
           } catch (error) {
             const duplicate = duplicateNameMessage(error, draft.name.trim());
@@ -437,7 +531,9 @@ export const AddDataSourceSheet = ({
                 draft={draft}
                 errors={fieldErrors}
                 onChange={change}
-                onRedirect={() => sessionStorage.setItem(draftKey, JSON.stringify(draft))}
+                onRedirect={() =>
+                  sessionStorage.setItem(draftKey, JSON.stringify({ draft, alerts, alertsDirty }))
+                }
               />
             )
           },
@@ -507,6 +603,67 @@ export const AddDataSourceSheet = ({
             )
           },
           {
+            title: "Alerts",
+            validate: () => {
+              if (!canChooseAlerts) return true;
+              const next = Object.fromEntries(
+                DATA_SOURCE_ALERTS.filter(({ eventType }) => alerts[eventType].enabled).map(
+                  ({ eventType }) => [eventType, validateChannels(alerts[eventType].channels)]
+                )
+              );
+              setAlertErrors(next);
+              const empty = DATA_SOURCE_ALERTS.find(
+                ({ eventType }) => alerts[eventType].enabled && !alerts[eventType].channels.length
+              );
+              if (empty)
+                return {
+                  message: `Add a channel to the ${empty.label.toLowerCase()} alert, or turn it off.`
+                };
+              return Object.values(next).every((found) => !Object.keys(found).length);
+            },
+            content: canChooseAlerts ? (
+              <Stack gap={24}>
+                {DATA_SOURCE_ALERTS.map(({ eventType, label }) => (
+                  <Stack key={eventType} gap={16}>
+                    <Switch
+                      layout="row"
+                      label={label}
+                      description={ALERT_EVENT_TYPE_DESCRIPTIONS[eventType]}
+                      checked={alerts[eventType].enabled}
+                      onCheckedChange={(enabled) => changeAlert(eventType, { enabled })}
+                    />
+                    {alerts[eventType].enabled && (
+                      <ChannelsStep
+                        channels={alerts[eventType].channels}
+                        errors={alertErrors[eventType] ?? {}}
+                        onChange={(channels) => changeAlert(eventType, { channels })}
+                        onErrorsChange={(channelErrors) =>
+                          setAlertErrors((current) => ({ ...current, [eventType]: channelErrors }))
+                        }
+                        projectId={projectId}
+                        members={members}
+                        groupOptions={groupOptions}
+                        projectRecipients
+                        allowEmailAddresses={false}
+                        hasEnterprise
+                        resource={{
+                          resourceType: AlertResourceType.SecretScanning,
+                          resourceId: null
+                        }}
+                      />
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            ) : (
+              <SmallText muted>
+                This data source gets the default alerts, which email project admins when secrets
+                are detected and when a scan fails. Choosing other alerts needs permission to edit
+                data sources.
+              </SmallText>
+            )
+          },
+          {
             title: "Review",
             content: (
               <DataList
@@ -529,6 +686,12 @@ export const AddDataSourceSheet = ({
                   ["Name", draft.name],
                   ...(draft.description.trim()
                     ? ([["Description", draft.description.trim()]] as const)
+                    : []),
+                  ...(canChooseAlerts
+                    ? DATA_SOURCE_ALERTS.map(
+                        ({ eventType, label }) =>
+                          [`${label} alert`, alertSummary(alerts[eventType])] as const
+                      )
                     : [])
                 ]}
               />

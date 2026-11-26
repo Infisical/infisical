@@ -4,6 +4,7 @@ import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -46,6 +47,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
   const options = actors.map((actor) => ({ value: actor.id, label: actor.name }));
   const nothingToAdd = Boolean(available.data) && !available.data?.totalCount && !debouncedSearch;
   const orgHasNoGroups = nothingToAdd && !current.data?.totalCount;
+  const truncated = (available.data?.totalCount ?? 0) > options.length;
 
   const submit = async () => {
     const selected = options.find((option) => option.value === group);
@@ -73,6 +75,9 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     <DialogContent pending={pending}>
       <DialogHeader>
         <DialogTitle>Add group</DialogTitle>
+        <DialogDescription>
+          Everyone in the group gets access, including people added to it later.
+        </DialogDescription>
       </DialogHeader>
       {nothingToAdd ? (
         <>
@@ -105,7 +110,12 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
             }}
           >
             <Stack gap={16}>
-              <Field label="Group">
+              <Field
+                label="Group"
+                description={
+                  truncated ? "Search by name to find groups that are not listed." : undefined
+                }
+              >
                 <Combobox
                   label="Group"
                   placeholder="Select group..."

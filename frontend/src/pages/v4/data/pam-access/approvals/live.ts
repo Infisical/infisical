@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { apiRequest } from "@app/config/request";
 import { approvalPolicyQuery } from "@app/hooks/api/approvalPolicies";
 import {
+  pamKeys,
   useGetPamApprovalConfig,
   useListPamAccessRequests,
   useSetPamApprovalConfig
@@ -28,5 +30,18 @@ export const pamAccessApprovalsLive: PamAccessApprovalsAdapter = {
       enabled,
       staleTime: 30_000,
       retry: false
+    }),
+  usePendingApprovalCount: (enabled) =>
+    useQuery({
+      queryKey: pamKeys.accessRequestCount(),
+      queryFn: async () => {
+        const { data } = await apiRequest.get<{ pendingCount: number; isApprover: boolean }>(
+          "/api/v1/pam/access-requests/pending-my-approval/count"
+        );
+        return data;
+      },
+      select: (data) => data.pendingCount,
+      enabled,
+      refetchInterval: 30_000
     })
 };

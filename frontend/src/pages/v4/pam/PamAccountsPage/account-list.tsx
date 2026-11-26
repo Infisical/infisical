@@ -10,6 +10,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useV4Adapter } from "../../data/adapters";
 import { AccessState, AccountMenu, AccountName, type useAccountOverlays } from "./account-rows";
+import { needsAccessRequest } from "./launch-command";
 
 export const useAccountFilters = () => {
   const [searchInput, setSearchInput] = useState("");
@@ -32,7 +33,6 @@ export const useAccountFilters = () => {
 };
 
 export const AccountList = ({
-  orgId,
   label,
   accounts,
   loading,
@@ -43,7 +43,6 @@ export const AccountList = ({
   emptyDescription,
   emptyAction
 }: {
-  orgId: string;
   label: string;
   accounts: TPamAccountListItem[];
   loading: boolean;
@@ -70,16 +69,18 @@ export const AccountList = ({
       text: (account) => account.name,
       render: (account) => (
         <AccountName
-          orgId={orgId}
           account={account}
           meta={typeMap.get(account.accountType)}
           showFolder={showFolder}
+          onRequestAccess={() => overlays.openLaunch(account)}
         />
       )
     },
     {
       id: "access",
       header: "Access",
+      hideHeader: true,
+      dropFirst: true,
       render: (account) => <AccessState account={account} />
     }
   ];
@@ -118,6 +119,8 @@ export const AccountList = ({
         loadingRows={5}
         getRowId={(account) => account.id}
         rowLabel={(account) => account.name}
+        onRowActivate={(account) => overlays.openLaunch(account)}
+        isRowActivatable={needsAccessRequest}
         rowActions={{
           menuLabel: "Account options",
           renderMenu: (account) => (

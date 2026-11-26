@@ -48,8 +48,9 @@ export const agentVaultSettingsLive: AgentVaultSettingsAdapter = {
       error
     };
   },
-  useSessionLogSettings: (orgId, projectId) =>
+  useSessionLogSettings: (orgId, projectId, enabled = true) =>
     useQuery({
+      enabled,
       queryKey: agentVaultKeys.sessionLogSettings(orgId, projectId),
       queryFn: async () => {
         const { data } = await apiRequest.get<TAgentVaultSessionLogSettingsState>(
@@ -59,8 +60,9 @@ export const agentVaultSettingsLive: AgentVaultSettingsAdapter = {
         return data;
       }
     }),
-  useSessionLogHealth: (orgId, projectId) =>
+  useSessionLogHealth: (orgId, projectId, enabled = true) =>
     useQuery({
+      enabled,
       queryKey: agentVaultKeys.sessionLogHealth(orgId, projectId),
       queryFn: async () => {
         const { data } = await apiRequest.get<{ health: TAgentVaultSessionLogHealth }>(

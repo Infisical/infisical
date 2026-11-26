@@ -104,9 +104,15 @@ export const ProjectIdentitiesTab = () => {
   const [assuming, setAssuming] = useState<string>();
   const [removing, setRemoving] = useState<ProjectIdentityMembership>();
   const [authFor, setAuthFor] = useState<string>();
+  const authRow = rows.find((row) => row.identity.id === authFor)?.identity;
+  const { data: authMembership } = access.useProjectIdentity(
+    projectId,
+    authRow && !authRow.authMethods ? authRow.id : "",
+    scope.projectType
+  );
   const flows = useAuthMethodFlows(
     projectId,
-    rows.find((row) => row.identity.id === authFor)?.identity
+    authRow?.authMethods ? authRow : authMembership?.identity
   );
 
   const canCreate = permission.can(
@@ -168,7 +174,7 @@ export const ProjectIdentitiesTab = () => {
                 Manage auth methods
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {identity.authMethods.map((method) => (
+                {(identity.authMethods ?? []).map((method) => (
                   <DropdownMenuItem
                     key={method}
                     onSelect={() => {
@@ -176,7 +182,7 @@ export const ProjectIdentitiesTab = () => {
                       flows.view(method);
                     }}
                   >
-                    {identity.activeLockoutAuthMethods.includes(method) ? (
+                    {identity.activeLockoutAuthMethods?.includes(method) ? (
                       <Icon name="lock" />
                     ) : (
                       <Icon name="key" />
@@ -328,12 +334,7 @@ export const ProjectIdentitiesTab = () => {
           ) : undefined
         }
       />
-      <AddProjectIdentitySheet
-        orgId={orgId}
-        projectId={projectId}
-        open={adding}
-        onOpenChange={setAdding}
-      />
+      <AddProjectIdentitySheet projectId={projectId} open={adding} onOpenChange={setAdding} />
       <AssumePrivilegesDialog
         orgId={orgId}
         projectId={projectId}

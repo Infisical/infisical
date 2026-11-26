@@ -19,7 +19,7 @@ import {
   toVariableReference,
   VARIABLE_KEY_RE
 } from "@app/helpers/agentVaultVariables";
-import { AgentVaultVariableScope } from "@app/hooks/api/agentVault/enums";
+import { AgentVaultVariableScope, AgentVaultVariableType } from "@app/hooks/api/agentVault/enums";
 import { useDebounce } from "@app/hooks/useDebounce";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -41,6 +41,7 @@ export const VariableSecretInput = ({
   placeholder,
   multiline,
   allowsVariables = true,
+  scope = AgentVaultVariableScope.Global,
   onChange
 }: {
   projectId: string;
@@ -51,6 +52,7 @@ export const VariableSecretInput = ({
   placeholder?: string;
   multiline?: boolean;
   allowsVariables?: boolean;
+  scope?: AgentVaultVariableScope;
   onChange: (value: string) => void;
 }) => {
   const resources = useV4Adapter("agentVaultResources");
@@ -69,15 +71,17 @@ export const VariableSecretInput = ({
   const { data } = resources.useVariables(
     projectId,
     {
-      scope: AgentVaultVariableScope.Global,
+      scope,
+      type: AgentVaultVariableType.Text,
       search: debouncedQuery || undefined,
       limit: SUGGESTION_LIMIT
     },
     { enabled: isOpen }
   );
-  const { existing } = resources.useVariableKeyStatus(
+  const { existing, ofOtherType } = resources.useVariableKeyStatus(
     projectId,
-    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : []
+    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
+    { scope, type: AgentVaultVariableType.Text }
   );
 
   const keyExists =
@@ -96,7 +100,7 @@ export const VariableSecretInput = ({
   ].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
   const usedBy = (key: string) =>
     data?.variables.find((variable) => variable.key === key)?.usedByServices.length;
-  const canCreate = Boolean(query) && !keyExists;
+  const canCreate = Boolean(query) && !keyExists && !ofOtherType.has(query);
   const options = [...matches, ...(canCreate ? [CREATE] : [])];
   const activeValue = options[Math.min(active, options.length - 1)];
   const truncated = data && data.totalCount > matches.length ? data.totalCount : null;
@@ -258,7 +262,7 @@ export const VariableSecretInput = ({
       {creating && (
         <VariableDialog
           projectId={projectId}
-          scope={AgentVaultVariableScope.Global}
+          scope={scope}
           initialKey={creating.key}
           onCreated={(variable) => insert(variable.key, creating.before, creating.after)}
           onOpenChange={(open) => {

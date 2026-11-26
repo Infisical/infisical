@@ -110,7 +110,7 @@ export const ProjectIdentityAuthSection = ({
       render: (method) => (
         <Inline gap={8} wrap={false}>
           <span>{authMethodName(method)}</span>
-          {identity.activeLockoutAuthMethods.includes(method) && (
+          {identity.activeLockoutAuthMethods?.includes(method) && (
             <LockedBadge label={ACTIVE_LOCKOUTS} />
           )}
         </Inline>

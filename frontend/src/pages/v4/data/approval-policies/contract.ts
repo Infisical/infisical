@@ -12,6 +12,7 @@ import type {
   TCreateSecretPolicyDTO,
   TDeleteSecretPolicyDTO,
   TSecretApprovalPolicy,
+  TSecretApprovalPolicyImport,
   TUpdateSecretPolicyDTO
 } from "@app/hooks/api/secretApproval/types";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
@@ -47,8 +48,9 @@ export type ApprovalPoliciesAdapter = {
     projectId: string,
     options: { members: boolean; groups: boolean }
   ) => ApproverOptions;
-  useCreateChangePolicy: V4Mutation<TCreateSecretPolicyDTO, object>;
-  useUpdateChangePolicy: V4Mutation<TUpdateSecretPolicyDTO, object>;
+  useCreateChangePolicy: V4Mutation<TCreateSecretPolicyDTO, { approval: TSecretApprovalPolicy }>;
+  useUpdateChangePolicy: V4Mutation<TUpdateSecretPolicyDTO, { approval: TSecretApprovalPolicy }>;
+  useDirectImports: () => (policyId: string) => Promise<TSecretApprovalPolicyImport[]>;
   useDeleteChangePolicy: V4Mutation<TDeleteSecretPolicyDTO, object>;
   useCreateAccessPolicy: V4Mutation<TCreateAccessPolicyDTO, object>;
   useUpdateAccessPolicy: V4Mutation<TUpdateAccessPolicyDTO, object>;

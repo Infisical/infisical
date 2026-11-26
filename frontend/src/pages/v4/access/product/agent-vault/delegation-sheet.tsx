@@ -47,7 +47,7 @@ import {
   subjectOnBehalfOf,
   type DelegationSubject
 } from "./delegation-common";
-import { memberDisplayName } from "./shared";
+import { memberDisplayName, PendingInvitationBadge } from "./shared";
 
 const CANDIDATE_LIMIT = 20;
 const TYPE_FIELD = "type";
@@ -204,12 +204,17 @@ const Content = ({ identity }: { identity: Identity }) => {
       header: "User or group",
       grow: true,
       render: (member) => (
-        <SubjectName
-          name={memberDisplayName(member)}
-          subtitle={
-            member.type === AgentVaultMemberType.User ? member.email || member.username : "Group"
-          }
-        />
+        <Stack gap={4} align="start">
+          <SubjectName
+            name={memberDisplayName(member)}
+            subtitle={
+              member.type === AgentVaultMemberType.User ? member.email || member.username : "Group"
+            }
+          />
+          {member.type === AgentVaultMemberType.User && member.isOrgMembershipPending && (
+            <PendingInvitationBadge />
+          )}
+        </Stack>
       )
     },
     {
@@ -335,15 +340,23 @@ const Content = ({ identity }: { identity: Identity }) => {
                   loading={available.isPending}
                   loadingRows={3}
                   empty={
-                    <EmptyState
-                      size="sm"
-                      icon={searching ? "search" : "user"}
-                      title={
-                        searching
-                          ? "No users or groups outside the delegation match search"
-                          : "Every user and group in this project is already in the delegation"
-                      }
-                    />
+                    available.error ? (
+                      <EmptyState
+                        size="sm"
+                        icon="alert"
+                        title="Couldn't load the users and groups you can add"
+                      />
+                    ) : (
+                      <EmptyState
+                        size="sm"
+                        icon={searching ? "search" : "user"}
+                        title={
+                          searching
+                            ? "No users or groups outside the delegation match search"
+                            : "Every user and group in this project is already in the delegation"
+                        }
+                      />
+                    )
                   }
                 />
                 {candidateCount > candidates.length && (

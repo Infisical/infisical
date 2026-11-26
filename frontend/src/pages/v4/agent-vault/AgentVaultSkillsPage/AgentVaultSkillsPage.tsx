@@ -7,7 +7,7 @@ import {
   type DataTableRowActions
 } from "@infisical/cipher/ui/data-table";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
-import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
+import { DropdownMenuItem, DropdownMenuSeparator } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
@@ -16,7 +16,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
-import { useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -31,26 +31,38 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
 import { useProjectPermission } from "../../access/permissions";
+import { failed } from "../../access/toast";
 import { AccessRestricted } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
 import { DateCell } from "../resources/shared";
+import { downloadSkillVersion } from "../resources/skill-download";
 import { CreateSkillDialog, DeleteSkillDialog, SkillSheet } from "../resources/skills";
 
 const route = v4Path("/organizations/$orgId/projects/agent-vault/$projectId/skills");
+const detailRoute = v4Path(
+  "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+);
 const TABLE = "agentVaultSkillsTable";
 const BUNDLES_SHOWN = 2;
 
 const Bundles = ({ bundles }: { bundles: TAgentVaultSkill["accessBundles"] }) => {
-  if (!bundles.length) return <Meta>-</Meta>;
+  const { orgId, projectId } = useParams({ from: route });
+  if (!bundles.length) return <Meta>Unused</Meta>;
   const hidden = bundles.slice(BUNDLES_SHOWN);
   return (
     <Inline gap={4} align="center" wrap={false}>
       {bundles.slice(0, BUNDLES_SHOWN).map((bundle) => (
-        <Badge key={bundle.id} tone="outline">
-          {bundle.name}
+        <Badge key={bundle.id} tone="outline" asChild>
+          <Link
+            to={detailRoute}
+            params={{ orgId, projectId, accessBundleId: bundle.id }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {bundle.name}
+          </Link>
         </Badge>
       ))}
       {hidden.length > 0 && (
@@ -71,6 +83,7 @@ const Skills = ({ projectId }: { projectId: string }) => {
   const canEdit = can(ProjectPermissionAgentVaultSkillActions.Edit);
   const canDelete = can(ProjectPermissionAgentVaultSkillActions.Delete);
   const { id: skillId, openSheet, closeSheet } = useAgentVaultSheetState("skillId");
+  const navigate = useNavigate({ from: route });
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [page, setPage] = useState(1);
@@ -79,6 +92,19 @@ const Skills = ({ projectId }: { projectId: string }) => {
   const [deleting, setDeleting] = useState<TAgentVaultSkill>();
   useAgentVaultCreateIntent(() => setCreating(true), canCreate);
   const searchTerm = debouncedSearch.trim();
+
+  const fetchVersion = resources.useFetchSkillVersion(projectId);
+  const downloadSkill = async (skill: TAgentVaultSkill) => {
+    try {
+      const version = await fetchVersion.mutateAsync({
+        skillId: skill.id,
+        version: skill.latestVersion
+      });
+      downloadSkillVersion(skill.name, version);
+    } catch (error) {
+      failed(`Couldn't download ${skill.name}`, error);
+    }
+  };
 
   const { data, isPending } = resources.useSkills(projectId, {
     search: searchTerm || undefined,
@@ -143,14 +169,23 @@ const Skills = ({ projectId }: { projectId: string }) => {
         onSelect: (skill) => openSheet(skill.id)
       }
     ],
-    renderMenu: canDelete
-      ? (skill) => (
-          <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(skill)}>
-            <Icon name="trash" />
-            Delete skill
-          </DropdownMenuItem>
-        )
-      : undefined
+    renderMenu: (skill) => (
+      <>
+        <DropdownMenuItem onSelect={() => downloadSkill(skill)}>
+          <Icon name="download" />
+          Download
+        </DropdownMenuItem>
+        {canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => setDeleting(skill)}>
+              <Icon name="trash" />
+              Delete skill
+            </DropdownMenuItem>
+          </>
+        )}
+      </>
+    )
   };
 
   return (
@@ -258,6 +293,9 @@ const Skills = ({ projectId }: { projectId: string }) => {
         canEdit={canEdit}
         canDelete={canDelete}
         onOpenChange={(open) => !open && closeSheet()}
+        onDeleted={() =>
+          navigate({ search: (prev) => ({ ...prev, skillId: undefined }), replace: true })
+        }
       />
     </>
   );

@@ -274,6 +274,7 @@ const addMember = (
 
 export const pkiApplicationsDemo: PkiApplicationsAdapter = {
   ...enrollmentDemo,
+  useAllApplications: () => ready(demoApplications.use().map(({ id, name }) => ({ id, name }))),
   useApplications: ({ search, limit = 20, offset = 0 }) => {
     const applications = demoApplications.use();
     const profiles = demoProfiles.use();

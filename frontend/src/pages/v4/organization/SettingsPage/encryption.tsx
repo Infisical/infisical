@@ -65,7 +65,11 @@ const EditForm = ({
   onPendingChange: (pending: boolean) => void;
 }) => {
   const provider = providerOf(state.entry);
-  const { data: kms, isPending } = useV4Adapter("orgSettings").useExternalKms({
+  const {
+    data: kms,
+    isPending,
+    error
+  } = useV4Adapter("orgSettings").useExternalKms({
     kmsId: state.entry.id,
     provider
   });
@@ -79,7 +83,17 @@ const EditForm = ({
         }
       >
         <SheetBody>
-          <Loader label="Loading KMS" />
+          {error ? (
+            <EmptyState
+              ghost={false}
+              size="sm"
+              icon="alert-c"
+              title="Couldn't load this KMS"
+              description={error instanceof Error ? error.message : undefined}
+            />
+          ) : (
+            <Loader label="Loading KMS" />
+          )}
         </SheetBody>
       </SheetSections>
     );

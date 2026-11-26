@@ -70,7 +70,7 @@ type Drafts = Record<string, unknown>;
 type CardProps = {
   template: TPamAccountTemplateDetail;
   drafts: Drafts;
-  setDraft: (key: string, value?: unknown) => void;
+  setDraft: (key: string, value?: unknown, onlyIf?: unknown) => void;
 };
 
 const APPROVAL_DEPENDENT_POLICIES = [
@@ -94,11 +94,13 @@ const lastSaved = new Map<string, TemplateState>();
 const rebase = (
   latest: Record<string, unknown>,
   base: Record<string, unknown>,
-  next: Record<string, unknown>
+  next: Record<string, unknown>,
+  touched: string[] = []
 ) => {
   const out = { ...latest };
-  new Set([...Object.keys(base), ...Object.keys(next)]).forEach((key) => {
-    if (JSON.stringify(base[key]) === JSON.stringify(next[key])) return;
+  const forced = new Set(touched);
+  new Set([...Object.keys(base), ...Object.keys(next), ...touched]).forEach((key) => {
+    if (!forced.has(key) && JSON.stringify(base[key]) === JSON.stringify(next[key])) return;
     if (key in next) out[key] = next[key];
     else delete out[key];
   });
@@ -110,7 +112,8 @@ const useTemplateUpdate = (template: TPamAccountTemplateDetail) => {
   const run = async (
     patch: Omit<TUpdatePamAccountTemplateDTO, "templateId">,
     success: string,
-    failure: string
+    failure: string,
+    touched?: string[]
   ) => {
     const base = template;
     const queued = (saveQueues.get(base.id) ?? Promise.resolve()).then(async () => {
@@ -123,7 +126,7 @@ const useTemplateUpdate = (template: TPamAccountTemplateDetail) => {
           settings: rebase(settingsOf(latest), settingsOf(base), patch.settings)
         }),
         ...(patch.policies && {
-          policies: rebase(policiesOf(latest), policiesOf(base), patch.policies)
+          policies: rebase(policiesOf(latest), policiesOf(base), patch.policies, touched)
         })
       });
       lastSaved.set(base.id, result);
@@ -165,12 +168,22 @@ const PoliciesCard = ({
 
   const savePolicy = async (key: PamPolicyType, label: string, value: unknown) => {
     const next = { ...policies };
+    const submitted = drafts[`policy:${key}`];
+    const touched: string[] = [key];
     if (value === null || value === undefined) delete next[key];
     else next[key] = value;
     if (key === PamPolicyType.RequiresApproval && value !== true)
-      APPROVAL_DEPENDENT_POLICIES.forEach((dependent) => delete next[dependent]);
-    const result = await run({ policies: next }, `${label} updated`, `Could not update ${label}`);
-    if (result) setDraft(`policy:${key}`);
+      APPROVAL_DEPENDENT_POLICIES.forEach((dependent) => {
+        delete next[dependent];
+        touched.push(dependent);
+      });
+    const result = await run(
+      { policies: next },
+      `${label} updated`,
+      `Could not update ${label}`,
+      touched
+    );
+    if (result) setDraft(`policy:${key}`, undefined, submitted);
     return Boolean(result);
   };
 
@@ -418,7 +431,7 @@ const GatewayCard = ({ template }: { template: TPamAccountTemplateDetail }) => {
   const { run, status } = useTemplateUpdate(template);
   return (
     <SettingsCard title="Gateway" saveStatus={status}>
-      <Field label="Gateway" description="Used to reach accounts unless overridden on the account.">
+      <Field description="Used to reach accounts unless overridden on the account.">
         <GatewayPicker
           label="Gateway"
           noGatewayLabel="No gateway"
@@ -660,7 +673,7 @@ const MaskingCard = ({ template, drafts, setDraft }: CardProps) => {
                 "Masking patterns updated",
                 "Could not update the masking patterns"
               );
-              if (result) setDraft("maskingPatterns");
+              if (result) setDraft("maskingPatterns", undefined, draft);
             }}
           />
         </Field>
@@ -672,33 +685,35 @@ const MaskingCard = ({ template, drafts, setDraft }: CardProps) => {
 type Details = { name: string; description: string };
 
 const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
-  const { run } = useTemplateUpdate(template);
+  const { run, status } = useTemplateUpdate(template);
+  const stored = { name: template.name, description: template.description ?? "" };
   const draft = drafts.details as Details | undefined;
-  const values = draft ?? { name: template.name, description: template.description ?? "" };
-  const edit = (patch: Partial<Details>) => setDraft("details", { ...values, ...patch });
+  const values = draft ?? stored;
+  const edit = (patch: Partial<Details>) => {
+    const next = { ...values, ...patch };
+    setDraft(
+      "details",
+      next.name === stored.name && next.description === stored.description ? undefined : next
+    );
+  };
   const errors = {
     name: values.name.trim() ? undefined : "Name is required",
     description:
       values.description.length > 256 ? "Keep the description under 256 characters" : undefined
   };
   if (!errors.name && values.name.length > 64) errors.name = "Keep the name under 64 characters";
+  const commit = async () => {
+    if (!draft || errors.name || errors.description) return;
+    const result = await run(
+      { name: values.name.trim(), description: values.description || null },
+      "Template updated",
+      "Could not update the template"
+    );
+    if (result) setDraft("details", undefined, draft);
+  };
 
   return (
-    <SettingsCard
-      title="Details"
-      dirty={Boolean(draft)}
-      saveDisabledReason={errors.name ?? errors.description}
-      onDiscard={() => setDraft("details")}
-      onSave={async () => {
-        const result = await run(
-          { name: values.name.trim(), description: values.description || null },
-          "Template updated",
-          "Could not update the template"
-        );
-        if (!result) throw new Error("Could not update the template");
-        setDraft("details");
-      }}
-    >
+    <SettingsCard title="Details" saveStatus={status}>
       <Stack gap={16}>
         <Field label="Name" error={errors.name}>
           <Input
@@ -706,6 +721,8 @@ const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
             invalid={Boolean(errors.name)}
             autoComplete="off"
             onChange={(event) => edit({ name: event.target.value })}
+            onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+            onBlur={commit}
           />
         </Field>
         <Field label="Description" optional error={errors.description}>
@@ -714,6 +731,7 @@ const DetailsCard = ({ template, drafts, setDraft }: CardProps) => {
             value={values.description}
             aria-invalid={Boolean(errors.description) || undefined}
             onChange={(event) => edit({ description: event.target.value })}
+            onBlur={commit}
           />
         </Field>
       </Stack>
@@ -842,8 +860,9 @@ export const TemplateSheet = ({
     isDirty: Object.keys(drafts).length > 0,
     onDiscard: close
   });
-  const setDraft = (key: string, value?: unknown) =>
+  const setDraft = (key: string, value?: unknown, onlyIf?: unknown) =>
     setDrafts((current) => {
+      if (onlyIf !== undefined && current[key] !== onlyIf) return current;
       const next = { ...current };
       if (value === undefined) delete next[key];
       else next[key] = value;

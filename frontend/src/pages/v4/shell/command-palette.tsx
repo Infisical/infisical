@@ -7,6 +7,10 @@ import {
 } from "@infisical/cipher/ui/command-menu";
 import { useNavigate } from "@tanstack/react-router";
 
+import {
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../data/adapters";
@@ -51,10 +55,14 @@ export const CommandPalette = ({
   const access = useV4Adapter("access");
   const { setTheme } = useV4ThemeChoice("command-menu");
   const [groupSearch, setGroupSearch] = useState("");
+  const { data: orgPermission } = access.useOrgPermission({ orgId });
   const { data: groupData } = access.useOrgGroups({
     organizationId: orgId,
     limit: 20,
-    search: groupSearch
+    search: groupSearch,
+    enabled: Boolean(
+      orgPermission?.permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups)
+    )
   });
   const base = orgHref(orgId);
   const go = (path: string, search?: Record<string, string>) =>

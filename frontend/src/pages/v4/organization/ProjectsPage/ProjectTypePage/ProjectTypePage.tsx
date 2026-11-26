@@ -60,7 +60,7 @@ import {
   OrgPermissionProjectActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { getProjectTitle, urlSlugToProjectType } from "@app/helpers/project";
+import { getProjectTitle, hasProjectTemplates, urlSlugToProjectType } from "@app/helpers/project";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { INTERNAL_KMS_KEY_ID } from "@app/hooks/api/kms/types";
 import {
@@ -76,6 +76,7 @@ import { AccessFrame } from "../../../access/AccessFrame";
 import { useDebounced } from "../../../access/org/use-debounced";
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
+import { RESTRICTED } from "../../../access/ui";
 import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSearchedProject } from "../../../data/projects/contract";
@@ -950,6 +951,77 @@ const DeletedProjects = ({ projectType }: { projectType: ProjectType }) => {
   );
 };
 
+const KMS_INTERNAL_OPTION = { value: INTERNAL_KMS_KEY_ID, label: "Default Infisical KMS" };
+
+const ExternalKmsSelect = ({
+  orgId,
+  value,
+  onChange
+}: {
+  orgId: string;
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const { data: externalKms = [] } = useV4Adapter("orgSettings").useExternalKmsList(orgId);
+  return (
+    <Select
+      label="KMS"
+      options={[
+        KMS_INTERNAL_OPTION,
+        ...externalKms.map((kms) => ({ value: kms.id, label: kms.name }))
+      ]}
+      value={value}
+      onChange={onChange}
+    />
+  );
+};
+
+const TemplateField = ({
+  orgId,
+  projectType,
+  value,
+  onChange
+}: {
+  orgId: string;
+  projectType: ProjectType;
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const { permission } = useOrgPermission();
+  const productSettings = useV4Adapter("productSettings");
+  const { data: subscription } = productSettings.useSubscription(orgId);
+  const canRead = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+  const licensed = Boolean(subscription?.projectTemplates);
+  const { data: templates = [] } = productSettings.useProjectTemplates({
+    enabled: canRead && licensed
+  });
+  const ofType = templates.filter((template) => template.type === projectType);
+  const disabledReason =
+    (!canRead && RESTRICTED) ||
+    (subscription && !licensed ? "Project templates are not included in your plan" : undefined);
+  return (
+    <Field
+      label="Project template"
+      description={
+        disabledReason || "Provisions the project with the template's environments and roles."
+      }
+      wide
+    >
+      <Select
+        label="Project template"
+        disabled={Boolean(disabledReason)}
+        options={
+          ofType.length
+            ? ofType.map((template) => ({ value: template.name, label: template.name }))
+            : Object.values(InfisicalProjectTemplate).map((name) => ({ value: name, label: name }))
+        }
+        value={value}
+        onChange={onChange}
+      />
+    </Field>
+  );
+};
+
 const NewProjectDialog = ({
   orgId,
   projectType,
@@ -963,6 +1035,8 @@ const NewProjectDialog = ({
 }) => {
   const navigate = useNavigate();
   const createProject = useV4Adapter("projects").useCreateProject();
+  const { permission } = useOrgPermission();
+  const canReadKms = permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [template, setTemplate] = useState<string>(InfisicalProjectTemplate.Default);
@@ -999,7 +1073,7 @@ const NewProjectDialog = ({
         projectName: name.trim(),
         projectDescription: description.trim() || undefined,
         kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template,
+        template: hasProjectTemplates(projectType) ? template : undefined,
         type: projectType
       });
       saved("Project created");
@@ -1052,28 +1126,25 @@ const NewProjectDialog = ({
                 <AccordionTrigger>Advanced settings</AccordionTrigger>
                 <AccordionContent>
                   <Stack gap={16}>
-                    <Field
-                      label="Project template"
-                      description="Provisions the project with the template's environments and roles."
-                      wide
-                    >
-                      <Select
-                        label="Project template"
-                        options={Object.values(InfisicalProjectTemplate).map((value) => ({
-                          value,
-                          label: value
-                        }))}
+                    {hasProjectTemplates(projectType) && (
+                      <TemplateField
+                        orgId={orgId}
+                        projectType={projectType}
                         value={template}
                         onChange={setTemplate}
                       />
-                    </Field>
+                    )}
                     <Field label="KMS" wide>
-                      <Select
-                        label="KMS"
-                        options={[{ value: INTERNAL_KMS_KEY_ID, label: "Default Infisical KMS" }]}
-                        value={kmsKeyId}
-                        onChange={setKmsKeyId}
-                      />
+                      {canReadKms ? (
+                        <ExternalKmsSelect orgId={orgId} value={kmsKeyId} onChange={setKmsKeyId} />
+                      ) : (
+                        <Select
+                          label="KMS"
+                          options={[KMS_INTERNAL_OPTION]}
+                          value={kmsKeyId}
+                          onChange={setKmsKeyId}
+                        />
+                      )}
                     </Field>
                   </Stack>
                 </AccordionContent>

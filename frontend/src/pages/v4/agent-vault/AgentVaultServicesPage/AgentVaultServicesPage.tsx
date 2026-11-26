@@ -70,7 +70,12 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
     setPage(1);
   };
 
-  const { data, isPending } = resources.useServices(projectId, {
+  const {
+    data,
+    isPending,
+    error: loadError,
+    refetch
+  } = resources.useServices(projectId, {
     search: debouncedSearch.trim() || undefined,
     requiresSetup: onlyRequiringSetup || undefined,
     orderBy: ORDER_BY[sort.columnId] ?? "name",
@@ -99,7 +104,24 @@ const Services = ({ orgId, projectId }: { orgId: string; projectId: string }) =>
       description="No access bundle granted to you holds a service yet. Ask an admin to grant you one."
     />
   );
-  if (isFiltered)
+  if (loadError && !data)
+    empty = (
+      <EmptyState
+        ghost={false}
+        size="sm"
+        media="bare"
+        icon="alert"
+        title="Couldn't load services"
+        actions={
+          refetch ? (
+            <Button variant="outline" onClick={() => refetch()}>
+              Try again
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  else if (isFiltered)
     empty = (
       <EmptyState
         size="sm"
