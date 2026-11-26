@@ -14,6 +14,7 @@ import {
 import { Badge, Count } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { Combobox } from "@infisical/cipher/ui/combobox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,7 @@ import {
   toChannelForm,
   toChannelInput
 } from "@app/hooks/api/alerts/utils";
+import { SecretScanningScanTrigger } from "@app/hooks/api/secretScanningV2/enums";
 
 import { useOrgId, useOrgPermission, useProjectPermission } from "../access/permissions";
 import { failed, readableFailure, saved } from "../access/toast";
@@ -114,6 +116,13 @@ const DEFAULT_NAMES: Record<AlertEventType, string> = {
   [AlertEventType.GatewayOffline]: "Gateway offline alert"
 };
 
+const SCAN_TRIGGER_OPTIONS = [
+  { value: SecretScanningScanTrigger.Push, label: "Push" },
+  { value: SecretScanningScanTrigger.PullRequest, label: "Pull request" },
+  { value: SecretScanningScanTrigger.Manual, label: "Manual scan" },
+  { value: SecretScanningScanTrigger.ResourcesAdded, label: "New resource" }
+];
+
 const DEFAULT_ALERT_BEFORE_DAYS = 7;
 const GROUP_LIMIT = 100;
 
@@ -128,6 +137,7 @@ const formSchema = z
     enabled: z.boolean(),
     alertBeforeDays: z.string(),
     dailyReminder: z.boolean(),
+    scanTriggers: z.array(z.nativeEnum(SecretScanningScanTrigger)),
     channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
   })
   .superRefine((form, ctx) => {
@@ -154,7 +164,7 @@ type TResourceAlertsProps = {
   readOnly?: boolean;
 };
 
-const useAlertGroups = (projectId?: string): TRecipientGroup[] | undefined => {
+export const useAlertGroups = (projectId?: string): TRecipientGroup[] | undefined => {
   const orgId = useOrgId();
   const access = useV4Adapter("access");
   const { permission } = useOrgPermission();
@@ -204,6 +214,7 @@ const AlertSheet = ({
       parseAlertBeforeDays(alert?.condition?.alertBefore) ?? DEFAULT_ALERT_BEFORE_DAYS
     ),
     dailyReminder: alert?.condition?.dailyReminder ?? false,
+    scanTriggers: alert?.condition?.scanTriggers ?? [],
     channels: (alert?.channels ?? []).map((channel) => toDraftChannel(toChannelForm(channel)))
   }));
   const [draft, setDraft] = useState(initial);
@@ -215,6 +226,7 @@ const AlertSheet = ({
     onDiscard: () => onOpenChange(false)
   });
   const isExpiry = draft.eventType === AlertEventType.IdentityAuthenticationExpiry;
+  const isSecretScanning = resourceType === AlertResourceType.SecretScanning;
 
   const update = (patch: Partial<TDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
@@ -227,12 +239,14 @@ const AlertSheet = ({
     const parsed = formSchema.safeParse(draft);
     if (!parsed.success) throw new Error("Fix the highlighted fields, then try again.");
     const { data } = parsed;
-    const condition = isExpiry
-      ? {
-          alertBefore: toAlertBefore(Number(data.alertBeforeDays)),
-          dailyReminder: data.dailyReminder
-        }
-      : null;
+    let condition: Record<string, unknown> | null = null;
+    if (isExpiry)
+      condition = {
+        alertBefore: toAlertBefore(Number(data.alertBeforeDays)),
+        dailyReminder: data.dailyReminder
+      };
+    else if (isSecretScanning && data.scanTriggers.length)
+      condition = { scanTriggers: data.scanTriggers };
     const channels = data.channels.map(toChannelInput);
     if (alert) {
       await updateAlert
@@ -354,6 +368,25 @@ const AlertSheet = ({
                       onChange={(dailyReminder) => update({ dailyReminder })}
                     />
                   </Stack>
+                )}
+                {isSecretScanning && (
+                  <Field
+                    wide
+                    label="Scans"
+                    optional
+                    description="Leave empty to alert on every kind of scan. To stop alerts from pull requests, select every kind except Pull request."
+                  >
+                    <Combobox
+                      multiple
+                      label="Scans"
+                      options={SCAN_TRIGGER_OPTIONS}
+                      value={draft.scanTriggers}
+                      placeholder="All scans"
+                      onChange={(values) =>
+                        update({ scanTriggers: values as SecretScanningScanTrigger[] })
+                      }
+                    />
+                  </Field>
                 )}
                 <Switch
                   layout="row"
