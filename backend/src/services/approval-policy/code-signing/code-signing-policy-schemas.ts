@@ -32,7 +32,7 @@ export const SigningWindowDurationSchema = z.string().refine(
 
 export const MAX_SIGNING_COMMAND_LENGTH = 32767;
 
-export const MAX_SIGNING_JUSTIFICATION_LENGTH = 2048;
+const MAX_SIGNING_JUSTIFICATION_LENGTH = 2048;
 
 const SHA256_HEX_RE = new RE2("^[a-fA-F0-9]{64}$");
 

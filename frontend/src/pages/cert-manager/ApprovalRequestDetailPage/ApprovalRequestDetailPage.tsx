@@ -15,6 +15,9 @@ import {
   CardHeader,
   CardTitle,
   ConfirmationAlertDialog,
+  Detail,
+  DetailLabel,
+  DetailValue,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -188,12 +191,12 @@ const CodeSigningDetailsSection = ({
               </div>
             )}
             {justification && (
-              <div className="col-span-2">
-                <span className="text-xs text-muted">Reason</span>
-                <p className="max-h-72 thin-scrollbar overflow-y-auto text-sm break-words whitespace-pre-wrap text-foreground">
+              <Detail className="col-span-2">
+                <DetailLabel>Reason</DetailLabel>
+                <DetailValue className="max-h-72 thin-scrollbar overflow-y-auto whitespace-pre-wrap">
                   {justification}
-                </p>
-              </div>
+                </DetailValue>
+              </Detail>
             )}
           </div>
           {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
