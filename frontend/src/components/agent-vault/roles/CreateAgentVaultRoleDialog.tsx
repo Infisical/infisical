@@ -5,10 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import {
-  AGENT_VAULT_ROLE_TEMPLATES,
-  policyToRules
-} from "@app/components/agent-vault/policy-editor/agentVaultPolicyModel";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -24,31 +20,23 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input,
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue
+  Input
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { useCreateProjectRole } from "@app/hooks/api";
 import {
   fetchAgentVaultRoleBySlug,
-  invalidateAgentVaultRoleDependents,
-  useAgentVaultRoleOptions
+  invalidateAgentVaultRoleDependents
 } from "@app/hooks/api/agentVaultRoles";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { roleQueryKeys } from "@app/hooks/api/roles/queries";
-import { ProjectMembershipRole, TProjectPermission } from "@app/hooks/api/roles/types";
+import { TProjectPermission } from "@app/hooks/api/roles/types";
 
 import { agentVaultRoleRules, roleDetailsSchema, rulesForCopy, toRoleSlug } from "./roleSchema";
 
+// A new role starts blank; Duplicate starts from a copy of the role it was opened on.
 const BLANK_SOURCE = "blank";
-const TEMPLATE_PREFIX = "template:";
 const COPY_PREFIX = "copy:";
 
 const schema = roleDetailsSchema.extend({ source: z.string() });
@@ -89,12 +77,6 @@ export const CreateAgentVaultRoleDialog = ({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const createRole = useCreateProjectRole();
-  const { builtIn: builtInRoles, custom: customRoles } = useAgentVaultRoleOptions(projectId);
-  // A copy of No Access is the same as starting blank.
-  const copyableRoles = [
-    ...builtInRoles.filter((role) => role.slug !== ProjectMembershipRole.NoAccess),
-    ...customRoles
-  ];
 
   const {
     control,
@@ -113,12 +95,6 @@ export const CreateAgentVaultRoleDialog = ({
     useDiscardChangesGuard({ isDirty, onDiscard: () => onOpenChange(false) });
 
   const permissionsFor = async (source: string): Promise<TProjectPermission[]> => {
-    if (source.startsWith(TEMPLATE_PREFIX)) {
-      const template = AGENT_VAULT_ROLE_TEMPLATES.find(
-        ({ id }) => id === source.slice(TEMPLATE_PREFIX.length)
-      );
-      return template ? policyToRules(template.policy) : [];
-    }
     if (source.startsWith(COPY_PREFIX)) {
       const slug = source.slice(COPY_PREFIX.length);
       const role = await queryClient.fetchQuery({
@@ -251,61 +227,6 @@ export const CreateAgentVaultRoleDialog = ({
                       isError={Boolean(fieldState.error)}
                     />
                     <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="source"
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel htmlFor="agent-vault-role-source">Start From</FieldLabel>
-                  <FieldContent>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger id="agent-vault-role-source" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="w-(--radix-select-trigger-width)">
-                        <SelectGroup>
-                          <SelectItem
-                            value={BLANK_SOURCE}
-                            description="Holders can do nothing until you add permissions."
-                          >
-                            Blank
-                          </SelectItem>
-                        </SelectGroup>
-                        <SelectGroup>
-                          <SelectLabel>Templates</SelectLabel>
-                          {AGENT_VAULT_ROLE_TEMPLATES.map((template) => (
-                            <SelectItem
-                              key={template.id}
-                              value={`${TEMPLATE_PREFIX}${template.id}`}
-                              description={template.description}
-                            >
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                        {copyableRoles.length > 0 && (
-                          <SelectGroup>
-                            <SelectLabel>Copy a Role</SelectLabel>
-                            {copyableRoles.map((role) => (
-                              <SelectItem
-                                key={role.slug}
-                                value={`${COPY_PREFIX}${role.slug}`}
-                                description={role.description || role.slug}
-                              >
-                                Copy of {role.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription>
-                      You can change everything it grants after you create it.
-                    </FieldDescription>
                   </FieldContent>
                 </Field>
               )}
