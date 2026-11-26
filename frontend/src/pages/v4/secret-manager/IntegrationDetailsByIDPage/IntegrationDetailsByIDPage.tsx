@@ -31,7 +31,6 @@ import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
 import type { TOctopusDeployVariableSetScopeValues } from "@app/hooks/api/integrationAuth/types";
 import { OctopusDeployScope } from "@app/hooks/api/integrationAuth/types";
 import type { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
-import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { Dash } from "../../access/org/detail-parts";
