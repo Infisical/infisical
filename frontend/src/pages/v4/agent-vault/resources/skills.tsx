@@ -433,19 +433,22 @@ export const DeleteSkillDialog = ({
   onDeleted
 }: {
   projectId: string;
-  skill?: { id: string; name: string };
+  skill?: { id: string; name: string; accessBundles: { id: string; name: string }[] };
   onOpenChange: (open: boolean) => void;
   onDeleted?: () => void;
 }) => {
   const remove = useV4Adapter("agentVaultResources").useDeleteSkill(projectId);
+  const bundles = skill?.accessBundles ?? [];
+  const bundleNames = bundles.map((bundle) => bundle.name).join(", ");
   return (
     <AlertDialog open={Boolean(skill)} onOpenChange={onOpenChange}>
       <AlertDialogContent tone="danger" confirmText={skill?.name}>
         <AlertDialogHeader>
           <AlertDialogTitle>{`Delete ${skill?.name ?? ""}?`}</AlertDialogTitle>
           <AlertDialogDescription>
-            It leaves every access bundle it&apos;s in and every version is deleted. Agents that
-            already started keep their copy. This cannot be undone.
+            {bundles.length
+              ? `It leaves ${bundles.length === 1 ? "the access bundle" : `the ${bundles.length} access bundles`} that use it: ${bundleNames}. Every version is deleted, and agents that already started keep their copy. This cannot be undone.`
+              : "This skill isn't in any access bundle. Every version is deleted, and agents that already started keep their copy. This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -766,7 +769,7 @@ const SkillSheetEditor = ({
       setViewed(null);
     } catch (error) {
       if (error instanceof SkillVersionConflictError) setConflict(error.latestVersion);
-      failed("Failed to save skill", error);
+      else failed("Failed to save skill", error);
     } finally {
       setSaving(false);
     }
@@ -871,7 +874,10 @@ const SkillSheetEditor = ({
           projectId={projectId}
           skill={skill}
           onOpenChange={setUploading}
-          onSaved={() => setViewed(null)}
+          onSaved={() => {
+            setEdit(undefined);
+            setViewed(null);
+          }}
         />
       )}
       <RollBackSkillDialog
@@ -879,7 +885,10 @@ const SkillSheetEditor = ({
         skill={skill}
         version={rollingBack}
         onClose={() => setRollingBack(undefined)}
-        onRolledBack={() => setViewed(null)}
+        onRolledBack={() => {
+          setEdit(undefined);
+          setViewed(null);
+        }}
       />
       <DeleteSkillDialog
         projectId={projectId}
