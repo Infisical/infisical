@@ -337,20 +337,14 @@ export const ServiceSheet = ({
   const memberProvides = (field: TAgentVaultMemberProvidedField) =>
     form.memberProvidedFields.includes(field);
   const toggleMemberProvided = (field: TAgentVaultMemberProvidedField, checked: boolean) => {
-    const hasStoredSecret =
-      service?.credential.type === form.credentialType &&
-      !storedMemberProvided(service, AgentVaultVariableReferenceField.CredentialValue);
+    const hasStoredValue =
+      service?.credential.type === form.credentialType && !storedMemberProvided(service, field);
     patch({
       memberProvidedFields: checked
         ? [...form.memberProvidedFields, field]
         : form.memberProvidedFields.filter((entry) => entry !== field),
-      ...(field === AgentVaultVariableReferenceField.CredentialValue && {
-        secret: !checked && hasStoredSecret ? UNCHANGED_SECRET : ""
-      }),
-      ...(field === AgentVaultVariableReferenceField.CredentialUsername &&
-        !checked && {
-          username: ""
-        })
+      [field === AgentVaultVariableReferenceField.CredentialUsername ? "username" : "secret"]:
+        !checked && hasStoredValue ? UNCHANGED_SECRET : ""
     });
   };
 
