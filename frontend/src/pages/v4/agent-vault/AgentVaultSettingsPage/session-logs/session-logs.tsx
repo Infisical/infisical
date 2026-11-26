@@ -312,7 +312,7 @@ const SessionLogSettingsCard = ({
   );
   const canEditConnection = editableConnection ? canEdit(editableConnection.id) : false;
 
-  const connectionOptions = (connections ?? projectConnections).map((connection) => ({
+  const connectionOptions = (connections ?? []).map((connection) => ({
     value: connection.id,
     label: connection.name,
     meta: connection.projectId ? undefined : "Organization"
