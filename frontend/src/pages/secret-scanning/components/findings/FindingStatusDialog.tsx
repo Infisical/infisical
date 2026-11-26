@@ -84,7 +84,7 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
         This secret was found in {renderName(names[0])}
         {names.length > 2 ? (
           <>
-            , {renderName(names[1])} and {names.length - 2} more
+            , {renderName(names[1])} and {renderName(`${names.length - 2} more`)}
           </>
         ) : (
           <> and {renderName(names[1])}</>
