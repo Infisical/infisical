@@ -179,6 +179,7 @@ export const kmsDemo: KmsAdapter = {
     return {
       data: { keys: matched.slice(offset, offset + limit), totalCount: matched.length },
       isPending: false,
+      isFetching: false,
       error: null
     };
   },

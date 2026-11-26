@@ -360,7 +360,12 @@ const LogsTable = ({ project, actorId }: { project?: AuditLogsProject; actorId?:
             key: "actor-type",
             label: "Actor type",
             type: "select" as const,
-            options: [ActorType.USER, ActorType.IDENTITY, ActorType.PLATFORM].map((type) => ({
+            options: [
+              ActorType.USER,
+              ActorType.IDENTITY,
+              ...(projectType === ProjectType.KMS ? [ActorType.KMIP_CLIENT] : []),
+              ActorType.PLATFORM
+            ].map((type) => ({
               value: type,
               label: actorTypeLabel[type] ?? type
             }))

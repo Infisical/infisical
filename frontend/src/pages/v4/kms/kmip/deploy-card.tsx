@@ -11,7 +11,7 @@ import { Tabs } from "@infisical/cipher/ui/tabs";
 import type { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
 import type { KmipEnrollment } from "../../data/kmip/contract";
-import { KMIP_CLIENT_DOCS } from "./shared";
+import { KMIP_CLI_DOCS, KMIP_CLIENT_DOCS } from "./shared";
 
 import css from "./kmip.module.css";
 
@@ -131,6 +131,7 @@ export const DeployCard = ({
     <Card
       variant="framed"
       title="Deployment"
+      badges={<DocumentationLink href={KMIP_CLI_DOCS} subject="Infisical CLI" />}
       action={
         showCommands ? (
           <Tabs
