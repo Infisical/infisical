@@ -222,6 +222,7 @@ Convex
 Hasura
 Hasura Cloud
 PlanetScale
+Vitess
 Databricks
 Snowflake
 Snowsight

@@ -227,6 +227,7 @@
                       "documentation/platform/dynamic-secrets/oauth2",
                       "documentation/platform/dynamic-secrets/openrouter",
                       "documentation/platform/dynamic-secrets/oracle",
+                      "documentation/platform/dynamic-secrets/planetscale",
                       "documentation/platform/dynamic-secrets/postgresql",
                       "documentation/platform/dynamic-secrets/rabbit-mq",
                       "documentation/platform/dynamic-secrets/redis",

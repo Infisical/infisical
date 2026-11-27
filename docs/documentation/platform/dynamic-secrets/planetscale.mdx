@@ -1,0 +1,111 @@
+---
+title: "PlanetScale Vitess dynamic secrets"
+sidebarTitle: "PlanetScale Vitess"
+description: "Learn how to issue short-lived passwords for PlanetScale Vitess databases on demand."
+---
+
+The PlanetScale Vitess dynamic secret creates a new password for a [PlanetScale](https://planetscale.com/) database branch each time someone creates a [lease](/documentation/platform/dynamic-secrets/overview), and deletes the password when the lease ends. Use it to give an application or a CI job its own short-lived MySQL credentials instead of sharing one long-lived password.
+
+PlanetScale Vitess databases don't support MySQL users and grants, so the [MySQL dynamic secret](/documentation/platform/dynamic-secrets/mysql) can't create users on them. PlanetScale databases that run PostgreSQL use roles instead of passwords, so this dynamic secret doesn't support them.
+
+## Prerequisites
+
+- A PlanetScale [service token](https://planetscale.com/docs/api/reference/service-tokens) with these permissions on the database:
+  - `connect_branch` and `delete_branch_password` for a development branch
+  - `connect_production_branch` and `delete_production_branch_password` for a production branch
+- A [role](/documentation/platform/access-controls/role-based-access-controls) in the Infisical project that lets you create dynamic secrets
+
+## Step 1: Create the dynamic secret
+
+<Steps>
+  <Step>
+    In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
+  </Step>
+  <Step>
+    Select **PlanetScale Vitess**.
+  </Step>
+  <Step>
+    Fill in the form:
+
+    <ParamField path="Secret Name" type="string" required>
+      The name you use to refer to the dynamic secret.
+    </ParamField>
+
+    <ParamField path="Default TTL" type="string" required>
+      How long a lease lasts if the person creating it doesn't choose a TTL (for example, `1h`).
+    </ParamField>
+
+    <ParamField path="Max TTL" type="string">
+      The longest TTL anyone can request for a lease (for example, `24h`).
+    </ParamField>
+
+    <ParamField path="Service Token ID" type="string" required>
+      The ID of your PlanetScale service token.
+    </ParamField>
+
+    <ParamField path="Service Token" type="string" required>
+      The value of your PlanetScale service token. When you edit the dynamic secret, leave this blank to keep the current token.
+    </ParamField>
+
+    <ParamField path="Organization" type="string" required>
+      The name of your PlanetScale organization.
+    </ParamField>
+
+    <ParamField path="Database" type="string" required>
+      The name of the PlanetScale database.
+    </ParamField>
+
+    <ParamField path="Branch" type="string" default="main" required>
+      The database branch that each password gives access to.
+    </ParamField>
+
+    <ParamField path="Role" type="string" default="Read-only">
+      The [role](https://planetscale.com/docs/vitess/security/password-roles) that each password gets: **Read-only**, **Write-only**, **Read/write**, or **Admin**.
+    </ParamField>
+
+    <ParamField path="Password Name Template" type="string" default="{{randomUsername}}">
+      The name each password gets in PlanetScale, under **Advanced**. The default gives each password a random name. PlanetScale names must be unique on the branch and can only contain up to 63 lowercase letters, numbers, and dashes. Infisical lowercases the name, turns other characters into dashes, shortens it if needed, and adds a random suffix. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}` to make the passwords easier to find in PlanetScale.
+    </ParamField>
+
+    <Note>
+      You can't change the organization, database, or branch while the dynamic secret has active leases. Revoke the leases first.
+    </Note>
+  </Step>
+  <Step>
+    Select **Submit**.
+
+    Before Infisical saves the dynamic secret, it checks that the service token can access the branch. If PlanetScale rejects the token, PlanetScale can't find the branch, or the database doesn't run Vitess, Infisical shows the error and doesn't save the dynamic secret.
+  </Step>
+</Steps>
+
+## Step 2: Create a lease
+
+<Steps>
+  <Step>
+    In the row for the dynamic secret, select **Generate Lease**.
+  </Step>
+  <Step>
+    Enter a **Default TTL** for the lease, then select **Provision Lease**.
+  </Step>
+  <Step>
+    Copy the values Infisical shows:
+
+    - `DB_HOST`: the PlanetScale host to connect to
+    - `DB_USERNAME`: the MySQL username
+    - `DB_PASSWORD`: the MySQL password
+
+    <Warning>
+      Infisical shows the password only once. Copy it before you close the dialog.
+    </Warning>
+  </Step>
+</Steps>
+
+## Revoke a lease
+
+Select the dynamic secret to see its leases, then select **Revoke lease** next to a lease to delete its password in PlanetScale before the lease expires.
+
+When a lease expires, Infisical deletes its password. PlanetScale also stops accepting the password when the lease expires, even if Infisical can't delete it. You can't renew a PlanetScale lease. To keep access, create a new lease before the current one expires.
+
+<Note>
+  If the service token can't delete passwords on the branch, revoking a lease fails and the password keeps working until the lease expires. Grant the token `delete_branch_password` (`delete_production_branch_password` for a production branch), then revoke the lease again.
+</Note>

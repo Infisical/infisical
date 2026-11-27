@@ -291,6 +291,18 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
         { key: "BRANCH_NAME", label: "Branch Name", isOptional: true }
       ])
     )
+  },
+  [DynamicSecretProviders.PlanetScale]: {
+    presentation: { providerFamily: "PlanetScale", logoFileName: "PlanetScale.png" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "DB_HOST", label: "Host" },
+        { key: "DB_USERNAME", label: "Database User" },
+        { key: "DB_PASSWORD", label: "Database Password" }
+      ]),
+      supportsRenewal: false
+    }
   }
 } as const satisfies Record<DynamicSecretProviders, TDynamicSecretProviderRuntimeMetadata>;
 
