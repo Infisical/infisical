@@ -253,6 +253,7 @@
                 "group": "Integrations",
                 "pages": [
                   "integrations/overview",
+                  "documentation/platform/mcp-server",
                   {
                     "group": "Frameworks",
                     "pages": [

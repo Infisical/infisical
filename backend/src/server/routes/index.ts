@@ -249,6 +249,8 @@ import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbe
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
+import { registerMcpResourceMetadataRouter, registerMcpRouter } from "@app/server/routes/mcp/mcp-router";
+import { registerOauthServerMetadataRouter } from "@app/server/routes/v1/oauth-router";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -479,6 +481,7 @@ import { notificationQueueServiceFactory } from "@app/services/notification/noti
 import { notificationServiceFactory } from "@app/services/notification/notification-service";
 import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 import { oauthClientDALFactory } from "@app/services/oauth-client/oauth-client-dal";
+import { MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
 import { oauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { objectStorageServiceFactory } from "@app/services/object-storage/object-storage-service";
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
@@ -5337,6 +5340,9 @@ export const registerRoutes = async (
   if (envConfig.isApiRunModeEnabled) {
     // register special routes
     await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+    await server.register(registerOauthServerMetadataRouter, { prefix: "/.well-known/oauth-authorization-server" });
+    await server.register(registerMcpResourceMetadataRouter, { prefix: "/.well-known/oauth-protected-resource" });
+    await server.register(registerMcpRouter, { prefix: MCP_ENDPOINT_PATH });
     await server.register(registerPkiScepRouter, { prefix: "/scep" });
     await server.register(registerMicrosoftAutoenrollmentRouter);
 

@@ -8,6 +8,7 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
   ActorType,
@@ -23,6 +24,7 @@ import {
 } from "@app/services/auth/auth-type";
 import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
+import { MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 
 import { invalidSignatureMessage } from "./invalid-signature-message";
@@ -359,6 +361,12 @@ export const injectIdentity = fp(
           break;
         }
         case AuthMode.OAUTH: {
+          if (token.aud && removeTrailingSlash(pathname) !== MCP_ENDPOINT_PATH) {
+            throw new UnauthorizedError({
+              message: "This token was issued for the Infisical MCP server and can only be used there."
+            });
+          }
+
           const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token);
           requestContext.set(RequestContextKey.OrgId, orgId);

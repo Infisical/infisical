@@ -3,10 +3,15 @@ import { z } from "zod";
 import { OauthClientsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
-import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { authRateLimit, publicJwksLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { isAllowedRedirectUri, parseBasicAuthHeader } from "@app/services/oauth-client/oauth-client-fns";
+import {
+  getMcpOauthUrls,
+  isAllowedRedirectUri,
+  MAX_OAUTH_CLIENT_ID_LENGTH,
+  parseBasicAuthHeader
+} from "@app/services/oauth-client/oauth-client-fns";
 import {
   ACCEPTED_SUBJECT_TOKEN_TYPES,
   DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
@@ -16,6 +21,7 @@ import {
   OauthGrantType,
   OauthTokenType
 } from "@app/services/oauth-client/oauth-client-types";
+import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 import { OauthTokenError, OauthTokenErrorCode, toOauthTokenError } from "@app/services/oauth-client/oauth-token-error";
 
 const SanitizedOauthClientSchema = OauthClientsSchema.omit({ clientSecretHash: true });
@@ -46,6 +52,12 @@ const grantTypesSchema = z
   .describe(
     "The OAuth grant types this application may use. An application uses either the redirect flow (authorization_code, optionally with refresh_token) or the token-exchange grant. Redirect URIs apply only to authorization_code; the token exchange audience applies only to the token-exchange grant."
   );
+
+const resourceSchema = z
+  .string()
+  .max(2048)
+  .optional()
+  .describe("The server the token is for (RFC 8707). Only the Infisical MCP server's URL is supported.");
 
 const tokenExchangeAudienceSchema = z
   .string()
@@ -324,12 +336,13 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     schema: {
       querystring: z.object({
         response_type: z.literal("code"),
-        client_id: z.string(),
+        client_id: z.string().max(MAX_OAUTH_CLIENT_ID_LENGTH),
         redirect_uri: z.string().url(),
         state: z.string().optional(),
         code_challenge: z.string().optional(),
         code_challenge_method: z.enum(["S256"]).optional(),
-        scope: z.string().optional()
+        scope: z.string().optional(),
+        resource: resourceSchema
       })
     },
     handler: async (req, res) => {
@@ -337,7 +350,8 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       // unregistered URI per RFC 6749 §3.1.2.4)
       const info = await server.services.oauthClient.getAuthorizeInfo({
         clientId: req.query.client_id,
-        redirectUri: req.query.redirect_uri
+        redirectUri: req.query.redirect_uri,
+        resource: req.query.resource
       });
 
       // Surface the PKCE requirement up front rather than after the user has consented
@@ -345,9 +359,12 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "This OAuth client requires PKCE (code_challenge is missing)" });
       }
 
-      const query = new URLSearchParams(
-        Object.entries(req.query).filter(([, value]) => value !== undefined)
-      ).toString();
+      // Not URLSearchParams: it encodes spaces as "+", which the frontend router does not decode, so a multi-scope
+      // request would reach the consent page as one unknown scope.
+      const query = Object.entries(req.query)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value as string)}`)
+        .join("&");
 
       void res.redirect(`/organization/oauth-consent?${query}`);
     }
@@ -361,14 +378,16 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       querystring: z.object({
-        client_id: z.string(),
+        client_id: z.string().max(MAX_OAUTH_CLIENT_ID_LENGTH),
         redirect_uri: z.string().url(),
-        scope: z.string().optional()
+        scope: z.string().optional(),
+        resource: resourceSchema
       }),
       response: {
         200: z.object({
           clientName: z.string(),
           clientDescription: z.string().nullable().optional(),
+          publicClientHost: z.string().nullable(),
           requirePkce: z.boolean(),
           requestedScopes: z.object({ scope: z.string(), description: z.string() }).array()
         })
@@ -378,12 +397,14 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
       const info = await server.services.oauthClient.getAuthorizeInfo({
         clientId: req.query.client_id,
         redirectUri: req.query.redirect_uri,
-        scope: req.query.scope
+        scope: req.query.scope,
+        resource: req.query.resource
       });
 
       return {
         clientName: info.clientName,
         clientDescription: info.clientDescription,
+        publicClientHost: info.publicClientHost,
         requirePkce: info.requirePkce,
         requestedScopes: info.requestedScopes
       };
@@ -398,12 +419,13 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       body: z.object({
-        client_id: z.string(),
+        client_id: z.string().max(MAX_OAUTH_CLIENT_ID_LENGTH),
         redirect_uri: z.string().url(),
         state: z.string().optional(),
         code_challenge: z.string().optional(),
         code_challenge_method: z.enum(["S256"]).optional(),
-        scope: z.string().optional()
+        scope: z.string().optional(),
+        resource: resourceSchema
       }),
       response: {
         200: z.object({
@@ -415,13 +437,15 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       if (req.auth.authMode !== AuthMode.JWT) throw new BadRequestError({ message: "Invalid auth mode" });
 
-      const { callbackUrl, clientName, orgId } = await server.services.oauthClient.authorizeConsent({
+      const { callbackUrl, clientName, orgId, scopes, resource } = await server.services.oauthClient.authorizeConsent({
         clientId: req.body.client_id,
         redirectUri: req.body.redirect_uri,
         state: req.body.state,
         codeChallenge: req.body.code_challenge,
         codeChallengeMethod: req.body.code_challenge_method,
         scope: req.body.scope,
+        resource: req.body.resource,
+        orgId: req.auth.orgId,
         userId: req.auth.userId,
         authMethod: req.auth.authMethod,
         issuingRootOrgId: req.auth.token.issuingRootOrgId,
@@ -438,7 +462,9 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
           type: EventType.OAUTH_CLIENT_AUTHORIZE,
           metadata: {
             clientId: req.body.client_id,
-            clientName
+            clientName,
+            scopes,
+            resource
           }
         }
       });
@@ -626,5 +652,48 @@ export const registerOAuthRouter = async (server: FastifyZodProvider) => {
     // handler means injectIdentity already verified the signature and the underlying session.
     onRequest: verifyAuth([AuthMode.OAUTH]),
     handler: () => ({ active: true as const })
+  });
+};
+
+// RFC 8414 metadata, which MCP clients read to find the endpoints above. Shaped by the RFC, not the house envelope,
+// and registered at the root: clients build its URL by putting the well-known path in front of the issuer's path.
+export const registerOauthServerMetadataRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "GET",
+    url: "/api/v1/oauth",
+    config: {
+      rateLimit: publicJwksLimit
+    },
+    schema: {
+      operationId: "getOauthAuthorizationServerMetadata",
+      hide: true,
+      response: {
+        200: z.object({
+          issuer: z.string(),
+          authorization_endpoint: z.string(),
+          token_endpoint: z.string(),
+          response_types_supported: z.string().array(),
+          grant_types_supported: z.string().array(),
+          code_challenge_methods_supported: z.string().array(),
+          token_endpoint_auth_methods_supported: z.string().array(),
+          scopes_supported: z.string().array(),
+          client_id_metadata_document_supported: z.boolean()
+        })
+      }
+    },
+    handler: () => {
+      const { issuer } = getMcpOauthUrls();
+      return {
+        issuer,
+        authorization_endpoint: `${issuer}/authorize`,
+        token_endpoint: `${issuer}/token`,
+        response_types_supported: ["code"],
+        grant_types_supported: Object.values(OauthGrantType),
+        code_challenge_methods_supported: ["S256"],
+        token_endpoint_auth_methods_supported: ["none", "client_secret_basic", "client_secret_post"],
+        scopes_supported: Object.values(OauthScope),
+        client_id_metadata_document_supported: true
+      };
+    }
   });
 };

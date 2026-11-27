@@ -254,6 +254,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     return session;
   };
 
+  const createUserTokenSession = async (
+    { userId, ip, userAgent }: TIssueAuthTokenDTO,
+    tx?: Knex
+  ): Promise<TAuthTokenSessions | undefined> => tokenDAL.insertTokenSession(userId, ip, userAgent, tx);
+
   const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> =>
     tokenDAL.incrementTokenSessionVersion(userId, sessionId);
 
@@ -644,6 +649,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     createTokensForUsers,
     validateTokenForUser,
     getUserTokenSession,
+    createUserTokenSession,
     clearTokenSessionById,
     getTokenSessionByUser,
     revokeAllMySessions,

@@ -60,6 +60,8 @@ export type TOauthRequestedScope = {
 export type TOauthAuthorizeInfo = {
   clientName: string;
   clientDescription?: string | null;
+  // Set for an application no admin registered (such as an MCP client): where its details came from.
+  publicClientHost: string | null;
   requirePkce: boolean;
   requestedScopes: TOauthRequestedScope[];
 };
@@ -71,4 +73,5 @@ export type TOauthConsentDTO = {
   codeChallenge?: string;
   codeChallengeMethod?: string;
   scope?: string;
+  resource?: string;
 };

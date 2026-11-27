@@ -241,7 +241,8 @@ export enum UserAgentType {
   TERRAFORM = "terraform",
   OTHER = "other",
   PYTHON_SDK = "InfisicalPythonSDK",
-  NODE_SDK = "InfisicalNodeSDK"
+  NODE_SDK = "InfisicalNodeSDK",
+  REMOTE_MCP = "remote-mcp"
 }
 
 export enum EventType {
@@ -8577,6 +8578,8 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+    scopes: string[];
+    resource?: string;
   };
 }
 

@@ -1553,7 +1553,7 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
-    includeImports: "Weather to include imported secrets or not.",
+    includeImports: "Whether or not to include imported secrets.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
       "Unencrypted secret metadata key-value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4.",
@@ -1584,11 +1584,11 @@ export const RAW_SECRETS = {
     version: "The version of the secret to get.",
     type: "The type of the secret to get.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
-    includeImports: "Weather to include imported secrets or not."
+    includeImports: "Whether or not to include imported secrets."
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
-    secretComment: "Update comment to the secret.",
+    secretComment: "The new comment for the secret.",
     environment: "The slug of the environment where the secret is located.",
     mode: "Defines how the system should handle missing secrets during an update.",
     secretPath: "The default path for secrets to update or upsert, if not provided in the secret details.",

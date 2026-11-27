@@ -139,6 +139,9 @@ export type AuthModeJwtTokenPayload = {
   // Set instead of `scopes` on RFC 8693 token exchange tokens, which carry the user's authorization
   // unnarrowed. Never both. See OauthDelegationMode.
   delegation?: string;
+  // The resource (RFC 8707) a delegated OAuth token is bound to. Only the MCP endpoint, which accepts such a
+  // token nowhere else.
+  aud?: string;
 };
 
 export type AuthModeMfaJwtTokenPayload = {

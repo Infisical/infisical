@@ -441,6 +441,20 @@ exchange); `BadRequestError` maps to `invalid_request`, and anything else become
 Throw `OauthTokenError` directly where that default is wrong (`invalid_client`, `unauthorized_client`,
 PKCE or redirect-URI mismatch, `invalid_scope`, `invalid_target`).
 
+**Public clients and the MCP endpoint.** A `client_id` that is an https URL (`isClientMetadataDocumentUrl`) is a
+public client such as Claude, described by an OAuth Client ID Metadata Document fetched through `safeRequest` on every
+authorization request: no row, no secret, PKCE required, and it is granted the consenting session's org. A public client
+can only be granted the MCP endpoint (`resource` = `getMcpOauthUrls().mcpResource`), and the token carries that
+resource as `aud`. That address is `MCP_SERVER_URL` when a proxy serves the endpoint elsewhere, so take it from
+`getMcpOauthUrls()`, never from `SITE_URL`. Scopes marked `mcpOnly` in `OAUTH_SCOPE_DEFINITIONS` are only granted with that resource, so OAuth
+applications using the REST API still only get `secrets:read`. `inject-identity.ts` rejects a token with `aud` everywhere but `MCP_ENDPOINT_PATH`, and
+the MCP route rejects OAuth tokens without it; keep both, or an MCP client becomes a delegated client of the whole API. The MCP route accepts user logins only (`AuthMode.OAUTH`), so a tool may
+only do what a route accepting `AuthMode.OAUTH` does. The tools call services directly, so each does what its REST
+route does (audit log with `UserAgentType.REMOTE_MCP`, secret read activity, the same PostHog event). Each product's tools
+live in `server/routes/mcp/tools/<product>.ts` and are registered in `PRODUCT_TOOLS` (`mcp-server.ts`) with that
+product's scopes, so a connection only lists the tools of products it was granted; register through the context's
+`registerTool`, which applies the scope check and denial audit every tool needs.
+
 **Token exchange** (`oauth-token-exchange-fns.ts`) trusts the org's OIDC SSO config plus the client's
 `tokenExchangeAudience`. `getOrgPermission` is **not** a membership check (it ignores `isActive` and
 `status`), so `exchangeSubjectToken` checks membership itself, as must any future non-interactive way of

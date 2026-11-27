@@ -1,4 +1,9 @@
 import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects
+} from "@app/ee/services/permission/org-permission";
+import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
@@ -9,11 +14,14 @@ import {
 // Each scope maps to a set of (level, subject, actions) rules that are intersected against the user's
 // CASL rules in permission-service. Keep this list curated — it is a public contract.
 //
-// Only secrets:read is exposed for now: the sole delegated use case is `infisical run` fetching
-// secrets at runtime (e.g. via Coder External Auth). Add further scopes only when a route is opted
-// into AuthMode.OAUTH to serve them.
+// The delegated use cases are `infisical run` fetching secrets at runtime (e.g. via Coder External Auth) and
+// the MCP server's tools. Each product gets describe, read and write scopes, which the consent page offers as
+// Describe Only, Read Only and Full Access. Add further scopes only when a route or MCP tool accepting
+// AuthMode.OAUTH needs them.
 export enum OauthScope {
-  SecretsRead = "secrets:read"
+  SecretsDescribe = "secrets:describe",
+  SecretsRead = "secrets:read",
+  SecretsWrite = "secrets:write"
 }
 
 // Which permission ability a rule applies to. getOrgPermission builds org-level abilities,
@@ -29,11 +37,49 @@ export type TOauthScopeRule = {
 type TOauthScopeDefinition = {
   description: string;
   rules: TOauthScopeRule[];
+  // OAuth applications using the REST API have only ever been offered secrets:read. Scopes that serve only the MCP tools
+  // are granted only to tokens bound to the MCP endpoint; offering them to every OAuth application is a separate
+  // decision.
+  mcpOnly: boolean;
 };
 
 export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> = {
+  [OauthScope.SecretsDescribe]: {
+    description: "See projects, folders and secrets, without their values",
+    mcpOnly: true,
+    rules: [
+      // Not the legacy combined "read" action, which also grants secret values.
+      {
+        level: "project",
+        subject: ProjectPermissionSub.Secrets,
+        actions: [ProjectPermissionSecretActions.DescribeSecret]
+      },
+      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Read] },
+      { level: "project", subject: ProjectPermissionSub.SecretImports, actions: [ProjectPermissionActions.Read] }
+    ]
+  },
+  [OauthScope.SecretsWrite]: {
+    description: "Create, change and delete secrets, create folders, and create projects",
+    mcpOnly: true,
+    rules: [
+      {
+        level: "project",
+        subject: ProjectPermissionSub.Secrets,
+        actions: [
+          ProjectPermissionSecretActions.Create,
+          ProjectPermissionSecretActions.Edit,
+          ProjectPermissionSecretActions.Delete
+        ]
+      },
+      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Create] },
+      // Creating a project takes either of these, depending on how the user's org role was written.
+      { level: "org", subject: OrgPermissionSubjects.Workspace, actions: [OrgPermissionActions.Create] },
+      { level: "org", subject: OrgPermissionSubjects.Project, actions: [OrgPermissionProjectActions.Create] }
+    ]
+  },
   [OauthScope.SecretsRead]: {
     description: "Read secrets, folders, and imports",
+    mcpOnly: false,
     rules: [
       {
         level: "project",
@@ -110,16 +156,41 @@ const resolveTargetSubjects = (ruleSubject: string | undefined, allowed: Map<str
   return [];
 };
 
+// The legacy secrets "read" action grants what describeSecret and readValue grant together.
+const splitLegacySecretRead = (actions: string[]) =>
+  actions.includes(ProjectPermissionSecretActions.DescribeAndReadValue)
+    ? [
+        ...new Set([
+          ...actions,
+          ProjectPermissionSecretActions.DescribeSecret,
+          ProjectPermissionSecretActions.ReadValue
+        ])
+      ]
+    : actions;
+
 // Intersects a CASL rule set with the actions permitted by the granted scopes. This is purely
 // subtractive: allow-rules are dropped if their subject is out of scope, and otherwise narrowed to
 // the scope-permitted actions (conditions are preserved, so resource constraints still apply).
-// Inverted ("cannot") rules are kept untouched because they only further restrict access.
-const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: Map<string, Set<string>>): T[] =>
-  rules.flatMap((rule) => {
-    if (rule.inverted) return [rule];
+// Inverted ("cannot") rules are kept because they only further restrict access.
+const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: Map<string, Set<string>>): T[] => {
+  // When the scope allows only part of the legacy secrets "read" action, it is split on every rule that covers secrets,
+  // so Describe Only still lists names for a role that has only "read". Denies are split too: a whole "read" deny would
+  // not match the describeSecret allow the split creates, and the user would see names they are denied.
+  const secretActions = allowed.get(ProjectPermissionSub.Secrets);
+  const splitsLegacyRead = Boolean(
+    secretActions && !secretActions.has(ProjectPermissionSecretActions.DescribeAndReadValue)
+  );
 
+  return rules.flatMap((rule) => {
     const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
-    const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
+    const coversSecrets = ruleSubjects.some(
+      (ruleSubject) => ruleSubject === ProjectPermissionSub.Secrets || ruleSubject === CASL_ALL_SUBJECT
+    );
+    const actions = Array.isArray(rule.action) ? rule.action : [rule.action];
+    const ruleActions = splitsLegacyRead && coversSecrets ? splitLegacySecretRead(actions) : actions;
+
+    if (rule.inverted) return [ruleActions === actions ? rule : { ...rule, action: ruleActions }];
+
     const grantsManage = ruleActions.includes(CASL_MANAGE_ACTION);
 
     return ruleSubjects.flatMap((ruleSubject) =>
@@ -132,6 +203,7 @@ const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: 
       })
     );
   });
+};
 
 export const applyOauthScopeToOrgRules = <T extends TCaslRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
   intersectRulesWithScopes(rules, buildAllowedActionMap(scopes, "org"));
