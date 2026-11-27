@@ -378,7 +378,7 @@ const envSchema = z
         .int()
         .min(1)
         .optional()
-        .describe("Most secrets one batch request may include. Unset, batch requests have no limit")
+        .describe("Most secrets one batch create or update request may include. Unset, they have no limit")
     ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),

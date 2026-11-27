@@ -281,7 +281,7 @@ Example values:
 </ParamField>
 
 <ParamField query="MAX_SECRETS_PER_BATCH_REQUEST" type="int" optional>
-  Maximum number of secrets in one batch request. Infisical rejects a batch that includes more secrets than this. Split the secrets into multiple requests. When unset, batch requests have no limit.
+  Maximum number of secrets in one batch create or batch update request. Infisical rejects a batch create or update that includes more secrets than this. Split the secrets into multiple requests. When unset, batch creates and updates have no limit. Batch deletes aren't limited.
 </ParamField>
 
 ## CORS
