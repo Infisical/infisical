@@ -108,17 +108,22 @@ const RecipientSelect = ({
     groupLabel: "Emails"
   };
 
-  const selected = value.map(
-    (recipient): RecipientOption =>
-      byKey.get(`${recipient.principalType}-${recipient.principalId}`) ?? {
-        principalType: recipient.principalType,
-        principalId: recipient.principalId,
-        label: isLoading ? "Loading..." : recipient.principalId,
-        groupLabel: recipient.principalType === AlertPrincipalType.Group ? "Groups" : "Users",
-        // users/groups not fetched yet; avoid flashing the raw ID
-        isLabelLoading: isLoading
-      }
-  );
+  const selected = value.map((recipient): RecipientOption => {
+    const known = byKey.get(`${recipient.principalType}-${recipient.principalId}`);
+    if (known) return known;
+    // only user/group IDs need a lookup; emails already carry their display text
+    const isLabelLoading =
+      isLoading &&
+      (recipient.principalType === AlertPrincipalType.User ||
+        recipient.principalType === AlertPrincipalType.Group);
+    return {
+      principalType: recipient.principalType,
+      principalId: recipient.principalId,
+      label: isLabelLoading ? "Loading..." : recipient.principalId,
+      groupLabel: recipient.principalType === AlertPrincipalType.Group ? "Groups" : "Users",
+      isLabelLoading
+    };
+  });
 
   return (
     <Combobox
