@@ -49,6 +49,8 @@ const SlackEditor = ({
   orgId,
   title,
   lead,
+  pending,
+  onPendingChange,
   onClose,
   initial,
   integrations
@@ -57,7 +59,6 @@ const SlackEditor = ({
   const updateConfig = adapter.useUpdateWorkflowIntegrationConfig();
   const [draft, setDraft] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
-  const [pending, setPending] = useState(false);
   const channels = adapter.useSlackChannels(draft.integrationId || undefined);
   const channelOptions = [...(channels.data ?? [])]
     .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
@@ -70,7 +71,7 @@ const SlackEditor = ({
     setSubmitted(true);
     if (!draft.integrationId) return;
     const joined = (notification: Notification) => notification.channels.filter(Boolean).join(", ");
-    setPending(true);
+    onPendingChange(true);
     try {
       await updateConfig.mutateAsync({
         projectId,
@@ -86,7 +87,7 @@ const SlackEditor = ({
       saved("Slack integration saved");
       onClose();
     } finally {
-      setPending(false);
+      onPendingChange(false);
     }
   };
 

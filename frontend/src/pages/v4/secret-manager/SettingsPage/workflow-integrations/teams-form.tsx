@@ -42,6 +42,8 @@ const TeamsEditor = ({
   orgId,
   title,
   lead,
+  pending,
+  onPendingChange,
   onClose,
   initial,
   integrations
@@ -50,7 +52,6 @@ const TeamsEditor = ({
   const updateConfig = adapter.useUpdateWorkflowIntegrationConfig();
   const [draft, setDraft] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
-  const [pending, setPending] = useState(false);
   const teams = adapter.useMicrosoftTeamsTeams(draft.integrationId || undefined);
   const sortedTeams = [...(teams.data ?? [])].sort((a, b) =>
     a.teamName.toLowerCase().localeCompare(b.teamName.toLowerCase())
@@ -80,7 +81,7 @@ const TeamsEditor = ({
       teamId: notification.teamId,
       channelIds: notification.channelIds
     });
-    setPending(true);
+    onPendingChange(true);
     try {
       await updateConfig.mutateAsync({
         projectId,
@@ -98,7 +99,7 @@ const TeamsEditor = ({
       saved("Microsoft Teams integration saved");
       onClose();
     } finally {
-      setPending(false);
+      onPendingChange(false);
     }
   };
 

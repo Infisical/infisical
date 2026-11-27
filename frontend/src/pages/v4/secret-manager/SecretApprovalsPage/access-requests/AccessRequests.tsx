@@ -50,6 +50,9 @@ const CLOSED_STATES: { label: string; value: ClosedState }[] = [
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
 
+const requesterBadges = (userId: string) => (request: TAccessApprovalRequest) =>
+  request.requestedByUserId === userId && <Badge tone="soft">You</Badge>;
+
 export const AccessRequests = ({
   orgId,
   projectId,
@@ -223,16 +226,8 @@ export const AccessRequests = ({
       sortable: true,
       width: 180,
       text: (request) => personName(requesterOf(request)),
-      render: (request) => {
-        const name = personName(requesterOf(request));
-        if (!name) return <Meta>-</Meta>;
-        return (
-          <Inline gap={8} align="center" wrap={false}>
-            <span>{name}</span>
-            {request.requestedByUserId === user.id && <Badge tone="soft">You</Badge>}
-          </Inline>
-        );
-      }
+      render: (request) => personName(requesterOf(request)) || <Meta>-</Meta>,
+      badges: requesterBadges(user.id)
     },
     {
       id: "requested",

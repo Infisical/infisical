@@ -366,7 +366,8 @@ export function AppConnectionForm({
             name: "description",
             label: "Description",
             kind: "textarea",
-            optional: true
+            optional: true,
+            placeholder: "Connection description..."
           })}
         {method.redirect && !redirectHref && !failure && (
           <Alert>

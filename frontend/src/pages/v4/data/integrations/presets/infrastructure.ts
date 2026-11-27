@@ -110,7 +110,7 @@ export const INFRASTRUCTURE_PRESETS: Partial<Record<AppConnection, AppConnection
             placeholder: "bigip.example.com"
           },
           { ...portField, placeholder: "443" },
-          { name: "credentials.username", label: "Username", mono: true },
+          { name: "credentials.username", label: "Username", mono: true, placeholder: "admin" },
           { name: "credentials.password", label: "Password", kind: "secret" },
           ...sslFields
         ]
@@ -173,7 +173,7 @@ export const INFRASTRUCTURE_PRESETS: Partial<Record<AppConnection, AppConnection
             placeholder: "firewall.example.com"
           },
           { ...portField, placeholder: "443" },
-          { name: "credentials.username", label: "Username", mono: true },
+          { name: "credentials.username", label: "Username", mono: true, placeholder: "admin" },
           { name: "credentials.password", label: "Password", kind: "secret" },
           ...sslFields
         ]
@@ -274,7 +274,12 @@ export const INFRASTRUCTURE_PRESETS: Partial<Record<AppConnection, AppConnection
             placeholder: "ilo.example.com"
           },
           { ...portField, placeholder: "443" },
-          { name: "credentials.username", label: "Username", mono: true },
+          {
+            name: "credentials.username",
+            label: "Username",
+            mono: true,
+            placeholder: "Administrator"
+          },
           { name: "credentials.password", label: "Password", kind: "secret" },
           ...sslFields
         ]
@@ -306,7 +311,7 @@ export const INFRASTRUCTURE_PRESETS: Partial<Record<AppConnection, AppConnection
             placeholder: "prism.example.com"
           },
           { ...portField, placeholder: "9440" },
-          { name: "credentials.username", label: "Username", mono: true },
+          { name: "credentials.username", label: "Username", mono: true, placeholder: "admin" },
           { name: "credentials.password", label: "Password", kind: "secret" },
           ...sslFields
         ]
@@ -385,7 +390,7 @@ export const INFRASTRUCTURE_PRESETS: Partial<Record<AppConnection, AppConnection
             mono: true,
             description: "The OAuth client ID registered in the Venafi TPP API integration."
           },
-          { name: "credentials.username", label: "Username", mono: true },
+          { name: "credentials.username", label: "Username", mono: true, placeholder: "admin" },
           { name: "credentials.password", label: "Password", kind: "secret" }
         ]
       }

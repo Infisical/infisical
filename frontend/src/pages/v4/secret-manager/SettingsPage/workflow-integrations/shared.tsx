@@ -5,7 +5,6 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import {
   SheetBody,
   SheetClose,
-  SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle
@@ -26,6 +25,8 @@ export type PlatformFormProps = {
   orgId: string;
   title: string;
   lead?: ReactNode;
+  pending: boolean;
+  onPendingChange: (pending: boolean) => void;
   onClose: () => void;
 };
 
@@ -46,38 +47,31 @@ export const SheetForm = ({
   onSubmit?: () => void;
   children?: ReactNode;
 }) => (
-  <SheetContent size="md" pending={pending}>
-    <form
-      autoComplete="off"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit?.();
-      }}
-    >
-      <SheetHeader>
-        <SheetTitle>{title}</SheetTitle>
-      </SheetHeader>
-      <SheetBody>
-        <Stack gap={16}>
-          {lead}
-          {loading ? <Skeleton lines={4} height={32} /> : children}
-        </Stack>
-      </SheetBody>
-      <SheetFooter>
-        <Button
-          type="submit"
-          variant="primary"
-          loading={pending}
-          disabled={saveDisabled || loading}
-        >
-          Save
-        </Button>
-        <SheetClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </SheetClose>
-      </SheetFooter>
-    </form>
-  </SheetContent>
+  <form
+    autoComplete="off"
+    onSubmit={(event) => {
+      event.preventDefault();
+      onSubmit?.();
+    }}
+  >
+    <SheetHeader>
+      <SheetTitle>{title}</SheetTitle>
+    </SheetHeader>
+    <SheetBody>
+      <Stack gap={16}>
+        {lead}
+        {loading ? <Skeleton lines={4} height={32} /> : children}
+      </Stack>
+    </SheetBody>
+    <SheetFooter>
+      <Button type="submit" variant="primary" loading={pending} disabled={saveDisabled || loading}>
+        Save
+      </Button>
+      <SheetClose asChild>
+        <Button variant="outline">Cancel</Button>
+      </SheetClose>
+    </SheetFooter>
+  </form>
 );
 
 export const NoOrgIntegration = ({

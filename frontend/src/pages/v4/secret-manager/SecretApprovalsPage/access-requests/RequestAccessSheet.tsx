@@ -572,7 +572,7 @@ export const RequestAccessSheet = ({
                           <ToggleGroup
                             type="multiple"
                             aria-label={`${config.label} permissions`}
-                            spacing={8}
+                            spacing={2}
                             value={resource.actions}
                             onValueChange={(actions: string[]) =>
                               setResourceActions(index, actions)

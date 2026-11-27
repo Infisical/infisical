@@ -64,6 +64,13 @@ const listStatus = (request: ChangeRequest, userId: string) => {
   return { label: "Review in progress", tone: "warn" as const };
 };
 
+const authorBadges = (userId: string) => (row: ChangeRequest) => (
+  <>
+    {row.committerUser && row.committerUserId === userId && <Badge tone="soft">You</Badge>}
+    {row.committerIdentity && <Badge tone="soft">Machine</Badge>}
+  </>
+);
+
 export const ChangeRequests = ({
   projectId,
   environmentName,
@@ -251,17 +258,13 @@ export const ChangeRequests = ({
       sortable: true,
       width: 220,
       text: authorName,
-      render: (row) => (
-        <Inline gap={8} wrap={false}>
-          {row.committerUser || row.committerIdentity ? (
-            <span>{authorName(row)}</span>
-          ) : (
-            <Meta mono={false}>Deleted user</Meta>
-          )}
-          {row.committerUser && row.committerUserId === user.id && <Badge tone="soft">You</Badge>}
-          {row.committerIdentity && <Badge tone="soft">Machine</Badge>}
-        </Inline>
-      )
+      render: (row) =>
+        row.committerUser || row.committerIdentity ? (
+          authorName(row)
+        ) : (
+          <Meta mono={false}>Deleted user</Meta>
+        ),
+      badges: authorBadges(user.id)
     },
     {
       id: "opened",
