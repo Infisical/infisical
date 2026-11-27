@@ -47,8 +47,8 @@ const columns: DataTableColumn<TMatchedCertificateRow>[] = [
     id: "profile",
     header: "Profile",
     width: 160,
-    text: (row) => row.profileName ?? "-",
-    render: (row) => row.profileName ?? "-"
+    text: (row) => row.profileName ?? "",
+    render: (row) => row.profileName
   },
   {
     id: "expires",

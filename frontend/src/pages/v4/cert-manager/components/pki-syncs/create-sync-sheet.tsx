@@ -30,6 +30,7 @@ import type { TPkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs/types";
 
 import { useOrgId } from "../../../access/permissions";
 import { readableFailure, saved } from "../../../access/toast";
+import { ProviderLabel } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license/useUpgradeGate";
 import { PkiSyncCertificatesFields } from "./certificates/certificates-fields";
@@ -282,7 +283,11 @@ const CreateSyncForm = ({
       <MultiStep
         variant="sheet"
         size="lg"
-        title={`${destinationName} certificate sync`}
+        title={
+          <ProviderLabel kind="pki-sync" value={destination}>
+            {destinationName} certificate sync
+          </ProviderLabel>
+        }
         open
         step={step}
         onStepChange={(next) => {

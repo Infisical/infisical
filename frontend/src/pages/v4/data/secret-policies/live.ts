@@ -9,7 +9,8 @@ import {
   useCreateProjectFolderGrant,
   useDeleteProjectFolderGrant,
   useGetProjectFolderGrantsUsageTotal,
-  useListProjectFolderGrants
+  useListProjectFolderGrants,
+  useListProjectFolderGrantsReceived
 } from "@app/hooks/api/projectFolderGrants";
 import { projectFolderGrantKeys } from "@app/hooks/api/projectFolderGrants/queries";
 import type { TProjectFolderGrant } from "@app/hooks/api/projectFolderGrants/types";
@@ -86,6 +87,8 @@ export const secretPoliciesLive: SecretPoliciesAdapter = {
     };
   },
   useFolderGrants: (projectId, { enabled }) => useListProjectFolderGrants(projectId, enabled),
+  useReceivedFolderGrants: (projectId, { enabled }) =>
+    useListProjectFolderGrantsReceived(enabled ? projectId : ""),
   useFolderGrantsUsage: (grantIds, projectId, { enabled }) =>
     useGetProjectFolderGrantsUsageTotal(grantIds, projectId, enabled),
   useCreateFolderGrant: useCreateProjectFolderGrant,

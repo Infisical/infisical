@@ -42,8 +42,10 @@ import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, Gate, RESTRICTED } from "../../access/ui";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { AwsKmsForm, GcpKmsForm, type KmsFormHandle, type KmsFormMode } from "./kms-forms";
 import { KMS_PROVIDERS } from "./kms-providers";
 
@@ -78,7 +80,14 @@ const EditForm = ({
       <SheetSections
         header={
           <SheetHeader>
-            <SheetTitle>{KMS_PROVIDERS[provider].title}</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel
+                provider={{
+                  name: KMS_PROVIDERS[provider].title,
+                  image: KMS_PROVIDERS[provider].icon
+                }}
+              />
+            </SheetTitle>
           </SheetHeader>
         }
       >
@@ -173,6 +182,7 @@ const KmsSheet = ({ state, onClose }: { state?: SheetState; onClose: () => void 
 };
 
 export const EncryptionTab = () => {
+  const scope = useOrgPageScope();
   const orgId = useOrgId();
   const { permission, isPending: permissionPending } = useOrgPermission();
   const adapter = useV4Adapter("orgSettings");
@@ -244,7 +254,7 @@ export const EncryptionTab = () => {
 
   return (
     <Stack gap={24}>
-      <PageHeader title="Encryption" />
+      <PageHeader scope={scope} title="Encryption" />
       {!permissionPending && !canRead && <AccessRestricted requirement="Read KMS" />}
       {canRead && (
         <Card

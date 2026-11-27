@@ -20,8 +20,6 @@ export const DateCell = ({ value }: { value: string }) => (
   </Tooltip>
 );
 
-export const Dash = () => <Meta>-</Meta>;
-
 type TServiceIcon = {
   key: string;
   label: string;
@@ -132,7 +130,7 @@ export const ServiceIconStack = ({
     return [...byKey.values()];
   }, [hostPatterns, nativeServices]);
 
-  if (icons.length === 0) return <Dash />;
+  if (icons.length === 0) return null;
   const visible = icons.slice(0, maxVisible);
   const hidden = icons.slice(maxVisible);
 

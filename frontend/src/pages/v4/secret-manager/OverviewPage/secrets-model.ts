@@ -1,5 +1,5 @@
 import type { TChannelForm } from "@app/hooks/api/alerts/types";
-import type { HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
+import type { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 export type ResourceApplyOptions = { shouldOverwrite?: boolean; quiet?: boolean };
 
@@ -101,6 +101,7 @@ export type Resource =
   | (ResourceBase & {
       kind: "honey";
       provider: string;
+      type?: HoneyTokenType;
       managedBy?: HoneyTokenManagedBy;
       status: "active" | "triggered" | "revoked";
       description: string;
@@ -149,6 +150,12 @@ export const scopeMatches = (resource: Scope, scope: Scope) =>
   resource.project === scope.project &&
   resource.environment === scope.environment &&
   resource.path === scope.path;
+export const importName = (
+  projectId: string,
+  sourceProject: string,
+  environment: string,
+  path: string
+) => `${sourceProject === projectId ? "" : `${sourceProject}:`}${environment}:${path}`;
 export const resourceKey = (resource: Pick<Resource, "kind" | "name">) =>
   `${resource.kind}:${resource.name}`;
 export const selectionKey = (resource: Pick<Resource, "kind" | "name" | "environment">) =>

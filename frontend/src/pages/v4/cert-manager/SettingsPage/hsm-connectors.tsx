@@ -120,7 +120,7 @@ const ConnectorsCard = ({ orgId, plan }: { orgId: string; plan: HsmPlan }) => {
       return (
         pools.find((entry) => entry.id === connector.gatewayPoolId)?.name ?? connector.gatewayPoolId
       );
-    return "-";
+    return null;
   };
 
   const visible = useMemo(() => {

@@ -49,6 +49,8 @@ const SlackEditor = ({
   orgId,
   title,
   lead,
+  pending,
+  setPending,
   onClose,
   initial,
   integrations
@@ -57,7 +59,6 @@ const SlackEditor = ({
   const updateConfig = adapter.useUpdateWorkflowIntegrationConfig();
   const [draft, setDraft] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
-  const [pending, setPending] = useState(false);
   const channels = adapter.useSlackChannels(draft.integrationId || undefined);
   const channelOptions = [...(channels.data ?? [])]
     .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))

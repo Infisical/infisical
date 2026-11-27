@@ -1,6 +1,3 @@
-.sheet.sheet[data-side="right"] {
-  max-width: calc(var(--cipher-size-measure-form) + var(--cipher-size-measure-field));
-}
 .requestHead {
   display: flex;
   min-width: 0;

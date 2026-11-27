@@ -50,6 +50,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { ProviderIcon } from "../../../../components/provider-icon";
 import type { Resource } from "../../secrets-model";
@@ -383,7 +384,15 @@ export function DynamicSecretFlow({
                   />
                 }
               >
-                Add {definition.label} Dynamic Secret
+                <ProviderLabel
+                  provider={{
+                    name: definition.label,
+                    image: getDynamicSecretProviderRuntimeMetadata(definition.provider).presentation
+                      .logoFileName
+                  }}
+                >
+                  Add {definition.label} Dynamic Secret
+                </ProviderLabel>
               </SheetTitle>
               <SheetDescription>
                 Each lease gets its own credentials, revoked when its TTL ends.

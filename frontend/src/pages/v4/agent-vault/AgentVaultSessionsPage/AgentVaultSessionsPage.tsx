@@ -60,7 +60,7 @@ import { NoExpiry } from "../../components/no-expiry";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
-import { Dash, ServiceIcon } from "../resources/shared";
+import { ServiceIcon } from "../resources/shared";
 import { CreateSessionSheet } from "./create-session-sheet";
 import { RevokeSessionDialog } from "./revoke-session-dialog";
 import { SessionDetailsSheet } from "./session-details-sheet";
@@ -78,6 +78,7 @@ import {
   inlineSkillsLabel,
   isSameSessionMetadata,
   metadataRowsToRecord,
+  SESSION_METADATA_MAX_KEYS,
   SESSION_STATUS as STATUS,
   sessionInlineServices,
   sessionInlineSkills,
@@ -99,24 +100,19 @@ const FILTER_FIELDS: FilterBarField[] = [
       label: STATUS[status].label
     }))
   },
-  { key: METADATA_FIELD, label: "Metadata", type: "text", placeholder: "key=value", verb: "is" }
+  { key: METADATA_FIELD, label: "Metadata", type: "key-value", max: SESSION_METADATA_MAX_KEYS }
 ];
 
 const parseMetadataFilter = (filters: FilterBarFilter[]) => {
-  const query = filters.find((filter) => filter.field === METADATA_FIELD)?.values[0];
-  if (!query?.trim()) return { metadataFilter: undefined, metadataFilterError: undefined };
-  const separator = query.indexOf("=");
-  if (separator === -1)
-    return {
-      metadataFilter: undefined,
-      metadataFilterError: "Filter metadata as key=value, such as env=production."
-    };
-  const rows = [{ key: query.slice(0, separator), value: query.slice(separator + 1) }];
-  if (!rows[0].key.trim()) return { metadataFilter: undefined, metadataFilterError: "Enter a key" };
-  if (!rows[0].value.trim())
-    return { metadataFilter: undefined, metadataFilterError: "Enter a value" };
+  const values = filters.find((filter) => filter.field === METADATA_FIELD)?.values ?? [];
+  if (!values.length) return { metadataFilter: undefined, metadataFilterError: undefined };
+  const rows = Array.from({ length: values.length / 2 }, (_, index) => ({
+    key: values[index * 2],
+    value: values[index * 2 + 1]
+  }));
   const errors = sessionMetadataErrors(rows);
-  const error = errors && (errors.rows[0].key ?? errors.rows[0].value ?? errors.list);
+  const error =
+    errors && (errors.rows.map((row) => row.key ?? row.value).find(Boolean) ?? errors.list);
   if (error) return { metadataFilter: undefined, metadataFilterError: error };
   return { metadataFilter: metadataRowsToRecord(rows), metadataFilterError: undefined };
 };
@@ -245,12 +241,10 @@ const AccessBadge = ({
     );
   if (item.kind === "bundle")
     return (
-      <Tooltip content={`${item.bundle.name} (deleted)`}>
-        <Badge tone="soft" tabIndex={0} style={{ minWidth: 0 }}>
-          <Icon name="package" className="shrink-0" />
-          <span className="truncate">{item.bundle.name}</span>
-        </Badge>
-      </Tooltip>
+      <Badge reason={`${item.bundle.name} (deleted)`} tone="soft" style={{ minWidth: 0 }}>
+        <Icon name="package" className="shrink-0" />
+        <span className="truncate">{item.bundle.name}</span>
+      </Badge>
     );
   if (item.kind === "service")
     return (
@@ -321,7 +315,6 @@ const Access = ({
   projectId: string;
 }) => {
   const items = toAccessItems(session);
-  if (!items.length) return <Meta>-</Meta>;
   const hidden = items.slice(ACCESS_ITEMS_SHOWN);
   return (
     <Inline gap={4} align="center" wrap={false} style={{ minWidth: 0 }}>
@@ -338,7 +331,6 @@ const Access = ({
 };
 
 const Expiry = ({ session }: { session: TAgentVaultSession }) => {
-  if (session.status === AgentVaultSessionStatus.Revoked) return <Dash />;
   if (!session.expiresAt) return <NoExpiry />;
   return (
     <Tooltip content={formatTimestamp(session.expiresAt)}>
@@ -550,7 +542,10 @@ const sessionColumns = ({
     id: "access",
     header: "Access",
     width: 264,
-    render: (row) => <Access session={row} orgId={orgId} projectId={projectId} />
+    render: (row) =>
+      toAccessItems(row).length ? (
+        <Access session={row} orgId={orgId} projectId={projectId} />
+      ) : null
   },
   {
     id: "created",
@@ -564,7 +559,8 @@ const sessionColumns = ({
     id: "expires",
     header: "Expires",
     width: 112,
-    render: (row) => <Expiry session={row} />
+    render: (row) =>
+      row.status === AgentVaultSessionStatus.Revoked ? null : <Expiry session={row} />
   },
   {
     id: "status",

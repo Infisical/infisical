@@ -99,18 +99,14 @@ export const InstallationsTab = ({ orgId, projectId }: { orgId: string; projectI
       id: "certificate",
       header: "Certificate",
       width: 220,
-      text: (installation) => installation.primaryCertName ?? "-",
-      render: (installation) => (
-        <span title={installation.primaryCertName ?? undefined}>
-          {installation.primaryCertName || "-"}
-        </span>
-      )
+      text: (installation) => installation.primaryCertName ?? "",
+      render: (installation) => installation.primaryCertName
     },
     {
       id: "gateway",
       header: "Gateway",
       width: 160,
-      render: (installation) => installation.locationDetails.gatewayName || "N/A"
+      render: (installation) => installation.locationDetails.gatewayName
     },
     {
       id: "certs",

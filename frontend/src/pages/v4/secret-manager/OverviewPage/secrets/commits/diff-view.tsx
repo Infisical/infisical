@@ -502,12 +502,13 @@ export function SecretDiffView({
       showChangedMarkers={showChangedMarkers}
       newPaneBadge={
         newVersion?.isRedacted && (
-          <Tooltip content="This secret version has been redacted. Rolling back to this version will result in an empty secret value.">
-            <Badge tone="bad">
-              <Icon name="alert" />
-              Redacted version
-            </Badge>
-          </Tooltip>
+          <Badge
+            reason="This secret version has been redacted. Rolling back to this version will result in an empty secret value."
+            tone="bad"
+          >
+            <Icon name="alert" />
+            Redacted version
+          </Badge>
         )
       }
     />

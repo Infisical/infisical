@@ -108,8 +108,9 @@ import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges, toUnsavedPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
-import { buildResources, valueKey } from "./bridge/view-model";
+import { buildResources, toImportedSecret, valueKey } from "./bridge/view-model";
 import {
+  importName,
   readableValue,
   type Resource,
   type ResourceApplyOptions,
@@ -460,10 +461,19 @@ export const OverviewPage = () => {
     const [{ name }] = entries;
     const slugs = importSites.data
       ? (importSites.data.imports ?? [])
-          .filter((entry) => `${entry.importEnv.slug}:${entry.importPath}` === name)
+          .filter(
+            (entry) =>
+              importName(
+                projectId,
+                entry.importEnv.projectId ?? projectId,
+                entry.importEnv.slug,
+                entry.importPath
+              ) === name
+          )
           .map((entry) => entry.environment ?? "")
       : entries.map((entry) => entry.environment);
-    return projectEnvironments.filter((environment) => slugs.includes(environment.value));
+    const found = new Set(slugs);
+    return projectEnvironments.filter((environment) => found.has(environment.value));
   };
   const valueStore = useSecretValues(projectId);
   const [breadthHolders, setBreadthHolders] = useState(0);
@@ -503,6 +513,22 @@ export const OverviewPage = () => {
       ) === index
   );
   const breadth = useScopeSecrets(projectId, breadthScopes);
+  const foreignImports = adapter.useImportedSecrets({
+    projectId,
+    path,
+    environments: [
+      ...new Set(
+        (overview.data?.imports ?? [])
+          .filter(
+            (entry) =>
+              !entry.isReserved &&
+              Boolean(entry.importEnv.projectId) &&
+              entry.importEnv.projectId !== projectId
+          )
+          .map((entry) => entry.environment ?? "")
+      )
+    ]
+  });
   const resourcesRef = useRef<Resource[]>([]);
   const resources = replaceEqualDeep(
     resourcesRef.current,
@@ -1283,11 +1309,65 @@ export const OverviewPage = () => {
             scopeMatches(resource, entry.source)
         )
       )?.source.environment;
-  const sourceSecrets = (entry: Of<"import">) =>
-    resources.filter(
-      (resource): resource is Secret =>
-        resource.kind === "secret" && scopeMatches(resource, entry.source)
-    );
+  const sourceSecrets = (entry: Of<"import">) => {
+    if (entry.source.project === projectId)
+      return resources.filter(
+        (resource): resource is Secret =>
+          resource.kind === "secret" && scopeMatches(resource, entry.source)
+      );
+    const imported = foreignImports[entry.environment] ?? [];
+    const group =
+      imported.find((candidate) => candidate.importId === entry.id) ??
+      imported.find(
+        (candidate) =>
+          !candidate.importId &&
+          candidate.environment === entry.source.environment &&
+          candidate.secretPath === entry.source.path
+      );
+    const destination = { project: projectId, environment: entry.environment, path: entry.path };
+    const shadowing = new Set([
+      ...resources
+        .filter(
+          (resource) =>
+            (resource.kind === "secret" && scopeMatches(resource, destination)) ||
+            (resource.kind === "import" &&
+              resource.id !== entry.id &&
+              resource.source.project === projectId &&
+              scopeMatches(resource, destination))
+        )
+        .flatMap((resource) =>
+          resource.kind === "import"
+            ? resources
+                .filter(
+                  (secret) => secret.kind === "secret" && scopeMatches(secret, resource.source)
+                )
+                .map((secret) => secret.name)
+            : [resource.name]
+        ),
+      ...imported
+        .filter((candidate) => candidate !== group)
+        .flatMap((candidate) => candidate.secrets.map((secret) => secret.key))
+    ]);
+    return (group?.secrets ?? []).map((secret) => {
+      const resource = toImportedSecret(
+        projectId,
+        entry.environment,
+        entry.path,
+        secret,
+        valueStore.values
+      );
+      return shadowing.has(secret.key)
+        ? {
+            ...resource,
+            value: {
+              status: "failed" as const,
+              message:
+                "Another secret in this folder has the same key, so this value can't be shown."
+            }
+          }
+        : resource;
+    });
+  };
 
   const insert = (
     created: NewResource[],
@@ -2518,6 +2598,7 @@ export const OverviewPage = () => {
                                     sourceSecrets={sourceSecrets}
                                     projectId={project}
                                     sites={sitesOf(entries as Of<"import">[])}
+                                    revealAll={single ? revealAll : showValues}
                                   />
                                 );
                               if (first.kind === "folder")

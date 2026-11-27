@@ -73,7 +73,7 @@ export const ShareSecretSheet = ({
   return (
     <>
       <Sheet open={open} onOpenChange={(next) => !next && requestClose()}>
-        <SheetContent className={styles.sheet} pending={form.pending}>
+        <SheetContent size="md" pending={form.pending}>
           <SheetHeader>
             <SheetTitle>Share a secret</SheetTitle>
           </SheetHeader>

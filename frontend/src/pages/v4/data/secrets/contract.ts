@@ -35,6 +35,19 @@ import type { SecretsQuickSearchAdapter } from "./contract-quick-search";
 import type { SecretsReminderChannelsAdapter } from "./contract-reminder-channels";
 import type { SecretsUpgradeAdapter } from "./contract-upgrade";
 
+export type ImportedSecretGroup = {
+  importId?: string;
+  environment: string;
+  secretPath: string;
+  secrets: {
+    id: string;
+    key: string;
+    isEmpty?: boolean;
+    secretValueHidden: boolean;
+    version: number;
+  }[];
+};
+
 export type SecretsAdapter = SecretsFlowsAdapter &
   SecretsChangeRequestsAdapter &
   SecretsUpgradeAdapter &
@@ -56,6 +69,11 @@ export type SecretsAdapter = SecretsFlowsAdapter &
       dto: TGetSecretValueDTO,
       options?: { enabled?: boolean }
     ) => V4QueryResult<DashboardSecretValue> & { isFetching?: boolean };
+    useImportedSecrets: (dto: {
+      projectId: string;
+      environments: string[];
+      path: string;
+    }) => Record<string, ImportedSecretGroup[]>;
     useSecretKeyCheck: () => (dto: TGetSecretKeyExistsDTO) => Promise<string[]>;
     useSecretReferenceTree: (
       dto: TGetSecretReferenceTreeDTO
