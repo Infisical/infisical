@@ -97,12 +97,15 @@ describe("buildResolvedSlackPayload", () => {
     });
 
     expect(resolved.text).toBe(`❌ Denied: ${original.text}`);
-    expect(resolved.blocks.slice(0, original.blocks.length)).toEqual(original.blocks);
+    expect(resolved.blocks[0]).toEqual({
+      type: "header",
+      text: { type: "plain_text", text: "❌ Denied · PAM Access Request Alert: requests" }
+    });
     expect(resolved.blocks).toContainEqual({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "*❌ Denied* by Bernie &lt;admin&gt; · <!date^1795806780^{date_short_pretty} at {time}|Fri, 27 Nov 2026 19:13:00 GMT>"
+        text: "*Denied* by Bernie &lt;admin&gt; · <!date^1795806780^{date_short_pretty} at {time}|Fri, 27 Nov 2026 19:13:00 GMT>"
       }
     });
     expect(resolved.blocks).toContainEqual({
@@ -127,6 +130,19 @@ describe("buildResolvedSlackPayload", () => {
     });
   });
 
+  test("keeps a long alert name within Slack's header limit", () => {
+    const longHeader: TSlackPayload = {
+      ...original,
+      blocks: [{ type: "header", text: { type: "plain_text", text: `PAM Access Request Alert: ${"x".repeat(200)}` } }]
+    };
+
+    const resolved = buildResolvedSlackPayload(longHeader, approved);
+
+    const { text } = (resolved.blocks[0] as { text: { text: string } }).text;
+    expect(text.startsWith("✅ Approved · PAM Access Request Alert")).toBe(true);
+    expect(text.length).toBeLessThanOrEqual(150);
+  });
+
   test("truncates a long comment", () => {
     const resolved = buildResolvedSlackPayload(original, { ...approved, comment: "x".repeat(5000) });
 
@@ -143,7 +159,8 @@ describe("buildResolvedSlackPayload", () => {
     });
 
     expect(resolved.blocks).toHaveLength(original.blocks.length + 1);
-    expect(JSON.stringify(resolved.blocks.at(-1))).toContain("*🚫 Cancelled* · ");
+    expect(JSON.stringify(resolved.blocks.at(-1))).toContain("*Cancelled* · ");
+    expect(JSON.stringify(resolved.blocks[0])).toContain("🚫 Cancelled · PAM Access Request Alert");
   });
 });
 

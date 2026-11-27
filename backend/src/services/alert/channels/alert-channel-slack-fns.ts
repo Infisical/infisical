@@ -79,18 +79,28 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
   };
 };
 
-const OUTCOME_DISPLAY: Record<AlertMessageOutcome, { label: string; color: string; commentLabel?: string }> = {
-  [AlertMessageOutcome.Approved]: { label: "✅ Approved", color: "#2eb67d", commentLabel: "Reviewer Comment" },
-  [AlertMessageOutcome.Denied]: { label: "❌ Denied", color: "#da3633", commentLabel: "Reviewer Comment" },
+const OUTCOME_DISPLAY: Record<
+  AlertMessageOutcome,
+  { emoji: string; label: string; color: string; commentLabel?: string }
+> = {
+  [AlertMessageOutcome.Approved]: {
+    emoji: "✅",
+    label: "Approved",
+    color: "#2eb67d",
+    commentLabel: "Reviewer Comment"
+  },
+  [AlertMessageOutcome.Denied]: { emoji: "❌", label: "Denied", color: "#da3633", commentLabel: "Reviewer Comment" },
   [AlertMessageOutcome.BreakGlass]: {
-    label: "⚠️ Approved with break-glass",
+    emoji: "⚠️",
+    label: "Approved with break-glass",
     color: "#f0b429",
     commentLabel: "Break-Glass Reason"
   },
-  [AlertMessageOutcome.Cancelled]: { label: "🚫 Cancelled", color: "#8b949e" },
-  [AlertMessageOutcome.Expired]: { label: "⌛ Expired", color: "#8b949e" }
+  [AlertMessageOutcome.Cancelled]: { emoji: "🚫", label: "Cancelled", color: "#8b949e" },
+  [AlertMessageOutcome.Expired]: { emoji: "⌛", label: "Expired", color: "#8b949e" }
 };
 
+const MAX_HEADER_LENGTH = 150;
 const MAX_ACTOR_LENGTH = 200;
 const MAX_COMMENT_LENGTH = 1000;
 
@@ -116,10 +126,18 @@ export const buildResolvedSlackPayload = (
   const unixSeconds = Math.floor(resolution.resolvedAt.getTime() / 1000);
   const when = `<!date^${unixSeconds}^{date_short_pretty} at {time}|${resolution.resolvedAt.toUTCString()}>`;
 
-  const blocks: TSlackBlock[] = [
-    ...message.blocks,
-    { type: "section", text: { type: "mrkdwn", text: `*${display.label}*${actor} · ${when}` } }
-  ];
+  const outcome = `${display.emoji} ${display.label}`;
+
+  // Slack lists the header first, so a decided request has to look different there to stand out from pending ones.
+  const blocks: TSlackBlock[] = message.blocks.map((block) =>
+    block.type === "header"
+      ? {
+          ...block,
+          text: { ...block.text, text: toSingleLine(`${outcome} · ${block.text.text}`, MAX_HEADER_LENGTH) }
+        }
+      : block
+  );
+  blocks.push({ type: "section", text: { type: "mrkdwn", text: `*${display.label}*${actor} · ${when}` } });
   if (resolution.comment && display.commentLabel) {
     blocks.push({
       type: "context",
@@ -131,7 +149,7 @@ export const buildResolvedSlackPayload = (
 
   return {
     ...message,
-    text: `${display.label}: ${message.text}`,
+    text: `${outcome}: ${message.text}`,
     blocks,
     attachments: (message.attachments ?? []).map((attachment) => ({ ...attachment, color: display.color }))
   };
