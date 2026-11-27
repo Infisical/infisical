@@ -488,6 +488,12 @@ export const OverviewPage = () => {
     syncOpen ||
     breadthHolders > 0
   );
+  const overviewHolds = (scope: { environment: string; path: string }) =>
+    include("secret") &&
+    !debounced &&
+    !tags.length &&
+    scope.path === path &&
+    visibleEnvironments.some((entry) => entry.value === scope.environment);
   const breadthScopes = [
     ...(overview.data?.imports ?? [])
       .filter((entry) => !entry.importEnv.projectId || entry.importEnv.projectId === projectId)
@@ -502,10 +508,7 @@ export const OverviewPage = () => {
       : [])
   ].filter(
     (scope, index, all) =>
-      !(
-        scope.path === path &&
-        visibleEnvironments.some((entry) => entry.value === scope.environment)
-      ) &&
+      !overviewHolds(scope) &&
       all.findIndex(
         (entry) => entry.environment === scope.environment && entry.path === scope.path
       ) === index
@@ -1366,11 +1369,7 @@ export const OverviewPage = () => {
   const sourceState = (entry: Of<"import">): ScopeState => {
     if (entry.source.project !== projectId)
       return foreignImports[entry.environment]?.status ?? "loading";
-    if (
-      entry.source.path === path &&
-      visibleEnvironments.some((environment) => environment.value === entry.source.environment)
-    )
-      return "loaded";
+    if (overviewHolds(entry.source)) return "loaded";
     return breadth.state(entry.source);
   };
 
