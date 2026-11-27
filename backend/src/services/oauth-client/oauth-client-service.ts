@@ -16,6 +16,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
@@ -29,6 +31,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
+  assertOrgAllowsMcp,
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
   getMcpOauthUrls,
@@ -609,6 +612,15 @@ export const oauthClientServiceFactory = ({
     // user approve a request that authorizeConsent will reject anyway.
     const granted = parseRequestedScopes(scope, boundResource);
 
+    // A registered client's org is known before sign-in, so its consent page can refuse up front. Not named, because
+    // this endpoint has no session. A public client's org is the user's, which the consent page checks itself.
+    if (client.orgId && boundResource && !(await getClientOrg(client.orgId)).mcpEnabled) {
+      throw new ForbiddenRequestError({
+        message:
+          "MCP access is turned off for the organization this application belongs to. An organization admin can turn it back on in Organization Settings."
+      });
+    }
+
     return {
       clientName: client.name,
       clientDescription: client.description,
@@ -658,6 +670,7 @@ export const oauthClientServiceFactory = ({
     // completed the matching MFA challenge, or the org trusts the MFA its IdP performed, the same waiver
     // org selection applies.
     const org = await getClientOrg(orgId);
+    if (resource) assertOrgAllowsMcp(org);
 
     const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
@@ -713,6 +726,14 @@ export const oauthClientServiceFactory = ({
     if (dto.state) callbackUrl.searchParams.set("state", dto.state);
 
     return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId, scopes: grantedScopes, resource };
+  };
+
+  // Every MCP tool call checks this, because turning MCP access off keeps existing connections. Memoized under the key
+  // the SSO check loads the org with, so a tool call loads the org once.
+  const assertOrgMcpAccess = async (orgId: string, buildError?: (message: string) => Error) => {
+    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    assertOrgAllowsMcp(org, buildError);
   };
 
   const authenticateClient = async (clientId?: string, clientSecret?: string) => {
@@ -987,6 +1008,14 @@ export const oauthClientServiceFactory = ({
         throw new BadRequestError({ message: "This OAuth client requires PKCE" });
       }
 
+      // A code outlives the consent that issued it, so one issued just before MCP access was turned off is refused here.
+      if (codePayload.resource) {
+        await assertOrgMcpAccess(
+          codePayload.orgId,
+          (message) => new OauthTokenError({ code: OauthTokenErrorCode.InvalidGrant, message })
+        );
+      }
+
       const tokenSession = await tokenService.getUserTokenSessionById(codePayload.tokenVersionId, codePayload.userId);
       if (!tokenSession) throw new UnauthorizedError({ message: "User session not found" });
 
@@ -1118,6 +1147,7 @@ export const oauthClientServiceFactory = ({
     rotateOauthClientSecret,
     getAuthorizeInfo,
     authorizeConsent,
+    assertOrgMcpAccess,
     exchangeToken
   };
 };

@@ -577,6 +577,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .describe(
             "Require resources in the organization to connect through a gateway pool instead of an individual gateway"
           ),
+        mcpEnabled: z.boolean().optional().describe(ORGANIZATIONS.UPDATE.mcpEnabled),
         secretShareBrandConfig: z
           .object({
             primaryColor: z

@@ -156,6 +156,8 @@ export const OauthConsentPage = () => {
     isPublicClient &&
     Boolean(organization?.rootOrgId) &&
     organization?.id !== organization?.rootOrgId;
+  // A public client can only be granted the MCP server, which the backend refuses while the organization has it off.
+  const isMcpTurnedOff = isPublicClient && organization?.mcpEnabled === false;
   const { data: userOrganizations } = useGetOrganizationsWithSubOrgs();
   const switchableOrganizations = (userOrganizations ?? []).filter(
     ({ id }) => id !== organizationId
@@ -528,6 +530,14 @@ export const OauthConsentPage = () => {
             </AlertDescription>
           </Alert>
         )}
+        {isRequestValidated && isMcpTurnedOff && (
+          <Alert variant="danger">
+            <AlertDescription>
+              MCP access is turned off for {organization?.name}. An organization admin can turn it
+              back on in Organization Settings.
+            </AlertDescription>
+          </Alert>
+        )}
         {isRequestValidated && isPkceMissing && (
           <Alert variant="danger">
             <AlertDescription>
@@ -558,7 +568,8 @@ export const OauthConsentPage = () => {
                 !isRequestValidated ||
                 isPkceMissing ||
                 isNothingGranted ||
-                isSubOrganizationSession
+                isSubOrganizationSession ||
+                isMcpTurnedOff
               }
             >
               <span className="truncate">

@@ -6267,6 +6267,7 @@ interface OrgUpdateEvent {
     kmsProductEnabled?: boolean;
     scannerProductEnabled?: boolean;
     shareSecretsProductEnabled?: boolean;
+    mcpEnabled?: boolean;
   };
 }
 

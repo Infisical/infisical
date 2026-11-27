@@ -24,6 +24,7 @@ const callMcp = async <T>(
       },
       telemetry: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
       permission: { getOrgPermission: vi.fn().mockResolvedValue({}) },
+      oauthClient: { assertOrgMcpAccess: vi.fn().mockResolvedValue(undefined) },
       ...services
     }
   };

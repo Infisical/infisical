@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { assertOrgAllowsMcp } from "@app/services/oauth-client/oauth-client-fns";
 
 import { createMcpToolContext } from "./mcp-tool-fns";
 
@@ -11,10 +12,12 @@ type TToolResult = { isError?: boolean; content: { text: string }[] };
 
 const callTool = async ({
   run,
-  getOrgPermission = vi.fn().mockResolvedValue({})
+  getOrgPermission = vi.fn().mockResolvedValue({}),
+  assertOrgMcpAccess = vi.fn().mockResolvedValue(undefined)
 }: {
   run: () => Promise<unknown>;
   getOrgPermission?: () => Promise<unknown>;
+  assertOrgMcpAccess?: () => Promise<unknown>;
 }) => {
   const recordPermissionDenied = vi.fn().mockResolvedValue(undefined);
   let handler: ((args: Record<string, unknown>) => Promise<TToolResult>) | undefined;
@@ -23,7 +26,13 @@ const callTool = async ({
       handler = callback;
     }
   };
-  const server = { services: { auditLog: { recordPermissionDenied }, permission: { getOrgPermission } } };
+  const server = {
+    services: {
+      auditLog: { recordPermissionDenied },
+      permission: { getOrgPermission },
+      oauthClient: { assertOrgMcpAccess }
+    }
+  };
   const req = {
     method: "POST",
     auditLogInfo: { ipAddress: "203.0.113.1" },
@@ -98,5 +107,25 @@ describe("MCP tool refusals", () => {
       isError: true
     });
     expect(recordPermissionDenied).toHaveBeenCalled();
+  });
+
+  test("while an admin has MCP access turned off, no tool runs, the user is told why, and no denial is recorded", async () => {
+    const run = vi.fn();
+    const { result, recordPermissionDenied } = await callTool({
+      run,
+      assertOrgMcpAccess: async () => assertOrgAllowsMcp({ name: "Acme Corp", mcpEnabled: false })
+    });
+
+    expect(run).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      content: [
+        {
+          type: "text",
+          text: "MCP access is turned off for the organization Acme Corp. An organization admin can turn it back on in Organization Settings."
+        }
+      ],
+      isError: true
+    });
+    expect(recordPermissionDenied).not.toHaveBeenCalled();
   });
 });

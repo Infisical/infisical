@@ -170,6 +170,7 @@ export const useUpdateOrg = () => {
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
       requireGatewayPools,
+      mcpEnabled,
       secretShareBrandConfig
     }) => {
       return apiRequest.patch(`/api/v1/organization/${orgId}`, {
@@ -191,6 +192,7 @@ export const useUpdateOrg = () => {
         blockDuplicateSecretSyncDestinations,
         allowCrossProjectSecretSharing,
         requireGatewayPools,
+        mcpEnabled,
         secretShareBrandConfig
       });
     },

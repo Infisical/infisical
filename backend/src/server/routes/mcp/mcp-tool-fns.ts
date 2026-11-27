@@ -79,6 +79,19 @@ export const createMcpToolContext = (
     run: (args: z.output<T>) => Promise<unknown>
   ) => {
     mcpServer.registerTool(name, { ...config, inputSchema: $toToolInput(config.inputSchema) }, async (args) => {
+      const toToolError = (error: unknown) => ({
+        content: [{ type: "text" as const, text: $getToolErrorMessage(error, name, req.permission.id) }],
+        isError: true
+      });
+
+      // Checked on every call because turning MCP access off keeps existing connections. It is the org's setting, not
+      // a refusal of this user, so it isn't recorded as a permission denial.
+      try {
+        await server.services.oauthClient.assertOrgMcpAccess(req.permission.orgId);
+      } catch (error) {
+        return toToolError(error);
+      }
+
       try {
         // Scopes narrow a delegated token through the request context. Refuse rather than run unnarrowed if a
         // change in how the SDK dispatches tools ever loses it.
@@ -114,10 +127,7 @@ export const createMcpToolContext = (
           });
         }
 
-        return {
-          content: [{ type: "text" as const, text: $getToolErrorMessage(error, name, req.permission.id) }],
-          isError: true
-        };
+        return toToolError(error);
       }
     });
   };

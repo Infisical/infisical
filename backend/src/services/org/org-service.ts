@@ -519,6 +519,7 @@ export const orgServiceFactory = ({
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
       requireGatewayPools,
+      mcpEnabled,
       secretShareBrandConfig
     }
   }: TUpdateOrgDTO) => {
@@ -605,6 +606,16 @@ export const orgServiceFactory = ({
       }
     }
 
+    if (mcpEnabled !== undefined) {
+      const org = await orgDAL.findById(orgId);
+      if (org?.rootOrgId && org.rootOrgId !== org.id) {
+        throw new BadRequestError({
+          message:
+            "MCP access can only be turned on or off in the parent organization. Switch to the parent organization and try again."
+        });
+      }
+    }
+
     if (slug) {
       const existingOrg = await orgDAL.findOne({ slug, rootOrgId: null });
       if (existingOrg && existingOrg?.id !== orgId)
@@ -640,6 +651,7 @@ export const orgServiceFactory = ({
       blockDuplicateSecretSyncDestinations,
       allowCrossProjectSecretSharing,
       requireGatewayPools,
+      mcpEnabled,
       secretShareBrandConfig
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });

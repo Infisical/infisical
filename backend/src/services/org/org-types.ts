@@ -89,6 +89,7 @@ export type TUpdateOrgDTO = {
     blockDuplicateSecretSyncDestinations: boolean;
     allowCrossProjectSecretSharing: boolean;
     requireGatewayPools: boolean;
+    mcpEnabled: boolean;
     secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;

@@ -921,6 +921,10 @@ export const USERS = {
 };
 
 export const ORGANIZATIONS = {
+  UPDATE: {
+    mcpEnabled:
+      "Whether members can connect MCP clients to the organization. Turning it off refuses new connections and every tool call, and keeps existing connections for when it's turned back on. Only a parent organization has this setting."
+  },
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },

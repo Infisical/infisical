@@ -147,6 +147,26 @@ Removing the server from your MCP client doesn't sign the client out of Infisica
   </Step>
 </Steps>
 
+## Turn off MCP access for an organization
+
+If your role can edit organization settings, you can stop every member from using the MCP server in your organization:
+
+<Steps>
+  <Step>
+    Go to **Organization Settings** > **General**.
+  </Step>
+  <Step>
+    In the **Infisical MCP** card, turn off **Allow MCP Clients**, then select **Turn Off** to confirm.
+  </Step>
+</Steps>
+
+While MCP access is off:
+
+- Nobody can connect a new client to the organization
+- Connected clients stay connected, but every tool call fails with a message that MCP access is turned off
+
+When you turn MCP access back on, connected clients work again without signing in. To end a client's access for good, the member who connected it has to [disconnect the client](#disconnect-a-client).
+
 ## Audit logs
 
 Infisical records the secrets an agent reads and the changes it makes in the [audit logs](/documentation/platform/audit-logs), under your user and with `remote-mcp` as the source. To review an agent's activity, filter the audit logs by that source.

@@ -33,6 +33,7 @@ export const sanitizedOrganizationSchema = OrganizationsSchema.pick({
   blockDuplicateSecretSyncDestinations: true,
   allowCrossProjectSecretSharing: true,
   requireGatewayPools: true,
+  mcpEnabled: true,
   rootOrgId: true,
   parentOrgId: true,
   secretShareBrandConfig: true
