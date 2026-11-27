@@ -2779,7 +2779,7 @@ export type TAgentVaultActorPostHogEvent = Exclude<
 >;
 
 // A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
-// (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at
+// (see TrialHistory.productKeys in the Billing domain), and the license server 409s a repeat. So TrialStarted fires at
 // most once per (org, product) for the lifetime of the org. TrialCardRequired carries no such
 // guarantee: abandoning the card-setup checkout grants nothing and retrying is safe, so the same org
 // can emit it repeatedly for one product. Anything consuming these downstream must account for that.

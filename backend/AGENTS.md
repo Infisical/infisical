@@ -369,7 +369,7 @@ surfaces it covers:
 
 - **org access control** — members, groups, identities (including memberships, templates, and all
   thirteen `identity-*-auth-router.ts`), org roles, invites, external group-to-role mapping
-- **usage & billing** — `ee/v1/license-router.ts`, `ee/v1/license-v2-router.ts`
+- **usage & billing**: `domains/platform/billing/ee/router/` (`billing-router.ts`, `org-plan-router.ts`)
 - **audit logs** — the org and project log reads plus audit log streams
 - **org settings** — org update and incident contacts, SSO and provisioning (SAML, OIDC, LDAP, SCIM,
   GitHub org sync, email domains), networking (gateways, gateway pools, relays), encryption (external

@@ -15,6 +15,7 @@ src/domains/
 ├── platform/                   # domains other products depend on
 │   ├── events/
 │   ├── license/
+│   ├── billing/                # ee/ only
 │   ├── kms-core/
 │   ├── instance-config-core/
 │   ├── access-control/
@@ -28,7 +29,7 @@ src/domains/
 └── kms/kms/
 ```
 
-Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
+Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENTS.md), [billing](platform/billing/AGENTS.md),
 [access-control](platform/access-control/AGENTS.md), [organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
@@ -418,7 +419,7 @@ sets the pattern from the rules above, and its PR names it here.
 | Stores bundle passed to `TransactionRunner` | `platform/organizations/ce/module.ts` |
 | Entity with one method per change | `platform/events/ce/models/outbox-entry.ts` (`settle`, `expireClaim`) |
 | In-memory store, contract suite run on both stores | `platform/events/ce/testing/` (`InMemoryOutboxEntryStore`, `outbox-entry-store-contract.ts`) |
-| Router | none yet |
+| Router | `platform/billing/ee/router/` (`billing-router.ts`): schemas and telemetry in the router, one service call per route. An `ee/`-only domain's routers are re-exported from `domains.ts`, since code outside the domains may import only a `ce/module` or `domains.ts` |
 | A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-event-emitter-service.ts` |
 | Workers, crons and a timer in `start()`, with a `stop()` | `platform/events/ce/module.ts` |
 | Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations/ce/data-access/billable-actor-store.ts` |
