@@ -59,7 +59,14 @@ const ValueForm = ({
             onChange={(event) => setValueText(event.target.value)}
           />
         </Field>
-        <Button type="submit" size="lg" loading={setValue.isPending} disabled={!value}>
+        <Button
+          type="submit"
+          variant="accent"
+          size="lg"
+          className="w-full"
+          loading={setValue.isPending}
+          disabled={!value}
+        >
           Share secret
         </Button>
       </Stack>
@@ -171,7 +178,6 @@ export const ViewSecretRequestPage = () => {
   return (
     <AuthPage
       variant="focused"
-      wide
       pageTitle="Secret Request"
       title={title}
       description={

@@ -199,7 +199,7 @@ const AddResourceSheet = ({
         />
       );
     return (
-      <List label={`Available ${resource.pluralNoun}`}>
+      <List label={`Available ${resource.pluralNoun}`} variant="flush">
         {available.map(({ externalId, name }) => (
           <ListRow
             key={externalId}
