@@ -569,6 +569,7 @@ export function SecretRotationFlow({
   failureAlert,
   failureAlertUnavailable
 }: Props) {
+  const [savedAlert] = useState(failureAlert);
   const isUpdate = Boolean(rotation);
   const { permission } = useProjectPermission(project);
   const saveFailureAlert = useSaveFailureAlert();
@@ -584,9 +585,7 @@ export function SecretRotationFlow({
   const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
   const [addedConnections, setAddedConnections] = useState<RotationConnection[]>([]);
   const form = useForm<FieldValues>({
-    resolver: zodResolver(
-      SecretRotationV2FormSchema(isUpdate).and(failureAlertSchema(failureAlert))
-    ),
+    resolver: zodResolver(SecretRotationV2FormSchema(isUpdate).and(failureAlertSchema(savedAlert))),
     defaultValues: rotation
       ? {
           ...rotationFormValues(
@@ -598,7 +597,7 @@ export function SecretRotationFlow({
               name: rotation.environment
             }
           ),
-          ...failureAlertDefaults(project, failureAlert)
+          ...failureAlertDefaults(project, savedAlert)
         }
       : undefined,
     mode: "onChange",
@@ -711,7 +710,7 @@ export function SecretRotationFlow({
         saveFailureAlert({
           resourceId: rotation.id,
           projectId: project,
-          saved: failureAlert,
+          saved: savedAlert,
           enabled: Boolean(values.isFailureAlertEnabled),
           channels: values.channels ?? [],
           target: ROTATION_FAILURE_ALERT
@@ -834,7 +833,7 @@ export function SecretRotationFlow({
                   canManage: alertManageable(form.getValues()),
                   unavailable: failureAlertUnavailable,
                   rotationId: rotation?.id,
-                  alertId: failureAlert?.id
+                  alertId: savedAlert?.id
                 }}
               />
             ) : (
