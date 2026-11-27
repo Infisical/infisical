@@ -4,7 +4,7 @@ The billing portal an org's billing admins use: what the org holds and pays (ove
 self-serve checkout, plan upgrades, commitments, trials, the Stripe portal, usage breakdowns, and the org plan reads
 (`/plan`, `/plans`). It sits on Organizations, Projects and License (Billing Core); nothing imports it.
 
-EE only (`ee/`): the code came from `src/ee/**`. There is no `ce/module.ts`, so `domains.ts` re-exports its routers and
+EE only (`ee/`). There is no `ce/module.ts`, so `domains.ts` re-exports its routers and
 service types for `ee/routes/v1/index.ts` and `@types/fastify.d.ts`.
 
 **Owns no tables.** The License Server holds the subscription, catalog and trials; License holds the plan cache and
@@ -13,7 +13,7 @@ License Server, and write nothing of their own.
 
 | Layer | Holds |
 | --- | --- |
-| `ee/models/` | The rules from the legacy service: `CatalogProduct`/`CatalogPlan` (which plan is sold, how a price is charged), `ProductLineItem` (usage a purchase declares), `ChangePreviewRequest`, `ProrationQuote`, `ReturnUrl`, `PaymentLink`, `Subscription`, `EntitlementSet`, `TrialHistory`, `BreakdownDimension`, `UsageBreakdown`, `BillingAccess`, and display helpers (`Money`, `BillingDate`, `Deprecation`, `PriceBands`) |
+| `ee/models/` | The billing rules: `CatalogProduct`/`CatalogPlan` (which plan is sold, how a price is charged), `ProductLineItem` (usage a purchase declares), `ChangePreviewRequest`, `ProrationQuote`, `ReturnUrl`, `PaymentLink`, `Subscription`, `EntitlementSet`, `TrialHistory`, `BreakdownDimension`, `UsageBreakdown`, `BillingAccess`, and display helpers (`Money`, `BillingDate`, `Deprecation`, `PriceBands`) |
 | `ee/services/` | `billing-overview/` (overview, catalog, refresh, org plan), `usage-breakdown/`, `subscription/`, `trial/`; `helpers/` for the permission checks, line items and the payment-approval outcome |
 | `ee/router/` | `billing-router.ts` (`/organizations/:id/billing/v2/...`) and `org-plan-router.ts`. Zod schemas and PostHog telemetry live here |
 | `ee/testing/` | `buildBilling()` (real org permission service over in-memory Access Control, fakes for the rest), the scriptable `FakeLicenseServerBilling`, License Server record fixtures |

@@ -38,7 +38,8 @@ export class FakeOrganizationsService implements TOrganizationsService {
     const roots = this.orgNames
       .filter((org) => !org.rootOrgId)
       .map((org) => ({ id: org.id, name: org.name, slug: `org-${org.id}` }))
-      .filter((org) => !term || org.name.toLowerCase().includes(term) || org.slug.includes(term));
+      .filter((org) => !term || org.name.toLowerCase().includes(term) || org.slug.includes(term))
+      .sort((a, b) => a.name.localeCompare(b.name));
     return { organizations: roots.slice(offset, offset + limit), totalCount: roots.length };
   };
 

@@ -101,8 +101,8 @@ Rules:
 - **Billing isn't on `TLicenseService`.** The License Server's billing endpoints (`TLicenseServerBilling`) are on the EE
   `LicenseServerClient`, which `domains.ts` hands only to the Billing domain (`platform/billing`). License never calls
   them.
-- **Every counter explains its count.** A `TUsageCounter` supplies `breakdown(orgId)` beside `count(orgId)`, from the
-  same query, so the billed figure and its per-org and per-project split can't disagree; `CounterRegistry` refuses a
+- **Every counter explains its count.** A `TUsageCounter` supplies `breakdown(orgId)` beside `count(orgId)`, built on the
+  same query rules (`projectIdentityEntities`, the billable-actor filter, the cert quota-key attribution), so the billed figure and its per-org and per-project split agree; `CounterRegistry` refuses a
   counter without one. `usageMeteringService.getUsageBreakdown(meter, orgId)` passes the scope through as given (no
   self-hosted switch, unlike `countUsage`): the caller decides between a root org and `null` for the whole instance.
 - **A failed renewal reaches the org as the `subscription_payment_failed` plan notice**, pulled with the plan since

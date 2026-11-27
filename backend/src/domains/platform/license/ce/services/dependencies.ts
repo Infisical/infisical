@@ -34,7 +34,8 @@ export type TUsageCounter = {
   readonly meter: Meter;
   // A null orgId counts the whole instance: a self-hosted license covers every org in the database.
   count(orgId: string | null): Promise<number>;
-  // Same scope and same query as count, so the billed figure and its explanation can't disagree.
+  // Same scope and the same query rules as count (one shared query, or queries built on the same filter), so the
+  // billed figure and its explanation agree. Reads that run apart can differ by a change made between them.
   breakdown(orgId: string | null): Promise<TUsageBreakdown>;
 };
 
