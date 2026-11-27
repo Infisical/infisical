@@ -19,6 +19,7 @@ import type {
   TReconcileLocalAccountRotationDTO,
   TReconcileLocalAccountRotationResponse,
   TRotateSecretRotationV2DTO,
+  TSecretRotationV2,
   TUpdateSecretRotationV2DTO,
   TViewSecretRotationGeneratedCredentialsResponse
 } from "@app/hooks/api/secretRotationsV2/types";
@@ -57,7 +58,7 @@ export type SecretsManagedAdapter = SecretsOptionsAdapter &
       dto: { rotationId: string; type: SecretRotation },
       options?: { enabled?: boolean }
     ) => V4QueryResult<TViewSecretRotationGeneratedCredentialsResponse>;
-    useCreateSecretRotation: V4Mutation<TCreateSecretRotationV2DTO>;
+    useCreateSecretRotation: V4Mutation<TCreateSecretRotationV2DTO, TSecretRotationV2>;
     useUpdateSecretRotation: V4Mutation<TUpdateSecretRotationV2DTO>;
     useRotateSecretRotation: V4Mutation<TRotateSecretRotationV2DTO>;
     useDeleteSecretRotation: V4Mutation<TDeleteSecretRotationV2DTO>;

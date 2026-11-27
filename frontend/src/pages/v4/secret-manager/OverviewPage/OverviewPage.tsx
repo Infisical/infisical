@@ -184,7 +184,10 @@ import { ResourceSearchInput, SearchAllFoldersSheet } from "./secrets/search/sea
 import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
-import { useAddSyncFailureAlert } from "./secrets/secret-sync/failure-alert";
+import {
+  useAddRotationFailureAlert,
+  useAddSyncFailureAlert
+} from "./secrets/secret-sync/failure-alert";
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
 import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
@@ -519,6 +522,7 @@ export const OverviewPage = () => {
   const createDynamicSecret = adapter.useCreateDynamicSecret();
   const updateDynamicSecret = adapter.useUpdateDynamicSecret();
   const createRotation = adapter.useCreateSecretRotation();
+  const addRotationFailureAlert = useAddRotationFailureAlert();
   const updateRotation = adapter.useUpdateSecretRotation();
   const createHoneyToken = adapter.useCreateHoneyToken();
   const updateHoneyToken = adapter.useUpdateHoneyToken();
@@ -566,8 +570,8 @@ export const OverviewPage = () => {
           })
       },
       rotation: {
-        create: (entry) =>
-          createRotation.mutateAsync({
+        create: async (entry) => {
+          const created = await createRotation.mutateAsync({
             type: entry.type as SecretRotation,
             name: entry.name,
             description: entry.description,
@@ -580,7 +584,10 @@ export const OverviewPage = () => {
             environment: entry.environment,
             secretPath: entry.path,
             projectId
-          } as TCreateSecretRotationV2DTO),
+          } as TCreateSecretRotationV2DTO);
+          await addRotationFailureAlert(created, entry.failureAlertChannels);
+          return created;
+        },
         update: (before, after) =>
           updateRotation.mutateAsync({
             type: before.type as SecretRotation,

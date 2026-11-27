@@ -1,3 +1,4 @@
+import type { TChannelForm } from "@app/hooks/api/alerts/types";
 import type { HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
 
 export type ResourceApplyOptions = { shouldOverwrite?: boolean; quiet?: boolean };
@@ -95,6 +96,7 @@ export type Resource =
       secretsMapping?: Record<string, string>;
       generatedCredentials?: Record<string, string>[];
       activeIndex?: number;
+      failureAlertChannels?: TChannelForm[];
     })
   | (ResourceBase & {
       kind: "honey";

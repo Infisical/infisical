@@ -123,7 +123,7 @@ const SectionFields = ({
     return (
       <FailureAlertFields
         projectId={sync.projectId}
-        syncId={sync.id}
+        resourceId={sync.id}
         alertId={savedAlertId}
         canManage={canManageAlert}
         unavailable={failureAlertUnavailable}
@@ -209,7 +209,7 @@ export const EditSyncSheet = ({
     try {
       if (section === "alerts") {
         await saveFailureAlert({
-          syncId: sync.id,
+          resourceId: sync.id,
           projectId: sync.projectId,
           saved: savedAlert,
           enabled: data.isFailureAlertEnabled,

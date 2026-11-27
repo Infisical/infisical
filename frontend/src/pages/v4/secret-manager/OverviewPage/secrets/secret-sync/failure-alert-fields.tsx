@@ -8,7 +8,6 @@ import { SmallText } from "@infisical/cipher/ui/text";
 import {
   ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES,
   AlertChannelType,
-  AlertResourceType,
   type TChannelForm
 } from "@app/hooks/api/alerts/types";
 
@@ -18,7 +17,12 @@ import {
   type TFieldErrors,
   toDraftChannel
 } from "../../../../cert-manager/SettingsPage/alert-model";
-import { channelErrorsOf, fromDraftChannel } from "./failure-alert";
+import {
+  channelErrorsOf,
+  type FailureAlertTarget,
+  fromDraftChannel,
+  SYNC_FAILURE_ALERT
+} from "./failure-alert";
 
 const isEmptiedChannel = (channel: TChannelForm) =>
   Boolean(channel.id) &&
@@ -33,17 +37,20 @@ const emptiedWarning = (names: string[]) =>
 
 export function FailureAlertFields({
   projectId,
-  syncId,
+  resourceId,
   alertId,
   canManage,
-  unavailable
+  unavailable,
+  target = SYNC_FAILURE_ALERT
 }: {
   projectId: string;
-  syncId?: string;
+  resourceId?: string;
   alertId?: string;
   canManage: boolean;
   unavailable?: boolean;
+  target?: FailureAlertTarget;
 }) {
+  const { noun } = target;
   const {
     control,
     getValues,
@@ -63,8 +70,8 @@ export function FailureAlertFields({
 
   if (unavailable)
     return (
-      <Alert tone="bad" title="Couldn't load this sync's failure alert">
-        Saving leaves it unchanged. Close and reopen the sync to try again.
+      <Alert tone="bad" title={`Couldn't load this ${noun}'s failure alert`}>
+        {`Saving leaves it unchanged. Close and reopen the ${noun} to try again.`}
       </Alert>
     );
 
@@ -81,8 +88,8 @@ export function FailureAlertFields({
     <Stack gap={16}>
       <Switch
         layout="row"
-        label="Alert on sync failure"
-        description="Sends a notice when a sync, import or remove fails after all of its retries."
+        label={`Alert on ${noun} failure`}
+        description={target.description}
         checked={canManage && enabled}
         disabled={!canManage}
         onCheckedChange={(checked) => {
@@ -92,8 +99,7 @@ export function FailureAlertFields({
       />
       {!canManage && (
         <SmallText muted>
-          You can&apos;t set up a failure alert for this sync. That needs permission to edit secret
-          syncs in this environment and path.
+          {`You can't set up a failure alert for this ${noun}. That needs permission to edit secret ${noun}s in this environment and path.`}
         </SmallText>
       )}
       {canManage && enabled && (
@@ -113,17 +119,17 @@ export function FailureAlertFields({
             alertId={alertId}
             members={members}
             hasEnterprise
-            resource={{ resourceType: AlertResourceType.SecretSync, resourceId: syncId ?? null }}
+            resource={{ resourceType: target.resourceType, resourceId: resourceId ?? null }}
             projectRecipients
             allowEmailAddresses={ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES.includes(
-              AlertResourceType.SecretSync
+              target.resourceType
             )}
           />
         </>
       )}
       {canManage && !enabled && (
         <SmallText muted>
-          No alert for this sync. Admins still get an in-app notification when the sync fails.
+          {`No alert for this ${noun}. Admins still get an in-app notification when the ${noun} fails.`}
         </SmallText>
       )}
     </Stack>
