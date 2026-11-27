@@ -1,5 +1,6 @@
 import os from "node:os";
 
+import ratelimiter from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
@@ -50,10 +51,15 @@ const memoryLimitForBudget = (secrets: number) =>
 
 type THeldRead = { finish: () => void; fail: () => void; reportSize: (secretCount: number) => void };
 
-const buildServer = async ({ budget = 10_000 }: { budget?: number } = {}) => {
+const buildServer = async ({
+  budget = 10_000,
+  withRateLimiter = false
+}: { budget?: number; withRateLimiter?: boolean } = {}) => {
   constrainedMemory.mockReturnValue(memoryLimitForBudget(budget));
   const app = Fastify({ logger: false });
   const held: THeldRead[] = [];
+
+  if (withRateLimiter) await app.register(ratelimiter, { global: false });
 
   app.setErrorHandler((error, _req, reply) => {
     if (error instanceof ServerBusyError) return reply.status(503).send({ message: error.message });
@@ -472,5 +478,141 @@ describe("secretReadConcurrencyLimit", () => {
     disabled.held.forEach((request) => request.finish());
     expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200]);
     expect(vi.mocked(registerSecretReadBudgetGauges)).toHaveBeenCalledTimes(1);
+  });
+
+  describe("where the rate limiter is registered", () => {
+    const orgShareRefusal = { bucket: "read_budget_org_share", outcome: "refused", planSlug: "pro" };
+
+    test("keeps one organization's concurrent reads to its share, so another organization still gets in", async () => {
+      const { held, list, gauges } = await buildServer({ budget: 30_000, withRateLimiter: true });
+
+      const [first, second, third] = [
+        list("org-a", "project-1"),
+        list("org-a", "project-2"),
+        list("org-a", "project-3")
+      ];
+      await flush();
+
+      held[0].reportSize(10_000);
+      const firstRefused = await first;
+      held[1].reportSize(10_000);
+      const secondRefused = await second;
+      held[2].reportSize(10_000);
+
+      expect([firstRefused, secondRefused].map((res) => res.statusCode)).toEqual([503, 503]);
+      expect([firstRefused, secondRefused].map((res) => res.headers["retry-after"])).toEqual(["1", "1"]);
+      expect(gauges?.getUsed()).toBe(10_000);
+      expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([[orgShareRefusal], [orgShareRefusal]]);
+
+      const other = list("org-b");
+      await flush();
+      expect(held).toHaveLength(4);
+      expect(gauges?.getUsed()).toBe(10_100);
+
+      held[2].finish();
+      held[3].finish();
+      expect((await third).statusCode).toBe(200);
+      expect((await other).statusCode).toBe(200);
+      expect(gauges?.getUsed()).toBe(0);
+    });
+
+    test("runs reads from one organization together while they fit in its share", async () => {
+      const { held, list, gauges } = await buildServer({ budget: 30_000, withRateLimiter: true });
+
+      const requests = [list("org-a"), list("org-a"), list("org-a"), list("org-a")];
+      await flush();
+      held.slice(0, 3).forEach((request) => request.reportSize(2000));
+      expect(gauges?.getUsed()).toBe(6100);
+
+      held[3].reportSize(2000);
+      expect((await requests[3]).statusCode).toBe(503);
+      expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([[orgShareRefusal]]);
+
+      held.slice(0, 3).forEach((request) => request.finish());
+      expect((await Promise.all(requests.slice(0, 3))).map((res) => res.statusCode)).toEqual([200, 200, 200]);
+    });
+
+    test("admits a read larger than the share when its organization holds nothing, and no other read of that organization beside it", async () => {
+      const { held, list, gauges } = await buildServer({ budget: 30_000, withRateLimiter: true });
+
+      const firstRun = list("org-a", "project-1");
+      await flush();
+      held[0].reportSize(10_000);
+      held[0].finish();
+      expect((await firstRun).statusCode).toBe(200);
+
+      const secondRun = list("org-a", "project-1");
+      await flush();
+      expect(held).toHaveLength(2);
+      expect(gauges?.getUsed()).toBe(10_000);
+
+      expect((await list("org-a")).statusCode).toBe(503);
+      expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([[orgShareRefusal]]);
+
+      const other = list("org-b");
+      await flush();
+      expect(held).toHaveLength(3);
+
+      held[1].finish();
+      expect((await secondRun).statusCode).toBe(200);
+      const retried = list("org-a");
+      await flush();
+      expect(held).toHaveLength(4);
+
+      held[2].finish();
+      held[3].finish();
+      expect((await other).statusCode).toBe(200);
+      expect((await retried).statusCode).toBe(200);
+    });
+
+    test("reports a full instance under its own bucket when every organization is within its share", async () => {
+      const { held, list } = await buildServer({ budget: 400, withRateLimiter: true });
+
+      const requests = [list("org-a"), list("org-b"), list("org-c"), list("org-d")];
+      await flush();
+      expect(held).toHaveLength(4);
+
+      expect((await list("org-e")).statusCode).toBe(503);
+      expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
+        [{ bucket: "read_budget", outcome: "refused", planSlug: "pro" }]
+      ]);
+
+      held.forEach((request) => request.finish());
+      expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200, 200, 200]);
+    });
+
+    test("frees an organization's share when its read fails", async () => {
+      const { held, list } = await buildServer({ budget: 400, withRateLimiter: true });
+
+      const failing = list("org-a");
+      await flush();
+      expect((await list("org-a")).statusCode).toBe(503);
+
+      held[0].fail();
+      expect((await failing).statusCode).toBe(500);
+
+      const next = list("org-a");
+      await flush();
+      expect(held).toHaveLength(2);
+      held[1].finish();
+      expect((await next).statusCode).toBe(200);
+    });
+
+    test("lets an organization past its share in observe mode, and reports it", async () => {
+      config.SECRET_READ_CONCURRENCY_LIMIT_MODE = "observe";
+      const { held, list, gauges } = await buildServer({ budget: 400, withRateLimiter: true });
+
+      const requests = [list("org-a"), list("org-a")];
+      await flush();
+
+      expect(held).toHaveLength(2);
+      expect(gauges?.getUsed()).toBe(200);
+      expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
+        [{ bucket: "read_budget_org_share", outcome: "would_refuse", planSlug: "pro" }]
+      ]);
+
+      held.forEach((request) => request.finish());
+      expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200]);
+    });
   });
 });

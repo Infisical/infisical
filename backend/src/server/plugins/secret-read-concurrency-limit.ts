@@ -18,6 +18,7 @@ import {
 
 const REFUSAL_LOG_INTERVAL_MS = 10_000;
 const MAX_REMEMBERED_SIZES = 10_000;
+const ORG_SHARE_OF_BUDGET = 0.25;
 const REFUSAL_MESSAGE = "This request could not be completed. Please retry";
 
 const unlimitedSlot: TConcurrencySlot = (work) => work(() => {});
@@ -69,15 +70,36 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
 
   const isEnforced = mode === "enforce";
   const budget = computeSecretReadBudget(appCfg, isEnforced);
+  const isMultiTenant = server.hasDecorator("createRateLimit");
+  const orgCapacity = isMultiTenant && budget > 0 ? Math.max(1, Math.floor(budget * ORG_SHARE_OF_BUDGET)) : 0;
   let used = 0;
+  const usedByOrg = new Map<string, number>();
   registerSecretReadBudgetGauges({ getCapacity: () => budget, getUsed: () => used });
 
-  // The weight is capped at the budget for this check only, so a read larger than the whole budget is let in when the
+  const getOrgUsed = (orgId?: string) => (orgId ? (usedByOrg.get(orgId) ?? 0) : 0);
+
+  const hold = (orgId: string | undefined, delta: number) => {
+    used += delta;
+    if (!orgId || orgCapacity === 0) return;
+    const orgUsed = getOrgUsed(orgId) + delta;
+    if (orgUsed > 0) usedByOrg.set(orgId, orgUsed);
+    else usedByOrg.delete(orgId);
+  };
+
+  // The weight is capped at the capacity for this check only, so a read larger than the whole budget is let in when the
   // instance holds nothing instead of being refused on every attempt. It still adds its real weight to `used`, which
   // keeps every other read out until it finishes. Without the cap such a read could never run, and the retry the 503
-  // asks for would never succeed.
-  const hasRoomFor = (weight: number, alreadyHeld = 0) =>
-    budget > 0 && used - alreadyHeld + Math.min(weight, budget) <= budget;
+  // asks for would never succeed. An organization's share follows the same rule: a read larger than the share runs
+  // when the organization holds nothing else.
+  const fits = (capacity: number, usedNow: number, weight: number, alreadyHeld: number) =>
+    capacity > 0 && usedNow - alreadyHeld + Math.min(weight, capacity) <= capacity;
+
+  const findFullBucket = (orgId: string | undefined, weight: number, alreadyHeld = 0) => {
+    if (orgId && orgCapacity > 0 && !fits(orgCapacity, getOrgUsed(orgId), weight, alreadyHeld)) {
+      return SecretRateLimitBucket.ReadBudgetOrgShare;
+    }
+    return fits(budget, used, weight, alreadyHeld) ? undefined : SecretRateLimitBucket.ReadBudget;
+  };
 
   const lastKnownSizes = new Map<string, number>();
 
@@ -90,20 +112,27 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
     }
   };
 
-  let lastRefusalLogAt = 0;
+  const lastRefusalLogAt = new Map<SecretRateLimitBucket, number>();
 
-  const logNoRoom = (req: FastifyRequest, weight: number) => {
-    if (Date.now() - lastRefusalLogAt <= REFUSAL_LOG_INTERVAL_MS) return;
-    lastRefusalLogAt = Date.now();
+  const logNoRoom = (req: FastifyRequest, bucket: SecretRateLimitBucket, weight: number) => {
+    if (Date.now() - (lastRefusalLogAt.get(bucket) ?? 0) <= REFUSAL_LOG_INTERVAL_MS) return;
+    lastRefusalLogAt.set(bucket, Date.now());
+    const orgId = req.auth?.rootOrgId;
+    const orgShare = orgCapacity > 0 ? ` [orgUsed=${getOrgUsed(orgId)}] [orgCapacity=${orgCapacity}]` : "";
     logger.warn(
-      `secretReadConcurrencyLimit: ${isEnforced ? "refused" : "would have refused"} a secret list request [orgId=${req.auth?.rootOrgId ?? "none"}] [weight=${weight}] [used=${used}] [capacity=${budget}]`
+      `secretReadConcurrencyLimit: ${isEnforced ? "refused" : "would have refused"} a secret list request [bucket=${bucket}] [orgId=${orgId ?? "none"}] [weight=${weight}] [used=${used}] [capacity=${budget}]${orgShare}`
     );
   };
 
-  const refuseIfEnforced = (req: FastifyRequest, reply: FastifyReply, weight: number) => {
-    logNoRoom(req, weight);
+  const refuseIfEnforced = (
+    req: FastifyRequest,
+    reply: FastifyReply,
+    bucket: SecretRateLimitBucket,
+    weight: number
+  ) => {
+    logNoRoom(req, bucket, weight);
     recordSecretRateLimitExceededMetric({
-      bucket: SecretRateLimitBucket.ReadBudget,
+      bucket,
       outcome: isEnforced ? SecretRateLimitOutcome.Refused : SecretRateLimitOutcome.WouldRefuse,
       planSlug: req.rateLimitPlanSlug
     });
@@ -121,11 +150,13 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
         const lastKnownSize = sizeKey ? lastKnownSizes.get(sizeKey) : undefined;
         const estimate = lastKnownSize ?? appCfg.SECRET_READ_DEFAULT_SECRET_WEIGHT;
         let held = toWeight(estimate);
+        const orgId = req.auth?.rootOrgId;
 
-        let refusalRecorded = !hasRoomFor(held);
-        if (refusalRecorded) refuseIfEnforced(req, reply, held);
+        const fullBucketAtAdmission = findFullBucket(orgId, held);
+        let refusalRecorded = fullBucketAtAdmission !== undefined;
+        if (fullBucketAtAdmission) refuseIfEnforced(req, reply, fullBucketAtAdmission, held);
 
-        used += held;
+        hold(orgId, held);
         let released = false;
         let reportedSize: number | undefined;
         try {
@@ -136,16 +167,17 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
             // Admission ran on an estimate, so a read that turns out larger than the room left is refused here, before
             // the work it would still do (decryption, reference expansion) grows the heap further.
             // Observe mode records one refusal per request, as enforce mode would refuse it only once.
-            if (!refusalRecorded && next > held && !hasRoomFor(next, held)) {
+            const fullBucket = !refusalRecorded && next > held ? findFullBucket(orgId, next, held) : undefined;
+            if (fullBucket) {
               refusalRecorded = true;
-              refuseIfEnforced(req, reply, next);
+              refuseIfEnforced(req, reply, fullBucket, next);
             }
-            used += next - held;
+            hold(orgId, next - held);
             held = next;
           });
         } finally {
           released = true;
-          used -= held;
+          hold(orgId, -held);
           if (reportedSize !== undefined) {
             if (sizeKey) rememberSize(sizeKey, reportedSize);
             recordSecretReadSizeMetric({

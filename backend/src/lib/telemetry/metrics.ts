@@ -567,7 +567,8 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
 
 export enum SecretRateLimitBucket {
   OrgBudget = "org_budget",
-  ReadBudget = "read_budget"
+  ReadBudget = "read_budget",
+  ReadBudgetOrgShare = "read_budget_org_share"
 }
 
 export enum SecretRateLimitOutcome {

@@ -1139,10 +1139,17 @@ job, because it lets a burst through in its first second.
 - `observe`: counts, never refuses, and records `outcome=would_refuse` for each request that arrives with no room.
   Boot never fails; with no room for a budget it warns and reports every request.
 - `enforce`: a request that arrives with no room gets a 503 (`ServerBusyError`) with `Retry-After: 1` at once. Nothing
-  waits in a queue and there is no per-organization limit. Boot fails if the budget is less than one secret.
+  waits in a queue. Boot fails if the budget is less than one secret.
 
 Observe and enforce share one code path that differs only in the throw, so the observe counter is exactly what enforce
 would refuse. Keep it that way.
+
+Where the rate limiter is registered (cloud production, the same `createRateLimit` check the org budget uses), a root
+organization may hold at most `ORG_SHARE_OF_BUDGET` of the instance's budget, so one organization's concurrent reads
+cannot fill the instance and get every other organization refused. The share is checked wherever the budget is, at
+admission and on `reportSize`, and is refused the same way. A read larger than the share runs when its organization
+holds nothing else on the instance; without that it could never run. Self-hosted instances have no share, since one
+with a single organization would only lose capacity.
 
 Prefer passing the slot to the service as `secretReadSlot` (`TConcurrencySlot`), which wraps only the secret load, so
 permission checks and 304s are never counted; wrap the whole service call in it (`readSlot(() => ...)`) only when the
@@ -1167,7 +1174,8 @@ service takes no slot. A route that does neither is outside the budget. The slot
   `getSecretsRaw` does this today.
 - A read larger than the whole budget is admitted only when the instance holds nothing, so it runs alone.
 
-A refusal records `infisical.secret.rate_limit.exceeded.count` with bucket `read_budget`. The instance also reports
+A refusal records `infisical.secret.rate_limit.exceeded.count` with bucket `read_budget`, or `read_budget_org_share`
+when the organization's share is what had no room. The instance also reports
 `infisical.secret.read_budget.capacity` and `.used` (gauges), and once per read `infisical.secret.read.size` (by
 `estimate.source`) and `infisical.secret.read.estimate.error`. Do not label any of them with the organization: a histogram per
 organization is one set of bucket series per customer per instance, which the `InfisicalCore` rules below forbid. The
