@@ -1,14 +1,19 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import { applicationAuditorPermissions } from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { ProjectPermissionCertificateActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { projectServiceFactory } from "./project-service";
+import { ProjectFilterType, TListProjectCertsDTO } from "./project-types";
 
 const setup = () => {
   const memberships = new Map<
@@ -210,34 +215,71 @@ describe("org-scoped product projects", () => {
   });
 });
 
+const actorContext = (type: ActorType.USER | ActorType.IDENTITY, id: string) =>
+  ({ principal: { type, id }, org: { id: "org" } }) as TActorContext;
+
+const setupCertificateSearch = ({
+  memberOf = [],
+  readableApplications = [],
+  productRules
+}: {
+  memberOf?: string[];
+  readableApplications?: string[];
+  productRules: Parameters<typeof Permission.fromRules>[0]["rules"];
+}) => {
+  const certificateDAL = {
+    findWithPrivateKeyInfo: vi.fn<TCertificateDALFactory["findWithPrivateKeyInfo"]>().mockResolvedValue([]),
+    countCertificatesInProject: vi.fn<TCertificateDALFactory["countCertificatesInProject"]>().mockResolvedValue(0)
+  };
+  const membershipDAL = {
+    findResourceMembershipsForActor: vi
+      .fn()
+      .mockResolvedValue(memberOf.map((scopeResourceId) => ({ scopeResourceId, isActive: true })))
+  };
+  const applicationPermissionService = {
+    getApplicationPermission: vi.fn(async ({ applicationId }: { applicationId: string }) =>
+      Permission.fromRules({
+        rules: readableApplications.includes(applicationId) ? applicationAuditorPermissions : []
+      })
+    )
+  };
+  const projectPermissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: productRules }))
+  };
+  const service = projectServiceFactory({
+    projectDAL: { findProjectByFilter: vi.fn().mockResolvedValue({ id: "project" }) },
+    applicationPermissionService,
+    projectPermissionService,
+    membershipDAL,
+    certificateDAL,
+    licenseService: new FakeLicenseService()
+  } as unknown as Parameters<typeof projectServiceFactory>[0]);
+
+  return { service, certificateDAL, membershipDAL, applicationPermissionService, projectPermissionService };
+};
+
 describe("certificate search with current status", () => {
   test("derives each status and reads rows and count at the same instant", async () => {
     const past = new Date(Date.now() - 86_400_000);
     const future = new Date(Date.now() + 86_400_000);
-    const certificateDAL = {
-      findWithPrivateKeyInfo: vi.fn().mockResolvedValue([
-        { id: "expired", status: CertStatus.ACTIVE, notAfter: past, deletedAt: null },
-        { id: "active", status: CertStatus.ACTIVE, notAfter: future, deletedAt: null },
-        { id: "deleted", status: CertStatus.ACTIVE, notAfter: future, deletedAt: past }
-      ]),
-      countCertificatesInProject: vi.fn().mockResolvedValue(3)
-    };
-    const service = projectServiceFactory({
-      projectDAL: { findProjectByFilter: vi.fn().mockResolvedValue({ id: "project" }) },
-      projectPermissionService: {
-        getProjectPermission: vi
-          .fn()
-          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
-      },
-      certificateDAL,
-      licenseService: new FakeLicenseService()
-    } as unknown as Parameters<typeof projectServiceFactory>[0]);
+    const { service, certificateDAL } = setupCertificateSearch({
+      productRules: [{ action: "manage", subject: "all" }]
+    });
+    certificateDAL.findWithPrivateKeyInfo.mockResolvedValue([
+      { id: "expired", status: CertStatus.ACTIVE, notAfter: past, deletedAt: null },
+      { id: "active", status: CertStatus.ACTIVE, notAfter: future, deletedAt: null },
+      { id: "deleted", status: CertStatus.ACTIVE, notAfter: future, deletedAt: past }
+    ] as never);
+    certificateDAL.countCertificatesInProject.mockResolvedValue(3);
 
     const result = await service.searchCertificatesWithCurrentStatus({
-      filter: { type: "id", projectId: "project" },
-      actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "org" } },
-      sortBy: "status"
-    } as unknown as Parameters<typeof service.searchCertificatesWithCurrentStatus>[0]);
+      filter: { type: ProjectFilterType.ID, projectId: "project" },
+      offset: 0,
+      limit: 25,
+      actor: actorContext(ActorType.USER, "user"),
+      sortBy: "status",
+      authorizeByApplicationRoles: true
+    });
 
     expect(result.certificates.map(({ id, status }) => ({ id, status }))).toEqual([
       { id: "expired", status: CertStatus.EXPIRED },
@@ -246,12 +288,180 @@ describe("certificate search with current status", () => {
     ]);
     expect(result.totalCount).toBe(3);
 
-    const [, listOptions] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0] as [
-      unknown,
-      { sortByCurrentStatus?: boolean; statusAt?: Date }
-    ];
-    expect(listOptions.sortByCurrentStatus).toBe(true);
-    expect(listOptions.statusAt).toBeInstanceOf(Date);
-    expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions.statusAt);
+    const [, listOptions] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0];
+    expect(listOptions?.sortByCurrentStatus).toBe(true);
+    expect(listOptions?.statusAt).toBeInstanceOf(Date);
+    expect(certificateDAL.countCertificatesInProject.mock.calls[0][2]).toBe(listOptions?.statusAt);
   });
+});
+
+describe("certificate search scoped to applications", () => {
+  const readCertificates = [
+    { action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates }
+  ];
+
+  const setupSearch = (options: Parameters<typeof setupCertificateSearch>[0]) => {
+    const { service, certificateDAL, membershipDAL, applicationPermissionService, projectPermissionService } =
+      setupCertificateSearch(options);
+
+    const request = (applicationIds?: string[]): TListProjectCertsDTO => ({
+      filter: { type: ProjectFilterType.ID, projectId: "project" },
+      offset: 0,
+      limit: 25,
+      actor: actorContext(ActorType.IDENTITY, "identity"),
+      applicationIds
+    });
+    const search = (applicationIds?: string[]) =>
+      service.searchCertificatesWithCurrentStatus({ ...request(applicationIds), authorizeByApplicationRoles: true });
+    const list = (applicationIds?: string[]) => service.listProjectCertificates(request(applicationIds));
+    const searchedWith = () => {
+      const [filters, , permissionFilters] = certificateDAL.findWithPrivateKeyInfo.mock.calls[0];
+      return { applicationIds: filters.applicationIds, permissionFilters };
+    };
+
+    return {
+      search,
+      list,
+      searchedWith,
+      certificateDAL,
+      membershipDAL,
+      applicationPermissionService,
+      projectPermissionService
+    };
+  };
+
+  test("allows a caller who can read certificates in every listed application without product-level Read", async () => {
+    const { search, searchedWith, applicationPermissionService, projectPermissionService } = setupSearch({
+      memberOf: ["app-a", "app-b"],
+      readableApplications: ["app-a", "app-b"],
+      productRules: []
+    });
+
+    await search(["app-a", "app-b"]);
+
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalledTimes(2);
+    expect(searchedWith()).toEqual({ applicationIds: ["app-a", "app-b"], permissionFilters: undefined });
+  });
+
+  test("checks one application's permission at a time", async () => {
+    const { search, applicationPermissionService } = setupSearch({
+      memberOf: ["app-a", "app-b"],
+      readableApplications: ["app-a", "app-b"],
+      productRules: []
+    });
+    const check = applicationPermissionService.getApplicationPermission.getMockImplementation()!;
+    let firstDone = false;
+    let secondStartedAfterFirst = false;
+    applicationPermissionService.getApplicationPermission
+      .mockImplementationOnce(async (args) => {
+        const result = await check(args);
+        firstDone = true;
+        return result;
+      })
+      .mockImplementationOnce(async (args) => {
+        secondStartedAfterFirst = firstDone;
+        return check(args);
+      });
+
+    await search(["app-a", "app-b"]);
+
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalledTimes(2);
+    expect(secondStartedAfterFirst).toBe(true);
+  });
+
+  test("matches application IDs in any case", async () => {
+    const { search, applicationPermissionService, projectPermissionService } = setupSearch({
+      memberOf: ["app-a"],
+      readableApplications: ["app-a"],
+      productRules: []
+    });
+
+    await search(["APP-A", "app-a"]);
+
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalledOnce();
+  });
+
+  test("lets application Read take precedence over a product role limited by conditions", async () => {
+    const { search, searchedWith, projectPermissionService } = setupSearch({
+      memberOf: ["app-a"],
+      readableApplications: ["app-a"],
+      productRules: [{ ...readCertificates[0], conditions: { commonName: "a.example.com" } }]
+    });
+
+    await search(["app-a"]);
+
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(searchedWith().permissionFilters).toBeUndefined();
+  });
+
+  test("rejects the whole request when one application's role doesn't grant certificate Read", async () => {
+    const { search, certificateDAL } = setupSearch({
+      memberOf: ["app-a", "app-b"],
+      readableApplications: ["app-a"],
+      productRules: []
+    });
+
+    await expect(search(["app-a", "app-b"])).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(certificateDAL.findWithPrivateKeyInfo).not.toHaveBeenCalled();
+  });
+
+  test("rejects without per-application checks when the caller isn't a member of a listed application", async () => {
+    const { search, certificateDAL, applicationPermissionService } = setupSearch({
+      memberOf: ["app-a"],
+      readableApplications: ["app-a"],
+      productRules: []
+    });
+
+    await expect(search(["app-a", "app-b"])).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
+    expect(certificateDAL.findWithPrivateKeyInfo).not.toHaveBeenCalled();
+  });
+
+  test("falls back to product-level Read for applications the caller can't read", async () => {
+    const { search, searchedWith, projectPermissionService } = setupSearch({
+      memberOf: [],
+      readableApplications: [],
+      productRules: readCertificates
+    });
+
+    await search(["app-a", "app-b"]);
+
+    expect(projectPermissionService.getProjectPermission).toHaveBeenCalledOnce();
+    const { applicationIds, permissionFilters } = searchedWith();
+    expect(applicationIds).toEqual(["app-a", "app-b"]);
+    expect(permissionFilters).toBeDefined();
+  });
+
+  test("keeps product-level Read on the project certificate listing, which doesn't bound applicationIds", async () => {
+    const { list, membershipDAL, applicationPermissionService } = setupSearch({
+      memberOf: ["app-a"],
+      readableApplications: ["app-a"],
+      productRules: []
+    });
+
+    await expect(list(["app-a"])).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(membershipDAL.findResourceMembershipsForActor).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
+  });
+
+  test.each([{ productRead: true }, { productRead: false }])(
+    "uses only product-level Read without applicationIds (product Read: $productRead)",
+    async ({ productRead }) => {
+      const { search, membershipDAL, applicationPermissionService } = setupSearch({
+        memberOf: ["app-a"],
+        readableApplications: ["app-a"],
+        productRules: productRead ? readCertificates : []
+      });
+
+      if (productRead) {
+        await expect(search()).resolves.toEqual({ certificates: [], totalCount: 0 });
+      } else {
+        await expect(search()).rejects.toBeInstanceOf(PermissionDeniedError);
+      }
+      expect(membershipDAL.findResourceMembershipsForActor).not.toHaveBeenCalled();
+      expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
+    }
+  );
 });

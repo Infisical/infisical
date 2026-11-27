@@ -973,6 +973,7 @@ output-options:
     - updateCertificateInventoryView
     - deleteCertificateInventoryView
     - searchProjectCertificates
+    - searchCertificates
     - listProjectCertificateAuthorities
     - getCertificateDashboardStats
     - getCertificateActivityTrend

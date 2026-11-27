@@ -1313,8 +1313,7 @@ export const PROJECTS = {
     notBeforeFrom: "Filter certificates issued on or after this date.",
     notBeforeTo: "Filter certificates issued on or before this date.",
     sortBy: "Column to sort by (e.g. 'notAfter', 'notBefore', 'commonName').",
-    sortOrder: "Sort direction: 'asc' or 'desc'.",
-    applicationIds: "Filter to certificates issued through any of the supplied Applications."
+    sortOrder: "Sort direction: 'asc' or 'desc'."
   },
   LIST_PKI_SUBSCRIBERS: {
     projectId: "The ID of the project to list PKI subscribers for."
@@ -2603,7 +2602,17 @@ export const CERTIFICATES = {
     deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
     deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
+  GET_REQUEST: {
+    applicationId:
+      "The ID of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.",
+    applicationName:
+      "The name of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.",
+    profileName:
+      "The name of the certificate profile the request was made with. Null when the request used no profile, or the profile has since been deleted."
+  },
   SEARCH: {
+    applicationIds:
+      "Limit the search to certificates in these applications (up to 100). Get an application's ID from Get application by name, or find it with List applications. If the caller can read certificates in every listed application, those application roles authorize the search and no project-level conditions apply. Otherwise the search needs project-level permission to read certificates, and that permission's conditions limit the results. Leave it out to search the whole project, which always needs project-level permission to read certificates.",
     search: "Search by common name, SAN, serial number, or certificate ID.",
     createdAtFrom: "Filter certificates created on or after this date.",
     createdAtTo: "Filter certificates created on or before this date.",

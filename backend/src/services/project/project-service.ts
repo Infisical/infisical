@@ -8,6 +8,7 @@ import {
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
+  ResourceType,
   TableName,
   TProjectEnvironments,
   TProjects
@@ -17,6 +18,8 @@ import {
   ApplicationPermissionSub,
   TApplicationPermissionService
 } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -69,7 +72,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, toIdSet } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -89,6 +92,7 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipGroupDALFactory } from "../membership-group/membership-group-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { validateMicrosoftTeamsChannelsSchema } from "../microsoft-teams/microsoft-teams-fns";
 import { TMicrosoftTeamsIntegrationDALFactory } from "../microsoft-teams/microsoft-teams-integration-dal";
@@ -167,6 +171,7 @@ type TProjectServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "find" | "create">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "create" | "findOne" | "insertMany">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "insertMany">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   projectSlackConfigDAL: Pick<
     TProjectSlackConfigDALFactory,
     "findOne" | "transaction" | "updateById" | "create" | "delete"
@@ -275,6 +280,7 @@ export const projectServiceFactory = ({
   membershipUserDAL,
   membershipGroupDAL,
   membershipRoleDAL,
+  membershipDAL,
   roleDAL,
   groupDAL,
   projectAccessRequestDAL,
@@ -1454,6 +1460,59 @@ export const projectServiceFactory = ({
     return cas.map((ca) => expandInternalCa(ca));
   };
 
+  const $canReadCertificatesInApplication = async ({
+    actor,
+    projectId,
+    applicationId
+  }: {
+    actor: TActorContext;
+    projectId: string;
+    applicationId: string;
+  }) => {
+    const permission = await applicationPermissionService.getApplicationPermission({ actor, projectId, applicationId });
+    return permission.can({
+      action: ApplicationCertificatePermissionActions.Read,
+      subject: ApplicationPermissionSub.Certificates
+    });
+  };
+
+  // Membership is only a cheap pre-filter, so a caller listing applications it doesn't belong to costs one query
+  // instead of one per ID; each application's role still decides whether it grants certificate Read.
+  const $canReadCertificatesInEveryApplication = async ({
+    actor,
+    projectId,
+    applicationIds
+  }: {
+    actor: TActorContext;
+    projectId: string;
+    applicationIds: string[];
+  }) => {
+    const { type: actorType, id: actorId } = actor.principal;
+    if (actorType !== ActorType.USER && actorType !== ActorType.IDENTITY) return false;
+
+    const memberships = await membershipDAL.findResourceMembershipsForActor({
+      projectId,
+      resourceType: ResourceType.CertificateApplication,
+      actorType,
+      actorId
+    });
+    const memberOf = new Set(memberships.filter((m) => m.isActive).map((m) => m.scopeResourceId));
+    // Stored IDs are lowercase, and the route accepts any case of a UUID.
+    const uniqueIds = [...toIdSet(applicationIds)];
+    if (!uniqueIds.every((id) => memberOf.has(id))) return false;
+
+    for (const applicationId of uniqueIds) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- Up to 100 IDs; one at a time keeps their permission checks from all running at once.
+        if (!(await $canReadCertificatesInApplication({ actor, projectId, applicationId }))) return false;
+      } catch (err) {
+        if (err instanceof PermissionDeniedError) return false;
+        throw err;
+      }
+    }
+    return true;
+  };
+
   /**
    * Return list of certificates for project
    */
@@ -1489,29 +1548,25 @@ export const projectServiceFactory = ({
     statusAt,
     excludeFriendlyNameFromSearch,
     filter,
-    actor
-  }: TListProjectCertsDTO) => {
+    actor,
+    authorizeByApplicationRoles = false
+  }: TListProjectCertsDTO & {
+    // Only the Certificate Manager search bounds applicationIds, so only it lets the caller's roles in the
+    // applications listed there authorize the read. A single applicationId is checked either way.
+    authorizeByApplicationRoles?: boolean;
+  }) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const scopedToSingleApplication = Boolean(applicationId);
     let allowedByResource = false;
     let projectPermission: ProjectPermission | null = null;
 
-    if (scopedToSingleApplication) {
-      const resourcePermission = await applicationPermissionService.getApplicationPermission({
-        actor,
-        projectId,
-        applicationId: applicationId!
-      });
-      if (
-        resourcePermission.can({
-          action: ApplicationCertificatePermissionActions.Read,
-          subject: ApplicationPermissionSub.Certificates
-        })
-      ) {
-        allowedByResource = true;
-      }
+    if (applicationId) {
+      allowedByResource = await $canReadCertificatesInApplication({ actor, projectId, applicationId });
+    }
+
+    if (!allowedByResource && authorizeByApplicationRoles && applicationIds && applicationIds.length > 0) {
+      allowedByResource = await $canReadCertificatesInEveryApplication({ actor, projectId, applicationIds });
     }
 
     if (!allowedByResource) {
@@ -1603,7 +1658,7 @@ export const projectServiceFactory = ({
   };
 
   const searchCertificatesWithCurrentStatus = async (
-    dto: Omit<TListProjectCertsDTO, "sortByCurrentStatus" | "statusAt">
+    dto: Omit<TListProjectCertsDTO, "sortByCurrentStatus" | "statusAt"> & { authorizeByApplicationRoles: boolean }
   ) => {
     const statusAt = new Date();
     const { certificates, totalCount } = await listProjectCertificates({

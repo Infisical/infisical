@@ -77,6 +77,7 @@ describe("CertificateRequestService", () => {
   const mockCertificateAuthorityDAL = { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() };
   const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
   const mockDigicertFns = { cancelPendingRequest: vi.fn() };
+  const mockPkiApplicationDAL = { findById: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,7 +85,7 @@ describe("CertificateRequestService", () => {
     service = certificateRequestServiceFactory({
       certificateRequestDAL: mockCertificateRequestDAL as TCertificateRequestDALFactory,
       certificateDAL: mockCertificateDAL,
-      pkiApplicationDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never,
+      pkiApplicationDAL: mockPkiApplicationDAL as never,
       certificateService: mockCertificateService,
       projectPermissionService: mockProjectPermissionService as never,
       applicationPermissionService: mockCertManagerDomain as never,
@@ -279,6 +280,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.ISSUED,
         certificate: mockCertificate,
         errorMessage: null,
+        profileName: null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -325,6 +327,9 @@ describe("CertificateRequestService", () => {
         basicConstraints: undefined,
         customExtensions: null,
         metadata: [],
+        applicationId: null,
+        applicationName: null,
+        profileName: null,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -350,6 +355,7 @@ describe("CertificateRequestService", () => {
           deletedAt: new Date("2026-10-20T14:38:27.000Z")
         },
         errorMessage: null,
+        profileName: null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -383,13 +389,19 @@ describe("CertificateRequestService", () => {
         projectId: "550e8400-e29b-41d4-a716-446655440003",
         status: CertificateRequestStatus.PENDING,
         certificate: null,
+        applicationId: "550e8400-e29b-41d4-a716-446655440300",
         errorMessage: null,
+        profileName: "web-servers",
         createdAt: new Date(),
         updatedAt: new Date()
       };
 
       (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithoutCert);
+      mockPkiApplicationDAL.findById.mockResolvedValue({
+        id: mockRequestWithoutCert.applicationId,
+        name: "payments-api"
+      });
 
       const { certificateRequest, projectId } = await service.getCertificateFromRequest(mockGetData);
 
@@ -412,6 +424,9 @@ describe("CertificateRequestService", () => {
         basicConstraints: undefined,
         customExtensions: null,
         metadata: [],
+        applicationId: mockRequestWithoutCert.applicationId,
+        applicationName: "payments-api",
+        profileName: "web-servers",
         createdAt: mockRequestWithoutCert.createdAt,
         updatedAt: mockRequestWithoutCert.updatedAt
       });
@@ -438,6 +453,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.ISSUED,
         certificate: mockCertificate,
         errorMessage: null,
+        profileName: null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -477,6 +493,9 @@ describe("CertificateRequestService", () => {
         basicConstraints: undefined,
         customExtensions: null,
         metadata: [],
+        applicationId: null,
+        applicationName: null,
+        profileName: null,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -507,6 +526,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.ISSUED,
         certificate: mockCertificate,
         errorMessage: null,
+        profileName: null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -550,6 +570,9 @@ describe("CertificateRequestService", () => {
         basicConstraints: undefined,
         customExtensions: null,
         metadata: [],
+        applicationId: null,
+        applicationName: null,
+        profileName: null,
         createdAt: mockRequestWithCert.createdAt,
         updatedAt: mockRequestWithCert.updatedAt
       });
@@ -571,6 +594,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.FAILED,
         certificate: null,
         errorMessage: "Certificate issuance failed",
+        profileName: null,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -599,6 +623,9 @@ describe("CertificateRequestService", () => {
         basicConstraints: undefined,
         customExtensions: null,
         metadata: [],
+        applicationId: null,
+        applicationName: null,
+        profileName: null,
         createdAt: mockFailedRequest.createdAt,
         updatedAt: mockFailedRequest.updatedAt
       });

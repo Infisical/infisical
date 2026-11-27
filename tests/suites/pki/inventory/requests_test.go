@@ -83,3 +83,29 @@ func TestCertificateRequests_List(t *testing.T) {
 		require.Empty(t, res.JSON200.CertificateRequests)
 	})
 }
+
+func TestCertificateRequests_Get(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should name the application and profile a request was made in", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		issued := pki.Request(t, g.Operator, g.App, g.Profile, pki.ServerCertificate(id.Short()+".app.test"))
+		require.NotNilf(t, issued.JSON200, "issuing returned %d: %s", issued.StatusCode(), apierr.Body(issued.Body))
+		app, err := tn.Admin.API.GetPkiApplicationWithResponse(t.Context(), g.App.ID)
+		require.NoError(t, err)
+		require.NotNilf(t, app.JSON200, "reading the application returned %d: %s", app.StatusCode(), apierr.Body(app.Body))
+
+		// Action
+		res := pki.WaitRequest(t, g.Operator, issued.JSON200.CertificateRequestId, []api.GetCertificateRequest200JSONResponseBodyStatus{api.GetCertificateRequest200JSONResponseBodyStatusIssued})
+
+		// Assert
+		require.Equal(t, new(g.App.ID.String()), res.JSON200.ApplicationId)
+		require.Equal(t, new(app.JSON200.Application.Name), res.JSON200.ApplicationName)
+		require.Equal(t, new(g.Profile.Slug), res.JSON200.ProfileName)
+	})
+}
