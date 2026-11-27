@@ -261,16 +261,21 @@ func SelectOrganization(tt *testing.T, tn *harness.Tenant, login *http.Response,
 
 // EnforceMFA turns on email MFA. With api.UpdateOrganizationJSONBodySsoMfaTrustSignal, an SSO login the IdP flagged as MFA
 // skips the challenge.
-func EnforceMFA(tt *testing.T, tn *harness.Tenant, trust api.UpdateOrganizationJSONBodySsoMfaTrust) {
+func EnforceMFA(tt *testing.T, tn *harness.Tenant, trust api.UpdateOrganizationSsoSettingsJSONBodySsoMfaTrust) {
 	tt.Helper()
 	methods := []api.UpdateOrganizationJSONBodyAllowedMfaMethods{api.UpdateOrganizationJSONBodyAllowedMfaMethodsEmail}
 	res, err := tn.Admin.API.UpdateOrganizationWithResponse(tt.Context(), tn.OrgID.String(), api.UpdateOrganizationJSONRequestBody{
 		EnforceMfa:        new(true),
 		AllowedMfaMethods: &methods,
-		SsoMfaTrust:       &trust,
 	})
 	require.NoError(tt, err)
 	require.Equalf(tt, http.StatusOK, res.StatusCode(), "enforcing MFA: %s", apierr.Body(res.Body))
+
+	trusted, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(tt.Context(), api.UpdateOrganizationSsoSettingsJSONRequestBody{
+		SsoMfaTrust: &trust,
+	})
+	require.NoError(tt, err)
+	require.Equalf(tt, http.StatusOK, trusted.StatusCode(), "setting SSO MFA trust: %s", apierr.Body(trusted.Body))
 }
 
 // CompleteSignup finishes SSO signup from the login that sent the browser to the SSO
@@ -296,7 +301,7 @@ func CompleteSignup(tt *testing.T, tn *harness.Tenant, login *http.Response, cod
 // password-based admin can keep managing it.
 func Enforce(tt *testing.T, tn *harness.Tenant) {
 	tt.Helper()
-	res, err := tn.Admin.API.UpdateOrganizationWithResponse(tt.Context(), tn.OrgID.String(), api.UpdateOrganizationJSONRequestBody{
+	res, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(tt.Context(), api.UpdateOrganizationSsoSettingsJSONRequestBody{
 		AuthEnforced:         new(true),
 		BypassOrgAuthEnabled: new(true),
 	})

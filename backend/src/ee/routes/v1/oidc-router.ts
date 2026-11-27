@@ -12,10 +12,17 @@ import RedisStore from "connect-redis";
 import { z } from "zod";
 
 import { OidcConfigsSchema } from "@app/db/schemas";
-import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { sanitizeOidcConfigAuditUrls } from "@app/ee/services/oidc/oidc-config-fns";
+import {
+  OIDC_CONFIG_AUDIT_FIELDS,
+  OIDCConfigurationType,
+  OIDCJWTSignatureAlgorithm
+} from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
@@ -225,9 +232,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
-        organizationId: z.string().trim().describe(OidcSSo.GET_CONFIG.organizationId)
-      }),
       response: {
         200: SanitizedOidcConfigSchema.pick({
           id: true,
@@ -253,7 +257,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const oidc = await server.services.oidc.getOidc({
-        organizationId: req.query.organizationId,
+        organizationId: req.permission.orgId,
         type: "external",
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -316,8 +320,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
             .optional()
             .describe(OidcSSo.UPDATE_CONFIG.jwtSignatureAlgorithm)
         })
-        .partial()
-        .merge(z.object({ organizationId: z.string().describe(OidcSSo.UPDATE_CONFIG.organizationId) })),
+        .partial(),
       response: {
         200: SanitizedOidcConfigSchema.pick({
           id: true,
@@ -332,18 +335,36 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           allowedEmailDomains: true,
           isActive: true,
           manageGroupMemberships: true,
+          jwtSignatureAlgorithm: true,
           mfaClaimName: true,
           mfaAmrValues: true
         })
       }
     },
     handler: async (req) => {
+      const organizationId = req.permission.orgId;
       const oidc = await server.services.oidc.updateOidcCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.body
+        ...req.body,
+        organizationId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: organizationId,
+        event: {
+          type: EventType.UPDATE_OIDC_CONFIG,
+          metadata: {
+            oidcConfigId: oidc.id,
+            organizationName: oidc.organizationName,
+            ...sanitizeOidcConfigAuditUrls(pick(req.body, [...OIDC_CONFIG_AUDIT_FIELDS])),
+            clientCredentialsUpdated: req.body.clientId !== undefined || req.body.clientSecret !== undefined,
+            ssoEnforcementDisabled: oidc.ssoEnforcementDisabled
+          }
+        }
       });
 
       void server.services.telemetry
@@ -411,7 +432,6 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           clientId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientId),
           clientSecret: z.string().trim().describe(OidcSSo.CREATE_CONFIG.clientSecret),
           isActive: z.boolean().describe(OidcSSo.CREATE_CONFIG.isActive),
-          organizationId: z.string().trim().describe(OidcSSo.CREATE_CONFIG.organizationId),
           mfaClaimName: OidcMfaClaimNameSchema.describe(OidcSSo.CREATE_CONFIG.mfaClaimName),
           mfaAmrValues: OidcMfaAmrValuesSchema.describe(OidcSSo.CREATE_CONFIG.mfaAmrValues),
           manageGroupMemberships: z
@@ -479,12 +499,27 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
 
     handler: async (req) => {
+      const organizationId = req.permission.orgId;
       const oidc = await server.services.oidc.createOidcCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.body
+        ...req.body,
+        organizationId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: organizationId,
+        event: {
+          type: EventType.CREATE_OIDC_CONFIG,
+          metadata: {
+            oidcConfigId: oidc.id,
+            organizationName: oidc.organizationName,
+            ...sanitizeOidcConfigAuditUrls(pick(oidc, [...OIDC_CONFIG_AUDIT_FIELDS]))
+          }
+        }
       });
 
       void server.services.telemetry
@@ -499,6 +534,53 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
+
+      return oidc;
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/config",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      operationId: "deleteOidcConfig",
+      tags: [ApiDocsTags.OidcSso],
+      description: "Delete OIDC config",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      response: {
+        200: SanitizedOidcConfigSchema
+      }
+    },
+    handler: async (req) => {
+      const organizationId = req.permission.orgId;
+      const oidc = await server.services.oidc.deleteOidcCfg({
+        organizationId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: organizationId,
+        event: {
+          type: EventType.DELETE_OIDC_CONFIG,
+          metadata: {
+            oidcConfigId: oidc.id,
+            organizationName: oidc.organizationName
+          }
+        }
+      });
 
       return oidc;
     }

@@ -61,6 +61,7 @@ import {
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
+  assertOrgHasVerifiedEmailDomain,
   findOrgIdByVerifiedDomain,
   isIdpAuthoritativeForDomain,
   verifyEmailDomainOwnership
@@ -381,6 +382,8 @@ export const samlConfigServiceFactory = ({
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
     }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({

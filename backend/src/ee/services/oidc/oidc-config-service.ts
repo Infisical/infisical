@@ -25,7 +25,7 @@ import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -44,6 +44,7 @@ import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
+  normalizeAllowedEmailDomains,
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
@@ -78,6 +79,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
+  assertOrgHasVerifiedEmailDomain,
   findOrgIdByVerifiedDomain,
   isIdpAuthoritativeForDomain,
   verifyEmailDomainOwnership
@@ -87,6 +89,7 @@ import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
   OIDCConfigurationType,
   TCreateOidcCfgDTO,
+  TDeleteOidcCfgDTO,
   TGetOidcCfgDTO,
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
@@ -127,7 +130,7 @@ type TOidcConfigServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create" | "deleteById" | "transaction">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId" | "findGroupOrgIds">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -689,6 +692,13 @@ export const oidcConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
 
+    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
+    if (!existingCfg) {
+      throw new NotFoundError({
+        message: `OIDC configuration for organization with ID '${org.id}' not found`
+      });
+    }
+
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
         message:
@@ -696,7 +706,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });
@@ -724,21 +734,32 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
-    const isMfaSignalOnlyUpdate = [
-      allowedEmailDomains,
-      configurationType,
-      discoveryURL,
-      issuer,
-      authorizationEndpoint,
-      tokenEndpoint,
-      userinfoEndpoint,
-      jwksUri,
-      isActive,
-      clientId,
-      clientSecret,
-      manageGroupMemberships,
-      jwtSignatureAlgorithm
-    ].every((value) => value === undefined);
+    const hasChanged = (next: unknown, current: unknown) => next !== undefined && next !== (current ?? null);
+    const normalizeDomains = (domains?: string | null) =>
+      normalizeAllowedEmailDomains(domains ?? "")
+        .split(", ")
+        .sort()
+        .join(", ");
+    const decrypt = (cipherTextBlob?: Buffer | null) =>
+      cipherTextBlob ? decryptor({ cipherTextBlob }).toString() : "";
+
+    // Any change to OIDC config should not lock users out, if auth/scim is enforced prior to it
+    const isConnectionChanged =
+      hasChanged(configurationType, existingCfg.configurationType) ||
+      hasChanged(discoveryURL, existingCfg.discoveryURL) ||
+      hasChanged(issuer, existingCfg.issuer) ||
+      hasChanged(authorizationEndpoint, existingCfg.authorizationEndpoint) ||
+      hasChanged(tokenEndpoint, existingCfg.tokenEndpoint) ||
+      hasChanged(userinfoEndpoint, existingCfg.userinfoEndpoint) ||
+      hasChanged(jwksUri, existingCfg.jwksUri) ||
+      hasChanged(jwtSignatureAlgorithm, existingCfg.jwtSignatureAlgorithm) ||
+      (allowedEmailDomains !== undefined &&
+        normalizeDomains(allowedEmailDomains) !== normalizeDomains(existingCfg.allowedEmailDomains)) ||
+      (clientId !== undefined && clientId !== decrypt(existingCfg.encryptedOidcClientId)) ||
+      (clientSecret !== undefined && clientSecret !== decrypt(existingCfg.encryptedOidcClientSecret)) ||
+      hasChanged(isActive, existingCfg.isActive);
+
+    const shouldDisableEnforcement = isConnectionChanged && Boolean(org.authEnforced || org.scimEnabled);
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
@@ -750,7 +771,7 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      ...(!isMfaSignalOnlyUpdate && { lastUsed: null }),
+      ...(isConnectionChanged && { lastUsed: null }),
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -765,12 +786,15 @@ export const oidcConfigServiceFactory = ({
       updateQuery.encryptedOidcClientSecret = encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob;
     }
 
-    const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-    if (!isMfaSignalOnlyUpdate) {
-      await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
-    }
+    const ssoConfig = await oidcConfigDAL.transaction(async (tx) => {
+      const [cfg] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery, tx);
+      if (shouldDisableEnforcement) {
+        await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false }, tx);
+      }
+      return cfg;
+    });
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
-    return ssoConfig;
+    return { ...ssoConfig, organizationName: org.name, ssoEnforcementDisabled: shouldDisableEnforcement };
   };
 
   const createOidcCfg = async ({
@@ -819,6 +843,15 @@ export const oidcConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
+    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
+    if (existingCfg) {
+      throw new ConflictError({
+        message: `An OIDC configuration already exists for organization with ID '${org.id}'.`
+      });
+    }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId: org.id, emailDomainDAL });
+
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
         message:
@@ -865,7 +898,37 @@ export const oidcConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
-    return oidcCfg;
+    return { ...oidcCfg, organizationName: org.name };
+  };
+
+  const deleteOidcCfg = async ({ organizationId, actor, actorId, actorOrgId, actorAuthMethod }: TDeleteOidcCfgDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actorId,
+      actor,
+      orgId: organizationId,
+      actorOrgId,
+      actorAuthMethod,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Delete, OrgPermissionSubjects.Sso);
+
+    const oidcCfg = await oidcConfigDAL.findOne({ orgId: organizationId });
+    if (!oidcCfg) {
+      throw new NotFoundError({
+        message: `OIDC configuration for organization with ID '${organizationId}' not found`
+      });
+    }
+
+    const deletedCfg = await oidcConfigDAL.transaction(async (tx) => {
+      const deleted = await oidcConfigDAL.deleteById(oidcCfg.id, tx);
+      // SSO enforcement and SCIM both require an active SSO config; leaving them on would lock users out
+      const org = await orgDAL.updateById(organizationId, { authEnforced: false, scimEnabled: false }, tx);
+      return { ...deleted, organizationName: org.name };
+    });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Delete, orgId: organizationId });
+
+    return deletedCfg;
   };
 
   const getOrgAuthStrategy = async (
@@ -1064,5 +1127,13 @@ export const oidcConfigServiceFactory = ({
     return Boolean(oidcConfig?.manageGroupMemberships);
   };
 
-  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg, isOidcManageGroupMembershipsEnabled };
+  return {
+    oidcLogin,
+    getOrgAuthStrategy,
+    getOidc,
+    updateOidcCfg,
+    createOidcCfg,
+    deleteOidcCfg,
+    isOidcManageGroupMembershipsEnabled
+  };
 };

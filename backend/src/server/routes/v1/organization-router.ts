@@ -24,7 +24,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode, MfaMethod, SsoMfaTrust } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -524,8 +524,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       body: z.object({
         name: GenericResourceNameSchema.optional(),
         slug: slugSchema({ max: 64 }).optional(),
-        authEnforced: z.boolean().optional(),
-        googleSsoAuthEnforced: z.boolean().optional(),
         scimEnabled: z.boolean().optional(),
         defaultMembershipRoleSlug: slugSchema({ max: 64, field: "Default Membership Role" }).optional(),
         enforceMfa: z.boolean().optional(),
@@ -537,9 +535,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .refine((methods) => new Set(methods).size === methods.length, "MFA methods must not repeat")
           .optional()
           .describe("Methods members may use to satisfy MFA while it is enforced"),
-        ssoMfaTrust: z.nativeEnum(SsoMfaTrust).optional(),
         allowSecretSharingOutsideOrganization: z.boolean().optional(),
-        bypassOrgAuthEnabled: z.boolean().optional(),
         userTokenExpiration: z
           .string()
           .refine((val) => new RE2(/^\d+[mhdw]$/).test(val), "Must be a number followed by m, h, d, or w")

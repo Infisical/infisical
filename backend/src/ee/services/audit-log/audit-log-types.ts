@@ -1,4 +1,4 @@
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType, TOidcConfigs } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
@@ -6,6 +6,7 @@ import {
   MicrosoftAutoenrollmentIssuanceResult,
   MicrosoftAutoenrollmentKeytabSource
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
+import { OIDC_CONFIG_AUDIT_FIELDS } from "@app/ee/services/oidc/oidc-config-types";
 import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -748,6 +749,10 @@ export enum EventType {
 
   UPDATE_ORG = "update-org",
   UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
+  UPDATE_ORG_SSO_SETTINGS = "update-org-sso-settings",
+  CREATE_OIDC_CONFIG = "create-oidc-config",
+  UPDATE_OIDC_CONFIG = "update-oidc-config",
+  DELETE_OIDC_CONFIG = "delete-oidc-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -6197,6 +6202,44 @@ interface SecretScanningConfigReadEvent {
   metadata?: Record<string, never>; // not needed, based off projectId
 }
 
+interface OrgSsoSettingsUpdateEvent {
+  type: EventType.UPDATE_ORG_SSO_SETTINGS;
+  metadata: {
+    authEnforced?: boolean;
+    googleSsoAuthEnforced?: boolean;
+    bypassOrgAuthEnabled?: boolean;
+    ssoMfaTrust?: string;
+  };
+}
+
+type TOidcConfigAuditFields = Pick<TOidcConfigs, (typeof OIDC_CONFIG_AUDIT_FIELDS)[number]>;
+
+interface CreateOidcConfigEvent {
+  type: EventType.CREATE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    organizationName: string;
+  } & TOidcConfigAuditFields;
+}
+
+interface UpdateOidcConfigEvent {
+  type: EventType.UPDATE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    organizationName: string;
+    clientCredentialsUpdated: boolean;
+    ssoEnforcementDisabled: boolean;
+  } & Partial<TOidcConfigAuditFields>;
+}
+
+interface DeleteOidcConfigEvent {
+  type: EventType.DELETE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    organizationName: string;
+  };
+}
+
 interface OrgAiConfigUpdateEvent {
   type: EventType.UPDATE_ORG_AI_CONFIG;
   metadata: {
@@ -9531,6 +9574,10 @@ export type Event =
   | SecretScanningConfigReadEvent
   | OrgUpdateEvent
   | OrgAiConfigUpdateEvent
+  | OrgSsoSettingsUpdateEvent
+  | CreateOidcConfigEvent
+  | UpdateOidcConfigEvent
+  | DeleteOidcConfigEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent

@@ -303,6 +303,10 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.UPDATE_ORG]: "Update Organization",
   [EventType.UPDATE_ORG_AI_CONFIG]: "Update Organization AI Features",
+  [EventType.UPDATE_ORG_SSO_SETTINGS]: "Update Organization SSO Settings",
+  [EventType.CREATE_OIDC_CONFIG]: "Create OIDC Config",
+  [EventType.UPDATE_OIDC_CONFIG]: "Update OIDC Config",
+  [EventType.DELETE_OIDC_CONFIG]: "Delete OIDC Config",
   [EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING]: "Enable Org-Wide Secret Value Tracking",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",

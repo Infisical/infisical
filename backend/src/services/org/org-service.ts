@@ -10,6 +10,7 @@ import {
   ProjectType,
   TableName,
   TOidcConfigs,
+  TOrganizations,
   TSamlConfigs
 } from "@app/db/schemas";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
@@ -54,6 +55,7 @@ import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { OrgServiceActor } from "@app/lib/types";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getDefaultOrgMembershipRoleForUpdateOrg } from "@app/services/org/org-role-fns";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -101,9 +103,11 @@ import {
   TGetOrgMembershipDTO,
   TListProjectMembershipsByOrgMembershipIdDTO,
   TOrgWithSubOrgs,
+  TOrgSsoSettings,
   TResendOrgMemberInvitationDTO,
   TUpdateOrgDTO,
   TUpdateOrgMembershipDTO,
+  TUpdateOrgSsoSettingsDTO,
   TUpgradePrivilegeSystemDTO,
   TVerifyUserToOrgDTO
 } from "./org-types";
@@ -499,15 +503,11 @@ export const orgServiceFactory = ({
     data: {
       name,
       slug,
-      authEnforced,
-      googleSsoAuthEnforced,
       scimEnabled,
       defaultMembershipRoleSlug,
       enforceMfa,
       allowedMfaMethods,
-      ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
-      bypassOrgAuthEnabled,
       userTokenExpiration,
       secretsProductEnabled,
       pkiProductEnabled,
@@ -591,25 +591,6 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (ssoMfaTrust !== undefined) {
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
-    }
-
-    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.has(PlanFeature.EnforceMfa)) {
-      throw new BadRequestError({
-        message:
-          "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
-      });
-    }
-
-    if (authEnforced !== undefined) {
-      if (!plan?.has(PlanFeature.SamlSso) && !plan.has(PlanFeature.OidcSso))
-        throw new BadRequestError({
-          message: "Failed to enforce/un-enforce SSO due to plan restriction. Upgrade plan to enforce/un-enforce SSO."
-        });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
-    }
-
     if (scimEnabled !== undefined) {
       if (!plan?.has(PlanFeature.Scim))
         throw new BadRequestError({
@@ -624,100 +605,10 @@ export const orgServiceFactory = ({
       }
     }
 
-    if (googleSsoAuthEnforced !== undefined) {
-      if (!plan.has(PlanFeature.EnforceGoogleSso)) {
-        throw new BadRequestError({
-          message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
-        });
-      }
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
-    }
-
-    if (authEnforced && googleSsoAuthEnforced) {
-      throw new BadRequestError({
-        message: "SAML/OIDC auth enforcement and Google SSO auth enforcement cannot be enabled at the same time."
-      });
-    }
-
-    let samlCfg: TSamlConfigs | undefined;
-    let oidcCfg: TOidcConfigs | undefined;
-    if (authEnforced || googleSsoAuthEnforced) {
-      samlCfg = await samlConfigDAL.findOne({
-        orgId,
-        isActive: true
-      });
-      oidcCfg = await oidcConfigDAL.findOne({
-        orgId,
-        isActive: true
-      });
-    }
-
-    if (authEnforced) {
-      if (!samlCfg && !oidcCfg)
-        throw new NotFoundError({
-          message: `SAML or OIDC configuration for organization with ID '${orgId}' not found`
-        });
-
-      if (samlCfg && !samlCfg.lastUsed) {
-        throw new BadRequestError({
-          message:
-            "To apply the new SAML auth enforcement, please log in via SAML at least once. This step is required to enforce SAML-based authentication."
-        });
-      }
-
-      if (oidcCfg && !oidcCfg.lastUsed) {
-        throw new BadRequestError({
-          message:
-            "To apply the new OIDC auth enforcement, please log in via OIDC at least once. This step is required to enforce OIDC-based authentication."
-        });
-      }
-    }
-
     if (slug) {
       const existingOrg = await orgDAL.findOne({ slug, rootOrgId: null });
       if (existingOrg && existingOrg?.id !== orgId)
         throw new BadRequestError({ message: `Organization with slug ${slug} already exists` });
-    }
-
-    if (googleSsoAuthEnforced) {
-      if (googleSsoAuthEnforced && currentOrg.authEnforced) {
-        throw new BadRequestError({
-          message: "Google SSO auth enforcement cannot be enabled when SAML/OIDC auth enforcement is enabled."
-        });
-      }
-
-      if (samlCfg) {
-        throw new BadRequestError({
-          message:
-            "Cannot enable Google OAuth enforcement while SAML SSO is configured. Disable SAML SSO to enforce Google OAuth."
-        });
-      }
-
-      if (oidcCfg) {
-        throw new BadRequestError({
-          message:
-            "Cannot enable Google OAuth enforcement while OIDC SSO is configured. Disable OIDC SSO to enforce Google OAuth."
-        });
-      }
-
-      const ldapCfg = await ldapConfigDAL.findOne({
-        orgId,
-        isActive: true
-      });
-
-      if (ldapCfg) {
-        throw new BadRequestError({
-          message:
-            "Cannot enable Google OAuth enforcement while LDAP SSO is configured. Disable LDAP SSO to enforce Google OAuth."
-        });
-      }
-
-      if (!currentOrg.googleSsoAuthLastUsed) {
-        throw new BadRequestError({
-          message:
-            "Google SSO auth enforcement cannot be enabled because Google SSO has not been used yet. Please log in via Google SSO at least once before enforcing it for your organization."
-        });
-      }
     }
 
     let defaultMembershipRole: string | undefined;
@@ -733,15 +624,11 @@ export const orgServiceFactory = ({
     const org = await orgDAL.updateById(orgId, {
       name,
       slug: slug ? slugify(slug) : undefined,
-      authEnforced,
-      googleSsoAuthEnforced,
       scimEnabled,
       defaultMembershipRole,
       enforceMfa,
       allowedMfaMethods,
-      ssoMfaTrust,
       allowSecretSharingOutsideOrganization,
-      bypassOrgAuthEnabled,
       userTokenExpiration,
       secretsProductEnabled,
       pkiProductEnabled,
@@ -763,6 +650,151 @@ export const orgServiceFactory = ({
     }
 
     return org;
+  };
+
+  const $toSsoSettings = (
+    org: Pick<TOrganizations, "id" | "authEnforced" | "googleSsoAuthEnforced" | "bypassOrgAuthEnabled" | "ssoMfaTrust">
+  ): TOrgSsoSettings => ({
+    orgId: org.id,
+    authEnforced: Boolean(org.authEnforced),
+    googleSsoAuthEnforced: org.googleSsoAuthEnforced,
+    bypassOrgAuthEnabled: org.bypassOrgAuthEnabled,
+    ssoMfaTrust: org.ssoMfaTrust as SsoMfaTrust
+  });
+
+  const getOrgSsoSettings = async (actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
+
+    const org = await orgDAL.findById(actor.orgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${actor.orgId}' not found` });
+
+    return $toSsoSettings(org);
+  };
+
+  const updateOrgSsoSettings = async ({
+    actor,
+    data: { authEnforced, googleSsoAuthEnforced, bypassOrgAuthEnabled, ssoMfaTrust }
+  }: TUpdateOrgSsoSettingsDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+
+    const { orgId } = actor;
+    const currentOrg = await orgDAL.findById(orgId);
+    if (!currentOrg) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+
+    // Plan checks apply only to turning a setting on, so a downgraded org can still turn its settings off.
+    const plan = await licenseService.getPlan(orgId);
+
+    if (ssoMfaTrust !== undefined && ssoMfaTrust !== SsoMfaTrust.None && !plan.has(PlanFeature.EnforceMfa)) {
+      throw new BadRequestError({
+        message:
+          "Failed to update MFA for SSO logins due to plan restriction. Upgrade plan to trust identity provider MFA."
+      });
+    }
+
+    if (authEnforced && !plan.has(PlanFeature.SamlSso) && !plan.has(PlanFeature.OidcSso)) {
+      throw new BadRequestError({
+        message: "Failed to enforce SSO due to plan restriction. Upgrade plan to enforce SSO."
+      });
+    }
+
+    if (googleSsoAuthEnforced && !plan.has(PlanFeature.EnforceGoogleSso)) {
+      throw new BadRequestError({
+        message: "Failed to enforce Google SSO due to plan restriction. Upgrade plan to enforce Google SSO."
+      });
+    }
+
+    const willEnforceSso = authEnforced ?? Boolean(currentOrg.authEnforced);
+    const willEnforceGoogleSso = googleSsoAuthEnforced ?? currentOrg.googleSsoAuthEnforced;
+    if (willEnforceSso && willEnforceGoogleSso && (authEnforced || googleSsoAuthEnforced)) {
+      throw new BadRequestError({
+        message: "SAML/OIDC auth enforcement and Google SSO auth enforcement cannot be enabled at the same time."
+      });
+    }
+
+    let samlCfg: TSamlConfigs | undefined;
+    let oidcCfg: TOidcConfigs | undefined;
+    if (authEnforced || googleSsoAuthEnforced) {
+      samlCfg = await samlConfigDAL.findOne({ orgId, isActive: true });
+      oidcCfg = await oidcConfigDAL.findOne({ orgId, isActive: true });
+    }
+
+    if (authEnforced) {
+      if (!samlCfg && !oidcCfg) {
+        throw new BadRequestError({
+          message: "Cannot enforce SSO because the organization has no active SAML or OIDC configuration."
+        });
+      }
+
+      if (samlCfg && !samlCfg.lastUsed) {
+        throw new BadRequestError({
+          message:
+            "To apply the new SAML auth enforcement, please log in via SAML at least once. This step is required to enforce SAML-based authentication."
+        });
+      }
+
+      if (oidcCfg && !oidcCfg.lastUsed) {
+        throw new BadRequestError({
+          message:
+            "To apply the new OIDC auth enforcement, please log in via OIDC at least once. This step is required to enforce OIDC-based authentication."
+        });
+      }
+    }
+
+    if (googleSsoAuthEnforced) {
+      if (samlCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while SAML SSO is configured. Disable SAML SSO to enforce Google OAuth."
+        });
+      }
+
+      if (oidcCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while OIDC SSO is configured. Disable OIDC SSO to enforce Google OAuth."
+        });
+      }
+
+      const ldapCfg = await ldapConfigDAL.findOne({ orgId, isActive: true });
+      if (ldapCfg) {
+        throw new BadRequestError({
+          message:
+            "Cannot enable Google OAuth enforcement while LDAP SSO is configured. Disable LDAP SSO to enforce Google OAuth."
+        });
+      }
+
+      if (!currentOrg.googleSsoAuthLastUsed) {
+        throw new BadRequestError({
+          message:
+            "Google SSO auth enforcement cannot be enabled because Google SSO has not been used yet. Please log in via Google SSO at least once before enforcing it for your organization."
+        });
+      }
+    }
+
+    const org = await orgDAL.updateById(orgId, {
+      authEnforced,
+      googleSsoAuthEnforced,
+      bypassOrgAuthEnabled,
+      ssoMfaTrust
+    });
+
+    return $toSsoSettings(org);
   };
   /*
    * Create organization
@@ -1739,6 +1771,8 @@ export const orgServiceFactory = ({
 
   return {
     findOrganizationById,
+    getOrgSsoSettings,
+    updateOrgSsoSettings,
     findAllOrgMembers,
     listOrgUserAccess,
     findAllOrganizationOfUser,

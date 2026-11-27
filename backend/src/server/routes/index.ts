@@ -3169,6 +3169,7 @@ export const registerRoutes = async (
 
   const emailDomainService = emailDomainServiceFactory({
     emailDomainDAL,
+    orgDAL,
     permissionService,
     licenseService
   });

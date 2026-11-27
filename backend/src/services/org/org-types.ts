@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TOrgPermission } from "@app/lib/types";
+import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
 import { ActorAuthMethod, ActorType, MfaMethod, SsoMfaTrust } from "../auth/auth-type";
 import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
@@ -73,15 +73,11 @@ export type TUpdateOrgDTO = {
   data: Partial<{
     name: string;
     slug: string;
-    authEnforced: boolean;
-    googleSsoAuthEnforced: boolean;
     scimEnabled: boolean;
     defaultMembershipRoleSlug: string;
     enforceMfa: boolean;
     allowedMfaMethods: MfaMethod[];
-    ssoMfaTrust: SsoMfaTrust;
     allowSecretSharingOutsideOrganization: boolean;
-    bypassOrgAuthEnabled: boolean;
     userTokenExpiration: string;
     secretsProductEnabled: boolean;
     pkiProductEnabled: boolean;
@@ -96,6 +92,19 @@ export type TUpdateOrgDTO = {
     secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
 } & TOrgPermission;
+
+export type TOrgSsoSettings = {
+  orgId: string;
+  authEnforced: boolean;
+  googleSsoAuthEnforced: boolean;
+  bypassOrgAuthEnabled: boolean;
+  ssoMfaTrust: SsoMfaTrust;
+};
+
+export type TUpdateOrgSsoSettingsDTO = {
+  actor: OrgServiceActor;
+  data: Partial<Omit<TOrgSsoSettings, "orgId">>;
+};
 
 export type TUpgradePrivilegeSystemDTO = Omit<TOrgPermission, "actor">;
 

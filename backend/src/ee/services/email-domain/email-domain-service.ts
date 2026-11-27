@@ -7,13 +7,16 @@ import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isValidEmailDomain } from "@app/lib/validator";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
+import { getEmailDomainVerificationRecordValue, toEmailDomainResponse } from "./email-domain-fns";
 import {
   EmailDomainStatus,
+  EmailDomainVerificationError,
   TCreateEmailDomainDTO,
   TDeleteEmailDomainDTO,
   TListEmailDomainsDTO,
@@ -25,6 +28,7 @@ type TEmailDomainServiceFactoryDep = {
     TEmailDomainDALFactory,
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
 };
@@ -33,10 +37,10 @@ export type TEmailDomainServiceFactory = ReturnType<typeof emailDomainServiceFac
 
 const VERIFICATION_CODE_EXPIRY_DAYS = 7;
 const DNS_RECORD_PREFIX = "_infisical-verification";
-const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
 export const emailDomainServiceFactory = ({
   emailDomainDAL,
+  orgDAL,
   permissionService,
   licenseService
 }: TEmailDomainServiceFactoryDep) => {
@@ -119,7 +123,7 @@ export const emailDomainServiceFactory = ({
       throw new BadRequestError({ message: emailDomain.error });
     }
 
-    return emailDomain.data;
+    return toEmailDomainResponse(emailDomain.data);
   };
 
   const verifyEmailDomain = async ({
@@ -148,18 +152,28 @@ export const emailDomainServiceFactory = ({
       plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.PlanRestricted,
         message: "Failed to verify email domain due to plan restriction. Upgrade plan to use email domain verification."
       });
     }
 
-    const emailDomainRecord = await emailDomainDAL.findOne({
-      id: emailDomainId,
-      orgId,
-      status: EmailDomainStatus.Pending
-    });
+    const emailDomainRecord = await emailDomainDAL.findOne({ id: emailDomainId, orgId });
     if (!emailDomainRecord) {
       throw new NotFoundError({
         message: "Email domain not found."
+      });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Verified) {
+      throw new ConflictError({
+        message: `Email domain '${emailDomainRecord.domain}' is already verified.`
+      });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Expired) {
+      throw new BadRequestError({
+        name: EmailDomainVerificationError.VerificationExpired,
+        message: "Verification code has expired. Please create a new domain verification request."
       });
     }
 
@@ -167,6 +181,7 @@ export const emailDomainServiceFactory = ({
     if (new Date(emailDomainRecord.codeExpiresAt) < new Date()) {
       await emailDomainDAL.updateById(emailDomainId, { status: EmailDomainStatus.Expired });
       throw new BadRequestError({
+        name: EmailDomainVerificationError.VerificationExpired,
         message: "Verification code has expired. Please create a new domain verification request."
       });
     }
@@ -178,17 +193,19 @@ export const emailDomainServiceFactory = ({
     } catch (err) {
       logger.error(err, "Failed to resolve DNS records for the domain");
       throw new BadRequestError({
+        name: EmailDomainVerificationError.DnsLookupFailed,
         message:
           "Failed to resolve DNS records for the domain. Please verify the DNS TXT record exists and try again. DNS changes may take time to propagate."
       });
     }
 
     const flatRecords = dnsRecords.map((record) => record.join(""));
-    const expectedValue = `${DNS_TXT_VALUE_PREFIX}=${emailDomainRecord.verificationCode}`;
+    const expectedValue = getEmailDomainVerificationRecordValue(emailDomainRecord.verificationCode);
     const isVerified = flatRecords.some((record) => record === expectedValue);
 
     if (!isVerified) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.DnsRecordMismatch,
         message: `DNS TXT record not found or value does not match. Expected a TXT record at ${emailDomainRecord.verificationRecordName} with value: ${expectedValue}`
       });
     }
@@ -217,10 +234,13 @@ export const emailDomainServiceFactory = ({
     });
 
     if (updatedEmailDomain.error) {
-      throw new BadRequestError({ message: updatedEmailDomain.error });
+      throw new BadRequestError({
+        name: EmailDomainVerificationError.AlreadyVerified,
+        message: updatedEmailDomain.error
+      });
     }
 
-    return { emailDomain: updatedEmailDomain.data };
+    return { emailDomain: toEmailDomainResponse(updatedEmailDomain.data) };
   };
 
   const listEmailDomains = async ({ actor, actorId, actorAuthMethod, actorOrgId, orgId }: TListEmailDomainsDTO) => {
@@ -238,7 +258,7 @@ export const emailDomainServiceFactory = ({
     );
 
     const emailDomains = await emailDomainDAL.find({ orgId });
-    return emailDomains;
+    return emailDomains.map(toEmailDomainResponse);
   };
 
   const deleteEmailDomain = async ({
@@ -269,8 +289,21 @@ export const emailDomainServiceFactory = ({
       });
     }
 
+    if (emailDomainRecord.status === EmailDomainStatus.Verified) {
+      const org = await orgDAL.findById(orgId);
+      if (org?.authEnforced) {
+        const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+        // With SSO enforced, members can only sign in with an email on a verified domain
+        if (verifiedDomains.length <= 1) {
+          throw new BadRequestError({
+            message: `Email domain '${emailDomainRecord.domain}' is the organization's only verified domain and SSO enforcement is on. Turn off SSO enforcement before deleting it.`
+          });
+        }
+      }
+    }
+
     await emailDomainDAL.deleteById(emailDomainId);
-    return emailDomainRecord;
+    return toEmailDomainResponse(emailDomainRecord);
   };
 
   return {

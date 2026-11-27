@@ -94,6 +94,8 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
+  EmailDomains = "Email Domains",
+  SsoSettings = "SSO Settings",
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
@@ -4517,11 +4519,7 @@ export const SecretScanningProjects = {
 };
 
 export const OidcSSo = {
-  GET_CONFIG: {
-    organizationId: "The ID of the organization to get the OIDC config for."
-  },
   UPDATE_CONFIG: {
-    organizationId: "The ID of the organization to update the OIDC config for.",
     allowedEmailDomains:
       "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com). Example: 'example.com, *.acme.com'",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
@@ -4543,7 +4541,6 @@ export const OidcSSo = {
     mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
-    organizationId: "The ID of the organization to create the OIDC config for.",
     allowedEmailDomains:
       "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com).",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
@@ -4563,6 +4560,32 @@ export const OidcSSo = {
     jwtSignatureAlgorithm: "The algorithm to use for JWT signature verification.",
     mfaClaimName: "The ID token claim that lists the authentication methods the user completed. Defaults to amr.",
     mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
+  }
+};
+
+export const ORG_SSO_SETTINGS = {
+  orgId: "The ID of the organization the settings belong to.",
+  authEnforced:
+    "Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.",
+  googleSsoAuthEnforced:
+    "Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.",
+  bypassOrgAuthEnabled:
+    "Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.",
+  ssoMfaTrust:
+    "Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced."
+};
+
+export const EMAIL_DOMAINS = {
+  CREATE: {
+    domain:
+      "The email domain to claim for the organization (e.g. company.com). The response includes the DNS TXT record to publish before verifying it."
+  },
+  VERIFY: {
+    emailDomainId:
+      "The ID of the email domain to verify. Infisical looks up the DNS record described in verificationRecord (type, name and value)."
+  },
+  DELETE: {
+    emailDomainId: "The ID of the email domain to delete."
   }
 };
 

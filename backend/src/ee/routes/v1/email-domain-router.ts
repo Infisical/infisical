@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-import { EmailDomainsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { EmailDomainResponseSchema } from "@app/ee/services/email-domain/email-domain-fns";
+import { ApiDocsTags, EMAIL_DOMAINS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -15,15 +16,23 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       operationId: "createEmailDomain",
+      tags: [ApiDocsTags.EmailDomains],
+      description: "Create email domain",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       body: z.object({
-        domain: z.string().trim().toLowerCase().min(1).describe("The domain to verify (e.g., company.com)")
+        domain: z.string().trim().toLowerCase().min(1).max(255).describe(EMAIL_DOMAINS.CREATE.domain)
       }),
       response: {
         200: z.object({
-          emailDomain: EmailDomainsSchema
+          emailDomain: EmailDomainResponseSchema
         })
       }
     },
@@ -68,15 +77,23 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       operationId: "verifyEmailDomain",
+      tags: [ApiDocsTags.EmailDomains],
+      description: "Verify email domain",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        emailDomainId: z.string().uuid().describe("The ID of the email domain to verify")
+        emailDomainId: z.string().uuid().describe(EMAIL_DOMAINS.VERIFY.emailDomainId)
       }),
       response: {
         200: z.object({
-          emailDomain: EmailDomainsSchema
+          emailDomain: EmailDomainResponseSchema
         })
       }
     },
@@ -124,12 +141,20 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
+      hide: false,
       operationId: "listEmailDomains",
+      tags: [ApiDocsTags.EmailDomains],
+      description: "List email domains",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       response: {
         200: z.object({
-          emailDomains: z.array(EmailDomainsSchema)
+          emailDomains: z.array(EmailDomainResponseSchema)
         })
       }
     },
@@ -152,15 +177,23 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       operationId: "deleteEmailDomain",
+      tags: [ApiDocsTags.EmailDomains],
+      description: "Delete email domain",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
       params: z.object({
-        emailDomainId: z.string().uuid().describe("The ID of the email domain to delete")
+        emailDomainId: z.string().uuid().describe(EMAIL_DOMAINS.DELETE.emailDomainId)
       }),
       response: {
         200: z.object({
-          emailDomain: EmailDomainsSchema
+          emailDomain: EmailDomainResponseSchema
         })
       }
     },

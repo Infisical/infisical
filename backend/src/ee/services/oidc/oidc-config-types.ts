@@ -1,6 +1,31 @@
 import { TGenericPermission } from "@app/lib/types";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 
+export const OIDC_CONFIG_AUDIT_FIELDS = [
+  "configurationType",
+  "discoveryURL",
+  "issuer",
+  "authorizationEndpoint",
+  "jwksUri",
+  "tokenEndpoint",
+  "userinfoEndpoint",
+  "allowedEmailDomains",
+  "isActive",
+  "manageGroupMemberships",
+  "jwtSignatureAlgorithm",
+  "mfaClaimName",
+  "mfaAmrValues"
+] as const;
+
+export const OIDC_CONFIG_AUDIT_URL_FIELDS = [
+  "discoveryURL",
+  "issuer",
+  "authorizationEndpoint",
+  "jwksUri",
+  "tokenEndpoint",
+  "userinfoEndpoint"
+] as const;
+
 export enum OIDCConfigurationType {
   CUSTOM = "custom",
   DISCOVERY_URL = "discoveryURL"
@@ -75,3 +100,7 @@ export type TUpdateOidcCfgDTO = Partial<{
   mfaAmrValues: string[] | null;
 }> &
   TGenericPermission;
+
+export type TDeleteOidcCfgDTO = {
+  organizationId: string;
+} & TGenericPermission;

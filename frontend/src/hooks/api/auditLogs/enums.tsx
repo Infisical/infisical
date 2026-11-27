@@ -296,6 +296,10 @@ export enum EventType {
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   UPDATE_ORG = "update-org",
   UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
+  UPDATE_ORG_SSO_SETTINGS = "update-org-sso-settings",
+  CREATE_OIDC_CONFIG = "create-oidc-config",
+  UPDATE_OIDC_CONFIG = "update-oidc-config",
+  DELETE_OIDC_CONFIG = "delete-oidc-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
