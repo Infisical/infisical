@@ -176,6 +176,42 @@ const valueKeyOf = ({
   fingerprint
 }: Pick<TFindingLocationRow, "secretFindingBlindIndex" | "fingerprint">) => secretFindingBlindIndex ?? fingerprint;
 
+type TMergedFinding = Pick<
+  TSecretScanningFindings,
+  | "id"
+  | "resourceId"
+  | "status"
+  | "triagedAt"
+  | "triagedByUserId"
+  | "triageComment"
+  | "resolvedAt"
+  | "lastDetectedAt"
+  | "createdAt"
+>;
+
+const MERGED_STATUS_PRECEDENCE: string[] = [
+  SecretScanningFindingStatus.Unresolved,
+  SecretScanningFindingStatus.Resolved,
+  SecretScanningFindingStatus.Ignore,
+  SecretScanningFindingStatus.FalsePositive
+];
+
+const MERGED_STATUS_LABEL: Record<SecretScanningFindingStatus, string> = {
+  [SecretScanningFindingStatus.Unresolved]: "unresolved",
+  [SecretScanningFindingStatus.Resolved]: "resolved",
+  [SecretScanningFindingStatus.Ignore]: "ignored",
+  [SecretScanningFindingStatus.FalsePositive]: "false positive"
+};
+
+// The merged finding takes the safest status, so a leak still open in one resource is never hidden by a verdict from
+// another. Between equal statuses the latest triage wins, as the most recent decision about the value.
+const isSaferFinding = (a: TMergedFinding, b: TMergedFinding) => {
+  const rankA = MERGED_STATUS_PRECEDENCE.indexOf(a.status);
+  const rankB = MERGED_STATUS_PRECEDENCE.indexOf(b.status);
+  if (rankA !== rankB) return rankA < rankB;
+  return (a.triagedAt?.getTime() ?? -Infinity) > (b.triagedAt?.getTime() ?? -Infinity);
+};
+
 export const secretScanningV2DALFactory = (db: TDbClient) => {
   const dataSourceOrm = ormify(db, TableName.SecretScanningDataSource);
   const resourceOrm = ormify(db, TableName.SecretScanningResource);
@@ -230,6 +266,156 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   // issues in very large repositories with lots of findings, we should batch
   // the inserts to prevent the worker from exiting and failing the scan.
   const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
+
+  /**
+   * Merges findings from before blind indexes existed, which a scan just matched again and so knows the value of, into
+   * their value's finding, with the rules of the merge migration
+   * (`20261126120000_merge-secret-scanning-findings-across-resources.ts`). A value with no finding yet takes the oldest
+   * of them. Returns the finding each merged one went into.
+   */
+  const mergeLegacyFindings = async (
+    {
+      blindIndexByLegacyFindingId,
+      findingByBlindIndex
+    }: {
+      blindIndexByLegacyFindingId: Map<string, string>;
+      findingByBlindIndex: Map<string, Pick<TSecretScanningFindings, "id" | "status">>;
+    },
+    tx: Knex
+  ) => {
+    // Every finding the scan goes on to lock is locked here, in one id order, so the scan never takes a lower id after a
+    // higher one.
+    const lockIds = [
+      ...new Set([...blindIndexByLegacyFindingId.keys(), ...[...findingByBlindIndex.values()].map(({ id }) => id)])
+    ].sort();
+
+    const findingById = new Map<string, TMergedFinding>();
+    for (const chunk of chunkArray(lockIds, FINDINGS_UPSERT_CHUNK_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const findings = await tx(TableName.SecretScanningFinding)
+        .whereIn("id", chunk)
+        .orderBy("id")
+        .forUpdate()
+        .select(
+          "id",
+          "resourceId",
+          "status",
+          "triagedAt",
+          "triagedByUserId",
+          "triageComment",
+          "resolvedAt",
+          "lastDetectedAt",
+          "createdAt"
+        );
+      findings.forEach((finding) => findingById.set(finding.id, finding));
+    }
+    findingByBlindIndex.forEach(({ id }, blindIndex) => {
+      const finding = findingById.get(id);
+      if (finding) findingByBlindIndex.set(blindIndex, { id, status: finding.status });
+    });
+
+    const legacyFindings = [...blindIndexByLegacyFindingId.keys()]
+      .map((id) => findingById.get(id)!)
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+
+    const mergedIntoById = new Map<string, string>();
+    const losersByWinnerId = new Map<string, TMergedFinding[]>();
+    for (const finding of legacyFindings) {
+      const blindIndex = blindIndexByLegacyFindingId.get(finding.id)!;
+      const winner = findingByBlindIndex.get(blindIndex);
+      if (winner) {
+        mergedIntoById.set(finding.id, winner.id);
+        losersByWinnerId.set(winner.id, [...(losersByWinnerId.get(winner.id) ?? []), finding]);
+      } else {
+        // eslint-disable-next-line no-await-in-loop
+        await tx(TableName.SecretScanningFinding)
+          .where({ id: finding.id })
+          .update({ secretFindingBlindIndex: blindIndex });
+        findingByBlindIndex.set(blindIndex, { id: finding.id, status: finding.status });
+      }
+    }
+    if (!mergedIntoById.size) return mergedIntoById;
+
+    const loserIds = [...mergedIntoById.keys()];
+    const resourceNameById = new Map<string, string>();
+    for (const chunk of chunkArray(
+      [...new Set([...findingById.values()].map(({ resourceId }) => resourceId))],
+      FINDINGS_UPSERT_CHUNK_SIZE
+    )) {
+      // eslint-disable-next-line no-await-in-loop
+      const resources = await tx(TableName.SecretScanningResource).whereIn("id", chunk).select("id", "name");
+      resources.forEach(({ id, name }) => resourceNameById.set(id, name));
+    }
+
+    // A pull request check saved finding ids, so a merged-away finding's id lives on as the id of its oldest location,
+    // which findByIdsOrLocationIdsForUpdate resolves.
+    const takenIds = new Set<string>();
+    for (const chunk of chunkArray(loserIds, FINDINGS_UPSERT_CHUNK_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const taken = await tx(TableName.SecretScanningFindingLocation).whereIn("id", chunk).select("id");
+      taken.forEach(({ id }) => takenIds.add(id));
+    }
+    for (const id of loserIds.filter((loserId) => !takenIds.has(loserId))) {
+      /* eslint-disable no-await-in-loop */
+      const oldest = await tx(TableName.SecretScanningFindingLocation)
+        .where({ findingId: id })
+        .orderBy(["createdAt", "id"])
+        .first("id");
+      if (oldest) await tx(TableName.SecretScanningFindingLocation).where({ id: oldest.id }).update("id", id);
+      /* eslint-enable no-await-in-loop */
+    }
+
+    for (const [winnerId, losers] of losersByWinnerId) {
+      const winner = findingById.get(winnerId)!;
+      const findings = [winner, ...losers];
+      const verdict = findings.reduce((best, finding) => (isSaferFinding(finding, best) ? finding : best));
+      const notes = findings
+        .filter(
+          (finding): finding is TMergedFinding & { triagedAt: Date } =>
+            finding !== verdict && Boolean(finding.triagedAt)
+        )
+        .sort((a, b) => a.triagedAt.getTime() - b.triagedAt.getTime())
+        .map(
+          ({ resourceId, status, triagedAt, triageComment }) =>
+            `Merged from ${resourceNameById.get(resourceId)}: ${MERGED_STATUS_LABEL[status as SecretScanningFindingStatus]} on ${triagedAt
+              .toISOString()
+              .slice(0, 10)}${triageComment ? `: ${triageComment}` : ""}`
+        );
+
+      /* eslint-disable no-await-in-loop */
+      await tx(TableName.SecretScanningFindingLocation)
+        .whereIn(
+          "findingId",
+          losers.map(({ id }) => id)
+        )
+        .update({ findingId: winnerId });
+
+      if (verdict !== winner || notes.length) {
+        await tx(TableName.SecretScanningFinding)
+          .where({ id: winnerId })
+          .update({
+            status: verdict.status,
+            resolvedAt: verdict.resolvedAt,
+            triagedAt: verdict.triagedAt,
+            triagedByUserId: verdict.triagedByUserId,
+            triageComment: [verdict.triageComment, notes.join("\n")].filter(Boolean).join("\n\n") || null,
+            lastDetectedAt: new Date(Math.max(...findings.map(({ lastDetectedAt }) => lastDetectedAt.getTime())))
+          });
+      }
+      /* eslint-enable no-await-in-loop */
+
+      findingByBlindIndex.forEach(({ id }, blindIndex) => {
+        if (id === winnerId) findingByBlindIndex.set(blindIndex, { id, status: verdict.status });
+      });
+    }
+
+    for (const chunk of chunkArray(loserIds, FINDINGS_UPSERT_CHUNK_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      await tx(TableName.SecretScanningFinding).whereIn("id", chunk).delete();
+    }
+
+    return mergedIntoById;
+  };
 
   /**
    * Saves what a scan found in one resource. A finding is one secret value in the project, across its resources, and
@@ -288,17 +474,37 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         secretFindingBlindIndex ? [secretFindingBlindIndex] : []
       );
 
+      const legacyFindingIds = new Set<string>();
+      for (const chunk of chunkArray([...new Set(findingIdByFingerprint.values())], FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        const legacy = await tx(TableName.SecretScanningFinding)
+          .whereIn("id", chunk)
+          .whereNull("secretFindingBlindIndex")
+          .select("id");
+        legacy.forEach(({ id }) => legacyFindingIds.add(id));
+      }
+
+      const blindIndexByLegacyFindingId = new Map<string, string>();
+      rows.forEach(({ fingerprint, secretFindingBlindIndex }) => {
+        const findingId = findingIdByFingerprint.get(fingerprint);
+        if (findingId && secretFindingBlindIndex && legacyFindingIds.has(findingId)) {
+          blindIndexByLegacyFindingId.set(findingId, secretFindingBlindIndex);
+        }
+      });
+
+      const lookupBlindIndexes = [...new Set([...newBlindIndexes, ...blindIndexByLegacyFindingId.values()])];
+
       // A value's finding spans the project's resources, so scans of two resources could each miss it and create one
       // without this. Taken before anything is written, so a scan waiting here holds no row lock that a resource delete
       // holding this lock would wait on.
-      if (newBlindIndexes.length) {
+      if (lookupBlindIndexes.length) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(projectId)]);
       }
 
       // After a rollback a value can have several findings. The oldest takes the new locations, as the merge migration
       // keeps the oldest.
-      const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
-      for (const chunk of chunkArray(newBlindIndexes, FINDINGS_UPSERT_CHUNK_SIZE)) {
+      const findingByBlindIndex = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
+      for (const chunk of chunkArray(lookupBlindIndexes, FINDINGS_UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
         const findings = await tx(TableName.SecretScanningFinding)
           .whereIn("resourceId", (projectResources) => {
@@ -318,11 +524,22 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           .select("id", "status", "secretFindingBlindIndex");
 
         findings.forEach(({ id, status, secretFindingBlindIndex }) => {
-          if (!findingByValue.has(secretFindingBlindIndex as string)) {
-            findingByValue.set(secretFindingBlindIndex as string, { id, status });
+          if (!findingByBlindIndex.has(secretFindingBlindIndex as string)) {
+            findingByBlindIndex.set(secretFindingBlindIndex as string, { id, status });
           }
         });
       }
+
+      const mergedIntoById = blindIndexByLegacyFindingId.size
+        ? await mergeLegacyFindings({ blindIndexByLegacyFindingId, findingByBlindIndex }, tx)
+        : new Map<string, string>();
+
+      // Only values with a new location reopen their finding or count as detected, so the lookup above doesn't decide it.
+      const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
+      newBlindIndexes.forEach((blindIndex) => {
+        const finding = findingByBlindIndex.get(blindIndex);
+        if (finding) findingByValue.set(blindIndex, finding);
+      });
 
       const now = new Date();
 
@@ -405,9 +622,17 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         );
       }
 
+      const findingIdOf = (fingerprint: string) => {
+        const findingId = findingIdByFingerprint.get(fingerprint);
+        return findingId && (mergedIntoById.get(findingId) ?? findingId);
+      };
+
       // A location saved before may belong to a finding from before blind indexes existed, so it's found by its id.
       const findingById = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
-      for (const chunk of chunkArray([...new Set(findingIdByFingerprint.values())], FINDINGS_UPSERT_CHUNK_SIZE)) {
+      for (const chunk of chunkArray(
+        [...new Set(rows.flatMap(({ fingerprint }) => findingIdOf(fingerprint) || []))],
+        FINDINGS_UPSERT_CHUNK_SIZE
+      )) {
         // eslint-disable-next-line no-await-in-loop
         const findings = await tx(TableName.SecretScanningFinding).whereIn("id", chunk).select("id", "status");
 
@@ -417,7 +642,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       const reopenedIds = new Set(reopenedFindings.map(({ id }) => id));
 
       const scannedLocations: TSecretScanningScannedLocation[] = rows.map(({ fingerprint, rule, details, ...row }) => {
-        const existingFindingId = findingIdByFingerprint.get(fingerprint);
+        const existingFindingId = findingIdOf(fingerprint);
         const finding = existingFindingId
           ? findingById.get(existingFindingId)!
           : findingByValue.get(valueKeyOf({ secretFindingBlindIndex: row.secretFindingBlindIndex, fingerprint }))!;
