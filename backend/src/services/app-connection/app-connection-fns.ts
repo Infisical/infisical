@@ -212,7 +212,6 @@ import {
 } from "./hc-vault";
 import { HerokuConnectionMethod, THerokuConnectionConfig } from "./heroku";
 import { getHerokuConnectionListItem, validateHerokuConnectionCredentials } from "./heroku/heroku-connection-fns";
-import { getHpeIloConnectionListItem, HpeIloConnectionMethod, validateHpeIloConnectionCredentials } from "./hpe-ilo";
 import {
   getHumanitecConnectionListItem,
   HumanitecConnectionMethod,
@@ -296,6 +295,7 @@ import {
 } from "./powerdns";
 import { getQoveryConnectionListItem, QoveryConnectionMethod, validateQoveryConnectionCredentials } from "./qovery";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
+import { getRedfishConnectionListItem, RedfishConnectionMethod, validateRedfishConnectionCredentials } from "./redfish";
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
@@ -573,7 +573,7 @@ export const listAppConnectionOptions = async (
       INF_APP_CONNECTION_STRIPE_OAUTH_AUTHORIZE_URL
     }),
     getKeeperConnectionListItem(),
-    getHpeIloConnectionListItem(),
+    getRedfishConnectionListItem(),
     getServiceNowConnectionListItem(),
     getS3CompatibleConnectionListItem(),
     getJiraConnectionListItem(),
@@ -867,7 +867,7 @@ export const validateAppConnectionCredentials = async (
         deps.instanceConfigService
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Redfish]: validateRedfishConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.S3Compatible]: ((config: TAppConnectionConfig) =>
       validateS3CompatibleConnectionCredentials(
@@ -1016,7 +1016,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case KempLoadMasterConnectionMethod.BasicAuth:
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
-    case HpeIloConnectionMethod.BasicAuth:
+    case RedfishConnectionMethod.BasicAuth:
     case ServiceNowConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
@@ -1241,7 +1241,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Daytona]: platformManagedCredentialsNotSupported,
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
-  [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
+  [AppConnection.Redfish]: platformManagedCredentialsNotSupported,
   [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
   [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,

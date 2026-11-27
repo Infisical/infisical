@@ -274,12 +274,6 @@ import {
   TValidateHerokuConnectionCredentialsSchema
 } from "./heroku";
 import {
-  THpeIloConnection,
-  THpeIloConnectionConfig,
-  THpeIloConnectionInput,
-  TValidateHpeIloConnectionCredentialsSchema
-} from "./hpe-ilo";
-import {
   THumanitecConnection,
   THumanitecConnectionConfig,
   THumanitecConnectionInput,
@@ -448,6 +442,12 @@ import {
   TRailwayConnectionInput,
   TValidateRailwayConnectionCredentialsSchema
 } from "./railway";
+import {
+  TRedfishConnection,
+  TRedfishConnectionConfig,
+  TRedfishConnectionInput,
+  TValidateRedfishConnectionCredentialsSchema
+} from "./redfish";
 import {
   TRedisConnection,
   TRedisConnectionConfig,
@@ -689,7 +689,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TDaytonaConnection
   | TStripeConnection
   | TKeeperConnection
-  | THpeIloConnection
+  | TRedfishConnection
   | TServiceNowConnection
   | TS3CompatibleConnection
   | TJiraConnection
@@ -800,7 +800,7 @@ export type TAppConnectionInput = { id: string } & (
   | TDaytonaConnectionInput
   | TStripeConnectionInput
   | TKeeperConnectionInput
-  | THpeIloConnectionInput
+  | TRedfishConnectionInput
   | TServiceNowConnectionInput
   | TS3CompatibleConnectionInput
   | TJiraConnectionInput
@@ -945,7 +945,7 @@ export type TAppConnectionConfig =
   | TDaytonaConnectionConfig
   | TStripeConnectionConfig
   | TKeeperConnectionConfig
-  | THpeIloConnectionConfig
+  | TRedfishConnectionConfig
   | TServiceNowConnectionConfig
   | TS3CompatibleConnectionConfig
   | TJiraConnectionConfig
@@ -1047,7 +1047,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDaytonaConnectionCredentialsSchema
   | TValidateStripeConnectionCredentialsSchema
   | TValidateKeeperConnectionCredentialsSchema
-  | TValidateHpeIloConnectionCredentialsSchema
+  | TValidateRedfishConnectionCredentialsSchema
   | TValidateServiceNowConnectionCredentialsSchema
   | TValidateS3CompatibleConnectionCredentialsSchema
   | TValidateJiraConnectionCredentialsSchema

@@ -347,8 +347,8 @@ export type TF5BigIpConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.F5BigIp;
 };
 
-export type THpeIloConnectionOption = TAppConnectionOptionBase & {
-  app: AppConnection.HpeIloRedFish;
+export type TRedfishConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Redfish;
 };
 
 export type TConvexConnectionOption = TAppConnectionOptionBase & {
@@ -496,7 +496,7 @@ export type TAppConnectionOption =
   | TSnowflakeConnectionOption
   | TDatadogConnectionOption
   | TF5BigIpConnectionOption
-  | THpeIloConnectionOption
+  | TRedfishConnectionOption
   | TConvexConnectionOption
   | TTriggerDevConnectionOption
   | TRundeckConnectionOption
@@ -598,7 +598,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Snowflake]: TSnowflakeConnectionOption;
   [AppConnection.Datadog]: TDatadogConnectionOption;
   [AppConnection.F5BigIp]: TF5BigIpConnectionOption;
-  [AppConnection.HpeIloRedFish]: THpeIloConnectionOption;
+  [AppConnection.Redfish]: TRedfishConnectionOption;
   [AppConnection.Convex]: TConvexConnectionOption;
   [AppConnection.TriggerDev]: TTriggerDevConnectionOption;
   [AppConnection.Rundeck]: TRundeckConnectionOption;

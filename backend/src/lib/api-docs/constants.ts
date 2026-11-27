@@ -3523,14 +3523,14 @@ export const AppConnections = {
       blockedUsers:
         "A comma-separated list of usernames that are blocked from being used in operations like secret rotation (e.g., 'root,admin,ubuntu')."
     },
-    HPE_ILO: {
-      hostname: "The hostname or IP address of the HPE iLO management interface (e.g., 'ilo.example.com').",
-      port: "The HTTPS port of the HPE iLO Redfish API (default: 443).",
-      username: "The iLO local account username used to authenticate with the Redfish API.",
-      password: "The password for the iLO local account.",
+    REDFISH: {
+      hostname: "The hostname or IP address of the server's Redfish service (e.g., 'bmc.example.com').",
+      port: "The HTTPS port of the Redfish service (default: 443).",
+      username: "The username of the local account used to authenticate with the Redfish service.",
+      password: "The password of the local account.",
       sslRejectUnauthorized:
-        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
-      sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
+        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for Redfish services using self-signed certificates.",
+      sslCertificate: "The CA certificate (PEM format) used to verify the Redfish service's TLS certificate."
     },
     INCIDENT_IO: {
       apiKey: "The incident.io API key used to read on-call schedules. It needs the View on-call resources permission."

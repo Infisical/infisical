@@ -52,9 +52,9 @@ export const HpIloRotationParametersFields = () => {
   const id = watch("id");
   const rotationMethod = watch("parameters.rotationMethod", HpIloRotationMethod.LoginAsRoot);
   const isUpdate = Boolean(id);
-  const isSshConnection = watch("connection.app") !== AppConnection.HpeIloRedFish;
+  const isSshConnection = watch("connection.app") !== AppConnection.Redfish;
 
-  // HPE iLO Connections always rotate with the connection's credentials, so a method picked while an SSH
+  // Redfish Connections always rotate with the connection's credentials, so a method picked while an SSH
   // Connection was selected must not carry over
   useEffect(() => {
     if (isSshConnection || isUpdate) return;

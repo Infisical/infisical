@@ -11,8 +11,8 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { safeRequest } from "@app/lib/validator";
-import { THpeIloConnectionConfig } from "@app/services/app-connection/hpe-ilo";
-import { HPE_ILO_DEFAULT_PORT, toUrlHost } from "@app/services/app-connection/hpe-ilo/hpe-ilo-connection-fns";
+import { TRedfishConnectionConfig } from "@app/services/app-connection/redfish";
+import { REDFISH_DEFAULT_PORT, toUrlHost } from "@app/services/app-connection/redfish/redfish-connection-fns";
 
 import { THpIloClient } from "./hp-ilo-rotation-types";
 
@@ -38,12 +38,12 @@ type TRedfishErrorResponse = {
 };
 
 export const hpIloRedfishClientFactory = (
-  config: Pick<THpeIloConnectionConfig, "credentials" | "gatewayId">,
+  config: Pick<TRedfishConnectionConfig, "credentials" | "gatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): THpIloClient => {
   const { credentials } = config;
   const { hostname: host } = credentials;
-  const port = credentials.port ?? HPE_ILO_DEFAULT_PORT;
+  const port = credentials.port ?? REDFISH_DEFAULT_PORT;
   const baseUrl = `https://${toUrlHost(host)}:${port}`;
 
   // Through the gateway the socket points at localhost, so the certificate has to be checked against the iLO host

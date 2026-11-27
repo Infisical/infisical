@@ -220,11 +220,11 @@ export const hpIloRotationFactory: TRotationFactory<
       gatewayPoolId: connection.gatewayPoolId
     });
 
-    if (connection.app === AppConnection.HpeIloRedFish) {
+    if (connection.app === AppConnection.Redfish) {
       if (rotationMethod === HpIloRotationMethod.LoginAsTarget)
         throw new BadRequestError({
           message:
-            "The Login as Target rotation method requires an SSH Connection. HPE iLO Connections always rotate the password with the connection's credentials."
+            "The Login as Target rotation method requires an SSH Connection. Redfish Connections always rotate the password with the connection's credentials."
         });
 
       return hpIloRedfishClientFactory({ credentials: connection.credentials, gatewayId }, gatewayV2Service);

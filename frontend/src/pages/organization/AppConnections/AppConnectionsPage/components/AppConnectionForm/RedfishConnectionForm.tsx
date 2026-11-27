@@ -35,7 +35,7 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { useScopeVariant } from "@app/hooks";
-import { HpeIloConnectionMethod, THpeIloConnection } from "@app/hooks/api/appConnections";
+import { RedfishConnectionMethod, TRedfishConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
@@ -45,7 +45,7 @@ import {
 } from "./GenericAppConnectionFields";
 
 type Props = {
-  appConnection?: THpeIloConnection;
+  appConnection?: TRedfishConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
@@ -56,12 +56,12 @@ const isValidHostname = (value: string) =>
   );
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.HpeIloRedFish)
+  app: z.literal(AppConnection.Redfish)
 });
 
 const formSchema = z.discriminatedUnion("method", [
   rootSchema.extend({
-    method: z.literal(HpeIloConnectionMethod.BasicAuth),
+    method: z.literal(RedfishConnectionMethod.BasicAuth),
     credentials: z.object({
       hostname: z
         .string()
@@ -99,7 +99,7 @@ const formSchema = z.discriminatedUnion("method", [
 
 type FormData = z.infer<typeof formSchema>;
 
-export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
+export const RedfishConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [selectedTab, setSelectedTab] = useState("configuration");
 
@@ -114,8 +114,8 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
           }
         }
       : {
-          app: AppConnection.HpeIloRedFish,
-          method: HpeIloConnectionMethod.BasicAuth,
+          app: AppConnection.Redfish,
+          method: RedfishConnectionMethod.BasicAuth,
           gatewayId: null,
           gatewayPoolId: null,
           credentials: {
@@ -184,7 +184,7 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     {`The method you would like to use to connect with ${
-                      APP_CONNECTION_MAP[AppConnection.HpeIloRedFish].name
+                      APP_CONNECTION_MAP[AppConnection.Redfish].name
                     }. This field cannot be changed after creation.`}
                   </TooltipContent>
                 </Tooltip>
@@ -194,7 +194,7 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                   <SelectValue placeholder="Select a method..." />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(HpeIloConnectionMethod).map((method) => {
+                  {Object.values(RedfishConnectionMethod).map((method) => {
                     return (
                       <SelectItem value={method} key={method}>
                         {getAppConnectionMethodDetails(method).name}
@@ -224,7 +224,7 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                       id="hostname"
                       value={value}
                       onChange={(e) => onChange(e.target.value)}
-                      placeholder="e.g. ilo.example.com"
+                      placeholder="e.g. bmc.example.com"
                       isError={Boolean(error?.message)}
                     />
                     <FieldError errors={[error]} />
@@ -319,8 +319,8 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
                     <FieldContent>
                       <Label htmlFor="ssl-reject-unauthorized">Reject Unauthorized</Label>
                       <FieldDescription>
-                        If enabled, Infisical will only connect to the HPE iLO if it has a valid,
-                        trusted SSL certificate. Disable this for self-signed certificates or
+                        If enabled, Infisical will only connect to the Redfish service if it has a
+                        valid, trusted SSL certificate. Disable this for self-signed certificates or
                         provide a CA certificate above.
                       </FieldDescription>
                     </FieldContent>
@@ -339,7 +339,7 @@ export const HpeIloConnectionForm = ({ appConnection, onSubmit }: Props) => {
           </TabsContent>
         </Tabs>
         <AppConnectionFormFooter
-          submitLabel={isUpdate ? "Update Credentials" : "Connect to HPE iLO"}
+          submitLabel={isUpdate ? "Update Credentials" : "Connect to Redfish"}
         />
       </form>
     </FormProvider>

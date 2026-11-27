@@ -614,11 +614,11 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
-    name: "HPE iLO",
-    slug: "hpe-ilo",
-    path: "/integrations/app-connections/hpe-ilo",
+    name: "Redfish",
+    slug: "redfish",
+    path: "/integrations/app-connections/redfish",
     description:
-      "Learn how to connect HPE iLO to manage iLO local accounts with Infisical.",
+      "Learn how to connect a Redfish service, such as HPE iLO, to manage its local accounts with Infisical.",
     category: "Networking & DNS",
   },
   {

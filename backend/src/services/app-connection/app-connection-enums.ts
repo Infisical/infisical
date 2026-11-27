@@ -90,7 +90,7 @@ export enum AppConnection {
   Daytona = "daytona",
   Stripe = "stripe",
   Keeper = "keeper",
-  HpeIloRedFish = "hpe-ilo",
+  Redfish = "redfish",
   ServiceNow = "servicenow",
   S3Compatible = "s3-compatible",
   Jira = "jira",
