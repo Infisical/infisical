@@ -742,6 +742,8 @@ export const secretScanningV2ServiceFactory = ({
       credentials
     });
 
+    await secretScanningV2DAL.findings.detachResourcesInBatches({ projectId: dataSource.projectId, dataSourceId });
+
     // Alerts point at their data source without a foreign key, so nothing cascades to them.
     await secretScanningV2DAL.dataSources.transaction(async (tx) => {
       await secretScanningV2DAL.findings.detachResources({ projectId: dataSource.projectId, dataSourceId }, tx);
@@ -1039,6 +1041,11 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     try {
+      await secretScanningV2DAL.findings.detachResourcesInBatches({
+        projectId: dataSource.projectId,
+        resourceIds: [resourceId]
+      });
+
       await secretScanningV2DAL.resources.transaction(async (tx) => {
         // First, so the project lock comes before the data source row, as in a data source delete.
         await secretScanningV2DAL.findings.detachResources(

@@ -47,7 +47,10 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
 - Deleting a resource or a data source calls `findings.detachResources` first, in the same transaction. It removes the
   resources' locations, deletes findings left without one, and points the others' deprecated columns at a location
   that stays, so the cascade through `findings.resourceId` and `findings.scanId` never deletes a finding that still
-  has locations elsewhere. Never rely on that cascade.
+  has locations elsewhere. Never rely on that cascade. Call `findings.detachResourcesInBatches` just before that
+  transaction, after every check that can refuse the delete: it does the same work in bounded transactions, so a large
+  delete doesn't hold the project lock every scan saving findings waits on, and the in-transaction call then only
+  takes what scans saved since.
 - A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
   the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
 - Findings from before blind indexes existed have a NULL blind index and one location each, since no stored data holds

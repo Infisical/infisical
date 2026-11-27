@@ -268,6 +268,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   // issues in very large repositories with lots of findings, we should batch
   // the inserts to prevent the worker from exiting and failing the scan.
   const FINDINGS_UPSERT_CHUNK_SIZE = 1000;
+  const DETACH_BATCH_SIZE = 1000;
+  const DETACH_STATEMENT_TIMEOUT_MS = 60_000;
 
   /**
    * Merges findings from before blind indexes existed, which a scan just matched again and so knows the value of, into
@@ -1541,6 +1543,76 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  // Detaches up to `limit` of the scope's findings, or all of them without one, and returns how many it took.
+  const detachFindingResourcesBatch = async (
+    scope: { projectId: string } & ({ resourceIds: string[] } | { dataSourceId: string }),
+    tx: Knex,
+    limit?: number
+  ): Promise<number> => {
+    // Only this lock, never a resource's: scans take a resource's lock and then this one, so waiting on a resource's
+    // lock while holding this one could deadlock with them.
+    await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(scope.projectId)]);
+
+    // Read under the lock, which a scan holds while it saves a resource's findings, so no resource with findings is
+    // missed and left to the cascade.
+    const resourceIds =
+      "resourceIds" in scope
+        ? scope.resourceIds
+        : (await tx(TableName.SecretScanningResource).where({ dataSourceId: scope.dataSourceId }).select("id")).map(
+            ({ id }) => id
+          );
+    if (!resourceIds.length) return 0;
+
+    const findingsQuery = tx(TableName.SecretScanningFinding)
+      .where((qb) => {
+        void qb.whereRaw("?? = ANY(?::uuid[])", ["resourceId", resourceIds]).orWhereIn("id", (subQuery) => {
+          void subQuery
+            .select("findingId")
+            .from(TableName.SecretScanningFindingLocation)
+            .whereRaw("?? = ANY(?::uuid[])", ["resourceId", resourceIds]);
+        });
+      })
+      .orderBy("id")
+      .forUpdate()
+      .select("id");
+    const findings = await (limit ? findingsQuery.limit(limit) : findingsQuery);
+    const findingIds = findings.map(({ id }) => id);
+    if (!findingIds.length) return 0;
+
+    await tx(TableName.SecretScanningFindingLocation)
+      .whereRaw("?? = ANY(?::uuid[])", ["resourceId", resourceIds])
+      .whereRaw("?? = ANY(?::uuid[])", ["findingId", findingIds])
+      .delete();
+
+    await tx(TableName.SecretScanningFinding)
+      .whereRaw("?? = ANY(?::uuid[])", [`${TableName.SecretScanningFinding}.id`, findingIds])
+      .whereNotExists((subQuery) => findingLocationsQuery(subQuery))
+      .delete();
+
+    await tx.raw(
+      `UPDATE ?? AS f
+       SET "resourceId" = l."resourceId", "scanId" = l."scanId", fingerprint = l.fingerprint, details = l.details
+       FROM (
+         SELECT DISTINCT ON (l."findingId") l."findingId", l."resourceId", l."scanId", l.fingerprint, l.details
+         FROM ?? AS l
+         JOIN ?? AS s ON s.id = l."scanId"
+         WHERE l."findingId" = ANY(?::uuid[])
+         ORDER BY l."findingId", (s.status = ?) DESC, l."createdAt", l.id
+       ) AS l
+       WHERE f.id = l."findingId" AND f."resourceId" = ANY(?::uuid[])`,
+      [
+        TableName.SecretScanningFinding,
+        TableName.SecretScanningFindingLocation,
+        TableName.SecretScanningScan,
+        findingIds,
+        SecretScanningScanStatus.Completed,
+        resourceIds
+      ]
+    );
+
+    return findingIds.length;
+  };
+
   // Must run in a resource or data source delete's transaction before the delete: a finding still found elsewhere is
   // pointed off the deleted resources, or the cascade through its resourceId and scanId would delete it.
   const detachFindingResources = async (
@@ -1548,65 +1620,29 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     tx: Knex
   ) => {
     try {
-      // Only this lock, never a resource's: scans take a resource's lock and then this one, so waiting on a resource's
-      // lock while holding this one could deadlock with them.
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(scope.projectId)]);
-
-      // Read under the lock, which a scan holds while it saves a resource's findings, so no resource with findings is
-      // missed and left to the cascade.
-      const resourceIds =
-        "resourceIds" in scope
-          ? scope.resourceIds
-          : (await tx(TableName.SecretScanningResource).where({ dataSourceId: scope.dataSourceId }).select("id")).map(
-              ({ id }) => id
-            );
-      if (!resourceIds.length) return;
-
-      const findings = await tx(TableName.SecretScanningFinding)
-        .where((qb) => {
-          void qb.whereRaw("?? = ANY(?::uuid[])", ["resourceId", resourceIds]).orWhereIn("id", (subQuery) => {
-            void subQuery
-              .select("findingId")
-              .from(TableName.SecretScanningFindingLocation)
-              .whereRaw("?? = ANY(?::uuid[])", ["resourceId", resourceIds]);
-          });
-        })
-        .orderBy("id")
-        .forUpdate()
-        .select("id");
-      const findingIds = findings.map(({ id }) => id);
-
-      await tx(TableName.SecretScanningFindingLocation)
-        .whereRaw("?? = ANY(?::uuid[])", ["resourceId", resourceIds])
-        .delete();
-
-      await tx(TableName.SecretScanningFinding)
-        .whereRaw("?? = ANY(?::uuid[])", [`${TableName.SecretScanningFinding}.id`, findingIds])
-        .whereNotExists((subQuery) => findingLocationsQuery(subQuery))
-        .delete();
-
-      await tx.raw(
-        `UPDATE ?? AS f
-         SET "resourceId" = l."resourceId", "scanId" = l."scanId", fingerprint = l.fingerprint, details = l.details
-         FROM (
-           SELECT DISTINCT ON (l."findingId") l."findingId", l."resourceId", l."scanId", l.fingerprint, l.details
-           FROM ?? AS l
-           JOIN ?? AS s ON s.id = l."scanId"
-           WHERE l."findingId" = ANY(?::uuid[])
-           ORDER BY l."findingId", (s.status = ?) DESC, l."createdAt", l.id
-         ) AS l
-         WHERE f.id = l."findingId" AND f."resourceId" = ANY(?::uuid[])`,
-        [
-          TableName.SecretScanningFinding,
-          TableName.SecretScanningFindingLocation,
-          TableName.SecretScanningScan,
-          findingIds,
-          SecretScanningScanStatus.Completed,
-          resourceIds
-        ]
-      );
+      await detachFindingResourcesBatch(scope, tx);
     } catch (error) {
       throw new DatabaseError({ error, name: "Detach Resources - Secret Scanning Finding" });
+    }
+  };
+
+  // Runs before a delete's transaction, so a large delete never holds the project lock, which every scan saving findings
+  // in the project waits on, for all of its findings at once. The delete's own detachResources then only takes what
+  // scans saved since.
+  const detachFindingResourcesInBatches = async (
+    scope: { projectId: string } & ({ resourceIds: string[] } | { dataSourceId: string })
+  ) => {
+    try {
+      for (;;) {
+        // eslint-disable-next-line no-await-in-loop
+        const detached = await db.transaction(async (tx) => {
+          await tx.raw(`SET LOCAL statement_timeout = ${DETACH_STATEMENT_TIMEOUT_MS}`);
+          return detachFindingResourcesBatch(scope, tx, DETACH_BATCH_SIZE);
+        });
+        if (detached < DETACH_BATCH_SIZE) return;
+      }
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Detach Resources In Batches - Secret Scanning Finding" });
     }
   };
 
@@ -1699,6 +1735,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       ...findingOrm,
       persistLocations: persistFindingLocations,
       detachResources: detachFindingResources,
+      detachResourcesInBatches: detachFindingResourcesInBatches,
       findByIdsOrLocationIdsForUpdate: findFindingsByIdsOrLocationIdsForUpdate,
       findByIdOrLocationIdForUpdate: findFindingByIdOrLocationIdForUpdate,
       countByScanId: countFindingsByScanId,
