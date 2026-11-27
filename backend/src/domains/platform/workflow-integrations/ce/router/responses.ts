@@ -1,6 +1,6 @@
 import { WorkflowIntegration } from "../models/workflow-integration";
 
-// The legacy response shapes, field for field.
+// Response fields are part of the public API; keep each one.
 
 export const toWorkflowIntegrationResponse = (integration: WorkflowIntegration) => ({
   id: integration.id,

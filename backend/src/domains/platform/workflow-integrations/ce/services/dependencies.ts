@@ -78,7 +78,7 @@ export type TSlackClient = {
     onSuccess(metadata: string | undefined): Promise<void>;
     onFailure(): Promise<void>;
   }): Promise<void>;
-  // Public and private channels the bot can see, capped at the legacy page limit.
+  // Public and private channels the bot can see, capped at 50 pages so a huge workspace cannot hang the request.
   listChannels(botToken: string): Promise<TSlackChannel[]>;
   // null when Slack accepted the message.
   postMessage(input: {

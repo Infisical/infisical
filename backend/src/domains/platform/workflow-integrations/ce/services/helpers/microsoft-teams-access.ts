@@ -61,7 +61,7 @@ export const microsoftTeamsToken = async (
 };
 
 // Whether the Infisical bot is in the integration's tenant. Never throws: a token or catalog failure counts as not
-// installed, as it always has.
+// installed, so a Microsoft outage reads as "not installed" rather than failing the caller.
 export const probeMicrosoftTeamsInstall = async (
   deps: TMicrosoftTeamsAccessDeps,
   integration: WorkflowIntegration,

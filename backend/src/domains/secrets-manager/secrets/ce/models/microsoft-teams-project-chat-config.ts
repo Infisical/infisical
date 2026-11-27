@@ -106,7 +106,7 @@ export class MicrosoftTeamsProjectChatConfig {
     };
   }
 
-  // Replaces every setting, as a save of the project's chat settings always has.
+  // Replaces every setting: the settings form always sends them all.
   reconfigure(settings: TMicrosoftTeamsProjectChatConfigSettings): void {
     const next = MicrosoftTeamsProjectChatConfig.validatedSettings(settings);
     this.linkedIntegrationId = next.integrationId;

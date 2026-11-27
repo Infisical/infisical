@@ -39,9 +39,17 @@ export type TChatPostResult = { integrationMissing: true } | { integrationMissin
 const toOutcome = (channelId: string, refusal: TChatPostRefusal | null): TChannelOutcome =>
   refusal ? { channelId, delivered: false, ...refusal } : { channelId, delivered: true };
 
+const failEvery = (channelIds: string[], error: unknown): TChannelOutcome[] =>
+  channelIds.map((channelId) => ({
+    channelId,
+    delivered: false,
+    failure: ChatPostFailure.Other,
+    providerError: error instanceof Error ? error.message : undefined
+  }));
+
 export type TChatDeliveryService = {
   // Posts the message to each channel, one at a time. A channel that refuses is reported and the rest still get it;
-  // it never throws for a refused channel or an unreachable provider.
+  // it never throws for a refused channel, an unreachable provider or an id it cannot post to.
   post(input: TPostChatMessageInput): Promise<TChatPostResult>;
 };
 
@@ -59,8 +67,10 @@ export class ChatDeliveryService implements TChatDeliveryService {
 
   async post(input: TPostChatMessageInput): Promise<TChatPostResult> {
     const integration = await this.workflowIntegrationStore.findById(input.integrationId);
-    if (!integration || integration.orgId !== input.orgId) return { integrationMissing: true };
-    integration.assertProvider(input.message.provider);
+    // A message for the other provider has nowhere to go here, the same as an id that is not this org's.
+    if (!integration || integration.orgId !== input.orgId || !integration.isProvider(input.message.provider)) {
+      return { integrationMissing: true };
+    }
 
     const channels =
       integration.provider === WorkflowIntegrationProvider.Slack
@@ -73,13 +83,19 @@ export class ChatDeliveryService implements TChatDeliveryService {
     const record = input.message.toJSON();
     if (record.provider !== WorkflowIntegrationProvider.Slack) return [];
 
-    const { decryptor } = await this.kmsDataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: integration.orgId
-    });
-    const botToken = decryptor({
-      cipherTextBlob: integration.slackInstallation().encryptedBotAccessToken
-    }).toString("utf8");
+    let botToken: string;
+    try {
+      const { decryptor } = await this.kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: integration.orgId
+      });
+      botToken = decryptor({
+        cipherTextBlob: integration.slackInstallation().encryptedBotAccessToken
+      }).toString("utf8");
+    } catch (error) {
+      logger.error(error, `Unable to read the Slack bot token [integrationId=${integration.id}]`);
+      return failEvery(input.channelIds, error);
+    }
 
     const outcomes: TChannelOutcome[] = [];
     for (const channelId of input.channelIds) {
@@ -135,7 +151,7 @@ export class ChatDeliveryService implements TChatDeliveryService {
 
     const outcomes: TChannelOutcome[] = [];
     for (const channelId of input.channelIds) {
-      // eslint-disable-next-line no-await-in-loop -- channels are posted in order, as they always were
+      // eslint-disable-next-line no-await-in-loop -- in order, so a channel list reads top to bottom in the team
       const refusal = await this.microsoftTeamsClient.sendChannelCard({
         botToken,
         teamId,

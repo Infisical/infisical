@@ -167,7 +167,7 @@ describe("ChatDeliveryService.post to Slack", () => {
     expect(h.slackClient.posted).toEqual([]);
   });
 
-  test("should refuse a Microsoft Teams message for a Slack integration and post nothing", async () => {
+  test("should report the integration missing and post nothing when a Microsoft Teams message names a Slack integration", async () => {
     // Setup
     const h = await build();
     const orgId = randomUUID();
@@ -183,8 +183,7 @@ describe("ChatDeliveryService.post to Slack", () => {
     });
 
     // Assert
-    await expect(result).rejects.toBeInstanceOf(RuleViolationError);
-    await expect(result).rejects.toThrow("is a Slack integration, not a Microsoft Teams integration");
+    await expect(result).resolves.toEqual({ integrationMissing: true });
     expect([h.slackClient.posted, h.microsoftTeamsClient.sent]).toEqual([[], []]);
   });
 });

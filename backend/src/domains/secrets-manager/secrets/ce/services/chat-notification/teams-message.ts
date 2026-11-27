@@ -17,7 +17,7 @@ const title = (text: string) => ({ type: "TextBlock", text, weight: "Bolder", si
 
 const paragraph = (text: string) => ({ type: "TextBlock", text, wrap: true });
 
-// `siteUrl` is interpolated as given, so an unset site URL reads "undefined/..." as it always has.
+// `siteUrl` is interpolated as given: an instance without SITE_URL gets "undefined/..." links.
 export const renderTeamsMessage = (
   notification: TSecretsChatNotification,
   { orgId, siteUrl }: { orgId: string; siteUrl: string | undefined }

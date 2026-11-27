@@ -144,7 +144,7 @@ export class WorkflowIntegrationsModule {
     await this.microsoftTeamsIntegrationService.start();
   }
 
-  // Every pod rebuilds its own Teams bot when another pod saved new credentials. Production only, as it always was.
+  // Every pod rebuilds its own Teams bot when another pod saved new credentials. Production only.
   startBackgroundSync() {
     if (!this.deps.isProductionMode) return undefined;
     logger.info("Setting up background sync process for Microsoft Teams workflow integration configuration");

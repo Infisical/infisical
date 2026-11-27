@@ -1,6 +1,6 @@
 import { TSecretsChatNotification, TSecretsChatNotificationService } from "../services/chat-notification/service";
 
-// For legacy callers' tests: records every notification the caller asked for.
+// For callers' tests: records every notification the caller asked for.
 export class FakeSecretsChatNotificationService implements TSecretsChatNotificationService {
   readonly notifications: { projectId: string; notification: TSecretsChatNotification }[] = [];
 

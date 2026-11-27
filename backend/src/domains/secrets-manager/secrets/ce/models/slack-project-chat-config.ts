@@ -6,7 +6,7 @@ import { SecretsChatEvent } from "./secrets-chat-event";
 
 const MAX_CHANNELS = 20;
 
-// Channels are stored as the sanitized ", "-joined string, as project_slack_configs has always held them.
+// project_slack_configs stores channels as one ", "-joined string, and the API returns it in that form.
 export type TSlackProjectChatConfigRecord = {
   id: string;
   projectId: string;
@@ -85,7 +85,7 @@ export class SlackProjectChatConfig {
     );
   }
 
-  // Replaces every setting, as a save of the project's chat settings always has.
+  // Replaces every setting: the settings form always sends them all.
   reconfigure(settings: TSlackProjectChatConfigSettings): void {
     const next = SlackProjectChatConfig.create({ projectId: this.projectId, ...settings }).toJSON();
     this.linkedIntegrationId = next.integrationId;

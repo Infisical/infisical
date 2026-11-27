@@ -22,7 +22,7 @@ const layout = (input: { text: string; header: string; body: unknown[]; color: s
   attachments: [{ color: input.color, blocks: input.body }]
 });
 
-// `siteUrl` is interpolated as given, so an unset site URL reads "undefined/..." as it always has.
+// `siteUrl` is interpolated as given: an instance without SITE_URL gets "undefined/..." links.
 export const renderSlackMessage = (
   notification: TSecretsChatNotification,
   siteUrl: string | undefined

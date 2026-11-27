@@ -26,7 +26,7 @@ channelIds, teamId?, limits? })`. Never add product vocabulary (event names, wor
 
 - **Posting never throws for a channel.** `post` tries every channel in order and returns each one's outcome
   (`delivered`, or a `ChatPostFailure` with the provider's own code in `providerError`), or `{ integrationMissing: true }`
-  when the id is not an integration of the org. A message for the other provider is a `RuleViolationError`. Callers that
+  when the id is not an integration of the org or of the message's provider. Callers that
   cannot wait (alert dispatch) pass `limits`, which also turns a rate limit into an immediate `RateLimited`.
 - **Another org's integration reads as missing** in `findInOrg`, `listInOrg` and `post`. The integration routes look an
   id up across orgs and then check Settings permission in the integration's org, so another org's id gets the

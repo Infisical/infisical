@@ -331,7 +331,7 @@ export class MicrosoftTeamsIntegrationService implements TMicrosoftTeamsIntegrat
     };
   }
 
-  // Only Teams integrations count: a Slack id reads as missing, as the legacy join did.
+  // Only Teams integrations count: a Slack id reads as missing.
   private async findTeams(id: string, notFoundMessage: string): Promise<WorkflowIntegration> {
     const integration = await this.workflowIntegrationStore.findById(id);
     if (!integration || !integration.isProvider(WorkflowIntegrationProvider.MicrosoftTeams)) {

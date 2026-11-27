@@ -241,7 +241,7 @@ export class SlackIntegrationService implements TSlackIntegrationService {
     return `${this.config.siteUrl}/api/v1/workflow-integrations/slack/oauth_redirect`;
   }
 
-  // Only Slack integrations count: a Teams id reads as missing, as the legacy join did.
+  // Only Slack integrations count: a Teams id reads as missing.
   private async findSlack(id: string, notFoundMessage: string): Promise<WorkflowIntegration> {
     const integration = await this.workflowIntegrationStore.findById(id);
     if (!integration || !integration.isProvider(WorkflowIntegrationProvider.Slack)) {
