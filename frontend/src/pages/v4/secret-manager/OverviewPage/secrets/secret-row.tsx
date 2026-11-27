@@ -189,7 +189,13 @@ export function SecretValue({ secret, visible }: { secret?: Secret; visible: boo
   if (value === undefined)
     return (
       <span className={styles.nameLine}>
-        <Tooltip content="You do not have access to view the current value.">
+        <Tooltip
+          content={
+            secret.value.status === "failed"
+              ? secret.value.message
+              : "You do not have access to view the current value."
+          }
+        >
           <span className={styles.hint}>
             <Icon icon={EyeOffIcon} label="Value hidden" />
           </span>
