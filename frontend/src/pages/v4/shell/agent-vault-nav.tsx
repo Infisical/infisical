@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Badge } from "@infisical/cipher/ui/badge";
 
 import {
@@ -37,7 +37,32 @@ export const useAgentVaultNav = (orgId: string, projectId: string | undefined) =
   );
   const { data: health } = settingsAdapter.useSessionLogHealth(orgId, id, canReadSettings);
   const { data: plan } = settingsAdapter.useSessionLogPlan(orgId);
-  if (!enabled) return { hidden: [], badges: {} };
+  const canReadAccess =
+    permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
+    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
+    permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
+  const canReadAudit = permission.can(
+    ProjectPermissionAuditLogsActions.Read,
+    ProjectPermissionSub.AuditLogs
+  );
+  const canManageSkills = canManageAgentVaultSkills(permission);
+  const hidden = useMemo(
+    () =>
+      enabled
+        ? (
+            [
+              ["access", canReadAccess],
+              ["audit", canReadAudit],
+              ["skills", canManageSkills],
+              ["session-logs", canReadSettings]
+            ] as const
+          )
+            .filter(([, isAllowed]) => !isAllowed)
+            .map(([itemId]) => itemId)
+        : [],
+    [enabled, canReadAccess, canReadAudit, canManageSkills, canReadSettings]
+  );
+  if (!enabled) return { hidden, badges: {} };
 
   const settings = sessionLogState?.settings ?? null;
   let settingsAlert: ReactNode;
@@ -48,22 +73,8 @@ export const useAgentVaultNav = (orgId: string, projectId: string | undefined) =
   )
     settingsAlert = attention("warn");
 
-  const allowed: [string, boolean][] = [
-    [
-      "access",
-      permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
-        permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
-        permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)
-    ],
-    [
-      "audit",
-      permission.can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs)
-    ],
-    ["skills", canManageAgentVaultSkills(permission)],
-    ["session-logs", canReadSettings]
-  ];
   return {
-    hidden: allowed.filter(([, isAllowed]) => !isAllowed).map(([itemId]) => itemId),
+    hidden,
     badges: {
       services: grantedRequiringSetup ? attention("warn") : undefined,
       settings: canReadSettings ? settingsAlert : undefined
