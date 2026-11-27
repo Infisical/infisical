@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
+import { resolveOidcGroupMembershipChanges, sanitizeOidcConfigAuditUrls } from "./oidc-config-fns";
 
 const makeGroup = (id: string, name: string) => ({ id, name });
 const makeMembership = (groupId: string, groupName: string) => ({ groupId, groupName });
@@ -71,5 +71,29 @@ describe("resolveOidcGroupMembershipChanges", () => {
     });
 
     expect(groupsToRemoveUserFrom.map((g) => g.id)).toEqual(["1"]);
+  });
+});
+
+describe("sanitizeOidcConfigAuditUrls", () => {
+  test("drops the userinfo, path, query values and fragment of every URL field", () => {
+    const sanitized = sanitizeOidcConfigAuditUrls({
+      discoveryURL: "https://user:pw@idp.example.com/realms/acme/.well-known/openid-configuration?api_key=abc#x",
+      userinfoEndpoint: "https://idp.example.com/userinfo?token=secret"
+    });
+
+    expect(sanitized).toEqual({
+      discoveryURL: "https://idp.example.com/[REDACTED]?api_key=[REDACTED]",
+      userinfoEndpoint: "https://idp.example.com/[REDACTED]?token=[REDACTED]"
+    });
+  });
+
+  test("leaves other fields, empty values and absent fields as they are", () => {
+    const fields = { isActive: true, allowedEmailDomains: "example.com", issuer: "", jwksUri: null };
+
+    expect(sanitizeOidcConfigAuditUrls(fields)).toEqual(fields);
+  });
+
+  test("redacts a value that is not a URL instead of logging it", () => {
+    expect(sanitizeOidcConfigAuditUrls({ tokenEndpoint: "https://" })).toEqual({ tokenEndpoint: "[REDACTED]" });
   });
 });

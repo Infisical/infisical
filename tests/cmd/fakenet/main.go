@@ -44,9 +44,11 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/oci"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/panos"
+	"github.com/Infisical/infisical/tests/fakes/powerdns"
 	"github.com/Infisical/infisical/tests/fakes/pwnedpasswords"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fakes/ultradns"
 	"github.com/Infisical/infisical/tests/fakes/venaficloud"
 	"github.com/Infisical/infisical/tests/fakes/venafitpp"
 	"github.com/Infisical/infisical/tests/fakes/vercel"
@@ -75,11 +77,11 @@ func main() {
 		webhook.Slack,
 		webhook.Splunk,
 		vercel.Service,
-		oauth.Google, oauth.GitHub, oauth.GitLab, oauth.GCPCertificateManager,
+		oauth.Google, oauth.GitHub, oauth.GitLab, oauth.GCPCertificateManager, oauth.GCPCloudDNS,
 		gcp.STS, gcpIAMCredentials{},
-		kubernetes.Service, azure.Service, azure.KeyVault, alicloud.Service, oci.Service,
+		kubernetes.Service, azure.Service, azure.KeyVault, azure.DNS, alicloud.Service, oci.Service,
 		ldap.Service, linuxserver.Service,
-		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
+		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, powerdns.Service, ultradns.Service, website.Service,
 		f5bigip.Service, kemp.Service, netscaler.Service, nutanix.Service, panos.Service,
 		digicert.Service, godaddy.Service, venafitpp.Service, venaficloud.Service, azureadcs.Service,
 		chef.Service,

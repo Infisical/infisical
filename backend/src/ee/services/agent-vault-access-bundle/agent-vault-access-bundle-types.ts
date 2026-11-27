@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { TAgentVaultServiceHookInput, TAgentVaultServiceHookView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";
@@ -164,7 +164,7 @@ export type TAgentVaultServiceSummary = {
     })
 );
 
-export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultProjectScoped = { projectId: string; ctx: TActorContext };
 
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;

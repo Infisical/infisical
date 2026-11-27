@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { WebhooksSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import {
   SUBSCRIBABLE_WEBHOOK_EVENTS,
@@ -88,10 +88,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.createWebhook({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -113,7 +110,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.WebhookCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.body.projectId,
           environment: webhook.environment.slug,
@@ -165,10 +162,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.updateWebhook({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.webhookId,
         isDisabled: req.body.isDisabled,
         eventsFilter: req.body.eventsFilter
@@ -193,7 +187,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.WebhookUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { webhookId: webhook.id, projectId: webhook.projectId }
         })
         .catch(() => {});
@@ -223,10 +217,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.deleteWebhook({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.webhookId
       });
 
@@ -248,7 +239,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.WebhookDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { webhookId: webhook.id, projectId: webhook.projectId }
         })
         .catch(() => {});
@@ -278,10 +269,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.testWebhook({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.webhookId
       });
       return { message: "Successfully tested webhook", webhook };
@@ -308,10 +296,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhook = await server.services.webhook.getWebhookById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.webhookId
       });
       return { webhook };
@@ -345,10 +330,7 @@ export const registerWebhookRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const webhooks = await server.services.webhook.listWebhooks({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.projectId
       });

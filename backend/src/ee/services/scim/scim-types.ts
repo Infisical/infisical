@@ -1,7 +1,7 @@
 import { ScimPatchOperation } from "scim-patch";
 
 import { TScimEvents, TScimTokens } from "@app/db/schemas";
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export enum ScimEvent {
   LIST_USERS = "list-users",
@@ -22,17 +22,19 @@ export enum ScimEvent {
 export type TCreateScimTokenDTO = {
   description: string;
   ttlDays: number;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TDeleteScimTokenDTO = {
   scimTokenId: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TListScimEventsDTO = {
   since?: string;
   limit?: number;
   offset?: number;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 // SCIM server endpoint types
 
@@ -197,7 +199,7 @@ export type TScimServiceFactory = {
   createScimToken: (arg: TCreateScimTokenDTO) => Promise<{
     scimToken: string;
   }>;
-  listScimTokens: (arg: TOrgPermission) => Promise<TScimTokens[]>;
+  listScimTokens: (arg: { orgId: string } & TActorInput) => Promise<TScimTokens[]>;
   deleteScimToken: (arg: TDeleteScimTokenDTO) => Promise<{
     orgId: string;
     id: string;

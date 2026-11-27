@@ -1,10 +1,10 @@
-import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { ResourceType } from "@app/db/schemas";
+import {
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -56,13 +56,13 @@ const assertValidApplicationId = (applicationId: string) => {
 
 export type TCertManagerApplicationAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  applicationPermissionService: TApplicationPermissionService;
   licenseService: TLicenseService;
 };
 
 export const certManagerApplicationAlertProviderFactory = ({
   certManagerCertificateAlertDAL,
-  permissionService,
+  applicationPermissionService,
   licenseService
 }: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
@@ -132,19 +132,15 @@ export const certManagerApplicationAlertProviderFactory = ({
     }
 
     assertValidApplicationId(resourceId);
-    const { permission } = await permissionService.getResourcePermission({
-      actor: actor.actor,
-      actorId: actor.actorId,
+    const permission = await applicationPermissionService.getApplicationPermission({
+      actor,
       projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId,
-      actorAuthMethod: actor.actorAuthMethod,
-      actorOrgId: actor.actorOrgId
+      applicationId: resourceId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
-      ResourcePermissionSub.PkiAlerts
-    );
+    permission.assert({
+      action: CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
+      subject: ApplicationPermissionSub.PkiAlerts
+    });
   };
 
   const assertResourceInScope = async (input: {

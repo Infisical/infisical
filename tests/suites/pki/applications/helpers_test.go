@@ -21,14 +21,9 @@ const (
 
 // member is a new Product Member with a role on the graph's application, or on none
 // when role is empty.
-func member(t *testing.T, tn *harness.Tenant, g *pki.Graph, role string) *harness.Principal {
+func member(t *testing.T, g *pki.Graph, role string) *harness.Principal {
 	t.Helper()
-	u := tn.NewUser(t, harness.WithName(role+"-"+id.Short()))
-	g.Project.Grant(t, u)
-	if role != "" {
-		pki.AddMember(t, g.App, u, role)
-	}
-	return u
+	return pki.NewMember(t, g.App, role+"-"+id.Short(), role)
 }
 
 // operatorIdentity is a new machine identity, a Product Member, that is an operator of
@@ -45,7 +40,7 @@ func operatorIdentity(t *testing.T, tn *harness.Tenant, g *pki.Graph) *harness.P
 // through a group, and the group's id.
 func operatorGroupMember(t *testing.T, tn *harness.Tenant, g *pki.Graph) (*harness.Principal, uuid.UUID) {
 	t.Helper()
-	user := member(t, tn, g, "")
+	user := member(t, g, "")
 	group := fixture.NewGroup(t, tn)
 	group.AddUser(t, user)
 	fixture.ExistingProject(tn, g.Project.ID.String()).GrantGroup(t, group, "member")
@@ -63,4 +58,31 @@ func requireIssueRefused(t *testing.T, g *pki.Graph, as *harness.Principal, mess
 	require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
 	require.Equal(t, message, apierr.Message(res.Body))
 	require.Zero(t, pki.Requests(t, g.Project, g.Profile))
+}
+
+type applicationFields struct {
+	Name        string
+	Description *string
+}
+
+// readApplication reads the application's editable fields as the tenant admin.
+func readApplication(t *testing.T, tn *harness.Tenant, app pki.Application) applicationFields {
+	t.Helper()
+	res, err := tn.Admin.API.GetPkiApplicationWithResponse(t.Context(), app.ID)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "reading the application returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return applicationFields{Name: res.JSON200.Application.Name, Description: res.JSON200.Application.Description}
+}
+
+// applicationIDs lists the organization's applications as the tenant admin.
+func applicationIDs(t *testing.T, tn *harness.Tenant) []uuid.UUID {
+	t.Helper()
+	res, err := tn.Admin.API.ListPkiApplicationsWithResponse(t.Context(), nil)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "listing applications returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	out := []uuid.UUID{}
+	for _, a := range res.JSON200.Applications {
+		out = append(out, a.Id)
+	}
+	return out
 }

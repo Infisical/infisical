@@ -93,7 +93,8 @@ export const useOauthConsent = () => {
           state: dto.state,
           code_challenge: dto.codeChallenge,
           code_challenge_method: dto.codeChallengeMethod,
-          scope: dto.scope
+          scope: dto.scope,
+          resource: dto.resource
         }
       );
       return data;

@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
 	"testing"
@@ -138,6 +139,7 @@ type csrSpec struct {
 	hash       crypto.Hash
 	commonName string
 	dnsNames   []string
+	ips        []net.IP
 	emptySANs  bool
 }
 
@@ -186,6 +188,7 @@ func buildCSR(t *testing.T, s csrSpec) []byte {
 	tmpl := &x509.CertificateRequest{
 		Subject:            pkix.Name{CommonName: s.commonName},
 		DNSNames:           s.dnsNames,
+		IPAddresses:        s.ips,
 		SignatureAlgorithm: signatureAlgorithm(t, key, s.hash),
 	}
 	if s.emptySANs {

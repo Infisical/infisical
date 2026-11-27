@@ -9,11 +9,11 @@ import {
 } from "@app/ee/services/honey-token/honey-token-provider-fns";
 import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { HONEY_TOKENS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const HoneyTokenResponseSchema = HoneyTokensSchema.pick({
@@ -95,7 +95,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      return server.services.honeyToken.getOrgHoneyTokenLimit({ projectId: req.query.projectId }, req.permission);
+      return server.services.honeyToken.getOrgHoneyTokenLimit({ projectId: req.query.projectId }, req.actor);
     }
   });
 
@@ -141,7 +141,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { honeyToken, stackDeployment } = await server.services.honeyToken.create(req.body, req.permission);
+      const { honeyToken, stackDeployment } = await server.services.honeyToken.create(req.body, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -163,7 +163,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
@@ -200,7 +200,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { honeyToken } = await server.services.honeyToken.getHoneyTokenById(
         { honeyTokenId: req.params.id },
-        req.permission
+        req.actor
       );
       return { honeyToken };
     }
@@ -238,7 +238,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
           description,
           secretsMapping
         },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -260,7 +260,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
@@ -294,13 +294,13 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { honeyToken } = await server.services.honeyToken.resetHoneyToken(
         { honeyTokenId: req.params.id },
-        req.permission
+        req.actor
       );
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenReset,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
@@ -340,7 +340,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { honeyTokenId, honeyToken, folderInfo } = await server.services.honeyToken.revokeHoneyToken(
         { honeyTokenId: req.params.id },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -362,7 +362,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenRevoked,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             honeyTokenId,
             type: honeyToken.type,
@@ -396,7 +396,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { honeyToken, folderInfo } = await server.services.honeyToken.deleteHoneyToken(
         { honeyTokenId: req.params.id },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -418,7 +418,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         .sendPostHogEvents({
           event: PostHogEventTypes.HoneyTokenDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
@@ -450,7 +450,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { type, credentials } = await server.services.honeyToken.getCredentials(
         { honeyTokenId: req.params.id },
-        req.permission
+        req.actor
       );
       return {
         type,
@@ -498,7 +498,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
           offset: req.query.offset,
           limit: req.query.limit
         },
-        req.permission
+        req.actor
       );
       return { events, totalCount };
     }

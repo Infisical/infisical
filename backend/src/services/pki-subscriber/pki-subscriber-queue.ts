@@ -1,9 +1,9 @@
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
-import { ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority/certificate-authority-queue";

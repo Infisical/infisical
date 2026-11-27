@@ -8,6 +8,7 @@ import { PamRecordingStorageBackend } from "@app/ee/services/pam-session-recordi
 import { PamAccessMethod, PamAccountType, PamSessionStatus } from "@app/ee/services/pam/pam-enums";
 import { PamPolicyRulesSchema } from "@app/ee/services/pam/pam-policies";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
@@ -15,7 +16,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedSessionSchema = PamSessionsSchema.pick({
@@ -80,12 +80,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { sessions, totalCount } = await server.services.pamSession.listSessions(
         req.internalPamProjectId,
-        {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        req.actor,
         { offset: req.query.offset, limit: req.query.limit, search: req.query.search, status: req.query.status }
       );
       return { sessions, totalCount };
@@ -109,12 +104,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
+      const session = await server.services.pamSession.getSessionById(req.params.sessionId, req.actor);
       if (!session) {
         throw new NotFoundError({ message: "Session not found" });
       }
@@ -153,14 +143,14 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.pamSession.getSessionCredentials(
         req.params.sessionId,
-        req.permission.id,
-        req.permission.orgId
+        req.actor.id,
+        req.actor.orgId
       );
 
       if (result.sessionStarted) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: result.projectId,
           event: {
             type: EventType.PAM_SESSION_START,
@@ -176,10 +166,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
           .sendPostHogEvents({
             event: PostHogEventTypes.PamSessionStarted,
             distinctId: result.actorDistinctId || getTelemetryDistinctId(req),
-            organizationId: req.permission.orgId,
+            organizationId: req.actor.orgId,
             properties: {
               accountType: result.accountType,
-              orgId: req.permission.orgId
+              orgId: req.actor.orgId
             }
           })
           .catch(() => {});
@@ -212,22 +202,13 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId, accountId, accountName, alreadyEnded } =
         req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN
-          ? await server.services.pamSession.endSessionFromGateway(
-              req.params.sessionId,
-              req.permission.id,
-              req.permission.orgId
-            )
-          : await server.services.pamSession.endOwnSession(req.params.sessionId, {
-              actor: req.permission.type,
-              actorId: req.permission.id,
-              actorOrgId: req.permission.orgId,
-              actorAuthMethod: req.permission.authMethod
-            });
+          ? await server.services.pamSession.endSessionFromGateway(req.params.sessionId, req.actor.id, req.actor.orgId)
+          : await server.services.pamSession.endOwnSession(req.params.sessionId, req.actor);
 
       if (!alreadyEnded) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.PAM_SESSION_END,
@@ -263,17 +244,12 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { session, projectId, accountName } = await server.services.pamSession.terminateSession(
         req.params.sessionId,
-        {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.PAM_SESSION_TERMINATE,
@@ -289,10 +265,10 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.PamSessionTerminated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: session.accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -374,12 +350,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       const result = await server.services.pamSession.access({
         path: req.body.path,
         projectId: req.internalPamProjectId,
-        actor: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        actor: req.actor,
         actorEmail,
         actorName,
         actorIp: req.realIp ?? "",
@@ -394,7 +365,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_ACCESS,
@@ -411,10 +382,10 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountAccessed,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: result.accountType,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             duration: result.sessionDurationMs,
             accessMethod: result.accessMethod
           }
@@ -475,8 +446,8 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       const { ticket } = await server.services.pamWebAccess.issueWebSocketTicket({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        orgId: req.permission.orgId,
-        actor: req.permission,
+        orgId: req.actor.orgId,
+        actor: req.actor,
         actorEmail: req.auth.user.email ?? "",
         actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
         tokenVersionId: req.auth.tokenVersionId,

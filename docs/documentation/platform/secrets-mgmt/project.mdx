@@ -61,7 +61,10 @@ When the overview shows more than one environment, it collects your unsaved edit
 - **Save**: saves every pending change
 - **Discard**: drops every pending change
 
-Infisical saves the changes as one [commit](/documentation/platform/pit-recovery) per environment, each with the same message. Environments with an [approval policy](/documentation/platform/pr-workflows) open a change request instead of committing directly. If an environment fails to save, its edits stay pending while the other environments save. If other secrets reference a secret you changed, you must type `confirm` before Infisical saves.
+Infisical saves the changes as one [commit](/documentation/platform/pit-recovery) per environment, each with the same message. Environments with an [approval policy](/documentation/platform/pr-workflows) open a change request instead of committing directly.
+
+- If an environment fails to save, its edits stay pending while the other environments save
+- If other secrets reference a secret you changed, you must type `confirm` before Infisical saves
 
 ## Secrets dashboard
 

@@ -1,21 +1,24 @@
-import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
+import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { AccessScope } from "@app/db/schemas";
-import { projectAdminPermissions, projectMemberPermissions } from "@app/ee/services/permission/default-roles";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { PERMISSION_BOUNDARY_ERROR_NAME, PermissionDeniedError } from "@app/domains/lib/errors";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations/ce/module";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { PermissionBoundaryError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
+  ProjectPermissionSub,
+  projectAdminPermissions,
+  projectMemberPermissions
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { assertIdentityAuthAccessAllowed } from "./identity-auth-permission-fns";
 
@@ -23,8 +26,8 @@ import { assertIdentityAuthAccessAllowed } from "./identity-auth-permission-fns"
 // carried none, and revoke carried one only on its org branch, so on the legacy privilege system a
 // principal holding `edit-auth` could repoint an identity that outranks it and authenticate as it.
 // `orgEditAuthOnly` models the actor that made this reachable: a custom role with `edit-auth` but
-// not full admin. The target's grants come from `getActorGrantAbilities`, which reads the same
-// membership query the ability is built from, so a role held only through an identity group, and an
+// not full admin. The target's grants come from the domains' `getGrantPermissions`, which read the
+// same grants the permission is built from, so a role held only through an identity group, and an
 // additional privilege carrying no role slug at all, are each bounded like a direct role.
 
 const orgAdmin = createMongoAbility<MongoAbility<OrgPermissionSet>>(orgAdminPermissions);
@@ -76,33 +79,48 @@ const runBoundary = async ({
   roleLookups?: string[];
   principals?: TPrincipal[];
 }) => {
+  const toPermission = (ability: MongoAbility) => Permission.fromRules({ rules: ability.rules as never });
+  const actorPermissionOf = (ability: MongoAbility) =>
+    ActorPermission.of({ rules: ability.rules as never, usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem });
+  // One permission per grant. Like the real thing, direct, group-inherited and additional-privilege grants all
+  // look the same by the time they reach the boundary.
+  const grantPermissions = (scopeData: TScopeCall, target: { type: ActorType; id: string }) => {
+    scopeCalls.push(scopeData);
+    principals.push({ actorId: target.id, actorType: target.type });
+    roleLookups.push(scopeData.projectId ? "project" : "org");
+    return Promise.resolve(targetPermissions.map(toPermission));
+  };
+  type TGrantInput = { actor: { type: ActorType; id: string }; orgId: string; projectId: string };
   const deps = {
-    permissionService: {
-      getOrgPermission: () => Promise.resolve({ permission: actorPermission }),
-      getProjectPermission: () => Promise.resolve({ permission: actorPermission }),
-      // One ability per grant the target holds. The real implementation sources these from
-      // permissionDAL.getPermission, so direct roles, group-inherited roles and additional
-      // privileges are indistinguishable from each other by the time they reach the boundary.
-      getActorGrantAbilities: ({ scopeData, actorId, actorType }: { scopeData: TScopeCall } & TPrincipal) => {
-        scopeCalls.push(scopeData);
-        principals.push({ actorId, actorType });
-        roleLookups.push(scopeData.projectId ? "project" : "org");
-        return Promise.resolve(targetPermissions.map((permission) => ({ permission })));
-      }
+    orgPermissionService: {
+      getOrgPermission: () => Promise.resolve(actorPermissionOf(actorPermission)),
+      getGrantPermissions: (input: TGrantInput) =>
+        grantPermissions({ scope: AccessScope.Organization, orgId: input.orgId }, input.actor)
     },
-    orgDAL: { findById: () => Promise.resolve({ shouldUseNewPrivilegeSystem }) }
+    projectPermissionService: {
+      getGrantPermissions: (input: TGrantInput) =>
+        grantPermissions({ scope: AccessScope.Project, orgId: input.orgId, projectId: input.projectId }, input.actor)
+    },
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: () => Promise.resolve(actorPermissionOf(actorPermission)),
+      getFolderGrantPermissions: () => Promise.resolve([])
+    },
+    actorGrantsService: { getActorGrants: () => Promise.resolve({}) }
   } as unknown as Parameters<typeof assertIdentityAuthAccessAllowed>[0];
+
+  const actor = {
+    principal: { type: ActorType.USER, id: "user-1" },
+    org: { id: "org-1", shouldUseNewPrivilegeSystem }
+  } as unknown as TActorContext;
 
   await assertIdentityAuthAccessAllowed(deps, {
     identityId: "identity-1",
+    identityName: "identity-one",
     orgId: "org-1",
     projectId,
     action,
     baseMessage: "Failed to add token auth to identity with more privileged role",
-    actor: ActorType.USER,
-    actorId: "user-1",
-    actorAuthMethod: null,
-    actorOrgId: "org-1"
+    actor
   });
 };
 
@@ -113,9 +131,9 @@ describe("assertIdentityAuthAccessAllowed", () => {
     });
 
     test("an edit-auth-only actor may not configure an admin identity's auth", async () => {
-      await expect(runBoundary({ actorPermission: orgEditAuthOnly, targetPermissions: [orgAdmin] })).rejects.toThrow(
-        PermissionBoundaryError
-      );
+      await expect(
+        runBoundary({ actorPermission: orgEditAuthOnly, targetPermissions: [orgAdmin] })
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("every role the target holds is bounded, not just the first", async () => {
@@ -124,7 +142,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
       ).resolves.toBeUndefined();
       await expect(
         runBoundary({ actorPermission: orgEditAuthOnly, targetPermissions: [orgEditAuthOnly, orgAdmin] })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("the target's roles are resolved in organization scope", async () => {
@@ -151,7 +169,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
       ).resolves.toBeUndefined();
       await expect(
         runBoundary({ shouldUseNewPrivilegeSystem: true, actorPermission: orgMember, targetPermissions: [orgMember] })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(PermissionDeniedError);
     });
 
     test("the target is not looked up at all under the new privilege system", async () => {
@@ -179,7 +197,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
     test("an edit-auth-only actor may not configure an admin identity's auth", async () => {
       await expect(
         runBoundary({ actorPermission: projectEditAuthOnly, targetPermissions: [projectAdmin], projectId: "project-1" })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("the target's roles are resolved in project scope", async () => {
@@ -220,7 +238,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
           targetPermissions: [projectMember],
           projectId: "project-1"
         })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(PermissionDeniedError);
     });
 
     test("the target is not looked up at all under the new privilege system", async () => {
@@ -249,16 +267,16 @@ describe("assertIdentityAuthAccessAllowed", () => {
           targetPermissions: [noAccess],
           action: OrgPermissionIdentityActions.CreateToken
         })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(PermissionDeniedError);
       await expect(runBoundary({ actorPermission: orgMember, targetPermissions: [orgMember] })).rejects.toThrow(
-        ForbiddenError
+        PermissionDeniedError
       );
     });
 
     test("covering a project identity's grants does not stand in for the action", async () => {
       await expect(
         runBoundary({ actorPermission: projectMember, targetPermissions: [noAccess], projectId: "project-1" })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(PermissionDeniedError);
     });
 
     test("a project grant scoped to another identity does not cover this one", async () => {
@@ -268,7 +286,7 @@ describe("assertIdentityAuthAccessAllowed", () => {
           targetPermissions: [noAccess],
           projectId: "project-1"
         })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toThrow(PermissionDeniedError);
     });
   });
 
@@ -281,14 +299,14 @@ describe("assertIdentityAuthAccessAllowed", () => {
           projectId: "project-1",
           action: OrgPermissionIdentityActions.CreateToken
         })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
       await expect(
         runBoundary({
           actorPermission: orgCreateTokenOnly,
           targetPermissions: [orgAdmin],
           action: OrgPermissionIdentityActions.CreateToken
         })
-      ).rejects.toThrow(PermissionBoundaryError);
+      ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     });
 
     test("an admin actor may mint a credential for a member identity", async () => {

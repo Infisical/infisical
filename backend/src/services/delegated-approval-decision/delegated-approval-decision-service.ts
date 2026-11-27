@@ -2,12 +2,12 @@ import { UnrecoverableError } from "bullmq";
 
 import { EventResultStatus } from "@app/domains/platform/events/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { logger } from "@app/lib/logger";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus

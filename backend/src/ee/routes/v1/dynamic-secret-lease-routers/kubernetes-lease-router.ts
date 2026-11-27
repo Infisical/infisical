@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretLeaseSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerKubernetesDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -53,10 +53,7 @@ export const registerKubernetesDynamicSecretLeaseRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { data, lease, dynamicSecret } = await server.services.dynamicSecretLease.create({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         name: req.body.dynamicSecretName,
         ...req.body
       });

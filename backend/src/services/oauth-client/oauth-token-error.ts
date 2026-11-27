@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 
+import { PermissionDeniedError, RuleViolationError } from "@app/domains/lib/errors";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
@@ -82,7 +83,7 @@ const REJECTED_GRANT_CODE_BY_GRANT_TYPE: Record<OauthGrantType, OauthTokenErrorC
 // authorization code, refresh token or subject token, or a subject we cannot resolve to a usable
 // account), so they take whichever code that grant owes. Both are needed because the exchange refuses an
 // unusable subject in two vocabularies: its own membership checks raise the first, while
-// `getOrgPermission` raises the second for the same kind of refusal, and mapping only one would answer
+// `getOrgPermission` raises the second (as the domain's `PermissionDeniedError`) for the same kind of refusal, and mapping only one would answer
 // half of them with an unexplained 500. Client authentication throws `invalid_client` explicitly instead,
 // because there it is the client that failed rather than the token. Anything else is a bug or an outage,
 // so it becomes a generic `server_error`: its message was written for a different envelope and could
@@ -90,7 +91,11 @@ const REJECTED_GRANT_CODE_BY_GRANT_TYPE: Record<OauthGrantType, OauthTokenErrorC
 export const toOauthTokenError = (error: unknown, grantType?: OauthGrantType): OauthTokenError => {
   if (error instanceof OauthTokenError) return error;
 
-  if (error instanceof UnauthorizedError || error instanceof ForbiddenRequestError) {
+  if (
+    error instanceof UnauthorizedError ||
+    error instanceof ForbiddenRequestError ||
+    error instanceof PermissionDeniedError
+  ) {
     const code = grantType ? REJECTED_GRANT_CODE_BY_GRANT_TYPE[grantType] : OauthTokenErrorCode.InvalidGrant;
 
     return new OauthTokenError({ code, message: error.message, error });
@@ -105,7 +110,7 @@ export const toOauthTokenError = (error: unknown, grantType?: OauthGrantType): O
     });
   }
 
-  if (error instanceof BadRequestError) {
+  if (error instanceof BadRequestError || error instanceof RuleViolationError) {
     return new OauthTokenError({ code: OauthTokenErrorCode.InvalidRequest, message: error.message, error });
   }
 

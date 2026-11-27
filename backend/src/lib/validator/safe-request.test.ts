@@ -169,6 +169,14 @@ describe("safe-request SSRF helpers", () => {
       });
     });
 
+    it("rejects private IPs with requirePublicAddress even when ALLOW_INTERNAL_IP_CONNECTIONS is true", async () => {
+      configState.ALLOW_INTERNAL_IP_CONNECTIONS = true;
+      setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
+      await expect(validateAndPinUrl("https://internal.example", { requirePublicAddress: true })).rejects.toThrow(
+        /Local IPs not allowed/i
+      );
+    });
+
     it("invokes verifyHostInputValidity to block Infisical-internal hosts (DB/Redis)", async () => {
       verifyHostInputValidityMock.mockRejectedValueOnce(new Error("blocked: internal infra"));
       await expect(validateAndPinUrl("https://internal-db.example")).rejects.toThrow(/internal infra/i);

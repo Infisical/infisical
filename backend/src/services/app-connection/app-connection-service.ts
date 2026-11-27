@@ -1,11 +1,23 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { ProjectType, TAppConnections } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermission,
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -15,22 +27,12 @@ import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/ga
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import {
-  OrgPermissionAppConnectionActions,
-  OrgPermissionGatewayActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
-import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
+import { DiscriminativePick } from "@app/lib/types";
 import {
   addAppConnectionFederatedCredential,
   decryptAppConnection,
@@ -201,6 +203,7 @@ import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
+import { ValidateRfc2136ConnectionCredentialsSchema } from "./rfc2136";
 import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
 import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
@@ -239,7 +242,8 @@ import { zabbixConnectionService } from "./zabbix/zabbix-connection-service";
 
 export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
   instanceConfigService: TInstanceConfigService;
   licenseService: TLicenseService;
@@ -362,12 +366,14 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
   [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema,
-  [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema
+  [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema,
+  [AppConnection.Rfc2136]: ValidateRfc2136ConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
   appConnectionDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
   kmsDataKeyService,
   instanceConfigService,
   licenseService,
@@ -382,23 +388,16 @@ export const appConnectionServiceFactory = ({
   keyStore,
   oidcIssuerService
 }: TAppConnectionServiceFactoryDep) => {
-  const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
+  const listAppConnections = async (actor: TActorContext, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
 
     if (projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Read,
-        ProjectPermissionSub.AppConnections
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Read,
+        subject: ProjectPermissionSub.AppConnections
+      });
 
       appConnections = (
         await appConnectionDAL.findWithProjectDetails({
@@ -406,36 +405,31 @@ export const appConnectionServiceFactory = ({
           ...(app ? { app } : {})
         })
       ).filter((appConnection) =>
-        permission.can(
-          ProjectPermissionAppConnectionActions.Read,
-          subject(ProjectPermissionSub.AppConnections, { connectionId: appConnection.id })
-        )
+        permission.can({
+          action: ProjectPermissionAppConnectionActions.Read,
+          subject: ProjectPermissionSub.AppConnections,
+          fields: { connectionId: appConnection.id }
+        })
       );
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actorId: actor.id,
-        actor: actor.type,
-        orgId: actor.orgId,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Read,
-        OrgPermissionSubjects.AppConnections
-      );
+      permission.assert({
+        action: OrgPermissionAppConnectionActions.Read,
+        subject: OrgPermissionSubjects.AppConnections
+      });
 
       appConnections = (
         await appConnectionDAL.findWithProjectDetails({
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           ...(app ? { app } : {})
         })
       ).filter((appConnection) =>
-        permission.can(
-          OrgPermissionAppConnectionActions.Read,
-          subject(OrgPermissionSubjects.AppConnections, { connectionId: appConnection.id })
-        )
+        permission.can({
+          action: OrgPermissionAppConnectionActions.Read,
+          subject: OrgPermissionSubjects.AppConnections,
+          fields: { connectionId: appConnection.id }
+        })
       );
     }
 
@@ -451,43 +445,38 @@ export const appConnectionServiceFactory = ({
   const findAppConnectionById = async (
     app: AppConnection,
     connectionId: string,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     scope?: TAppConnectionScope
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
     // Checked before any permission or app check, so a connection outside the scope reads exactly like a missing one.
-    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
+    if (
+      !appConnection ||
+      appConnection.orgId !== actor.org.id ||
+      (scope && appConnection.projectId !== scope.projectId)
+    )
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: appConnection.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectPermissionService.getProjectPermission({
+        actor,
+        projectId: appConnection.projectId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Read,
-        subject(ProjectPermissionSub.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Read,
+        subject: ProjectPermissionSub.AppConnections,
+        fields: { connectionId }
+      });
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actorId: actor.id,
-        actor: actor.type,
-        orgId: appConnection.orgId,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Read,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: OrgPermissionAppConnectionActions.Read,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId }
+      });
     }
 
     if (appConnection.app !== app)
@@ -499,11 +488,11 @@ export const appConnectionServiceFactory = ({
   const findAppConnectionByName = async (
     app: AppConnection,
     { connectionName, projectId }: TGetAppConnectionByNameDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await appConnectionDAL.findOne({
       name: connectionName,
-      ...(projectId ? { projectId } : { orgId: actor.orgId, projectId: null })
+      ...(projectId ? { projectId } : { orgId: actor.org.id, projectId: null })
     });
 
     if (!appConnection)
@@ -512,33 +501,24 @@ export const appConnectionServiceFactory = ({
       });
 
     if (appConnection.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: appConnection.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectPermissionService.getProjectPermission({
+        actor,
+        projectId: appConnection.projectId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Read,
-        subject(ProjectPermissionSub.AppConnections, { connectionId: appConnection.id })
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Read,
+        subject: ProjectPermissionSub.AppConnections,
+        fields: { connectionId: appConnection.id }
+      });
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actorId: actor.id,
-        actor: actor.type,
-        orgId: appConnection.orgId,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Read,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId: appConnection.id })
-      );
+      permission.assert({
+        action: OrgPermissionAppConnectionActions.Read,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId: appConnection.id }
+      });
     }
 
     if (appConnection.app !== app)
@@ -550,17 +530,13 @@ export const appConnectionServiceFactory = ({
   // In project scope, an org-managed GitHub App can only be referenced by actors who can also
   // connect org-level app connections — everyone else is limited to the project's own apps and
   // the shared instance app.
-  const checkGitHubAppScopeAccess = async (
-    gitHubAppId: string,
-    orgId: string,
-    orgPermission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"]
-  ) => {
+  const checkGitHubAppScopeAccess = async (gitHubAppId: string, orgId: string, orgPermission: OrgPermission) => {
     const gitHubApp = await gitHubAppDAL.findOne({ id: gitHubAppId, orgId });
     if (gitHubApp && !gitHubApp.projectId) {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Connect,
-        OrgPermissionSubjects.AppConnections
-      );
+      orgPermission.assert({
+        action: OrgPermissionAppConnectionActions.Connect,
+        subject: OrgPermissionSubjects.AppConnections
+      });
     }
   };
 
@@ -577,39 +553,25 @@ export const appConnectionServiceFactory = ({
       isAutoRotationEnabled,
       ...params
     }: TCreateAppConnectionDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     if (gatewayId && gatewayPoolId) {
       throw new BadRequestError({ message: "Cannot specify both a gateway and a gateway pool" });
     }
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
-      orgId: actor.orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor });
 
     const project = projectId ? await projectDAL.findProjectById(projectId) : null;
 
     if (projectId) {
       if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
 
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Create,
-        ProjectPermissionSub.AppConnections
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Create,
+        subject: ProjectPermissionSub.AppConnections
+      });
 
       if (
         PROJECT_TYPES_ENFORCING_APP_CONNECTION_TYPES.includes(project.type as ProjectType) &&
@@ -623,14 +585,14 @@ export const appConnectionServiceFactory = ({
         });
       }
     } else {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Create,
-        OrgPermissionSubjects.AppConnections
-      );
+      orgPermission.assert({
+        action: OrgPermissionAppConnectionActions.Create,
+        subject: OrgPermissionSubjects.AppConnections
+      });
     }
 
     if (gatewayId) {
-      const plan = await licenseService.getPlan(actor.orgId);
+      const plan = await licenseService.getPlan(actor.org.id);
       if (!plan.has(PlanFeature.Gateway)) {
         throw new BadRequestError({
           message:
@@ -638,23 +600,23 @@ export const appConnectionServiceFactory = ({
         });
       }
 
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      orgPermission.assert({
+        action: OrgPermissionGatewayActions.AttachGateways,
+        subject: OrgPermissionSubjects.Gateway
+      });
 
-      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+      const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.org.id });
       if (!gatewayV2) {
         throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
       }
 
-      await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.orgId, gatewayId });
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.org.id, gatewayId });
     }
 
     if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
-        orgId: actor.orgId,
+        orgId: actor.org.id,
         actor
       });
     }
@@ -662,14 +624,14 @@ export const appConnectionServiceFactory = ({
     await enterpriseAppCheck(
       licenseService,
       app,
-      actor.orgId,
+      actor.org.id,
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
     if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && projectId) {
       const { gitHubAppId } = credentials as { gitHubAppId?: string | null };
       if (gitHubAppId) {
-        await checkGitHubAppScopeAccess(gitHubAppId, actor.orgId, orgPermission);
+        await checkGitHubAppScopeAccess(gitHubAppId, actor.org.id, orgPermission);
       }
     }
 
@@ -679,7 +641,7 @@ export const appConnectionServiceFactory = ({
           app,
           credentials,
           method,
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           projectId,
           version: 2,
           gatewayId: validationGatewayId,
@@ -693,7 +655,7 @@ export const appConnectionServiceFactory = ({
           instanceConfigService,
           keyStore,
           oidcIssuerService,
-          actorId: actor.id
+          actorId: actor.principal.id
         }
       );
 
@@ -717,7 +679,7 @@ export const appConnectionServiceFactory = ({
       await kmsDataKeyService.createCipherPairWithDataKey(
         projectId
           ? { type: KmsDataKey.SecretManager, projectId }
-          : { type: KmsDataKey.Organization, orgId: actor.orgId }
+          : { type: KmsDataKey.Organization, orgId: actor.org.id }
       );
     }
 
@@ -728,21 +690,21 @@ export const appConnectionServiceFactory = ({
 
           const encryptedCredentials = await encryptAppConnectionCredentials({
             credentials: connectionCredentials,
-            orgId: actor.orgId,
+            orgId: actor.org.id,
             kmsDataKeyService: txDataKeyService,
             projectId
           });
 
           const encryptedConfiguration = await encryptAppConnectionConfiguration({
             configuration,
-            orgId: actor.orgId,
+            orgId: actor.org.id,
             kmsDataKeyService: txDataKeyService,
             projectId
           });
 
           const appConnection = await appConnectionDAL.create(
             {
-              orgId: actor.orgId,
+              orgId: actor.org.id,
               encryptedCredentials,
               encryptedConfiguration,
               method,
@@ -791,7 +753,7 @@ export const appConnectionServiceFactory = ({
         connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
           {
             app,
-            orgId: actor.orgId,
+            orgId: actor.org.id,
             credentials: validatedCredentials,
             method,
             gatewayId: validationGatewayId
@@ -840,7 +802,7 @@ export const appConnectionServiceFactory = ({
       rotation,
       ...params
     }: TUpdateAppConnectionDTO,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     scope?: TAppConnectionScope
   ) => {
     if (gatewayId && gatewayPoolId) {
@@ -849,57 +811,52 @@ export const appConnectionServiceFactory = ({
 
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
+    if (
+      !appConnection ||
+      appConnection.orgId !== actor.org.id ||
+      (scope && appConnection.projectId !== scope.projectId)
+    )
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     await enterpriseAppCheck(
       licenseService,
       appConnection.app as AppConnection,
-      actor.orgId,
+      actor.org.id,
       "Failed to update app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
-      orgId: appConnection.orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
     if (appConnection.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: appConnection.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectPermissionService.getProjectPermission({
+        actor,
+        projectId: appConnection.projectId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Edit,
-        subject(ProjectPermissionSub.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Edit,
+        subject: ProjectPermissionSub.AppConnections,
+        fields: { connectionId }
+      });
     } else {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Edit,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId })
-      );
+      orgPermission.assert({
+        action: OrgPermissionAppConnectionActions.Edit,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId }
+      });
     }
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
     if (gatewayId !== undefined && gatewayId !== appConnection.gatewayId) {
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionGatewayActions.AttachGateways,
-        OrgPermissionSubjects.Gateway
-      );
+      orgPermission.assert({
+        action: OrgPermissionGatewayActions.AttachGateways,
+        subject: OrgPermissionSubjects.Gateway
+      });
 
       if (gatewayId) {
-        const plan = await licenseService.getPlan(actor.orgId);
+        const plan = await licenseService.getPlan(actor.org.id);
         if (!plan.has(PlanFeature.Gateway)) {
           throw new BadRequestError({
             message:
@@ -907,12 +864,12 @@ export const appConnectionServiceFactory = ({
           });
         }
 
-        const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.orgId });
+        const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.org.id });
         if (!gatewayV2) {
           throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
         }
 
-        await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.orgId, gatewayId });
+        await assertIndividualGatewayAllowed({ orgDAL, orgId: actor.org.id, gatewayId });
       }
     }
 
@@ -940,7 +897,7 @@ export const appConnectionServiceFactory = ({
       if (isNewPoolAttachment) {
         await gatewayPoolService.resolveAttachableGatewayFromPool({
           poolId: effectiveGatewayPoolIdForUpdate,
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           actor
         });
       }
@@ -964,7 +921,7 @@ export const appConnectionServiceFactory = ({
       if (app === AppConnection.GitHub && method === GitHubConnectionMethod.App && appConnection.projectId) {
         const requestedGitHubAppId = (credentials as { gitHubAppId?: string | null }).gitHubAppId;
         if (requestedGitHubAppId) {
-          await checkGitHubAppScopeAccess(requestedGitHubAppId, actor.orgId, orgPermission);
+          await checkGitHubAppScopeAccess(requestedGitHubAppId, actor.org.id, orgPermission);
         }
       }
 
@@ -1005,7 +962,7 @@ export const appConnectionServiceFactory = ({
         validateAppConnectionCredentials(
           {
             app,
-            orgId: actor.orgId,
+            orgId: actor.org.id,
             projectId: appConnection.projectId,
             connection: { id: appConnection.id, name: appConnection.name },
             version: appConnection.version,
@@ -1022,7 +979,7 @@ export const appConnectionServiceFactory = ({
             instanceConfigService,
             keyStore,
             oidcIssuerService,
-            actorId: actor.id
+            actorId: actor.principal.id
           }
         );
 
@@ -1074,7 +1031,7 @@ export const appConnectionServiceFactory = ({
         const encryptedCredentials = connectionCredentials
           ? await encryptAppConnectionCredentials({
               credentials: connectionCredentials,
-              orgId: actor.orgId,
+              orgId: actor.org.id,
               kmsDataKeyService: txDataKeyService,
               projectId: appConnection.projectId
             })
@@ -1084,7 +1041,7 @@ export const appConnectionServiceFactory = ({
           configuration !== undefined
             ? await encryptAppConnectionConfiguration({
                 configuration,
-                orgId: actor.orgId,
+                orgId: actor.org.id,
                 kmsDataKeyService: txDataKeyService,
                 projectId: appConnection.projectId
               })
@@ -1093,7 +1050,7 @@ export const appConnectionServiceFactory = ({
         return appConnectionDAL.updateById(
           connectionId,
           {
-            orgId: actor.orgId,
+            orgId: actor.org.id,
             encryptedCredentials,
             ...(encryptedConfiguration !== undefined && { encryptedConfiguration }),
             ...(gatewayIdValue !== undefined && { gatewayId: gatewayIdValue }),
@@ -1127,7 +1084,7 @@ export const appConnectionServiceFactory = ({
           connection = await TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM[app](
             {
               app,
-              orgId: actor.orgId,
+              orgId: actor.org.id,
               credentials: updatedCredentials,
               method,
               gatewayId: validationGatewayIdForUpdate
@@ -1235,42 +1192,37 @@ export const appConnectionServiceFactory = ({
   const deleteAppConnection = async (
     app: AppConnection,
     connectionId: string,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     scope?: TAppConnectionScope
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
+    if (
+      !appConnection ||
+      appConnection.orgId !== actor.org.id ||
+      (scope && appConnection.projectId !== scope.projectId)
+    )
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: appConnection.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectPermissionService.getProjectPermission({
+        actor,
+        projectId: appConnection.projectId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Delete,
-        subject(ProjectPermissionSub.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Delete,
+        subject: ProjectPermissionSub.AppConnections,
+        fields: { connectionId }
+      });
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actorId: actor.id,
-        actor: actor.type,
-        orgId: appConnection.orgId,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Delete,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: OrgPermissionAppConnectionActions.Delete,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId }
+      });
     }
 
     if (appConnection.app !== app)
@@ -1333,44 +1285,35 @@ export const appConnectionServiceFactory = ({
   const connectAppConnectionById = async <T extends TAppConnection>(
     app: AppConnection | AppConnection[],
     connectionId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const allowedApps = Array.isArray(app) ? app : [app];
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || appConnection.orgId !== actor.orgId)
+    if (!appConnection || appConnection.orgId !== actor.org.id)
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     const connectionApp = appConnection.app as AppConnection;
 
     if (appConnection.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: appConnection.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectPermissionService.getProjectPermission({
+        actor,
+        projectId: appConnection.projectId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Connect,
-        subject(ProjectPermissionSub.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.Connect,
+        subject: ProjectPermissionSub.AppConnections,
+        fields: { connectionId }
+      });
     } else {
-      const { permission: orgPermission } = await permissionService.getOrgPermission({
-        actorId: actor.id,
-        actor: actor.type,
-        orgId: appConnection.orgId,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const orgPermission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
-      ForbiddenError.from(orgPermission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.Connect,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId })
-      );
+      orgPermission.assert({
+        action: OrgPermissionAppConnectionActions.Connect,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId }
+      });
     }
 
     if (!allowedApps.includes(connectionApp))
@@ -1385,7 +1328,7 @@ export const appConnectionServiceFactory = ({
     await enterpriseAppCheck(
       licenseService,
       connectionApp,
-      actor.orgId,
+      actor.org.id,
       "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
@@ -1401,7 +1344,7 @@ export const appConnectionServiceFactory = ({
   const validateAppConnectionUsageById = async (
     app: AppConnection | AppConnection[],
     { connectionId, projectId }: TValidateAppConnectionUsageByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await connectAppConnectionById(app, connectionId, actor);
 
@@ -1414,15 +1357,8 @@ export const appConnectionServiceFactory = ({
     return appConnection;
   };
 
-  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor, projectId?: string) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
-      orgId: actor.orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: TActorContext, projectId?: string) => {
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor });
 
     let availableProjectConnections: TAppConnections[] = [];
 
@@ -1431,37 +1367,32 @@ export const appConnectionServiceFactory = ({
 
       if (!project) throw new BadRequestError({ message: `Could not find project with ID ${projectId}` });
 
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const projectPermission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.Connect,
-        ProjectPermissionSub.AppConnections
-      );
+      projectPermission.assert({
+        action: ProjectPermissionAppConnectionActions.Connect,
+        subject: ProjectPermissionSub.AppConnections
+      });
 
       const projectAppConnections = await appConnectionDAL.find({ app, projectId });
 
       availableProjectConnections = projectAppConnections.filter((connection) =>
-        projectPermission.can(
-          ProjectPermissionAppConnectionActions.Connect,
-          subject(ProjectPermissionSub.AppConnections, { connectionId: connection.id })
-        )
+        projectPermission.can({
+          action: ProjectPermissionAppConnectionActions.Connect,
+          subject: ProjectPermissionSub.AppConnections,
+          fields: { connectionId: connection.id }
+        })
       );
     }
 
-    const orgAppConnections = await appConnectionDAL.find({ app, orgId: actor.orgId, projectId: null });
+    const orgAppConnections = await appConnectionDAL.find({ app, orgId: actor.org.id, projectId: null });
 
     const availableOrgConnections = orgAppConnections.filter((connection) =>
-      orgPermission.can(
-        OrgPermissionAppConnectionActions.Connect,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId: connection.id })
-      )
+      orgPermission.can({
+        action: OrgPermissionAppConnectionActions.Connect,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId: connection.id }
+      })
     );
 
     return [...availableOrgConnections, ...availableProjectConnections].sort((a, b) =>
@@ -1469,25 +1400,18 @@ export const appConnectionServiceFactory = ({
     ) as Omit<TAppConnection, "credentials">[];
   };
 
-  const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
+  const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: TActorContext) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || appConnection.orgId !== actor.orgId)
+    if (!appConnection || appConnection.orgId !== actor.org.id)
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
-      orgId: appConnection.orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAppConnectionActions.Read,
-      OrgPermissionSubjects.AppConnections
-    );
+    permission.assert({
+      action: OrgPermissionAppConnectionActions.Read,
+      subject: OrgPermissionSubjects.AppConnections
+    });
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
@@ -1499,45 +1423,40 @@ export const appConnectionServiceFactory = ({
 
   const triggerCredentialRotation = async (
     { app, connectionId }: { app: AppConnection; connectionId: string },
-    actor: OrgServiceActor,
+    actor: TActorContext,
     scope?: TAppConnectionScope
   ) => {
     const appConnection = await appConnectionDAL.findById(connectionId);
 
-    if (!appConnection || appConnection.orgId !== actor.orgId || (scope && appConnection.projectId !== scope.projectId))
+    if (
+      !appConnection ||
+      appConnection.orgId !== actor.org.id ||
+      (scope && appConnection.projectId !== scope.projectId)
+    )
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
     if (appConnection.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: appConnection.projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectPermissionService.getProjectPermission({
+        actor,
+        projectId: appConnection.projectId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAppConnectionActions.RotateCredentials,
-        subject(ProjectPermissionSub.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: ProjectPermissionAppConnectionActions.RotateCredentials,
+        subject: ProjectPermissionSub.AppConnections,
+        fields: { connectionId }
+      });
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actorId: actor.id,
-        actor: actor.type,
-        orgId: appConnection.orgId,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor, orgId: appConnection.orgId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAppConnectionActions.RotateCredentials,
-        subject(OrgPermissionSubjects.AppConnections, { connectionId })
-      );
+      permission.assert({
+        action: OrgPermissionAppConnectionActions.RotateCredentials,
+        subject: OrgPermissionSubjects.AppConnections,
+        fields: { connectionId }
+      });
     }
 
     return appConnectionCredentialRotationService.triggerRotation({ connectionId });
@@ -1589,13 +1508,15 @@ export const appConnectionServiceFactory = ({
       connectAppConnectionById,
       appConnectionDAL,
       kmsDataKeyService,
-      instanceConfigService
+      instanceConfigService,
+      oidcIssuerService
     ),
     azureDevOps: azureDevOpsConnectionService(
       connectAppConnectionById,
       appConnectionDAL,
       kmsDataKeyService,
-      instanceConfigService
+      instanceConfigService,
+      oidcIssuerService
     ),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
@@ -1629,7 +1550,7 @@ export const appConnectionServiceFactory = ({
     ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     ultraDNS: ultraDNSConnectionService(connectAppConnectionById),
-    azureDns: azureDnsConnectionService(connectAppConnectionById),
+    azureDns: azureDnsConnectionService(connectAppConnectionById, oidcIssuerService),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
     hasuraCloud: hasuraCloudConnectionService(connectAppConnectionById),
@@ -1654,7 +1575,12 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    azureEntraId: azureEntraIdConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    ),
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),

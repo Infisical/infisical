@@ -2,14 +2,15 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError } from "axios";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 import { getAzureDevopsConnection } from "./azure-devops-fns";
@@ -18,7 +19,7 @@ import { TAzureDevOpsConnection } from "./azure-devops-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAzureDevOpsConnection>;
 
 type TAzureDevOpsProject = {
@@ -54,6 +55,7 @@ const getAuthHeaders = (appConnection: TAzureDevOpsConnection, accessToken: stri
         Accept: "application/json"
       };
     case AzureDevOpsConnectionMethod.ClientSecret:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
       return {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json"
@@ -67,13 +69,15 @@ const listAzureDevOpsProjects = async (
   appConnection: TAzureDevOpsConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
-  instanceConfigService: TInstanceConfigService
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ): Promise<TAzureDevOpsProject[]> => {
   const accessToken = await getAzureDevopsConnection(
     appConnection.id,
     appConnectionDAL,
     kmsDataKeyService,
-    instanceConfigService
+    instanceConfigService,
+    oidcIssuerService
   );
 
   // Both OAuth and access Token methods use organization name from credentials
@@ -112,16 +116,18 @@ export const azureDevOpsConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
-  instanceConfigService: TInstanceConfigService
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.AzureDevOps, connectionId, actor);
 
     const projects = await listAzureDevOpsProjects(
       appConnection,
       appConnectionDAL,
       kmsDataKeyService,
-      instanceConfigService
+      instanceConfigService,
+      oidcIssuerService
     );
 
     return projects.map((project) => ({

@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { IdentitiesSchema, IdentityOrgMembershipsSchema, OrgRolesSchema } from "@app/db/schemas";
 import { ApiDocsTags, ORGANIZATIONS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { OrgIdentityOrderBy } from "@app/services/identity/identity-types";
 
 export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
@@ -72,10 +72,7 @@ export const registerIdentityOrgRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityV1.listOrgIdentities({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         orgId: req.params.orgId,
         limit: req.query.limit,
         offset: req.query.offset,

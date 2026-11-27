@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedWindmillConnectionSchema,
   UpdateWindmillConnectionSchema
 } from "@app/services/app-connection/windmill";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -46,7 +46,7 @@ export const registerWindmillConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const workspaces = await server.services.appConnection.windmill.listWorkspaces(connectionId, req.permission);
+      const workspaces = await server.services.appConnection.windmill.listWorkspaces(connectionId, req.actor);
 
       return workspaces;
     }

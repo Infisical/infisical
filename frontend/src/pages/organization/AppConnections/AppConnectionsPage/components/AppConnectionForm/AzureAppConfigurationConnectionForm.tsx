@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   Button,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -41,13 +42,18 @@ import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
+import {
+  AzureManagedIdentityConnectionDetails,
+  AzureManagedIdentityFields
+} from "./shared/AzureManagedIdentityFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
+type ManagedIdentityForm = z.infer<typeof managedIdentitySchema>;
 
 type Props = {
   appConnection?: TAzureAppConfigurationConnection;
-  onSubmit: (formData: ClientSecretForm) => Promise<void>;
+  onSubmit: (formData: ClientSecretForm | ManagedIdentityForm) => Promise<void>;
   projectId: string | undefined | null;
 };
 
@@ -71,7 +77,19 @@ const clientSecretSchema = baseSchema.extend({
   })
 });
 
-const formSchema = z.discriminatedUnion("method", [oauthSchema, clientSecretSchema]);
+const managedIdentitySchema = baseSchema.extend({
+  method: z.literal(AzureAppConfigurationConnectionMethod.ManagedIdentity),
+  credentials: z.object({
+    clientId: z.string().trim().min(1, "Client ID is required"),
+    tenantId: z.string().trim().min(1, "Tenant ID is required")
+  })
+});
+
+const formSchema = z.discriminatedUnion("method", [
+  oauthSchema,
+  clientSecretSchema,
+  managedIdentitySchema
+]);
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -126,6 +144,18 @@ const getDefaultValues = (appConnection?: TAzureAppConfigurationConnection): Par
         };
       }
       break;
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+      if ("clientId" in credentials && "tenantId" in credentials) {
+        return {
+          ...base,
+          method: AzureAppConfigurationConnectionMethod.ManagedIdentity,
+          credentials: {
+            clientId: credentials.clientId,
+            tenantId: credentials.tenantId
+          }
+        };
+      }
+      break;
     default:
       return base;
   }
@@ -141,6 +171,7 @@ export const AzureAppConfigurationConnectionForm = ({
   const isUpdate = Boolean(appConnection);
   const { onCancel } = useAppConnectionForm();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasVerifyFailed, setHasVerifyFailed] = useState(false);
 
   const {
     option: { oauthClientId },
@@ -168,6 +199,11 @@ export const AzureAppConfigurationConnectionForm = ({
 
   const selectedMethod = watch("method");
 
+  const federatedCredential =
+    appConnection?.method === AzureAppConfigurationConnectionMethod.ManagedIdentity
+      ? appConnection.credentials.federatedCredential
+      : undefined;
+
   const onSubmitHandler = async (formData: FormData) => {
     const state = crypto.randomBytes(16).toString("hex");
     switch (formData.method) {
@@ -190,6 +226,19 @@ export const AzureAppConfigurationConnectionForm = ({
       case AzureAppConfigurationConnectionMethod.ClientSecret:
         await onSubmit(formData);
         break;
+      case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+        if (!isUpdate) {
+          await onSubmit(formData);
+          break;
+        }
+        setHasVerifyFailed(false);
+        try {
+          await onSubmit(formData);
+        } catch {
+          // The request's error toast already explains the failure
+          setHasVerifyFailed(true);
+        }
+        break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
     }
@@ -202,6 +251,7 @@ export const AzureAppConfigurationConnectionForm = ({
       isMissingConfig = !oauthClientId;
       break;
     case AzureAppConfigurationConnectionMethod.ClientSecret:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
       isMissingConfig = false;
       break;
     default:
@@ -210,10 +260,23 @@ export const AzureAppConfigurationConnectionForm = ({
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 
+  const isManagedIdentity =
+    selectedMethod === AzureAppConfigurationConnectionMethod.ManagedIdentity;
+  // Azure needs the connection ID in the subject, so a new connection is created from the federated credential step
+  const isConfiguringManagedIdentity = isManagedIdentity && !isUpdate;
+
+  let submitLabel = isUpdate ? "Reconnect to Azure" : "Connect to Azure";
+  if (isManagedIdentity) {
+    submitLabel = hasVerifyFailed ? "Retry Verification" : "Verify Connection";
+  }
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmitHandler)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+        {appConnection && isManagedIdentity && (
+          <AzureManagedIdentityConnectionDetails appConnection={appConnection} />
+        )}
         <Controller
           name="method"
           control={control}
@@ -232,7 +295,16 @@ export const AzureAppConfigurationConnectionForm = ({
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+              <Select
+                disabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (val === AzureAppConfigurationConnectionMethod.ManagedIdentity) {
+                    setValue("isAutoRotationEnabled", false);
+                  }
+                }}
+              >
                 <SelectTrigger
                   id="method"
                   className="w-full"
@@ -250,6 +322,11 @@ export const AzureAppConfigurationConnectionForm = ({
                   })}
                 </SelectContent>
               </Select>
+              {isUpdate && isManagedIdentity && (
+                <FieldDescription>
+                  Name and method are fixed once the connection is created.
+                </FieldDescription>
+              )}
               <FieldError>
                 {!isLoading && isMissingConfig
                   ? `Environment variables have not been configured. ${
@@ -263,39 +340,41 @@ export const AzureAppConfigurationConnectionForm = ({
           )}
         />
 
-        <Controller
-          name="tenantId"
-          control={control}
-          render={({ field, fieldState: { error } }) => (
-            <Field className="mb-4">
-              <FieldLabel htmlFor="tenantId">
-                Tenant ID
-                {selectedMethod === AzureAppConfigurationConnectionMethod.OAuth && (
-                  <span className="text-muted"> (optional)</span>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    The Azure Active Directory (Entra ID) Tenant ID.
-                  </TooltipContent>
-                </Tooltip>
-              </FieldLabel>
-              <Input
-                {...field}
-                id="tenantId"
-                placeholder="00000000-0000-0000-0000-000000000000"
-                isError={Boolean(error)}
-                onChange={(e) => {
-                  field.onChange(e.target.value);
-                  setValue("credentials.tenantId", e.target.value);
-                }}
-              />
-              <FieldError errors={[error]} />
-            </Field>
-          )}
-        />
+        {!isManagedIdentity && (
+          <Controller
+            name="tenantId"
+            control={control}
+            render={({ field, fieldState: { error } }) => (
+              <Field className="mb-4">
+                <FieldLabel htmlFor="tenantId">
+                  Tenant ID
+                  {selectedMethod === AzureAppConfigurationConnectionMethod.OAuth && (
+                    <span className="text-muted"> (optional)</span>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      The Azure Active Directory (Entra ID) Tenant ID.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <Input
+                  {...field}
+                  id="tenantId"
+                  placeholder="00000000-0000-0000-0000-000000000000"
+                  isError={Boolean(error)}
+                  onChange={(e) => {
+                    field.onChange(e.target.value);
+                    setValue("credentials.tenantId", e.target.value);
+                  }}
+                />
+                <FieldError errors={[error]} />
+              </Field>
+            )}
+          />
+        )}
 
         {/* Client Secret-specific fields */}
         {selectedMethod === AzureAppConfigurationConnectionMethod.ClientSecret && (
@@ -365,15 +444,32 @@ export const AzureAppConfigurationConnectionForm = ({
             </CredentialRotationForm>
           </>
         )}
+
+        {isManagedIdentity && (
+          <AzureManagedIdentityFields
+            isUpdate={isUpdate}
+            federatedCredential={federatedCredential}
+            onCredentialsChange={() => setHasVerifyFailed(false)}
+          />
+        )}
+
         <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
-          <Button
-            type="submit"
-            variant={scopeVariant}
-            isPending={isSubmitting || isRedirecting}
-            isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
-          >
-            {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
-          </Button>
+          {isConfiguringManagedIdentity ? (
+            <Button variant={scopeVariant} isDisabled>
+              Create Connection
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              variant={scopeVariant}
+              isPending={isSubmitting || isRedirecting}
+              isDisabled={
+                isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting
+              }
+            >
+              {submitLabel}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -382,6 +478,9 @@ export const AzureAppConfigurationConnectionForm = ({
           >
             Cancel
           </Button>
+          {isConfiguringManagedIdentity && (
+            <span className="text-xs text-muted">Configure the federated credential first.</span>
+          )}
         </SheetFooter>
       </form>
     </FormProvider>

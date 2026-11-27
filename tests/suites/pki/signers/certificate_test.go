@@ -21,8 +21,8 @@ func TestSignerCertificate_Reissue(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		s, operator := newSigner(t, tn, "operator")
-		before := certificateOf(t, tn, s.ID)
-		caID := *signerState(t, tn, s.ID).JSON200.CaId
+		before := pki.SignerCertificate(t, tn, s.ID)
+		caID := *pki.SignerState(t, tn, s.ID).JSON200.CaId
 
 		// Action
 		res, err := tn.Admin.API.ReissueSignerCertificateWithResponse(t.Context(), s.ID, api.ReissueSignerCertificateJSONRequestBody{
@@ -35,11 +35,11 @@ func TestSignerCertificate_Reissue(t *testing.T) {
 		require.NotNilf(t, res.JSON200, "reissuing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		status, reason := pki.WaitSigner(t, tn.Admin, s.ID)
 		require.Equalf(t, "active", status, "reason: %s", reason)
-		after := certificateOf(t, tn, s.ID)
+		after := pki.SignerCertificate(t, tn, s.ID)
 		require.NotEqual(t, before.SerialNumber, after.SerialNumber)
 		require.Equal(t, "Harness Code Signing Reissued", after.Subject.CommonName)
 		require.NotEqual(t, before.RawSubjectPublicKeyInfo, after.RawSubjectPublicKeyInfo)
-		requireSigns(t, tn, operator, s.ID)
+		pki.RequireSigns(t, after, operator, s.ID)
 	})
 }
 
@@ -53,7 +53,7 @@ func TestSignerCertificate_Renew(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		s, operator := newSigner(t, tn, "operator")
-		before := certificateOf(t, tn, s.ID)
+		before := pki.SignerCertificate(t, tn, s.ID)
 
 		// Action
 		res, err := tn.Admin.API.RenewSignerCertificateWithResponse(t.Context(), s.ID)
@@ -63,11 +63,11 @@ func TestSignerCertificate_Renew(t *testing.T) {
 		require.NotNilf(t, res.JSON200, "renewing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		status, reason := pki.WaitSigner(t, tn.Admin, s.ID)
 		require.Equalf(t, "active", status, "reason: %s", reason)
-		after := certificateOf(t, tn, s.ID)
+		after := pki.SignerCertificate(t, tn, s.ID)
 		require.NotEqual(t, before.SerialNumber, after.SerialNumber)
 		require.Equal(t, before.Subject.CommonName, after.Subject.CommonName)
 		require.Equal(t, before.RawIssuer, after.RawIssuer)
-		requireSigns(t, tn, operator, s.ID)
+		pki.RequireSigns(t, after, operator, s.ID)
 	})
 }
 
@@ -90,9 +90,9 @@ func TestSignerCertificate_Revoke(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "revoking returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		require.Equal(t, "revoked", *signerState(t, tn, s.ID).JSON200.Status)
+		require.Equal(t, "revoked", *pki.SignerState(t, tn, s.ID).JSON200.Status)
 		signed, _ := pki.Sign(t, operator, s.ID)
 		require.Equal(t, http.StatusBadRequest, signed.StatusCode())
-		require.Equal(t, "Signer '"+signerState(t, tn, s.ID).JSON200.Name+"' can't be used because its certificate was revoked. Reissue it with a new key from the signer's options to keep signing.", apierr.Message(signed.Body))
+		require.Equal(t, "Signer '"+pki.SignerState(t, tn, s.ID).JSON200.Name+"' can't be used because its certificate was revoked. Reissue it with a new key from the signer's options to keep signing.", apierr.Message(signed.Body))
 	})
 }

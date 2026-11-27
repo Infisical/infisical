@@ -7,7 +7,7 @@ import {
   projectMemberPermissions,
   projectNoAccessPermissions,
   projectViewerPermission
-} from "@app/ee/services/permission/default-roles";
+} from "@app/domains/platform/projects/ce/module";
 import { TGetPredefinedRolesDTO } from "@app/services/project-role/project-role-types";
 
 // Agent Vault resolves every slug except admin to its member set, so Viewer and No Access would promise

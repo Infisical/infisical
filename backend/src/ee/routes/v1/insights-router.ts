@@ -25,11 +25,11 @@ import {
   UnusedAccessSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 // Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
 // the generators use, so request validation and generation never drift.
@@ -109,16 +109,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const usageInsights = await server.services.insights.getSecretsUsageInsights({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId
+        actor: req.actor,
+        orgId: req.actor.orgId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_USAGE,
           metadata: usageInsights
@@ -152,18 +149,15 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const projectWarnings = await server.services.insights.getSecretsProjects({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         offset: req.query.offset,
         limit: req.query.limit
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_PROJECT_WARNINGS,
           metadata: {
@@ -199,11 +193,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const accessVolume = await server.services.insights.getOrgAccessVolume({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId
+        actor: req.actor,
+        orgId: req.actor.orgId
       });
 
       return { accessVolume };
@@ -230,16 +221,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const authMethodDistribution = await server.services.insights.getOrgAuthMethodDistribution({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId
+        actor: req.actor,
+        orgId: req.actor.orgId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION,
           metadata: {
@@ -272,11 +260,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const staticSecretUsage = await server.services.insights.getStaticSecretsUsage({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId
+        actor: req.actor,
+        orgId: req.actor.orgId
       });
 
       return { staticSecretUsage };
@@ -300,10 +285,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const report = await server.services.auditReport.generateOrgReport(req.body, req.permission);
+      const report = await server.services.auditReport.generateOrgReport(req.body, req.actor);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_ORG_AUDIT_REPORT,
           metadata: {
@@ -335,13 +320,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { offset, limit } = req.query;
-      const { reports, totalCount } = await server.services.auditReport.listOrgReports(
-        { offset, limit },
-        req.permission
-      );
+      const { reports, totalCount } = await server.services.auditReport.listOrgReports({ offset, limit }, req.actor);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_ORG_AUDIT_REPORTS,
           metadata: { offset, limit }
@@ -365,10 +347,10 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const report = await server.services.auditReport.deleteOrgReport(req.params.reportId, req.permission);
+      const report = await server.services.auditReport.deleteOrgReport(req.params.reportId, req.actor);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_ORG_AUDIT_REPORT,
           metadata: { auditReportId: report.id }
@@ -428,7 +410,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId } = req.params;
       const { month, year } = req.query;
-      const result = await server.services.insights.getCalendar({ projectId, month, year }, req.permission);
+      const result = await server.services.insights.getCalendar({ projectId, month, year }, req.actor);
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR, metadata: { projectId, month, year } },
@@ -464,7 +446,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
-      const result = await server.services.insights.getAccessVolume({ projectId }, req.permission);
+      const result = await server.services.insights.getAccessVolume({ projectId }, req.actor);
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME, metadata: { projectId } },
@@ -500,7 +482,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const { projectId } = req.params;
       const { result, remainingTTL } = await server.services.secretReadActivity.listUnusedAccess(
         { projectId, ...req.query },
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -538,7 +520,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const { projectId, actorType, actorId } = req.params;
       const { result, remainingTTL } = await server.services.secretReadActivity.getUnusedAccessActor(
         { projectId, actorType, actorId },
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -591,7 +573,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const readActivity = await server.services.secretReadActivity.getSecretReadActivity(
         { projectId: req.params.projectId, secretName: req.params.secretName, ...req.query },
-        req.permission
+        req.actor
       );
       return { readActivity };
     }
@@ -621,7 +603,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId } = req.params;
       const { days } = req.query;
-      const result = await server.services.insights.getAuthMethodDistribution({ projectId, days }, req.permission);
+      const result = await server.services.insights.getAuthMethodDistribution({ projectId, days }, req.actor);
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_AUTH_METHODS, metadata: { projectId, days } },
@@ -663,16 +645,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { result, remainingTTL } = await server.services.insights.getOrgSecretsDuplication({
-        orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        orgId: req.actor.orgId,
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.VIEW_INSIGHTS_ORG_SECRETS_DUPLICATION,
           metadata: { groupCount: result.groups.length }
@@ -719,16 +698,13 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const secrets = await server.services.insights.searchOrgSecretsByValue({
         secretValue: req.body.secretValue,
-        orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        orgId: req.actor.orgId,
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.SEARCH_SECRETS_BY_VALUE,
           metadata: { matchCount: secrets.length }
@@ -773,10 +749,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { result, remainingTTL } = await server.services.insights.getSecretsDuplication(
-        { projectId },
-        req.permission
-      );
+      const { result, remainingTTL } = await server.services.insights.getSecretsDuplication({ projectId }, req.actor);
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_SECRETS_DUPLICATION, metadata: { projectId } },
@@ -856,7 +829,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const { staleSecretsOffset, staleSecretsLimit } = req.query;
       const result = await server.services.insights.getSummary(
         { projectId, staleSecretsOffset, staleSecretsLimit },
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -891,7 +864,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.params;
-      const result = await server.services.insights.getCounts({ projectId }, req.permission);
+      const result = await server.services.insights.getCounts({ projectId }, req.actor);
       await server.services.auditLog.createAuditLog({
         projectId,
         event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_COUNTS, metadata: { projectId } },
@@ -923,7 +896,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const report = await server.services.auditReport.generateReport(
         { projectId: req.params.projectId, ...req.body },
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
@@ -966,7 +939,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const { offset, limit } = req.query;
       const { reports, totalCount } = await server.services.auditReport.listReports(
         { projectId, offset, limit },
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -994,7 +967,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const report = await server.services.auditReport.getReportById(
         req.params.reportId,
         req.params.projectId,
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,
@@ -1025,7 +998,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const report = await server.services.auditReport.deleteReport(
         req.params.reportId,
         req.params.projectId,
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         projectId: report.projectId,

@@ -23,6 +23,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -41,7 +42,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";

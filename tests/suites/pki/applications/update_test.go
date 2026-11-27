@@ -66,4 +66,50 @@ func TestApplication_Update(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, before.JSON200.Application.Name, after.JSON200.Application.Name)
 	})
+
+	t.Run("should read back a new name and description when an application admin edits it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		admin := pki.NewMember(t, app, "admin-"+id.Short(), "admin")
+		name := "renamed-" + id.Short()
+
+		// Action
+		res, err := admin.API.UpdatePkiApplicationWithResponse(t.Context(), app.ID, api.UpdatePkiApplicationJSONRequestBody{
+			Name:        &name,
+			Description: new("edited by its admin"),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the application: %s", apierr.Body(res.Body))
+		got := readApplication(t, tn, app)
+		require.Equal(t, name, got.Name)
+		require.Equal(t, new("edited by its admin"), got.Description)
+	})
+
+	t.Run("should refuse an application auditor's edit and keep the name and description", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		auditor := pki.NewMember(t, app, "auditor-"+id.Short(), "auditor")
+		before := readApplication(t, tn, app)
+
+		// Action
+		res, err := auditor.API.UpdatePkiApplicationWithResponse(t.Context(), app.ID, api.UpdatePkiApplicationJSONRequestBody{
+			Name:        new("renamed-" + id.Short()),
+			Description: new("edited by its auditor"),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		after := readApplication(t, tn, app)
+		require.Equal(t, before.Name, after.Name)
+		require.Equal(t, before.Description, after.Description)
+	})
 }

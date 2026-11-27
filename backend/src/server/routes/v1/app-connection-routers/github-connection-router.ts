@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedGitHubConnectionSchema,
   UpdateGitHubConnectionSchema
 } from "@app/services/app-connection/github";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -46,7 +46,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const repositories = await server.services.appConnection.github.listRepositories(connectionId, req.permission);
+      const repositories = await server.services.appConnection.github.listRepositories(connectionId, req.actor);
 
       return { repositories };
     }
@@ -73,7 +73,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const organizations = await server.services.appConnection.github.listOrganizations(connectionId, req.permission);
+      const organizations = await server.services.appConnection.github.listOrganizations(connectionId, req.actor);
 
       return { organizations };
     }
@@ -111,7 +111,7 @@ export const registerGitHubConnectionRouter = async (server: FastifyZodProvider)
           repo,
           owner
         },
-        req.permission
+        req.actor
       );
 
       return { environments };

@@ -3,11 +3,11 @@ import { z } from "zod";
 import { PkiApplicationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { registerPkiApplicationAlertRoutes } from "./pki-application-alert-router";
@@ -48,10 +48,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const application = await server.services.pkiApplication.createApplication({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         name: req.body.name,
         description: req.body.description,
@@ -74,9 +71,9 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: application.id
         }
@@ -122,10 +119,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplication.listApplications({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         search: req.query.search,
         limit: req.query.limit,
@@ -163,10 +157,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const application = await server.services.pkiApplication.getApplicationById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId
       });
@@ -201,10 +192,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const application = await server.services.pkiApplication.getApplicationByName({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         name: req.params.name
       });
@@ -252,10 +240,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.pkiApplication.getApplicationPermissions({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId
       });
@@ -286,10 +271,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const application = await server.services.pkiApplication.updateApplication({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         name: req.body.name,
@@ -308,9 +290,9 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: application.id
         }
@@ -335,10 +317,7 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const application = await server.services.pkiApplication.deleteApplication({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId
       });
@@ -355,9 +334,9 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: application.id
         }

@@ -29,3 +29,15 @@ func AddMember(tt *testing.T, app Application, member *harness.Principal, role s
 	require.NoError(tt, err, "adding a user to the application")
 	require.Equalf(tt, http.StatusOK, res.StatusCode(), "adding a user to the application: %s", apierr.Body(res.Body))
 }
+
+// NewMember is a new user of the application's organization, a Product Member of its
+// project, holding role on the application, or no role when it is empty.
+func NewMember(tt *testing.T, app Application, name, role string) *harness.Principal {
+	tt.Helper()
+	u := app.project.tn.NewUser(tt, harness.WithName(name))
+	app.project.Grant(tt, u)
+	if role != "" {
+		AddMember(tt, app, u, role)
+	}
+	return u
+}

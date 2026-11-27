@@ -203,8 +203,8 @@ func TestOrganization_Update(t *testing.T) {
 		sso.NewOIDC(t, tn)
 
 		// Action
-		res, err := tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true)})
+		res, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)
@@ -220,8 +220,8 @@ func TestOrganization_Update(t *testing.T) {
 		tn := h.NewTenant(t)
 
 		// Action
-		res, err := tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
-			api.UpdateOrganizationJSONRequestBody{AuthEnforced: new(true), GoogleSsoAuthEnforced: new(true)})
+		res, err := tn.Admin.API.UpdateOrganizationSsoSettingsWithResponse(t.Context(),
+			api.UpdateOrganizationSsoSettingsJSONRequestBody{AuthEnforced: new(true), GoogleSsoAuthEnforced: new(true)})
 
 		// Assert
 		require.NoError(t, err)

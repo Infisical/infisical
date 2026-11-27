@@ -325,8 +325,8 @@ customer finds out at runtime, in production, on a request they did not make.
 Custom project roles are a paid feature, and they show what the correct outcome looks like.
 An org on a paid plan creates custom roles and assigns them to users. Later they downgrade to
 a free plan. Those roles keep working: the rows stay, the assignments stay, and every user
-holding one keeps exactly the access that role grants. `permission-service` never reads the
-plan while it builds a CASL ability, so a downgrade cannot quietly narrow someone's access or
+holding one keeps exactly the access that role grants. The permission services never read the
+plan while they build a permission, so a downgrade cannot quietly narrow someone's access or
 hand them a different set of permissions than they had the day before.
 
 What the downgrade takes away is the ability to change the set. Creating a new custom role

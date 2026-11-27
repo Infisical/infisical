@@ -15,7 +15,7 @@ import {
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets/azure-client-secrets-connection-fns";
 
@@ -68,7 +68,9 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   _gatewayV2Service,
   _gatewayPoolService,
   _keyStore,
-  instanceConfigService
+  instanceConfigService,
+  _passwordValidationContext,
+  oidcIssuerService
 ) => {
   const {
     connection,
@@ -77,16 +79,27 @@ export const azureClientSecretRotationFactory: TRotationFactory<
     rotationInterval
   } = secretRotation;
 
+  const getAccessToken = () => {
+    if (!oidcIssuerService) {
+      throw new InternalServerError({
+        message: "Azure client secret rotation was started without the OIDC issuer service"
+      });
+    }
+
+    return getAzureConnectionAccessToken(
+      connection.id,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService,
+      oidcIssuerService
+    );
+  };
+
   /**
    * Creates a new client secret for the Azure app.
    */
   const $rotateClientSecret = async () => {
-    const accessToken = await getAzureConnectionAccessToken(
-      connection.id,
-      appConnectionDAL,
-      kmsDataKeyService,
-      instanceConfigService
-    );
+    const accessToken = await getAccessToken();
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/addPassword`;
 
     const now = new Date();
@@ -143,12 +156,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
    * Checks if a credential with the given keyId exists.
    */
   const credentialExists = async (keyId: string): Promise<boolean> => {
-    const accessToken = await getAzureConnectionAccessToken(
-      connection.id,
-      appConnectionDAL,
-      kmsDataKeyService,
-      instanceConfigService
-    );
+    const accessToken = await getAccessToken();
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/passwordCredentials`;
 
     try {
@@ -176,12 +184,7 @@ export const azureClientSecretRotationFactory: TRotationFactory<
   };
 
   const $removeClientSecret = async (keyId: string) => {
-    const accessToken = await getAzureConnectionAccessToken(
-      connection.id,
-      appConnectionDAL,
-      kmsDataKeyService,
-      instanceConfigService
-    );
+    const accessToken = await getAccessToken();
     const endpoint = `${GRAPH_API_BASE}/applications/${objectId}/removePassword`;
 
     try {

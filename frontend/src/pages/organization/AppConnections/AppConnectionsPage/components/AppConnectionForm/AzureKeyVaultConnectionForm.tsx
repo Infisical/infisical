@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info, KeyRoundIcon } from "lucide-react";
+import { Info } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
   SheetFooter,
-  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -51,11 +50,11 @@ import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
 } from "./GenericAppConnectionFields";
-import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import {
-  FederatedCredentialValue,
-  GENERATED_VALUE_BORDER
-} from "./shared/FederatedCredentialValue";
+  AzureManagedIdentityConnectionDetails,
+  AzureManagedIdentityFields
+} from "./shared/AzureManagedIdentityFields";
+import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type CertificateForm = z.infer<typeof certificateSchema>;
@@ -322,26 +321,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
       <form onSubmit={handleSubmit(onSubmitHandler)}>
         {!isUpdate && <GenericAppConnectionsFields />}
         {appConnection && isManagedIdentity && (
-          <>
-            <Field className="mb-4">
-              <FieldLabel htmlFor="app-connection-name">Name</FieldLabel>
-              <Input id="app-connection-name" value={appConnection.name} readOnly disabled />
-            </Field>
-            <Field className="mb-4">
-              <FieldLabel htmlFor="app-connection-description">
-                Description <span className="text-muted">(optional)</span>
-              </FieldLabel>
-              <TextArea
-                id="app-connection-description"
-                className="resize-none"
-                rows={2}
-                placeholder="Connection description..."
-                value={appConnection.description ?? ""}
-                readOnly
-                disabled
-              />
-            </Field>
-          </>
+          <AzureManagedIdentityConnectionDetails appConnection={appConnection} />
         )}
 
         <Controller
@@ -362,7 +342,16 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <Select disabled={isUpdate} value={value} onValueChange={(val) => onChange(val)}>
+              <Select
+                disabled={isUpdate}
+                value={value}
+                onValueChange={(val) => {
+                  onChange(val);
+                  if (val === AzureKeyVaultConnectionMethod.ManagedIdentity) {
+                    setValue("isAutoRotationEnabled", false);
+                  }
+                }}
+              >
                 <SelectTrigger
                   id="method"
                   className="w-full"
@@ -665,117 +654,11 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
         )}
 
         {selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity && (
-          <>
-            <Controller
-              name="credentials.tenantId"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4">
-                  <FieldLabel htmlFor="credentials.tenantId">
-                    Tenant ID
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        The Azure Active Directory (Entra ID) Tenant ID.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      setHasVerifyFailed(false);
-                    }}
-                    id="credentials.tenantId"
-                    disabled={isNewConnection}
-                    placeholder="00000000-0000-0000-0000-000000000000"
-                    isError={Boolean(error)}
-                  />
-                  <FieldError errors={[error]} />
-                </Field>
-              )}
-            />
-            <Controller
-              name="credentials.clientId"
-              control={control}
-              render={({ field, fieldState: { error } }) => (
-                <Field className="mb-4">
-                  <FieldLabel htmlFor="credentials.clientId">Client ID</FieldLabel>
-                  <Input
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      setHasVerifyFailed(false);
-                    }}
-                    id="credentials.clientId"
-                    disabled={isNewConnection}
-                    placeholder="00000000-0000-0000-0000-000000000000"
-                    isError={Boolean(error)}
-                  />
-                  <FieldDescription>
-                    The client ID of the user-assigned managed identity.
-                  </FieldDescription>
-                  <FieldError errors={[error]} />
-                </Field>
-              )}
-            />
-            <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-              <span className="text-sm font-medium">Federated Credential</span>
-              {isUpdate ? (
-                <>
-                  <p className="text-xs leading-normal text-accent">
-                    Add these values to the managed identity in Azure, then verify the connection.
-                  </p>
-                  {federatedCredential && (
-                    <>
-                      {federatedCredential.issuerUrl ? (
-                        <FederatedCredentialValue
-                          label="Issuer"
-                          value={federatedCredential.issuerUrl}
-                        />
-                      ) : (
-                        <div className="flex flex-col gap-1.5">
-                          <span className="text-xs text-accent">Issuer</span>
-                          <p className="text-xs leading-normal text-danger">
-                            The issuer is unavailable because SITE_URL is not set. Set it to this
-                            instance&apos;s public URL.
-                          </p>
-                        </div>
-                      )}
-                      <FederatedCredentialValue
-                        label="Subject Identifier"
-                        value={federatedCredential.subjectIdentifier}
-                        className={GENERATED_VALUE_BORDER[scopeVariant]}
-                      />
-                      <FederatedCredentialValue
-                        label="Audience"
-                        value={federatedCredential.audience}
-                      />
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <p className="text-xs leading-normal text-accent">
-                    The subject identifier includes the connection ID, so Infisical creates the
-                    connection first. Configure the federated credential to generate it.
-                  </p>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant={scopeVariant}
-                    isPending={isSubmitting}
-                    isDisabled={isSubmitting}
-                  >
-                    <KeyRoundIcon />
-                    {isSubmitting ? "Creating Connection" : "Configure Federated Credential"}
-                  </Button>
-                </>
-              )}
-            </div>
-          </>
+          <AzureManagedIdentityFields
+            isUpdate={isUpdate}
+            federatedCredential={federatedCredential}
+            onCredentialsChange={() => setHasVerifyFailed(false)}
+          />
         )}
 
         <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">

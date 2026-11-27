@@ -1,7 +1,9 @@
 import knex, { Knex } from "knex";
 
 import { OrgMembershipStatus, TAuthTokens, TAuthTokenSessions, TUsers } from "@app/db/schemas";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -19,7 +21,7 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
-import { ActorType, AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
+import { AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload } from "../auth/auth-type";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
@@ -36,7 +38,8 @@ import {
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "findById" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership">;
+  actorContextService: Pick<TActorContextService, "findActorOrg">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -123,7 +126,13 @@ export const getTokenConfig = (tokenType: TokenType) => {
 const isUserLocked = (user: Pick<TUsers, "isLocked" | "temporaryLockDateEnd">) =>
   Boolean(user.isLocked || (user.temporaryLockDateEnd && new Date() < user.temporaryLockDateEnd));
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({
+  tokenDAL,
+  userDAL,
+  orgDAL,
+  actorContextService,
+  keyStore
+}: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -253,6 +262,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     }
     return session;
   };
+
+  const createUserTokenSession = async (
+    { userId, ip, userAgent }: TIssueAuthTokenDTO,
+    tx?: Knex
+  ): Promise<TAuthTokenSessions | undefined> => tokenDAL.insertTokenSession(userId, ip, userAgent, tx);
 
   const clearTokenSessionById = async (userId: string, sessionId: string): Promise<TAuthTokenSessions | undefined> =>
     tokenDAL.incrementTokenSessionVersion(userId, sessionId);
@@ -483,13 +497,11 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
   }) => {
     if (!organizationId) {
       if (subOrganizationId) throw new UnauthorizedError({ message: "Invalid token" });
-      return { orgId: "", orgName: "", rootOrgId: "", parentOrgId: "" };
+      return { orgId: "", orgName: "", rootOrgId: "", parentOrgId: "", org: null };
     }
 
     if (!subOrganizationId) {
-      const organization = await requestMemoize(requestMemoKeys.orgFindById(organizationId), () =>
-        orgDAL.findById(organizationId)
-      );
+      const organization = await actorContextService.findActorOrg(organizationId);
 
       if (!organization) {
         throw new UnauthorizedError({
@@ -502,13 +514,12 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
         orgId: organizationId,
         orgName: organization.name,
         rootOrgId: organizationId,
-        parentOrgId: organizationId
+        parentOrgId: organizationId,
+        org: organization
       };
     }
 
-    const subOrganization = await requestMemoize(requestMemoKeys.orgFindById(subOrganizationId), () =>
-      orgDAL.findById(subOrganizationId)
-    );
+    const subOrganization = await actorContextService.findActorOrg(subOrganizationId);
     if (!subOrganization) {
       throw new UnauthorizedError({
         message: `The sub-organization with ID '${subOrganizationId}' no longer exists. Log in again.`
@@ -527,7 +538,8 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       orgId: subOrganization.id,
       orgName: subOrganization.name,
       rootOrgId: organizationId,
-      parentOrgId: subOrganization.parentOrgId as string
+      parentOrgId: subOrganization.parentOrgId,
+      org: subOrganization
     };
   };
 
@@ -538,13 +550,13 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
       accessVersion: token.accessVersion
     });
 
-    const { orgId, orgName, rootOrgId, parentOrgId } = await validateTokenOrgScope({
+    const { orgId, orgName, rootOrgId, parentOrgId, org } = await validateTokenOrgScope({
       userId: user.id,
       organizationId: token.organizationId,
       subOrganizationId: token.subOrganizationId
     });
 
-    return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId };
+    return { user, tokenVersionId: token.tokenVersionId, orgId, orgName, rootOrgId, parentOrgId, org };
   };
 
   const validateRefreshTokenAccess = async (decodedToken: AuthModeRefreshJwtTokenPayload) => {
@@ -644,6 +656,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, orgDAL, keyStore }: TAu
     createTokensForUsers,
     validateTokenForUser,
     getUserTokenSession,
+    createUserTokenSession,
     clearTokenSessionById,
     getTokenSessionByUser,
     revokeAllMySessions,

@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 import { GithubOrgSyncConfigsSchema } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { GithubOrgNameCreateSchema, GithubOrgNamePatchSchema } from "./github-org-sync-schema";
@@ -41,7 +41,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const githubOrgSyncConfig = await server.services.githubOrgSync.createGithubOrgSync({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         githubOrgName: req.body.githubOrgName,
         githubOrgAccessToken: req.body.githubOrgAccessToken,
         isActive: req.body.isActive
@@ -51,7 +51,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         .sendPostHogEvents({
           event: PostHogEventTypes.GitHubOrgSyncConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { githubOrgName: req.body.githubOrgName, isActive: req.body.isActive }
         })
         .catch(() => {});
@@ -84,7 +84,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const githubOrgSyncConfig = await server.services.githubOrgSync.updateGithubOrgSync({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         githubOrgName: req.body.githubOrgName,
         githubOrgAccessToken: req.body.githubOrgAccessToken,
         isActive: req.body.isActive
@@ -94,7 +94,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         .sendPostHogEvents({
           event: PostHogEventTypes.GitHubOrgSyncUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             githubOrgName: githubOrgSyncConfig.githubOrgName,
             isActive: githubOrgSyncConfig.isActive ?? undefined
@@ -123,14 +123,14 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const githubOrgSyncConfig = await server.services.githubOrgSync.deleteGithubOrgSync({
-        orgPermission: req.permission
+        orgPermission: req.actor
       });
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.GitHubOrgSyncDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             githubOrgName: githubOrgSyncConfig.githubOrgName
           }
@@ -158,7 +158,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const githubOrgSyncConfig = await server.services.githubOrgSync.getGithubOrgSync({
-        orgPermission: req.permission
+        orgPermission: req.actor
       });
 
       return { githubOrgSyncConfig };
@@ -187,7 +187,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const result = await server.services.githubOrgSync.syncAllTeams({
-        orgPermission: req.permission,
+        orgPermission: req.actor,
         auditLogInfo: req.auditLogInfo
       });
 
@@ -195,7 +195,7 @@ export const registerGithubOrgSyncRouter = async (server: FastifyZodProvider) =>
         .sendPostHogEvents({
           event: PostHogEventTypes.GitHubOrgSyncExecuted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             totalUsers: result.totalUsers,
             createdTeams: result.createdTeams.length,

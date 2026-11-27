@@ -31,11 +31,12 @@ export const Route = createFileRoute("/_authenticate")({
           text: " You need to log in to access this page. Please log in to continue."
         });
 
-        // persist current URL in session storage so that we can come back to this after successful login
+        // persist current URL in session storage so that we can come back to this after successful login. Long enough
+        // to find a password and pass MFA: an app's sign-in link (such as an MCP client's) often lands here signed out.
         sessionStorage.setItem(
           SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
           JSON.stringify({
-            expiry: formatISO(addSeconds(new Date(), 60)),
+            expiry: formatISO(addSeconds(new Date(), 300)),
             data: window.location.href
           })
         );

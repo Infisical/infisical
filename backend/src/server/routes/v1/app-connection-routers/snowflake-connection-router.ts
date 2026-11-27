@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedSnowflakeConnectionSchema,
   UpdateSnowflakeConnectionSchema
 } from "@app/services/app-connection/snowflake";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -44,7 +44,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const databases = await server.services.appConnection.snowflake.listDatabases(connectionId, req.permission);
+      const databases = await server.services.appConnection.snowflake.listDatabases(connectionId, req.actor);
 
       return { databases };
     }
@@ -77,7 +77,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
         query: { database }
       } = req;
 
-      const schemas = await server.services.appConnection.snowflake.listSchemas(connectionId, database, req.permission);
+      const schemas = await server.services.appConnection.snowflake.listSchemas(connectionId, database, req.actor);
 
       return { schemas };
     }
@@ -104,7 +104,7 @@ export const registerSnowflakeConnectionRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const users = await server.services.appConnection.snowflake.listUsers(connectionId, req.permission);
+      const users = await server.services.appConnection.snowflake.listUsers(connectionId, req.actor);
 
       return { users };
     }

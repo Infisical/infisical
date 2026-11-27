@@ -9,6 +9,8 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { refineCredentialRotationMethod } from "../credential-rotation/app-connection-credential-rotation-schemas";
+import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureEntraIdConnectionMethod } from "./azure-entra-id-connection-enums";
 
 export const AzureEntraIdConnectionClientSecretInputCredentialsSchema = z.object({
@@ -39,12 +41,32 @@ export const AzureEntraIdConnectionClientSecretOutputCredentialsSchema = z.objec
   expiresAt: z.number()
 });
 
+export const AzureEntraIdConnectionManagedIdentityInputCredentialsSchema = z.object({
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  clientId: z.string().uuid().trim().min(1, "Client ID required")
+});
+
+export const AzureEntraIdConnectionManagedIdentityOutputCredentialsSchema = z.object({
+  tenantId: z.string(),
+  clientId: z.string(),
+  accessToken: z.string().optional(),
+  expiresAt: z.number().optional()
+});
+
 export const ValidateAzureEntraIdConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
       .literal(AzureEntraIdConnectionMethod.ClientSecret)
       .describe(AppConnections.CREATE(AppConnection.AzureEntraId).method),
     credentials: AzureEntraIdConnectionClientSecretInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureEntraId).credentials
+    )
+  }),
+  z.object({
+    method: z
+      .literal(AzureEntraIdConnectionMethod.ManagedIdentity)
+      .describe(AppConnections.CREATE(AppConnection.AzureEntraId).method),
+    credentials: AzureEntraIdConnectionManagedIdentityInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureEntraId).credentials
     )
   })
@@ -54,13 +76,17 @@ export const CreateAzureEntraIdConnectionSchema = ValidateAzureEntraIdConnection
   GenericCreateAppConnectionFieldsSchema(AppConnection.AzureEntraId, {
     supportsCredentialRotation: true
   })
-);
+).superRefine(refineCredentialRotationMethod(AzureEntraIdConnectionMethod.ClientSecret));
 
 export const UpdateAzureEntraIdConnectionSchema = z
   .object({
-    credentials: AzureEntraIdConnectionClientSecretInputCredentialsSchema.optional().describe(
-      AppConnections.UPDATE(AppConnection.AzureEntraId).credentials
-    )
+    credentials: z
+      .union([
+        AzureEntraIdConnectionClientSecretInputCredentialsSchema,
+        AzureEntraIdConnectionManagedIdentityInputCredentialsSchema
+      ])
+      .optional()
+      .describe(AppConnections.UPDATE(AppConnection.AzureEntraId).credentials)
   })
   .and(
     GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureEntraId, {
@@ -78,6 +104,10 @@ export const AzureEntraIdConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureEntraIdConnectionMethod.ClientSecret),
       credentials: AzureEntraIdConnectionClientSecretOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureEntraIdConnectionMethod.ManagedIdentity),
+      credentials: AzureEntraIdConnectionManagedIdentityOutputCredentialsSchema
     })
   ])
 );
@@ -89,7 +119,16 @@ export const SanitizedAzureEntraIdConnectionSchema = z.discriminatedUnion("metho
       clientId: true,
       tenantId: true
     })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureEntraId]} (Client Secret)` }))
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureEntraId]} (Client Secret)` })),
+  BaseAzureEntraIdConnectionSchema.extend({
+    method: z.literal(AzureEntraIdConnectionMethod.ManagedIdentity),
+    credentials: AzureEntraIdConnectionManagedIdentityOutputCredentialsSchema.pick({
+      clientId: true,
+      tenantId: true
+    }).extend({
+      federatedCredential: AzureConnectionFederatedCredentialSchema
+    })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureEntraId]} (Managed Identity)` }))
 ]);
 
 export const AzureEntraIdConnectionListItemSchema = z

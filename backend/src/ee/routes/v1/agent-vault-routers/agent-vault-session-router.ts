@@ -24,6 +24,7 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -31,7 +32,6 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
@@ -389,7 +389,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_SESSION_MINT,
@@ -511,7 +511,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       if (isChanged) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_UPDATE,
@@ -558,7 +558,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       if (revokedNow) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,

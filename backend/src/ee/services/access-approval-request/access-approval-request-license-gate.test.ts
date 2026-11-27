@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretAccessApprovalRequestServiceFactory } from "./access-approval-request-service";
 
@@ -16,10 +17,10 @@ const PROJECT_ID = "project-id";
 const REQUEST_ID = "request-id";
 
 const actor = {
-  actor: ActorType.USER as const,
-  actorId: "actor-id",
-  actorAuthMethod: null,
-  actorOrgId: ORG_ID
+  actor: {
+    principal: { type: ActorType.USER, id: "actor-id", authMethod: null },
+    org: { id: ORG_ID }
+  } as unknown as TActorContext
 };
 
 const createService = (secretApproval: boolean) => {
@@ -29,9 +30,9 @@ const createService = (secretApproval: boolean) => {
     projectDAL: {
       findProjectBySlug: vi.fn().mockResolvedValue({ id: PROJECT_ID, orgId: ORG_ID })
     },
-    permissionService: {
+    secretsPermissionService: {
       // the update gate sits behind the authorization check, so the actor must pass it
-      getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true })
+      getSecretsPermission: vi.fn().mockResolvedValue({ permission: { hasRole: () => true } })
     },
     licenseService: { getPlan },
     accessApprovalRequestDAL: {

@@ -11,11 +11,11 @@ import { buildSessionLogSettingsAuditMetadata } from "@app/ee/services/agent-vau
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
@@ -52,7 +52,7 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => ({
-      access: (await server.services.agentVaultAccessService.getAccess(req.permission.orgId)).toJSON()
+      access: (await server.services.agentVaultAccessService.getAccess(req.actor.orgId)).toJSON()
     })
   });
 
@@ -96,21 +96,13 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
         await server.services.agentVaultSessionLog.updateSessionLogSettings({
           projectId,
           ctx: actorContext(req),
-          actor: {
-            type: req.permission.type,
-            id: req.permission.id,
-            authMethod: req.permission.authMethod,
-            orgId: req.permission.orgId,
-            rootOrgId: req.permission.rootOrgId,
-            parentOrgId: req.permission.parentOrgId
-          },
           ...req.body
         });
 
       const metadata = buildSessionLogSettingsAuditMetadata({ settings, appConnectionName, previous });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: { type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE, metadata }
       });
