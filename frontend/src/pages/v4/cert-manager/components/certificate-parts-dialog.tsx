@@ -26,12 +26,12 @@ const PemBlock = ({
   label,
   value,
   fileName,
-  sensitive
+  sensitiveLabel
 }: {
   label: string;
   value: string;
   fileName: string;
-  sensitive?: boolean;
+  sensitiveLabel?: string;
 }) => (
   <CodeBlock
     label={label}
@@ -41,7 +41,8 @@ const PemBlock = ({
     onCopy={() => saved(`${label} copied`)}
     format="plain"
     maxHeight={176}
-    sensitive={sensitive}
+    sensitive={Boolean(sensitiveLabel)}
+    sensitiveLabel={sensitiveLabel}
     actions={
       <Tooltip content={`Download ${fileName}`}>
         <Button
@@ -90,7 +91,7 @@ const CertificateParts = ({ cert, projectId }: { cert: TCertificate; projectId: 
           label="Private key"
           value={data.privateKey}
           fileName="private_key.pem"
-          sensitive
+          sensitiveLabel="private key"
         />
       )}
     </Stack>
