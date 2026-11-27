@@ -28,6 +28,7 @@ import { Muted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
+import { stepAside } from "../components/step-aside";
 import { type PickedSignerMembers, SignerAddMemberDialog } from "./add-member-dialog";
 import {
   type ApproverOption,
@@ -189,7 +190,7 @@ const CreateSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title="Create signer"
         badges={<DocumentationLink href={CODE_SIGNING_DOCS.createSigner} subject="Signers" />}
         open
@@ -245,6 +246,9 @@ const CreateSheet = ({
           {
             title: "Certificate",
             summary: caOptions.find((option) => option.id === cert.caId)?.name,
+            aside: stepAside(
+              "You can change the name or validity later, which reissues the certificate."
+            ),
             validate: () => {
               const next = certificateErrors(cert, caOptions);
               setCertErrors(next);
@@ -265,6 +269,7 @@ const CreateSheet = ({
           },
           {
             title: "Signing key",
+            aside: stepAside("Some CAs require a key held in an HSM and lock this choice."),
             validate: async () => {
               const next = keyErrors(cert, lookup, minRsaKeyBits);
               setCertErrors(next);
@@ -306,8 +311,9 @@ const CreateSheet = ({
           {
             title: "Members",
             summary: members.length ? `${members.length + 1} members` : undefined,
-            description:
-              "Administrators manage the signer, operators sign artifacts, and auditors read activity but can't sign.",
+            aside: stepAside(
+              "Administrators manage the signer, operators sign artifacts, and auditors read activity but can't sign."
+            ),
             content: (
               <Stack gap={12}>
                 <Inline justify="end">
@@ -398,8 +404,10 @@ const CreateSheet = ({
           },
           {
             title: "Approval policy",
-            description:
-              "When approval is on, members ask before signing. Steps run in order, and limits cap how much each approval allows.",
+            aside: stepAside(
+              "When approval is on, members ask before signing. Steps run in order, each with its own approvers.",
+              "Limits cap how many signatures an approval allows and how long it stays valid."
+            ),
             disabledReason: policyIssue,
             content: (
               <Stack gap={24}>

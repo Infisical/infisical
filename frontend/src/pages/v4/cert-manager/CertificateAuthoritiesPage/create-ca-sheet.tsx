@@ -31,6 +31,7 @@ import { useConnectionCreation } from "../../components/connection-creation";
 import { useV4Adapter } from "../../data/adapters";
 import type { CaPlan } from "../../data/certificate-authorities/contract";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
+import { stepAside } from "../components/step-aside";
 import { AddHsmConnectorSheet } from "../SettingsPage/hsm-connector-wizard";
 import {
   type CaDraft,
@@ -469,7 +470,7 @@ export const CreateCaSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title="Create internal CA"
         open={open}
         step={step}
@@ -486,8 +487,9 @@ export const CreateCaSheet = ({
           },
           {
             title: "Subject",
-            description:
-              "The distinguished name embedded in the CA certificate. Set at least one field.",
+            aside: stepAside(
+              "These fields form the distinguished name that identifies this CA on every certificate it issues. Set at least one."
+            ),
             summary: draft.commonName || draft.organization || undefined,
             validate: () => check(validateSubject),
             content: <SubjectStep {...stepProps} />
@@ -495,12 +497,20 @@ export const CreateCaSheet = ({
           {
             title: "Key and validity",
             summary: certKeyAlgorithms.find(({ value }) => value === draft.keyAlgorithm)?.label,
+            aside:
+              draft.type === InternalCaType.ROOT
+                ? stepAside(
+                    "A root CA is self-signed when it's created, so its validity and path length are set here."
+                  )
+                : undefined,
             validate: () => check(validateKey),
             content: <KeyStep {...stepProps} orgId={orgId} projectId={projectId} plan={plan} />
           },
           {
             title: "Distribution",
-            description: "How clients check whether certificates from this CA are revoked.",
+            aside: stepAside(
+              "Certificates from this CA carry revocation endpoints that clients use to check their status. OCSP answers for one certificate at a time, and a CRL lists every certificate the CA has revoked."
+            ),
             validate: () => check(validateDistribution),
             content: <DistributionStep {...stepProps} plan={plan} />
           }

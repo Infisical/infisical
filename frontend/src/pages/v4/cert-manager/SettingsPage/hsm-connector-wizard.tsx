@@ -10,6 +10,7 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import type { HsmPlan } from "../../data/cert-manager-settings/contract-hsm";
+import { stepAside } from "../components/step-aside";
 import {
   DEFAULT_KEY_PREFIX,
   descriptionSchema,
@@ -80,7 +81,7 @@ export const AddHsmConnectorSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title="Add HSM connector"
         open={open}
         step={step}
@@ -158,7 +159,7 @@ export const AddHsmConnectorSheet = ({
           },
           {
             title: "Connection",
-            description: "Only gateways with PKCS#11 support are listed.",
+            aside: stepAside("Only gateways with PKCS#11 support are listed."),
             validate: () => check({ route: firstIssue(routeSchema, draft.route) }),
             content: (
               <Stack gap={16}>
@@ -183,8 +184,9 @@ export const AddHsmConnectorSheet = ({
           },
           {
             title: "Credentials",
-            description:
-              "Infisical verifies the slot and PIN against your HSM before saving the connector.",
+            aside: stepAside(
+              "Infisical verifies the slot and PIN against your HSM before saving the connector."
+            ),
             validate: () =>
               check({
                 slotLabel: firstIssue(slotLabelSchema, draft.slotLabel),
