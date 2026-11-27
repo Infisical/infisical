@@ -366,11 +366,24 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       resources.forEach(({ id, name }) => resourceNameById.set(id, name));
     }
 
+    // A finding that took in a legacy finding in an earlier batch holds that finding's locations, saved by earlier scans.
+    const absorbedIds = new Set<string>();
+    const freshCandidateIds = [...losersByWinnerId.keys()].filter((id) => findingById.get(id)!.scanId === scanId);
+    for (const chunk of chunkArray(freshCandidateIds, FINDINGS_UPSERT_CHUNK_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const absorbed = await tx(TableName.SecretScanningFindingLocation)
+        .whereIn("findingId", chunk)
+        .whereNot("scanId", scanId)
+        .distinct("findingId");
+      absorbed.forEach(({ findingId }) => absorbedIds.add(findingId));
+    }
+
     const winners = [...losersByWinnerId].map(([winnerId, losers]) => {
       const winner = findingById.get(winnerId)!;
       // A finding this scan created and nobody triaged is only the value's newer places, so the merge gives what saving
-      // them on the legacy finding would have: its verdict stands, and a resolved one is reopened by them.
-      const isFromThisScan = winner.scanId === scanId && !winner.triagedAt;
+      // them on the legacy finding would have: its verdict stands, and a resolved one is reopened by them. Once it has
+      // taken in a legacy finding it carries that one's verdict, so it counts like any other finding.
+      const isFromThisScan = winner.scanId === scanId && !winner.triagedAt && !absorbedIds.has(winner.id);
       const candidates = isFromThisScan ? losers : [winner, ...losers];
       const verdict = candidates.reduce((best, finding) => (isSaferFinding(finding, best) ? finding : best));
       const isReopened = isFromThisScan && verdict.status === SecretScanningFindingStatus.Resolved;
@@ -1515,9 +1528,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const findFindingByIdOrLocationIdForUpdate = async (id: string, tx: Knex) => {
     try {
       return await tx(TableName.SecretScanningFinding)
-        .where("id", id)
-        .orWhereIn("id", (subQuery) => {
-          void subQuery.select("findingId").from(TableName.SecretScanningFindingLocation).where({ id });
+        .where((byIdOrLocationId) => {
+          void byIdOrLocationId.where("id", id).orWhereIn("id", (subQuery) => {
+            void subQuery.select("findingId").from(TableName.SecretScanningFindingLocation).where({ id });
+          });
         })
         .orderBy("id")
         .forUpdate()
