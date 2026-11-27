@@ -30,6 +30,7 @@ import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/app
 import { useOrgPermission } from "../../access/permissions";
 import { errorMessage, failed, saved as savedToast } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 
@@ -125,7 +126,11 @@ const ConnectionField = ({
   const saved = config ? [{ id: config.connectionId, name: config.connectionName }] : [];
   const options = [...connections, ...(created ? [created] : []), ...saved]
     .filter((entry, index, all) => all.findIndex((other) => other.id === entry.id) === index)
-    .map((connection) => ({ value: connection.id, label: connection.name }));
+    .map((connection) => ({
+      value: connection.id,
+      label: connection.name,
+      media: providerMedia("app-connection", AppConnection.Anthropic)
+    }));
   const creation = connectionCreation({
     preset: CONNECTION_PRESETS[AppConnection.Anthropic],
     disabledReason: canCreateConnection

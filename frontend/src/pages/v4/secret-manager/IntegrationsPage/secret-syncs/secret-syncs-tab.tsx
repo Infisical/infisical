@@ -22,7 +22,7 @@ import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, SecretSyncStatus } from "@app/hooks/api/secretSyncs/enums";
 import type { TCreateSecretSyncDTO, TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
-import { ProviderLabel } from "@app/pages/v4/components/provider-label";
+import { ProviderLabel, providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { failed, toast } from "../../../access/toast";
@@ -343,7 +343,8 @@ export const SecretSyncsTab = ({
             type: "multi-select",
             options: presentDestinations.map((destination) => ({
               value: destination,
-              label: destinationNameOf(destination)
+              label: destinationNameOf(destination),
+              media: providerMedia("secret-sync", destination)
             }))
           },
           {

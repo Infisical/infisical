@@ -42,7 +42,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
-import { ProviderLabel } from "../../components/provider-label";
+import { ProviderLabel, providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
 import { ConnectionField } from "./install/forms";
@@ -574,7 +574,8 @@ const AcmeFields = ({ draft, errors, projectId, editing, set, patch }: FieldsPro
         disabled={editing}
         options={Object.values(AcmeDnsProvider).map((provider) => ({
           value: provider,
-          label: ACME_DNS_PROVIDER_NAME_MAP[provider]
+          label: ACME_DNS_PROVIDER_NAME_MAP[provider],
+          media: providerMedia("app-connection", ACME_DNS_PROVIDER_APP_CONNECTION_MAP[provider])
         }))}
         onValueChange={(next) =>
           patch({

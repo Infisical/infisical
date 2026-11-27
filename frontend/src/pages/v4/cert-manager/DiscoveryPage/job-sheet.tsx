@@ -31,6 +31,7 @@ import {
 } from "@app/hooks/api/pkiDiscovery/types";
 
 import { readableFailure } from "../../access/toast";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { GatewayPicker } from "../../networking/gateway-picker";
 import { BadgeList, DiscoveryTypeIcon, DiscoveryTypeLabel } from "./discovery-shared";
@@ -170,14 +171,20 @@ const HostsStep = ({
   const missingSelected = draft.connections.filter(
     (selected) => !connections.some((connection) => connection.id === selected.id)
   );
+  const media = providerMedia("app-connection", app);
   const options = [
     ...listed.map((connection) => ({
       value: connection.id,
       label: connection.name,
+      media,
       description: unusableReason(connection),
       disabled: Boolean(unusableReason(connection))
     })),
-    ...missingSelected.map((connection) => ({ value: connection.id, label: connection.name }))
+    ...missingSelected.map((connection) => ({
+      value: connection.id,
+      label: connection.name,
+      media
+    }))
   ];
   const names = new Map(options.map((option) => [option.value, option.label]));
   return (

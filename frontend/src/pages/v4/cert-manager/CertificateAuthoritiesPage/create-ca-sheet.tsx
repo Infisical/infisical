@@ -28,6 +28,7 @@ import { CertKeySource } from "@app/hooks/api/signers/types";
 
 import { duplicateNameMessage, readableFailure, saved } from "../../access/toast";
 import { useConnectionCreation } from "../../components/connection-creation";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import type { CaPlan } from "../../data/certificate-authorities/contract";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
@@ -141,6 +142,7 @@ const KeySourceField = ({ draft, patch, plan }: StepProps & { plan?: CaPlan }) =
           {
             value: CertKeySource.AwsKms,
             label: "AWS KMS",
+            media: providerMedia("app-connection", AppConnection.AWS),
             disabled: !plan?.pkiAwsKmsSigning,
             meta: plan?.pkiAwsKmsSigning ? undefined : "Enterprise plan"
           }
@@ -226,7 +228,11 @@ const AwsKeyFields = ({ draft, errors, set, projectId }: StepProps & { projectId
   const options = [
     ...connections,
     ...(created && !connections.some((entry) => entry.id === created.id) ? [created] : [])
-  ].map((connection) => ({ value: connection.id, label: connection.name }));
+  ].map((connection) => ({
+    value: connection.id,
+    label: connection.name,
+    media: providerMedia("app-connection", AppConnection.AWS)
+  }));
   return (
     <>
       <Field

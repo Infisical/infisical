@@ -37,6 +37,7 @@ import type { TAuditLogStream } from "@app/hooks/api/auditLogStreams/types";
 import { useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../../../access/ui";
+import { providerMedia } from "../../../components/provider-label";
 import { ResourceAlertAction } from "../../../components/resource-alerts";
 import { usePageSize } from "../../../components/use-page-size";
 import { useV4Adapter } from "../../../data/adapters";
@@ -202,7 +203,8 @@ export const AuditLogStreamsTab = () => {
             type: "multi-select",
             options: [...new Set(streams.map((stream) => stream.provider))].map((provider) => ({
               value: provider,
-              label: providerName(provider)
+              label: providerName(provider),
+              media: providerMedia("audit-log-stream", provider)
             }))
           }
         ]}
