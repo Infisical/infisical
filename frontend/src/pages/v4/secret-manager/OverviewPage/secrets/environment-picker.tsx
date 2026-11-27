@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ListHighlight } from "@infisical/cipher/lib/list-highlight";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
   Command,
   CommandEmpty,
+  CommandFooter,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -278,15 +278,10 @@ export function EnvironmentPicker({
                 ))}
               </CommandGroup>
             </CommandList>
-            <CommandSeparator alwaysRender />
-            <div className={styles.envFooter}>
+            <CommandFooter>
               <MultiSelectFooterAction
                 icon="plus"
                 disabled={!canCreate}
-                onKeyDown={(event) => {
-                  // cmdk selects its highlighted item on Enter at the root, which would swallow the button's activation.
-                  if (event.key === "Enter") event.stopPropagation();
-                }}
                 onClick={() => {
                   changeOpen(false);
                   guard("environment", () => setAdding(true));
@@ -294,13 +289,14 @@ export function EnvironmentPicker({
               >
                 Add environment
               </MultiSelectFooterAction>
-              <ListHighlight />
-            </div>
-            <p className={styles.envHint}>
-              {canCreate
-                ? "Use the checkboxes to select multiple environments."
-                : "Use the checkboxes to select multiple environments. You don't have permission to add environments."}
-            </p>
+            </CommandFooter>
+            <CommandFooter>
+              <p className={styles.envHint}>
+                {canCreate
+                  ? "Use the checkboxes to select multiple environments."
+                  : "Use the checkboxes to select multiple environments. You don't have permission to add environments."}
+              </p>
+            </CommandFooter>
           </Command>
         </PopoverContent>
       </Popover>
