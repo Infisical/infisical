@@ -233,6 +233,7 @@ tables:
       - expiresAt
       - createdAt
       - updatedAt
+      - autoApprovedAt
 
   - name: certificate_authorities
     source: public.certificate_authorities
