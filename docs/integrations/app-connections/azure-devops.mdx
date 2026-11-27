@@ -118,12 +118,23 @@ Infisical supports four methods for connecting to Azure DevOps: OAuth, Azure Dev
 </Accordion>
 
 <Accordion title="Managed Identity Authentication">
-  To use managed identity authentication, you need a user-assigned managed identity that has access to the Azure DevOps organization and projects you want to use. Infisical doesn't store a secret for this method.
+  With managed identity authentication, Infisical connects as a [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with access to the Azure DevOps organization and projects you want to use, and doesn't store a secret for the connection.
 
-  **Prerequisites:**
-  - An existing Azure DevOps organization
-  - A [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) that's [added as a user to your Azure DevOps organization](https://learn.microsoft.com/en-us/azure/devops/integrate/get-started/authentication/service-principal-managed-identity) and has access to your target project(s)
-  - If you self-host Infisical, a `SITE_URL` that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it
+  If you self-host Infisical, set `SITE_URL` to a URL that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it.
+
+  <Steps>
+    <Step>
+      In the Azure portal, go to **Managed Identities** and select **Create**. Choose a subscription, resource group, region, and name, then select **Review + create** and **Create**.
+    </Step>
+    <Step>
+      Open the managed identity and copy the **Client ID** from its **Overview** page. Copy your **Tenant ID** from the **Overview** page of **Microsoft Entra ID**.
+    </Step>
+    <Step>
+      In Azure DevOps, go to **Organization settings** > **Users** and select **Add users**. Search for your managed identity by name, set **Access level** to **Basic**, add it to the projects you want to sync to, and select **Add**.
+
+      The organization must be connected to the same Microsoft Entra tenant as the managed identity, which you can check under **Organization settings** > **Microsoft Entra**.
+    </Step>
+  </Steps>
 </Accordion>
 
 ## Setup Azure connection in Infisical
@@ -186,25 +197,28 @@ Infisical supports four methods for connecting to Azure DevOps: OAuth, Azure Dev
                 </Steps>
             </Tab>
             <Tab title="Managed Identity">
-                <Steps>
-                    <Step>
-                        Select the **Managed Identity** method, then fill in the **Tenant ID** and **Client ID** of your managed identity and the **Organization Name** of your Azure DevOps organization. Select **Configure Federated Credential**. Infisical creates the connection and shows its **Issuer**, **Subject Identifier**, and **Audience**.
+              <Steps>
+                <Step>
+                  Select the **Managed Identity** method and enter the **Tenant ID** and **Client ID** of your managed identity. Also enter the **Organization Name** of your Azure DevOps organization, such as `contoso` for `https://dev.azure.com/contoso`. Then select **Configure Federated Credential**. Infisical creates the connection and shows the **Issuer**, **Subject Identifier**, and **Audience** to add to the managed identity.
+                </Step>
+                <Step>
+                  In the Azure portal, open your managed identity, go to **Settings** > **Federated credentials**, and select **Add Credential**. Choose the **Other issuer** scenario and fill in the form:
 
-                        <Tip>
-                            You can find the **Organization Name** on https://dev.azure.com/
-                        </Tip>
-                    </Step>
-                    <Step>
-                        In the Azure portal, open your managed identity and go to **Settings** > **Federated credentials** > **Add Credential**. Choose the **Other issuer** scenario and enter the values from Infisical.
-                    </Step>
-                    <Step>
-                        Back in Infisical, select **Verify Connection**.
-                    </Step>
-                </Steps>
+                  - **Issuer URL**: the **Issuer** from Infisical
+                  - **Subject identifier**: the **Subject Identifier** from Infisical
+                  - **Name**: any name, such as `infisical`
+                  - **Audience**: the **Audience** from Infisical, which Azure fills in by default
 
-                <Tip>
-                    If you create the connection with the Azure DevOps connection [Create](/api-reference/endpoints/app-connections/azure-devops/create) endpoint, the response includes these values in `credentials.federatedCredential`.
-                </Tip>
+                  Then select **Add**.
+                </Step>
+                <Step>
+                  Back in Infisical, select **Verify Connection**. If verification fails right after you add the credential, wait a minute for Azure to apply it, then select **Retry Verification**.
+                </Step>
+              </Steps>
+
+              <Tip>
+                If you create the connection with the Azure DevOps connection [Create](/api-reference/endpoints/app-connections/azure-devops/create) endpoint, the response includes these values in `credentials.federatedCredential`.
+              </Tip>
             </Tab>
         </Tabs>
     </Step>

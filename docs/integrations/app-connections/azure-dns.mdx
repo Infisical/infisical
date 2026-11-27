@@ -37,14 +37,23 @@ An Azure DNS connection lets Infisical manage DNS records in your Azure DNS zone
 </Accordion>
 
 <Accordion title="Managed Identity Authentication">
-  To use managed identity authentication, you need a user-assigned managed identity that can manage DNS records in your Azure DNS Zone. Infisical doesn't store a secret for this method.
+  With managed identity authentication, Infisical connects as a [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with access to the DNS zone you want to use, and doesn't store a secret for the connection.
 
-  **Prerequisites:**
-  - An existing DNS Zone
-  - A [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with the **DNS Zone Contributor** role on the DNS Zone
-  - If you self-host Infisical, a `SITE_URL` that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it
+  If you self-host Infisical, set `SITE_URL` to a URL that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it.
 
-  To assign the role, follow the [Client Secret Authentication](#client-secret-authentication) steps. When you select members, choose **Managed identity** under **Assign access to**, then select your managed identity.
+  <Steps>
+    <Step>
+      In the Azure portal, go to **Managed Identities** and select **Create**. Choose a subscription, resource group, region, and name, then select **Review + create** and **Create**.
+    </Step>
+    <Step>
+      Open the managed identity and copy the **Client ID** from its **Overview** page. Copy your **Tenant ID** from the **Overview** page of **Microsoft Entra ID**.
+    </Step>
+    <Step>
+      Open your DNS zone and select **Access control (IAM)** > **Add** > **Add role assignment**. Choose the **DNS Zone Contributor** role, then select **Next**.
+
+      Under **Assign access to**, select **Managed identity**, then use **Select members** to pick your managed identity. Select **Review + assign**.
+    </Step>
+  </Steps>
 </Accordion>
 
 ## Setup Azure DNS connection in Infisical
@@ -76,13 +85,20 @@ An Azure DNS connection lets Infisical manage DNS records in your Azure DNS zone
       <Tab title="Managed Identity">
         <Steps>
           <Step>
-            Select the **Managed Identity** method, then fill in the **Tenant ID** and **Client ID** of your managed identity and the **Subscription ID** that holds your DNS zones. Select **Configure Federated Credential**. Infisical creates the connection and shows its **Issuer**, **Subject Identifier**, and **Audience**.
+            Select the **Managed Identity** method and enter the **Tenant ID** and **Client ID** of your managed identity. Also enter the **Subscription ID** that holds your DNS zones. Then select **Configure Federated Credential**. Infisical creates the connection and shows the **Issuer**, **Subject Identifier**, and **Audience** to add to the managed identity.
           </Step>
           <Step>
-            In the Azure portal, open your managed identity and go to **Settings** > **Federated credentials** > **Add Credential**. Choose the **Other issuer** scenario and enter the values from Infisical.
+            In the Azure portal, open your managed identity, go to **Settings** > **Federated credentials**, and select **Add Credential**. Choose the **Other issuer** scenario and fill in the form:
+
+            - **Issuer URL**: the **Issuer** from Infisical
+            - **Subject identifier**: the **Subject Identifier** from Infisical
+            - **Name**: any name, such as `infisical`
+            - **Audience**: the **Audience** from Infisical, which Azure fills in by default
+
+            Then select **Add**.
           </Step>
           <Step>
-            Back in Infisical, select **Verify Connection**.
+            Back in Infisical, select **Verify Connection**. If verification fails right after you add the credential, wait a minute for Azure to apply it, then select **Retry Verification**.
           </Step>
         </Steps>
       </Tab>
