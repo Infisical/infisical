@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ComponentProps, useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,7 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { AlertResourceType } from "@app/hooks/api/alerts/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import type { TReconcileLocalAccountRotationDTO } from "@app/hooks/api/secretRotationsV2/types";
@@ -43,11 +44,30 @@ import {
   WindowsLocalAccountRotationMethod
 } from "../flows/secret-rotation/schemas";
 import { Gate } from "../flows/shared";
+import { ROTATION_FAILURE_ALERT, toSavedFailureAlert } from "../secret-sync/failure-alert";
 import { useManagedBlock } from "./permissions";
 import { RotationCredentialsDialog } from "./rotation-credentials-dialog";
 import type { RowAction, RowActionHostProps } from "./types";
 
 type Action = Extract<RowAction, { kind: "rotation" }>;
+
+function EditRotationFlow(
+  props: ComponentProps<typeof SecretRotationFlow> & { rotation: RotationResource }
+) {
+  const alerts = useV4Adapter("certManagerSettings").useAlerts({
+    resourceType: AlertResourceType.SecretRotation,
+    resourceId: props.rotation.id,
+    projectId: props.project
+  });
+  if (alerts.isPending) return null;
+  return (
+    <SecretRotationFlow
+      {...props}
+      failureAlert={toSavedFailureAlert(alerts.data, ROTATION_FAILURE_ALERT)}
+      failureAlertUnavailable={Boolean(alerts.error)}
+    />
+  );
+}
 
 export const canReconcile = (rotation: Extract<Resource, { kind: "rotation" }>) => {
   const type = rotationTypeOf(rotation);
@@ -380,7 +400,7 @@ export function RotationActions({
         />
       )}
       {last.action === "edit" && (
-        <SecretRotationFlow
+        <EditRotationFlow
           key={session}
           open={isOpen("edit")}
           onOpenChange={onOpenChange}

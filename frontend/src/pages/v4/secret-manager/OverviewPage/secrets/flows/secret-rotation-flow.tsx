@@ -38,12 +38,27 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnections/enums";
 
+import { useProjectPermission } from "../../../../access/permissions";
+import { failed } from "../../../../access/toast";
+import { useAlertMembers } from "../../../../cert-manager/SettingsPage/alert-members";
 import { useConnectionCreation } from "../../../../components/connection-creation";
 import { ProviderIcon } from "../../../../components/provider-icon";
 import { providerMedia } from "../../../../components/provider-label";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock } from "../row-actions/permissions";
+import {
+  buildProjectAdminsChannel,
+  canManageFailureAlert,
+  FAILURE_ALERT_FIELDS,
+  failureAlertDefaults,
+  failureAlertReviewItems,
+  failureAlertSchema,
+  ROTATION_FAILURE_ALERT,
+  type TSavedFailureAlert,
+  useSaveFailureAlert
+} from "../secret-sync/failure-alert";
+import { FailureAlertFields } from "../secret-sync/failure-alert-fields";
 import { ReviewSection, RotationField, TextField, useRotationForm } from "./secret-rotation/fields";
 import {
   appConnectionName,
@@ -81,6 +96,15 @@ type Props = {
   onCreate?: (resource: RotationResource) => void;
   rotation?: RotationResource;
   onUpdate?: (rotation: RotationResource) => void;
+  failureAlert?: TSavedFailureAlert;
+  failureAlertUnavailable?: boolean;
+};
+
+type AlertProps = {
+  canManage: boolean;
+  unavailable?: boolean;
+  rotationId?: string;
+  alertId?: string;
 };
 
 const FORM_STEPS = [
@@ -109,6 +133,11 @@ const FORM_STEPS = [
     name: "Details",
     title: "Add rotation details",
     fields: ["name", "description"]
+  },
+  {
+    name: "Alerts",
+    title: "Failure alert",
+    fields: FAILURE_ALERT_FIELDS
   },
   {
     name: "Review",
@@ -368,8 +397,9 @@ function DetailsFields() {
   );
 }
 
-function ReviewFields() {
+function ReviewFields({ project, alert }: { project: string; alert: AlertProps }) {
   const { control } = useRotationForm();
+  const members = useAlertMembers(project);
   const values = useWatch({ control }) as FieldValues;
   const type = values.type as SecretRotation;
   const TypeReview = ROTATION_VIEWS[type].Review;
@@ -399,6 +429,25 @@ function ReviewFields() {
           ["Description", values.description]
         ]}
       />
+      <ReviewSection
+        label="Failure alert"
+        items={
+          alert.unavailable
+            ? [
+                [
+                  ROTATION_FAILURE_ALERT.reviewLabel,
+                  "Not loaded. Saving leaves the alert unchanged."
+                ]
+              ]
+            : failureAlertReviewItems({
+                enabled: Boolean(values.isFailureAlertEnabled),
+                channels: values.channels ?? [],
+                canManage: alert.canManage,
+                members,
+                target: ROTATION_FAILURE_ALERT
+              })
+        }
+      />
     </Stack>
   );
 }
@@ -427,8 +476,10 @@ function RotationSteps({
   project,
   environments,
   addedConnections,
-  onCreateConnection
+  onCreateConnection,
+  alert
 }: {
+  alert: AlertProps;
   isUpdate: boolean;
   type: SecretRotation;
   step: number;
@@ -444,7 +495,7 @@ function RotationSteps({
   const offset = isUpdate ? 0 : 1;
   return (
     <div className="flex min-h-0 flex-1">
-      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--cipher-line-soft)] px-5 py-6">
+      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--cipher-line-soft)] px-5 py-6 max-md:hidden">
         <SmallText muted>Setup steps</SmallText>
         <Steps
           orientation="vertical"
@@ -465,7 +516,7 @@ function RotationSteps({
       </aside>
       <form
         data-scroll-fade="y"
-        className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6"
+        className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6 max-md:px-5"
         onSubmit={(event) => event.preventDefault()}
       >
         <Heading level={2} size="subsection">
@@ -491,7 +542,17 @@ function RotationSteps({
           </Stack>
         )}
         {step === 3 && <DetailsFields />}
-        {step === 4 && <ReviewFields />}
+        {step === 4 && (
+          <FailureAlertFields
+            projectId={project}
+            resourceId={alert.rotationId}
+            alertId={alert.alertId}
+            canManage={alert.canManage}
+            unavailable={alert.unavailable}
+            target={ROTATION_FAILURE_ALERT}
+          />
+        )}
+        {step === 5 && <ReviewFields project={project} alert={alert} />}
       </form>
     </div>
   );
@@ -507,9 +568,14 @@ export function SecretRotationFlow({
   resources,
   onCreate,
   rotation,
-  onUpdate
+  onUpdate,
+  failureAlert,
+  failureAlertUnavailable
 }: Props) {
+  const [savedAlert] = useState(failureAlert);
   const isUpdate = Boolean(rotation);
+  const { permission } = useProjectPermission(project);
+  const saveFailureAlert = useSaveFailureAlert();
   const rotationEnvironments = environments.map((entry) => ({
     id: entry.value,
     slug: entry.value,
@@ -522,30 +588,35 @@ export function SecretRotationFlow({
   const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
   const [addedConnections, setAddedConnections] = useState<RotationConnection[]>([]);
   const form = useForm<FieldValues>({
-    resolver: zodResolver(SecretRotationV2FormSchema(isUpdate)),
+    resolver: zodResolver(SecretRotationV2FormSchema(isUpdate).and(failureAlertSchema(savedAlert))),
     defaultValues: rotation
-      ? rotationFormValues(
-          rotation,
-          resources,
-          rotationEnvironments.find((entry) => entry.slug === rotation.environment) ?? {
-            id: rotation.environment,
-            slug: rotation.environment,
-            name: rotation.environment
-          }
-        )
+      ? {
+          ...rotationFormValues(
+            rotation,
+            resources,
+            rotationEnvironments.find((entry) => entry.slug === rotation.environment) ?? {
+              id: rotation.environment,
+              slug: rotation.environment,
+              name: rotation.environment
+            }
+          ),
+          ...failureAlertDefaults(project, savedAlert)
+        }
       : undefined,
     mode: "onChange",
     reValidateMode: "onChange"
   });
   const { isDirty } = form.formState;
   const select = (next: SecretRotation) => {
-    form.reset(
-      defaultsFor(
+    form.reset({
+      ...defaultsFor(
         next,
         secretPath,
         rotationEnvironments.find((entry) => entry.slug === environment)
-      )
-    );
+      ),
+      isFailureAlertEnabled: true,
+      channels: [buildProjectAdminsChannel(project)]
+    });
     setStep(0);
     setType(next);
   };
@@ -599,8 +670,19 @@ export function SecretRotationFlow({
       };
     return undefined;
   };
+  const alertManageable = (values: FieldValues) =>
+    canManageFailureAlert(
+      permission,
+      {
+        environment: (values.environment as RotationEnvironment | undefined)?.slug,
+        secretPath: values.secretPath,
+        connectionId: values.connection?.id
+      },
+      ROTATION_FAILURE_ALERT
+    );
   const submit = (values: FieldValues) => {
     const env = values.environment as RotationEnvironment;
+    const withAlert = alertManageable(values) && !failureAlertUnavailable;
     const now = new Date();
     const secretsMapping = values.secretsMapping as Record<string, string>;
     const configured = {
@@ -627,6 +709,17 @@ export function SecretRotationFlow({
             )
           : undefined
       });
+      if (withAlert)
+        saveFailureAlert({
+          resourceId: rotation.id,
+          projectId: project,
+          saved: savedAlert,
+          enabled: Boolean(values.isFailureAlertEnabled),
+          channels: values.channels ?? [],
+          target: ROTATION_FAILURE_ALERT
+        }).catch((error: unknown) =>
+          failed(`Couldn't update the failure alert for ${values.name}`, error)
+        );
       close();
       return;
     }
@@ -642,6 +735,7 @@ export function SecretRotationFlow({
       provider: SECRET_ROTATION_MAP[values.type as SecretRotation].name,
       connection: values.connection.name,
       connectionId: values.connection.id,
+      failureAlertChannels: withAlert && values.isFailureAlertEnabled ? values.channels : undefined,
       status: "success",
       lastRotatedAt: now.toISOString(),
       nextRotationAt: values.isAutoRotationEnabled
@@ -736,6 +830,12 @@ export function SecretRotationFlow({
                 onCreateConnection={(connection) =>
                   setAddedConnections([...addedConnections, connection])
                 }
+                alert={{
+                  canManage: alertManageable(form.getValues()),
+                  unavailable: failureAlertUnavailable,
+                  rotationId: rotation?.id,
+                  alertId: savedAlert?.id
+                }}
               />
             ) : (
               <div
@@ -748,9 +848,11 @@ export function SecretRotationFlow({
             {type && (
               <SheetFooter>
                 <Inline justify="between" wrap={false}>
-                  <SmallText muted>{isDirty ? "Unsaved changes" : ""}</SmallText>
+                  <SmallText muted className="max-md:hidden">
+                    {isDirty ? "Unsaved changes" : ""}
+                  </SmallText>
                   <Inline gap={12} wrap={false}>
-                    <SmallText muted>
+                    <SmallText muted className="whitespace-nowrap">
                       Step {step + (isUpdate ? 1 : 2)} of {FORM_STEPS.length + (isUpdate ? 0 : 1)}
                     </SmallText>
                     <Button variant="outline" onClick={handlePrev}>

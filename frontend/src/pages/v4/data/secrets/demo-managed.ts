@@ -185,7 +185,7 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
         })
       ]
     }));
-    return {};
+    return rotation;
   }),
   useUpdateSecretRotation: demoMutation((store, { rotationId, type: _type, ...dto }) => {
     const rotation = rotationById(store, rotationId);
