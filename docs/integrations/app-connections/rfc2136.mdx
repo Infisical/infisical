@@ -216,7 +216,7 @@ Next, create the connection in Infisical with the key from [Step 1](#step-1-crea
       <Step>
         In **Certificate Manager**, go to **Settings** > **App Connections**.
 
-        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        ![App Connections Tab](/images/app-connections/general/cert-manager-app-connections.png)
       </Step>
       <Step>
         Select **Add Connection** and choose **DNS Server (RFC 2136)**.
@@ -320,6 +320,7 @@ If Infisical can't save the connection or add a challenge record, the error mess
 | `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`), that the server accepts updates from the IP address of Infisical or your Gateway (PowerDNS `ALLOW-DNSUPDATE-FROM`), and that **Host** is the zone's primary server |
 | `did not accept the update for this zone` | Check the **Zone** on the certificate authority, **Key Name** and **Algorithm**, and that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`) |
 | `does not accept dynamic updates` | Turn on dynamic updates on the DNS server, such as `dnsupdate=yes` in PowerDNS |
+| `reply was not signed with the TSIG key` | The DNS server doesn't support TSIG keys. Windows Server DNS is one such server, so follow the [Windows Server DNS](#windows-server-dns) setup and point **Host** at the BIND or Knot DNS server that holds the challenge zone |
 | `is not authoritative for any zone containing` | Point **Host** at the zone's primary server, or enter the **Zone** on the certificate authority |
 | `is not inside zone` | Correct the **Zone** on the certificate authority. If the challenge name is a CNAME to another zone, enter that zone or leave **Zone** empty |
 | `is an alias (CNAME)` | Publish the CNAME in public DNS so Infisical follows it, or remove the CNAME from the DNS server |
