@@ -1,13 +1,4 @@
 import type { ReactNode } from "react";
-import { Button } from "@infisical/cipher/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@infisical/cipher/ui/dialog";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { environments, type Resource, type Secret } from "../../secrets-model";
@@ -58,45 +49,5 @@ export function Gate({ reason, children }: { reason?: string; children: ReactNod
     <Tooltip content={reason}>
       <span className={styles.gate}>{children}</span>
     </Tooltip>
-  );
-}
-
-export function DiscardDialog({
-  open,
-  title = "Discard changes?",
-  description = "Your unsaved changes will be lost.",
-  keepLabel = "Keep editing",
-  onKeep,
-  onDiscard
-}: {
-  open: boolean;
-  title?: string;
-  description?: string;
-  keepLabel?: string;
-  onKeep: () => void;
-  onDiscard: () => void;
-}) {
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onKeep();
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={onKeep}>
-            {keepLabel}
-          </Button>
-          <Button variant="destructive" onClick={onDiscard}>
-            Discard
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

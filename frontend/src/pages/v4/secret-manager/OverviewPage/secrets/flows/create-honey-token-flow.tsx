@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { FieldMapping, FieldMappingRow } from "@infisical/cipher/patterns/field-mapping";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Combobox } from "@infisical/cipher/ui/combobox";
@@ -36,7 +38,7 @@ import { useV4Adapter } from "../../../../data/adapters";
 import { useCreateBlock } from "../row-actions/permissions";
 import { ProviderLogo } from "./provider-logo";
 import { InfoTip } from "./secret-rotation/fields";
-import { DiscardDialog, secretsAt } from "./shared";
+import { secretsAt } from "./shared";
 import type { AddFlowProps } from "./types";
 
 import styles from "./flows.module.css";
@@ -203,7 +205,6 @@ export function CreateHoneyTokenFlow({
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
-  const [discard, setDiscard] = useState(false);
   const [accountChosen, setAccountChosen] = useState(false);
   const closing = useRef(false);
   const created = useRef(false);
@@ -286,10 +287,10 @@ export function CreateHoneyTokenFlow({
     setDraft((current) => ({ ...current, ...value }));
     setDirty(true);
   };
-  const close = () => {
-    if (dirty) setDiscard(true);
-    else onOpenChange(false);
-  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => onOpenChange(false)
+  });
   const suggestedName = draft.environment
     ? slugify(`AWS honey token ${draft.environment}`, { lowercase: true, decamelize: false })
         .slice(0, 64)
@@ -395,7 +396,7 @@ export function CreateHoneyTokenFlow({
           closing.current = false;
           if (next) return;
           if (created.current) onOpenChange(false);
-          else close();
+          else requestDiscard();
         }}
         step={step}
         onStepChange={(next) => {
@@ -515,14 +516,7 @@ export function CreateHoneyTokenFlow({
           }
         ]}
       />
-      <DiscardDialog
-        open={discard}
-        onKeep={() => setDiscard(false)}
-        onDiscard={() => {
-          setDiscard(false);
-          onOpenChange(false);
-        }}
-      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
   );
 }
