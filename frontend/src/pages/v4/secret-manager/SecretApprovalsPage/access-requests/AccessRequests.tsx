@@ -5,7 +5,7 @@ import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
@@ -228,8 +228,12 @@ export const AccessRequests = ({
         if (!name) return <Meta>-</Meta>;
         return (
           <Inline gap={8} align="center" wrap={false}>
-            <span>{name}</span>
-            {request.requestedByUserId === user.id && <Badge tone="soft">You</Badge>}
+            <InlineItem truncate>{name}</InlineItem>
+            {request.requestedByUserId === user.id && (
+              <InlineItem shrink={false}>
+                <Badge tone="soft">You</Badge>
+              </InlineItem>
+            )}
           </Inline>
         );
       }
