@@ -55,6 +55,7 @@ const DuplicateGroups = ({
               rows={group.secrets}
               getRowId={(entry) => `${entry.key}:${entry.environment.slug}:${entry.secretPath}`}
               rowLabel={(entry) => entry.key}
+              stackBelow={480}
               columns={[
                 {
                   id: "key",
@@ -80,6 +81,7 @@ const DuplicateGroups = ({
                   id: "environment",
                   header: "Environment",
                   width: 160,
+                  stack: "meta",
                   text: (entry) => entry.environment.name,
                   render: (entry) => <Badge tone="info">{entry.environment.name}</Badge>
                 },

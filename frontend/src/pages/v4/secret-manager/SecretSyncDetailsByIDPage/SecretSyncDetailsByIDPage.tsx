@@ -162,6 +162,7 @@ const LogsCard = ({ sync }: { sync: TSecretSync }) => {
     <Card variant="framed" title="Sync logs" footerPlacement="frame">
       <DataTable
         label="Sync logs"
+        stackBelow={640}
         persistentStatus={
           rows.length > 0
             ? `${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events in the last ${days} days`
