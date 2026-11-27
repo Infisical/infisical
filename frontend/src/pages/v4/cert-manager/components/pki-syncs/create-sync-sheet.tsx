@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 
@@ -21,6 +22,7 @@ import {
 } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
 import {
   isPaloAltoNetworksPkiSync,
+  PKI_SYNC_MAP,
   PRESERVE_ARN_DESTINATIONS,
   PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS
 } from "@app/helpers/pkiSyncs";
@@ -30,6 +32,7 @@ import type { TPkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs/types";
 
 import { useOrgId } from "../../../access/permissions";
 import { readableFailure, saved } from "../../../access/toast";
+import { ProviderIcon } from "../../../components/provider-icon";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license/useUpgradeGate";
 import { PkiSyncCertificatesFields } from "./certificates/certificates-fields";
@@ -50,9 +53,10 @@ import {
   usePkiSyncOption,
   usePkiSyncScope
 } from "./shared";
-import { pkiSyncSteps } from "./steps";
+import { PkiSyncStepAbout } from "./step-about";
+import { pkiSyncDocsHref, pkiSyncSteps } from "./steps";
 
-export const pkiSyncDefaults = (
+const pkiSyncDefaults = (
   destination: PkiSync,
   syncOption?: TPkiSyncOption
 ): Partial<TPkiSyncForm> =>
@@ -148,8 +152,7 @@ const CreateSyncForm = ({
     canRunHostCommands:
       (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
       (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand),
-    needsTargetHost: connection?.app === AppConnection.LDAP,
-    mode: "create"
+    needsTargetHost: connection?.app === AppConnection.LDAP
   });
 
   const validateStep = async (index: number) => {
@@ -259,7 +262,7 @@ const CreateSyncForm = ({
       : []),
     ...formSteps.map((entry, index) => ({
       title: entry.title,
-      description: entry.description,
+      aside: { description: <PkiSyncStepAbout paragraphs={entry.about} /> },
       content: body(entry.key),
       validate: entry.key === "review" ? undefined : () => validateStep(index),
       disabledReason:
@@ -281,8 +284,15 @@ const CreateSyncForm = ({
     <FormProvider {...form}>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
+        media={<ProviderIcon icon={PKI_SYNC_MAP[destination].image} alt="" size="sm" />}
         title={`${destinationName} certificate sync`}
+        badges={
+          <DocumentationLink
+            href={pkiSyncDocsHref(destination)}
+            subject={`${destinationName} certificate syncs`}
+          />
+        }
         open
         step={step}
         onStepChange={(next) => {
@@ -375,7 +385,7 @@ export const CreatePkiSyncSheet = ({
       <>
         <MultiStep
           variant="sheet"
-          size="lg"
+          layout="aside"
           title="Add certificate sync"
           open
           onOpenChange={(next) => !next && close()}

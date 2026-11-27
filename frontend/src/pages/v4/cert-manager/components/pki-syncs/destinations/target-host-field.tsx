@@ -55,11 +55,8 @@ export function PkiSyncTargetHostField({ applicationId }: { applicationId?: stri
         render={({ field, fieldState: { error } }) => (
           <Field
             label="Target host"
-            help="The machine this sync delivers to. The LDAP connection supplies the credential, so one connection can serve many hosts."
             description={
-              isListError
-                ? "The directory could not be listed, so enter the host name."
-                : "Choose a machine from the directory, or enter a host this sync should reach."
+              isListError ? "The directory could not be listed, so enter the host name." : undefined
             }
             error={errorOf(error)}
           >
