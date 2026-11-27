@@ -2,6 +2,7 @@ package orgintegration_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -181,6 +182,23 @@ func TestProjectSlackSettings(t *testing.T) {
 		require.NoError(t, json.Unmarshal(res.Body, &out))
 		require.Equal(t, decodeSlackSettings(t, saved).ID, out.IntegrationConfig.ID)
 		requireNoSlackSettings(t, tn, proj)
+	})
+
+	t.Run("should refuse deleting Slack settings the project does not have, naming them", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		integrationID, _ := installSlack(t, tn, "alerts-"+id.Short(), "Acme "+id.Short())
+
+		// Action
+		res := fixture.RawCall(t, tn.Admin.API, http.MethodDelete, projectSettingsPath(proj)+"/slack/"+integrationID, nil)
+
+		// Assert
+		require.Equal(t, http.StatusNotFound, res.Status, string(res.Body))
+		require.Contains(t, string(res.Body), fmt.Sprintf(
+			"Workflow integration config for project '%s' and integration 'slack' with ID '%s' not found", proj.ID, integrationID))
 	})
 }
 

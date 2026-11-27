@@ -345,7 +345,7 @@ describe("ProjectChatConfigService.get", () => {
 });
 
 describe("ProjectChatConfigService.delete", () => {
-  test("should delete only the settings that point at the given integration", async () => {
+  test("should delete the project's settings for the given integration", async () => {
     // Setup
     const t = build();
     const actor = await t.member();
@@ -358,13 +358,6 @@ describe("ProjectChatConfigService.delete", () => {
     });
 
     // Action
-    const wrong = await t.projectChatConfigService.delete({
-      actor,
-      projectId: t.projectId,
-      provider: Slack,
-      integrationId: randomUUID()
-    });
-    const kept = await t.memory.slackProjectChatConfigStore.findByProjectId(t.projectId);
     const deleted = await t.projectChatConfigService.delete({
       actor,
       projectId: t.projectId,
@@ -373,10 +366,38 @@ describe("ProjectChatConfigService.delete", () => {
     });
 
     // Assert
-    expect(wrong).toBeNull();
-    expect(kept).not.toBeNull();
-    expect(deleted?.config.toJSON().integrationId).toBe(integrationId);
+    expect(deleted.config.toJSON().integrationId).toBe(integrationId);
     expect(await t.memory.slackProjectChatConfigStore.findByProjectId(t.projectId)).toBeNull();
+  });
+
+  test("should refuse as not found and keep the settings when they point at another integration", async () => {
+    // Setup
+    const t = build();
+    const actor = await t.member();
+    const integrationId = t.addSlack();
+    await t.projectChatConfigService.update({
+      actor,
+      projectId: t.projectId,
+      provider: Slack,
+      settings: slackSettings(integrationId)
+    });
+    const otherId = randomUUID();
+
+    // Action
+    const result = t.projectChatConfigService.delete({
+      actor,
+      projectId: t.projectId,
+      provider: Slack,
+      integrationId: otherId
+    });
+
+    // Assert
+    await expect(result).rejects.toThrow(
+      new EntityNotFoundError({
+        message: `Workflow integration config for project '${t.projectId}' and integration 'slack' with ID '${otherId}' not found`
+      })
+    );
+    expect(await t.memory.slackProjectChatConfigStore.findByProjectId(t.projectId)).not.toBeNull();
   });
 
   test("should leave the other provider's settings alone", async () => {
@@ -392,7 +413,7 @@ describe("ProjectChatConfigService.delete", () => {
     });
 
     // Action
-    const result = await t.projectChatConfigService.delete({
+    const result = t.projectChatConfigService.delete({
       actor,
       projectId: t.projectId,
       provider: Slack,
@@ -400,7 +421,7 @@ describe("ProjectChatConfigService.delete", () => {
     });
 
     // Assert
-    expect(result).toBeNull();
+    await expect(result).rejects.toBeInstanceOf(EntityNotFoundError);
     expect(await t.memory.microsoftTeamsProjectChatConfigStore.findByProjectId(t.projectId)).not.toBeNull();
   });
 

@@ -1981,9 +1981,7 @@ export const projectServiceFactory = ({
           : WorkflowIntegrationProvider.MicrosoftTeams
     });
 
-    // Undefined when the project has no settings for that integration; the route's response schema then refuses it (a
-    // 500). Turning that into a 404 is an API change for its own PR.
-    return (deleted ? { id: deleted.config.toJSON().id } : undefined) as { id: string };
+    return { id: deleted.config.toJSON().id };
   };
 
   const searchProjects = async ({

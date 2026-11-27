@@ -55,10 +55,10 @@ export type TProjectChatConfigService = {
   // settings. Needs Settings edit on the project.
   update(input: TUpdateSlackInput): Promise<TSlackProjectChatConfigResult>;
   update(input: TUpdateMicrosoftTeamsInput): Promise<TMicrosoftTeamsProjectChatConfigResult>;
-  // Null when the project has no settings for that integration. Needs Settings delete on the project.
+  // Refuses as not found when the project has no settings for that integration. Needs Settings delete on the project.
   delete<P extends WorkflowIntegrationProvider>(
     input: TProjectInput & { provider: P; integrationId: string }
-  ): Promise<TProjectChatConfigOf<P> | null>;
+  ): Promise<TProjectChatConfigOf<P>>;
 };
 
 // An integration found for an update: whether it belongs to the actor's org and to the project's org.
@@ -160,7 +160,7 @@ export class ProjectChatConfigService implements TProjectChatConfigService {
     projectId,
     provider,
     integrationId
-  }: TProjectInput & { provider: P; integrationId: string }): Promise<TProjectChatConfigOf<P> | null> {
+  }: TProjectInput & { provider: P; integrationId: string }): Promise<TProjectChatConfigOf<P>> {
     await this.assertSettingsAccess(actor, projectId, ProjectPermissionActions.Delete);
 
     const result: TProjectChatConfig | null =
@@ -173,7 +173,12 @@ export class ProjectChatConfigService implements TProjectChatConfigService {
             .then((config) =>
               config ? { provider: WorkflowIntegrationProvider.MicrosoftTeams as const, config } : null
             );
-    return result as TProjectChatConfigOf<P> | null;
+    if (!result) {
+      throw new EntityNotFoundError({
+        message: `Workflow integration config for project '${projectId}' and integration '${provider}' with ID '${integrationId}' not found`
+      });
+    }
+    return result as TProjectChatConfigOf<P>;
   }
 
   private async assertSettingsAccess(actor: TActorContext, projectId: string, action: ProjectPermissionActions) {
