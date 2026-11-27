@@ -20,6 +20,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
   ConfirmationAlertDialog,
   Dialog,
   DialogContent,
@@ -56,7 +59,7 @@ import { useDeleteWorkspace } from "@app/hooks/api/projects";
 
 import { CertManagerExportProjectModal } from "./CertManagerExportProjectModal";
 
-export const ProjectsTab = () => {
+export const ProjectsSection = () => {
   const queryClient = useQueryClient();
   const { permission } = useOrgPermission();
   const canManage = permission.can(
@@ -107,8 +110,6 @@ export const ProjectsTab = () => {
       </Card>
     );
   }
-  if (instances.length <= 1) return null;
-
   const handleConfirmActive = async () => {
     if (!pendingActive) return;
     try {
@@ -170,63 +171,71 @@ export const ProjectsTab = () => {
               </AlertDescription>
             </Alert>
           )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-full">Project</TableHead>
-                <TableHead className="whitespace-nowrap">Status</TableHead>
-                <TableHead className="w-5" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {instances.map((instance) => (
-                <TableRow key={instance.id}>
-                  <TableCell className="w-full">
-                    <div className="flex items-center gap-x-2">
-                      <BoxIcon className="size-4 shrink-0 text-project" />
-                      <span className="font-mono">{instance.name}</span>
-                      <span className="font-mono text-xs text-accent">{instance.slug}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {instance.isActive ? <Badge variant="success">Active</Badge> : null}
-                  </TableCell>
-                  <TableCell>
-                    {canManage && !instance.isActive ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label={`Manage ${instance.name}`}
-                          >
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="min-w-56" align="end" sideOffset={2}>
-                          <DropdownMenuItem onClick={() => setPendingExport(instance)}>
-                            <UploadIcon />
-                            Export to active project
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPendingActive(instance)}>
-                            <StarIcon />
-                            Set as active
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="danger"
-                            onClick={() => setPendingDelete(instance)}
-                          >
-                            <Trash2Icon />
-                            Delete project
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null}
-                  </TableCell>
+          {instances.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>No Certificate Manager projects</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-full">Project</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="w-5" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {instances.map((instance) => (
+                  <TableRow key={instance.id}>
+                    <TableCell className="w-full">
+                      <div className="flex items-center gap-x-2">
+                        <BoxIcon className="size-4 shrink-0 text-project" />
+                        <span className="font-mono">{instance.name}</span>
+                        <span className="font-mono text-xs text-accent">{instance.slug}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {instance.isActive ? <Badge variant="success">Active</Badge> : null}
+                    </TableCell>
+                    <TableCell>
+                      {canManage && !instance.isActive ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <IconButton
+                              variant="ghost"
+                              size="xs"
+                              aria-label={`Manage ${instance.name}`}
+                            >
+                              <MoreHorizontalIcon />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="min-w-56" align="end" sideOffset={2}>
+                            <DropdownMenuItem onClick={() => setPendingExport(instance)}>
+                              <UploadIcon />
+                              Export to active project
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setPendingActive(instance)}>
+                              <StarIcon />
+                              Set as active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setPendingDelete(instance)}
+                            >
+                              <Trash2Icon />
+                              Delete project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
