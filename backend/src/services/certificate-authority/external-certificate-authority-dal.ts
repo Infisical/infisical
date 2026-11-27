@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify } from "@app/lib/knex";
@@ -9,8 +11,8 @@ export type TExternalCertificateAuthorityDALFactory = ReturnType<typeof external
 export const externalCertificateAuthorityDALFactory = (db: TDbClient) => {
   const caOrm = ormify(db, TableName.ExternalCertificateAuthority);
 
-  const findDigiCertCaNamesByDnsZoneConnectionId = async (connectionId: string) => {
-    const cas = await db(TableName.ExternalCertificateAuthority)
+  const findDigiCertCaNamesByDnsZoneConnectionId = async (connectionId: string, tx?: Knex) => {
+    const cas = await (tx || db)(TableName.ExternalCertificateAuthority)
       .join(
         TableName.CertificateAuthority,
         `${TableName.ExternalCertificateAuthority}.caId`,

@@ -85,6 +85,8 @@ export const KeyStorePrefixes = {
     `acme-dns-record-mutex-${connectionId}-${zoneId.toLowerCase()}-${recordName.toLowerCase()}` as const,
   DigiCertDomainValidationLock: (organizationId: number, domain: string) =>
     `digicert-domain-validation-mutex-${organizationId}-${domain.toLowerCase()}` as const,
+  DigiCertPersistentTxtRecordLock: (provider: string, zoneId: string) =>
+    `digicert-persistent-txt-record-mutex-${provider}-${zoneId.toLowerCase()}` as const,
   LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
   LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,

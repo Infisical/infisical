@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import * as x509 from "@peculiar/x509";
+import { Knex } from "knex";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
@@ -241,6 +242,41 @@ export const DigiCertCertificateAuthorityFns = ({
     return resolvedZones;
   };
 
+  const $lockDnsZoneConnections = async (dnsZones: TDigiCertDnsZone[] | undefined, tx: Knex) => {
+    if (!dnsZones?.length) return;
+    const appConnectionIds = [...new Set(dnsZones.map(({ appConnectionId }) => appConnectionId))].sort();
+    const lockedConnections = await tx(TableName.AppConnection)
+      .whereIn("id", appConnectionIds)
+      .orderBy("id")
+      .forKeyShare()
+      .select<{ id: string }[]>("id");
+    const deletedAppConnectionId = appConnectionIds.find((id) => !lockedConnections.some((row) => row.id === id));
+    if (deletedAppConnectionId) {
+      throw new NotFoundError({
+        message: `App connection with ID '${deletedAppConnectionId}' was deleted while the certificate authority was being saved. Link the DNS zone with an existing connection.`
+      });
+    }
+  };
+
+  const $assertCanUseStoredDnsZoneConnections = async (
+    dnsZones: TDigiCertDnsZone[],
+    projectId: string,
+    actor: OrgServiceActor
+  ) => {
+    const appConnectionIds = [...new Set(dnsZones.map(({ appConnectionId }) => appConnectionId))];
+    await Promise.all(
+      appConnectionIds.map(async (appConnectionId) => {
+        const appConnection = await appConnectionDAL.findById(appConnectionId);
+        if (!appConnection) return;
+        await appConnectionService.validateAppConnectionUsageById(
+          appConnection.app as AppConnection,
+          { connectionId: appConnectionId, projectId },
+          actor
+        );
+      })
+    );
+  };
+
   const codeSigningFns = digiCertCodeSigningFns({
     appConnectionDAL,
     certificateAuthorityDAL,
@@ -299,6 +335,7 @@ export const DigiCertCertificateAuthorityFns = ({
     const resolvedDnsZones = await $resolveDnsZones({ dnsZones, projectId, actor });
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
+      await $lockDnsZoneConnections(resolvedDnsZones, tx);
       try {
         const ca = await certificateAuthorityDAL.create(
           {
@@ -399,11 +436,18 @@ export const DigiCertCertificateAuthorityFns = ({
         });
       }
 
+      const changesDigiCertAccount =
+        appConnectionId !== ca.configuration.appConnectionId || organizationId !== ca.configuration.organizationId;
+      if (keepsStoredDnsZones && changesDigiCertAccount) {
+        await $assertCanUseStoredDnsZoneConnections(ca.configuration.dnsZones ?? [], ca.projectId, actor);
+      }
+
       dnsZonesToStore = await $resolveDnsZones({ dnsZones, projectId: ca.projectId, actor });
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
+        await $lockDnsZoneConnections(dnsZonesToStore, tx);
         const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
         if (!dnsZonesToStore && (purpose ?? DigiCertCaPurpose.Ssl) === DigiCertCaPurpose.Ssl) {
           const storedExternalCa = await tx(TableName.ExternalCertificateAuthority)

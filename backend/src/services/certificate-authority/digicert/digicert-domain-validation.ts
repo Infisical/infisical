@@ -23,6 +23,7 @@ const DOMAIN_VALIDATION_LOCK_TTL_MS = 10 * 60_000;
 const MAX_ZONES_VALIDATED_AT_ONCE = 3;
 const DCV_CHECK_MAX_ATTEMPTS = 6;
 const DCV_CHECK_INTERVAL_MS = 15_000;
+const DOMAIN_VALIDATION_HARD_STOP_GRACE_MS = DCV_CHECK_INTERVAL_MS;
 const PERSISTENT_TXT_RECORD_LABEL = "_validation-persist";
 const WILDCARD_PREFIX = "*.";
 
@@ -30,10 +31,14 @@ const isNameUnder = (name: string, domain: string) => name === domain || name.en
 
 const HTTP_DCV_METHOD_PREFIX = "http";
 
+const stripWildcard = (name: string) => (name.startsWith(WILDCARD_PREFIX) ? name.slice(WILDCARD_PREFIX.length) : name);
+
 const doesValidationCoverName = (domain: TDigiCertDomain, name: string) => {
   const domainName = domain.name.toLowerCase();
   if (name === domainName) return true;
-  return !domain.dcv_approval_method?.startsWith(HTTP_DCV_METHOD_PREFIX) && isNameUnder(name, domainName);
+  return (
+    !domain.dcv_approval_method?.startsWith(HTTP_DCV_METHOD_PREFIX) && isNameUnder(stripWildcard(name), domainName)
+  );
 };
 
 const isNameCovered = (domains: TDigiCertDomain[], name: string, validationType: DigiCertDomainValidationType) =>
@@ -60,12 +65,26 @@ export const digiCertDomainValidationFactory = (
 ) => {
   const { appConnectionDAL, kmsDataKeyService, keyStore } = deps;
 
-  const $writePersistentTxtRecord = async (zone: TDigiCertDnsZone, privacyUri: string) => {
+  const $writePersistentTxtRecord = async (
+    zone: TDigiCertDnsZone,
+    privacyUri: string,
+    shouldStop: () => Promise<boolean>
+  ) => {
     const appConnection = await appConnectionDAL.findById(zone.appConnectionId);
     if (!appConnection) {
       throw new Error(`the App Connection with ID '${zone.appConnectionId}' linked to this DNS zone no longer exists`);
     }
     const connection = await decryptAppConnection(appConnection, kmsDataKeyService);
+
+    const lock = await acquireDnsRecordLock(
+      keyStore,
+      KeyStorePrefixes.DigiCertPersistentTxtRecordLock(zone.provider, zone.hostedZoneId),
+      DOMAIN_VALIDATION_LOCK_TTL_MS,
+      { isCancelled: shouldStop }
+    );
+    if (!lock) {
+      throw new Error("another certificate request is still writing its persistent DNS TXT record to this zone");
+    }
 
     try {
       await DNS_TXT_RECORD_PROVIDERS[zone.provider].upsertTxtRecord(
@@ -80,6 +99,10 @@ export const digiCertDomainValidationFactory = (
       );
     } catch (error) {
       throw new Error(`the DNS provider didn't accept the persistent DNS TXT record: ${(error as Error)?.message}`);
+    } finally {
+      await lock.release().catch((error: Error) => {
+        logger.warn(`Failed to release persistent DNS TXT record lock [zoneId=${zone.hostedZoneId}]: ${error.message}`);
+      });
     }
   };
 
@@ -137,7 +160,10 @@ export const digiCertDomainValidationFactory = (
         throw new Error("DigiCert didn't return the value for the persistent DNS TXT record");
       }
 
-      await $writePersistentTxtRecord(zone, privacyUri);
+      if (await shouldStop()) {
+        throw new Error("the time for automatic validation ran out before the persistent DNS TXT record was written");
+      }
+      await $writePersistentTxtRecord(zone, privacyUri, shouldStop);
 
       for (let attempt = 1; attempt <= DCV_CHECK_MAX_ATTEMPTS; attempt += 1) {
         if (attempt > 1) {
@@ -179,11 +205,10 @@ export const digiCertDomainValidationFactory = (
 
     const namesByZone = new Map<string, { zone: TDigiCertDnsZone; names: string[] }>();
     new Set(dnsNames.map((name) => name.trim().toLowerCase())).forEach((dnsName) => {
-      const name = dnsName.startsWith(WILDCARD_PREFIX) ? dnsName.slice(WILDCARD_PREFIX.length) : dnsName;
-      const zone = findMostSpecificZone(dnsZones, name);
+      const zone = findMostSpecificZone(dnsZones, stripWildcard(dnsName));
       if (!zone) return;
       const entry = namesByZone.get(zone.zoneName) ?? { zone, names: [] };
-      entry.names.push(name);
+      entry.names.push(dnsName);
       namesByZone.set(zone.zoneName, entry);
     });
     if (!namesByZone.size) return [];
@@ -217,15 +242,29 @@ export const digiCertDomainValidationFactory = (
     );
 
     const validateZone = async ({ zone, names }: { zone: TDigiCertDnsZone; names: string[] }) => {
+      let hardStopTimer: NodeJS.Timeout | undefined;
       try {
-        const isValidated = await $validateZoneApex({
-          client,
-          zone,
-          names,
-          organizationId,
-          validationType,
-          shouldStop
-        });
+        const isValidated = await Promise.race([
+          $validateZoneApex({
+            client,
+            zone,
+            names,
+            organizationId,
+            validationType,
+            shouldStop
+          }),
+          new Promise<never>((_, reject) => {
+            hardStopTimer = setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    "the DNS provider or DigiCert didn't answer before the time for automatic validation ran out"
+                  )
+                ),
+              Math.max(deadline + DOMAIN_VALIDATION_HARD_STOP_GRACE_MS - Date.now(), 0)
+            );
+          })
+        ]);
         if (isValidated) return undefined;
         logger.warn(
           `DigiCert automatic domain validation didn't finish, the order will wait for DigiCert's recheck [caId=${digicertCa.id}] [domain=${zone.zoneName}]`
@@ -237,6 +276,8 @@ export const digiCertDomainValidationFactory = (
         );
         const reason = (error as Error)?.message ?? "Unknown error";
         return `Couldn't validate ${zone.zoneName} automatically: ${reason.endsWith(".") ? reason.slice(0, -1) : reason}`;
+      } finally {
+        clearTimeout(hardStopTimer);
       }
     };
 

@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ProjectType, TableName, TAppConnections } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
@@ -1282,19 +1282,6 @@ export const appConnectionServiceFactory = ({
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
 
-    const digiCertCaNames = await externalCertificateAuthorityDAL.findDigiCertCaNamesByDnsZoneConnectionId(
-      appConnection.id
-    );
-    if (digiCertCaNames.length) {
-      const quotedCaNames = digiCertCaNames.map((name) => `"${name}"`).join(", ");
-      const isSingleCa = digiCertCaNames.length === 1;
-      throw new BadRequestError({
-        message: isSingleCa
-          ? `Cannot delete this App Connection because the DigiCert certificate authority ${quotedCaNames} validates domains in a DNS zone linked through it. Remove that DNS zone from the certificate authority first.`
-          : `Cannot delete this App Connection because the DigiCert certificate authorities ${quotedCaNames} validate domains in DNS zones linked through it. Remove those DNS zones from the certificate authorities first.`
-      });
-    }
-
     // TODO (scott): add option to delete all dependencies
 
     // Note: for GitHub App connections we intentionally do NOT uninstall the app installation on
@@ -1302,7 +1289,26 @@ export const appConnectionServiceFactory = ({
     // managed separately (the app via the GitHub Apps settings page, the installation on GitHub).
 
     try {
-      const deletedAppConnection = await appConnectionDAL.deleteById(connectionId);
+      const deletedAppConnection = await appConnectionDAL.transaction(async (tx) => {
+        await tx(TableName.AppConnection).where({ id: connectionId }).forUpdate().first();
+
+        const digiCertCaNames = await externalCertificateAuthorityDAL.findDigiCertCaNamesByDnsZoneConnectionId(
+          appConnection.id,
+          tx
+        );
+        if (digiCertCaNames.length) {
+          const quotedCaNames = digiCertCaNames.map((name) => `"${name}"`).join(", ");
+          const isSingleCa = digiCertCaNames.length === 1;
+          throw new BadRequestError({
+            message: isSingleCa
+              ? `Cannot delete this App Connection because the DigiCert certificate authority ${quotedCaNames} validates domains in a DNS zone linked through it. Remove that DNS zone from the certificate authority first.`
+              : `Cannot delete this App Connection because the DigiCert certificate authorities ${quotedCaNames} validate domains in DNS zones linked through it. Remove those DNS zones from the certificate authorities first.`
+          });
+        }
+
+        await tx.raw("SET CONSTRAINTS ALL IMMEDIATE");
+        return appConnectionDAL.deleteById(connectionId, tx);
+      });
 
       return addAppConnectionFederatedCredential(await decryptAppConnection(deletedAppConnection, kmsDataKeyService));
     } catch (err) {

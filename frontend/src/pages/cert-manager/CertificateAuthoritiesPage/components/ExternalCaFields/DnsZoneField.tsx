@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { getApiErrorMessage } from "@app/helpers/errors";
 import { useAzureDNSConnectionListZones } from "@app/hooks/api/appConnections/azure-dns";
 import { useCloudflareConnectionListZones } from "@app/hooks/api/appConnections/cloudflare";
 import { useDNSMadeEasyConnectionListZones } from "@app/hooks/api/appConnections/dns-made-easy";
@@ -97,7 +98,7 @@ export const DnsZoneField = ({ control, name, provider, connectionId }: Props) =
   }
 
   const zoneQueries: Partial<
-    Record<AcmeDnsProvider, { data?: TAcmeDnsZone[]; isPending: boolean }>
+    Record<AcmeDnsProvider, { data?: TAcmeDnsZone[]; isPending: boolean; error: unknown }>
   > = {
     [AcmeDnsProvider.Cloudflare]: cloudflareZones,
     [AcmeDnsProvider.DNSMadeEasy]: dnsMadeEasyZones,
@@ -105,7 +106,18 @@ export const DnsZoneField = ({ control, name, provider, connectionId }: Props) =
     [AcmeDnsProvider.PowerDns]: powerDnsZones,
     [AcmeDnsProvider.UltraDNS]: ultraDnsZones
   };
-  const { data: zones = [], isPending: isZonesPending = false } = zoneQueries[provider] ?? {};
+  const {
+    data: zones = [],
+    isPending: isZonesPending = false,
+    error: zonesError
+  } = zoneQueries[provider] ?? {};
+  const zonesQueryError = zonesError
+    ? {
+        message:
+          getApiErrorMessage(zonesError) ??
+          "Failed to list zones for this connection. Check the connection's credentials."
+      }
+    : undefined;
 
   return (
     <Controller
@@ -138,9 +150,9 @@ export const DnsZoneField = ({ control, name, provider, connectionId }: Props) =
             placeholder="Select a zone..."
             getOptionLabel={(option) => option.name.replace(/\.$/, "")}
             getOptionValue={(option) => option.id}
-            isError={Boolean(error)}
+            isError={Boolean(zonesQueryError ?? error)}
           />
-          <FieldError errors={[error]} />
+          <FieldError errors={[zonesQueryError ?? error]} />
         </Field>
       )}
     />

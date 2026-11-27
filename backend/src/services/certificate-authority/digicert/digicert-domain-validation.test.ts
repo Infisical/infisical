@@ -78,11 +78,13 @@ const validateDomains = ({
   dnsNames,
   dnsZones = [EXAMPLE_COM_ZONE],
   productNameId = "ssl_basic",
+  organizationId = ORGANIZATION_ID,
   isCancelled = async () => false
 }: {
   dnsNames: string[];
   dnsZones?: (typeof EXAMPLE_COM_ZONE)[];
   productNameId?: string;
+  organizationId?: number;
   isCancelled?: () => Promise<boolean>;
 }) =>
   digiCertDomainValidationFactory({
@@ -92,7 +94,7 @@ const validateDomains = ({
   } as unknown as Parameters<typeof digiCertDomainValidationFactory>[0]).validateDomainsBeforeOrder({
     digicertCa: {
       id: "ca-1",
-      configuration: { organizationId: ORGANIZATION_ID, productNameId, dnsZones }
+      configuration: { organizationId, productNameId, dnsZones }
     } as unknown as TDigiCertCertificateAuthority,
     client: client as unknown as TDigiCertApiClient,
     dnsNames,
@@ -313,6 +315,67 @@ describe("DigiCert domain validation before an order", () => {
     ];
     await expect(validateDomains({ dnsNames: ["api.example.com"] })).resolves.toEqual([]);
     expect(cloudflareUpsertTxtRecord).toHaveBeenCalledTimes(1);
+  });
+
+  test("writes the record for a wildcard even when its base domain was validated over HTTP", async () => {
+    digicertDomains = [
+      {
+        id: 5,
+        name: "example.com",
+        is_active: true,
+        dcv_approval_method: "http-token",
+        validations: [{ type: DigiCertDomainValidationType.Ov, status: DigiCertDomainValidationStatus.Active }]
+      }
+    ];
+    await expect(validateDomains({ dnsNames: ["*.example.com"] })).resolves.toEqual([]);
+    expect(cloudflareUpsertTxtRecord).toHaveBeenCalledTimes(1);
+  });
+
+  test("never writes the same zone's record for two DigiCert organizations at once", async () => {
+    let writesInFlight = 0;
+    let mostWritesAtOnce = 0;
+    route53UpsertTxtRecord.mockImplementation(async () => {
+      writesInFlight += 1;
+      mostWritesAtOnce = Math.max(mostWritesAtOnce, writesInFlight);
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+      writesInFlight -= 1;
+    });
+    const route53Zone = { ...EXAMPLE_COM_ZONE, provider: AcmeDnsProvider.Route53 };
+
+    await expect(
+      Promise.all([
+        validateDomains({ dnsNames: ["example.com"], dnsZones: [route53Zone], organizationId: 1 }),
+        validateDomains({ dnsNames: ["example.com"], dnsZones: [route53Zone], organizationId: 2 })
+      ])
+    ).resolves.toEqual([[], []]);
+    expect(route53UpsertTxtRecord).toHaveBeenCalledTimes(2);
+    expect(mostWritesAtOnce).toBe(1);
+  });
+
+  test("falls back when the DNS provider never answers", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    let markWriteStarted = () => {};
+    const writeStarted = new Promise<void>((resolve) => {
+      markWriteStarted = resolve;
+    });
+    cloudflareUpsertTxtRecord.mockImplementation(() => {
+      markWriteStarted();
+      return new Promise(() => {});
+    });
+
+    try {
+      const failures = validateDomains({ dnsNames: ["example.com"] });
+      await writeStarted;
+      await vi.advanceTimersByTimeAsync(3 * 60_000);
+      await expect(failures).resolves.toEqual([
+        "Couldn't validate example.com automatically: the DNS provider or DigiCert didn't answer before the time for automatic validation ran out"
+      ]);
+      expect(client.validateDomainDcv).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("stops waiting for another request's lock at the validation deadline", async () => {

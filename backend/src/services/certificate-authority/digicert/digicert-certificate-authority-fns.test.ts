@@ -2,7 +2,8 @@ import { webcrypto } from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
 
-import { BadRequestError } from "@app/lib/errors";
+import { TableName } from "@app/db/schemas";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CrlReason } from "@app/services/certificate/certificate-types";
@@ -436,8 +437,13 @@ describe("DigiCert CA DNS zones", () => {
   };
 
   let storedDnsZonesInTx: unknown[] = [];
+  let lockedConnectionIds: string[] = [];
+  let connectionRowsLockedForShare = false;
+  let deletedConnectionIds = new Set<string>();
   const lockedRowWhere = vi.fn();
   const lockedRowForUpdate = vi.fn();
+
+  const validateAppConnectionUsageById = vi.fn();
 
   const buildZoneFns = () => {
     const externalCertificateAuthorityDAL = { create: vi.fn(), update: vi.fn() };
@@ -466,7 +472,19 @@ describe("DigiCert CA DNS zones", () => {
         const query = { where: lockedRowWhere, forUpdate: lockedRowForUpdate, first: async () => lockedRow };
         lockedRowWhere.mockReturnValue(query);
         lockedRowForUpdate.mockReturnValue(query);
-        return callback(() => query);
+        const connectionQuery = {
+          whereIn: vi.fn((_column: string, ids: string[]) => {
+            lockedConnectionIds = ids;
+            return connectionQuery;
+          }),
+          orderBy: vi.fn(() => connectionQuery),
+          forKeyShare: vi.fn(() => {
+            connectionRowsLockedForShare = true;
+            return connectionQuery;
+          }),
+          select: async () => lockedConnectionIds.filter((id) => !deletedConnectionIds.has(id)).map((id) => ({ id }))
+        };
+        return callback((table: string) => (table === TableName.AppConnection ? connectionQuery : query));
       })
     };
     const fns = DigiCertCertificateAuthorityFns({
@@ -478,12 +496,12 @@ describe("DigiCert CA DNS zones", () => {
       },
       certificateAuthorityDAL,
       externalCertificateAuthorityDAL,
-      appConnectionService: { validateAppConnectionUsageById: vi.fn(async () => ({})) }
+      appConnectionService: { validateAppConnectionUsageById }
     } as unknown as Parameters<typeof DigiCertCertificateAuthorityFns>[0]);
     const storedDnsZones = () =>
       (externalCertificateAuthorityDAL.update.mock.calls[0][1] as { configuration: { dnsZones?: unknown } })
         .configuration.dnsZones;
-    return { fns, storedDnsZones };
+    return { fns, storedDnsZones, externalCertificateAuthorityDAL };
   };
 
   const update = (fns: ReturnType<typeof buildZoneFns>["fns"], configuration: Record<string, unknown>) =>
@@ -501,6 +519,50 @@ describe("DigiCert CA DNS zones", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     storedDnsZonesInTx = [storedZone];
+    lockedConnectionIds = [];
+    connectionRowsLockedForShare = false;
+    deletedConnectionIds = new Set();
+    validateAppConnectionUsageById.mockReset();
+    validateAppConnectionUsageById.mockResolvedValue({});
+  });
+
+  test("checks the actor can still use each kept zone's DNS connection when the DigiCert account changes", async () => {
+    validateAppConnectionUsageById.mockImplementation(
+      async (_app: string, { connectionId }: { connectionId: string }) => {
+        if (connectionId === "cf-connection") throw new ForbiddenRequestError({ message: "no access" });
+        return {};
+      }
+    );
+    const { fns, externalCertificateAuthorityDAL } = buildZoneFns();
+
+    await expect(update(fns, { organizationId: 888 })).rejects.toThrow("no access");
+    await expect(update(fns, { appConnectionId: "digicert-connection-2" })).rejects.toThrow("no access");
+    expect(externalCertificateAuthorityDAL.update).not.toHaveBeenCalled();
+  });
+
+  test("keeps the zones committed at write time when the DigiCert account changes", async () => {
+    storedDnsZonesInTx = [];
+    const { fns, storedDnsZones } = buildZoneFns();
+    await update(fns, { organizationId: 888 });
+    expect(validateAppConnectionUsageById).toHaveBeenCalledWith(
+      AppConnection.Cloudflare,
+      { connectionId: "cf-connection", projectId: "project-1" },
+      actor
+    );
+    expect(storedDnsZones()).toEqual([]);
+  });
+
+  test("keeps the linked zones without checking their DNS connections when the DigiCert account stays the same", async () => {
+    validateAppConnectionUsageById.mockImplementation(
+      async (_app: string, { connectionId }: { connectionId: string }) => {
+        if (connectionId === "cf-connection") throw new ForbiddenRequestError({ message: "no access" });
+        return {};
+      }
+    );
+    const { fns, storedDnsZones } = buildZoneFns();
+
+    await update(fns, {});
+    expect(storedDnsZones()).toEqual([storedZone]);
   });
 
   test("keeps the linked zones when an update leaves dnsZones out", async () => {
@@ -536,6 +598,29 @@ describe("DigiCert CA DNS zones", () => {
       dnsZones: [{ provider: AcmeDnsProvider.Cloudflare, appConnectionId: "CF-CONNECTION", hostedZoneId: "ZONE-A" }]
     });
     expect(storedDnsZones()).toEqual([storedZone]);
+  });
+
+  test("locks the linked zones' connections in the write transaction so a delete can't slip in", async () => {
+    const { fns, storedDnsZones } = buildZoneFns();
+    await update(fns, {
+      dnsZones: [{ provider: AcmeDnsProvider.Cloudflare, appConnectionId: "cf-connection", hostedZoneId: "zone-a" }]
+    });
+    expect(lockedConnectionIds).toEqual(["cf-connection"]);
+    expect(connectionRowsLockedForShare).toBe(true);
+    expect(storedDnsZones()).toEqual([storedZone]);
+  });
+
+  test("refuses to link a zone whose connection was deleted while the CA was being saved", async () => {
+    deletedConnectionIds = new Set(["cf-connection"]);
+    const { fns, externalCertificateAuthorityDAL } = buildZoneFns();
+    await expect(
+      update(fns, {
+        dnsZones: [{ provider: AcmeDnsProvider.Cloudflare, appConnectionId: "cf-connection", hostedZoneId: "zone-a" }]
+      })
+    ).rejects.toThrow(
+      "App connection with ID 'cf-connection' was deleted while the certificate authority was being saved"
+    );
+    expect(externalCertificateAuthorityDAL.update).not.toHaveBeenCalled();
   });
 
   test("rejects two entries that resolve to the same zone", async () => {

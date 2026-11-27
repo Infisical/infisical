@@ -43,6 +43,20 @@ const buildService = (
     })
   };
 
+  const connectionRowLock = vi.fn();
+  const connectionRowQuery = {
+    where: vi.fn(() => connectionRowQuery),
+    forUpdate: vi.fn(() => {
+      connectionRowLock();
+      return connectionRowQuery;
+    }),
+    first: vi.fn(async () => ({ id: CONNECTION_ID }))
+  };
+  const connectionRowTx = Object.assign(
+    vi.fn(() => connectionRowQuery),
+    { raw: vi.fn() }
+  );
+
   const appConnectionDAL = {
     findById: vi.fn(async () => ({
       id: CONNECTION_ID,
@@ -50,7 +64,8 @@ const buildService = (
       encryptedCredentials: Buffer.from("{}"),
       ...connection
     })),
-    deleteById: vi.fn()
+    deleteById: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(connectionRowTx))
   };
 
   const overrides: Record<string, unknown> = {
@@ -71,7 +86,7 @@ const buildService = (
   });
 
   const service = appConnectionServiceFactory(deps as unknown as Parameters<typeof appConnectionServiceFactory>[0]);
-  return { service, permissionService, appConnectionDAL };
+  return { service, permissionService, appConnectionDAL, connectionRowLock, connectionRowTx };
 };
 
 type TService = ReturnType<typeof buildService>["service"];
@@ -230,6 +245,37 @@ describe("deleteAppConnection", () => {
     expect(appConnectionDAL.deleteById).not.toHaveBeenCalled();
   });
 
+  test("checks for linked DigiCert DNS zones under the connection row lock and checks deferred keys before the delete returns", async () => {
+    const callOrder: string[] = [];
+    const findDigiCertCaNamesByDnsZoneConnectionId = vi.fn(async () => {
+      callOrder.push("guard");
+      return [];
+    });
+    const { service, appConnectionDAL, connectionRowLock, connectionRowTx } = buildService(
+      { orgId: ACTOR_ORG_ID, projectId: null },
+      {
+        org: createMongoAbility([
+          { action: OrgPermissionAppConnectionActions.Delete, subject: OrgPermissionSubjects.AppConnections }
+        ])
+      },
+      { externalCertificateAuthorityDAL: { findDigiCertCaNamesByDnsZoneConnectionId } }
+    );
+    connectionRowLock.mockImplementation(() => callOrder.push("lock"));
+    connectionRowTx.raw.mockImplementation(async (sql: string) => {
+      callOrder.push(sql);
+    });
+    appConnectionDAL.deleteById.mockImplementation(async () => {
+      callOrder.push("delete");
+      return { id: CONNECTION_ID, app: AppConnection.AWS, encryptedCredentials: Buffer.from("{}") };
+    });
+
+    await service.deleteAppConnection(AppConnection.AWS, CONNECTION_ID, actor).catch(() => undefined);
+
+    expect(callOrder).toEqual(["lock", "guard", "SET CONSTRAINTS ALL IMMEDIATE", "delete"]);
+    expect(findDigiCertCaNamesByDnsZoneConnectionId).toHaveBeenCalledWith(CONNECTION_ID, connectionRowTx);
+    expect(appConnectionDAL.deleteById).toHaveBeenCalledWith(CONNECTION_ID, connectionRowTx);
+  });
+
   test("checks DigiCert DNS zones by the stored connection ID, not the spelling in the request", async () => {
     const findDigiCertCaNamesByDnsZoneConnectionId = vi.fn(async (id: string) =>
       id === CONNECTION_ID ? ["digicert-ca"] : []
@@ -247,7 +293,7 @@ describe("deleteAppConnection", () => {
     await expect(service.deleteAppConnection(AppConnection.AWS, CONNECTION_ID.toUpperCase(), actor)).rejects.toThrow(
       BadRequestError
     );
-    expect(findDigiCertCaNamesByDnsZoneConnectionId).toHaveBeenCalledWith(CONNECTION_ID);
+    expect(findDigiCertCaNamesByDnsZoneConnectionId).toHaveBeenCalledWith(CONNECTION_ID, expect.anything());
     expect(appConnectionDAL.deleteById).not.toHaveBeenCalled();
   });
 });
