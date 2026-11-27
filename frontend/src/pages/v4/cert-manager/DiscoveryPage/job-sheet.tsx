@@ -658,7 +658,9 @@ const JobSheet = ({
             : [
                 {
                   title: "Review",
-                  aside: stepAside("You can edit every setting later from the job."),
+                  aside: stepAside(
+                    "You can edit every setting except the discovery type later from the job."
+                  ),
                   content: draft ? <ReviewStep draft={draft} /> : null
                 }
               ])
