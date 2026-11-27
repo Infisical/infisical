@@ -21,8 +21,8 @@ export type TWorkflowIntegrationStore = {
   // Oldest first.
   listByOrg(orgId: string, filter?: TWorkflowIntegrationFilter, options?: TReadOptions): Promise<WorkflowIntegration[]>;
   listByIds(ids: string[], options?: TReadOptions): Promise<WorkflowIntegration[]>;
-  // Any Teams integration for the tenant; the oldest when there are several.
-  findMicrosoftTeamsByTenantId(tenantId: string, options?: TReadOptions): Promise<WorkflowIntegration | null>;
+  // Every Teams integration for the tenant, oldest first: several orgs may connect the same tenant.
+  listMicrosoftTeamsByTenantId(tenantId: string, options?: TReadOptions): Promise<WorkflowIntegration[]>;
   // Writes the workflow_integrations row and the provider's row under the same id.
   create(integration: WorkflowIntegration): Promise<void>;
   // Writes every field of both rows.

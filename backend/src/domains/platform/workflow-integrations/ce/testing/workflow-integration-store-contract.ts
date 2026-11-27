@@ -123,7 +123,7 @@ export const describeWorkflowIntegrationStoreContract = (name: string, setup: TS
       expect(listed.map((i) => i.id)).toEqual([wanted.id, wantedTeams.id]);
     });
 
-    test("should find the Teams integration of a tenant, ignoring Slack and other tenants", async () => {
+    test("should list the Teams integrations of a tenant, ignoring Slack and other tenants", async () => {
       // Setup
       const { store, newOrgId } = await setup();
       const orgId = await newOrgId();
@@ -134,27 +134,28 @@ export const describeWorkflowIntegrationStoreContract = (name: string, setup: TS
       await store.create(target);
 
       // Action
-      const found = await store.findMicrosoftTeamsByTenantId(tenantId);
-      const missing = await store.findMicrosoftTeamsByTenantId(randomUUID());
+      const found = await store.listMicrosoftTeamsByTenantId(tenantId);
+      const missing = await store.listMicrosoftTeamsByTenantId(randomUUID());
 
       // Assert
-      expect(found?.id).toBe(target.id);
-      expect(missing).toBeNull();
+      expect(found.map((i) => i.id)).toEqual([target.id]);
+      expect(missing).toEqual([]);
     });
 
-    test("should find the oldest Teams integration when a tenant has several", async () => {
+    test("should list every org's Teams integration of a tenant, oldest first", async () => {
       // Setup
       const { store, newOrgId } = await setup();
       const tenantId = randomUUID();
       const oldest = microsoftTeamsIntegration({ orgId: await newOrgId(), tenantId });
       await store.create(oldest);
-      await store.create(microsoftTeamsIntegration({ orgId: await newOrgId(), tenantId }));
+      const newer = microsoftTeamsIntegration({ orgId: await newOrgId(), tenantId });
+      await store.create(newer);
 
       // Action
-      const found = await store.findMicrosoftTeamsByTenantId(tenantId);
+      const found = await store.listMicrosoftTeamsByTenantId(tenantId);
 
       // Assert
-      expect(found?.id).toBe(oldest.id);
+      expect(found.map((i) => i.id)).toEqual([oldest.id, newer.id]);
     });
 
     test("should persist a rename and a status change", async () => {

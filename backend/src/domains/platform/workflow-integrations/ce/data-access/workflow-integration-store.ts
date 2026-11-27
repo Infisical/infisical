@@ -178,16 +178,16 @@ export class WorkflowIntegrationStore implements TWorkflowIntegrationStore {
     }
   }
 
-  async findMicrosoftTeamsByTenantId(tenantId: string, options?: TReadOptions): Promise<WorkflowIntegration | null> {
+  async listMicrosoftTeamsByTenantId(tenantId: string, options?: TReadOptions): Promise<WorkflowIntegration[]> {
     try {
-      const row = (await oldestFirst(
+      const rows = (await oldestFirst(
         joined(this.connection.reader(options))
           .where(`${TableName.WorkflowIntegrations}.integration`, WorkflowIntegrationProvider.MicrosoftTeams)
           .where(`${TableName.MicrosoftTeamsIntegrations}.tenantId`, tenantId)
-      ).first()) as TJoinedRow | undefined;
-      return row ? toModel(row) : null;
+      )) as TJoinedRow[];
+      return rows.map(toModel);
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find Microsoft Teams integration by tenant" });
+      throw new DatabaseError({ error, name: "List Microsoft Teams integrations by tenant" });
     }
   }
 

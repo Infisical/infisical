@@ -268,17 +268,24 @@ export class MicrosoftTeamsIntegrationService implements TMicrosoftTeamsIntegrat
     this.microsoftTeamsBot.initialize({ appId, clientSecret });
   }
 
-  // The bot joined a team in `tenantId`: a pending integration for that tenant becomes installed.
+  // The bot joined a team in `tenantId`: every pending integration for that tenant, whichever org added it, becomes
+  // installed.
   private async markTenantInstalled(tenantId: string): Promise<void> {
-    const found = await this.workflowIntegrationStore.findMicrosoftTeamsByTenantId(tenantId, {
+    const found = await this.workflowIntegrationStore.listMicrosoftTeamsByTenantId(tenantId, {
       readFrom: ReadFrom.Primary
     });
-    if (!found) return;
+    const pendingIds = found.filter((integration) => !integration.isInstalled()).map((integration) => integration.id);
+    if (pendingIds.length === 0) return;
     await this.transactionRunner.run(async ({ stores }) => {
-      const current = await stores.workflowIntegrationStore.findByIdForUpdate(found.id);
-      if (!current || current.status !== WorkflowIntegrationStatus.Pending) return;
-      current.markInstalled();
-      await stores.workflowIntegrationStore.save(current);
+      for (const id of pendingIds.sort()) {
+        // eslint-disable-next-line no-await-in-loop -- locks are taken in id order so two joins cannot deadlock
+        const current = await stores.workflowIntegrationStore.findByIdForUpdate(id);
+        if (current && current.status === WorkflowIntegrationStatus.Pending) {
+          current.markInstalled();
+          // eslint-disable-next-line no-await-in-loop -- same transaction, one row at a time
+          await stores.workflowIntegrationStore.save(current);
+        }
+      }
     });
   }
 

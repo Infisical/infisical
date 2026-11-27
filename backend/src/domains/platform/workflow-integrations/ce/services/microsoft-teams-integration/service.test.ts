@@ -375,6 +375,23 @@ describe("MicrosoftTeamsIntegrationService.handleBotMessage", () => {
     expect(untouched?.status).toBe(WorkflowIntegrationStatus.Pending);
   });
 
+  test("should install every org's pending integration of the tenant when an older one is already installed", async () => {
+    // Setup
+    const h = await build();
+    initializeBot(h);
+    const installed = microsoftTeamsIntegration({ orgId: randomUUID(), tenantId: "tenant-1" });
+    installed.markInstalled();
+    await h.seed(installed);
+    const pending = await h.seed(microsoftTeamsIntegration({ orgId: randomUUID(), tenantId: "tenant-1" }));
+
+    // Action
+    await h.module.microsoftTeamsIntegrationService.handleBotMessage(botRequest("tenant-1"));
+
+    // Assert
+    const stored = await h.memory.workflowIntegrationStore.findById(pending.id);
+    expect(stored?.status).toBe(WorkflowIntegrationStatus.Installed);
+  });
+
   test("should leave an installed integration of the tenant as it was", async () => {
     // Setup
     const h = await build();

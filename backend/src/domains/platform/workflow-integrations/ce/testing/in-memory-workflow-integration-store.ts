@@ -76,13 +76,12 @@ export class InMemoryWorkflowIntegrationStore implements TWorkflowIntegrationSto
     return this.oldestFirst((row) => ids.includes(row.record.id)).map(toModel);
   }
 
-  async findMicrosoftTeamsByTenantId(tenantId: string) {
-    const [oldest] = this.oldestFirst(
+  async listMicrosoftTeamsByTenantId(tenantId: string) {
+    return this.oldestFirst(
       (row) =>
         row.record.provider === WorkflowIntegrationProvider.MicrosoftTeams &&
         row.record.microsoftTeams.tenantId === tenantId
-    );
-    return oldest ? toModel(oldest) : null;
+    ).map(toModel);
   }
 
   async create(integration: WorkflowIntegration) {
