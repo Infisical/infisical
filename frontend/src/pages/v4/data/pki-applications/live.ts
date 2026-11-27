@@ -32,11 +32,9 @@ import {
   useGetPkiApplicationByName,
   useGetPkiApplicationPermissions,
   useListPkiApplicationMembers,
-  pkiApplicationKeys,
   useListPkiApplicationProfiles,
   useListPkiApplications
 } from "@app/hooks/api/pkiApplications/queries";
-import type { TListPkiApplicationsResponse } from "@app/hooks/api/pkiApplications/types";
 import { useTriggerPkiSyncSyncCertificates } from "@app/hooks/api/pkiSyncs/mutations";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs/queries";
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership/queries";
@@ -58,26 +56,6 @@ const candidates = <T>(
 export const pkiApplicationsLive: PkiApplicationsAdapter = {
   ...enrollmentLive,
   useApplications: useListPkiApplications,
-  useAllApplications: () =>
-    useQuery({
-      queryKey: [...pkiApplicationKeys.all, "all-names"],
-      queryFn: async () => {
-        const page = async (offset: number) =>
-          (
-            await apiRequest.get<TListPkiApplicationsResponse>(
-              "/api/v1/cert-manager/applications",
-              { params: { limit: 100, offset } }
-            )
-          ).data;
-        const first = await page(0);
-        const offsets = [];
-        for (let offset = 100; offset < first.total; offset += 100) offsets.push(offset);
-        const rest = await Promise.all(offsets.map(page));
-        return [first, ...rest].flatMap(({ applications }) =>
-          applications.map(({ id, name }) => ({ id, name }))
-        );
-      }
-    }),
   useApplicationByName: useGetPkiApplicationByName,
   useApplicationProfiles: useListPkiApplicationProfiles,
   useApplicationMembers: useListPkiApplicationMembers,
