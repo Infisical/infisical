@@ -191,7 +191,7 @@ export function SecretValue({
   const loading = secret?.value.status === "loading";
   useEffect(() => {
     if (secret && shown && loading) loader.request([secret]);
-  }, [shown, loading, secret?.id, secret?.version]);
+  }, [shown, loading, secret?.id, secret?.version, secret?.readFrom?.revision]);
   if (!secret) return <span className={styles.subtle}>Not set in this environment</span>;
   const value = loading ? mask : readableValue(secret);
   if (value === undefined)

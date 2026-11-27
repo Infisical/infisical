@@ -412,38 +412,37 @@ export const secretsDemo: SecretsAdapter = {
         entry.environment === dto.environment &&
         reservedPathOf(entry) === dto.secretPath
     );
-    const secret = replication
-      ? state.secrets.find(
-          secretAt(
-            replication.importEnv.projectId ?? dto.projectId,
-            replication.importEnv.slug,
-            replication.importPath,
-            dto.secretKey
-          )
-        )
-      : (state.secrets.find(
-          secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)
-        ) ??
-        state.imports
-          .filter(
-            (entry) =>
-              !entry.isReserved &&
-              entry.projectId === dto.projectId &&
-              entry.environment === dto.environment &&
-              entry.path === dto.secretPath
-          )
-          .sort((a, b) => Number(b.position) - Number(a.position))
-          .map((entry) =>
-            state.secrets.find(
-              secretAt(
-                entry.importEnv.projectId ?? dto.projectId,
-                entry.importEnv.slug,
-                entry.importPath,
-                dto.secretKey
-              )
+    const secret =
+      state.secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)) ??
+      (replication
+        ? state.secrets.find(
+            secretAt(
+              replication.importEnv.projectId ?? dto.projectId,
+              replication.importEnv.slug,
+              replication.importPath,
+              dto.secretKey
             )
           )
-          .find(Boolean));
+        : state.imports
+            .filter(
+              (entry) =>
+                !entry.isReserved &&
+                entry.projectId === dto.projectId &&
+                entry.environment === dto.environment &&
+                entry.path === dto.secretPath
+            )
+            .sort((a, b) => Number(b.position) - Number(a.position))
+            .map((entry) =>
+              state.secrets.find(
+                secretAt(
+                  entry.importEnv.projectId ?? dto.projectId,
+                  entry.importEnv.slug,
+                  entry.importPath,
+                  dto.secretKey
+                )
+              )
+            )
+            .find(Boolean));
     if (!secret || (scenario === "permissions" && secret.key === "STRIPE_SECRET_KEY"))
       return { data: undefined, isPending: false, error: new Error("You cannot read this value") };
     return {

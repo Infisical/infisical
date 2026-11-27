@@ -109,7 +109,7 @@ import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges, toUnsavedPendingChanges } from "./bridge/commit";
 import { BreadthContext, useImportedSecrets, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
-import { buildResources, readThrough, valueKey } from "./bridge/view-model";
+import { buildResources, readThrough, readVersion, valueKey } from "./bridge/view-model";
 import {
   importName,
   readableValue,
@@ -1544,7 +1544,7 @@ export const OverviewPage = () => {
           secret.readFrom?.path ?? secret.path,
           secret.name,
           false,
-          secret.version
+          readVersion(secret.version, secret.readFrom)
         )
       ];
     return typeof value === "string" ? value : undefined;
