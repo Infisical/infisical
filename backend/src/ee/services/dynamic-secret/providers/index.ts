@@ -11,6 +11,7 @@ import { AzureEntraIDProvider } from "./azure-entra-id";
 import { AzureSqlDatabaseProvider } from "./azure-sql-database";
 import { CassandraProvider } from "./cassandra";
 import { ClickhouseProvider } from "./clickhouse";
+import { CloudflareAccessProvider } from "./cloudflare-access";
 import { CouchbaseProvider } from "./couchbase";
 import { ElasticSearchProvider } from "./elastic-search";
 import { GcpIamProvider } from "./gcp-iam";
@@ -79,5 +80,6 @@ export const buildDynamicSecretProviders = ({
   [DynamicSecretProviders.OAuth2]: OAuth2Provider(),
   [DynamicSecretProviders.Kafka]: KafkaProvider(),
   [DynamicSecretProviders.OpenRouter]: OpenRouterProvider(),
-  [DynamicSecretProviders.Neon]: NeonProvider()
+  [DynamicSecretProviders.Neon]: NeonProvider(),
+  [DynamicSecretProviders.CloudflareAccess]: CloudflareAccessProvider()
 });

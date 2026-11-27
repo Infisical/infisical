@@ -278,6 +278,19 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
       supportsRenewal: false
     }
   },
+  [DynamicSecretProviders.CloudflareAccess]: {
+    presentation: { providerFamily: "Cloudflare", logoFileName: "Cloudflare.png" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "CLIENT_ID", label: "Client ID" },
+        { key: "CLIENT_SECRET", label: "Client Secret" },
+        { key: "TOKEN_ID", label: "Token ID" },
+        { key: "TOKEN_NAME", label: "Token Name" }
+      ]),
+      supportsRenewal: false
+    }
+  },
   [DynamicSecretProviders.Neon]: {
     presentation: { providerFamily: "Neon", logoFileName: "Neon.png" },
     leaseCapabilities: createDefaultLeaseCapabilities(
