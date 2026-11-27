@@ -18,7 +18,6 @@ import {
   SheetHeader,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { MailIcon, UserMinusIcon } from "lucide-react";
 
 import { OrgMembershipRole } from "@app/helpers/roles";
@@ -123,12 +122,10 @@ export const OrganizationMembersSheet = ({
       render: (member) => (
         <Inline gap={8} align="center" wrap={false}>
           {member.roleId ? (
-            <Tooltip content="This member has a custom role assigned.">
-              <Badge tone="soft">
-                {roleLabel(member.role)}
-                <Icon name="info" />
-              </Badge>
-            </Tooltip>
+            <Badge reason="This member has a custom role assigned." tone="soft">
+              {roleLabel(member.role)}
+              <Icon name="info" />
+            </Badge>
           ) : (
             <Badge tone="soft">{roleLabel(member.role)}</Badge>
           )}

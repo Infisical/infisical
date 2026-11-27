@@ -189,13 +189,13 @@ const Status = ({ proxy }: { proxy: TAgentVaultProxy }) => {
     );
   const heartbeat = new Date(proxy.heartbeat);
   return (
-    <Tooltip
-      content={`Last seen ${formatDistanceToNowStrict(heartbeat)} ago, ${format(heartbeat, "MMM d, yyyy h:mm a")}`}
+    <Badge
+      reason={`Last seen ${formatDistanceToNowStrict(heartbeat)} ago, ${format(heartbeat, "MMM d, yyyy h:mm a")}`}
+      tone={proxy.isHealthy ? "ok" : "warn"}
+      dot
     >
-      <Badge tone={proxy.isHealthy ? "ok" : "warn"} dot tabIndex={0}>
-        {proxy.isHealthy ? "Healthy" : "Unreachable"}
-      </Badge>
-    </Tooltip>
+      {proxy.isHealthy ? "Healthy" : "Unreachable"}
+    </Badge>
   );
 };
 

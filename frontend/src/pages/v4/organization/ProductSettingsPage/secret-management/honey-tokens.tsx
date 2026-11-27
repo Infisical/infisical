@@ -40,7 +40,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { failed, saved, toast } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
 import { copyText } from "../../../clipboard";
-import { ProviderLabel } from "../../../components/provider-label";
+import { ProviderLabel, providerMedia } from "../../../components/provider-label";
 import { RegionCombobox } from "../../../components/region-combobox";
 import { useV4Adapter } from "../../../data/adapters";
 import type { HoneyTokenConnectionTest } from "../../../data/product-settings/contract";
@@ -208,7 +208,8 @@ const HoneyTokenSheet = ({
                     invalid={Boolean(issues?.connectionId)}
                     options={awsConnections.map((connection) => ({
                       value: connection.id,
-                      label: connection.name
+                      label: connection.name,
+                      media: providerMedia("app-connection", AppConnection.AWS)
                     }))}
                     value={draft.connectionId}
                     onChange={(connectionId) => setDraft({ ...draft, connectionId })}

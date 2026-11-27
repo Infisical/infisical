@@ -4,12 +4,14 @@ import { Card } from "@infisical/cipher/ui/card";
 import { DataList } from "@infisical/cipher/ui/list";
 import { format } from "date-fns";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { caTypeToNameMap } from "@app/hooks/api/ca/constants";
 import { CaStatus, InternalCaType } from "@app/hooks/api/ca/enums";
 import type { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
 import { CertKeySource } from "@app/hooks/api/signers/types";
 
+import { providerMedia } from "../../components/provider-label";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { CaStatusBadge } from "../CertificateAuthoritiesPage/shared";
 
@@ -112,6 +114,11 @@ export const CaDetailsCard = ({
               key="source"
               size="sm"
               tone={keySource === CertKeySource.Infisical ? "outline" : "info"}
+              media={
+                keySource === CertKeySource.AwsKms
+                  ? providerMedia("app-connection", AppConnection.AWS)
+                  : undefined
+              }
             >
               {KEY_SOURCE_LABELS[keySource]}
             </Badge>

@@ -1,6 +1,9 @@
 import type { SelectOption } from "@infisical/cipher/ui/select";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { CertKeySource } from "@app/hooks/api/signers/types";
+
+import { providerMedia } from "../../components/provider-label";
 
 export const hsmKeySourceReason = (isHsmLicensed: boolean, canAttach: boolean) => {
   if (!isHsmLicensed) return "Enterprise plan";
@@ -23,6 +26,7 @@ export const keySourceOptions = ({
         {
           value: CertKeySource.AwsKms,
           label: "AWS KMS",
+          media: providerMedia("app-connection", AppConnection.AWS),
           disabled: !awsKms.available,
           meta: awsKms.available ? undefined : "Enterprise plan"
         }

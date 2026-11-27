@@ -444,6 +444,7 @@ const SessionLogSettingsCard = ({
                       label="AWS connection"
                       placeholder="Select a connection"
                       connections={connections ?? []}
+                      app={AppConnection.AWS}
                       value={
                         (connections ?? []).some(({ id }) => id === draft.appConnectionId)
                           ? draft.appConnectionId

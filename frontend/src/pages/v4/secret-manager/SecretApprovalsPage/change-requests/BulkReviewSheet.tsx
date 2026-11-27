@@ -105,11 +105,13 @@ const OutcomeText = ({ outcome }: { outcome?: Outcome }) => {
     );
   }
   return (
-    <Tooltip content={outcome.message}>
-      <StatusText tone={outcome.status === "approved" ? "warn" : "bad"} icon="alert-c" tabIndex={0}>
-        {outcome.status === "approved" ? "Approved, not merged" : "Failed"}
-      </StatusText>
-    </Tooltip>
+    <StatusText
+      reason={outcome.message}
+      tone={outcome.status === "approved" ? "warn" : "bad"}
+      icon="alert-c"
+    >
+      {outcome.status === "approved" ? "Approved, not merged" : "Failed"}
+    </StatusText>
   );
 };
 
@@ -428,18 +430,18 @@ const ReviewContent = ({
     if (!found?.length) return null;
     const keys = [...new Set(found.map(({ secretKey }) => secretKey))];
     return (
-      <Tooltip
-        content={found
+      <StatusText
+        reason={found
           .map(
             ({ secretKey, slug, mergesFirst }) =>
               `${secretKey} is also changed in #${slug}, which merges ${mergesFirst ? "before" : "after"} this request.`
           )
           .join(" ")}
+        tone="warn"
+        icon="alert"
       >
-        <StatusText tone="warn" icon="alert" tabIndex={0}>
-          {`Overlaps on ${keys.length === 1 ? keys[0] : `${keys.length} secrets`}`}
-        </StatusText>
-      </Tooltip>
+        {`Overlaps on ${keys.length === 1 ? keys[0] : `${keys.length} secrets`}`}
+      </StatusText>
     );
   };
 

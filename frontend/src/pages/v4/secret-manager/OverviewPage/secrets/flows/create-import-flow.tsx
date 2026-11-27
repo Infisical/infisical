@@ -19,7 +19,9 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
-import { environmentOptions } from "../environment-picker";
+import { useOrgId } from "../../../../access/permissions";
+import { useV4Adapter } from "../../../../data/adapters";
+import { importName } from "../../secrets-model";
 import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
@@ -49,15 +51,105 @@ export function CreateImportFlow({
     scope.path,
     "add secret imports here"
   );
+  const policies = useV4Adapter("secretPolicies");
+  const gates = policies.useGates(useOrgId()).data;
+  const { data: grants = [] } = policies.useReceivedFolderGrants(scope.project, {
+    enabled:
+      open &&
+      Boolean(gates?.allowCrossProjectSecretSharing && gates.crossProjectSecretSharingInPlan)
+  });
+  const [sourceProject, setSourceProject] = useState(scope.project);
   const [environment, setEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [replication, setReplication] = useState(false);
-  const [error, setError] = useState<string>();
+  const [errors, setErrors] = useState<{ environment?: string; path?: string }>({});
   const { plan, guard } = usePlanGates();
 
+  const crossProject = sourceProject !== scope.project;
+  const projectGrants = grants.filter((grant) => grant.sourceProjectId === sourceProject);
+  const projectOptions = [
+    { value: scope.project, label: "This project" },
+    ...[...new Map(grants.map((grant) => [grant.sourceProjectId, grant])).values()].map(
+      (grant) => ({ value: grant.sourceProjectId, label: grant.sourceProjectName })
+    )
+  ];
+  const environmentOptions = crossProject
+    ? [...new Map(projectGrants.map((grant) => [grant.environmentSlug, grant])).values()].map(
+        (grant) => ({
+          value: grant.environmentSlug,
+          label: grant.environmentName,
+          meta: grant.environmentSlug
+        })
+      )
+    : scope.environments.map((entry) => ({ ...entry, meta: entry.value }));
+  const pathOptions = projectGrants
+    .filter((grant) => grant.environmentSlug === environment)
+    .map((grant) => ({ value: grant.secretPath, label: grant.secretPath }));
+
+  const submitCrossProject = () => {
+    const grant = projectGrants.find(
+      (entry) => entry.environmentSlug === environment && entry.secretPath === secretPath
+    );
+    if (!grant) {
+      setErrors({
+        environment: environment ? undefined : "Required",
+        path: "Required"
+      });
+      return;
+    }
+    if (
+      resources.some(
+        (resource) =>
+          resource.kind === "import" &&
+          resource.project === scope.project &&
+          resource.environment === destination &&
+          resource.path === scope.path &&
+          resource.source.project === grant.sourceProjectId &&
+          resource.source.environment === grant.environmentSlug &&
+          resource.source.path === grant.secretPath
+      )
+    ) {
+      onError({
+        title: "Import was not created",
+        description: `This folder already imports ${grant.secretPath} from ${grant.sourceProjectName}.`
+      });
+      return;
+    }
+    onCreate(
+      [
+        {
+          kind: "import",
+          project: scope.project,
+          environment: destination,
+          path: scope.path,
+          name: importName(
+            scope.project,
+            grant.sourceProjectId,
+            grant.environmentSlug,
+            grant.secretPath
+          ),
+          source: {
+            project: grant.sourceProjectId,
+            environment: grant.environmentSlug,
+            path: grant.secretPath
+          },
+          sourceProjectName: grant.sourceProjectName,
+          revoked: false,
+          replicated: false
+        }
+      ],
+      { title: "Successfully linked." }
+    );
+    onOpenChange(false);
+  };
+
   const submit = () => {
+    if (crossProject) {
+      submitCrossProject();
+      return;
+    }
     if (!environment) {
-      setError("Required");
+      setErrors({ environment: "Required" });
       return;
     }
     if (replication && plan && !plan.secretApproval) {
@@ -127,8 +219,9 @@ export function CreateImportFlow({
         <DialogHeader>
           <DialogTitle>Add secret import</DialogTitle>
           <DialogDescription>
-            Reference secrets from another environment or folder. Changes at the source show up
-            here.
+            {grants.length > 0
+              ? "Reference secrets from another environment, folder or project. Changes at the source show up here."
+              : "Reference secrets from another environment or folder. Changes at the source show up here."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -140,41 +233,74 @@ export function CreateImportFlow({
             submit();
           }}
         >
-          <Field label="Environment" error={error}>
+          {grants.length > 0 && (
+            <Field label="Project">
+              <Combobox
+                label="Project"
+                options={projectOptions}
+                value={sourceProject}
+                onValueChange={(value) => {
+                  setSourceProject(value);
+                  setEnvironment("");
+                  setSecretPath("/");
+                  setErrors({});
+                }}
+              />
+            </Field>
+          )}
+          <Field label="Environment" error={errors.environment}>
             <Combobox
               label="Environment"
-              options={environmentOptions(scope.environments)}
+              options={environmentOptions}
               value={environment}
               placeholder="Select environment..."
-              invalid={Boolean(error)}
+              invalid={Boolean(errors.environment)}
               onValueChange={(value) => {
                 setEnvironment(value);
-                setError(undefined);
+                if (crossProject) setSecretPath("");
+                setErrors({});
               }}
             />
           </Field>
-          <Field label="Secret path">
-            <Input
-              mono
-              value={secretPath}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => setSecretPath(event.target.value)}
-            />
+          <Field label="Secret path" error={errors.path}>
+            {crossProject ? (
+              <Combobox
+                label="Secret path"
+                options={pathOptions}
+                value={secretPath}
+                placeholder={environment ? "Select folder..." : "Select an environment first"}
+                disabled={!environment}
+                invalid={Boolean(errors.path)}
+                onValueChange={(value) => {
+                  setSecretPath(value);
+                  setErrors({});
+                }}
+              />
+            ) : (
+              <Input
+                mono
+                value={secretPath}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setSecretPath(event.target.value)}
+              />
+            )}
           </Field>
-          <div className={styles.stackTight}>
-            <Select
-              label="Secret approval policies"
-              value={replication ? "true" : "false"}
-              options={replicationOptions}
-              onChange={(value) => setReplication(value === "true")}
-            />
-            <SmallText muted>
-              {replication
-                ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
-                : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
-            </SmallText>
-          </div>
+          {!crossProject && (
+            <div className={styles.stackTight}>
+              <Select
+                label="Secret approval policies"
+                value={replication ? "true" : "false"}
+                options={replicationOptions}
+                onChange={(value) => setReplication(value === "true")}
+              />
+              <SmallText muted>
+                {replication
+                  ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
+                  : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
+              </SmallText>
+            </div>
+          )}
         </form>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

@@ -34,7 +34,7 @@ import { useOrgId, useOrgPermission, useProjectPermission } from "../access/perm
 import { failed, saved } from "../access/toast";
 import { AccessRestricted, RESTRICTED, type Sort } from "../access/ui";
 import { copyText } from "../clipboard";
-import { ProviderLabel } from "../components/provider-label";
+import { ProviderLabel, providerMedia } from "../components/provider-label";
 import { usePageSize } from "../components/use-page-size";
 import { useV4Adapter } from "../data/adapters";
 import { orgHref } from "../links";
@@ -232,9 +232,9 @@ const useConnectionColumns = (connections: TAppConnection[], scope: AppConnectio
       render: (row) => (
         <Inline gap={4} align="center" wrap={false}>
           {row.isPlatformManagedCredentials && (
-            <Tooltip content="Infisical manages this connection's credentials.">
-              <Badge tone="info">Platform managed</Badge>
-            </Tooltip>
+            <Badge reason="Infisical manages this connection's credentials." tone="info">
+              Platform managed
+            </Badge>
           )}
           <RotationBadge row={row} />
         </Inline>
@@ -553,7 +553,11 @@ export const AppConnectionsTable = ({
             type: "multi-select",
             options: [...new Set(connections.map((row) => row.app))]
               .sort((a, b) => appName(a).localeCompare(appName(b)))
-              .map((app) => ({ value: app, label: appName(app) }))
+              .map((app) => ({
+                value: app,
+                label: appName(app),
+                media: providerMedia("app-connection", app)
+              }))
           }
         ]}
         value={filters}

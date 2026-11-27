@@ -16,7 +16,6 @@ import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 
 import {
@@ -125,15 +124,16 @@ export const ProjectMemberDetail = () => {
               />
             )}
             {isSelf ? (
-              <Tooltip
-                side="right"
-                content="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+              <Badge
+                reason="You cannot modify your own membership. Ask a project admin to make changes to your membership."
+                tone="info"
+                icon="info"
+                size="control-sm"
+                collapse
               >
-                <Badge tone="info" icon="info" size="control-sm" collapse>
-                  <span aria-hidden="true">You</span>
-                  <span className="sr-only">{`Your ${accessNoun(scope.projectType)} membership`}</span>
-                </Badge>
-              </Tooltip>
+                <span aria-hidden="true">You</span>
+                <span className="sr-only">{`Your ${accessNoun(scope.projectType)} membership`}</span>
+              </Badge>
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

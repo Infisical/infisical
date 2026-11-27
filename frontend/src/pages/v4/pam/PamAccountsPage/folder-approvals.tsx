@@ -327,13 +327,13 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
               label
             )}
             {request.isBreakGlass && (
-              <Tooltip
-                content={request.bypassReason ? `Reason: "${request.bypassReason}"` : undefined}
+              <Badge
+                reason={request.bypassReason ? `Reason: "${request.bypassReason}"` : undefined}
+                tone="bad"
+                icon="shield"
               >
-                <Badge tone="bad" icon="shield" tabIndex={0}>
-                  Break-glass
-                </Badge>
-              </Tooltip>
+                Break-glass
+              </Badge>
             )}
           </Stack>
         );

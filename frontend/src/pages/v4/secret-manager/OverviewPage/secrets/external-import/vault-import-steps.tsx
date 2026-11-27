@@ -15,6 +15,7 @@ import type {
   VaultImportSelectionAction,
   VaultImportSelectionState
 } from "@app/components/external-migrations/vaultImportSelection";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 
 import { errorMessage } from "../../../../access/toast";
@@ -192,6 +193,7 @@ export function VaultSourceStep({
           placeholder="Select app connection"
           emptyText="No app connections found"
           connections={connections}
+          app={AppConnection.HCVault}
           value={connectionId ?? ""}
           onValueChange={(value) => dispatch({ type: "connection", value })}
         />

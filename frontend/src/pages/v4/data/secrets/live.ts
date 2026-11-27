@@ -11,6 +11,7 @@ import {
   useDeleteFolder,
   useUpdateFolder
 } from "@app/hooks/api/secretFolders/queries";
+import { useGetImportedSecretsAllEnvs } from "@app/hooks/api/secretImports/queries";
 import {
   useCreateSecretV3,
   useDeleteSecretBatch,
@@ -53,6 +54,20 @@ export const secretsLive: SecretsAdapter = {
   useCreateTag: (options) => useCreateWsTag({ meta: options?.meta }),
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
+  useImportedSecrets: ({ projectId, environments, path }) => {
+    const { secretImports } = useGetImportedSecretsAllEnvs({ projectId, environments, path });
+    return Object.fromEntries(
+      environments.map((environment, index) => [
+        environment,
+        (secretImports[index]?.data ?? []).map((group) => ({
+          importId: group.importId,
+          environment: group.environment,
+          secretPath: group.secretPath,
+          secrets: group.secrets
+        }))
+      ])
+    );
+  },
   useSecretKeyCheck: () => {
     const queryClient = useQueryClient();
     return (dto) => queryClient.fetchQuery(secretKeyExistsQueryOptions(dto));

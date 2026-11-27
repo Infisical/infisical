@@ -21,7 +21,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
@@ -306,9 +305,12 @@ export const AccessManagementPage = () => {
                 <li key={user.id}>
                   <span>{name ? `${name} (${email})` : email}</span>
                   {user.id === session.user.id && (
-                    <Tooltip content="Are you sure you want to remove yourself from this instance?">
-                      <Badge tone="bad">Deleting yourself</Badge>
-                    </Tooltip>
+                    <Badge
+                      reason="Are you sure you want to remove yourself from this instance?"
+                      tone="bad"
+                    >
+                      Deleting yourself
+                    </Badge>
                   )}
                 </li>
               );

@@ -40,6 +40,7 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { errorMessage, failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
@@ -580,7 +581,8 @@ const RecordingCard = ({
                 options={connections.map((connection) => ({
                   value: connection.id,
                   label: connection.name,
-                  meta: connection.providerName
+                  meta: connection.providerName,
+                  media: providerMedia("app-connection", connection.app)
                 }))}
                 onValueChange={(connectionId) => edit({ connectionId: connectionId || null })}
               />

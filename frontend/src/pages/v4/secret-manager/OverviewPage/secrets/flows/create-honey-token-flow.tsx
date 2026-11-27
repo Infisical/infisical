@@ -26,7 +26,8 @@ import {
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AwsHoneyTokenDeploymentUnavailableReason,
-  HoneyTokenManagedBy
+  HoneyTokenManagedBy,
+  HoneyTokenType
 } from "@app/hooks/api/honeyTokens/enums";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
@@ -340,6 +341,7 @@ export function CreateHoneyTokenFlow({
           kind: "honey",
           name,
           provider: "AWS",
+          type: HoneyTokenType.AWS,
           managedBy: draft.managedBy,
           status: "active",
           description: draft.description.trim(),

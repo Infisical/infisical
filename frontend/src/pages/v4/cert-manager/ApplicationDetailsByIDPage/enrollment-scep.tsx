@@ -23,6 +23,7 @@ import {
 import { errorMessage, failed, saved } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
 import { ConnectionCombobox } from "../../components/connection-combobox";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 import {
@@ -180,6 +181,7 @@ const IntuneConnectionField = ({
         label="Microsoft Intune connection"
         placeholder="Select a connection"
         connections={connections.data ?? []}
+        app={AppConnection.MicrosoftIntune}
         value={value}
         loading={connections.isPending}
         invalid={Boolean(error)}
@@ -217,7 +219,14 @@ const ChallengeFields = ({
       <Select
         label="Challenge type"
         value={value.challengeType}
-        options={CHALLENGE_OPTIONS.map(({ value: option, label }) => ({ value: option, label }))}
+        options={CHALLENGE_OPTIONS.map(({ value: option, label }) => ({
+          value: option,
+          label,
+          media:
+            option === ScepChallengeType.MICROSOFT_INTUNE
+              ? providerMedia("app-connection", AppConnection.MicrosoftIntune)
+              : undefined
+        }))}
         onChange={onChallengeTypeChange}
       />
     </Field>

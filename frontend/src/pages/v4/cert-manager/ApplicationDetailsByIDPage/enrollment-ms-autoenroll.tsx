@@ -186,6 +186,7 @@ const LdapConnectionField = ({
         label="LDAP connection"
         placeholder="Select an LDAP connection"
         connections={connections.data ?? []}
+        app={AppConnection.LDAP}
         value={value}
         loading={connections.isPending}
         invalid={Boolean(error)}

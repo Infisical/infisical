@@ -40,6 +40,7 @@ import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnec
 
 import { useConnectionCreation } from "../../../../components/connection-creation";
 import { ProviderIcon } from "../../../../components/provider-icon";
+import { providerMedia } from "../../../../components/provider-label";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock } from "../row-actions/permissions";
@@ -164,7 +165,7 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
       items={items}
       onSelect={(type) => onSelect(type as SecretRotation)}
       searchLabel="Search secret rotation providers"
-      searchPlaceholder="Search providers like PostgreSQL, AWS, Cloudflare..."
+      searchPlaceholder="Search providers..."
       noun="providers"
     />
   );
@@ -266,7 +267,8 @@ function ConfigurationFields({
               options={available.map((connection) => ({
                 value: connection.id,
                 label: connection.name,
-                meta: apps.length > 1 ? appConnectionName(connection.app) : undefined
+                meta: apps.length > 1 ? appConnectionName(connection.app) : undefined,
+                media: providerMedia("app-connection", connection.app as string as ApiAppConnection)
               }))}
               placeholder="Select connection..."
               emptyText={`No ${apps.map(appConnectionName).join(" or ")} connections yet.`}
@@ -719,9 +721,6 @@ export function SecretRotationFlow({
             ) : (
               <SheetHeader>
                 <SheetTitle>Choose a rotation provider</SheetTitle>
-                <SheetDescription>
-                  Pick the service whose credentials Infisical rotates on a schedule.
-                </SheetDescription>
               </SheetHeader>
             )}
             {type ? (

@@ -51,7 +51,6 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { Textarea } from "@infisical/cipher/ui/textarea";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { EnterpriseAppConnectionsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
@@ -177,11 +176,9 @@ export const RotationBadge = ({ row }: { row: TAppConnection }) => {
   if (!row.isAutoRotationEnabled) return <Badge tone="soft">Auto-rotation off</Badge>;
   if (rotation.rotationStatus === AppConnectionCredentialRotationStatus.Failed)
     return (
-      <Tooltip content={rotation.lastRotationMessage ?? "The last rotation failed."}>
-        <Badge tone="bad" dot>
-          Rotation failed
-        </Badge>
-      </Tooltip>
+      <Badge reason={rotation.lastRotationMessage ?? "The last rotation failed."} tone="bad" dot>
+        Rotation failed
+      </Badge>
     );
   const next = new Date(rotation.nextRotationAt);
   const daysLeft = (next.getTime() - Date.now()) / 86_400_000;
