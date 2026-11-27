@@ -31,6 +31,7 @@ import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
 import type { TOctopusDeployVariableSetScopeValues } from "@app/hooks/api/integrationAuth/types";
 import { OctopusDeployScope } from "@app/hooks/api/integrationAuth/types";
 import type { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
 import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { Dash } from "../../access/org/detail-parts";
@@ -348,6 +349,7 @@ const IntegrationDetails = ({
         <PageHeader
           breadcrumb={[{ label: "Native integrations", href: listHref }]}
           title={`${name} integration`}
+          media={option && <ProviderIcon icon={option.image} alt="" size="xl" />}
           badges={<SyncStatus integration={integration} size="control-sm" />}
           actions={
             <DropdownMenu>
