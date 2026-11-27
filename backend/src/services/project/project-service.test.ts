@@ -36,6 +36,7 @@ const setup = () => {
   const projectDAL = {
     findUserProjects: vi.fn().mockResolvedValue([]),
     find: vi.fn().mockResolvedValue([]),
+    countActiveByTypeInOrgTree: vi.fn().mockResolvedValue(0),
     transaction: vi.fn(<T>(cb: (trx: unknown) => Promise<T>) => cb(tx))
   };
   const orgPermissionService = {
@@ -186,9 +187,13 @@ describe("secret scanning project uniqueness", () => {
 });
 
 describe("projects per organization cap", () => {
-  const createProject = (service: ReturnType<typeof setup>["service"], type: ProjectType) =>
+  const createProject = (
+    service: ReturnType<typeof setup>["service"],
+    type: ProjectType,
+    org: { id: string; rootOrgId: string } = { id: "root", rootOrgId: "root" }
+  ) =>
     service.createProject({
-      actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
+      actor: { principal: { type: ActorType.USER, id: "user" }, org } as TActorContext,
       projectName: "Capped",
       type
     });
@@ -202,19 +207,33 @@ describe("projects per organization cap", () => {
     }
   };
 
-  test("refuses a Secrets Management project once the organization is at the cap on Infisical Cloud", () =>
+  test("refuses a Secrets Management project once the organization tree is at the cap on Infisical Cloud", () =>
     onCloud(async () => {
       const { service, projectDAL, tx, licenseService } = setup();
       licenseService.setPlan("root", { smProjectsPerOrgLimit: 1000 });
-      projectDAL.find.mockResolvedValue([{ count: "1000" }]);
+      projectDAL.countActiveByTypeInOrgTree.mockResolvedValue(1000);
 
       await expect(createProject(service, ProjectType.SecretManager)).rejects.toThrow(
-        "Organization already has the maximum of 1000 Secrets Management projects. Delete projects you no longer use before creating another."
+        "Your organization and its sub-organizations already have the maximum of 1000 Secrets Management projects. Delete projects you no longer use before creating another."
       );
-      expect(projectDAL.find).toHaveBeenCalledExactlyOnceWith(
-        { orgId: "root", type: ProjectType.SecretManager },
-        { countDistinct: "id", tx }
+      expect(projectDAL.countActiveByTypeInOrgTree).toHaveBeenCalledExactlyOnceWith(
+        "root",
+        ProjectType.SecretManager,
+        tx
       );
+    }));
+
+  test("counts a sub-organization's create against the root's whole tree", () =>
+    onCloud(async () => {
+      const { service, orgDAL, projectDAL, tx, licenseService } = setup();
+      orgDAL.findOne.mockResolvedValue({ id: "sub" });
+      licenseService.setPlan("sub", { smProjectsPerOrgLimit: 3 });
+      projectDAL.countActiveByTypeInOrgTree.mockResolvedValue(3);
+
+      await expect(createProject(service, ProjectType.SecretManager, { id: "sub", rootOrgId: "root" })).rejects.toThrow(
+        "already have the maximum of 3 Secrets Management projects"
+      );
+      expect(projectDAL.countActiveByTypeInOrgTree).toHaveBeenCalledWith("root", ProjectType.SecretManager, tx);
     }));
 
   test("does not cap or count projects of other products", () =>
@@ -226,22 +245,16 @@ describe("projects per organization cap", () => {
       await expect(createProject(service, ProjectType.SecretScanning)).rejects.toThrow(
         "Secret Scanning is limited to one project per organization at this time."
       );
-      expect(projectDAL.find).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ countDistinct: "id" })
-      );
+      expect(projectDAL.countActiveByTypeInOrgTree).not.toHaveBeenCalled();
     }));
 
   test("does not count projects on self-hosted instances", async () => {
     const { service, projectDAL } = setup();
-    projectDAL.find.mockResolvedValue([{ count: "1000" }]);
+    projectDAL.countActiveByTypeInOrgTree.mockResolvedValue(1000);
 
     await createProject(service, ProjectType.SecretManager).catch(() => undefined);
 
-    expect(projectDAL.find).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ countDistinct: "id" })
-    );
+    expect(projectDAL.countActiveByTypeInOrgTree).not.toHaveBeenCalled();
   });
 });
 

@@ -355,15 +355,12 @@ export const projectServiceFactory = ({
       }
 
       if (type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
-        const [{ count: orgProjectCount }] = await projectDAL.find(
-          { orgId: organization.id, type: ProjectType.SecretManager },
-          { countDistinct: "id", tx }
-        );
+        // The limit spans the root org and its sub-orgs, so sub-orgs cannot multiply it.
         resourceLimits.assertWithin({
           limit: ResourceLimit.ProjectsPerOrg,
-          used: Number(orgProjectCount),
+          used: await projectDAL.countActiveByTypeInOrgTree(actor.org.rootOrgId, ProjectType.SecretManager, tx),
           describe: (max) =>
-            `Organization already has the maximum of ${max} Secrets Management projects. Delete projects you no longer use before creating another.`
+            `Your organization and its sub-organizations already have the maximum of ${max} Secrets Management projects. Delete projects you no longer use before creating another.`
         });
       }
 
@@ -1069,15 +1066,11 @@ export const projectServiceFactory = ({
           }
 
           if (isProjectCapped) {
-            const [{ count: orgProjectCount }] = await projectDAL.find(
-              { orgId: project.orgId, type: ProjectType.SecretManager },
-              { countDistinct: "id", tx }
-            );
             resourceLimits.assertWithin({
               limit: ResourceLimit.ProjectsPerOrg,
-              used: Number(orgProjectCount),
+              used: await projectDAL.countActiveByTypeInOrgTree(dto.actor.org.rootOrgId, ProjectType.SecretManager, tx),
               describe: (max) =>
-                `Organization already has the maximum of ${max} Secrets Management projects. Delete a project before restoring this one.`
+                `Your organization and its sub-organizations already have the maximum of ${max} Secrets Management projects. Delete a project before restoring this one.`
             });
           }
 

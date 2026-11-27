@@ -3,8 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 import { ProjectType } from "@app/db/schemas";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { BadRequestError } from "@app/lib/errors";
 
 import { projectTemplateServiceFactory } from "./project-template-service";
 
@@ -23,7 +23,7 @@ const REACHED_TRANSACTION = new Error("reached transaction");
 
 const actor = {
   principal: { type: ActorType.USER, id: "actor-1" },
-  org: { id: ORG_ID }
+  org: { id: ORG_ID, rootOrgId: ORG_ID }
 } as unknown as Parameters<ReturnType<typeof projectTemplateServiceFactory>["createProjectTemplate"]>[1];
 
 const templateCountQuery = vi.fn();
@@ -54,7 +54,7 @@ const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {})
         environments: [],
         projectManagedIdentities: [{ name: LEGACY_NAME, roles: [] }]
       }),
-      find: templateCountQuery.mockReset().mockResolvedValue([{ count: String(orgTemplateCount) }]),
+      countByTypeInOrgTree: templateCountQuery.mockReset().mockResolvedValue(orgTemplateCount),
       create: vi.fn().mockRejectedValue(REACHED_TRANSACTION),
       transaction:
         orgTemplateCount === undefined
@@ -111,21 +111,18 @@ describe("project template cap on Infisical Cloud", () => {
       const result = create("deploy-bot", createService({ orgTemplateCount: 100 }));
       await expect(result).rejects.toBeInstanceOf(BadRequestError);
       await expect(result).rejects.toThrow(
-        "Organization already has the maximum of 100 Secrets Management project templates"
+        "Your organization and its sub-organizations already have the maximum of 100 Secrets Management project templates"
       );
     } finally {
       mockConfig.INFISICAL_CLOUD = false;
     }
   });
 
-  test("create counts only Secrets Management templates", async () => {
+  test("create counts only Secrets Management templates, across the organization tree", async () => {
     mockConfig.INFISICAL_CLOUD = true;
     try {
       await expect(create("deploy-bot", createService({ orgTemplateCount: 5 }))).rejects.toBe(REACHED_TRANSACTION);
-      expect(templateCountQuery).toHaveBeenCalledWith(
-        { orgId: ORG_ID, type: ProjectType.SecretManager },
-        expect.objectContaining({ countDistinct: "id" })
-      );
+      expect(templateCountQuery).toHaveBeenCalledWith(ORG_ID, ProjectType.SecretManager, {});
     } finally {
       mockConfig.INFISICAL_CLOUD = false;
     }
