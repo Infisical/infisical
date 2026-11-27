@@ -32,7 +32,7 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   (`20261126120000_merge-secret-scanning-findings-across-resources.ts`).
 - Scans write findings only through `findings.persistLocations` (`secret-scanning-v2-dal.ts`), in the transaction
   that records the scan's progress. Only a location the resource didn't have can create a finding or reopen a
-  `resolved` one; a rescan of history must change nothing. False positives and ignored findings just gain the
+  `resolved` one; a rescan of history must change nothing beyond merging findings from before blind indexes. False positives and ignored findings just gain the
   location. Its locks (next item) keep two scans from both creating a finding for one value or both taking a location
   as new.
 - Finding locks are taken in one order: a resource's advisory lock (`PgSqlLock.SecretScanningFindingLocations`), then
@@ -50,8 +50,11 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   has locations elsewhere. Never rely on that cascade.
 - A fingerprint is `commit:file:rule:line:column` with the scanner's own column, and full and diff scans must build
   the same one for the same leak, or a full scan sees a known leak as a new location and reopens it.
-- Findings from before blind indexes existed have a NULL blind index and one location each, and stay that way. So do
-  matches without a value (rules that match only a file's path), since grouping them by value would merge them all.
+- Findings from before blind indexes existed have a NULL blind index and one location each, since no stored data holds
+  the value to compute one from. A scan that matches one of their locations again knows the value, and
+  `persistLocations` merges the finding into its value's finding with the merge migration's rules, or gives it the
+  blind index when the value has none yet. Matches without a value (rules that match only a file's path) never get
+  one, since grouping them by value would merge them all.
 - `findings.resourceId`, `scanId`, `fingerprint` and `details` describe one of the finding's locations and always move
   together, so the scan always belongs to the resource. The last three are deprecated but still written:
   `persistLocations` stores the finding's first location there, so the release before locations existed keeps working
