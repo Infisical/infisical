@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
+import { getLogStreamDestinationHost } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { AuditLogStreamFiltersSchema } from "@app/ee/services/audit-log-stream/audit-log-stream-schemas";
 import { TAuditLogStream } from "@app/ee/services/audit-log-stream/audit-log-stream-types";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
@@ -59,7 +61,7 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     handler: async (req) => {
       const { logStreamId } = req.params;
 
-      const auditLogStream = await server.services.auditLogStream.getById(logStreamId, provider, req.permission);
+      const auditLogStream = await server.services.auditLogStream.getById(logStreamId, provider, req.actor);
 
       return { auditLogStream };
     }
@@ -90,14 +92,28 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
           credentials,
           filters
         },
-        req.permission
+        req.actor
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.actor.orgId,
+        event: {
+          type: EventType.CREATE_AUDIT_LOG_STREAM,
+          metadata: {
+            logStreamId: auditLogStream.id,
+            provider,
+            destinationHost: getLogStreamDestinationHost(auditLogStream.credentials),
+            filters: auditLogStream.filters ?? null
+          }
+        }
+      });
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AuditLogStreamCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { streamId: auditLogStream.id, destinationType: provider }
         })
         .catch(() => {});
@@ -137,14 +153,28 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
           streamMode,
           filters
         },
-        req.permission
+        req.actor
       );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.actor.orgId,
+        event: {
+          type: EventType.UPDATE_AUDIT_LOG_STREAM,
+          metadata: {
+            logStreamId: auditLogStream.id,
+            provider,
+            destinationHost: getLogStreamDestinationHost(auditLogStream.credentials),
+            filters: auditLogStream.filters ?? null
+          }
+        }
+      });
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AuditLogStreamUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { streamId: auditLogStream.id, destinationType: provider }
         })
         .catch(() => {});
@@ -174,13 +204,26 @@ export const registerAuditLogStreamEndpoints = <T extends TAuditLogStream>({
     handler: async (req) => {
       const { logStreamId } = req.params;
 
-      const auditLogStream = await server.services.auditLogStream.deleteById(logStreamId, provider, req.permission);
+      const auditLogStream = await server.services.auditLogStream.deleteById(logStreamId, provider, req.actor);
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.actor.orgId,
+        event: {
+          type: EventType.DELETE_AUDIT_LOG_STREAM,
+          metadata: {
+            logStreamId: auditLogStream.id,
+            provider,
+            destinationHost: getLogStreamDestinationHost(auditLogStream.credentials)
+          }
+        }
+      });
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AuditLogStreamDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { streamId: auditLogStream.id, destinationType: provider }
         })
         .catch(() => {});

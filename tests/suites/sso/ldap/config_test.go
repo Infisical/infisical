@@ -7,6 +7,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/ldap"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,7 @@ func TestLDAPConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		d := newDirectory(t, tn)
 
 		// Action
@@ -49,6 +51,23 @@ func TestLDAPConfig_Create(t *testing.T) {
 		// Assert
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Contains(t, apierr.Message(res.Body), "plan restriction")
+		require.Nil(t, storedConfig(t, tn).JSON200)
+	})
+
+	t.Run("should refuse creation and store nothing when the organization has no verified email domain", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		d := newDirectory(t, tn)
+
+		// Action
+		res := createConfig(t, tn.Admin.API, d.configBody())
+
+		// Assert
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.NotNil(t, res.JSON400)
+		require.Equal(t, "SSO_EMAIL_DOMAIN_NOT_VERIFIED", res.JSON400.Error)
 		require.Nil(t, storedConfig(t, tn).JSON200)
 	})
 

@@ -1,5 +1,5 @@
-import { TGenericPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import {
@@ -154,7 +154,7 @@ export type TAgentVaultOauthAuthorizationView = {
 
 export type TCreateAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   serverUrl: string;
   serviceId?: string;
   clientId?: string;
@@ -165,7 +165,7 @@ export type TCreateAuthorizationDTO = {
 
 export type TStartVariableAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   variableId: string;
   // Your own OAuth app's secret. Without one, a reconnect keeps the secret stored with the variable's tokens.
   clientSecret?: string;
@@ -173,7 +173,7 @@ export type TStartVariableAuthorizationDTO = {
 
 export type TCompleteVariableAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   variableId: string;
   state: string;
   code?: string;
@@ -184,7 +184,7 @@ export type TCompleteVariableAuthorizationDTO = {
 
 export type TCompleteAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   authorizationId: string;
   state: string;
   code?: string;
@@ -195,7 +195,7 @@ export type TCompleteAuthorizationDTO = {
 
 export type TGetAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   authorizationId: string;
 };
 
@@ -204,7 +204,7 @@ export type TClaimAuthorizationDTO = {
   projectId: string;
   // The service the PATCH is for, or undefined on create.
   serviceId?: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   serverUrl: string;
   personal?: boolean;
 };

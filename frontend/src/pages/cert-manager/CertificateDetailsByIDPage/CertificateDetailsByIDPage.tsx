@@ -72,9 +72,9 @@ import {
   getCertificateDeletionWarning,
   getPendingRevocationRequestLink,
   getPendingRevocationState,
+  getRenewNowState,
   isExpiringWithinOneDay,
-  isManagedCertificate,
-  RENEWAL_UNAVAILABLE_NO_PROFILE
+  isManagedCertificate
 } from "../CertificatesPage/components/CertificatesTable.utils";
 import { useCertificateHoldingSyncs } from "../CertificatesPage/components/useCertificateHoldingSyncs";
 import {
@@ -503,18 +503,19 @@ const Page = () => {
 
                   if (!isRenewable) return null;
 
-                  const profileMissing = !certificate.profileId;
-                  if (profileMissing && !isManagedCertificate(certificate)) return null;
+                  if (!certificate.profileId && !isManagedCertificate(certificate)) return null;
 
-                  const renewBlockedReason = profileMissing
-                    ? RENEWAL_UNAVAILABLE_NO_PROFILE
-                    : applicationAccess?.renewBlockedReason;
+                  const renewNow = getRenewNowState({
+                    certificate,
+                    canRenew: canRenewCertificate,
+                    permissionBlockedReason: applicationAccess?.renewBlockedReason
+                  });
 
                   return (
-                    <BlockedActionTooltip reason={renewBlockedReason}>
+                    <BlockedActionTooltip reason={renewNow.reason}>
                       <DropdownMenuItem
-                        isDisabled={!canRenewCertificate || profileMissing}
-                        isDisabledFocusable={Boolean(renewBlockedReason)}
+                        isDisabled={renewNow.isDisabled}
+                        isDisabledFocusable={Boolean(renewNow.reason)}
                         onClick={() =>
                           handlePopUpOpen("renewCertificate", {
                             certificateId: certificate.id,

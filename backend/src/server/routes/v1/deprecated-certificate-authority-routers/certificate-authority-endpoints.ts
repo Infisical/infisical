@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
@@ -64,7 +64,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthorities = (await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
         { projectId, type: caType },
-        req.permission
+        req.actor
       )) as T[];
 
       await server.services.auditLog.createAuditLog({
@@ -109,7 +109,7 @@ export const registerCertificateAuthorityEndpoints = <
       const certificateAuthority =
         (await server.services.certificateAuthority.findCertificateAuthorityByNameAndProjectId(
           { caName, type: caType, projectId },
-          req.permission
+          req.actor
         )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -146,7 +146,7 @@ export const registerCertificateAuthorityEndpoints = <
     handler: async (req) => {
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, type: caType },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -193,7 +193,7 @@ export const registerCertificateAuthorityEndpoints = <
           type: caType,
           caName
         },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -239,7 +239,7 @@ export const registerCertificateAuthorityEndpoints = <
 
       const certificateAuthority = (await server.services.certificateAuthority.deprecatedDeleteCertificateAuthority(
         { caName, type: caType, projectId },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({

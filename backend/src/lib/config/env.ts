@@ -59,6 +59,20 @@ export const runModesSchema = zpStr(z.string().optional())
       .nonempty("INFISICAL_RUN_MODES must name at least one run mode")
   );
 
+// The address MCP clients connect to, when a proxy serves the MCP server somewhere other than SITE_URL/api/mcp and
+// forwards it there. Tokens are bound to it byte for byte (RFC 8707), which rules out a fragment or query.
+export const mcpServerUrlSchema = zpStr(
+  z
+    .string()
+    .refine((val) => {
+      if (!URL.canParse(val)) return false;
+      const { protocol, search, hash } = new URL(val);
+      return (protocol === "https:" || protocol === "http:") && !search && !hash;
+    }, "MCP_SERVER_URL must be an absolute http or https URL without a query or fragment, such as https://mcp.example.com/mcp")
+    .transform(removeTrailingSlash)
+    .optional()
+);
+
 /**
  * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
  * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
@@ -345,7 +359,7 @@ const envSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("production"),
     SALT_ROUNDS: z.coerce.number().default(10),
     INITIAL_ORGANIZATION_NAME: zpStr(z.string().optional()),
-    INITIAL_SETUP_ACTIVATION_TOKEN: zpStr(z.string().min(32).max(256).optional()),
+    INSTANCE_SETUP_TOKEN: zpStr(z.string().min(6).max(32).optional()),
     // TODO(akhilmhdh): will be changed to one
     ENCRYPTION_KEY: zpStr(z.string().optional()),
     ROOT_ENCRYPTION_KEY: zpStr(z.string().optional()),
@@ -358,6 +372,7 @@ const envSchema = z
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
 
     OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
+    ALLOW_CRON_JOB_TRIGGER: zodStrBool.default("false"),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -406,6 +421,7 @@ const envSchema = z
 
     // Ensure that the SITE_URL never ends with a trailing slash
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
+    MCP_SERVER_URL: mcpServerUrlSchema,
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),
@@ -678,13 +694,6 @@ const envSchema = z
 
     /* OracleDB ----------------------------------------------------------------------------- */
     TNS_ADMIN: zpStr(z.string().optional()),
-
-    /* Go Sidecar ----------------------------------------------------------------------------- */
-    GOLANG_SIDECAR_URL: zpStr(z.string().optional()),
-    GO_SIDECAR_SHADOW_ENABLED: zodStrBool.default("false"),
-    GO_SIDECAR_SHADOW_SAMPLE_RATE: z.coerce.number().min(0).max(100).default(10),
-    GO_SIDECAR_BINARY_PATH: zpStr(z.string().optional()),
-    GO_SIDECAR_SPAWN_ENABLED: zodStrBool.default("false"),
 
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())

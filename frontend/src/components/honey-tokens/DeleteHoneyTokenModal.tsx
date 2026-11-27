@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from "@app/components/v3";
-import { useRevokeHoneyToken } from "@app/hooks/api/honeyTokens";
+import { useDeleteHoneyToken } from "@app/hooks/api/honeyTokens";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 
 type Props = {
@@ -20,15 +20,12 @@ type Props = {
 };
 
 export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props) => {
-  const revokeHoneyToken = useRevokeHoneyToken();
+  const deleteHoneyToken = useDeleteHoneyToken();
 
   if (!honeyToken) return null;
 
   const handleDelete = async () => {
-    await revokeHoneyToken.mutateAsync({
-      honeyTokenId: honeyToken.id,
-      projectId: honeyToken.projectId
-    });
+    await deleteHoneyToken.mutateAsync({ honeyTokenId: honeyToken.id });
 
     createNotification({
       text: `Successfully deleted honey token "${honeyToken.name}"`,
@@ -40,7 +37,7 @@ export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
 
   return (
     <AlertDialog
-      isPending={revokeHoneyToken.isPending}
+      isPending={deleteHoneyToken.isPending}
       open={isOpen}
       confirmationValue={honeyToken.name}
       onOpenChange={onOpenChange}
@@ -49,8 +46,8 @@ export const DeleteHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Prop
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete {honeyToken.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will revoke the AWS IAM credentials and remove the associated decoy secrets from
-            this environment.
+            This removes the revoked honey token from the dashboard and permanently deletes its
+            event history.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogConfirmationField

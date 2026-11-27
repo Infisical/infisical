@@ -48,6 +48,8 @@ const jsonDescription: PostProcessCallback = (jsonSchema, def) => {
 const zodToJsonSchemaOptions = {
   target: "openApi3",
   $refStrategy: "none",
+  // The default writes .base64() as contentEncoding, which OpenAPI 3.0 rejects, failing the docs deploy.
+  base64Strategy: "pattern:zod",
   postProcess: jsonDescription
 } as const;
 

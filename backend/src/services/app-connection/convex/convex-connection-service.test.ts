@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AppConnection } from "../app-connection-enums";
 import { convexConnectionService } from "./convex-connection-service";
@@ -22,7 +22,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const CONNECTION_ID = "11111111-1111-4111-8111-111111111111";
-const actor = { type: "user" } as unknown as OrgServiceActor;
+const actor = { type: "user" } as unknown as TActorContext;
 const appConnection = { id: CONNECTION_ID, credentials: { accessToken: "pat-token" } };
 
 describe("convexConnectionService", () => {

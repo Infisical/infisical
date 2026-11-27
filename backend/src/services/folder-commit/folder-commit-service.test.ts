@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TSecretFolderVersions, TSecretVersionsV2 } from "@app/db/schemas";
 import { EntityNotFoundError } from "@app/domains/lib/errors";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType } from "../auth/auth-type";
 import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
 import { SecretModifiedEventV1 } from "../secret-v2-bridge/secret-events";
 import {
@@ -164,8 +164,8 @@ describe("folderCommitServiceFactory", () => {
     createFolderTreeCheckpoint: vi.fn().mockResolvedValue({})
   };
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({})
+  const mockSecretsPermissionService = {
+    getSecretsPermission: vi.fn().mockResolvedValue({})
   };
 
   const mockSecretTagDAL = {
@@ -216,8 +216,7 @@ describe("folderCommitServiceFactory", () => {
       // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
       secretV2BridgeDAL: mockSecretV2BridgeDAL,
       folderCommitQueueService: mockFolderCommitQueueService,
-      // @ts-expect-error - Mock implementation doesn't need all interface methods for testing
-      permissionService: mockPermissionService,
+      secretsPermissionService: mockSecretsPermissionService as never,
       kmsDataKeyService: mockKmsService as never,
       secretTagDAL: mockSecretTagDAL,
       resourceMetadataDAL: mockResourceMetadataDAL,

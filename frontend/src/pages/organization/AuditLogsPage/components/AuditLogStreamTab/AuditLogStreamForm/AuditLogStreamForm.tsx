@@ -17,7 +17,7 @@ import { SplunkProviderAuditLogStreamForm } from "./SplunkProviderAuditLogStream
 import { SumoLogicProviderAuditLogStreamForm } from "./SumoLogicProviderAuditLogStreamForm";
 
 // Provider forms submit their provider + credentials; the custom form may also submit a
-// one-way streamMode upgrade (single -> batch). Every form may submit product filters.
+// one-way streamMode upgrade (single -> batch). Every form may submit filters.
 export type AuditLogStreamFormData = DiscriminativePick<
   TAuditLogStream,
   "provider" | "credentials"
@@ -26,11 +26,16 @@ export type AuditLogStreamFormData = DiscriminativePick<
   filters?: TAuditLogStreamFilters | null;
 };
 
-// An empty product selection means "stream everything", which the API represents as a null filter.
-const normalizeFilters = (formData: AuditLogStreamFormData): AuditLogStreamFormData => ({
-  ...formData,
-  filters: formData.filters?.products?.length ? formData.filters : null
-});
+// Every product and no PAM session activity are the defaults, which the API represents as a null filter.
+const normalizeFilters = (formData: AuditLogStreamFormData): AuditLogStreamFormData => {
+  const products = formData.filters?.products?.length ? formData.filters.products : undefined;
+  const pamSessionActivity = formData.filters?.pamSessionActivity ?? undefined;
+
+  return {
+    ...formData,
+    filters: products || pamSessionActivity ? { products, pamSessionActivity } : null
+  };
+};
 
 type FormProps = {
   onComplete: (auditLogStream: TAuditLogStream) => void;

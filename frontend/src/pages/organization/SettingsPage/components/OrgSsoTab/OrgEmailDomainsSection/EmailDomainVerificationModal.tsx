@@ -63,7 +63,7 @@ export const EmailDomainVerificationModal = ({
     }
   };
 
-  const txtValue = `infisical-domain-verification=${domainData?.verificationCode ?? ""}`;
+  const record = domainData?.verificationRecord;
 
   return (
     <Dialog
@@ -82,7 +82,7 @@ export const EmailDomainVerificationModal = ({
           <DetailGroup className="rounded-md border border-border bg-card p-4">
             <Detail>
               <DetailLabel>Record Type</DetailLabel>
-              <DetailValue>TXT</DetailValue>
+              <DetailValue>{record?.type}</DetailValue>
             </Detail>
             <Detail>
               <DetailLabel className="flex items-center justify-between">
@@ -93,7 +93,7 @@ export const EmailDomainVerificationModal = ({
                       aria-label="copy record name"
                       variant="ghost-muted"
                       size="xs"
-                      onClick={() => handleCopy(domainData?.verificationRecordName ?? "")}
+                      onClick={() => handleCopy(record?.name ?? "")}
                     >
                       <Copy />
                     </IconButton>
@@ -101,7 +101,7 @@ export const EmailDomainVerificationModal = ({
                   <TooltipContent>Copy</TooltipContent>
                 </Tooltip>
               </DetailLabel>
-              <DetailValue>{domainData?.verificationRecordName}</DetailValue>
+              <DetailValue>{record?.name}</DetailValue>
             </Detail>
             <Detail>
               <DetailLabel className="flex items-center justify-between">
@@ -112,7 +112,7 @@ export const EmailDomainVerificationModal = ({
                       aria-label="copy record value"
                       variant="ghost-muted"
                       size="xs"
-                      onClick={() => handleCopy(txtValue)}
+                      onClick={() => handleCopy(record?.value ?? "")}
                     >
                       <Copy />
                     </IconButton>
@@ -120,7 +120,7 @@ export const EmailDomainVerificationModal = ({
                   <TooltipContent>Copy</TooltipContent>
                 </Tooltip>
               </DetailLabel>
-              <DetailValue>{txtValue}</DetailValue>
+              <DetailValue>{record?.value}</DetailValue>
             </Detail>
           </DetailGroup>
           <Alert variant="warning">

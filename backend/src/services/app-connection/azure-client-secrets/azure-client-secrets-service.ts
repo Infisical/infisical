@@ -1,7 +1,7 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-client-secrets/azure-client-secrets-connection-fns";
@@ -16,7 +16,7 @@ import {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAzureClientSecretsConnection>;
 
 const listAzureRegisteredApps = async (
@@ -62,7 +62,7 @@ export const azureClientSecretsConnectionService = (
   instanceConfigService: TInstanceConfigService,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const listApps = async (connectionId: string, actor: OrgServiceActor) => {
+  const listApps = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.AzureClientSecrets, connectionId, actor);
 
     const apps = await listAzureRegisteredApps(

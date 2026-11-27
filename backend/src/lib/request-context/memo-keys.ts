@@ -1,61 +1,8 @@
-import { ActionProjectType, OrganizationActionScope, ResourceType } from "@app/db/schemas";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
-
 /**
  * Builders for {@link requestMemoize} string keys. Centralizes formats so call sites
  * cannot drift (e.g. `project:findById` vs `project:findbyId`).
  */
 export const requestMemoKeys = {
-  orgPermission: ({
-    orgId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    scope
-  }: {
-    orgId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    scope?: OrganizationActionScope | null;
-  }) => `permission:org:${orgId}:${actor}:${actorId}:${actorAuthMethod}:${scope ?? "any"}`,
-
-  projectPermission: ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actionProjectType,
-    actorOrgId
-  }: {
-    projectId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actionProjectType: ActionProjectType;
-    actorOrgId?: string;
-  }) =>
-    `permission:project:${projectId}:${actor}:${actorId}:${actorAuthMethod}:${actionProjectType}:${actorOrgId ?? ""}`,
-
-  resourcePermission: ({
-    projectId,
-    resourceType,
-    resourceId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: {
-    projectId: string;
-    resourceType: ResourceType;
-    resourceId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId?: string;
-  }) =>
-    `permission:resource:${projectId}:${resourceType}:${resourceId}:${actor}:${actorId}:${actorAuthMethod}:${actorOrgId ?? ""}`,
-
   projectFindById: (projectId: string) => `project:findById:${projectId}`,
 
   folderSecretPath: (projectId: string, folderId: string) => `folder:secretPath:${projectId}:${folderId}`,

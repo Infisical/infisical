@@ -1,17 +1,15 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
-import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -30,10 +28,9 @@ import {
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { PAM_RECORDING_STORAGE_FACTORY_MAP } from "../pam-session-recording/pam-recording-storage-factory";
 import { normalizeKeyPrefix, TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
-import { TActorContext } from "./pam-permission";
 
 export type TPamValidatorDeps = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  orgPermissionService: TOrgPermissionService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
@@ -44,11 +41,11 @@ export type TPamValidatorDeps = {
 
 export const validateGatewayAttachment = async (
   {
-    permissionService,
+    orgPermissionService,
     gatewayV2DAL,
     gatewayPoolService,
     orgDAL
-  }: Pick<TPamValidatorDeps, "permissionService" | "gatewayV2DAL" | "gatewayPoolService" | "orgDAL">,
+  }: Pick<TPamValidatorDeps, "orgPermissionService" | "gatewayV2DAL" | "gatewayPoolService" | "orgDAL">,
   gwId: string | null | undefined,
   poolId: string | null | undefined,
   ctx: TActorContext,
@@ -56,27 +53,20 @@ export const validateGatewayAttachment = async (
   { previousGatewayId, inheritedFrom }: { previousGatewayId?: string | null; inheritedFrom?: string } = {}
 ) => {
   if (gwId) {
-    const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.actorOrgId });
+    const gw = await gatewayV2DAL.findOne({ id: gwId, orgId: ctx.org.id });
     if (!gw) {
       throw new NotFoundError({ message: "Gateway not found in your organization" });
     }
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      orgId: ctx.actorOrgId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor: ctx });
+    orgPermission.assert({
+      action: OrgPermissionGatewayActions.AttachGateways,
+      subject: OrgPermissionSubjects.Gateway
     });
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionGatewayActions.AttachGateways,
-      OrgPermissionSubjects.Gateway
-    );
 
     await assertIndividualGatewayAllowed({
       orgDAL,
-      orgId: ctx.actorOrgId,
+      orgId: ctx.org.id,
       gatewayId: gwId,
       previousGatewayId,
       inheritedFrom
@@ -85,14 +75,14 @@ export const validateGatewayAttachment = async (
   if (poolId) {
     await gatewayPoolService.resolveAttachableGatewayFromPool({
       poolId,
-      orgId: ctx.actorOrgId,
-      actor: { type: ctx.actor, id: ctx.actorId, authMethod: ctx.actorAuthMethod, orgId: ctx.actorOrgId }
+      orgId: ctx.org.id,
+      actor: ctx
     });
   }
 };
 
 const enforceAppConnectionConnect = async (
-  { permissionService, appConnectionDAL }: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL">,
+  { orgPermissionService, appConnectionDAL }: Pick<TPamValidatorDeps, "orgPermissionService" | "appConnectionDAL">,
   connectionId: string,
   ctx: TActorContext
 ) => {
@@ -107,7 +97,7 @@ const enforceAppConnectionConnect = async (
     });
   }
 
-  if (conn.orgId !== ctx.actorOrgId) {
+  if (conn.orgId !== ctx.org.id) {
     throw new NotFoundError({ message: "Recording connection not found" });
   }
 
@@ -117,24 +107,18 @@ const enforceAppConnectionConnect = async (
     throw new BadRequestError({ message: "Recording connection must be an organization-level connection" });
   }
 
-  const { permission: orgPermission } = await permissionService.getOrgPermission({
-    actorId: ctx.actorId,
-    actor: ctx.actor,
-    orgId: conn.orgId,
-    actorOrgId: ctx.actorOrgId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    scope: OrganizationActionScope.Any
+  const orgPermission = await orgPermissionService.getOrgPermission({ actor: ctx, orgId: conn.orgId });
+  orgPermission.assert({
+    action: OrgPermissionAppConnectionActions.Connect,
+    subject: OrgPermissionSubjects.AppConnections,
+    fields: { connectionId }
   });
-  ForbiddenError.from(orgPermission).throwUnlessCan(
-    OrgPermissionAppConnectionActions.Connect,
-    subject(OrgPermissionSubjects.AppConnections, { connectionId })
-  );
 
   return conn;
 };
 
 export const validateRecordingConnection = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL">,
+  deps: Pick<TPamValidatorDeps, "orgPermissionService" | "appConnectionDAL">,
   connectionId: string | null | undefined,
   ctx: TActorContext
 ) => {
@@ -146,7 +130,7 @@ export const validateRecordingConnection = async (
 export const validateRecordingS3Config = async (
   deps: Pick<
     TPamValidatorDeps,
-    "permissionService" | "appConnectionDAL" | "kmsDataKeyService" | "instanceConfigService"
+    "orgPermissionService" | "appConnectionDAL" | "kmsDataKeyService" | "instanceConfigService"
   >,
   connectionId: string,
   s3Config: { bucket: string; region?: string; keyPrefix?: string },
@@ -176,7 +160,7 @@ export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templa
 export const resolveOverridesS3Config = async (
   deps: Pick<
     TPamValidatorDeps,
-    "permissionService" | "appConnectionDAL" | "kmsDataKeyService" | "instanceConfigService"
+    "orgPermissionService" | "appConnectionDAL" | "kmsDataKeyService" | "instanceConfigService"
   >,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,

@@ -12,19 +12,12 @@ import {
   Label,
   Toggle
 } from "@app/components/v3";
-import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
+import { applySecretSyncKeySchema, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 
 const SAMPLE_SECRET_KEY = "API_KEY";
 const SAMPLE_ENVIRONMENT = "prod";
-
-const applyKeySchema = (schema: string | undefined) => {
-  if (!schema) return SAMPLE_SECRET_KEY;
-  return schema
-    .replaceAll("{{secretKey}}", SAMPLE_SECRET_KEY)
-    .replaceAll("{{environment}}", SAMPLE_ENVIRONMENT);
-};
 
 type PreviewProps = {
   schema: string | undefined;
@@ -32,7 +25,7 @@ type PreviewProps = {
 };
 
 const KeySchemaPreview = ({ schema, destinationName }: PreviewProps) => {
-  const transformed = applyKeySchema(schema);
+  const transformed = applySecretSyncKeySchema(schema, SAMPLE_SECRET_KEY, SAMPLE_ENVIRONMENT);
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3" aria-hidden="true">

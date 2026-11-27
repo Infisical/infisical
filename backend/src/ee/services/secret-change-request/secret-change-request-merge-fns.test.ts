@@ -1,9 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { SecretOperations } from "@app/services/secret/secret-types";
 
 import {

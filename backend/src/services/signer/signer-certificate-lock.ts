@@ -25,3 +25,16 @@ export const withSignerCertificateLock = async <T>(
     await lock.release().catch(() => {});
   }
 };
+
+export const withSignerCertificateLocks = async <T>(
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">,
+  signerIds: string[],
+  onLockHeld: () => T | Promise<T>,
+  fn: () => Promise<T>
+): Promise<T> =>
+  [...signerIds]
+    .sort()
+    .reduceRight<() => Promise<T>>(
+      (next, signerId) => () => withSignerCertificateLock(keyStore, signerId, onLockHeld, next),
+      fn
+    )();

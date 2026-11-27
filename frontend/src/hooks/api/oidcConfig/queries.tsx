@@ -15,9 +15,7 @@ export const useGetOIDCConfig = (orgId: string) => {
     queryKey: oidcConfigKeys.getOIDCConfig(orgId),
     queryFn: async () => {
       try {
-        const { data } = await apiRequest.get<OIDCConfigData>(
-          `/api/v1/sso/oidc/config?organizationId=${orgId}`
-        );
+        const { data } = await apiRequest.get<OIDCConfigData>("/api/v1/sso/oidc/config");
 
         return data;
       } catch {

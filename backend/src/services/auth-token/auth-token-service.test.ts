@@ -4,10 +4,10 @@ import knex from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseError, ForbiddenRequestError, GatewayTimeoutError, UnauthorizedError } from "@app/lib/errors";
 
-import { AuthTokenType } from "../auth/auth-type";
 import { tokenServiceFactory } from "./auth-token-service";
 import { TEmailSignupOtpPayload } from "./auth-token-types";
 
@@ -60,6 +60,7 @@ const createService = (keyStore: MockedKeyStore) => {
     tokenDAL: {} as never,
     userDAL: {} as never,
     orgDAL: {} as never,
+    actorContextService: {} as never,
     membershipUserDAL: {} as never,
     keyStore: keyStore as never
   });
@@ -275,9 +276,20 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
       boolean | { isActive: boolean; status: string } | undefined
     >
   } = {}) => {
+    const findActorOrg = vi.fn(async (id: string) => {
+      const org = orgs[id];
+      if (!org) return null;
+      return {
+        id: org.id,
+        name: org.name,
+        rootOrgId: org.rootOrgId ?? org.id,
+        parentOrgId: org.parentOrgId ?? org.id,
+        shouldUseNewPrivilegeSystem: true,
+        ssoPolicy: { authEnforced: false, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: false }
+      };
+    });
     const orgDAL = {
       findOne: vi.fn(async ({ id }: { id: string }) => orgs[id]),
-      findById: vi.fn(async (id: string) => orgs[id]),
       // Mirrors the DAL: a status filter hides rows in any other status unless acceptAnyStatus is set.
       findEffectiveOrgMembership: vi.fn(
         async ({ orgId, status, acceptAnyStatus }: { orgId: string; status?: string; acceptAnyStatus?: boolean }) => {
@@ -293,10 +305,11 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
       tokenDAL: { findOneTokenSession: vi.fn().mockResolvedValue(SESSION) } as never,
       userDAL: { findById: vi.fn().mockResolvedValue(user) } as never,
       orgDAL: orgDAL as never,
+      actorContextService: { findActorOrg },
       membershipUserDAL: {} as never,
       keyStore: makeKeyStore() as never
     });
-    return { service, orgDAL };
+    return { service, orgDAL, findActorOrg };
   };
 
   const accessToken = (claims: { organizationId?: string; subOrganizationId?: string }) =>
@@ -382,10 +395,10 @@ describe("tokenServiceFactory — org scope of user tokens", () => {
   });
 
   test("a token with no org claims stays valid and unscoped", async () => {
-    const { service, orgDAL } = build();
+    const { service, findActorOrg } = build();
     const identity = await service.fnValidateJwtIdentity(accessToken({}));
-    expect(identity).toMatchObject({ orgId: "", rootOrgId: "" });
-    expect(orgDAL.findById).not.toHaveBeenCalled();
+    expect(identity).toMatchObject({ orgId: "", rootOrgId: "", org: null });
+    expect(findActorOrg).not.toHaveBeenCalled();
   });
 
   test("a token for an org that no longer exists is refused with 401, not a 500", async () => {
@@ -557,6 +570,7 @@ describe("tokenServiceFactory — refresh token rotation", () => {
       tokenDAL: tokenDAL as never,
       userDAL: {} as never,
       orgDAL: {} as never,
+      actorContextService: {} as never,
       membershipUserDAL: {} as never,
       keyStore: keyStore as never
     });

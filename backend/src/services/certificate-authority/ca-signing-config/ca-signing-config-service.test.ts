@@ -1,15 +1,16 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { InternalCaType } from "../certificate-authority-enums";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
@@ -19,21 +20,11 @@ const CA_PROJECT_ID = "ca-project";
 const ACTOR_ORG_ID = "org-1";
 const CONNECTION_ID = "conn-1";
 
-const permissionActor = {
-  type: ActorType.USER,
-  id: "user-1",
-  authMethod: AuthMethod.EMAIL,
-  orgId: ACTOR_ORG_ID,
-  rootOrgId: ACTOR_ORG_ID,
-  parentOrgId: ACTOR_ORG_ID
-};
-
 const actorFields = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ACTOR_ORG_ID,
-  permissionActor
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ACTOR_ORG_ID, rootOrgId: ACTOR_ORG_ID, parentOrgId: ACTOR_ORG_ID }
+  } as unknown as TActorContext
 };
 
 const DESTINATION: Record<string, Record<string, unknown>> = {
@@ -92,15 +83,17 @@ const buildService = ({
       findOne: vi.fn(async () => ({ id: "internal-ca-1", type: InternalCaType.INTERMEDIATE })),
       updateById: vi.fn()
     },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([
-          {
-            action: ProjectPermissionCertificateAuthorityActions.Edit,
-            subject: ProjectPermissionSub.CertificateAuthorities
-          }
-        ])
-      }))
+    projectPermissionService: {
+      getProjectPermission: vi.fn(async () =>
+        Permission.fromRules({
+          rules: [
+            {
+              action: ProjectPermissionCertificateAuthorityActions.Edit,
+              subject: ProjectPermissionSub.CertificateAuthorities
+            }
+          ]
+        })
+      )
     },
     licenseService,
     appConnectionService,
@@ -133,7 +126,7 @@ describe("createSigningConfig connection checks", () => {
     expect(appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
       EXPECTED_APP[type],
       { connectionId: CONNECTION_ID, projectId: CA_PROJECT_ID },
-      permissionActor
+      actorFields.actor
     );
     expect(caSigningConfigDAL.create).toHaveBeenCalledWith(
       expect.objectContaining({ type, appConnectionId: CONNECTION_ID, destinationConfig: DESTINATION[type] }),
@@ -230,7 +223,7 @@ describe("updateSigningConfig connection checks", () => {
     expect(appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
       EXPECTED_APP[type],
       { connectionId: CONNECTION_ID, projectId: CA_PROJECT_ID },
-      permissionActor
+      actorFields.actor
     );
     expect(caSigningConfigDAL.updateById).toHaveBeenCalledWith(
       "cfg-1",

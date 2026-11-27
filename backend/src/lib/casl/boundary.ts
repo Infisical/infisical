@@ -2,8 +2,6 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-
 import { haveDisjointLiteralPrefixes, isGlobSubsetOfGlob } from "./glob-subset";
 import { canonicalizeSecretPathCondition, PermissionConditionOperators } from "./index";
 
@@ -35,9 +33,8 @@ const canonicalizeRuleConditions = (conditions: unknown): TRuleConditions => {
   };
 };
 
-const IGNORED_PERMISSIONS = new Set([
-  getPermissionSetID(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders)
-]);
+// Reading secret folders never limits a boundary. Literal ID so this shared module imports no domain.
+const IGNORED_PERMISSIONS = new Set([getPermissionSetID("read", "secret-folders")]);
 
 const invertTheOperation = (shouldInvert: boolean, operation: boolean) => (shouldInvert ? !operation : operation);
 const formatConditionOperator = (condition: TPermissionConditionShape | string) => {

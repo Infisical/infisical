@@ -7,10 +7,10 @@ import {
   KmsProviders,
   TExternalKmsGcpCredentialSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerExternalKmsEndpoints } from "./external-kms-endpoints";
 
@@ -56,10 +56,7 @@ export const registerGcpKmsRouter = async (server: FastifyZodProvider) => {
         credentialJson = req.body.credential;
       } else if (authMethod === KmsGcpKeyFetchAuthType.Kms && "kmsId" in req.body) {
         const externalKms = await server.services.externalKms.findById({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           id: req.body.kmsId
         });
 
@@ -78,10 +75,7 @@ export const registerGcpKmsRouter = async (server: FastifyZodProvider) => {
       }
 
       const results = await server.services.externalKms.fetchGcpKeys({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         credential: credentialJson,
         gcpRegion: region
       });

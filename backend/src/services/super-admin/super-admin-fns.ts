@@ -1,18 +1,18 @@
 import type { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 
-import { ActorType } from "../auth/auth-type";
 import { SuperAdminErrorCode } from "./super-admin-types";
 
 export const isSuperAdmin = (auth: TAuthMode) => {
-  if (auth.actor === ActorType.USER && auth.user.superAdmin) {
+  if (auth.actorType === ActorType.USER && auth.user.superAdmin) {
     return true;
   }
 
-  if (auth.actor === ActorType.IDENTITY && auth.isInstanceAdmin) {
+  if (auth.actorType === ActorType.IDENTITY && auth.isInstanceAdmin) {
     return true;
   }
 
@@ -32,8 +32,8 @@ export const validateIdentityUpdateForSuperAdminPrivileges = async (
   }
 };
 
-export const assertInitialSetupActivationToken = (providedToken?: string) => {
-  const expectedToken = getConfig().INITIAL_SETUP_ACTIVATION_TOKEN;
+export const assertInstanceSetupToken = (providedToken?: string) => {
+  const expectedToken = getConfig().INSTANCE_SETUP_TOKEN;
   if (!expectedToken) return;
 
   const sha256 = (value: string) => crypto.nativeCrypto.createHash("sha256").update(value).digest();
@@ -42,8 +42,8 @@ export const assertInitialSetupActivationToken = (providedToken?: string) => {
 
   if (!isValid) {
     throw new ForbiddenRequestError({
-      name: SuperAdminErrorCode.InvalidActivationToken,
-      message: "The activation token is missing or incorrect."
+      name: SuperAdminErrorCode.InvalidSetupToken,
+      message: "The setup token is missing or incorrect."
     });
   }
 };

@@ -3,9 +3,9 @@ import { z } from "zod";
 import { PkiAlertsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALERTS, ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 
 export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvider) => {
@@ -36,10 +36,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const alert = await server.services.pkiAlert.createPkiAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -83,10 +80,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const alert = await server.services.pkiAlert.getPkiAlertById({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -135,10 +129,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const alert = await server.services.pkiAlert.updatePkiAlert({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -182,10 +173,7 @@ export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const alert = await server.services.pkiAlert.deletePkiAlert({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

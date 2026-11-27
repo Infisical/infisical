@@ -4,6 +4,7 @@ import { InternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { KmsKeyUsage } from "@app/domains/platform/kms-core/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KMS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getBase64SizeInBytes, isBase64 } from "@app/lib/base64";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -14,7 +15,6 @@ import { publicJwksLimit, readLimit, writeLimit } from "@app/server/config/rateL
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { canPublishCmekPublicKey, getCmekJwkKid, getCmekJwksUrl } from "@app/services/cmek/cmek-fns";
 import { CmekOrderBy, TCmekKeyEncryptionAlgorithm } from "@app/services/cmek/cmek-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -166,7 +166,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         body: { projectId, name, description, keyUsage, isExportable, hasDeleteProtection, isPublicKeyPublished },
-        permission
+        actor
       } = req;
 
       const algorithm = (req.body.algorithm ??
@@ -175,7 +175,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
 
       const cmek = await server.services.cmek.createCmek(
         {
-          orgId: permission.orgId,
+          orgId: actor.orgId,
           projectId,
           name,
           description,
@@ -185,7 +185,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
           hasDeleteProtection,
           isPublicKeyPublished
         },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -209,7 +209,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.CmekCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: permission.orgId,
+          organizationId: actor.orgId,
           properties: {
             keyId: cmek.id,
             projectId,
@@ -258,10 +258,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId },
         body,
-        permission
+        actor
       } = req;
 
-      const cmek = await server.services.cmek.updateCmekById({ keyId, ...body }, permission);
+      const cmek = await server.services.cmek.updateCmekById({ keyId, ...body }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -305,10 +305,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        permission
+        actor
       } = req;
 
-      const cmek = await server.services.cmek.rotateCmekById(keyId, permission);
+      const cmek = await server.services.cmek.rotateCmekById(keyId, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -351,10 +351,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        permission
+        actor
       } = req;
 
-      const cmek = await server.services.cmek.deleteCmekById(keyId, permission);
+      const cmek = await server.services.cmek.deleteCmekById(keyId, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -406,10 +406,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         query: { projectId, ...dto },
-        permission
+        actor
       } = req;
 
-      const { cmeks, totalCount } = await server.services.cmek.listCmeksByProjectId({ projectId, ...dto }, permission);
+      const { cmeks, totalCount } = await server.services.cmek.listCmeksByProjectId({ projectId, ...dto }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -450,10 +450,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        permission
+        actor
       } = req;
 
-      const key = await server.services.cmek.findCmekById(keyId, permission);
+      const key = await server.services.cmek.findCmekById(keyId, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -498,10 +498,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyName },
         query: { projectId },
-        permission
+        actor
       } = req;
 
-      const key = await server.services.cmek.findCmekByName(keyName, projectId, permission);
+      const key = await server.services.cmek.findCmekByName(keyName, projectId, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -548,10 +548,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId },
         body: { plaintext },
-        permission
+        actor
       } = req;
 
-      const { ciphertext, projectId } = await server.services.cmek.cmekEncrypt({ keyId, plaintext }, permission);
+      const { ciphertext, projectId } = await server.services.cmek.cmekEncrypt({ keyId, plaintext }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -568,7 +568,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.CmekEncrypt,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: permission.orgId,
+          organizationId: actor.orgId,
           properties: { keyId, projectId }
         })
         .catch(() => {});
@@ -602,10 +602,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        permission
+        actor
       } = req;
 
-      const { publicKey, projectId, keyName } = await server.services.cmek.getPublicKey({ keyId }, permission);
+      const { publicKey, projectId, keyName } = await server.services.cmek.getPublicKey({ keyId }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -698,10 +698,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         params: { keyId },
-        permission
+        actor
       } = req;
 
-      const { privateKey, projectId, keyName } = await server.services.cmek.getPrivateKey({ keyId }, permission);
+      const { privateKey, projectId, keyName } = await server.services.cmek.getPrivateKey({ keyId }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -803,7 +803,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         body: { projectId, keys },
-        permission
+        actor
       } = req;
 
       const { keys: importedKeys, errors } = await server.services.cmek.bulkImportKeys(
@@ -818,7 +818,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
             hasDeleteProtection: k.hasDeleteProtection
           }))
         },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -872,10 +872,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         body: { keyIds },
-        permission
+        actor
       } = req;
 
-      const { keys, projectId } = await server.services.cmek.bulkGetPrivateKeys({ keyIds }, permission);
+      const { keys, projectId } = await server.services.cmek.bulkGetPrivateKeys({ keyIds }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -916,10 +916,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { keyId } = req.params;
 
-      const { signingAlgorithms, projectId } = await server.services.cmek.listSigningAlgorithms(
-        { keyId },
-        req.permission
-      );
+      const { signingAlgorithms, projectId } = await server.services.cmek.listSigningAlgorithms({ keyId }, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -969,12 +966,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId: inputKeyId },
         body: { data, signingAlgorithm, isDigest },
-        permission
+        actor
       } = req;
 
       const { projectId, ...result } = await server.services.cmek.cmekSign(
         { keyId: inputKeyId, data, signingAlgorithm, isDigest },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -1027,12 +1024,12 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId },
         body: { data, signature, signingAlgorithm, isDigest },
-        permission
+        actor
       } = req;
 
       const { projectId, ...result } = await server.services.cmek.cmekVerify(
         { keyId, data, signature, signingAlgorithm, isDigest },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -1084,10 +1081,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId },
         body: { data },
-        permission
+        actor
       } = req;
 
-      const { projectId, ...result } = await server.services.cmek.cmekGenerateMac({ keyId, data }, permission);
+      const { projectId, ...result } = await server.services.cmek.cmekGenerateMac({ keyId, data }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -1138,10 +1135,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId },
         body: { data, mac },
-        permission
+        actor
       } = req;
 
-      const { projectId, ...result } = await server.services.cmek.cmekVerifyMac({ keyId, data, mac }, permission);
+      const { projectId, ...result } = await server.services.cmek.cmekVerifyMac({ keyId, data, mac }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -1190,10 +1187,10 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       const {
         params: { keyId },
         body: { ciphertext },
-        permission
+        actor
       } = req;
 
-      const { plaintext, projectId } = await server.services.cmek.cmekDecrypt({ keyId, ciphertext }, permission);
+      const { plaintext, projectId } = await server.services.cmek.cmekDecrypt({ keyId, ciphertext }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -1210,7 +1207,7 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.CmekDecrypt,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: permission.orgId,
+          organizationId: actor.orgId,
           properties: { keyId, projectId }
         })
         .catch(() => {});

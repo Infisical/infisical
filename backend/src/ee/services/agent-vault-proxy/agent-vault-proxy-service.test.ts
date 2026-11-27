@@ -1,13 +1,13 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { RuleViolationError } from "@app/domains/lib/errors";
+import { RuleViolationError, PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
-import { ConflictError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
+import { ConflictError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
@@ -31,6 +31,12 @@ vi.mock("@app/services/object-storage/object-storage-default-fns", () => ({
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 const SERVICE_ID = "33333333-3333-4333-8333-333333333333";
 const SERVER_URL = "https://mcp.linear.app/mcp";
+
+const intersectAccessBundleIds = (a: string[] | null, b: string[] | null) => {
+  if (a === null) return b;
+  if (b === null) return a;
+  return a.filter((id) => b.includes(id));
+};
 
 const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServiceRow => ({
   id: SERVICE_ID,
@@ -195,19 +201,36 @@ const setup = (
       findOne: async () => sessionLogConfig,
       findByProjectIdFromPrimary: async () => sessionLogConfig
     },
-    membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
     projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
     userDAL: { findById: async () => undefined as never },
-    permissionService: {
-      getProjectPermission: async () =>
-        ({
-          permission: createMongoAbility(
-            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
-          ),
-          hasRole: () => isOwnerAdmin,
-          memberships: []
-        }) as never
+    identityDAL: { findById: async () => undefined as never },
+    projectPermissionService: { getProjectPermission: async () => undefined as never },
+    accessBundlePermissionService: {
+      getAccessBundlePermission: async () => ({
+        permission: Permission.fromRules({
+          rules: [
+            {
+              action: ProjectPermissionAgentVaultSessionActions.Read,
+              subject: ProjectPermissionSub.AgentVaultSessions
+            },
+            ...(isOwnerAdmin
+              ? [
+                  {
+                    action: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+                    subject: ProjectPermissionSub.AgentVaultSessions
+                  }
+                ]
+              : [])
+          ]
+        }) as never,
+        reachesEveryBundle: isOwnerAdmin,
+        accessBundleIds: isOwnerAdmin ? null : []
+      }),
+      intersectAccessBundleIds
+    },
+    actorContextService: {
+      forPrincipal: async ({ principal, orgId }) => ({ principal, org: { id: orgId } }) as never
     },
     kmsDataKeyService: { createCipherPairWithDataKey } as never,
     licenseService,
@@ -641,34 +664,43 @@ describe("resolve for a session on a user's behalf", () => {
         findOne: async () => sessionLogConfig,
         findByProjectIdFromPrimary: async () => sessionLogConfig
       },
-      membershipDAL: {
-        findResourceMembershipsForActor: async ({ actorId }: { actorId: string }) =>
-          (actor(actorId).grants ?? []).map((scopeResourceId) => ({
-            isActive: true,
-            actorGroupId: null,
-            scopeResourceId
-          }))
-      } as never,
       orgDAL: {
         findEffectiveOrgMembership: async ({ actorId }: { actorId: string }) =>
           ({ isActive: actor(actorId).isActive ?? true }) as never
       },
-      permissionService: {
-        getProjectPermission: async ({ actorId }: { actorId: string }) => {
-          if (actor(actorId).isMember === false) {
-            throw new ForbiddenRequestError({
+      identityDAL: { findById: async () => undefined as never },
+      projectPermissionService: { getProjectPermission: async () => undefined as never },
+      actorContextService: {
+        forPrincipal: async ({ principal, orgId }) => ({ principal, org: { id: orgId } }) as never
+      },
+      accessBundlePermissionService: {
+        intersectAccessBundleIds,
+        getAccessBundlePermission: async ({ actor: actorCtx }) => {
+          const subject = actor(actorCtx.principal.id);
+          if (subject.isMember === false) {
+            throw new PermissionDeniedError({
               name: "ProjectMembershipNotFound",
               message: "Not a member of the project"
             });
           }
-          const roleRules = actor(actorId).isAdmin
-            ? agentVaultProjectAdminPermissions
-            : agentVaultProjectMemberPermissions;
+          const read = {
+            action: ProjectPermissionAgentVaultSessionActions.Read,
+            subject: ProjectPermissionSub.AgentVaultSessions
+          };
+          const isAdmin = Boolean(subject.isAdmin);
+          const granted = subject.grants ?? [];
+          const inline = {
+            action: ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+            subject: ProjectPermissionSub.AgentVaultSessions
+          };
           return {
-            permission: createMongoAbility(actor(actorId).canRead === false ? [] : roleRules),
-            hasRole: () => Boolean(actor(actorId).isAdmin),
-            memberships: []
-          } as never;
+            permission: Permission.fromRules({
+              rules: subject.canRead === false ? [] : [read, ...(isAdmin ? [inline] : [])]
+            }) as never,
+            reachesEveryBundle: isAdmin,
+            accessBundleIds: isAdmin ? null : granted,
+            grantedAccessBundleIds: granted
+          };
         }
       },
       kmsDataKeyService: {

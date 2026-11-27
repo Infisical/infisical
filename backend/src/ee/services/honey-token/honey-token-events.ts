@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 
 export const HONEY_TOKEN_RESOURCE_TYPE = "secret.honey-token";
 export const HONEY_TOKEN_TRIGGERED_EVENT = "secret.honey-token.triggered";

@@ -36,6 +36,27 @@ func TestAcmeAuthorization_Get(t *testing.T) {
 		slices.SortFunc(got, func(x, y challengeBody) int { return compare(x.Type, y.Type) })
 		require.Equal(t, []challengeBody{{Type: "dns-01", Status: "pending"}, {Type: "http-01", Status: "pending"}}, got)
 	})
+
+	t.Run("should offer only an HTTP-01 challenge for a public IP address", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		c := newAcmeProfile(t, tn).registered(t)
+		const ip = "8.8.8.8"
+		o := c.NewOrder(t, ip)
+
+		// Action
+		a := c.Authorization(t, o.Authorizations[0])
+
+		// Assert
+		require.Equal(t, identifier{Type: "ip", Value: ip}, a.Identifier)
+		var got []string
+		for _, ch := range a.Challenges {
+			got = append(got, ch.Type)
+		}
+		require.Equal(t, []string{"http-01"}, got)
+	})
 }
 
 func compare(a, b string) int {

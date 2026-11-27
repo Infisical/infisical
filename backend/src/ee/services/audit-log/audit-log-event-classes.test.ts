@@ -62,6 +62,7 @@ describe("audit log event classes", () => {
     [EventType.LOGIN_IDENTITY_UNIVERSAL_AUTH_FAILED, AuditLogEventClass.Authentication],
     [EventType.SELECT_ORGANIZATION, AuditLogEventClass.Authentication],
     [EventType.SELECT_ORGANIZATION_REFUSED, AuditLogEventClass.Authentication],
+    [EventType.MICROSOFT_AUTOENROLLMENT_REQUEST_REFUSED, AuditLogEventClass.Authentication],
     [EventType.GATEWAY_CONNECT, AuditLogEventClass.Authentication],
     [EventType.PERMISSION_DENIED, AuditLogEventClass.Authorization]
   ])("classifies %s as %s", (eventType, expected) => {

@@ -2,10 +2,11 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { MicrosoftAutoenrollmentStateSchema } from "@app/server/routes/v1/pki-application-schemas";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 const ApiEnrollmentSchema = z.object({
@@ -42,6 +43,14 @@ const ScepEnrollmentStateSchema = z.object({
   signRaWithCa: z.boolean()
 });
 
+const MicrosoftAutoenrollmentOtherProfileSchema = z.object({
+  profileId: z.string().uuid(),
+  profileName: z.string(),
+  servicePrincipalName: z.string(),
+  keyVersion: z.number().int(),
+  connectionId: z.string().uuid()
+});
+
 const EnrollmentStateSchema = z.object({
   applicationId: z.string().uuid(),
   profileId: z.string().uuid(),
@@ -49,10 +58,19 @@ const EnrollmentStateSchema = z.object({
   est: EstEnrollmentStateSchema.nullable(),
   acme: AcmeEnrollmentStateSchema.nullable(),
   scep: ScepEnrollmentStateSchema.nullable(),
+  microsoftAutoenrollment: MicrosoftAutoenrollmentStateSchema.nullable(),
+  microsoftAutoenrollmentOtherProfiles: z
+    .array(MicrosoftAutoenrollmentOtherProfileSchema)
+    .describe(MICROSOFT_AUTOENROLLMENT.STATE.otherProfiles),
   caType: z.nativeEnum(CaType),
+  microsoftAutoenrollmentUnsupportedReason: z
+    .string()
+    .nullable()
+    .describe(MICROSOFT_AUTOENROLLMENT.STATE.unsupportedReason),
   estConfigured: z.boolean(),
   acmeConfigured: z.boolean(),
-  scepConfigured: z.boolean()
+  scepConfigured: z.boolean(),
+  microsoftAutoenrollmentConfigured: z.boolean().describe(MICROSOFT_AUTOENROLLMENT.STATE.configured)
 });
 
 export const registerPkiApplicationEnrollmentStateRouter = async (server: FastifyZodProvider) => {
@@ -74,10 +92,7 @@ export const registerPkiApplicationEnrollmentStateRouter = async (server: Fastif
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.getEnrollment({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId

@@ -1,10 +1,13 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { FakeAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/testing/fake-access-bundle-permission-service";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { TProjectRule } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "./agent-vault-hook-fns";
 import { agentVaultHookServiceFactory } from "./agent-vault-hook-service";
@@ -22,11 +25,9 @@ const GITHUB = {
 const LINEAR = { id: "22222222-2222-4222-8222-222222222222", name: "linear", type: "mcp", hostPattern: null };
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-} as unknown as Parameters<ReturnType<typeof agentVaultHookServiceFactory>["createHook"]>[0]["ctx"];
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
 
 const storedHook = {
   id: HOOK_ID,
@@ -37,6 +38,8 @@ const storedHook = {
   createdAt: new Date(),
   updatedAt: new Date()
 };
+
+type TRule = { action: string | string[]; subject: string; inverted?: boolean };
 
 const sealed = (secret: string) =>
   Buffer.concat([Buffer.from("sealed:"), Buffer.from(JSON.stringify({ value: secret }))]);
@@ -50,7 +53,7 @@ const buildService = ({
   reachesEveryBundle = true
 }: {
   hooksOnPlan?: boolean;
-  rules?: RawRuleOf<MongoAbility>[];
+  rules?: TRule[];
   existingByName?: typeof storedHook;
   // null for a hook that isn't the project's.
   stored?: typeof storedHook | null;
@@ -85,23 +88,18 @@ const buildService = ({
     agentVaultHookDAL,
     licenseService,
     kmsDataKeyService,
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(rules),
-        hasRole: () => reachesEveryBundle,
-        memberships: []
-      })
-    },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue([{ isActive: true, actorGroupId: null, scopeResourceId: "bundle-granted" }])
-    }
+    accessBundlePermissionService: new FakeAccessBundlePermissionService().allow({
+      actorId: ctx.principal.id,
+      projectId: PROJECT_ID,
+      rules: rules as unknown as TProjectRule[],
+      reachesEveryBundle,
+      grantedAccessBundleIds: ["bundle-granted"]
+    })
   } as unknown as Parameters<typeof agentVaultHookServiceFactory>[0]);
   return { service, agentVaultHookDAL, licenseService, tx };
 };
 
-const memberRules: RawRuleOf<MongoAbility>[] = [{ action: "read", subject: "agent-vault-hooks" }];
+const memberRules: TRule[] = [{ action: "read", subject: "agent-vault-hooks" }];
 
 describe("createHook", () => {
   test("seals the secret and never returns it, and a new hook is used by nothing", async () => {
@@ -149,7 +147,7 @@ describe("createHook", () => {
 
     await expect(
       service.createHook({ projectId: PROJECT_ID, ctx, name: "approvals", url: HOOK_URL, secret: SECRET })
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 });
 
@@ -262,7 +260,7 @@ describe("reads", () => {
     expect(licenseService.getPlan).not.toHaveBeenCalled();
 
     await expect(service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID })).rejects.toBeInstanceOf(
-      ForbiddenError
+      PermissionDeniedError
     );
   });
 

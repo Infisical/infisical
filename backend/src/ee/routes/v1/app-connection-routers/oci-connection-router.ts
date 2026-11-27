@@ -5,10 +5,10 @@ import {
   SanitizedOCIConnectionSchema,
   UpdateOCIConnectionSchema
 } from "@app/ee/services/app-connections/oci";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "../../../../server/routes/v1/app-connection-routers/app-connection-endpoints";
 
@@ -45,7 +45,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const compartments = await server.services.appConnection.oci.listCompartments(connectionId, req.permission);
+      const compartments = await server.services.appConnection.oci.listCompartments(connectionId, req.actor);
       return compartments;
     }
   });
@@ -77,10 +77,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
       const { connectionId } = req.params;
       const { compartmentOcid } = req.query;
 
-      const vaults = await server.services.appConnection.oci.listVaults(
-        { connectionId, compartmentOcid },
-        req.permission
-      );
+      const vaults = await server.services.appConnection.oci.listVaults({ connectionId, compartmentOcid }, req.actor);
       return vaults;
     }
   });
@@ -115,7 +112,7 @@ export const registerOCIConnectionRouter = async (server: FastifyZodProvider) =>
 
       const keys = await server.services.appConnection.oci.listVaultKeys(
         { connectionId, compartmentOcid, vaultOcid },
-        req.permission
+        req.actor
       );
       return keys;
     }

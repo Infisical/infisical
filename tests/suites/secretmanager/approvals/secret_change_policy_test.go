@@ -343,6 +343,29 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		heldRequest(t, proj, res.Body)
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"), "a license check must never change what a policy enforces")
 	})
+
+	t.Run("should hold a write to a folder whose path is 1024 characters long", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateFolder(t, proj, "dev", longPolicyPath)
+		newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = longPolicyPath
+		})
+
+		// Action
+		res, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new(longPolicyPath), SecretValue: "value",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, heldRequest(t, proj, res.Body).Changes)
+		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev", secretmanager.WithPath(longPolicyPath)))
+	})
 }
 
 func TestSecretApprovalPolicy_Create(t *testing.T) {
@@ -601,6 +624,72 @@ func TestSecretApprovalPolicy_Create(t *testing.T) {
 			"Only secret access policies can be handled by a delegated approval system. Remove delegatedApproval from the request.",
 			res.JSON400.Message)
 		require.Nil(t, policyAt(t, proj, "dev", "/"))
+	})
+
+	t.Run("should save a policy path of 1024 characters on create and update", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		moved := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.Environment = new("staging")
+		})
+
+		// Action
+		created := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = longPolicyPath
+		})
+		updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), moved.String(),
+			api.UpdateSecretApprovalPolicyJSONRequestBody{
+				Approvers:  updateApproverItems(t, []policyMember{userMember(reviewer)}),
+				SecretPath: new(longPolicyPath),
+			})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, updated.StatusCode(), "update returned %s", apierr.Body(updated.Body))
+		require.Equal(t, &created, policyAt(t, proj, "dev", longPolicyPath))
+		require.Equal(t, &moved, policyAt(t, proj, "staging", longPolicyPath))
+		require.Nil(t, policyAt(t, proj, "staging", "/"))
+	})
+
+	t.Run("should refuse a policy path over 1024 characters on create and update", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		policyID := newPolicy(t, proj, []policyMember{userMember(reviewer)}, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/prod"
+		})
+		tooLong := longPolicyPath + "a"
+
+		// Action
+		created, err := tn.Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
+			ProjectId:   proj.ID,
+			Environment: new("staging"),
+			SecretPath:  tooLong,
+			Approvals:   new(float32(1)),
+			Approvers:   approverItems(t, []policyMember{userMember(reviewer)}),
+		})
+		require.NoError(t, err)
+		updated, err := tn.Admin.API.UpdateSecretApprovalPolicyWithResponse(t.Context(), policyID.String(),
+			api.UpdateSecretApprovalPolicyJSONRequestBody{
+				Approvers:  updateApproverItems(t, []policyMember{userMember(reviewer)}),
+				SecretPath: new(tooLong),
+			})
+		require.NoError(t, err)
+
+		// Assert
+		require.Equalf(t, http.StatusUnprocessableEntity, created.StatusCode(), "create returned %s", apierr.Body(created.Body))
+		require.Equalf(t, http.StatusUnprocessableEntity, updated.StatusCode(), "update returned %s", apierr.Body(updated.Body))
+		require.Contains(t, string(created.Body), "String must contain at most 1024 character(s)")
+		require.Contains(t, string(updated.Body), "String must contain at most 1024 character(s)")
+		require.Nil(t, policyAt(t, proj, "staging", "/"))
+		require.Equal(t, &policyID, policyAt(t, proj, "dev", "/prod"))
 	})
 }
 

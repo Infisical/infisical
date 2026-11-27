@@ -4,9 +4,9 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ChefSyncListItemSchema, ChefSyncSchema } from "@app/ee/services/secret-sync/chef";
 import { OCIVaultSyncListItemSchema, OCIVaultSyncSchema } from "@app/ee/services/secret-sync/oci-vault";
 import { ApiDocsTags, SecretSyncs } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { OnePassSyncListItemSchema, OnePassSyncSchema } from "@app/services/secret-sync/1password";
 import {
   AwsParameterStoreSyncListItemSchema,
@@ -254,10 +254,10 @@ export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const {
         query: { projectId },
-        permission
+        actor
       } = req;
 
-      const secretSyncs = await server.services.secretSync.listSecretSyncsByProjectId({ projectId }, permission);
+      const secretSyncs = await server.services.secretSync.listSecretSyncsByProjectId({ projectId }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

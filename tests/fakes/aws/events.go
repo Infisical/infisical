@@ -1,5 +1,7 @@
 package aws
 
+import "time"
+
 // ParameterDetail names a Parameter Store parameter by its full name, such as /app/DB_URL.
 type ParameterDetail struct {
 	Name string `json:"name"`
@@ -15,10 +17,14 @@ type ParameterDeleted struct{ ParameterDetail }
 type ParameterTagged struct{ ParameterDetail }
 type ParameterUntagged struct{ ParameterDetail }
 
-func (ParameterPut) EventName() string      { return "aws.parameter-put" }
-func (ParameterDeleted) EventName() string  { return "aws.parameter-deleted" }
-func (ParameterTagged) EventName() string   { return "aws.parameter-tagged" }
-func (ParameterUntagged) EventName() string { return "aws.parameter-untagged" }
+// ParameterDecrypted is a SecureString value a Get call returned in the clear.
+type ParameterDecrypted struct{ ParameterDetail }
+
+func (ParameterPut) EventName() string       { return "aws.parameter-put" }
+func (ParameterDeleted) EventName() string   { return "aws.parameter-deleted" }
+func (ParameterTagged) EventName() string    { return "aws.parameter-tagged" }
+func (ParameterUntagged) EventName() string  { return "aws.parameter-untagged" }
+func (ParameterDecrypted) EventName() string { return "aws.parameter-decrypted" }
 
 // SecretDetail names a Secrets Manager secret.
 type SecretDetail struct {
@@ -77,3 +83,94 @@ type KeyDetail struct {
 type KeyCreated struct{ KeyDetail }
 
 func (KeyCreated) EventName() string { return "aws.key-created" }
+
+// ACMCertificateDetail names an ACM certificate.
+type ACMCertificateDetail struct {
+	ARN        string `json:"arn"`
+	DomainName string `json:"domainName"`
+}
+
+// CertificateImported is an ImportCertificate, new or a reimport over an existing ARN.
+type CertificateImported struct {
+	ACMCertificateDetail
+	Reimported bool `json:"reimported"`
+}
+
+type CertificateRequested struct{ ACMCertificateDetail }
+type CertificateIssued struct{ ACMCertificateDetail }
+type CertificateExported struct{ ACMCertificateDetail }
+
+// CertificateDeleted carries when it happened, for tests that check it came after an
+// event from another service.
+type CertificateDeleted struct {
+	ACMCertificateDetail
+	At time.Time `json:"at"`
+}
+type CertificateTagged struct{ ACMCertificateDetail }
+
+// CertificateDescribed is a DescribeCertificate, with the status it reported, so a test
+// can wait for a caller to check on a certificate held in PENDING_VALIDATION.
+type CertificateDescribed struct {
+	ACMCertificateDetail
+	Status string `json:"status"`
+}
+
+func (CertificateImported) EventName() string  { return "aws.certificate-imported" }
+func (CertificateRequested) EventName() string { return "aws.certificate-requested" }
+func (CertificateIssued) EventName() string    { return "aws.certificate-issued" }
+func (CertificateExported) EventName() string  { return "aws.certificate-exported" }
+func (CertificateDeleted) EventName() string   { return "aws.certificate-deleted" }
+func (CertificateTagged) EventName() string    { return "aws.certificate-tagged" }
+func (CertificateDescribed) EventName() string { return "aws.certificate-described" }
+
+// PrivateCertificateIssued is an IssueCertificate on an AWS Private CA.
+type PrivateCertificateIssued struct {
+	CertificateAuthorityArn string `json:"certificateAuthorityArn"`
+	CertificateArn          string `json:"certificateArn"`
+}
+
+func (PrivateCertificateIssued) EventName() string { return "aws.private-certificate-issued" }
+
+// PrivateCertificateFetched is a GetCertificate on an AWS Private CA. InProgress is set
+// when it answered RequestInProgressException because the certificate is held.
+type PrivateCertificateFetched struct {
+	CertificateAuthorityArn string `json:"certificateAuthorityArn"`
+	CertificateArn          string `json:"certificateArn"`
+	InProgress              bool   `json:"inProgress"`
+}
+
+func (PrivateCertificateFetched) EventName() string { return "aws.private-certificate-fetched" }
+
+// ListenerDetail names an Elastic Load Balancing listener.
+type ListenerDetail struct {
+	ListenerArn string `json:"listenerArn"`
+}
+
+type ListenerCertificateAdded struct {
+	ListenerDetail
+	CertificateArn string `json:"certificateArn"`
+}
+
+type ListenerCertificateRemoved struct {
+	ListenerDetail
+	CertificateArn string    `json:"certificateArn"`
+	At             time.Time `json:"at"`
+}
+
+func (ListenerCertificateAdded) EventName() string   { return "aws.listener-certificate-added" }
+func (ListenerCertificateRemoved) EventName() string { return "aws.listener-certificate-removed" }
+
+// RecordDetail names a Route 53 record set.
+type RecordDetail struct {
+	ZoneID string `json:"zoneId"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+}
+
+// RecordChanged is one change in a ChangeResourceRecordSets batch: UPSERT or DELETE.
+type RecordChanged struct {
+	RecordDetail
+	Action string `json:"action"`
+}
+
+func (RecordChanged) EventName() string { return "aws.record-changed" }

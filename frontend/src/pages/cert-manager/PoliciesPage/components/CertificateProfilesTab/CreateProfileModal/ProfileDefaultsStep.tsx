@@ -30,6 +30,7 @@ import {
   getCaSignatureIncompatibilityReason,
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
+import { RequestReferenceCombobox } from "@app/pages/cert-manager/components/RequestReferenceCombobox";
 import {
   CertExtensionCriticality,
   CertSubjectAlternativeNameType,
@@ -41,6 +42,14 @@ import {
 import type { FormData } from "../CreateProfileModal";
 import { CustomExtensionDefaults } from "./CustomExtensionDefaults";
 import { SectionHeading } from "./SectionHeading";
+
+const COMMON_NAME_SAN_TYPE_NOUNS: Record<CertSubjectAlternativeNameType, string> = {
+  [CertSubjectAlternativeNameType.DNS_NAME]: "DNS name",
+  [CertSubjectAlternativeNameType.IP_ADDRESS]: "IP address",
+  [CertSubjectAlternativeNameType.EMAIL]: "email address",
+  [CertSubjectAlternativeNameType.URI]: "URI",
+  [CertSubjectAlternativeNameType.UPN]: "UPN"
+};
 
 export type PolicyConstraints = {
   allowedKeyUsages: string[];
@@ -104,6 +113,7 @@ type AttributeListEditorProps<T extends string> = {
   showAddButton: boolean;
   addButtonLabel: string;
   onAdd: () => void;
+  allowsRequestReferences?: boolean;
 };
 
 const AttributeListEditor = <T extends string>({
@@ -119,7 +129,8 @@ const AttributeListEditor = <T extends string>({
   onItemsChange,
   showAddButton,
   addButtonLabel,
-  onAdd
+  onAdd,
+  allowsRequestReferences
 }: AttributeListEditorProps<T>) => (
   <div>
     <SectionHeading title={title} description={description} />
@@ -149,16 +160,30 @@ const AttributeListEditor = <T extends string>({
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              placeholder={getPlaceholder(entry.type)}
-              value={entry.value}
-              className="flex-1"
-              onChange={(e) => {
-                const next = [...items];
-                next[index] = { ...entry, value: e.target.value };
-                onItemsChange(next);
-              }}
-            />
+            {allowsRequestReferences ? (
+              <RequestReferenceCombobox
+                aria-label="Default value"
+                placeholder={getPlaceholder(entry.type)}
+                referenceHint={`Uses the request's common name, if it's a valid ${COMMON_NAME_SAN_TYPE_NOUNS[entry.type as CertSubjectAlternativeNameType]}.`}
+                value={entry.value}
+                onChange={(value) => {
+                  const next = [...items];
+                  next[index] = { ...entry, value };
+                  onItemsChange(next);
+                }}
+              />
+            ) : (
+              <Input
+                placeholder={getPlaceholder(entry.type)}
+                value={entry.value}
+                className="flex-1"
+                onChange={(e) => {
+                  const next = [...items];
+                  next[index] = { ...entry, value: e.target.value };
+                  onItemsChange(next);
+                }}
+              />
+            )}
             <IconButton
               type="button"
               variant="ghost"
@@ -390,6 +415,7 @@ export const ProfileDefaultsStep = ({
           onItemsChange={(next) => setValue("defaults.subjectAltNames", next)}
           showAddButton
           addButtonLabel="Add SAN"
+          allowsRequestReferences
           onAdd={() =>
             setValue("defaults.subjectAltNames", [
               ...watchedDefaultSans,

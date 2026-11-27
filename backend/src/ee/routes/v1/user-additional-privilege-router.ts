@@ -2,17 +2,17 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
-import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
-import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { checkForInvalidPermissionCombination } from "@app/server/lib/project-permission-input";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserProjectAdditionalPrivilegeSchema } from "@app/server/routes/sanitizedSchema/user-additional-privilege";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -60,15 +60,15 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
         req.body.projectMembershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: membership.scopeProjectId as string,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           actorId: userId,
@@ -150,11 +150,11 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: data.privilege.projectId as string,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           ...req.body,
@@ -217,11 +217,11 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       }
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: data.privilege.projectId as string,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           id: req.params.privilegeId,
@@ -269,16 +269,16 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
       const { userId, membership } = await server.services.convertor.userMembershipIdToUserId(
         req.query.projectMembershipId,
         AccessScope.Project,
-        req.permission.orgId
+        req.actor.orgId
       );
 
       const { additionalPrivileges: privileges } =
         await server.services.additionalPrivilege.listAdditionalPrivilegesWithAccessApprovalStatus({
-          permission: req.permission,
+          actor: req.actor,
           scopeData: {
             scope: AccessScope.Project,
             projectId: membership.scopeProjectId as string,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           },
           selector: {
             actorId: userId,
@@ -321,11 +321,11 @@ export const registerUserAdditionalPrivilegeRouter = async (server: FastifyZodPr
         throw new NotFoundError({ message: `Privilege with id ${req.params.privilegeId} not found` });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: data.privilege.projectId as string,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           id: req.params.privilegeId,

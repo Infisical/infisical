@@ -5,7 +5,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);

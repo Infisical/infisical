@@ -3,11 +3,11 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_POLICIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -18,7 +18,8 @@ import {
 import {
   certificatePolicyResponseSchema,
   policyCustomExtensionSchema,
-  policySubjectSchema
+  policySubjectSchema,
+  refineRequestReference
 } from "@app/services/certificate-policy/certificate-policy-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -106,12 +107,14 @@ const policyExtendedKeyUsagesSchema = z
     }
   );
 
+const sanRuleValueSchema = z.string().superRefine(refineRequestReference);
+
 const policySanSchema = z
   .object({
     type: sanTypeSchema,
-    allowed: z.array(z.string()).optional(),
-    required: z.array(z.string()).optional(),
-    denied: z.array(z.string()).optional()
+    allowed: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.allowed),
+    required: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.required),
+    denied: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.denied)
   })
   .refine(
     (data) => {
@@ -208,10 +211,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.createPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         data: req.body
       });
@@ -235,9 +235,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePolicyCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificatePolicy.projectId
         }
       });
@@ -273,10 +273,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId
       });
@@ -321,10 +318,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.getPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.id,
         applicationId: req.query.applicationId
       });
@@ -368,10 +362,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.updatePolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.id,
         data: req.body
       });
@@ -394,9 +385,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePolicyUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificatePolicy.projectId
         }
       });
@@ -427,10 +418,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.deletePolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.id
       });
 
@@ -449,9 +437,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePolicyDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificatePolicy.projectId
         }
       });

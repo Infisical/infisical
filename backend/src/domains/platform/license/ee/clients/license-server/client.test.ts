@@ -125,6 +125,29 @@ describe("LicenseServerClient.getEntitlements", () => {
     expect(result).toBeNull();
     await expect(client.deleteOrganization(ORG_ID)).rejects.toThrow("the License Server is not configured");
   });
+
+  test("should give up on a stalled License Server and return null", async () => {
+    // Setup
+    const controller = new AbortController();
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    const fetchMock = vi.fn(
+      (_url: URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          if (init?.signal?.aborted) reject(init.signal.reason);
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Action
+    const call = new LicenseServerClient(cloud()).getEntitlements({ id: ORG_ID });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+
+    // Assert
+    await expect(call).resolves.toBeNull();
+    expect(timeoutSpy).toHaveBeenCalledWith(5_000);
+  });
 });
 
 describe("LicenseServerClient on a self-hosted license", () => {

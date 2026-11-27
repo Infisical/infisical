@@ -1,10 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
 import { getDefaultProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import {
@@ -17,10 +19,10 @@ import {
   TProjectTemplateUser,
   TUnpackedPermission
 } from "@app/ee/services/project-template/project-template-types";
+import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
-import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
@@ -33,7 +35,7 @@ import { TProjectTemplateUserMembershipDALFactory } from "./project-template-use
 
 type TProjectTemplatesServiceFactoryDep = {
   licenseService: TLicenseService;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
   projectTemplateDAL: TProjectTemplateDALFactory;
   projectTemplateUserMembershipDAL: TProjectTemplateUserMembershipDALFactory;
   projectTemplateGroupMembershipDAL: TProjectTemplateGroupMembershipDALFactory;
@@ -88,7 +90,7 @@ const $unpackProjectTemplate = (
 
 export const projectTemplateServiceFactory = ({
   licenseService,
-  permissionService,
+  orgPermissionService,
   orgMembershipDAL,
   projectTemplateDAL,
   projectTemplateUserMembershipDAL,
@@ -132,26 +134,19 @@ export const projectTemplateServiceFactory = ({
     actor,
     type
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to access project templates due to plan restriction. Upgrade plan to access project templates."
       });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.ProjectTemplates });
 
     const projectTemplates = await projectTemplateDAL.find({
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       ...(type ? { type } : {})
     });
 
@@ -173,8 +168,8 @@ export const projectTemplateServiceFactory = ({
 
     return [
       ...(type
-        ? [getDefaultProjectTemplate(actor.orgId, type)]
-        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.orgId, projectType))),
+        ? [getDefaultProjectTemplate(actor.org.id, type)]
+        : Object.values(ProjectType).map((projectType) => getDefaultProjectTemplate(actor.org.id, projectType))),
       ...templatesWithMembers
     ];
   };
@@ -183,27 +178,20 @@ export const projectTemplateServiceFactory = ({
     name,
     actor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to access project template due to plan restriction. Upgrade plan to access project templates."
       });
 
-    const projectTemplate = await projectTemplateDAL.findOne({ name, orgId: actor.orgId });
+    const projectTemplate = await projectTemplateDAL.findOne({ name, orgId: actor.org.id });
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with Name "${name}"` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: projectTemplate.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: projectTemplate.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.ProjectTemplates });
 
     const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
       projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
@@ -221,7 +209,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const findProjectTemplateById: TProjectTemplateServiceFactory["findProjectTemplateById"] = async (id, actor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
@@ -232,16 +220,9 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with ID ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: projectTemplate.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: projectTemplate.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.ProjectTemplates });
 
     const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
       projectTemplateUserMembershipDAL.findByTemplateId(projectTemplate.id),
@@ -262,23 +243,16 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, type, ...params },
     actor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
         message: "Failed to create project template due to plan restriction. Upgrade plan to access project templates."
       });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.ProjectTemplates });
 
     // Template roles are materialized into project custom roles (rendered by the same permission
     // templating), so validate them the same way role creation does.
@@ -311,7 +285,7 @@ export const projectTemplateServiceFactory = ({
     const isConflictingName = Boolean(
       await projectTemplateDAL.findOne({
         name: params.name,
-        orgId: actor.orgId
+        orgId: actor.org.id
       })
     );
 
@@ -323,7 +297,7 @@ export const projectTemplateServiceFactory = ({
     // Validate that users exist and are members of the organization
     let validatedUsers: { membershipId: string; roles: string[] }[] = [];
     if (users?.length) {
-      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(actor.orgId);
+      const orgMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(actor.org.id);
       const orgMemberUsernames = new Map(orgMembers.map((m) => [m.user.username.toLowerCase(), m] as const));
 
       const invalidUsers = users.filter((u) => !orgMemberUsernames.has(u.username.toLowerCase()));
@@ -356,7 +330,7 @@ export const projectTemplateServiceFactory = ({
     if (groups?.length) {
       const groupSlugs = groups.map((g) => g.groupSlug.toLowerCase());
       const foundGroups = await groupDAL.find({
-        orgId: actor.orgId,
+        orgId: actor.org.id,
         $in: { slug: groupSlugs }
       });
 
@@ -395,7 +369,7 @@ export const projectTemplateServiceFactory = ({
     if (identities?.length) {
       const identityIds = identities.map((i) => i.identityId);
       const foundIdentities = await identityDAL.find({
-        orgId: actor.orgId,
+        orgId: actor.org.id,
         $in: { id: identityIds }
       });
 
@@ -453,7 +427,7 @@ export const projectTemplateServiceFactory = ({
           projectManagedIdentities: projectManagedIdentities?.length
             ? JSON.stringify(projectManagedIdentities)
             : undefined,
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           type
         },
         tx
@@ -513,7 +487,7 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, ...params },
     actor
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
@@ -524,16 +498,9 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with ID ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: projectTemplate.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: projectTemplate.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.ProjectTemplates });
 
     if (roles) {
       // Template roles are materialized into project custom roles, so validate them the same way
@@ -845,7 +812,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.ProjectTemplates))
       throw new BadRequestError({
@@ -856,16 +823,9 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with ID ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: projectTemplate.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: projectTemplate.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.ProjectTemplates });
 
     const [userMemberships, groupMemberships, identityMemberships] = await Promise.all([
       projectTemplateUserMembershipDAL.findByTemplateId(id),

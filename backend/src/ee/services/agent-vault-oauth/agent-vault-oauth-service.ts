@@ -1,20 +1,18 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
-
+import { TAccessBundlePermissionService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -41,7 +39,6 @@ import {
   AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   manualOauthClient,
@@ -137,8 +134,10 @@ type TAgentVaultOauthServiceFactoryDep = {
     TAgentVaultPersonalValueDALFactory,
     "findOauthForOwner" | "compareAndSwapOauth" | "addRequiredScopes"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  accessBundlePermissionService: Pick<
+    TAccessBundlePermissionService,
+    "getAgentVaultPermission" | "getAccessBundlePermission"
+  >;
   agentVaultVariableDAL: Pick<
     TAgentVaultVariableDALFactory,
     | "findByIdInProject"
@@ -330,7 +329,7 @@ const actorOfRecord = (record: TAgentVaultOauthAuthorization): TAgentVaultOauthA
 
 const isOwnRecord = (record: TAgentVaultOauthAuthorization, ctx: TGetAuthorizationDTO["ctx"], projectId: string) => {
   const actor = actorOfRecord(record);
-  return record.projectId === projectId && ctx.actor === actor.type && ctx.actorId === actor.id;
+  return record.projectId === projectId && ctx.principal.type === actor.type && ctx.principal.id === actor.id;
 };
 
 const VARIABLE_SIGN_IN_NOT_FOUND_MESSAGE =
@@ -359,8 +358,7 @@ export const agentVaultOauthServiceFactory = ({
   kmsDataKeyService,
   agentVaultServiceDAL,
   agentVaultPersonalValueDAL,
-  permissionService,
-  membershipDAL,
+  accessBundlePermissionService,
   agentVaultVariableDAL,
   projectDAL,
   agentVaultSessionInlineServiceDAL,
@@ -432,19 +430,19 @@ export const agentVaultOauthServiceFactory = ({
     registration: requestedRegistration,
     personal
   }: TCreateAuthorizationDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { permission, accessBundleIds } = await accessBundlePermissionService.getAccessBundlePermission({
+      actor: ctx,
+      projectId
+    });
     // A member's own sign-in needs only the reach to use the service; connecting the service itself is an admin's job.
-    ForbiddenError.from(permission).throwUnlessCan(
-      personal
+    permission.assert({
+      action: personal
         ? ProjectPermissionAgentVaultAccessBundleActions.Read
         : ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
 
-    if (ctx.actor !== ActorType.USER) {
+    if (ctx.principal.type !== ActorType.USER) {
       throw new BadRequestError({
         message: "Only a user can authorize an OAuth connection, since it needs a browser."
       });
@@ -508,7 +506,7 @@ export const agentVaultOauthServiceFactory = ({
         // The member's previous sign-in, for its scopes and, if registration fails, its client.
         const previous = await agentVaultPersonalValueDAL.findOauthForOwner({
           serviceId: service.id,
-          owner: { userId: ctx.actorId }
+          owner: { userId: ctx.principal.id }
         });
         if (previous) {
           const secret = await open<TAgentVaultOauthSecret>(projectId, previous.encryptedValue);
@@ -636,8 +634,8 @@ export const agentVaultOauthServiceFactory = ({
       projectId,
       serviceId: serviceId ?? null,
       ...(personal ? { personal: true, memberSetup } : {}),
-      actor: { type: ActorType.USER, id: ctx.actorId },
-      actorUserId: ctx.actorId,
+      actor: { type: ActorType.USER, id: ctx.principal.id },
+      actorUserId: ctx.principal.id,
       serverUrl,
       state,
       redirectUri: callbackUri,
@@ -836,14 +834,27 @@ export const agentVaultOauthServiceFactory = ({
     ctx: TCompleteAuthorizationDTO["ctx"]
   ): Promise<TOauthVariableConnected> => {
     const variableId = record.variableId!;
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId: record.projectId, ctx });
-    if (permission.cannot(ProjectPermissionAgentVaultVariableActions.Edit, ProjectPermissionSub.AgentVaultVariables)) {
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({
+      actor: ctx,
+      projectId: record.projectId
+    });
+    if (
+      permission.cannot({
+        action: ProjectPermissionAgentVaultVariableActions.Edit,
+        subject: ProjectPermissionSub.AgentVaultVariables
+      })
+    ) {
       throw new ForbiddenRequestError({
         message: "You can no longer edit variables in this project, so this sign-in wasn't saved."
       });
     }
     // The completion returns the variable it connected.
-    if (permission.cannot(ProjectPermissionAgentVaultVariableActions.Read, ProjectPermissionSub.AgentVaultVariables)) {
+    if (
+      permission.cannot({
+        action: ProjectPermissionAgentVaultVariableActions.Read,
+        subject: ProjectPermissionSub.AgentVaultVariables
+      })
+    ) {
       throw new ForbiddenRequestError({
         message: "You can no longer read variables in this project, so this sign-in wasn't saved."
       });
@@ -903,11 +914,14 @@ export const agentVaultOauthServiceFactory = ({
 
   // What a variable write refuses with is worded for the user, so a dashboard sign-in shows it as its failure.
   const isVariableWriteRefusal = (error: unknown) =>
-    error instanceof NotFoundError || error instanceof ConflictError || error instanceof ForbiddenRequestError;
+    error instanceof NotFoundError ||
+    error instanceof ConflictError ||
+    error instanceof ForbiddenRequestError ||
+    error instanceof PermissionDeniedError;
 
   const errorStatusOf = (error: unknown): TAgentVaultOauthAuthorizationErrorStatus => {
     if (error instanceof ConflictError) return "conflict";
-    if (error instanceof ForbiddenRequestError) return "forbidden";
+    if (error instanceof ForbiddenRequestError || error instanceof PermissionDeniedError) return "forbidden";
     if (error instanceof NotFoundError) return "not-found";
     return "bad-request";
   };
@@ -1100,10 +1114,11 @@ export const agentVaultOauthServiceFactory = ({
   // Who a variable sign-in belongs to. A machine identity can start one: the link is for an end user, who signs in
   // through the identity's own callback.
   const authorizationActorOf = (ctx: TStartVariableAuthorizationDTO["ctx"]): TAgentVaultOauthAuthorizationActor => {
-    if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
+    const { principal } = ctx;
+    if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) {
       throw new BadRequestError({ message: "Only a user or a machine identity can start a sign-in." });
     }
-    return { type: ctx.actor, id: ctx.actorId };
+    return { type: principal.type, id: principal.id };
   };
 
   /**
@@ -1351,10 +1366,17 @@ export const agentVaultOauthServiceFactory = ({
     variableId,
     clientSecret
   }: TStartVariableAuthorizationDTO) => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await accessBundlePermissionService.getAgentVaultPermission({ actor: ctx, projectId });
+    const canEditVariables = permission.can({
+      action: ProjectPermissionAgentVaultVariableActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultVariables
+    });
     if (
-      permission.can(ProjectPermissionAgentVaultVariableActions.Edit, ProjectPermissionSub.AgentVaultVariables) &&
-      permission.cannot(ProjectPermissionAgentVaultVariableActions.Read, ProjectPermissionSub.AgentVaultVariables)
+      canEditVariables &&
+      permission.cannot({
+        action: ProjectPermissionAgentVaultVariableActions.Read,
+        subject: ProjectPermissionSub.AgentVaultVariables
+      })
     ) {
       throw new ForbiddenRequestError({
         message:
@@ -1362,12 +1384,7 @@ export const agentVaultOauthServiceFactory = ({
       });
     }
     const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId });
-    if (
-      !variable ||
-      variable.userId ||
-      variable.identityId ||
-      permission.cannot(ProjectPermissionAgentVaultVariableActions.Edit, ProjectPermissionSub.AgentVaultVariables)
-    ) {
+    if (!variable || variable.userId || variable.identityId || !canEditVariables) {
       throw new NotFoundError({ message: `Variable with ID '${variableId}' not found` });
     }
     if (variable.type !== AgentVaultVariableType.OAuth) {

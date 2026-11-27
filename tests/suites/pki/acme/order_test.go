@@ -19,7 +19,7 @@ func requirePendingOrder(t *testing.T, c *acmeClient, url string, o orderBody, n
 	require.Equal(t, "pending", o.Status)
 	require.Equal(t, []identifier{{Type: "dns", Value: name}}, o.Identifiers)
 	require.Regexp(t, "^"+orders+"[^/]+/finalize$", o.Finalize)
-	require.NotEmpty(t, o.Authorizations)
+	require.Len(t, o.Authorizations, 1)
 	for _, a := range o.Authorizations {
 		require.True(t, strings.HasPrefix(a, c.URL(c.profilePath()+"/authorizations/")), a)
 	}
@@ -86,6 +86,21 @@ func TestAcmeOrder_Create(t *testing.T) {
 				require.Empty(t, listOrders(t, c), "the refused order was still created")
 			})
 		}
+	})
+
+	t.Run("should refuse a private IP address when ownership verification is on", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		c := newAcmeProfile(t, tn).registered(t)
+
+		// Action
+		res := c.Post(t, c.NewOrderURL(), map[string]any{"identifiers": []identifier{{Type: "ip", Value: "10.20.30.40"}}})
+
+		// Assert
+		requireProblem(t, res, http.StatusBadRequest, "unsupportedIdentifier", "Private IP addresses are not allowed when ownership verification is enabled")
+		require.Empty(t, listOrders(t, c), "the refused order was still created")
 	})
 
 	t.Run("should refuse a DNS identifier that is not a hostname", func(t *testing.T) {

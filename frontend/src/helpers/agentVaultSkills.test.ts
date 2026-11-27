@@ -1,10 +1,11 @@
 import { strToU8, unzipSync, zipSync } from "fflate";
 import { describe, expect, test } from "vitest";
 
+import { bytesToBase64 } from "@app/helpers/string";
+
 import {
   buildDiffRows,
   buildSkillZip,
-  bytesToBase64,
   carrySkillFileModes,
   countLineChanges,
   decodeSkillFile,

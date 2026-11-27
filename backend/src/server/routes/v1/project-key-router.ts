@@ -1,8 +1,8 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectKeyRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -33,10 +33,7 @@ export const registerProjectKeyRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.projectKey.uploadProjectKeys({
         projectId: req.params.workspaceId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         nonce: req.body.key.nonce,
         receiverId: req.body.key.userId,
         encryptedKey: req.body.key.encryptedKey

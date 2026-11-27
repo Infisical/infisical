@@ -1,8 +1,8 @@
 import { Knex } from "knex";
 
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";

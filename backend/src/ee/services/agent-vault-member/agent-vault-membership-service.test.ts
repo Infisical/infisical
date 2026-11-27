@@ -1,18 +1,18 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
-import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { ActorPermission, Permission, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
 import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
-import {
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { ActorType } from "@app/services/auth/auth-type";
+  ProjectPermissionSub,
+  ProjectPermissionSet
+} from "@app/domains/platform/projects/ce/module";
+import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { lockMembershipsById } from "@app/services/membership/membership-dal";
 
 import { agentVaultMembershipServiceFactory } from "./agent-vault-membership-service";
@@ -36,11 +36,12 @@ const INSERTED_AT = new Date("2026-01-01T00:00:00Z");
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: ACTOR_ID,
-  actorOrgId: ORG_ID,
-  actorAuthMethod: undefined
+  principal: { type: ActorType.USER, id: ACTOR_ID },
+  org: { id: ORG_ID }
 } as unknown as Parameters<ReturnType<typeof agentVaultMembershipServiceFactory>["addProductMembers"]>[0]["ctx"];
+
+const ctxWith = (shouldUseNewPrivilegeSystem: boolean) =>
+  ({ ...ctx, org: { ...ctx.org, shouldUseNewPrivilegeSystem } }) as typeof ctx;
 
 const buildTx = (adminCount: number) => {
   const chain: Record<string, unknown> = {};
@@ -64,32 +65,91 @@ const buildTx = (adminCount: number) => {
 // Only the collaborators these three guards touch; everything else is left undefined so a guard that
 // fails to short-circuit shows up as a crash rather than a silent pass. findActorsWithActiveOrgAccess
 // follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
+type TTestRule = { action: string | string[]; subject: string; conditions?: unknown };
+
+// Agent Vault's real role rules are EE-only, so these stub just what the guards read: admin manages members,
+// groups and identities; member only runs sessions.
+const agentVaultMemberRules: TTestRule[] = [
+  {
+    action: [
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ],
+    subject: ProjectPermissionSub.AgentVaultSessions
+  }
+];
+const agentVaultAdminRules: TTestRule[] = [
+  ...agentVaultMemberRules,
+  {
+    action: [
+      ProjectPermissionMemberActions.Create,
+      ProjectPermissionMemberActions.Edit,
+      ProjectPermissionMemberActions.Delete,
+      ProjectPermissionMemberActions.Read,
+      ProjectPermissionMemberActions.GrantPrivileges,
+      ProjectPermissionMemberActions.AssignRole,
+      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      ProjectPermissionMemberActions.AssumePrivileges
+    ],
+    subject: ProjectPermissionSub.Member
+  },
+  {
+    action: [
+      ProjectPermissionGroupActions.Create,
+      ProjectPermissionGroupActions.Edit,
+      ProjectPermissionGroupActions.Delete,
+      ProjectPermissionGroupActions.Read,
+      ProjectPermissionGroupActions.GrantPrivileges,
+      ProjectPermissionGroupActions.AssignRole
+    ],
+    subject: ProjectPermissionSub.Groups
+  },
+  {
+    action: [
+      ProjectPermissionIdentityActions.Create,
+      ProjectPermissionIdentityActions.Edit,
+      ProjectPermissionIdentityActions.Delete,
+      ProjectPermissionIdentityActions.Read,
+      ProjectPermissionIdentityActions.GrantPrivileges,
+      ProjectPermissionIdentityActions.AssignRole,
+      ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
+      ProjectPermissionIdentityActions.AssumePrivileges
+    ],
+    subject: ProjectPermissionSub.Identity
+  }
+];
+
 const buildService = ({
   identityProjectId = null as string | null,
   productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
   adminMembershipIds = [] as string[],
   groupReachableIds = [] as string[],
   // A role of its own, in place of Agent Vault admin.
-  rules = agentVaultProjectAdminPermissions as RawRuleOf<MongoAbility>[],
+  rules = agentVaultAdminRules,
   // Off is the legacy system, where the boundary compares rule sets instead of checking assign-role.
   shouldUseNewPrivilegeSystem = false
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
-    permissionService: {
-      getProjectPermissionByRoles: vi.fn(async (roles: string[]) =>
+    projectPermissionService: {
+      getProjectPermissionByRoles: vi.fn(async ({ roles }: { roles: string[] }) =>
         roles.map((role) => ({
-          permission: createMongoAbility(
-            (role === ProjectMembershipRole.Admin
-              ? agentVaultProjectAdminPermissions
-              : agentVaultProjectMemberPermissions) as RawRuleOf<MongoAbility>[]
-          ),
+          permission: Permission.fromRules({
+            rules: (role === ProjectMembershipRole.Admin
+              ? agentVaultAdminRules
+              : agentVaultMemberRules) as unknown as TPermissionRule<ProjectPermissionSet>[]
+          }),
           role: { name: role, slug: role }
         }))
       ),
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility(rules)
-      })
+      getProjectPermission: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: rules as unknown as TPermissionRule<ProjectPermissionSet>[],
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      )
     },
     identityDAL: {
       // Honours a projectId filter, because the ownership check pushes it into the query rather than
@@ -614,14 +674,19 @@ describe("member changes take the action on each kind they name", () => {
       shouldUseNewPrivilegeSystem: true
     });
 
-    await service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx });
+    await service.addProductMembers({
+      projectId: PROJECT_ID,
+      ...addIds,
+      role: ProjectMembershipRole.Member,
+      ctx: ctxWith(true)
+    });
     await service.updateProductMemberRoles({
       projectId: PROJECT_ID,
       ...addIds,
       role: ProjectMembershipRole.Admin,
-      ctx
+      ctx: ctxWith(true)
     });
-    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
+    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx: ctxWith(true) });
     expect(deps.membershipDAL.delete).toHaveBeenCalled();
   });
 
@@ -635,7 +700,7 @@ describe("member changes take the action on each kind they name", () => {
 
     await expect(
       service.addProductMembers({ projectId: PROJECT_ID, emails: [], ...ids, role: ProjectMembershipRole.Member, ctx })
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
@@ -645,9 +710,9 @@ describe("member changes take the action on each kind they name", () => {
 
     await expect(
       service.updateProductMemberRoles({ projectId: PROJECT_ID, ...users, role: ProjectMembershipRole.Admin, ctx })
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...users, ctx })).rejects.toBeInstanceOf(
-      ForbiddenError
+      PermissionDeniedError
     );
     expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
   });
@@ -668,7 +733,7 @@ describe("member changes take the action on each kind they name", () => {
         offset: 0,
         ctx
       })
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 });
 
@@ -691,14 +756,24 @@ describe("assigning a role is bounded like Secrets Management's membership route
       });
 
       await expect(
-        service.addProductMembers({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Admin, ctx })
+        service.addProductMembers({
+          projectId: PROJECT_ID,
+          ...addIds,
+          role: ProjectMembershipRole.Admin,
+          ctx: ctxWith(shouldUseNewPrivilegeSystem)
+        })
       ).rejects.toThrow("Failed to add the member with this role");
       await expect(
-        service.updateProductMemberRoles({ projectId: PROJECT_ID, ...addIds, role: ProjectMembershipRole.Member, ctx })
+        service.updateProductMemberRoles({
+          projectId: PROJECT_ID,
+          ...addIds,
+          role: ProjectMembershipRole.Member,
+          ctx: ctxWith(shouldUseNewPrivilegeSystem)
+        })
       ).rejects.toThrow("Failed to change the role of a more privileged member");
-      await expect(service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx })).rejects.toThrow(
-        "Failed to remove a more privileged member"
-      );
+      await expect(
+        service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx: ctxWith(shouldUseNewPrivilegeSystem) })
+      ).rejects.toThrow("Failed to remove a more privileged member");
       expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
       expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
       expect(deps.membershipDAL.delete).not.toHaveBeenCalled();
@@ -717,7 +792,7 @@ describe("assigning a role is bounded like Secrets Management's membership route
         projectId: PROJECT_ID,
         ...addIds,
         role: ProjectMembershipRole.Admin,
-        ctx
+        ctx: ctxWith(shouldUseNewPrivilegeSystem)
       });
       expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalled();
     }
