@@ -9,6 +9,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { refineCredentialRotationMethod } from "../credential-rotation/app-connection-credential-rotation-schemas";
 import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureEntraIdConnectionMethod } from "./azure-entra-id-connection-enums";
 
@@ -75,15 +76,7 @@ export const CreateAzureEntraIdConnectionSchema = ValidateAzureEntraIdConnection
   GenericCreateAppConnectionFieldsSchema(AppConnection.AzureEntraId, {
     supportsCredentialRotation: true
   })
-).superRefine((data, ctx) => {
-  if (data.method !== AzureEntraIdConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Credential rotation is only supported for the client-secret method",
-      path: ["isAutoRotationEnabled"]
-    });
-  }
-});
+).superRefine(refineCredentialRotationMethod(AzureEntraIdConnectionMethod.ClientSecret));
 
 export const UpdateAzureEntraIdConnectionSchema = z
   .object({

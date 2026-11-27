@@ -9,6 +9,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { refineCredentialRotationMethod } from "../credential-rotation/app-connection-credential-rotation-schemas";
 import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureAppConfigurationConnectionMethod } from "./azure-app-configuration-connection-enums";
 
@@ -99,15 +100,7 @@ export const CreateAzureAppConfigurationConnectionSchema = ValidateAzureAppConfi
   GenericCreateAppConnectionFieldsSchema(AppConnection.AzureAppConfiguration, {
     supportsCredentialRotation: true
   })
-).superRefine((data, ctx) => {
-  if (data.method !== AzureAppConfigurationConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Credential rotation is only supported for the client-secret method",
-      path: ["isAutoRotationEnabled"]
-    });
-  }
-});
+).superRefine(refineCredentialRotationMethod(AzureAppConfigurationConnectionMethod.ClientSecret));
 
 export const UpdateAzureAppConfigurationConnectionSchema = z
   .object({
