@@ -38,6 +38,7 @@ import {
   getCertSourceLabel
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
+import { useDebounced } from "../../access/org/use-debounced";
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
@@ -492,6 +493,29 @@ export const ExportCsvButton = ({ rows }: { rows: TCertificate[] }) => {
   );
 };
 
+const useApplicationField = (filters: FilterBarFilter[]) => {
+  const applications = useV4Adapter("pkiApplications");
+  const [search, setSearch] = useState("");
+  const query = useDebounced(search.trim());
+  const searchParams = { search: query || undefined, limit: 20 };
+  const selectedIds = filters.find((filter) => filter.field === "applicationId")?.values ?? [];
+  const results = applications.useApplications(searchParams);
+  const { data: selected } = applications.useApplications(
+    selectedIds.length ? { applicationIds: selectedIds, limit: 100 } : searchParams
+  );
+  const byId = new Map(
+    [...(selected?.applications ?? []), ...(results.data?.applications ?? [])].map((app) => [
+      app.id,
+      app.name
+    ])
+  );
+  return {
+    options: [...byId].map(([value, label]) => ({ value, label })),
+    onSearch: setSearch,
+    loading: results.isPending
+  };
+};
+
 const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
   const search = useSearch({ from: routeId });
   const go = useGo();
@@ -530,7 +554,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
   const { data: profiles } = certificates.useCertificateProfiles({
     limit: 100
   });
-  const { data: applications } = useV4Adapter("pkiApplications").useAllApplications();
+  const applicationField = useApplicationField(filters);
 
   const rows = data?.certificates ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -577,7 +601,7 @@ const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) =
               value: entry.id,
               label: entry.slug
             })),
-            (applications ?? []).map((app) => ({ value: app.id, label: app.name }))
+            applicationField
           )}
           value={filters}
           onChange={(next) => {
