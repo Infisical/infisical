@@ -22,7 +22,7 @@ import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/c
 import { utcDayStamp } from "@app/lib/dates";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
-import { diff, groupBy, takeDistinctKeyScanWindow } from "@app/lib/fn";
+import { diff, groupBy, takeDistinctKeyScanWindow, unique } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
@@ -243,86 +243,59 @@ export const secretV2BridgeServiceFactory = ({
     tx?: Knex
   ) => {
     // Cross-project refs are authorized at resolution time via project grants — skip them here
-    const sameProjReferences = references.filter((el) => !el.targetProjectSlug);
+    const sameProjReferences = unique(
+      references.filter((el) => !el.targetProjectSlug),
+      (el) => `${el.environment}\n${el.secretPath}\n${el.secretKey}`
+    );
     if (!sameProjReferences.length) return;
 
     const uniqueReferenceEnvironmentSlugs = Array.from(new Set(sameProjReferences.map((el) => el.environment)));
     const referencesEnvironments = await projectEnvDAL.findBySlugs(projectId, uniqueReferenceEnvironmentSlugs, tx);
 
     // Filter out references to non-existent environments
-    const referencesEnvironmentGroupBySlug = groupBy(referencesEnvironments, (i) => i.slug);
-    const validEnvironmentReferences = sameProjReferences.filter(
-      (el) => referencesEnvironmentGroupBySlug[el.environment]
-    );
+    const envIdBySlug = new Map(referencesEnvironments.map((env) => [env.slug, env.id]));
+    const validEnvironmentReferences = sameProjReferences.filter((el) => envIdBySlug.has(el.environment));
 
     if (validEnvironmentReferences.length === 0) return;
 
-    const referredFolders = await folderDAL.findByManySecretPath(
+    const toLocationKey = (envId: string, secretPath: string) => `${envId}\n${secretPath}`;
+    const referencedLocations = unique(
       validEnvironmentReferences.map((el) => ({
         secretPath: el.secretPath,
-        envId: referencesEnvironmentGroupBySlug[el.environment][0].id
+        envId: envIdBySlug.get(el.environment) as string
       })),
-      tx
+      (el) => toLocationKey(el.envId, el.secretPath)
     );
+    const referredFolders = await folderDAL.findByManySecretPath(referencedLocations, tx);
 
-    const referencesFolderGroupByPath = groupBy(referredFolders.filter(Boolean), (i) => `${i?.envId}-${i?.path}`);
-
-    // Find only references that have valid folders (don't throw for missing paths)
-    const validReferences = validEnvironmentReferences.filter((el) => {
-      const folderId =
-        referencesFolderGroupByPath[`${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`]?.[0]
-          ?.id;
-      return folderId;
+    const folderIdByLocation = new Map<string, string>();
+    referencedLocations.forEach((location, index) => {
+      const folder = referredFolders[index];
+      if (folder) folderIdByLocation.set(toLocationKey(location.envId, location.secretPath), folder.id);
     });
 
-    if (validReferences.length === 0) return;
+    // Find only references that have valid folders (don't throw for missing paths)
+    const referenceByFolderKey = new Map<
+      string,
+      { folderId: string; reference: (typeof validEnvironmentReferences)[number] }
+    >();
+    validEnvironmentReferences.forEach((reference) => {
+      const folderId = folderIdByLocation.get(
+        toLocationKey(envIdBySlug.get(reference.environment) as string, reference.secretPath)
+      );
+      if (folderId) referenceByFolderKey.set(`${folderId}\n${reference.secretKey}`, { folderId, reference });
+    });
 
-    const referredSecrets = await secretDAL.find(
-      {
-        $complex: {
-          operator: "or",
-          value: validReferences
-            .map((el) => {
-              const folderGroup =
-                referencesFolderGroupByPath[
-                  `${referencesEnvironmentGroupBySlug[el.environment][0].id}-${el.secretPath}`
-                ];
-              if (!folderGroup || !folderGroup[0]) return null;
+    if (referenceByFolderKey.size === 0) return;
 
-              const folderId = folderGroup[0].id;
-
-              return {
-                operator: "and",
-                value: [
-                  {
-                    operator: "eq",
-                    field: "folderId",
-                    value: folderId
-                  },
-                  {
-                    operator: "eq",
-                    field: `${TableName.SecretV2}.key` as "key",
-                    value: el.secretKey
-                  }
-                ]
-              };
-            })
-            .filter((query) => query !== null) as Array<{
-            operator: "and";
-            value: Array<{
-              operator: "eq";
-              field: "folderId" | "key";
-              value: string;
-            }>;
-          }>
-        }
-      },
-      { tx }
+    const referredSecrets = await secretDAL.findTagsByFolderKeys(
+      [...referenceByFolderKey.values()].map(({ folderId, reference }) => ({ folderId, key: reference.secretKey })),
+      tx
     );
 
     // Only check permissions for secrets that actually exist
     referredSecrets.forEach((secret) => {
-      const reference = validReferences.find((ref) => ref.secretKey === secret.key);
+      const { reference } = referenceByFolderKey.get(`${secret.folderId}\n${secret.key}`) ?? {};
       if (reference) {
         SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment: reference.environment,

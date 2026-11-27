@@ -9,6 +9,7 @@ import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { throwIfAnySettledExpansionTooLarge } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
@@ -548,9 +549,11 @@ export const fnSecretsV2FromImports = async ({
         );
       })
     );
-    throwIfAnySettledClientClosed(
-      settledImports.flatMap((outerResult) => (outerResult.status === "fulfilled" ? outerResult.value : [outerResult]))
+    const settledResults = settledImports.flatMap((outerResult) =>
+      outerResult.status === "fulfilled" ? outerResult.value : [outerResult]
     );
+    throwIfAnySettledClientClosed(settledResults);
+    throwIfAnySettledExpansionTooLarge(settledResults);
   }
 
   return processedImports;

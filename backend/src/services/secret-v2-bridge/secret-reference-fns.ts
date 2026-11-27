@@ -4,7 +4,12 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { ClientClosedRequestError, ForbiddenRequestError, throwIfClientDisconnected } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ClientClosedRequestError,
+  ForbiddenRequestError,
+  throwIfClientDisconnected
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { TOrgDALFactory } from "../org/org-dal";
@@ -39,14 +44,15 @@ export const containsSecretReference = (value: string) => INTERPOLATION_TEST_REG
  * // ]
  */
 export const getAllSecretReferences = (maybeSecretReference: string) => {
-  const references = [];
+  const uniqueReferences = new Set<string>();
   let match;
 
   const regex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
   // eslint-disable-next-line no-cond-assign
   while ((match = regex.exec(maybeSecretReference)) !== null) {
-    references.push(match[1]);
+    uniqueReferences.add(match[1]);
   }
+  const references = [...uniqueReferences];
 
   const nestedReferences = references
     .filter((el) => el.includes("."))
@@ -124,7 +130,75 @@ type TInterpolateSecretArg = {
 // A cross-project secret carries no id: only this project's secrets are reported to onSecretExpanded.
 type TCachedReferencedSecret = { id?: string; value: string; tags: string[]; exists: boolean };
 
+type TResolvedReference = {
+  // Identifies the secret for circular reference checks and for reusing its expansion.
+  nodeId: string;
+  id?: string;
+  key: string;
+  environment: string;
+  secretPath: string;
+  projectSlug?: string;
+  value: string;
+  exists: boolean;
+  isCrossProject: boolean;
+};
+
+type TExpandedValue = {
+  value: string;
+  // Every reference in the value's tree, counted the way the reference tree lists them.
+  referenceCount: number;
+  characterCount: number;
+  referencedSecretIds: Set<string>;
+  traceChildren: TSecretReferenceTraceNode[];
+  // A value whose circular reference was cut short depends on which secrets referenced it, so it cannot be reused.
+  isReusable: boolean;
+};
+
 export const MAX_SECRET_REFERENCE_DEPTH = 10;
+// Both bound the expansion of one secret. References that point through each other multiply: a value holding many
+// references to a secret that holds many references of its own costs the product of the two counts.
+export const MAX_SECRET_REFERENCE_EXPANSION_REFERENCES = 1_000;
+export const MAX_SECRET_REFERENCE_EXPANSION_CHARACTERS = 10 * 1024 * 1024;
+// Counts every occurrence, so a reference repeated in one value counts each time. Well under the expansion limit, so
+// a value that is accepted can still expand together with the references of the secrets it points to.
+export const MAX_SECRET_REFERENCES_PER_VALUE = 100;
+
+const exceedsReferenceOccurrences = (value: string, limit: number) => {
+  const regex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+  let occurrences = 0;
+  // eslint-disable-next-line no-cond-assign
+  while (regex.exec(value) !== null) {
+    occurrences += 1;
+    if (occurrences > limit) return true;
+  }
+  return false;
+};
+
+export const assertSecretReferencesWithinLimit = (secrets: { secretKey: string; secretValue?: string | null }[]) => {
+  for (const { secretKey, secretValue } of secrets) {
+    if (secretValue && exceedsReferenceOccurrences(secretValue, MAX_SECRET_REFERENCES_PER_VALUE)) {
+      throw new BadRequestError({
+        name: "SecretReferenceLimitExceeded",
+        message: `The value of secret '${secretKey}' holds more than ${MAX_SECRET_REFERENCES_PER_VALUE.toLocaleString("en-US")} secret references, counting a reference each time it repeats. Reduce the references in it, or split it into several secrets.`
+      });
+    }
+  }
+};
+
+const SECRET_REFERENCE_EXPANSION_TOO_LARGE = "SecretReferenceExpansionTooLarge";
+
+// For callers that tolerate other expansion failures: an oversized secret must still fail the read, or the response
+// carries its unexpanded value as if expansion had succeeded.
+export const throwIfAnySettledExpansionTooLarge = (results: PromiseSettledResult<unknown>[]) => {
+  const tooLarge = results.find(
+    (result): result is PromiseRejectedResult =>
+      result.status === "rejected" &&
+      result.reason instanceof BadRequestError &&
+      result.reason.name === SECRET_REFERENCE_EXPANSION_TOO_LARGE
+  );
+  if (tooLarge) throw tooLarge.reason;
+};
+
 export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
@@ -239,6 +313,10 @@ export const expandSecretReferencesFactory = ({
     return secret ? { ...secret } : { value: "", tags: [], exists: false };
   };
 
+  // Shared by every secret this request expands. Keyed by depth as well, because the depth limit can cut short the
+  // expansion of a secret reached deeper in the tree.
+  const expandedValueCache = new Map<string, TExpandedValue>();
+
   const recursivelyExpandSecret = async (dto: {
     value?: string;
     secretPath: string;
@@ -253,12 +331,7 @@ export const expandSecretReferencesFactory = ({
 
     throwIfClientDisconnected(abortSignal);
 
-    // Track visited secrets to prevent circular references
     const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
-
-    const currentSecretId = createSecretId(dto.environment, dto.secretPath, dto.secretKey);
-    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
-    let expandedValue = dto.value;
 
     // Ensure the secret can actually be read before we expand it
     const currentSecret = await fetchSecret(dto.environment, dto.secretPath, dto.secretKey);
@@ -270,247 +343,378 @@ export const expandSecretReferencesFactory = ({
 
     const crossProjectSecretSharingEnabled = await checkCrossProjectAllowed();
 
-    while (stack.length) {
-      const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
+    const budget = { references: 0, characters: 0 };
+    const throwExpansionTooLarge = (reason: string) => {
+      throw new BadRequestError({
+        name: SECRET_REFERENCE_EXPANSION_TOO_LARGE,
+        message: `Unable to expand the references in secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}' because ${reason}. Reduce the references in this secret or in the secrets it references.`
+      });
+    };
+    const chargeReferences = (count: number) => {
+      budget.references += count;
+      if (budget.references > MAX_SECRET_REFERENCE_EXPANSION_REFERENCES) {
+        throwExpansionTooLarge(
+          `it leads to more than ${MAX_SECRET_REFERENCE_EXPANSION_REFERENCES.toLocaleString("en-US")} references, counting the references inside the secrets it references`
+        );
+      }
+    };
+    const chargeCharacters = (count: number) => {
+      budget.characters += count;
+      if (budget.characters > MAX_SECRET_REFERENCE_EXPANSION_CHARACTERS) {
+        throwExpansionTooLarge(
+          `expanding it would process more than ${MAX_SECRET_REFERENCE_EXPANSION_CHARACTERS.toLocaleString("en-US")} characters`
+        );
+      }
+    };
 
-      // eslint-disable-next-line no-continue
-      if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
+    // Returns undefined for a reference that stays literal without appearing in the reference tree.
+    const resolveReference = async (
+      interpolationSyntax: string,
+      environment: string,
+      secretPath: string
+    ): Promise<TResolvedReference | undefined> => {
+      const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
+      const entities = interpolationKey.trim().split(".");
 
-      const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
-      const refs = [];
-      let match;
+      if (!entities.length) return undefined;
 
-      // eslint-disable-next-line no-cond-assign
-      while ((match = matchRegex.exec(value || "")) !== null) {
-        refs.push(match[0]);
+      if (entities.length === 1) {
+        const [secretKey] = entities;
+        const referredValue = await fetchSecret(environment, secretPath, secretKey);
+        if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
+          throw new ForbiddenRequestError({
+            message: `You do not have permission to read secret '${secretKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+          });
+
+        const cacheKey = getCacheUniqueKey(environment, secretPath);
+        if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
+        secretCache[cacheKey][secretKey] = referredValue;
+
+        return {
+          nodeId: createSecretId(environment, secretPath, secretKey),
+          id: referredValue.id,
+          key: secretKey,
+          environment,
+          secretPath,
+          value: referredValue.value,
+          exists: referredValue.exists,
+          isCrossProject: false
+        };
       }
 
-      if (refs.length > 0) {
-        // Batch-resolve all cross-project slugs from this value's refs in one query
-        const crossProjectSlugs = refs
-          .map((r) =>
-            r
-              .slice(2, r.length - 1)
-              .trim()
-              .split(".")
-          )
-          .filter((parts) => parts[0]?.startsWith("@"))
-          .map((parts) => parts[0].slice(1));
-        if (crossProjectSlugs.length > 0) {
-          // eslint-disable-next-line no-await-in-loop
-          await resolveProjectSlugs(crossProjectSlugs);
+      if (entities[0].startsWith("@")) {
+        // Cross-project reference: ${@project-slug.env.path.KEY}
+        if (!hasCrossProjectConfig || !projectFolderGrantDAL || !crossProjectSecretSharingEnabled) {
+          return undefined;
         }
 
-        for (const interpolationSyntax of refs) {
-          throwIfClientDisconnected(abortSignal);
+        const crossProjSlug = entities[0].slice(1);
+        const crossProjEnv = entities[1];
+        const crossProjPath = path.join("/", ...entities.slice(2, entities.length - 1));
+        const crossProjKey = entities[entities.length - 1];
 
-          const interpolationKey = interpolationSyntax.slice(2, interpolationSyntax.length - 1);
-          const entities = interpolationKey.trim().split(".");
+        const sourceProjectId = slugToProjectId.get(crossProjSlug) ?? null;
+        if (!sourceProjectId) return undefined;
 
-          // eslint-disable-next-line no-continue
-          if (!entities.length) continue;
+        const crossProjCacheKey = getCacheUniqueKey(crossProjEnv, crossProjPath, sourceProjectId);
 
-          let referencedSecretPath = "";
-          let referencedSecretKey = "";
-          let referencedSecretEnvironmentSlug = "";
-          let referencedSecretValue = "";
-          let referencedSecretExists = false;
-          let referencedProjectSlug: string | undefined;
-          let isCrossProjectRef = false;
-
-          if (entities.length === 1) {
-            const [secretKey] = entities;
-            // eslint-disable-next-line no-continue,no-await-in-loop
-            const referredValue = await fetchSecret(environment, secretPath, secretKey);
-            if (!canExpandValue(environment, secretPath, secretKey, referredValue.tags))
-              throw new ForbiddenRequestError({
-                message: `You do not have permission to read secret '${secretKey}' in environment '${environment}' at path '${secretPath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+        let crossProjSecretData: { value: string; tags: string[]; exists: boolean };
+        if (secretCache?.[crossProjCacheKey]) {
+          crossProjSecretData = secretCache[crossProjCacheKey][crossProjKey] || {
+            value: "",
+            tags: [],
+            exists: false
+          };
+        } else {
+          try {
+            const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath, tx);
+            throwIfClientDisconnected(abortSignal);
+            if (!sourceFolder) {
+              secretCache[crossProjCacheKey] = {};
+              crossProjSecretData = { value: "", tags: [], exists: false };
+            } else {
+              // Verify that a folder grant exists: source folder → current target project
+              const [grant] = await projectFolderGrantDAL.find({
+                sourceProjectId,
+                sourceFolderId: sourceFolder.id,
+                targetProjectId: projectId
               });
 
-            const cacheKey = getCacheUniqueKey(environment, secretPath);
-            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
-            secretCache[cacheKey][secretKey] = referredValue;
-            if (referredValue.id) dto.referencedSecretIds?.add(referredValue.id);
-
-            referencedSecretValue = referredValue.value;
-            referencedSecretExists = referredValue.exists;
-            referencedSecretKey = secretKey;
-            referencedSecretPath = secretPath;
-            referencedSecretEnvironmentSlug = environment;
-          } else if (entities[0].startsWith("@")) {
-            // Cross-project reference: ${@project-slug.env.path.KEY}
-            // eslint-disable-next-line no-await-in-loop
-            if (!hasCrossProjectConfig || !projectFolderGrantDAL || !crossProjectSecretSharingEnabled) {
-              // eslint-disable-next-line no-continue
-              continue;
-            }
-
-            isCrossProjectRef = true;
-            const crossProjSlug = entities[0].slice(1);
-            const crossProjEnv = entities[1];
-            const crossProjPath = path.join("/", ...entities.slice(2, entities.length - 1));
-            const crossProjKey = entities[entities.length - 1];
-
-            const sourceProjectId = slugToProjectId.get(crossProjSlug) ?? null;
-            if (!sourceProjectId) {
-              // eslint-disable-next-line no-continue
-              continue;
-            }
-
-            const crossProjCacheKey = getCacheUniqueKey(crossProjEnv, crossProjPath, sourceProjectId);
-
-            let crossProjSecretData: { value: string; tags: string[]; exists: boolean };
-            if (secretCache?.[crossProjCacheKey]) {
-              crossProjSecretData = secretCache[crossProjCacheKey][crossProjKey] || {
-                value: "",
-                tags: [],
-                exists: false
-              };
-            } else {
-              try {
-                // eslint-disable-next-line no-await-in-loop
-                const sourceFolder = await folderDAL.findBySecretPath(sourceProjectId, crossProjEnv, crossProjPath, tx);
-                throwIfClientDisconnected(abortSignal);
-                if (!sourceFolder) {
-                  secretCache[crossProjCacheKey] = {};
-                  crossProjSecretData = { value: "", tags: [], exists: false };
-                } else {
-                  // Verify that a folder grant exists: source folder → current target project
-                  // eslint-disable-next-line no-await-in-loop
-                  const [grant] = await projectFolderGrantDAL.find({
-                    sourceProjectId,
-                    sourceFolderId: sourceFolder.id,
-                    targetProjectId: projectId
-                  });
-
-                  if (!grant) {
-                    secretCache[crossProjCacheKey] = {};
-                    crossProjSecretData = { value: "", tags: [], exists: false };
-                  } else {
-                    // eslint-disable-next-line no-await-in-loop
-                    const sourceDecrypt = await getProjectDecryptor(sourceProjectId);
-                    if (!sourceDecrypt) {
-                      secretCache[crossProjCacheKey] = {};
-                      crossProjSecretData = { value: "", tags: [], exists: false };
-                      // eslint-disable-next-line no-continue
-                      continue;
-                    }
-                    // Use the explicit raw DAL when same-project resolution wraps secretDAL
-                    // with import-aware behavior.
-                    // eslint-disable-next-line no-await-in-loop
-                    const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
-                      folderId: sourceFolder.id,
-                      tx
-                    });
-                    throwIfClientDisconnected(abortSignal);
-
-                    const crossProjDecrypted = sourceSecrets.reduce<
-                      Record<string, { value: string; tags: string[]; exists: boolean }>
-                    >((prev, secret) => {
-                      // Only shared secrets (no personal overrides) from source project
-                      if (!secret.userId) {
-                        // eslint-disable-next-line no-param-reassign
-                        prev[secret.key] = {
-                          value: sourceDecrypt(secret.encryptedValue) || "",
-                          tags: secret.tags?.map((el) => el.slug) || [],
-                          exists: true
-                        };
-                      }
-                      return prev;
-                    }, {});
-
-                    secretCache[crossProjCacheKey] = crossProjDecrypted;
-                    crossProjSecretData = crossProjDecrypted[crossProjKey] || { value: "", tags: [], exists: false };
-                  }
-                }
-              } catch (error) {
-                if (error instanceof ClientClosedRequestError) throw error;
-                logger.error(
-                  { err: error, crossProjSlug, crossProjEnv, crossProjPath, crossProjKey },
-                  `Failed to expand cross-project reference [slug=${crossProjSlug}] [env=${crossProjEnv}] [path=${crossProjPath}] [key=${crossProjKey}]`
-                );
+              if (!grant) {
                 secretCache[crossProjCacheKey] = {};
                 crossProjSecretData = { value: "", tags: [], exists: false };
+              } else {
+                const sourceDecrypt = await getProjectDecryptor(sourceProjectId);
+                if (!sourceDecrypt) {
+                  secretCache[crossProjCacheKey] = {};
+                  return undefined;
+                }
+                // Use the explicit raw DAL when same-project resolution wraps secretDAL
+                // with import-aware behavior.
+                const sourceSecrets = await (crossProjectSecretDAL || secretDAL).findByFolderId({
+                  folderId: sourceFolder.id,
+                  tx
+                });
+                throwIfClientDisconnected(abortSignal);
+
+                const crossProjDecrypted = sourceSecrets.reduce<
+                  Record<string, { value: string; tags: string[]; exists: boolean }>
+                >((prev, secret) => {
+                  // Only shared secrets (no personal overrides) from source project
+                  if (!secret.userId) {
+                    // eslint-disable-next-line no-param-reassign
+                    prev[secret.key] = {
+                      value: sourceDecrypt(secret.encryptedValue) || "",
+                      tags: secret.tags?.map((el) => el.slug) || [],
+                      exists: true
+                    };
+                  }
+                  return prev;
+                }, {});
+
+                secretCache[crossProjCacheKey] = crossProjDecrypted;
+                crossProjSecretData = crossProjDecrypted[crossProjKey] || { value: "", tags: [], exists: false };
               }
             }
-
-            referencedSecretValue = crossProjSecretData.value;
-            referencedSecretExists = crossProjSecretData.exists;
-            referencedSecretKey = crossProjKey;
-            referencedSecretPath = crossProjPath;
-            referencedSecretEnvironmentSlug = crossProjEnv;
-            referencedProjectSlug = crossProjSlug;
-          } else {
-            const secretReferenceEnvironment = entities[0];
-            const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
-            const secretReferenceKey = entities[entities.length - 1];
-
-            // eslint-disable-next-line no-await-in-loop
-            const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
-            if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
-              throw new ForbiddenRequestError({
-                message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
-              });
-
-            const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
-            if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
-            secretCache[cacheKey][secretReferenceKey] = referedValue;
-            if (referedValue.id) dto.referencedSecretIds?.add(referedValue.id);
-
-            referencedSecretValue = referedValue.value;
-            referencedSecretExists = referedValue.exists;
-            referencedSecretKey = secretReferenceKey;
-            referencedSecretPath = secretReferencePath;
-            referencedSecretEnvironmentSlug = secretReferenceEnvironment;
-          }
-
-          const node = {
-            value: referencedSecretValue,
-            secretPath: referencedSecretPath,
-            environment: referencedSecretEnvironmentSlug,
-            ...(referencedProjectSlug ? { projectSlug: referencedProjectSlug } : {}),
-            depth: depth + 1,
-            secretKey: referencedSecretKey,
-            trace
-          };
-
-          // Check for circular reference
-          const referencedSecretId = createSecretId(
-            referencedSecretEnvironmentSlug,
-            referencedSecretPath,
-            referencedSecretKey
-          );
-          const isCircular = visitedSecrets.has(referencedSecretId);
-
-          const newVisitedSecrets = new Set([...visitedSecrets, referencedSecretId]);
-
-          // Cross-project secrets are not recursively expanded (no source-project context in this factory)
-          const shouldExpandMore =
-            INTERPOLATION_TEST_REGEX.test(referencedSecretValue) && !isCircular && !isCrossProjectRef;
-          if (dto.shouldStackTrace) {
-            const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
-            trace?.children.push(stackTraceNode);
-            // if stack trace this would be child node
-            if (shouldExpandMore) {
-              stack.push({ ...node, trace: stackTraceNode, visitedSecrets: newVisitedSecrets });
-            }
-          } else if (shouldExpandMore) {
-            // if no stack trace is needed we just keep going with root node
-            stack.push({ ...node, visitedSecrets: newVisitedSecrets });
-          }
-
-          if (referencedSecretExists) {
-            expandedValue = expandedValue.replaceAll(
-              interpolationSyntax,
-              () => referencedSecretValue // prevents special characters from triggering replacement patterns
+          } catch (error) {
+            if (error instanceof ClientClosedRequestError) throw error;
+            logger.error(
+              { err: error, crossProjSlug, crossProjEnv, crossProjPath, crossProjKey },
+              `Failed to expand cross-project reference [slug=${crossProjSlug}] [env=${crossProjEnv}] [path=${crossProjPath}] [key=${crossProjKey}]`
             );
+            secretCache[crossProjCacheKey] = {};
+            crossProjSecretData = { value: "", tags: [], exists: false };
           }
-          // when the referenced secret does not exist, leave the literal ${REF} untouched
+        }
+
+        return {
+          nodeId: `@${sourceProjectId}:${createSecretId(crossProjEnv, crossProjPath, crossProjKey)}`,
+          key: crossProjKey,
+          environment: crossProjEnv,
+          secretPath: crossProjPath,
+          projectSlug: crossProjSlug,
+          value: crossProjSecretData.value,
+          exists: crossProjSecretData.exists,
+          isCrossProject: true
+        };
+      }
+
+      const secretReferenceEnvironment = entities[0];
+      const secretReferencePath = path.join("/", ...entities.slice(1, entities.length - 1));
+      const secretReferenceKey = entities[entities.length - 1];
+
+      const referedValue = await fetchSecret(secretReferenceEnvironment, secretReferencePath, secretReferenceKey);
+      if (!canExpandValue(secretReferenceEnvironment, secretReferencePath, secretReferenceKey, referedValue.tags))
+        throw new ForbiddenRequestError({
+          message: `You do not have permission to read secret '${secretReferenceKey}' in environment '${secretReferenceEnvironment}' at path '${secretReferencePath}', which is referenced by secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}'.`
+        });
+
+      const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
+      if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
+      secretCache[cacheKey][secretReferenceKey] = referedValue;
+
+      return {
+        nodeId: createSecretId(secretReferenceEnvironment, secretReferencePath, secretReferenceKey),
+        id: referedValue.id,
+        key: secretReferenceKey,
+        environment: secretReferenceEnvironment,
+        secretPath: secretReferencePath,
+        value: referedValue.value,
+        exists: referedValue.exists,
+        isCrossProject: false
+      };
+    };
+
+    // eslint-disable-next-line prefer-const
+    let expandReferencedValue: (
+      reference: TResolvedReference,
+      depth: number,
+      ancestors: Set<string>
+    ) => Promise<TExpandedValue>;
+
+    // Each distinct reference in a value is resolved and expanded once, then every occurrence is replaced in a single
+    // pass. A referenced value is expanded in its own environment and path before it is inserted.
+    const expandValue = async ({
+      value,
+      environment,
+      secretPath,
+      secretKey,
+      depth,
+      ancestors
+    }: {
+      value: string;
+      environment: string;
+      secretPath: string;
+      secretKey: string;
+      depth: number;
+      ancestors: Set<string>;
+    }): Promise<TExpandedValue> => {
+      const expanded: TExpandedValue = {
+        value,
+        referenceCount: 0,
+        characterCount: 0,
+        referencedSecretIds: new Set(),
+        traceChildren: [],
+        isReusable: true
+      };
+
+      if (depth > MAX_SECRET_REFERENCE_DEPTH) {
+        expanded.isReusable = false;
+        return expanded;
+      }
+
+      chargeCharacters(value.length);
+      expanded.characterCount += value.length;
+
+      const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
+      const occurrences = new Map<string, number>();
+      // A same-project reference always counts once resolved; a cross-project one may be skipped without counting.
+      let sameProjectReferences = 0;
+      let match;
+
+      let occurrenceCount = 0;
+      // eslint-disable-next-line no-cond-assign
+      while ((match = matchRegex.exec(value)) !== null) {
+        // Values stored before the write limit can repeat a reference hundreds of thousands of times; stopping here
+        // keeps refusing one to a handful of matches instead of a scan over all of them.
+        occurrenceCount += 1;
+        if (occurrenceCount > MAX_SECRET_REFERENCE_EXPANSION_REFERENCES) {
+          throwExpansionTooLarge(
+            `the value of secret '${secretKey}' holds more than ${MAX_SECRET_REFERENCE_EXPANSION_REFERENCES.toLocaleString("en-US")} references`
+          );
+        }
+        const count = occurrences.get(match[0]);
+        occurrences.set(match[0], (count ?? 0) + 1);
+        if (count === undefined && !match[1].startsWith("@")) {
+          sameProjectReferences += 1;
+          // Refused before any reference is resolved when the value alone holds more than the budget has left.
+          if (budget.references + sameProjectReferences > MAX_SECRET_REFERENCE_EXPANSION_REFERENCES) {
+            chargeReferences(sameProjectReferences);
+          }
         }
       }
-    }
 
-    return { expandedValue, stackTrace };
+      const refs = [...occurrences.keys()];
+      if (!refs.length) return expanded;
+
+      // Batch-resolve all cross-project slugs from this value's refs in one query
+      const crossProjectSlugs = refs
+        .map((r) =>
+          r
+            .slice(2, r.length - 1)
+            .trim()
+            .split(".")
+        )
+        .filter((parts) => parts[0]?.startsWith("@"))
+        .map((parts) => parts[0].slice(1));
+      if (crossProjectSlugs.length > 0) {
+        await resolveProjectSlugs(crossProjectSlugs);
+      }
+
+      const replacements = new Map<string, string>();
+      for (const interpolationSyntax of refs) {
+        throwIfClientDisconnected(abortSignal);
+
+        // eslint-disable-next-line no-await-in-loop
+        const reference = await resolveReference(interpolationSyntax, environment, secretPath);
+        // eslint-disable-next-line no-continue
+        if (!reference) continue;
+
+        chargeReferences(1);
+        expanded.referenceCount += 1;
+        if (reference.id) expanded.referencedSecretIds.add(reference.id);
+
+        const isCircular = ancestors.has(reference.nodeId);
+        if (isCircular) expanded.isReusable = false;
+
+        // Cross-project secrets are not recursively expanded (no source-project context in this factory)
+        const shouldExpandMore =
+          !isCircular && !reference.isCrossProject && INTERPOLATION_TEST_REGEX.test(reference.value);
+        const child = shouldExpandMore
+          ? // eslint-disable-next-line no-await-in-loop
+            await expandReferencedValue(reference, depth + 1, ancestors)
+          : undefined;
+
+        if (child) {
+          expanded.referenceCount += child.referenceCount;
+          expanded.characterCount += child.characterCount;
+          child.referencedSecretIds.forEach((id) => expanded.referencedSecretIds.add(id));
+          if (!child.isReusable) expanded.isReusable = false;
+        }
+
+        if (dto.shouldStackTrace) {
+          expanded.traceChildren.push({
+            key: reference.key,
+            value: reference.value,
+            environment: reference.environment,
+            secretPath: reference.secretPath,
+            ...(reference.projectSlug ? { projectSlug: reference.projectSlug } : {}),
+            children: child?.traceChildren ?? []
+          });
+        }
+
+        // when the referenced secret does not exist, leave the literal ${REF} untouched
+        if (reference.exists) replacements.set(interpolationSyntax, child?.value ?? reference.value);
+      }
+
+      if (replacements.size) {
+        let expandedLength = value.length;
+        replacements.forEach((replacement, interpolationSyntax) => {
+          expandedLength +=
+            (occurrences.get(interpolationSyntax) ?? 0) * (replacement.length - interpolationSyntax.length);
+        });
+        chargeCharacters(expandedLength);
+        expanded.characterCount += expandedLength;
+
+        // A replacer function inserts the value literally, so `$&` and similar patterns in it are not expanded
+        expanded.value = value.replace(
+          new RE2(INTERPOLATION_PATTERN_STRING, "g"),
+          (interpolationSyntax: string) => replacements.get(interpolationSyntax) ?? interpolationSyntax
+        );
+      }
+
+      return expanded;
+    };
+
+    // In relative-import mode an imported secret is expanded under the importing folder's name for it, so a reference
+    // to that name reads the folder's own value rather than the imported one. An expansion cached under another root
+    // may pass through that secret, which is circular under this root, so it cannot be reused here.
+    const rootSecretId = currentSecret.id;
+
+    expandReferencedValue = async (reference, depth, ancestors) => {
+      const cacheKey = `${dto.shouldStackTrace ? "trace" : "value"}:${depth}:${reference.nodeId}`;
+      const cached = expandedValueCache.get(cacheKey);
+      if (cached && !(rootSecretId && cached.referencedSecretIds.has(rootSecretId))) {
+        chargeReferences(cached.referenceCount);
+        chargeCharacters(cached.characterCount);
+        return cached;
+      }
+
+      const expanded = await expandValue({
+        value: reference.value,
+        environment: reference.environment,
+        secretPath: reference.secretPath,
+        secretKey: reference.key,
+        depth,
+        ancestors: new Set(ancestors).add(reference.nodeId)
+      });
+      if (expanded.isReusable) expandedValueCache.set(cacheKey, expanded);
+      return expanded;
+    };
+
+    const expanded = await expandValue({
+      value: dto.value,
+      environment: dto.environment,
+      secretPath: dto.secretPath,
+      secretKey: dto.secretKey,
+      depth: 0,
+      ancestors: new Set([createSecretId(dto.environment, dto.secretPath, dto.secretKey)])
+    });
+
+    expanded.referencedSecretIds.forEach((id) => dto.referencedSecretIds?.add(id));
+    stackTrace.children = expanded.traceChildren;
+
+    return { expandedValue: expanded.value, stackTrace };
   };
 
   const expandSecret = async (inputSecret: {

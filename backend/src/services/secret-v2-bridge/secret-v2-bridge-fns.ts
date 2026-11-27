@@ -32,7 +32,11 @@ import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
-import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
+import {
+  expandSecretReferencesFactory,
+  getAllSecretReferences,
+  throwIfAnySettledExpansionTooLarge
+} from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import {
   SecretOperations,
@@ -595,7 +599,8 @@ export type TSecretReferenceExpansionError = { path: string; error: string };
 
 // Expands every secret's value in place and returns one entry per failed expansion, tagged with the
 // secret's path. Throws ClientClosedRequestError instead when any expansion stopped on a client
-// disconnect, since those would otherwise be reported as reference errors.
+// disconnect, since those would otherwise be reported as reference errors, and rethrows a secret
+// too large to expand so the caller does not report it as denied access.
 export const expandSecretReferencesGroupedByPath = async <T extends TExpandableSecret>({
   secrets,
   environment,
@@ -633,9 +638,11 @@ export const expandSecretReferencesGroupedByPath = async <T extends TExpandableS
     )
   );
 
-  throwIfAnySettledClientClosed(
-    settledPromises.flatMap((outerResult) => (outerResult.status === "fulfilled" ? outerResult.value : [outerResult]))
+  const settledResults = settledPromises.flatMap((outerResult) =>
+    outerResult.status === "fulfilled" ? outerResult.value : [outerResult]
   );
+  throwIfAnySettledClientClosed(settledResults);
+  throwIfAnySettledExpansionTooLarge(settledResults);
 
   const errors: TSecretReferenceExpansionError[] = [];
   settledPromises.forEach((outerResult, outerIndex) => {

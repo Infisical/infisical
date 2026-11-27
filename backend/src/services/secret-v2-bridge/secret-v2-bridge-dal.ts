@@ -1092,6 +1092,53 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  // The pairs travel as two array parameters rather than one condition each, because a single secret value can hold
+  // more references than Postgres accepts bind parameters (65,535).
+  const findTagsByFolderKeys = async (locations: { folderId: string; key: string }[], tx?: Knex) => {
+    if (!locations.length) return [];
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretV2)
+        .whereRaw(`(??, ??) IN (SELECT * FROM unnest(?::uuid[], ?::text[]))`, [
+          `${TableName.SecretV2}.folderId`,
+          `${TableName.SecretV2}.key`,
+          locations.map(({ folderId }) => folderId),
+          locations.map(({ key }) => key)
+        ])
+        .leftJoin(
+          TableName.SecretV2JnTag,
+          `${TableName.SecretV2}.id`,
+          `${TableName.SecretV2JnTag}.${TableName.SecretV2}Id`
+        )
+        .leftJoin(
+          TableName.SecretTag,
+          `${TableName.SecretV2JnTag}.${TableName.SecretTag}Id`,
+          `${TableName.SecretTag}.id`
+        )
+        .select(
+          db.ref("id").withSchema(TableName.SecretV2),
+          db.ref("folderId").withSchema(TableName.SecretV2),
+          db.ref("key").withSchema(TableName.SecretV2),
+          db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+          db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+        );
+
+      return sqlNestRelationships({
+        data: docs,
+        key: "id",
+        parentMapper: ({ id, folderId, key }) => ({ id, folderId, key }),
+        childrenMapper: [
+          {
+            key: "tagId",
+            label: "tags" as const,
+            mapper: ({ tagSlug: slug }) => ({ slug })
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindTagsByFolderKeys" });
+    }
+  };
+
   const upsertSecretReferences = async (
     data: {
       secretId: string;
@@ -1884,6 +1931,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findBySecretKeys,
     findSharedKeyInFolders,
     upsertSecretReferences,
+    findTagsByFolderKeys,
     findReferencedSecretReferences,
     findSecretReferencesByProjectId,
     findAllProjectSecretValues,
