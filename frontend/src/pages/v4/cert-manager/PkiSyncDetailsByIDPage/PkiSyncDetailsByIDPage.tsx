@@ -55,14 +55,9 @@ import {
   SyncStatus,
   usePkiSyncActions
 } from "../components/pki-syncs/sync-parts";
-import { PkiSyncCertificatesCard } from "./certificates-card";
+import { PkiSyncCertificateFiltersCard, PkiSyncCertificatesCard } from "./certificates-card";
 import { usePkiSyncDestinationItems } from "./destination-items";
-import {
-  PkiSyncCommandsCard,
-  pkiSyncFieldMappingItems,
-  pkiSyncOptionItems,
-  SyncErrorMessage
-} from "./options-items";
+import { PkiSyncCommandsCard, pkiSyncFieldMappingItems, pkiSyncOptionItems } from "./options-items";
 
 const route = v4Path("/organizations/$orgId/cert-manager/integrations/$syncId");
 
@@ -253,9 +248,7 @@ const SyncDetails = ({
       "Last synced",
       sync.lastSyncedAt ? formatDateTime(String(sync.lastSyncedAt)) : <Dash key="last" />
     ],
-    ...(failure
-      ? [["Last sync error", <SyncErrorMessage key="error" message={failure} />] as DataListItem]
-      : []),
+    ...(failure ? [["Last sync error", failure] as DataListItem] : []),
     ["Created", formatDateTime(String(sync.createdAt))]
   ];
 
@@ -329,38 +322,43 @@ const SyncDetails = ({
               <DataList variant="props" density="compact" items={details} />
             </Card>
           }
+          secondary={
+            <>
+              <Card
+                variant="framed"
+                title="Destination"
+                action={editButton("destination", "Edit destination")}
+              >
+                <DataList variant="props" density="compact" items={destinationItems} />
+              </Card>
+              {hasFieldMappings(sync.destination) && mappingItems.length > 0 && (
+                <Card
+                  variant="framed"
+                  title="Field mappings"
+                  action={editButton("mappings", "Edit field mappings")}
+                >
+                  <DataList variant="props" density="compact" items={mappingItems} />
+                </Card>
+              )}
+              <Card
+                variant="framed"
+                title="Sync options"
+                action={editButton("options", "Edit sync options")}
+              >
+                <DataList variant="props" density="compact" items={pkiSyncOptionItems(sync)} />
+              </Card>
+              <PkiSyncCommandsCard
+                pkiSync={sync}
+                action={editButton("hostCommands", "Edit host commands")}
+              />
+              <PkiSyncCertificateFiltersCard
+                pkiSync={sync}
+                onEditCertificates={() => setEditing("certificates")}
+              />
+            </>
+          }
         >
-          <Card
-            variant="framed"
-            title="Destination"
-            action={editButton("destination", "Edit destination")}
-          >
-            <DataList variant="props" density="compact" items={destinationItems} />
-          </Card>
-          {hasFieldMappings(sync.destination) && mappingItems.length > 0 && (
-            <Card
-              variant="framed"
-              title="Field mappings"
-              action={editButton("mappings", "Edit field mappings")}
-            >
-              <DataList variant="props" density="compact" items={mappingItems} />
-            </Card>
-          )}
-          <Card
-            variant="framed"
-            title="Sync options"
-            action={editButton("options", "Edit sync options")}
-          >
-            <DataList variant="props" density="compact" items={pkiSyncOptionItems(sync)} />
-          </Card>
-          <PkiSyncCommandsCard
-            pkiSync={sync}
-            action={editButton("hostCommands", "Edit host commands")}
-          />
-          <PkiSyncCertificatesCard
-            pkiSync={sync}
-            onEditCertificates={() => setEditing("certificates")}
-          />
+          <PkiSyncCertificatesCard pkiSync={sync} />
           <LogsCard sync={sync} />
         </DetailLayout>
       </Stack>

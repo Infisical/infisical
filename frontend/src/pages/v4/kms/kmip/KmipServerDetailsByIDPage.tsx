@@ -215,6 +215,66 @@ export const KmipServerDetailsByIDPage = () => {
                 />
               </Card>
             }
+            secondary={
+              <>
+                {!isIdentity && (
+                  <Card
+                    variant="framed"
+                    title="Certificate configuration"
+                    action={
+                      <EditDetailsButton
+                        label="Edit certificate configuration"
+                        allowed={canEdit}
+                        onClick={() => setDialog("cert")}
+                      />
+                    }
+                  >
+                    <DataList
+                      variant="props"
+                      density="compact"
+                      items={[
+                        ["Hostnames or IPs", server.hostnamesOrIps || <Dash key="hosts" />],
+                        ["Certificate TTL", server.ttl || "1y"],
+                        ["Key algorithm", keyAlgorithmName(server.keyAlgorithm)]
+                      ]}
+                    />
+                  </Card>
+                )}
+                <Card
+                  variant="framed"
+                  title="Authentication"
+                  action={
+                    isIdentity ? undefined : (
+                      <EditDetailsButton
+                        label="Edit auth method"
+                        allowed={canEdit}
+                        onClick={() => setDialog("auth")}
+                      />
+                    )
+                  }
+                >
+                  <Stack gap={12}>
+                    {isIdentity && (
+                      <Alert
+                        tone="warn"
+                        title="Authenticated through a machine identity (legacy)"
+                        actions={
+                          <Button variant="link" onClick={back}>
+                            Create a new KMIP server
+                          </Button>
+                        }
+                      >
+                        This server still uses a machine identity. Create a new KMIP server to
+                        replace it.
+                      </Alert>
+                    )}
+                    {authItems.length > 0 && (
+                      <DataList variant="props" density="compact" items={authItems} />
+                    )}
+                  </Stack>
+                </Card>
+              </>
+            }
           >
             <div className={css.column}>
               <DeployCard
@@ -225,62 +285,6 @@ export const KmipServerDetailsByIDPage = () => {
                 onGenerate={mint}
               />
               <ConnectClientsCard />
-              {!isIdentity && (
-                <Card
-                  variant="framed"
-                  title="Certificate configuration"
-                  action={
-                    <EditDetailsButton
-                      label="Edit certificate configuration"
-                      allowed={canEdit}
-                      onClick={() => setDialog("cert")}
-                    />
-                  }
-                >
-                  <DataList
-                    variant="props"
-                    density="compact"
-                    items={[
-                      ["Hostnames or IPs", server.hostnamesOrIps || <Dash key="hosts" />],
-                      ["Certificate TTL", server.ttl || "1y"],
-                      ["Key algorithm", keyAlgorithmName(server.keyAlgorithm)]
-                    ]}
-                  />
-                </Card>
-              )}
-              <Card
-                variant="framed"
-                title="Authentication"
-                action={
-                  isIdentity ? undefined : (
-                    <EditDetailsButton
-                      label="Edit auth method"
-                      allowed={canEdit}
-                      onClick={() => setDialog("auth")}
-                    />
-                  )
-                }
-              >
-                <Stack gap={12}>
-                  {isIdentity && (
-                    <Alert
-                      tone="warn"
-                      title="Authenticated through a machine identity (legacy)"
-                      actions={
-                        <Button variant="link" onClick={back}>
-                          Create a new KMIP server
-                        </Button>
-                      }
-                    >
-                      This server still uses a machine identity. Create a new KMIP server to replace
-                      it.
-                    </Alert>
-                  )}
-                  {authItems.length > 0 && (
-                    <DataList variant="props" density="compact" items={authItems} />
-                  )}
-                </Stack>
-              </Card>
             </div>
           </DetailLayout>
         </Stack>

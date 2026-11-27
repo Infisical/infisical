@@ -371,15 +371,16 @@ const CaDetail = ({
       <DetailLayout
         asideLabel="Certificate authority details"
         aside={<CaDetailsCard ca={ca} org={org} parentName={parent?.name} />}
+        secondary={
+          signingConfig &&
+          !pendingCertificate && <SigningConfigCard ca={ca} config={signingConfig} />
+        }
       >
         <CaCertificatesList
           ca={ca}
           readBlock={block(ProjectPermissionCertificateAuthorityActions.Read)}
         />
         {renewal && renewable && <RenewalCard ca={ca} renewal={renewal} />}
-        {signingConfig && !pendingCertificate && (
-          <SigningConfigCard ca={ca} config={signingConfig} />
-        )}
         <CrossSignedCertificateCard
           ca={ca}
           entitled={Boolean(plan?.pkiCrossSignedCa)}

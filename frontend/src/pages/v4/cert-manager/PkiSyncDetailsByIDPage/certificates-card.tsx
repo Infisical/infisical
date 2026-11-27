@@ -5,7 +5,7 @@ import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { MiddleTruncate } from "@infisical/cipher/ui/middle-truncate";
 import { Pagination } from "@infisical/cipher/ui/pagination";
@@ -184,40 +184,28 @@ const columns = (supportsDefault: boolean): DataTableColumn<TPkiSyncCertificate>
   }
 ];
 
-export const PkiSyncCertificatesCard = ({
+const useCertificatesEditBlock = (pkiSync: TPkiSync) => {
+  const { canEdit } = usePkiSyncPermissions(pkiSync);
+  if (!canEdit) return "You don't have permission to edit this sync";
+  if (!pkiSync.applicationId) return "This sync is not attached to an application";
+  return undefined;
+};
+
+export const PkiSyncCertificateFiltersCard = ({
   pkiSync,
   onEditCertificates
 }: {
   pkiSync: TPkiSync;
   onEditCertificates: () => void;
 }) => {
-  const [page, setPage] = useState(1);
-  const adapter = useV4Adapter("pkiSyncs");
-  const { data, isPending, error } = adapter.useSyncCertificates(pkiSync.id, {
-    offset: (page - 1) * PAGE_SIZE,
-    limit: PAGE_SIZE
-  });
-  const setDefault = adapter.useSetDefaultCertificate();
-  const clearDefault = adapter.useClearDefaultCertificate();
-  const certificates = data?.certificates ?? [];
-  const totalCount = data?.totalCount ?? 0;
-
-  const supportsDefaultCertificate = pkiSync.destination === PkiSync.AwsElasticLoadBalancer;
-
-  const { canEdit: hasEditPermission } = usePkiSyncPermissions(pkiSync);
-  const editBlock = (() => {
-    if (!hasEditPermission) return "You don't have permission to edit this sync";
-    if (!pkiSync.applicationId) return "This sync is not attached to an application";
-    return undefined;
-  })();
-
+  const editBlock = useCertificatesEditBlock(pkiSync);
   const { data: profileData } = useV4Adapter("certificates").useCertificateProfiles({
     limit: 100,
     offset: 0,
     applicationId: pkiSync.applicationId ?? undefined
   });
 
-  const { data: orderNameById } = adapter.useCertificateOrders({
+  const { data: orderNameById } = useV4Adapter("pkiSyncs").useCertificateOrders({
     pkiSyncId: pkiSync.id,
     certificateOrderIds: pkiSync.filters?.certificateOrderIds ?? []
   });
@@ -242,6 +230,49 @@ export const PkiSyncCertificatesCard = ({
       }),
     [pkiSync.filters, profileData, orderNameById, acceptsOnlyCertificateOrders]
   );
+
+  return (
+    <Card
+      variant="framed"
+      title="Certificate filters"
+      action={
+        <Button variant="ghost" size="sm" disabledReason={editBlock} onClick={onEditCertificates}>
+          Edit
+        </Button>
+      }
+    >
+      {filterFields ? (
+        <DataList variant="props" density="compact" items={filterSummaryItems(filterFields)} />
+      ) : (
+        <EmptyState
+          size="sm"
+          media="bare"
+          icon="search"
+          title={pkiSync.applicationId ? "No filters set" : "Certificates can't be changed"}
+          description={
+            pkiSync.applicationId ? undefined : "This sync is not attached to an application."
+          }
+        />
+      )}
+    </Card>
+  );
+};
+
+export const PkiSyncCertificatesCard = ({ pkiSync }: { pkiSync: TPkiSync }) => {
+  const [page, setPage] = useState(1);
+  const adapter = useV4Adapter("pkiSyncs");
+  const { data, isPending, error } = adapter.useSyncCertificates(pkiSync.id, {
+    offset: (page - 1) * PAGE_SIZE,
+    limit: PAGE_SIZE
+  });
+  const setDefault = adapter.useSetDefaultCertificate();
+  const clearDefault = adapter.useClearDefaultCertificate();
+  const certificates = data?.certificates ?? [];
+  const totalCount = data?.totalCount ?? 0;
+
+  const supportsDefaultCertificate = pkiSync.destination === PkiSync.AwsElasticLoadBalancer;
+
+  const editBlock = useCertificatesEditBlock(pkiSync);
 
   const makeDefault = async (cert: TPkiSyncCertificate) => {
     try {
@@ -268,81 +299,55 @@ export const PkiSyncCertificatesCard = ({
   const isDefaultPending = setDefault.isPending || clearDefault.isPending;
 
   return (
-    <Stack gap={24}>
-      <Card
-        variant="framed"
-        title="Certificate filters"
-        action={
-          <Button variant="ghost" size="sm" disabledReason={editBlock} onClick={onEditCertificates}>
-            Edit
-          </Button>
+    <Card variant="framed" title="Certificates">
+      <DataTable
+        label="Synced certificates"
+        rows={certificates}
+        columns={columns(supportsDefaultCertificate)}
+        loading={isPending && !error}
+        loadingRows={3}
+        getRowId={(cert) => cert.id}
+        rowLabel={displayNameOf}
+        rowActions={
+          supportsDefaultCertificate
+            ? {
+                menuLabel: "Certificate actions",
+                menuDisabledReason: () =>
+                  editBlock ?? (isDefaultPending ? "Updating the default certificate" : undefined),
+                renderMenu: (cert) =>
+                  isDefault(cert) ? (
+                    <DropdownMenuItem onSelect={() => unsetDefault()}>
+                      Unset default
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onSelect={() => makeDefault(cert)}>
+                      Set as default
+                    </DropdownMenuItem>
+                  )
+              }
+            : undefined
         }
-      >
-        {filterFields ? (
-          <DataList variant="props" density="compact" items={filterSummaryItems(filterFields)} />
-        ) : (
+        empty={
           <EmptyState
             size="sm"
             media="bare"
-            icon="search"
-            title={pkiSync.applicationId ? "No filters set" : "Certificates can't be changed"}
-            description={
-              pkiSync.applicationId ? undefined : "This sync is not attached to an application."
-            }
+            icon="cert"
+            title={error ? "Couldn't load certificates" : "No certificates in this sync"}
           />
-        )}
-      </Card>
-      <Card variant="framed" title="Certificates">
-        <DataTable
-          label="Synced certificates"
-          rows={certificates}
-          columns={columns(supportsDefaultCertificate)}
-          loading={isPending && !error}
-          loadingRows={3}
-          getRowId={(cert) => cert.id}
-          rowLabel={displayNameOf}
-          rowActions={
-            supportsDefaultCertificate
-              ? {
-                  menuLabel: "Certificate actions",
-                  menuDisabledReason: () =>
-                    editBlock ??
-                    (isDefaultPending ? "Updating the default certificate" : undefined),
-                  renderMenu: (cert) =>
-                    isDefault(cert) ? (
-                      <DropdownMenuItem onSelect={() => unsetDefault()}>
-                        Unset default
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem onSelect={() => makeDefault(cert)}>
-                        Set as default
-                      </DropdownMenuItem>
-                    )
-                }
-              : undefined
-          }
-          empty={
-            <EmptyState
-              size="sm"
-              media="bare"
-              icon="cert"
-              title={error ? "Couldn't load certificates" : "No certificates in this sync"}
+        }
+        pagination={
+          totalCount > PAGE_SIZE ? (
+            <Pagination
+              label="Certificate pages"
+              variant="compact"
+              page={page}
+              onPageChange={setPage}
+              total={totalCount}
+              pageSize={PAGE_SIZE}
             />
-          }
-          pagination={
-            totalCount > PAGE_SIZE ? (
-              <Pagination
-                label="Certificate pages"
-                variant="compact"
-                page={page}
-                onPageChange={setPage}
-                total={totalCount}
-                pageSize={PAGE_SIZE}
-              />
-            ) : undefined
-          }
-        />
-      </Card>
-    </Stack>
+          ) : undefined
+        }
+      />
+    </Card>
   );
 };
