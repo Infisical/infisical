@@ -50,6 +50,7 @@ import {
   type TSessionLogFormValues
 } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogModal.utils";
 import { connectionCreation } from "@app/pages/v4/components/app-connection-form";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
@@ -315,7 +316,8 @@ const SessionLogSettingsCard = ({
   const connectionOptions = (connections ?? []).map((connection) => ({
     value: connection.id,
     label: connection.name,
-    meta: connection.projectId ? undefined : "Organization"
+    meta: connection.projectId ? undefined : "Organization",
+    media: providerMedia("app-connection", AppConnection.AWS)
   }));
   const awsPreset = CONNECTION_PRESETS[AppConnection.AWS];
   const creation =
@@ -429,6 +431,7 @@ const SessionLogSettingsCard = ({
             <>
               <Field label="Storage">
                 <Select
+                  descriptionLayout="stacked"
                   aria-label="Storage"
                   placeholder="Choose where to store session logs"
                   options={storageOptions}

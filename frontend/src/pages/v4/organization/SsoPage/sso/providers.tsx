@@ -46,11 +46,13 @@ import {
   SamlSsoUpgradeIntent
 } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { OrgPermissionActions, OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/context";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OauthGrantType } from "@app/hooks/api/oauthClients/types";
 
 import { useOrgId, useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { Gate, RESTRICTED } from "../../../access/ui";
+import { ProviderLabel } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license";
 import { LdapConfigDialog } from "./ldap-dialog";
@@ -524,7 +526,7 @@ export const LdapSection = ({ onSwitchProvider }: SectionProps) => {
     <>
       <Card
         variant="framed"
-        title="LDAP"
+        title={<ProviderLabel kind="app-connection" value={AppConnection.LDAP} />}
         action={
           <ProviderMenu
             provider="ldap"

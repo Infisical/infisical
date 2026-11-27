@@ -14,6 +14,7 @@ import { Inline } from "@infisical/cipher/ui/layout";
 import { ProjectPermissionIdentityActions } from "@app/context/ProjectPermissionContext/types";
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
+import { ProviderLabel } from "../../components/provider-label";
 import {
   ACTIVE_LOCKOUTS,
   AUTH_METHOD_ORDER,
@@ -109,7 +110,7 @@ export const ProjectIdentityAuthSection = ({
       header: "Auth method",
       render: (method) => (
         <Inline gap={8} wrap={false}>
-          <span>{authMethodName(method)}</span>
+          <ProviderLabel kind="identity-auth" value={method} />
           {identity.activeLockoutAuthMethods?.includes(method) && (
             <LockedBadge label={ACTIVE_LOCKOUTS} />
           )}

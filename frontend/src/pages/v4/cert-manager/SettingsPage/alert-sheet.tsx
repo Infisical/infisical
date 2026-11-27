@@ -21,16 +21,12 @@ import { Switch } from "@infisical/cipher/ui/switch";
 import { Heading, SmallText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 
-import {
-  ALERT_CHANNEL_TYPE_LABELS,
-  type TAlert,
-  type TCertificateAlertEventType
-} from "@app/hooks/api/alerts/types";
+import { type TAlert, type TCertificateAlertEventType } from "@app/hooks/api/alerts/types";
 import { toChannelInput } from "@app/hooks/api/alerts/utils";
 
 import { readableFailure, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
-import { ChannelsStep } from "./alert-channels";
+import { ChannelsStep, ChannelTypeLabel } from "./alert-channels";
 import { FiltersStep } from "./alert-filters";
 import {
   ALERT_EVENT_LABELS,
@@ -148,7 +144,7 @@ export const AlertReview = ({
           items={values.channels.map(
             (channel) =>
               [
-                ALERT_CHANNEL_TYPE_LABELS[channel.channelType],
+                <ChannelTypeLabel key="type" channelType={channel.channelType} />,
                 <Inline key={channel.name} gap={8} align="center" justify="between" wrap={false}>
                   <span
                     style={{

@@ -423,10 +423,15 @@ export const useShareSecretForm = ({
     </form>
   );
 
+  const pageAction = isPublic
+    ? ({ variant: "accent", size: "lg", className: "w-full" } as const)
+    : undefined;
   const submitButton = result ? (
-    <Button onClick={reset}>Share another secret</Button>
+    <Button {...pageAction} onClick={reset}>
+      Share another secret
+    </Button>
   ) : (
-    <Button type="submit" form={formId} loading={pending}>
+    <Button {...pageAction} type="submit" form={formId} loading={pending}>
       Create secret link
     </Button>
   );

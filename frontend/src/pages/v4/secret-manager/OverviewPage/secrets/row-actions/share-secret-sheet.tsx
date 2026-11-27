@@ -35,7 +35,6 @@ import { copyText } from "../../../../clipboard";
 import { useV4Adapter } from "../../../../data/adapters";
 import { DiscardDialog } from "../flows/shared";
 
-import flowStyles from "../flows/flows.module.css";
 import styles from "./row-actions.module.css";
 
 const expiresInOptions = [
@@ -152,7 +151,7 @@ export function ShareSecretSheet({
           if (!next) requestClose();
         }}
       >
-        <SheetContent className={flowStyles.secretSheet}>
+        <SheetContent size="md">
           <SheetHeader>
             <SheetTitle>Share a secret</SheetTitle>
             <SheetDescription>

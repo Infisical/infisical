@@ -53,11 +53,9 @@ const ScanStatus = ({ scan }: { scan: TSecretScanningScanWithDetails }) => {
     return <StatusText icon="sync">Running</StatusText>;
   if (scan.status === SecretScanningScanStatus.Failed)
     return (
-      <Tooltip content={scan.statusMessage ?? "The scan failed."} side="left">
-        <StatusText tone="bad" icon="x" tabIndex={0}>
-          Failed
-        </StatusText>
-      </Tooltip>
+      <StatusText reason={scan.statusMessage ?? "The scan failed."} tone="bad" icon="x">
+        Failed
+      </StatusText>
     );
   return (
     <StatusText tone="ok" icon="check-c">
@@ -114,17 +112,13 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
       width: 136,
       render: (row) =>
         row.type === SecretScanningScanType.Historical ? (
-          <Tooltip content="The full history was scanned">
-            <StatusText icon="history" tabIndex={0}>
-              Historical
-            </StatusText>
-          </Tooltip>
+          <StatusText reason="The full history was scanned" icon="history">
+            Historical
+          </StatusText>
         ) : (
-          <Tooltip content="New commits were scanned">
-            <StatusText icon="git" tabIndex={0}>
-              Realtime
-            </StatusText>
-          </Tooltip>
+          <StatusText reason="New commits were scanned" icon="git">
+            Realtime
+          </StatusText>
         )
     },
     {

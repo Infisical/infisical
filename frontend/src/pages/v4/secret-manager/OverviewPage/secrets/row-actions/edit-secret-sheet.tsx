@@ -117,7 +117,7 @@ export function EditSecretSheet({
           if (!next) close();
         }}
       >
-        <SheetContent className={flowStyles.secretSheet} pending={saving}>
+        <SheetContent size="md" pending={saving}>
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
             <SheetDescription>{`Changes apply to ${environmentLabel} only.`}</SheetDescription>

@@ -8,18 +8,19 @@ import axios from "axios";
 import { LoginMethod, SuperAdminErrorCode } from "@app/hooks/api/admin/types";
 
 import { failed, saved } from "../../access/toast";
+import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 
 const noop = () => {};
 
-const loginMethods = [
+const loginMethods: { value: LoginMethod; label: string; image?: string }[] = [
   { value: LoginMethod.EMAIL, label: "Email" },
-  { value: LoginMethod.GOOGLE, label: "Google SSO" },
-  { value: LoginMethod.GITHUB, label: "GitHub SSO" },
-  { value: LoginMethod.GITLAB, label: "GitLab SSO" },
+  { value: LoginMethod.GOOGLE, label: "Google SSO", image: "Google Workspace.svg" },
+  { value: LoginMethod.GITHUB, label: "GitHub SSO", image: "GitHub.png" },
+  { value: LoginMethod.GITLAB, label: "GitLab SSO", image: "GitLab.png" },
   { value: LoginMethod.SAML, label: "SAML SSO" },
   { value: LoginMethod.OIDC, label: "OIDC SSO" },
-  { value: LoginMethod.LDAP, label: "LDAP" }
+  { value: LoginMethod.LDAP, label: "LDAP", image: "LDAP.png" }
 ];
 
 const LoginMethodsCard = ({ enabled }: { enabled: LoginMethod[] }) => {
@@ -54,10 +55,11 @@ const LoginMethodsCard = ({ enabled }: { enabled: LoginMethod[] }) => {
         saved("Login methods have been successfully updated");
       }}
     >
-      {loginMethods.map(({ value, label }) => (
+      {loginMethods.map(({ value, label, image }) => (
         <Checkbox
           key={value}
           label={label}
+          media={image && <ProviderIcon icon={image} alt="" size="md" />}
           checked={draft.includes(value)}
           onChange={(checked) =>
             setDraft(checked ? [...draft, value] : draft.filter((entry) => entry !== value))

@@ -43,6 +43,7 @@ import type { TCreateSecretScanningDataSourceDTO } from "@app/hooks/api/secretSc
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { slugSchema } from "@app/lib/schemas";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useDebounced } from "../../access/org/use-debounced";
 import { useProjectPermission } from "../../access/permissions";
@@ -657,9 +658,9 @@ export const AddDataSourceSheet = ({
               </Stack>
             ) : (
               <SmallText muted>
-                This data source gets the default alerts, which email project admins when secrets
-                are detected and when a scan fails. Choosing other alerts needs permission to edit
-                data sources.
+                This data source gets the default alerts, which email Secret Scanning admins when
+                secrets are detected and when a scan fails. Choosing other alerts needs permission
+                to edit data sources.
               </SmallText>
             )
           },
@@ -669,7 +670,10 @@ export const AddDataSourceSheet = ({
               <DataList
                 variant="props"
                 items={[
-                  ["Platform", platform],
+                  [
+                    "Platform",
+                    <ProviderLabel key="platform" kind="secret-scanning" value={draft.type} />
+                  ],
                   ["Connection", draft.connection?.name ?? "-"],
                   ...(draft.type === SecretScanningDataSource.Bitbucket
                     ? ([["Workspace", draft.workspaceSlug]] as const)
