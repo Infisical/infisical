@@ -98,8 +98,10 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
     return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
   };
 
-  const renderSortableHead = (column: SignerOrderBy, label: string) => (
+  const renderSortableHead = (column: SignerOrderBy, label: string, className: string) => (
     <TableHead
+      isTruncatable
+      className={className}
       sortDirection={getSortDirection(column)}
       onSortChange={(direction) => {
         setOrderBy(column);
@@ -163,21 +165,25 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
           </InputGroup>
         </div>
         {isLoading || signers.length > 0 ? (
-          <Table>
+          <Table className="w-full table-fixed">
             <TableHeader>
               <TableRow>
-                {renderSortableHead(SignerOrderBy.Name, "Name")}
-                <TableHead>Status</TableHead>
-                <TableHead>Certificate CN</TableHead>
-                {renderSortableHead(SignerOrderBy.CertificateNotAfter, "Certificate Expiry")}
-                {renderSortableHead(SignerOrderBy.LastSignedAt, "Last Signed")}
+                {renderSortableHead(SignerOrderBy.Name, "Name", "w-1/4")}
+                <TableHead className="w-44">Status</TableHead>
+                <TableHead isTruncatable>Certificate CN</TableHead>
+                {renderSortableHead(
+                  SignerOrderBy.CertificateNotAfter,
+                  "Certificate Expiry",
+                  "w-40"
+                )}
+                {renderSortableHead(SignerOrderBy.LastSignedAt, "Last Signed", "w-44")}
               </TableRow>
             </TableHeader>
             <TableBody>
               {!isLoading &&
                 signers.map((signer) => (
                   <TableRow key={signer.id} className="hover:bg-surface-hover" linked>
-                    <TableCell>
+                    <TableCell isTruncatable>
                       <RowLink
                         {...getInstancePinningLink(
                           currentProject.orgId,
@@ -230,7 +236,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>
+                    <TableCell isTruncatable>{signer.certificateCommonName ?? "-"}</TableCell>
                     <TableCell>
                       {signer.certificateNotAfter
                         ? format(new Date(signer.certificateNotAfter), "MMM d, yyyy")
