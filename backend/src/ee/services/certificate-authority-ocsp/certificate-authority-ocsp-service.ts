@@ -2,13 +2,14 @@ import * as x509 from "@peculiar/x509";
 
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { createKeyedConcurrencyLimiter } from "@app/lib/concurrency/concurrency-limiter";
+import { createKeyedConcurrencyLimiter, TKeyedRefusal } from "@app/lib/concurrency/concurrency-limiter";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
   recordOcspResponseMetric,
   recordOcspSigningDurationMetric,
   TOcspCertStatusLabel,
+  TOcspShedReasonLabel,
   TOcspStatusLabel
 } from "@app/lib/telemetry/metrics";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
@@ -90,6 +91,12 @@ const signingLimiters = createKeyedConcurrencyLimiter({
   maxTrackedKeys: OCSP_MAX_TRACKED_CA_LIMITERS,
   maxTotalInFlight: OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT
 });
+
+const toShedReason = ({ scope, reason }: TKeyedRefusal): TOcspShedReasonLabel => {
+  if (reason === "total-in-flight") return "total_in_flight";
+  if (scope === "key") return reason === "queue-full" ? "ca_queue_full" : "ca_wait_timeout";
+  return reason === "queue-full" ? "global_queue_full" : "global_wait_timeout";
+};
 
 export const certificateAuthorityOcspServiceFactory = ({
   certificateAuthorityDAL,
@@ -264,7 +271,7 @@ export const certificateAuthorityOcspServiceFactory = ({
       let validitySeconds = OCSP_RESPONSE_VALIDITY_SECONDS;
       let nextUpdate = new Date(thisUpdate.getTime() + validitySeconds * 1000);
 
-      const response = await signingLimiters.run(ca.id, async () => {
+      const admission = await signingLimiters.tryRun(ca.id, async () => {
         const statuses = await $resolveStatuses(ca.id, parsed.entries);
         resolvedCertStatus = $toCertStatusLabel(statuses.map(({ status }) => status.kind));
 
@@ -293,16 +300,22 @@ export const certificateAuthorityOcspServiceFactory = ({
         });
       });
 
-      if (!response) {
+      if (!admission.admitted) {
+        const shedReason = toShedReason(admission);
         if (Date.now() - lastSaturationLogAt > OCSP_SATURATION_LOG_INTERVAL_MS) {
           lastSaturationLogAt = Date.now();
           logger.warn(
-            `OCSP responder saturated, shedding request [caId=${ca.id}] [caQueueDepth=${signingLimiters.getKeyQueueDepth(
+            `OCSP responder saturated, shedding request [caId=${ca.id}] [shedReason=${shedReason}] [totalInFlight=${signingLimiters.getTotalInFlight()}] [caQueueDepth=${signingLimiters.getKeyQueueDepth(
               ca.id
             )}] [globalQueueDepth=${signingLimiters.getGlobalQueueDepth()}]`
           );
         }
-        recordOcspResponseMetric({ status: "try_later", certStatus: "none", cache: cacheKey ? "miss" : "skipped" });
+        recordOcspResponseMetric({
+          status: "try_later",
+          certStatus: "none",
+          cache: cacheKey ? "miss" : "skipped",
+          shedReason
+        });
         return {
           result: { response: buildOcspErrorResponse(OcspResponseStatus.TryLater), maxAgeSeconds: 0 },
           status: "try_later",
@@ -310,6 +323,7 @@ export const certificateAuthorityOcspServiceFactory = ({
         };
       }
 
+      const response = admission.value;
       recordOcspSigningDurationMetric({ durationMs: Date.now() - signingStartedAt });
       recordOcspResponseMetric({
         status: "successful",

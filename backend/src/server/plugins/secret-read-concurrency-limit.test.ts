@@ -146,9 +146,7 @@ describe("secretReadConcurrencyLimit", () => {
 
     expect(refused.statusCode).toBe(503);
     expect(refused.headers["retry-after"]).toBe("1");
-    expect(refused.json<{ message: string }>().message).toContain(
-      "Infisical is handling too many secret list requests right now"
-    );
+    expect(refused.json<{ message: string }>().message).toContain("This request could not be completed. Please retry");
     expect(vi.mocked(recordSecretRateLimitExceededMetric).mock.calls).toEqual([
       [{ bucket: "read_budget", outcome: "refused", planSlug: "pro" }]
     ]);

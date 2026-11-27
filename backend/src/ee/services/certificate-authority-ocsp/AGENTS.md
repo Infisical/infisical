@@ -31,8 +31,9 @@ caller can cost us.
 - Signing sheds with `tryLater` at three caps: global (4, matching libuv's threadpool), per CA (2), and
   aggregate `OCSP_SIGNING_MAX_TOTAL_IN_FLIGHT` checked before a per-CA limiter is created. The rate limiter
   is only registered on cloud production.
-- **No per-request logging.** Results are counted by `ocsp.result`; the saturation warning is
-  interval-guarded.
+- **No per-request logging.** Results are counted by `ocsp.status`, and a `try_later` carries
+  `ocsp.shed_reason` naming the cap that refused it; the saturation warning is interval-guarded, so read
+  the counter, not the log, to tell the caps apart.
 
 ## Protocol and metrics
 
@@ -41,4 +42,5 @@ caller can cost us.
 - The responder never consults the plan; entitlement gates enabling only. The CRL URL re-checking at
   issuance is a deliberate asymmetry, do not copy it here.
 - `ocsp.status` (envelope) and `ocsp.cert_status` (per cert) are separate attributes. Both, plus
-  `ocsp.cache`, must be in `INFISICAL_CORE_METER_ATTRIBUTES`; `ocsp-metric-attributes.test.ts` pins them.
+  `ocsp.cache` and `ocsp.shed_reason`, must be in `INFISICAL_CORE_METER_ATTRIBUTES`;
+  `ocsp-metric-attributes.test.ts` pins them.

@@ -1255,9 +1255,18 @@ export type TOcspStatusLabel = "successful" | "malformed_request" | "internal_er
 
 export type TOcspCertStatusLabel = "good" | "revoked" | "unknown" | "none";
 
+export type TOcspShedReasonLabel =
+  | "none"
+  | "total_in_flight"
+  | "ca_queue_full"
+  | "ca_wait_timeout"
+  | "global_queue_full"
+  | "global_wait_timeout"
+  | "rate_limited";
+
 export const ocspResponseCounter = infisicalCoreMeter.createCounter("infisical.ocsp.response.count", {
   description:
-    "OCSP responses by response status, certificate status and cache outcome. cert_status is 'none' when the response carries no certificate status, which is every status other than successful. A rising try_later means the signing budget is saturated.",
+    "OCSP responses by response status, certificate status and cache outcome. cert_status is 'none' when the response carries no certificate status, which is every status other than successful. A rising try_later means the signing budget is saturated; shed_reason names the cap that refused it (total_in_flight, ca_queue_full, ca_wait_timeout, global_queue_full, global_wait_timeout, rate_limited) and is 'none' for every other status.",
   unit: "{response}"
 });
 
@@ -1270,13 +1279,15 @@ export const recordOcspResponseMetric = (params: {
   status: TOcspStatusLabel;
   certStatus: TOcspCertStatusLabel;
   cache: "hit" | "miss" | "skipped" | "coalesced";
+  shedReason?: TOcspShedReasonLabel;
 }) => {
   safely(() => {
     if (!isTelemetryEnabled()) return;
     ocspResponseCounter.add(1, {
       "ocsp.status": params.status,
       "ocsp.cert_status": params.certStatus,
-      "ocsp.cache": params.cache
+      "ocsp.cache": params.cache,
+      "ocsp.shed_reason": params.shedReason ?? "none"
     });
   });
 };
