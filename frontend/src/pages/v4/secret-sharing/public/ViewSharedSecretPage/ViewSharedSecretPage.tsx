@@ -43,7 +43,7 @@ const PasswordPrompt = ({
       }}
     >
       <Stack gap={16}>
-        <Field label="Password" error={invalid ? "Invalid credential" : undefined}>
+        <Field label="Password" wide error={invalid ? "Invalid credential" : undefined}>
           <Input
             autoFocus
             type="password"

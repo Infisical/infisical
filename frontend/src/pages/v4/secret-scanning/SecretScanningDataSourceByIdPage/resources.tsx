@@ -202,7 +202,7 @@ const AddResourceSheet = ({
         />
       );
     return (
-      <List label={`Available ${resource.pluralNoun}`}>
+      <List label={`Available ${resource.pluralNoun}`} variant="divided">
         {available.map(({ externalId, name }) => (
           <ListRow
             key={externalId}

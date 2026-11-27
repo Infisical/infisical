@@ -657,9 +657,9 @@ export const AddDataSourceSheet = ({
               </Stack>
             ) : (
               <SmallText muted>
-                This data source gets the default alerts, which email project admins when secrets
-                are detected and when a scan fails. Choosing other alerts needs permission to edit
-                data sources.
+                This data source gets the default alerts, which email Secret Scanning admins when
+                secrets are detected and when a scan fails. Choosing other alerts needs permission
+                to edit data sources.
               </SmallText>
             )
           },
