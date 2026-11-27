@@ -45,10 +45,10 @@ export const gitLabServiceAccountTokenRotationFactory: TRotationFactory<
     token: { name, description, scopes },
     // A token for the connection's own identity would give whoever reads the rotated secret the
     // connection's access (Owner on the group), outliving their access to Infisical.
-    assertCanCreateToken: async (context) => {
+    assertCanCreateToken: async (auth) => {
       let connectionUserId: string;
       try {
-        connectionUserId = await getGitLabCurrentUserId(context);
+        connectionUserId = await getGitLabCurrentUserId(auth);
       } catch (error: unknown) {
         throw new BadRequestError({
           message: `Failed to look up the GitLab user of the connection: ${getGitLabErrorMessage(error)}`

@@ -11,17 +11,17 @@ import {
 import { deepEqual } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { TGitLabConnection } from "@app/services/app-connection/gitlab/gitlab-connection-types";
+import { getGitLabConnectionRequestAuth } from "@app/services/app-connection/gitlab/gitlab-connection-fns";
+import { TGitLabConnection, TGitLabRequestAuth } from "@app/services/app-connection/gitlab/gitlab-connection-types";
 
 import {
   assertGitLabConnectionCanCreateTokens,
   createGitLabToken,
-  getGitLabTokenApiContext,
   revokeGitLabToken,
   rotateGitLabToken,
   verifyGitLabToken
 } from "./gitlab-token-rotation-fns";
-import { TGitLabTokenApiContext, TGitLabTokenCredentials, TGitLabTokenSettings } from "./gitlab-token-rotation-types";
+import { TGitLabTokenCredentials, TGitLabTokenSettings } from "./gitlab-token-rotation-types";
 
 type TGitLabTokenRotationCredentials = TGitLabTokenCredentials[];
 
@@ -62,22 +62,22 @@ export const gitLabTokenRotationFactory = ({
     accessLevel?: number;
   };
   /** runs before every token is created, and before the inactive token is revoked */
-  assertCanCreateToken?: (context: TGitLabTokenApiContext) => Promise<void>;
+  assertCanCreateToken?: (auth: TGitLabRequestAuth) => Promise<void>;
 }) => {
-  const $getContext = () => {
+  const $getAuth = () => {
     assertGitLabConnectionCanCreateTokens(connection);
-    return getGitLabTokenApiContext({
-      connection,
+    return getGitLabConnectionRequestAuth({
+      appConnection: connection,
       appConnectionDAL,
       kmsDataKeyService,
       instanceConfigService
     });
   };
 
-  const $getTokenCreationContext = async () => {
-    const context = await $getContext();
-    await assertCanCreateToken?.(context);
-    return context;
+  const $getTokenCreationAuth = async () => {
+    const auth = await $getAuth();
+    await assertCanCreateToken?.(auth);
+    return auth;
   };
 
   const tokenSettings: TGitLabTokenSettings = {
@@ -87,9 +87,9 @@ export const gitLabTokenRotationFactory = ({
     ...(accessLevel ? { accessLevel } : {})
   };
 
-  const $createToken = async (context: TGitLabTokenApiContext): Promise<TGitLabTokenCredentials> => ({
+  const $createToken = async (auth: TGitLabRequestAuth): Promise<TGitLabTokenCredentials> => ({
     ...(await createGitLabToken({
-      context,
+      auth,
       tokensPath,
       name,
       description,
@@ -104,7 +104,7 @@ export const gitLabTokenRotationFactory = ({
 
   // A token Infisical fails to save is one nothing tracks, so a retry or a delete can never revoke it.
   const $saveOrRevoke = async (
-    context: TGitLabTokenApiContext,
+    auth: TGitLabRequestAuth,
     credentials: TGitLabTokenCredentials,
     save: (credentials: TGitLabTokenCredentials) => Promise<TSecretRotationV2Raw>
   ) => {
@@ -113,7 +113,7 @@ export const gitLabTokenRotationFactory = ({
     } catch (error: unknown) {
       try {
         await revokeGitLabToken({
-          context,
+          auth,
           tokensPath,
           tokenId: credentials.tokenId,
           token: credentials.token,
@@ -132,10 +132,10 @@ export const gitLabTokenRotationFactory = ({
   };
 
   const issueCredentials: TRotationFactoryIssueCredentials<TGitLabTokenRotationCredentials> = async (callback) => {
-    const context = await $getTokenCreationContext();
-    const credentials = await $createToken(context);
+    const auth = await $getTokenCreationAuth();
+    const credentials = await $createToken(auth);
 
-    return $saveOrRevoke(context, credentials, callback);
+    return $saveOrRevoke(auth, credentials, callback);
   };
 
   const revokeCredentials: TRotationFactoryRevokeCredentials<TGitLabTokenRotationCredentials> = async (
@@ -144,10 +144,10 @@ export const gitLabTokenRotationFactory = ({
   ) => {
     if (!generatedCredentials?.length) return callback();
 
-    const context = await $getContext();
+    const auth = await $getAuth();
     await Promise.all(
       generatedCredentials.map(({ tokenId, token }) =>
-        revokeGitLabToken({ context, tokensPath, tokenId, token, resourceLabel, permissionHint })
+        revokeGitLabToken({ auth, tokensPath, tokenId, token, resourceLabel, permissionHint })
       )
     );
 
@@ -162,11 +162,11 @@ export const gitLabTokenRotationFactory = ({
     credentialsToRevoke,
     callback
   ) => {
-    const context = await $getTokenCreationContext();
+    const auth = await $getTokenCreationAuth();
 
     if (credentialsToRevoke?.tokenId && deepEqual(credentialsToRevoke.settings, tokenSettings)) {
       const rotatedCredentials = await rotateGitLabToken({
-        context,
+        auth,
         tokensPath,
         tokenId: credentialsToRevoke.tokenId,
         rotationInterval,
@@ -175,11 +175,11 @@ export const gitLabTokenRotationFactory = ({
       });
 
       if (rotatedCredentials) {
-        return $saveOrRevoke(context, { ...rotatedCredentials, settings: tokenSettings }, callback);
+        return $saveOrRevoke(auth, { ...rotatedCredentials, settings: tokenSettings }, callback);
       }
     } else if (credentialsToRevoke?.tokenId) {
       await revokeGitLabToken({
-        context,
+        auth,
         tokensPath,
         tokenId: credentialsToRevoke.tokenId,
         token: credentialsToRevoke.token,
@@ -188,9 +188,9 @@ export const gitLabTokenRotationFactory = ({
       });
     }
 
-    const newCredentials = await $createToken(context);
+    const newCredentials = await $createToken(auth);
 
-    return $saveOrRevoke(context, newCredentials, callback);
+    return $saveOrRevoke(auth, newCredentials, callback);
   };
 
   const getSecretsPayload: TRotationFactoryGetSecretsPayload<TGitLabTokenRotationCredentials> = (

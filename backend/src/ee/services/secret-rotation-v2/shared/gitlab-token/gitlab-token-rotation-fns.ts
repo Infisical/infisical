@@ -1,28 +1,19 @@
 import { AxiosError, HttpStatusCode } from "axios";
 
-import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
-import { safeRequest } from "@app/lib/validator";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import {
   GitLabAccessTokenType,
   GitLabConnectionMethod
 } from "@app/services/app-connection/gitlab/gitlab-connection-enums";
 import {
-  getGitLabAuthHeaders,
-  getGitLabConnectionAccessToken,
   getGitLabErrorMessage,
-  getGitLabInstanceUrl
+  getGitLabTokenRequestAuth,
+  gitLabRequest
 } from "@app/services/app-connection/gitlab/gitlab-connection-fns";
-import { TGitLabConnection } from "@app/services/app-connection/gitlab/gitlab-connection-types";
+import { TGitLabConnection, TGitLabRequestAuth } from "@app/services/app-connection/gitlab/gitlab-connection-types";
 
 import { GITLAB_TOKEN_EXPIRY_PADDING_DAYS } from "./gitlab-token-rotation-constants";
-import {
-  TGitLabCreateTokenResponse,
-  TGitLabTokenApiContext,
-  TGitLabTokenCredentials
-} from "./gitlab-token-rotation-types";
+import { TGitLabCreateTokenResponse, TGitLabTokenCredentials } from "./gitlab-token-rotation-types";
 
 /** The token's expiry date (YYYY-MM-DD, UTC): two rotation intervals plus padding from today. */
 export const getGitLabTokenExpiresAt = (rotationInterval: number, now = new Date()) => {
@@ -47,31 +38,6 @@ export const assertGitLabConnectionCanCreateTokens = (connection: TGitLabConnect
   }
 };
 
-export const getGitLabTokenApiContext = async ({
-  connection,
-  appConnectionDAL,
-  kmsDataKeyService,
-  instanceConfigService
-}: {
-  connection: TGitLabConnection;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TKmsDataKeyService;
-  instanceConfigService: TInstanceConfigService;
-}): Promise<TGitLabTokenApiContext> => {
-  const accessToken = await getGitLabConnectionAccessToken(
-    connection,
-    appConnectionDAL,
-    kmsDataKeyService,
-    instanceConfigService
-  );
-  const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
-
-  return {
-    apiUrl: `${instanceUrl}/api/v4`,
-    headers: getGitLabAuthHeaders(connection.method, accessToken)
-  };
-};
-
 // GitLab answers some permission refusals with a 400, e.g. "User does not have permission to create group access token"
 const isGitLabPermissionError = (error: unknown) =>
   error instanceof AxiosError &&
@@ -86,7 +52,7 @@ const formatGitLabTokenError = (action: string, error: unknown, permissionHint: 
  * `/groups/:id/service_accounts/:user_id/personal_access_tokens` or `/groups/:id/access_tokens`.
  */
 export const createGitLabToken = async ({
-  context,
+  auth,
   tokensPath,
   name,
   description,
@@ -96,7 +62,7 @@ export const createGitLabToken = async ({
   resourceLabel,
   permissionHint
 }: {
-  context: TGitLabTokenApiContext;
+  auth: TGitLabRequestAuth;
   tokensPath: string;
   /** a timestamp is appended so each rotated token is distinct */
   name: string;
@@ -111,21 +77,19 @@ export const createGitLabToken = async ({
   permissionHint: string;
 }): Promise<TGitLabTokenCredentials> => {
   try {
-    const { data } = await safeRequest.post<TGitLabCreateTokenResponse>(
-      `${context.apiUrl}${tokensPath}`,
-      {
+    const { data } = await gitLabRequest<TGitLabCreateTokenResponse>(auth, {
+      method: "POST",
+      path: tokensPath,
+      data: {
         name: `${name}-${Date.now()}`,
         ...(description ? { description } : {}),
         scopes,
         ...(accessLevel ? { access_level: accessLevel } : {}),
         expires_at: getGitLabTokenExpiresAt(rotationInterval)
       },
-      {
-        headers: { ...context.headers, "Content-Type": "application/json" },
-        // a retried create whose first response was lost would mint a second token that nothing tracks
-        "axios-retry": { retries: 0 }
-      }
-    );
+      // a retried create whose first response was lost would mint a second token that nothing tracks
+      retry: false
+    });
 
     if (!data?.id || !data?.token) {
       throw new BadRequestError({ message: `GitLab did not return a token for ${resourceLabel}` });
@@ -148,14 +112,14 @@ export const createGitLabToken = async ({
  * from it, including one someone rotated outside Infisical.
  */
 export const rotateGitLabToken = async ({
-  context,
+  auth,
   tokensPath,
   tokenId,
   rotationInterval,
   resourceLabel,
   permissionHint
 }: {
-  context: TGitLabTokenApiContext;
+  auth: TGitLabRequestAuth;
   tokensPath: string;
   tokenId: string;
   rotationInterval: number;
@@ -163,15 +127,13 @@ export const rotateGitLabToken = async ({
   permissionHint: string;
 }): Promise<TGitLabTokenCredentials | null> => {
   try {
-    const { data } = await safeRequest.post<TGitLabCreateTokenResponse>(
-      `${context.apiUrl}${tokensPath}/${encodeURIComponent(tokenId)}/rotate`,
-      { expires_at: getGitLabTokenExpiresAt(rotationInterval) },
-      {
-        headers: { ...context.headers, "Content-Type": "application/json" },
-        // a retried rotate whose first response was lost would find the token revoked and revoke its replacement
-        "axios-retry": { retries: 0 }
-      }
-    );
+    const { data } = await gitLabRequest<TGitLabCreateTokenResponse>(auth, {
+      method: "POST",
+      path: `${tokensPath}/${encodeURIComponent(tokenId)}/rotate`,
+      data: { expires_at: getGitLabTokenExpiresAt(rotationInterval) },
+      // a retried rotate whose first response was lost would find the token revoked and revoke its replacement
+      retry: false
+    });
 
     if (!data?.id || !data?.token) {
       throw new BadRequestError({ message: `GitLab did not return a rotated token for ${resourceLabel}` });
@@ -199,14 +161,14 @@ export const rotateGitLabToken = async ({
 };
 
 export const revokeGitLabToken = async ({
-  context,
+  auth,
   tokensPath,
   tokenId,
   token,
   resourceLabel,
   permissionHint
 }: {
-  context: TGitLabTokenApiContext;
+  auth: TGitLabRequestAuth;
   tokensPath: string;
   tokenId: string;
   token: string;
@@ -216,9 +178,7 @@ export const revokeGitLabToken = async ({
   const failedToRevoke = `Failed to revoke GitLab token '${tokenId}' of ${resourceLabel}`;
 
   try {
-    await safeRequest.delete(`${context.apiUrl}${tokensPath}/${encodeURIComponent(tokenId)}`, {
-      headers: context.headers
-    });
+    await gitLabRequest(auth, { method: "DELETE", path: `${tokensPath}/${encodeURIComponent(tokenId)}` });
     return;
   } catch (error: unknown) {
     if (!(error instanceof AxiosError && error.response?.status === HttpStatusCode.NotFound)) {
@@ -229,8 +189,9 @@ export const revokeGitLabToken = async ({
   // A 404 can also mean GitLab lacks the revoke route (service account tokens before GitLab 17.11), so the token
   // revokes itself. GitLab answers 401 when it no longer accepts the token, which is the state revocation wants.
   try {
-    await safeRequest.delete(`${context.apiUrl}/personal_access_tokens/self`, {
-      headers: { "PRIVATE-TOKEN": token }
+    await gitLabRequest(getGitLabTokenRequestAuth(auth.instanceUrl, token), {
+      method: "DELETE",
+      path: "/personal_access_tokens/self"
     });
   } catch (error: unknown) {
     if (error instanceof AxiosError && error.response?.status === HttpStatusCode.Unauthorized) return;
@@ -243,12 +204,10 @@ export const revokeGitLabToken = async ({
 
 /** Checks a generated token by introspecting it with itself, since the connection's token can't. */
 export const verifyGitLabToken = async ({ instanceUrl, token }: { instanceUrl?: string; token: string }) => {
-  const gitLabInstanceUrl = await getGitLabInstanceUrl(instanceUrl);
-
   try {
-    const { data } = await safeRequest.get<{ active?: boolean; revoked?: boolean }>(
-      `${gitLabInstanceUrl}/api/v4/personal_access_tokens/self`,
-      { headers: { "PRIVATE-TOKEN": token } }
+    const { data } = await gitLabRequest<{ active?: boolean; revoked?: boolean }>(
+      getGitLabTokenRequestAuth(instanceUrl, token),
+      { method: "GET", path: "/personal_access_tokens/self" }
     );
 
     if (data?.active === false || data?.revoked) {

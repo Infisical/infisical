@@ -62,3 +62,9 @@ export type TGitLabServiceAccount = {
   username: string;
   name: string;
 };
+
+export type TGitLabRequestAuth = {
+  /** a self-managed instance's URL; GitLab.com when unset */
+  instanceUrl?: string;
+  headers: Record<string, string>;
+};

@@ -20,6 +20,7 @@ import {
   TGitLabConnectionConfig,
   TGitLabGroup,
   TGitLabProject,
+  TGitLabRequestAuth,
   TGitLabServiceAccount
 } from "./gitlab-connection-types";
 
@@ -468,7 +469,7 @@ export const listGitLabGroups = async ({
   }
 };
 
-export const getGitLabConnectionAccessToken = async (
+const getGitLabConnectionAccessToken = async (
   appConnection: TGitLabConnection,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsDataKeyService: TKmsDataKeyService,
@@ -494,10 +495,66 @@ export const getGitLabConnectionAccessToken = async (
   return appConnection.credentials.accessToken;
 };
 
-export const getGitLabAuthHeaders = (method: GitLabConnectionMethod, accessToken: string): Record<string, string> =>
+const getGitLabAuthHeaders = (method: GitLabConnectionMethod, accessToken: string): Record<string, string> =>
   method === GitLabConnectionMethod.OAuth
     ? { Authorization: `Bearer ${accessToken}` }
     : { "PRIVATE-TOKEN": accessToken };
+
+/** Resolves the connection's credentials once, refreshing an expired OAuth token, for a series of requests. */
+export const getGitLabConnectionRequestAuth = async ({
+  appConnection,
+  appConnectionDAL,
+  kmsDataKeyService,
+  instanceConfigService
+}: TNavigationParams): Promise<TGitLabRequestAuth> => {
+  const accessToken = await getGitLabConnectionAccessToken(
+    appConnection,
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService
+  );
+
+  return {
+    instanceUrl: appConnection.credentials.instanceUrl,
+    headers: getGitLabAuthHeaders(appConnection.method, accessToken)
+  };
+};
+
+/** Authenticates as a token rather than the connection, for calls a token makes about itself. */
+export const getGitLabTokenRequestAuth = (instanceUrl: string | undefined, token: string): TGitLabRequestAuth => ({
+  instanceUrl,
+  headers: { "PRIVATE-TOKEN": token }
+});
+
+// Direct REST API calls (everything not on the gitbeaker client) go through here, so a change to how requests reach
+// GitLab, such as gateway support, is made in one place.
+export const gitLabRequest = async <T>(
+  auth: TGitLabRequestAuth,
+  {
+    method,
+    path,
+    data,
+    params,
+    retry = true
+  }: {
+    method: "GET" | "POST" | "DELETE";
+    path: string;
+    data?: unknown;
+    params?: Record<string, unknown>;
+    retry?: boolean;
+  }
+) => {
+  const url = `${auth.instanceUrl ? removeTrailingSlash(auth.instanceUrl) : IntegrationUrls.GITLAB_URL}/api/v4${path}`;
+  const options = {
+    headers: data === undefined ? auth.headers : { ...auth.headers, "Content-Type": "application/json" },
+    ...(params && { params }),
+    ...(!retry && { "axios-retry": { retries: 0 } })
+  };
+
+  if (method === "GET") return safeRequest.get<T>(url, options);
+  if (method === "DELETE") return safeRequest.delete<T>(url, options);
+  return safeRequest.post<T>(url, data, options);
+};
 
 export const getGitLabErrorMessage = (error: unknown) => {
   if (!(error instanceof AxiosError)) return (error as Error)?.message || "Unknown error";
@@ -519,14 +576,8 @@ export const getGitLabErrorMessage = (error: unknown) => {
   return error.response?.status ? `GitLab responded with status ${error.response.status}` : error.message;
 };
 
-export const getGitLabCurrentUserId = async ({
-  apiUrl,
-  headers
-}: {
-  apiUrl: string;
-  headers: Record<string, string>;
-}) => {
-  const { data } = await safeRequest.get<{ id: number }>(`${apiUrl}/user`, { headers });
+export const getGitLabCurrentUserId = async (auth: TGitLabRequestAuth) => {
+  const { data } = await gitLabRequest<{ id: number }>(auth, { method: "GET", path: "/user" });
 
   return data.id.toString();
 };
@@ -540,37 +591,29 @@ export const listGitLabGroupServiceAccounts = async ({
   kmsDataKeyService,
   instanceConfigService,
   groupId
-}: {
-  appConnection: TGitLabConnection;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  kmsDataKeyService: TKmsDataKeyService;
-  instanceConfigService: TInstanceConfigService;
-  groupId: string;
-}): Promise<TGitLabServiceAccount[]> => {
-  const accessToken = await getGitLabConnectionAccessToken(
+}: TNavigationParams & { groupId: string }): Promise<TGitLabServiceAccount[]> => {
+  const auth = await getGitLabConnectionRequestAuth({
     appConnection,
     appConnectionDAL,
     kmsDataKeyService,
     instanceConfigService
-  );
-  const instanceUrl = await getGitLabInstanceUrl(appConnection.credentials.instanceUrl);
-
-  const apiUrl = `${instanceUrl}/api/v4`;
-  const headers = getGitLabAuthHeaders(appConnection.method, accessToken);
+  });
   const serviceAccounts: TGitLabServiceAccount[] = [];
 
   try {
     // a rotation can't target the connection's own identity, so it isn't offered
-    const connectionUserId = await getGitLabCurrentUserId({ apiUrl, headers });
+    const connectionUserId = await getGitLabCurrentUserId(auth);
 
     let page = 1;
     for (let pagesRead = 0; pagesRead < GITLAB_SERVICE_ACCOUNTS_MAX_PAGES; pagesRead += 1) {
-      const { data, headers: responseHeaders } = await safeRequest.get<
-        { id: number; username: string; name: string }[]
-      >(`${apiUrl}/groups/${encodeURIComponent(groupId)}/service_accounts`, {
-        headers,
-        params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
-      });
+      const { data, headers: responseHeaders } = await gitLabRequest<{ id: number; username: string; name: string }[]>(
+        auth,
+        {
+          method: "GET",
+          path: `/groups/${encodeURIComponent(groupId)}/service_accounts`,
+          params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
+        }
+      );
 
       serviceAccounts.push(
         ...data
