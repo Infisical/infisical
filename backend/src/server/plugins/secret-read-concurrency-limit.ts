@@ -1,4 +1,4 @@
-import v8 from "node:v8";
+import os from "node:os";
 
 import { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
@@ -24,6 +24,15 @@ const unlimitedSlot: TConcurrencySlot = (work) => work(() => {});
 
 const toWeight = (secretCount: number) => Math.max(1, Math.ceil(secretCount));
 
+const resolveMemoryLimit = () => {
+  const containerLimit = process.constrainedMemory();
+  const hostMemory = os.totalmem();
+  const hasContainerLimit = containerLimit > 0 && containerLimit < hostMemory;
+  return hasContainerLimit
+    ? { bytes: containerLimit, name: "container memory limit", remedy: "Raise the container's memory limit" }
+    : { bytes: hostMemory, name: "host memory", remedy: "Add memory to the host" };
+};
+
 const computeSecretReadBudget = (
   appCfg: Pick<
     TEnvConfig,
@@ -31,12 +40,17 @@ const computeSecretReadBudget = (
   >,
   isEnforced: boolean
 ) => {
-  const heapLimit = v8.getHeapStatistics().heap_size_limit;
-  const available = heapLimit - appCfg.SECRET_READ_HEAP_BASELINE_BYTES - appCfg.SECRET_READ_HEAP_RESERVE_BYTES;
+  const memoryLimit = resolveMemoryLimit();
+  const available = memoryLimit.bytes - appCfg.SECRET_READ_HEAP_BASELINE_BYTES - appCfg.SECRET_READ_HEAP_RESERVE_BYTES;
   const budget = Math.floor(available / appCfg.SECRET_READ_PEAK_BYTES_PER_SECRET);
-  if (budget >= 1) return budget;
+  if (budget >= 1) {
+    logger.info(
+      `secretReadConcurrencyLimit: secret list requests can hold ${budget} secrets in memory at once, sized from the ${memoryLimit.name} [memoryLimit=${memoryLimit.bytes}]`
+    );
+    return budget;
+  }
 
-  const problem = `the heap limit (${heapLimit} bytes) leaves no room for secret list requests after SECRET_READ_HEAP_BASELINE_BYTES (${appCfg.SECRET_READ_HEAP_BASELINE_BYTES}) and SECRET_READ_HEAP_RESERVE_BYTES (${appCfg.SECRET_READ_HEAP_RESERVE_BYTES}). Raise --max-old-space-size or lower those values`;
+  const problem = `the ${memoryLimit.name} (${memoryLimit.bytes} bytes) leaves no room for secret list requests after SECRET_READ_HEAP_BASELINE_BYTES (${appCfg.SECRET_READ_HEAP_BASELINE_BYTES}) and SECRET_READ_HEAP_RESERVE_BYTES (${appCfg.SECRET_READ_HEAP_RESERVE_BYTES}). ${memoryLimit.remedy} or lower those values`;
   if (isEnforced) throw new Error(`SECRET_READ_CONCURRENCY_LIMIT_MODE is enforce, but ${problem}`);
 
   logger.warn(

@@ -221,7 +221,7 @@ Example values:
 </ParamField>
 
 <ParamField query="SECRET_READ_CONCURRENCY_LIMIT_MODE" type="string" default="off" optional>
-  Controls a limit on API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, on each Infisical instance. The requests running on an instance, across all organizations, can hold only as many secrets in memory as the instance's heap has room for. The limit keeps a few very large requests from using up the memory of an instance.
+  Controls a limit on API requests to list secrets, such as requests to the Secrets [List](/api-reference/endpoints/secrets/list) endpoint, on each Infisical instance. The requests running on an instance, across all organizations, can hold only as many secrets in memory as the instance has room for. The limit keeps a few very large requests from using up the memory of an instance.
 
   Set it to one of these values:
 
@@ -233,17 +233,21 @@ Example values:
 </ParamField>
 
 <ParamField query="SECRET_READ_HEAP_BASELINE_BYTES" type="int" default="536870912" optional>
-  Heap memory, in bytes, that an Infisical instance uses when it handles no requests. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+  Memory, in bytes, that an Infisical instance uses when it handles no requests. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
 <ParamField query="SECRET_READ_HEAP_RESERVE_BYTES" type="int" default="536870912" optional>
-  Heap memory, in bytes, that Infisical keeps free for every other kind of request and for garbage collection. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+  Memory, in bytes, that Infisical keeps free for every other kind of request and for garbage collection. Requests to list secrets can't use this memory. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
 <ParamField query="SECRET_READ_PEAK_BYTES_PER_SECRET" type="int" default="16384" optional>
-  Heap memory, in bytes, that one secret takes up while Infisical handles a request to list secrets. When Infisical starts, it takes the Node.js heap limit, subtracts `SECRET_READ_HEAP_BASELINE_BYTES` and `SECRET_READ_HEAP_RESERVE_BYTES`, and divides the rest by this value. The result is the number of secrets that requests to list secrets can hold in memory at the same time on that instance.
+  Memory, in bytes, that one secret takes up while Infisical handles a request to list secrets. When Infisical starts, it takes the memory limit of its container, or the memory of the host if the container has no limit. From that amount, Infisical subtracts `SECRET_READ_HEAP_BASELINE_BYTES` and `SECRET_READ_HEAP_RESERVE_BYTES`, then divides the rest by this value. The result is the number of secrets that requests to list secrets can hold in memory at the same time on that instance.
 
-  If the result is less than one secret, Infisical doesn't start in `enforce` mode. In `observe` mode, Infisical starts, logs a warning, and counts every request to list secrets as over the limit. To fix this, raise the Node.js heap limit (`--max-old-space-size`) or lower the other two values. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
+  <Note>
+    Infisical doesn't use the Node.js heap limit (`--max-old-space-size`) in this calculation. If the heap limit is much lower than the container's memory limit, Infisical can run out of heap memory before it refuses a request, so raise both limits together.
+  </Note>
+
+  If the result is less than one secret, Infisical doesn't start in `enforce` mode. In `observe` mode, Infisical starts, logs a warning, and counts every request to list secrets as over the limit. To fix this, give the instance more memory, or lower `SECRET_READ_HEAP_BASELINE_BYTES` and `SECRET_READ_HEAP_RESERVE_BYTES`. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
 <ParamField query="SECRET_READ_DEFAULT_SECRET_WEIGHT" type="int" default="100" optional>

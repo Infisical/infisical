@@ -1125,10 +1125,13 @@ Concurrency Limit).
 
 A route that lists secrets must run its secret load inside `server.secretReadSlot(req, reply)`, which
 `server/plugins/secret-read-concurrency-limit.ts` decorates. It keeps one number per instance: the secrets that list
-requests hold in memory right now, checked against a budget so a few very large lists cannot exhaust the heap for every
-organization. The budget is computed once at boot as `(heap_size_limit - SECRET_READ_HEAP_BASELINE_BYTES -
-SECRET_READ_HEAP_RESERVE_BYTES) / SECRET_READ_PEAK_BYTES_PER_SECRET`. A per-minute rate limit cannot do this job, because
-it lets a burst through in its first second.
+requests hold in memory right now, checked against a budget so a few very large lists cannot exhaust the memory for every
+organization. The budget is computed once at boot as `(memory limit - SECRET_READ_HEAP_BASELINE_BYTES -
+SECRET_READ_HEAP_RESERVE_BYTES) / SECRET_READ_PEAK_BYTES_PER_SECRET`, where the memory limit is the container's
+(`process.constrainedMemory()`), or `os.totalmem()` when the container has none. V8's `heap_size_limit` is left out on
+purpose: the image sets the heap flag, so it says nothing about the memory the instance really has, and
+`--max-old-space-size` has to be sized to the container for the budget to hold. A per-minute rate limit cannot do this
+job, because it lets a burst through in its first second.
 
 `SECRET_READ_CONCURRENCY_LIMIT_MODE` picks the behaviour:
 

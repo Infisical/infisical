@@ -1,3 +1,5 @@
+import os from "node:os";
+
 import Fastify from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
@@ -19,11 +21,10 @@ const config = vi.hoisted(() => ({
   SECRET_READ_DEFAULT_SECRET_WEIGHT: 100
 }));
 
-const heap = vi.hoisted(() => ({ limit: 0 }));
+const HOST_MEMORY_BYTES = 1_000_000;
 
-vi.mock("node:v8", () => ({
-  default: { getHeapStatistics: () => ({ heap_size_limit: heap.limit }) }
-}));
+const constrainedMemory = vi.spyOn(process, "constrainedMemory").mockReturnValue(0);
+const hostMemory = vi.spyOn(os, "totalmem").mockReturnValue(HOST_MEMORY_BYTES);
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => config
@@ -42,7 +43,7 @@ vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
 
 const defaults = { ...config };
 
-const heapLimitForBudget = (secrets: number) =>
+const memoryLimitForBudget = (secrets: number) =>
   config.SECRET_READ_HEAP_BASELINE_BYTES +
   config.SECRET_READ_HEAP_RESERVE_BYTES +
   secrets * config.SECRET_READ_PEAK_BYTES_PER_SECRET;
@@ -50,7 +51,7 @@ const heapLimitForBudget = (secrets: number) =>
 type THeldRead = { finish: () => void; fail: () => void; reportSize: (secretCount: number) => void };
 
 const buildServer = async ({ budget = 10_000 }: { budget?: number } = {}) => {
-  heap.limit = heapLimitForBudget(budget);
+  constrainedMemory.mockReturnValue(memoryLimitForBudget(budget));
   const app = Fastify({ logger: false });
   const held: THeldRead[] = [];
 
@@ -119,21 +120,45 @@ describe("secretReadConcurrencyLimit", () => {
     vi.mocked(recordSecretReadSizeMetric).mockClear();
     vi.mocked(registerSecretReadBudgetGauges).mockClear();
     vi.mocked(logger.warn).mockClear();
+    constrainedMemory.mockReturnValue(0);
+    hostMemory.mockReturnValue(HOST_MEMORY_BYTES);
   });
 
-  test("sizes the instance budget from the heap limit and registers its gauges", async () => {
+  test("sizes the instance budget from the container memory limit and registers its gauges", async () => {
     const { gauges } = await buildServer({ budget: 1234 });
 
     expect(gauges?.getCapacity()).toBe(1234);
     expect(gauges?.getUsed()).toBe(0);
   });
 
-  test("refuses to start when the heap limit leaves no room for the budget", async () => {
-    heap.limit = config.SECRET_READ_HEAP_BASELINE_BYTES + config.SECRET_READ_HEAP_RESERVE_BYTES;
+  test.each([
+    ["reports no limit", 0],
+    ["reports an unlimited one", 2 ** 64]
+  ])("sizes the instance budget from the host memory when the container %s", async (_case, containerLimit) => {
+    hostMemory.mockReturnValue(memoryLimitForBudget(40));
+    const app = Fastify({ logger: false });
+    constrainedMemory.mockReturnValue(containerLimit);
+    await app.register(secretReadConcurrencyLimit).ready();
+
+    const [gauges] = vi.mocked(registerSecretReadBudgetGauges).mock.calls.at(-1) ?? [];
+    expect(gauges?.getCapacity()).toBe(40);
+  });
+
+  test("refuses to start when the container memory limit leaves no room for the budget", async () => {
+    constrainedMemory.mockReturnValue(config.SECRET_READ_HEAP_BASELINE_BYTES + config.SECRET_READ_HEAP_RESERVE_BYTES);
     const app = Fastify({ logger: false });
 
     await expect(app.register(secretReadConcurrencyLimit).ready()).rejects.toThrow(
-      /leaves no room for secret list requests/
+      /the container memory limit \(5000 bytes\) leaves no room for secret list requests.*Raise the container's memory limit/
+    );
+  });
+
+  test("refuses to start when the host memory leaves no room for the budget", async () => {
+    hostMemory.mockReturnValue(config.SECRET_READ_HEAP_BASELINE_BYTES + config.SECRET_READ_HEAP_RESERVE_BYTES);
+    const app = Fastify({ logger: false });
+
+    await expect(app.register(secretReadConcurrencyLimit).ready()).rejects.toThrow(
+      /the host memory \(5000 bytes\) leaves no room for secret list requests.*Add memory to the host/
     );
   });
 
@@ -411,7 +436,7 @@ describe("secretReadConcurrencyLimit", () => {
     ]);
   });
 
-  test("starts in observe mode when the heap limit leaves no room, and reports every request", async () => {
+  test("starts in observe mode when the memory limit leaves no room, and reports every request", async () => {
     config.SECRET_READ_CONCURRENCY_LIMIT_MODE = "observe";
     const { held, list, gauges } = await buildServer({ budget: 0 });
 

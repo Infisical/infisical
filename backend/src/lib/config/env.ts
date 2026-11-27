@@ -319,14 +319,14 @@ const envSchema = z
       .int()
       .min(0)
       .default(536_870_912)
-      .describe("Heap an idle, warmed-up instance uses, in bytes. Requests to list secrets can't use it"),
+      .describe("Memory an idle, warmed-up instance uses, in bytes. Requests to list secrets can't use it"),
     SECRET_READ_HEAP_RESERVE_BYTES: z.coerce
       .number()
       .int()
       .min(0)
       .default(536_870_912)
       .describe(
-        "Heap, in bytes, kept free for other requests and garbage collection while requests to list secrets are at their limit"
+        "Memory, in bytes, kept free for other requests and garbage collection while requests to list secrets are at their limit"
       ),
     SECRET_READ_PEAK_BYTES_PER_SECRET: z.coerce
       .number()
@@ -334,7 +334,7 @@ const envSchema = z
       .min(1)
       .default(16_384)
       .describe(
-        "Peak heap one secret takes during a request to list secrets, including decryption and the response, in bytes"
+        "Peak memory one secret takes during a request to list secrets, including decryption and the response, in bytes"
       ),
     SECRET_READ_DEFAULT_SECRET_WEIGHT: z.coerce
       .number()

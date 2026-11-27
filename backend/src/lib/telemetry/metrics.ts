@@ -632,7 +632,7 @@ export const registerSecretReadBudgetGauges = (budget: { getCapacity: () => numb
     {
       name: "infisical.secret.read_budget.capacity",
       description:
-        "Secrets this instance lets list requests hold in memory at once, computed from the heap limit at boot.",
+        "Secrets this instance lets list requests hold in memory at once, computed at boot from the container memory limit, or from the host memory when the container has none.",
       read: budget.getCapacity
     },
     {

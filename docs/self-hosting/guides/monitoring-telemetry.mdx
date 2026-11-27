@@ -1284,7 +1284,7 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{secret}`
 
-    **Description**: Number of secrets that requests to list secrets can hold in memory at the same time on this instance. Infisical calculates the value once, at startup, from the Node.js heap limit, `SECRET_READ_HEAP_BASELINE_BYTES`, `SECRET_READ_HEAP_RESERVE_BYTES`, and `SECRET_READ_PEAK_BYTES_PER_SECRET`. Check this value after you change the heap limit or any of those settings.
+    **Description**: Number of secrets that requests to list secrets can hold in memory at the same time on this instance. Infisical calculates the value once, at startup. It uses the memory limit of its container, or the memory of the host if the container has no limit, together with `SECRET_READ_HEAP_BASELINE_BYTES`, `SECRET_READ_HEAP_RESERVE_BYTES`, and `SECRET_READ_PEAK_BYTES_PER_SECRET`. Check this value after you change the container's memory limit or any of those settings.
   </Accordion>
 
   <Accordion title="Secret Read Budget Used">
@@ -1330,7 +1330,7 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{request}`
 
-    **Description**: Requests to list secrets that arrived when the instance had no room for them. If this count keeps growing, the instances need more heap, or you need more instances.
+    **Description**: Requests to list secrets that arrived when the instance had no room for them. If this count keeps growing, the instances need more memory, or you need more instances.
 
     **Attributes**:
       - `rate_limit.bucket` (string): `read_budget`
