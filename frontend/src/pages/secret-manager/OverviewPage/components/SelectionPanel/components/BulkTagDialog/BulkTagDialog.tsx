@@ -21,7 +21,12 @@ import {
   FieldLabel,
   Toggle
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useServerConfig
+} from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useCreateWsTag, useGetWsTags, useUpdateSecretBatch } from "@app/hooks/api";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
@@ -65,6 +70,9 @@ const BulkTagDialogContent = ({
   onClose
 }: ContentProps) => {
   const { permission } = useProjectPermission();
+  const {
+    config: { maxSecretsPerBatchRequest }
+  } = useServerConfig();
   const { mutateAsync: updateSecretBatch } = useUpdateSecretBatch();
   const { mutateAsync: createWsTag } = useCreateWsTag();
 
@@ -187,7 +195,7 @@ const BulkTagDialogContent = ({
             };
           });
 
-          for (const chunk of chunkByCount(secretUpdates)) {
+          for (const chunk of chunkByCount(secretUpdates, maxSecretsPerBatchRequest)) {
             // eslint-disable-next-line no-await-in-loop
             const result = await updateSecretBatch({
               projectId,

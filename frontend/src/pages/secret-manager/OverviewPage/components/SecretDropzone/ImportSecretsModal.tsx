@@ -55,7 +55,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProjectPermission } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProjectPermission,
+  useServerConfig
+} from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
 import {
@@ -162,6 +167,9 @@ const ImportSecretsContent = ({
 }: ContentProps) => {
   const telemetry = useOverviewTelemetry();
   const { permission } = useProjectPermission();
+  const {
+    config: { maxSecretsPerBatchRequest }
+  } = useServerConfig();
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [isImporting, setIsImporting] = useToggle();
   const isImportRunningRef = useRef(false);
@@ -639,7 +647,7 @@ const ImportSecretsContent = ({
           return {
             oversizedKeys: [] as string[],
             results: await Promise.allSettled([
-              ...chunkByCount(secretsToCreate).map((chunk) =>
+              ...chunkByCount(secretsToCreate, maxSecretsPerBatchRequest).map((chunk) =>
                 createSecretBatch({
                   projectId,
                   environment,
@@ -663,7 +671,10 @@ const ImportSecretsContent = ({
                   return result;
                 })
               ),
-              ...(overwriteExisting ? chunkByCount(secretsToUpdate) : []).map((chunk) =>
+              ...(overwriteExisting
+                ? chunkByCount(secretsToUpdate, maxSecretsPerBatchRequest)
+                : []
+              ).map((chunk) =>
                 updateSecretBatch({
                   projectId,
                   environment,
@@ -709,10 +720,16 @@ const ImportSecretsContent = ({
         const creates = chunkSecretsByRequestSize(
           envelope,
           secretsToCreate,
-          MAX_BATCH_REQUEST_BYTES
+          MAX_BATCH_REQUEST_BYTES,
+          maxSecretsPerBatchRequest
         );
         const updates = overwriteExisting
-          ? chunkSecretsByRequestSize(envelope, secretsToUpdate, MAX_BATCH_REQUEST_BYTES)
+          ? chunkSecretsByRequestSize(
+              envelope,
+              secretsToUpdate,
+              MAX_BATCH_REQUEST_BYTES,
+              maxSecretsPerBatchRequest
+            )
           : { chunks: [], oversized: [] };
         const oversizedKeys = [...creates.oversized, ...updates.oversized].map(
           ({ secretKey }) => secretKey

@@ -250,10 +250,9 @@ export const createFolderResolver = ({
   };
 };
 
-// The API refuses a batch with more secrets than this
-export const MAX_SECRETS_PER_BATCH_REQUEST = 1000;
-
-export const chunkByCount = <T>(items: T[], maxCount = MAX_SECRETS_PER_BATCH_REQUEST) => {
+// maxCount is the instance's MAX_SECRETS_PER_BATCH_REQUEST; without one, the batch stays one request
+export const chunkByCount = <T>(items: T[], maxCount?: number | null) => {
+  if (!maxCount) return items.length ? [items] : [];
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += maxCount) chunks.push(items.slice(i, i + maxCount));
   return chunks;
@@ -266,7 +265,7 @@ export const chunkSecretsByRequestSize = <T>(
   envelope: Record<string, unknown>,
   secrets: T[],
   maxBytes: number,
-  maxCount = MAX_SECRETS_PER_BATCH_REQUEST
+  maxCount?: number | null
 ) => {
   const encoder = new TextEncoder();
   const byteSize = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
@@ -285,7 +284,7 @@ export const chunkSecretsByRequestSize = <T>(
     // Every secret after the first in a request adds a separating comma
     if (
       current.length &&
-      (current.length >= maxCount || currentBytes + secretBytes + 1 > maxBytes)
+      ((maxCount && current.length >= maxCount) || currentBytes + secretBytes + 1 > maxBytes)
     ) {
       chunks.push(current);
       current = [];

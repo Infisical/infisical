@@ -67,6 +67,7 @@ const SanitizedSuperAdminSchema = z.object({
   isOfflineUsageReportsEnabled: z.boolean().optional(),
   isClickhouseAuditLogEnabled: z.boolean().optional(),
   isInitialSetupActivationTokenRequired: z.boolean().optional(),
+  maxSecretsPerBatchRequest: z.number().int().positive().nullable().optional(),
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
   defaultAuthOrgAuthMethod: z.string().nullish(),
@@ -145,6 +146,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             isPublicSecretSharingDisabled: DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
             isInitialSetupActivationTokenRequired,
+            maxSecretsPerBatchRequest: serverEnvs.MAX_SECRETS_PER_BATCH_REQUEST ?? null,
             latestAvailableVersion
           }
         };
@@ -180,6 +182,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isOfflineUsageReportsEnabled: hasOfflineLicense,
           isClickhouseAuditLogEnabled,
           isInitialSetupActivationTokenRequired,
+          maxSecretsPerBatchRequest: serverEnvs.MAX_SECRETS_PER_BATCH_REQUEST ?? null,
           latestAvailableVersion
         }
       };
