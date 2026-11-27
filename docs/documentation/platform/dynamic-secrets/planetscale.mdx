@@ -64,7 +64,7 @@ PlanetScale Vitess databases don't support MySQL users and grants, so the [MySQL
     </ParamField>
 
     <ParamField path="Password Name Template" type="string" default="{{randomUsername}}">
-      The name each password gets in PlanetScale, under **Advanced**. The default gives each password a random name. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}` to make the passwords easier to find in PlanetScale.
+      The name each password gets in PlanetScale, under **Advanced**. The default gives each password a random name. PlanetScale names can only contain lowercase letters, numbers, and dashes, so Infisical lowercases the name and turns other characters into dashes. You can use `{{dynamicSecret.name}}`, `{{identity.name}}`, `{{unixTimestamp}}`, and `{{randomUsername}}` to make the passwords easier to find in PlanetScale.
     </ParamField>
 
     <Note>

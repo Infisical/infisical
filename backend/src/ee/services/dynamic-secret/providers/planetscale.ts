@@ -1,4 +1,5 @@
 import { isAxiosError } from "axios";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { request } from "@app/lib/config/request";
@@ -10,6 +11,8 @@ import { generateUsername } from "./templateUtils";
 
 const PLANETSCALE_API_BASE_URL = "https://api.planetscale.com/v1";
 const REQUEST_TIMEOUT_MS = 30_000;
+const PLANETSCALE_NAME_INVALID_CHARS = new RE2("[^a-z0-9-]+", "g");
+const PLANETSCALE_NAME_EDGE_DASHES = new RE2("^-+|-+$", "g");
 
 type TPlanetScaleInputs = z.infer<typeof DynamicSecretPlanetScaleSchema>;
 type TPlanetScalePassword = { id: string; username: string; plain_text: string; access_host_url: string };
@@ -99,11 +102,13 @@ export const PlanetScaleProvider = (): TDynamicProviderFns => {
     dynamicSecret
   }: Parameters<TDynamicProviderFns["create"]>[0]) => {
     const providerInputs = await $parseInputs(inputs);
-    const name = await generateUsername(usernameTemplate, {
-      decryptedDynamicSecretInputs: inputs,
-      dynamicSecret,
-      identity
-    });
+    // PlanetScale names only allow lowercase alphanumerics and dashes, not at either end
+    const name = await generateUsername(
+      usernameTemplate,
+      { decryptedDynamicSecretInputs: inputs, dynamicSecret, identity },
+      (username) =>
+        PLANETSCALE_NAME_EDGE_DASHES.replace(PLANETSCALE_NAME_INVALID_CHARS.replace(username.toLowerCase(), "-"), "")
+    );
 
     try {
       const { data } = await request.post<TPlanetScalePassword>(

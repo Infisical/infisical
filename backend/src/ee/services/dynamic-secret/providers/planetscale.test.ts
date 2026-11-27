@@ -56,6 +56,7 @@ describe("PlanetScaleProvider", () => {
     const [url, body, config] = mockedPost.mock.calls[0];
     expect(url).toBe(`${BRANCH_URL}/passwords`);
     expect(body).toMatchObject({ role: "reader", ttl: 3600 });
+    expect(body.name).toMatch(/^[a-z0-9]{32}$/);
     expect(config).toMatchObject({
       headers: { Authorization: "token-id:pscale_tkn_secret" },
       "axios-retry": { retries: 0 }
@@ -64,6 +65,17 @@ describe("PlanetScaleProvider", () => {
       entityId: "pw-1",
       data: { DB_HOST: "aws.connect.psdb.cloud", DB_USERNAME: "user1", DB_PASSWORD: "pscale_pw_1" }
     });
+  });
+
+  test("create turns the name template into a name PlanetScale accepts", async () => {
+    mockedPost.mockResolvedValueOnce({ data: { id: "pw-1" } } as AxiosResponse);
+
+    await PlanetScaleProvider().create({
+      ...createArgs(Date.now() + 60_000),
+      usernameTemplate: "_{{dynamicSecret.name}}_For_{{identity.name}}_"
+    });
+
+    expect(mockedPost.mock.calls[0][1]).toMatchObject({ name: "planetscale-prod-for-tester" });
   });
 
   test("create names a missing or inaccessible branch instead of PlanetScale's bare not found", async () => {
