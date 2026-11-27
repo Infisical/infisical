@@ -5,28 +5,21 @@ description: "Investigate production errors from Slack with an agent that holds 
 icon: "bell"
 ---
 
-Mention the on-call agent in a Slack channel, and it reads the error in Sentry, traces it to the code and the commit that caused it, and proposes a fix. When you ask, it opens a pull request with the fix or files a GitHub issue.
+The on-call agent is a Slack agent that investigates production errors. When you mention it in a channel, it reads the error in Sentry, traces it to the code and the commit that caused it, and proposes a fix. When you ask, it opens a pull request with the fix or files a GitHub issue.
 
 <Card title="On-call Slack agent reference architecture" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/on-call" horizontal>
-  The code and the full setup steps for each implementation, in the reference repo.
+  The code and the setup steps for Docker and a virtual machine, in the reference repo.
 </Card>
-
-## Implementations
-
-| Agent | Runs on | Code |
-| --- | --- | --- |
-| [Claude Code](/documentation/platform/agent-vault/guides/claude-code) | [Docker](/documentation/platform/agent-vault/guides/docker) | [`slack-agents/on-call/docker`](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/on-call/docker) |
-| [Claude Code](/documentation/platform/agent-vault/guides/claude-code) | Virtual machine | [`slack-agents/on-call/vm`](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/on-call/vm) |
 
 ## How it works
 
-1. A Slack bridge receives each mention and runs the agent with the message, in a clone of your repo.
+1. A Slack bridge receives each mention and runs the agent with the message, in a clone of your repository. The reference architecture uses Claude Code as the agent.
 2. The agent reads the error from the Sentry API, and uses `git` and `gh` to find the commit, and to open a pull request or file an issue when you ask.
 3. Every request goes through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, GitHub, Sentry, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
 
-## What you need
+## Prerequisites
 
-- An Agent Vault project where you have the Admin role
+- An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)
 - A Slack workspace where you can create apps
-- A Sentry project, and a GitHub repo with at least one commit
-- Somewhere to run it: Docker with Compose, or a Debian or Ubuntu virtual machine
+- A Sentry project, and a GitHub repository with at least one commit
+- Docker with Docker Compose, or a Debian or Ubuntu virtual machine
