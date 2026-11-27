@@ -36,6 +36,7 @@ import { Select } from "@infisical/cipher/ui/select";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
 import { productOf, projectBase } from "../../shell/navigation";
@@ -290,7 +291,7 @@ const AddToProductDialog = ({
                     : undefined
                 }
               >
-                <Select label="Role" value={role} options={roleChoices} onChange={setRole} />
+                <RoleSelect label="Role" value={role} options={roleChoices} onChange={setRole} />
               </Field>
             )}
           </Stack>

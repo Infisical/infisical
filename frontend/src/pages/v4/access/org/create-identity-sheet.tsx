@@ -7,7 +7,6 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
-import { Select } from "@infisical/cipher/ui/select";
 import {
   Sheet,
   SheetBody,
@@ -21,12 +20,12 @@ import { Tabs } from "@infisical/cipher/ui/tabs";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 import { UNIVERSAL_AUTH_DEFAULTS } from "@app/hooks/api/identities/constants";
 
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
-import { roleOptions } from "../roles";
 import { failed, readableFailure, saved } from "../toast";
 import { useCustomRoleGate } from "./custom-role-gate";
 
@@ -121,11 +120,11 @@ const RootCreateIdentitySheet = ({
                   />
                 </Field>
                 <Field label="Role">
-                  <Select
+                  <RoleSelect
                     label="Role"
                     placeholder="Select role..."
                     value={selectedRole}
-                    options={roleOptions(roles)}
+                    roles={roles}
                     onChange={setRole}
                   />
                 </Field>
@@ -279,11 +278,11 @@ const SubOrgAddIdentitySheet = ({
                   </Field>
                 )}
                 <Field label="Role">
-                  <Select
+                  <RoleSelect
                     label="Role"
                     placeholder="Select role..."
                     value={role}
-                    options={roleOptions(roles)}
+                    roles={roles}
                     onChange={(next) => update({ role: next })}
                   />
                 </Field>

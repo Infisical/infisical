@@ -1,6 +1,5 @@
 import { useId, useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
-import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -23,6 +22,7 @@ import {
 
 import { errorMessage, failed, saved } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
+import { ConnectionCombobox } from "../../components/connection-combobox";
 import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
@@ -177,15 +177,11 @@ const IntuneConnectionField = ({
       }
       error={error}
     >
-      <Combobox
+      <ConnectionCombobox
         label="Microsoft Intune connection"
         placeholder="Select a connection"
-        options={(connections.data ?? []).map((connection) => ({
-          value: connection.id,
-          label: connection.name,
-          media: providerMedia("app-connection", AppConnection.MicrosoftIntune),
-          meta: connection.projectId ? undefined : "Organization"
-        }))}
+        connections={connections.data ?? []}
+        app={AppConnection.MicrosoftIntune}
         value={value}
         loading={connections.isPending}
         invalid={Boolean(error)}

@@ -13,7 +13,6 @@ import {
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
-import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -50,11 +49,12 @@ import {
   type TSessionLogFormValues
 } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogModal.utils";
 import { connectionCreation } from "@app/pages/v4/components/app-connection-form";
-import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
 import { saved } from "../../../access/toast";
+import { ConnectionCombobox } from "../../../components/connection-combobox";
+import { RegionCombobox } from "../../../components/region-combobox";
 import { useV4Adapter } from "../../../data/adapters";
 import type { TSessionLogPlan } from "../../../data/agent-vault-settings/contract";
 import { CONNECTION_PRESETS } from "../../../data/integrations/connection-presets";
@@ -71,12 +71,6 @@ const noop = () => {};
 
 const SESSION_LOGS_DOCS =
   "https://infisical.com/docs/documentation/platform/agent-vault/session-logs";
-
-const REGION_OPTIONS = AWS_REGIONS.map((region) => ({
-  value: region.slug,
-  label: region.name,
-  meta: region.slug
-}));
 
 type AwsSetupTarget = { bucket: string | null; keyPrefix: string | null; unsaved?: boolean };
 
@@ -313,12 +307,6 @@ const SessionLogSettingsCard = ({
   );
   const canEditConnection = editableConnection ? canEdit(editableConnection.id) : false;
 
-  const connectionOptions = (connections ?? []).map((connection) => ({
-    value: connection.id,
-    label: connection.name,
-    meta: connection.projectId ? undefined : "Organization",
-    media: providerMedia("app-connection", AppConnection.AWS)
-  }));
   const awsPreset = CONNECTION_PRESETS[AppConnection.AWS];
   const creation =
     awsPreset && !isExternalReadOnly
@@ -431,7 +419,6 @@ const SessionLogSettingsCard = ({
             <>
               <Field label="Storage">
                 <Select
-                  descriptionLayout="stacked"
                   aria-label="Storage"
                   placeholder="Choose where to store session logs"
                   options={storageOptions}
@@ -453,12 +440,13 @@ const SessionLogSettingsCard = ({
                     description="Its credentials write the records, and read them back when you open a session's logs."
                     error={shown?.appConnectionId?.[0]}
                   >
-                    <Combobox
+                    <ConnectionCombobox
                       label="AWS connection"
                       placeholder="Select a connection"
-                      options={connectionOptions}
+                      connections={connections ?? []}
+                      app={AppConnection.AWS}
                       value={
-                        connectionOptions.some(({ value }) => value === draft.appConnectionId)
+                        (connections ?? []).some(({ id }) => id === draft.appConnectionId)
                           ? draft.appConnectionId
                           : ""
                       }
@@ -470,10 +458,9 @@ const SessionLogSettingsCard = ({
                     />
                   </Field>
                   <Field label="Region" error={shown?.region?.[0]}>
-                    <Combobox
+                    <RegionCombobox
                       label="Region"
                       placeholder="Select a region"
-                      options={REGION_OPTIONS}
                       value={draft.region}
                       invalid={Boolean(shown?.region)}
                       disabled={isExternalReadOnly}

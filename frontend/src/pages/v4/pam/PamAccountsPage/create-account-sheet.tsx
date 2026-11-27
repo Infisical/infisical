@@ -268,7 +268,6 @@ export const CreateAccountSheet = ({
       {!folderLocked && (
         <Field label="Folder" error={errors.folderId}>
           <Select
-            descriptionLayout="stacked"
             label="Folder"
             placeholder="Select folder"
             value={folderId}

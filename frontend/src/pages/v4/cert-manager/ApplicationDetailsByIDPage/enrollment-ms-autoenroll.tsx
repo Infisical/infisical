@@ -13,7 +13,6 @@ import {
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
-import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Field, FieldSet } from "@infisical/cipher/ui/field";
 import { FileInput } from "@infisical/cipher/ui/file-input";
@@ -42,7 +41,7 @@ import {
 import { useDebounced } from "../../access/org/use-debounced";
 import { errorMessage, failed, saved } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
-import { providerMedia } from "../../components/provider-label";
+import { ConnectionCombobox } from "../../components/connection-combobox";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 import { useRotationConfirmation } from "../../integrations/app-connection-extras";
@@ -183,15 +182,11 @@ const LdapConnectionField = ({
       description="Needs an LDAP connection that uses the Active Directory provider. Looks up each computer's DNS name in the domain."
       error={error}
     >
-      <Combobox
+      <ConnectionCombobox
         label="LDAP connection"
         placeholder="Select an LDAP connection"
-        options={(connections.data ?? []).map((connection) => ({
-          value: connection.id,
-          label: connection.name,
-          media: providerMedia("app-connection", AppConnection.LDAP),
-          meta: connection.projectId ? undefined : "Organization"
-        }))}
+        connections={connections.data ?? []}
+        app={AppConnection.LDAP}
         value={value}
         loading={connections.isPending}
         invalid={Boolean(error)}

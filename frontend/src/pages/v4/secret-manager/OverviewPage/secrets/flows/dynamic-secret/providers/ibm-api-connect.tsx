@@ -17,7 +17,8 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { useV4Adapter } from "../../../../../../data/adapters";
 import type { IbmApiConnectOption } from "../../../../../../data/secrets/contract-options";
-import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";
+import { GatewayPicker } from "../../../../../../networking/gateway-picker";
+import { fieldError, ProviderFields, ProviderGroup } from "../fields";
 import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const toComboboxOptions = (options: readonly IbmApiConnectOption[]) =>
@@ -92,6 +93,7 @@ function IbmApiConnectFields({
       <ProviderGroup id="ibm-api-connect-connection">
         <Field wide label="Gateway">
           <GatewayPicker
+            label="Gateway"
             value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
             onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {
               setValue(

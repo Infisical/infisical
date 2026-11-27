@@ -26,9 +26,9 @@ import {
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
 import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecret/types";
 
+import { GatewayPicker } from "../../../../../../networking/gateway-picker";
 import {
   fieldError,
-  GatewayPicker,
   MetadataFields,
   numberInput,
   ProviderFields,
@@ -198,6 +198,7 @@ const SqlDatabaseFields = ({ mode }: Pick<DynamicSecretRendererProps, "mode">) =
           render={({ field, fieldState: { error } }) => (
             <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
+                label="Gateway"
                 invalid={Boolean(error)}
                 value={{ gatewayId: field.value ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId, gatewayPoolId: nextGatewayPoolId }) => {

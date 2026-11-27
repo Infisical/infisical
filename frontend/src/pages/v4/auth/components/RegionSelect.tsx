@@ -33,7 +33,6 @@ export const RegionSelect = () => {
   return (
     <span className={styles.region}>
       <Select
-        descriptionLayout="stacked"
         aria-label="Region"
         size="sm"
         align="end"

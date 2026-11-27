@@ -1,4 +1,4 @@
-import { Select } from "@infisical/cipher/ui/select";
+import { Select, type SelectOption } from "@infisical/cipher/ui/select";
 
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
@@ -8,6 +8,38 @@ import { useV4Adapter } from "../data/adapters";
 export type GatewayPickerValue = { gatewayId: string | null; gatewayPoolId: string | null };
 
 const POOL_REQUIRED_REASON = "Your organization requires a gateway pool";
+
+export const gatewayRouteOptions = ({
+  pools,
+  gateways,
+  isBlocked
+}: {
+  pools: readonly { id: string; name: string; memberCount: number; healthyMemberCount: number }[];
+  gateways: readonly (Parameters<typeof isGatewayHealthy>[0] & { id: string; name: string })[];
+  isBlocked?: (gatewayId: string) => boolean;
+}): SelectOption[] => [
+  ...pools.map((pool) => ({
+    value: `pool:${pool.id}`,
+    label: pool.name,
+    meta:
+      pool.memberCount === 0
+        ? "No members"
+        : `${pool.healthyMemberCount}/${pool.memberCount} healthy`,
+    group: "Gateway pools"
+  })),
+  ...gateways.map((gateway) => {
+    const blocked = isBlocked?.(gateway.id) ?? false;
+    const health = isGatewayHealthy(gateway) ? "Online" : "Offline";
+    return {
+      value: `gateway:${gateway.id}`,
+      label: gateway.name,
+      description: blocked ? POOL_REQUIRED_REASON : undefined,
+      meta: blocked ? undefined : health,
+      disabled: blocked,
+      group: "Individual gateways"
+    };
+  })
+];
 
 export const GatewayPicker = ({
   value,
@@ -42,7 +74,8 @@ export const GatewayPicker = ({
   const showPools = Boolean(subscription?.gatewayPool) || requireGatewayPools;
   const { data: connected, isPending: gatewaysPending } = networking.useConnectedGateways();
   const { data: allGateways } = networking.useGateways();
-  const { data: pools, isPending: poolsPending } = networking.usePools({ enabled: showPools });
+  const loadPools = showPools || Boolean(value.gatewayPoolId);
+  const { data: pools, isPending: poolsPending } = networking.usePools({ enabled: loadPools });
 
   const listed = (connected ?? []).filter((gateway) => gateway.id !== excludeGatewayId);
   const unlistedSelected =
@@ -61,30 +94,14 @@ export const GatewayPicker = ({
       label={label}
       value={selected}
       invalid={invalid}
-      disabled={disabled || gatewaysPending || (showPools && poolsPending)}
+      disabled={disabled || gatewaysPending || (loadPools && poolsPending)}
       placeholder="Select gateway"
       options={[
         ...(required ? [] : [{ value: "internet", label: noGatewayLabel }]),
-        ...(showPools ? (pools ?? []) : []).map((pool) => ({
-          value: `pool:${pool.id}`,
-          label: pool.name,
-          meta:
-            pool.memberCount === 0
-              ? "No members"
-              : `${pool.healthyMemberCount}/${pool.memberCount} healthy`,
-          group: "Gateway pools"
-        })),
-        ...gateways.map((gateway) => {
-          const blocked = isPoolRequired && gateway.id !== value.gatewayId;
-          const health = isGatewayHealthy(gateway) ? "Online" : "Offline";
-          return {
-            value: `gateway:${gateway.id}`,
-            label: gateway.name,
-            description: blocked ? POOL_REQUIRED_REASON : undefined,
-            meta: blocked ? undefined : health,
-            disabled: blocked,
-            group: "Individual gateways"
-          };
+        ...gatewayRouteOptions({
+          pools: (pools ?? []).filter((pool) => showPools || pool.id === value.gatewayPoolId),
+          gateways,
+          isBlocked: (gatewayId) => isPoolRequired && gatewayId !== value.gatewayId
         })
       ]}
       onValueChange={(next) => {

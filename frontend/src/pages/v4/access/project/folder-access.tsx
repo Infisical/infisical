@@ -324,7 +324,6 @@ const TierCell = ({
   if (!editable) return tierLabel(row.permission);
   return (
     <Select
-      descriptionLayout="stacked"
       aria-label={`Access to ${row.secretPath}`}
       size="sm"
       value={row.permission}

@@ -6,13 +6,13 @@ import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import type { TGatewayV2 } from "@app/hooks/api/gateways-v2/types";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 import type { THsmConnector } from "@app/hooks/api/hsmConnectors/types";
 import { slugSchema } from "@app/lib/schemas";
 
 import { useV4Adapter } from "../../data/adapters";
 import type { HsmPlan } from "../../data/cert-manager-settings/contract-hsm";
 import { orgHref, useGo } from "../../links";
+import { gatewayRouteOptions } from "../../networking/gateway-picker";
 
 export const HSM_DOCS_URL =
   "https://infisical.com/docs/documentation/platform/pki/settings/hsm-connectors";
@@ -93,32 +93,16 @@ export const HsmRoutePicker = ({
   const { gateways, pools, isPending } = useHsmRoutes(plan, value);
   return (
     <Select
-      descriptionLayout="stacked"
       id={id}
       value={value}
       disabled={isPending}
       invalid={invalid}
       placeholder="Select a gateway or gateway pool"
-      options={[
-        ...pools.map((pool) => ({
-          value: `pool:${pool.id}`,
-          label: pool.name,
-          meta: `${pool.healthyMemberCount} of ${pool.memberCount} gateways healthy`,
-          group: "Gateway pools"
-        })),
-        ...gateways.map((gateway) => {
-          const blocked = plan.requireGatewayPools && value !== `gateway:${gateway.id}`;
-          const health = isGatewayHealthy(gateway) ? "Online" : "Offline";
-          return {
-            value: `gateway:${gateway.id}`,
-            label: gateway.name,
-            description: blocked ? "Your organization requires a gateway pool" : undefined,
-            meta: blocked ? undefined : health,
-            disabled: blocked,
-            group: "Individual gateways"
-          };
-        })
-      ]}
+      options={gatewayRouteOptions({
+        pools,
+        gateways,
+        isBlocked: (gatewayId) => plan.requireGatewayPools && value !== `gateway:${gatewayId}`
+      })}
       onValueChange={(next) => {
         if (next && next !== value) onChange(next);
       }}

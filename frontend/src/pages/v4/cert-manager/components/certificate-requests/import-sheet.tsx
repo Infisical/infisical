@@ -141,7 +141,6 @@ const ProfileSelect = ({
   label?: string;
 }) => (
   <Select
-    descriptionLayout="stacked"
     aria-label={label}
     width="md"
     placeholder="No profile"

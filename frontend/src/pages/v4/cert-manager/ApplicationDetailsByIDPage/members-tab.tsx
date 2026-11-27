@@ -16,7 +16,6 @@ import { DropdownMenuItem } from "@infisical/cipher/ui/dropdown-menu";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { Select } from "@infisical/cipher/ui/select";
 
 import {
   PkiApplicationResourceActions,
@@ -29,6 +28,7 @@ import {
 import { formatDate } from "../../access/roles";
 import { failed, saved } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
 import { AddMemberDialog } from "./add-member-dialog";
@@ -152,8 +152,7 @@ export const MembersTab = ({
       header: "Role",
       width: 176,
       render: (member) => (
-        <Select
-          descriptionLayout="stacked"
+        <RoleSelect
           size="sm"
           aria-label={`Role for ${memberName(member)}`}
           options={APP_ROLES}

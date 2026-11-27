@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-
 import { useAuth0ConnectionListClients } from "@app/hooks/api/appConnections/auth0/queries";
 import {
   useListAwsConnectionIamUsers,
@@ -43,15 +41,11 @@ import {
   useGetIbmApiConnectOrgCatalogs,
   useGetIbmApiConnectOrgs
 } from "@app/hooks/api/dynamicSecret/queries";
-import { useListGatewayPools } from "@app/hooks/api/gateway-pools/queries";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 
 import type { SecretsOptionsAdapter } from "./contract-options";
 
 export const secretsOptionsLive: SecretsOptionsAdapter = {
   useAvailableConnections: useListAvailableAppConnectionsForApps,
-  useGateways: () => useQuery(gatewaysQueryKeys.list()),
-  useGatewayPools: () => useListGatewayPools(),
   useAwsKmsKeys: (dto, options) => useListAwsConnectionKmsKeys(dto, options),
   useAwsIamUsers: (connectionId, options) =>
     useListAwsConnectionIamUsers({ connectionId }, options),

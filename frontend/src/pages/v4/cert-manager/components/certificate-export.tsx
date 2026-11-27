@@ -169,7 +169,6 @@ const ExportCertificateForm = ({
               <Stack gap={16}>
                 <Field label="Format">
                   <Select
-                    descriptionLayout="stacked"
                     label="Format"
                     value={format}
                     onChange={(next) => setFormat(next as TCertificateExportFormat)}

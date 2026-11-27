@@ -67,43 +67,6 @@ export const secretsOptionsDemo: SecretsOptionsAdapter = {
     ),
     isPending: false
   }),
-  useGateways: () =>
-    ready(
-      [
-        ["local-gateway-us-east", "us-east-gateway", new Date().toISOString()],
-        ["local-gateway-eu-west", "eu-west-gateway", null]
-      ].map(([id, name, heartbeat]) => ({
-        id: id as string,
-        name: name as string,
-        identityId: "demo-identity",
-        relayId: "demo-relay",
-        createdAt: "2026-10-01T00:00:00Z",
-        updatedAt: "2026-10-01T00:00:00Z",
-        heartbeat,
-        heartbeatTTL: 60,
-        directAddress: null,
-        directHeartbeat: null,
-        cliVersion: null,
-        cliVersionReportedAt: null,
-        canRevoke: false,
-        connectedResourcesCount: 0,
-        identity: null
-      }))
-    ),
-  useGatewayPools: () =>
-    ready([
-      {
-        id: "local-pool-primary",
-        orgId: "demo",
-        name: "primary-pool",
-        createdAt: "2026-10-01T00:00:00Z",
-        updatedAt: "2026-10-01T00:00:00Z",
-        memberCount: 2,
-        healthyMemberCount: 1,
-        memberGatewayIds: ["local-gateway-us-east", "local-gateway-eu-west"],
-        connectedResourcesCount: 0
-      }
-    ]),
   useAwsKmsKeys: ({ destination }, options) =>
     ready(
       [
