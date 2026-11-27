@@ -16,7 +16,6 @@
 }
 .icon[data-size="xl"] {
   --cipher-provider-icon: var(--cipher-size-icon-xl);
-  margin: auto;
 }
 .fallback {
   color: var(--cipher-faint);
