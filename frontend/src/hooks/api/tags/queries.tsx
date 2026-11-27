@@ -22,10 +22,11 @@ export const useGetWsTags = (projectID: string, enabled = true) => {
   });
 };
 
-export const useCreateWsTag = () => {
+export const useCreateWsTag = ({ meta }: { meta?: Record<string, unknown> } = {}) => {
   const queryClient = useQueryClient();
 
   return useMutation<WsTag, object, CreateTagDTO>({
+    meta,
     mutationFn: async ({ projectId: projectID, tagColor, tagSlug }) => {
       const { data } = await apiRequest.post<{ tag: WsTag }>(`/api/v1/projects/${projectID}/tags`, {
         color: tagColor || "",

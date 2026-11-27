@@ -1,0 +1,219 @@
+name: Cipher visual check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [design/v4-controls-polish, main]
+    paths:
+      - "frontend/package.json"
+      - ".github/workflows/cipher-visual.yml"
+      - ".github/cipher-visual/**"
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Cipher ref for the baseline (tag, branch or sha)"
+        default: "v0.1.15"
+      candidate:
+        description: "Cipher ref for the candidate (tag, branch or sha)"
+        default: "v0.1.16"
+      scope:
+        description: "full renders every page, scoped renders the pages that import a changed Cipher module"
+        type: choice
+        options: [full, scoped]
+        default: full
+
+env:
+  CIPHER_BASE: ""
+  CIPHER_CANDIDATE: ""
+  CACHE_PREFIX: cvc-v1
+  PIXEL_THRESHOLD: "0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cipher-visual-${{ github.event.pull_request.number || github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name != 'cipher-visual:scoped' && github.run_id || 'check' }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Prepare
+    if: github.event.action != 'labeled' || github.event.label.name == 'cipher-visual:scoped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      skip: ${{ steps.refs.outputs.skip }}
+      base_sha: ${{ steps.refs.outputs.base_sha }}
+      candidate_sha: ${{ steps.refs.outputs.candidate_sha }}
+      pages: ${{ steps.scope.outputs.pages }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: |
+            .github/cipher-visual
+            frontend/src
+      - name: Checkout Cipher
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Infisical/cipher
+          path: cipher
+          fetch-depth: 0
+      - name: Resolve refs
+        id: refs
+        env:
+          BASE: ${{ inputs.base || env.CIPHER_BASE }}
+          CANDIDATE: ${{ inputs.candidate || env.CIPHER_CANDIDATE }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_MERGE_SHA: ${{ github.event.pull_request && github.sha || '' }}
+          EXPLICIT: ${{ inputs.base || env.CIPHER_BASE }}${{ inputs.candidate || env.CIPHER_CANDIDATE }}
+        run: |
+          pin() {
+            git fetch -q --depth 1 --filter=blob:none origin "$1"
+            git show "$1:frontend/package.json" | node -e '
+              const spec = JSON.parse(require("fs").readFileSync(0, "utf8")).dependencies["@infisical/cipher"];
+              if (spec) process.stdout.write(spec.includes("#") ? spec.split("#").pop() : "v" + spec.replace(/^[~^]/, ""));
+            '
+          }
+          if [ -z "$BASE" ] && [ -n "$PR_BASE_SHA" ]; then BASE=$(pin "$PR_BASE_SHA"); fi
+          if [ -z "$CANDIDATE" ] && [ -n "$PR_MERGE_SHA" ]; then CANDIDATE=$(pin "$PR_MERGE_SHA"); fi
+          echo "Base $BASE, candidate $CANDIDATE"
+          if [ -z "$BASE" ] || [ -z "$CANDIDATE" ]; then
+            echo "::notice title=Cipher visual check skipped::One side of this comparison has no @infisical/cipher dependency in frontend/package.json, so there is nothing to compare."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$EXPLICIT" ] && [ "$BASE" = "$CANDIDATE" ]; then
+            echo "The Cipher pin did not change; nothing to compare."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          resolve() { git -C cipher rev-parse --verify -q "$1^{commit}" || git -C cipher rev-parse --verify "origin/$1^{commit}"; }
+          echo "base_sha=$(resolve "$BASE")" >> "$GITHUB_OUTPUT"
+          echo "candidate_sha=$(resolve "$CANDIDATE")" >> "$GITHUB_OUTPUT"
+      - name: Scope
+        id: scope
+        if: steps.refs.outputs.skip != 'true'
+        env:
+          MODE: ${{ inputs.scope || (contains(github.event.pull_request.labels.*.name, 'cipher-visual:scoped') && 'scoped' || 'full') }}
+          BASE_SHA: ${{ steps.refs.outputs.base_sha }}
+          CANDIDATE_SHA: ${{ steps.refs.outputs.candidate_sha }}
+        run: |
+          mkdir -p scope
+          git -C cipher checkout -q "$CANDIDATE_SHA"
+          node .github/cipher-visual/scope.mjs --cipher cipher --base "$BASE_SHA" --candidate "$CANDIDATE_SHA" --pages .github/cipher-visual/pages.json > scope/scope.json
+          pages=$(MODE="$MODE" node -e '
+            const s = JSON.parse(require("fs").readFileSync("scope/scope.json", "utf8"));
+            const all = JSON.parse(require("fs").readFileSync(".github/cipher-visual/pages.json", "utf8")).pages.map((p) => p.id);
+            const ids = process.env.MODE === "scoped" && !s.full ? s.pages.map((p) => p.id) : all;
+            s.mode = process.env.MODE;
+            s.captured = ids;
+            require("fs").writeFileSync("scope/scope.json", JSON.stringify(s, null, 2));
+            process.stdout.write(JSON.stringify(ids));
+          ')
+          echo "pages=$pages" >> "$GITHUB_OUTPUT"
+          echo "Mode $MODE: $pages"
+      - name: Upload scope
+        if: steps.refs.outputs.skip != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cipher-visual-scope
+          path: scope/scope.json
+
+  capture:
+    name: Capture (${{ matrix.side }})
+    needs: prepare
+    if: needs.prepare.outputs.skip != 'true' && needs.prepare.outputs.pages != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble@sha256:9beb546099e11f52d62e505537914870e01a67e0e6b00ae41da4775324e73dbe
+    strategy:
+      fail-fast: false
+      matrix:
+        side: [base, candidate]
+    env:
+      CIPHER_SHA: ${{ matrix.side == 'base' && needs.prepare.outputs.base_sha || needs.prepare.outputs.candidate_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Node 26
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "26"
+      - name: Cache npm
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.npm
+          key: ${{ env.CACHE_PREFIX }}-npm-${{ hashFiles('frontend/package-lock.json', '.github/cipher-visual/package-lock.json') }}
+          restore-keys: ${{ env.CACHE_PREFIX }}-npm-
+      - name: Cache Cipher tarball
+        id: cipher-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: cipher-tgz
+          key: ${{ env.CACHE_PREFIX }}-cipher-tgz-${{ env.CIPHER_SHA }}
+      - name: Checkout Cipher
+        if: steps.cipher-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Infisical/cipher
+          ref: ${{ env.CIPHER_SHA }}
+          path: cipher-src
+      - name: Install
+        run: |
+          cd frontend && npm ci --no-audit --no-fund --prefer-offline && cd ..
+          if [ -z "$(ls cipher-tgz/*.tgz 2>/dev/null)" ]; then
+            if [ ! -d cipher-src/dist ]; then (cd cipher-src && npm ci --no-audit --no-fund --prefer-offline && npm run build); fi
+            mkdir -p cipher-tgz && (cd cipher-src && npm pack --ignore-scripts --pack-destination ../cipher-tgz)
+          fi
+          cd frontend
+          npm install --no-save --no-audit --no-fund --prefer-offline ../cipher-tgz/*.tgz
+          npm run v4:boot
+          node -p '"Cipher " + require("@infisical/cipher/package.json").version'
+          cd ../.github/cipher-visual && npm ci --no-audit --no-fund --prefer-offline
+      - name: Build
+        working-directory: frontend
+        run: npx vite build
+      - name: Capture
+        env:
+          PAGES: ${{ needs.prepare.outputs.pages }}
+        run: |
+          (cd frontend && npx vite preview --port 4173 --strictPort > ../preview.log 2>&1 &)
+          for _ in $(seq 1 60); do node -e 'fetch("http://127.0.0.1:4173/").then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))' && break; sleep 1; done
+          echo "$PAGES" > pages-to-capture.json
+          node .github/cipher-visual/capture.mjs http://127.0.0.1:4173 shots .github/cipher-visual/pages.json pages-to-capture.json
+      - name: Upload shots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cipher-visual-${{ matrix.side }}
+          path: shots
+          if-no-files-found: error
+
+  diff:
+    name: Diff
+    needs: [prepare, capture]
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.skip != 'true' && (needs.capture.result == 'success' || needs.capture.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/cipher-visual
+      - name: Download shots
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+      - name: Diff
+        run: |
+          cd .github/cipher-visual && npm ci --no-audit --no-fund && cd ../..
+          node .github/cipher-visual/compare.mjs artifacts/cipher-visual-base artifacts/cipher-visual-candidate report artifacts/cipher-visual-scope/scope.json
+          cp artifacts/cipher-visual-scope/scope.json report/
+          cat report/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cipher-visual-report
+          path: report

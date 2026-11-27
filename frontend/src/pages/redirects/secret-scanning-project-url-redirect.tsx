@@ -10,6 +10,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/$"
 )({
+  staticData: { v3Alias: true },
   beforeLoad: ({ params, location }) => {
     if (UUID_RE.test(params.projectId)) {
       setSecretScanningActiveProjectCookie(params.orgId, params.projectId);

@@ -33,23 +33,16 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { gitHubRadarConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { GitHubRadarFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TGitHubRadarConnection;
   projectId: string | undefined | null;
 };
-
-const formSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.GitHubRadar),
-  method: z.nativeEnum(GitHubRadarConnectionMethod)
-});
 
 type FormData = z.infer<typeof formSchema>;
 

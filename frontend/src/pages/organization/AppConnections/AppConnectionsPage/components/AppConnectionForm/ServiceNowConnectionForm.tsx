@@ -22,55 +22,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { TServiceNowConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ServiceNowConnectionMethod } from "@app/hooks/api/appConnections/types/servicenow-connection";
+import { serviceNowConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TServiceNowConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.ServiceNow)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(ServiceNowConnectionMethod.BasicAuth),
-    credentials: z.object({
-      instanceUrl: z
-        .string()
-        .trim()
-        .url("Invalid instance URL")
-        .max(512, "Instance URL cannot exceed 512 characters")
-        .refine((value) => value.startsWith("https://"), "Instance URL must use HTTPS")
-        .refine((value) => {
-          let url: URL;
-          try {
-            url = new URL(value);
-          } catch {
-            // zod runs refinements even after `.url()` fails, and `.url()` has already reported this value
-            return true;
-          }
-          return (url.pathname === "" || url.pathname === "/") && !url.search && !url.hash;
-        }, "Enter the base URL of your instance, without a path"),
-      username: z
-        .string()
-        .trim()
-        .min(1, "Username is required")
-        .max(256, "Username cannot exceed 256 characters"),
-      password: z
-        .string()
-        .trim()
-        .min(1, "Password is required")
-        .max(512, "Password cannot exceed 512 characters")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

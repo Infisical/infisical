@@ -1,0 +1,740 @@
+import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Calendar } from "@infisical/cipher/ui/calendar";
+import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
+import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
+import { Select } from "@infisical/cipher/ui/select";
+import { Skeleton } from "@infisical/cipher/ui/skeleton";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import { Textarea } from "@infisical/cipher/ui/textarea";
+import { format } from "date-fns";
+
+import {
+  AlertChannelType,
+  AlertPrincipalType,
+  AlertResourceType,
+  channelFormSchema,
+  type TAlert,
+  type TAlertChannelInput
+} from "@app/hooks/api/alerts/types";
+import { toChannelForm, toChannelInput } from "@app/hooks/api/alerts/utils";
+import { slugSchema } from "@app/lib/schemas/slugSchema";
+
+import { useOrgId } from "../../../../access/permissions";
+import { ChannelsStep } from "../../../../cert-manager/SettingsPage/alert-channels";
+import {
+  type TDraftChannel,
+  type TFieldErrors,
+  type TMemberEmails,
+  toDraftChannel,
+  toMemberEmails,
+  validateChannels
+} from "../../../../cert-manager/SettingsPage/alert-model";
+import { useV4Adapter } from "../../../../data/adapters";
+import type { Secret, SecretReminder } from "../../secrets-model";
+
+import styles from "./row-actions.module.css";
+
+export function CommentForm({
+  comment,
+  canEdit,
+  onSave,
+  onClose
+}: {
+  comment: string;
+  canEdit: boolean;
+  onSave: (comment: string) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(comment);
+  if (!canEdit)
+    return (
+      <Stack gap={12}>
+        <div className={styles.formLabel}>Comment</div>
+        <div className={styles.readComment}>{comment}</div>
+        <Inline justify="end">
+          <Button variant="ghost" size="xs" onClick={onClose}>
+            Close
+          </Button>
+        </Inline>
+      </Stack>
+    );
+  return (
+    <form
+      className={styles.popoverForm}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave(draft);
+      }}
+    >
+      <FieldLabel htmlFor="secret-comment">Comment</FieldLabel>
+      <Textarea
+        id="secret-comment"
+        autoFocus
+        className={styles.fixedTextarea}
+        value={draft}
+        placeholder="Add a comment..."
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <Inline gap={8} justify="end">
+        <Button type="button" variant="ghost" size="xs" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" size="xs" disabled={draft === comment}>
+          Save comment
+        </Button>
+      </Inline>
+    </form>
+  );
+}
+
+export function TagForm({
+  tags,
+  options,
+  canEdit,
+  canCreate,
+  onSave,
+  onClose
+}: {
+  tags: string[];
+  options: string[];
+  canEdit: boolean;
+  canCreate: boolean;
+  onSave: (tags: string[]) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(tags);
+  const [created, setCreated] = useState<string[]>([]);
+  const all = [...new Set([...options, ...created, ...draft])].sort();
+  return (
+    <form
+      className={styles.popoverForm}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave(draft);
+      }}
+    >
+      <div className={styles.formLabel}>Tags</div>
+      <MultiSelect
+        label="Tags"
+        options={all.map((tag) => ({ value: tag, label: tag }))}
+        value={draft}
+        placeholder="Select or create tags..."
+        searchable
+        disabled={!canEdit}
+        onChange={setDraft}
+        onCreate={
+          canCreate
+            ? (query) => {
+                const parsed = slugSchema().safeParse(query.trim());
+                if (!parsed.success) return;
+                setCreated((current) => [...current, parsed.data]);
+                setDraft((current) => [...current, parsed.data]);
+              }
+            : undefined
+        }
+      />
+      {!canEdit && (
+        <SmallText muted>You do not have permission to edit tags on this secret.</SmallText>
+      )}
+      <Inline gap={8} justify="end">
+        <Button type="button" variant="ghost" size="xs" onClick={onClose}>
+          Close
+        </Button>
+        {canEdit && (
+          <Button type="submit" size="xs" disabled={JSON.stringify(draft) === JSON.stringify(tags)}>
+            Save tags
+          </Button>
+        )}
+      </Inline>
+    </form>
+  );
+}
+
+type MetadataEntry = { id: string; key: string; value: string; encrypted: boolean };
+
+export function MetadataForm({
+  metadata,
+  canEdit,
+  onSave,
+  onClose
+}: {
+  metadata: Secret["metadata"];
+  canEdit: boolean;
+  onSave: (metadata: Secret["metadata"]) => void;
+  onClose: () => void;
+}) {
+  const [entries, setEntries] = useState<MetadataEntry[]>(() =>
+    metadata.map((entry) => ({ ...entry, id: crypto.randomUUID() }))
+  );
+  const [errors, setErrors] = useState<string[]>([]);
+  const strip = (list: MetadataEntry[]) =>
+    list.map(({ key, value, encrypted }) => ({ key, value, encrypted }));
+  const dirty = JSON.stringify(strip(entries)) !== JSON.stringify(metadata);
+  const update = (id: string, value: Partial<MetadataEntry>) => {
+    setEntries((current) =>
+      current.map((entry) => (entry.id === id ? { ...entry, ...value } : entry))
+    );
+    setErrors((current) => current.filter((entry) => entry !== id));
+  };
+  return (
+    <form
+      className={styles.popoverForm}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const missing = entries.filter((entry) => !entry.key).map((entry) => entry.id);
+        setErrors(missing);
+        if (missing.length) return;
+        onSave(strip(entries));
+      }}
+    >
+      <div>
+        <div className={styles.formLabel}>Metadata</div>
+        <SmallText muted>Encrypted metadata is not searchable in the UI or API.</SmallText>
+      </div>
+      <div className={styles.metadataList} data-scroll-fade="y">
+        {entries.length === 0 && (
+          <SmallText muted className={styles.center}>
+            No metadata entries.
+          </SmallText>
+        )}
+        {entries.map((entry, index) => (
+          <div
+            key={entry.id}
+            className={styles.metadataRow}
+            data-invalid={errors.includes(entry.id) || undefined}
+          >
+            <div className={styles.grow}>
+              {index === 0 && <span className={styles.columnLabel}>Key</span>}
+              <Input
+                aria-label={`Metadata key ${index + 1}`}
+                value={entry.key}
+                placeholder="Enter key"
+                disabled={!canEdit}
+                invalid={errors.includes(entry.id)}
+                onChange={(event) => update(entry.id, { key: event.target.value })}
+              />
+              {errors.includes(entry.id) && <FieldError>Key is required</FieldError>}
+            </div>
+            <div className={styles.grow}>
+              {index === 0 && <span className={styles.columnLabel}>Value</span>}
+              <Input
+                aria-label={`Metadata value ${index + 1}`}
+                value={entry.value}
+                placeholder="Enter value"
+                disabled={!canEdit}
+                onChange={(event) => update(entry.id, { value: event.target.value })}
+              />
+            </div>
+            <div className={styles.encryptCell}>
+              {index === 0 && <span className={styles.columnLabel}>Encrypt</span>}
+              <span className={styles.controlBox}>
+                <Switch
+                  aria-label={`Encrypt metadata entry ${index + 1}`}
+                  checked={entry.encrypted}
+                  disabled={!canEdit}
+                  onCheckedChange={(checked) => update(entry.id, { encrypted: checked })}
+                />
+              </span>
+            </div>
+            <div className={styles.removeCell}>
+              {index === 0 && <span className={styles.columnLabel} aria-hidden />}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                icon="trash"
+                iconOnly
+                disabled={!canEdit}
+                onClick={() =>
+                  setEntries((current) => current.filter((item) => item.id !== entry.id))
+                }
+              >
+                {`Remove metadata entry ${index + 1}`}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {canEdit ? (
+        <span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            icon="plus"
+            onClick={() =>
+              setEntries((current) => [
+                ...current,
+                { id: crypto.randomUUID(), key: "", value: "", encrypted: false }
+              ])
+            }
+          >
+            Add entry
+          </Button>
+        </span>
+      ) : (
+        <SmallText muted>You do not have permission to edit metadata on this secret.</SmallText>
+      )}
+      <Inline gap={8} justify="end">
+        <Button type="button" variant="ghost" size="xs" onClick={onClose}>
+          Close
+        </Button>
+        {canEdit && (
+          <Button type="submit" size="xs" disabled={!dirty}>
+            Save metadata
+          </Button>
+        )}
+      </Inline>
+    </form>
+  );
+}
+
+const MIN_REPEAT_DAYS = 1;
+const MAX_REPEAT_DAYS = 365;
+const DEFAULT_REPEAT_DAYS = 30;
+const RECURRING = "Recurring";
+const ONE_TIME = "One Time";
+const tomorrow = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+function DateButton({
+  id,
+  value,
+  disabled,
+  invalid,
+  align,
+  onChange
+}: {
+  id: string;
+  value?: Date;
+  disabled: boolean;
+  invalid: boolean;
+  align: "start" | "end";
+  onChange: (value?: Date) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          icon="calendar"
+          disabled={disabled}
+          aria-invalid={invalid || undefined}
+          className={styles.dateButton}
+        >
+          {value ? format(value, "P") : <span className={styles.placeholder}>Pick a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align={align}>
+        <Calendar
+          mode="single"
+          selected={value}
+          defaultMonth={value ?? tomorrow()}
+          disabled={{ before: tomorrow() }}
+          onSelect={(next) => {
+            onChange(next);
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const everyoneEmail = (projectId: string): TDraftChannel =>
+  toDraftChannel({
+    channelType: AlertChannelType.Email,
+    name: "Email",
+    enabled: true,
+    recipients: [{ principalType: AlertPrincipalType.ProjectMembers, principalId: projectId }],
+    webhookUrl: "",
+    url: "",
+    signingSecret: "",
+    headers: [],
+    integrationKey: ""
+  });
+
+type ReminderSheetProps = {
+  open: boolean;
+  secretId: string;
+  projectId: string;
+  secretName: string;
+  environmentLabel: string;
+  reminder?: SecretReminder;
+  canEdit: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (reminder: SecretReminder | undefined, channels?: TAlertChannelInput[]) => Promise<void>;
+};
+
+const toReminderForm = (projectId: string, reminder?: SecretReminder, alert?: TAlert) => ({
+  type: reminder?.repeatDays ? RECURRING : ONE_TIME,
+  repeatDays: reminder?.repeatDays ?? null,
+  fromDate: reminder?.fromDate ? new Date(reminder.fromDate) : undefined,
+  nextReminderDate: reminder?.nextReminderDate ? new Date(reminder.nextReminderDate) : undefined,
+  message: reminder?.message ?? "",
+  channels: alert
+    ? alert.channels.map((channel) => toDraftChannel(toChannelForm(channel)))
+    : [reminder ? { ...everyoneEmail(projectId), recipients: [] } : everyoneEmail(projectId)]
+});
+type TReminderForm = ReturnType<typeof toReminderForm>;
+
+const comparable = (form: TReminderForm) =>
+  JSON.stringify(form, (key, value: unknown) => (key === "uid" ? undefined : value));
+
+const scheduleIssues = (form: TReminderForm) => {
+  const issues: Record<string, string> = {};
+  if (form.type === ONE_TIME) {
+    if (!form.nextReminderDate) issues.nextReminderDate = "Reminder date is required";
+    else if (form.nextReminderDate <= new Date())
+      issues.nextReminderDate = "Reminder date must be in the future";
+    return issues;
+  }
+  if (form.repeatDays !== null && form.repeatDays < MIN_REPEAT_DAYS)
+    issues.repeatDays = `Must be at least ${MIN_REPEAT_DAYS} day`;
+  if (form.repeatDays !== null && form.repeatDays > MAX_REPEAT_DAYS)
+    issues.repeatDays = `Must be less than ${MAX_REPEAT_DAYS} days`;
+  if (!form.fromDate) issues.fromDate = "Start date is required";
+  else if (form.fromDate <= new Date()) issues.fromDate = "Start date must be in the future";
+  return issues;
+};
+
+function ScheduleFields({
+  form,
+  errors,
+  canEdit,
+  onChange: patch
+}: {
+  form: TReminderForm;
+  errors: Record<string, string>;
+  canEdit: boolean;
+  onChange: (value: Partial<TReminderForm>) => void;
+}) {
+  const every = form.repeatDays && form.repeatDays > 1 ? `${form.repeatDays} days` : "day";
+  return (
+    <>
+      <Field label="Recurrence">
+        <Select
+          value={form.type}
+          disabled={!canEdit}
+          options={[
+            { value: RECURRING, label: RECURRING },
+            { value: ONE_TIME, label: ONE_TIME }
+          ]}
+          onChange={(type) =>
+            patch(
+              type === RECURRING
+                ? {
+                    type,
+                    repeatDays: DEFAULT_REPEAT_DAYS,
+                    nextReminderDate: undefined,
+                    fromDate: undefined
+                  }
+                : { type, nextReminderDate: tomorrow(), repeatDays: null }
+            )
+          }
+        />
+      </Field>
+      {form.type === RECURRING ? (
+        <div className={styles.pair}>
+          <Field
+            label="Interval (days)"
+            error={errors.repeatDays}
+            description={
+              form.repeatDays
+                ? `Every ${every}${form.fromDate ? ` from ${format(form.fromDate, "MM/dd/yy")}` : ""}`
+                : undefined
+            }
+            className={styles.grow}
+          >
+            <Input
+              type="number"
+              min={MIN_REPEAT_DAYS}
+              max={MAX_REPEAT_DAYS}
+              placeholder={String(DEFAULT_REPEAT_DAYS)}
+              disabled={!canEdit}
+              value={form.repeatDays ?? ""}
+              onChange={(event) => {
+                const value = parseInt(event.target.value, 10);
+                patch({ repeatDays: Number.isNaN(value) ? null : value });
+              }}
+            />
+          </Field>
+          <Field label="Start date" error={errors.fromDate} className={styles.grow}>
+            <DateButton
+              id="reminder-start-date"
+              align="end"
+              value={form.fromDate}
+              disabled={!canEdit}
+              invalid={Boolean(errors.fromDate)}
+              onChange={(fromDate) => patch({ fromDate })}
+            />
+          </Field>
+        </div>
+      ) : (
+        <Field label="Reminder date" error={errors.nextReminderDate}>
+          <DateButton
+            id="reminder-date"
+            align="start"
+            value={form.nextReminderDate}
+            disabled={!canEdit}
+            invalid={Boolean(errors.nextReminderDate)}
+            onChange={(nextReminderDate) => patch({ nextReminderDate })}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
+function ReminderFields({
+  secretId,
+  projectId,
+  canEdit,
+  alert,
+  members,
+  form,
+  errors,
+  channelErrors,
+  hasNoRecipients,
+  onPatch,
+  onChannelErrorsChange
+}: {
+  secretId: string;
+  projectId: string;
+  canEdit: boolean;
+  alert?: TAlert;
+  members: TMemberEmails;
+  form: TReminderForm;
+  errors: Record<string, string>;
+  channelErrors: TFieldErrors;
+  hasNoRecipients: boolean;
+  onPatch: (value: Partial<TReminderForm>) => void;
+  onChannelErrorsChange: (errors: TFieldErrors) => void;
+}) {
+  return (
+    <div className={styles.sheetForm}>
+      <ScheduleFields form={form} errors={errors} canEdit={canEdit} onChange={onPatch} />
+      <Field label="Note">
+        <Textarea
+          value={form.message}
+          placeholder="Remember to rotate this secret every month."
+          disabled={!canEdit}
+          onChange={(event) => onPatch({ message: event.target.value })}
+        />
+      </Field>
+      <div className={styles.channels}>
+        <div className={styles.formLabel}>Channels</div>
+        {hasNoRecipients && (
+          <SmallText muted>This reminder has nobody to notify. Choose recipients.</SmallText>
+        )}
+        <ChannelsStep
+          channels={form.channels}
+          errors={channelErrors}
+          onChange={(channels) => onPatch({ channels })}
+          onErrorsChange={onChannelErrorsChange}
+          projectId={projectId}
+          alertId={alert?.id}
+          members={members}
+          hasEnterprise
+          projectRecipients
+          resource={{
+            resourceType: AlertResourceType.SecretReminder,
+            resourceId: secretId
+          }}
+        />
+        {errors.channels && <FieldError>{errors.channels}</FieldError>}
+      </div>
+      {!canEdit && (
+        <SmallText muted>You do not have permission to manage reminders on this secret.</SmallText>
+      )}
+    </div>
+  );
+}
+
+const reminderDisabledReason = ({
+  canEdit,
+  isLoading,
+  loadFailed,
+  pending,
+  dirty
+}: {
+  canEdit: boolean;
+  isLoading: boolean;
+  loadFailed: boolean;
+  pending?: "save" | "delete";
+  dirty: boolean;
+}) => {
+  if (!canEdit) return "You don't have permission to manage reminders";
+  if (isLoading && loadFailed) return "Couldn't load this reminder's channels";
+  if (isLoading) return "Loading this reminder's channels";
+  if (pending === "delete") return "Deleting the reminder";
+  if (!dirty) return "No changes to save";
+  return undefined;
+};
+
+export function ReminderSheet({
+  open,
+  secretId,
+  projectId,
+  secretName,
+  environmentLabel,
+  reminder,
+  canEdit,
+  onOpenChange,
+  onSave
+}: ReminderSheetProps) {
+  const adapter = useV4Adapter("secrets");
+  const orgId = useOrgId();
+  const alerts = adapter.useReminderAlerts(
+    {
+      resourceType: AlertResourceType.SecretReminder,
+      projectId,
+      resourceId: secretId
+    },
+    { enabled: Boolean(reminder) }
+  );
+  const orgUsers = adapter.useReminderMembers(orgId);
+  const isLoading = Boolean(reminder) && !alerts.data;
+  const alert = alerts.data?.[0];
+  const initial = toReminderForm(projectId, reminder, alert);
+  const [draft, setDraft] = useState<TReminderForm>();
+  const [pending, setPending] = useState<"save" | "delete">();
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [channelErrors, setChannelErrors] = useState<TFieldErrors>({});
+  const form = draft ?? initial;
+  const dirty = draft !== undefined && comparable(draft) !== comparable(initial);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => onOpenChange(false)
+  });
+  const run = async (kind: "save" | "delete", request: () => Promise<void>) => {
+    setPending(kind);
+    try {
+      await request();
+    } finally {
+      setPending(undefined);
+    }
+  };
+  const validate = () => {
+    const issues = scheduleIssues(form);
+    if (!form.channels.length) issues.channels = "At least one channel is required";
+    const nextChannelErrors = validateChannels(form.channels);
+    setErrors(issues);
+    setChannelErrors(nextChannelErrors);
+    return !Object.keys(issues).length && !Object.keys(nextChannelErrors).length;
+  };
+  const save = async () => {
+    await run("save", () =>
+      onSave(
+        {
+          ...(form.type === RECURRING
+            ? {
+                repeatDays: form.repeatDays ?? undefined,
+                fromDate: form.fromDate?.toISOString()
+              }
+            : { nextReminderDate: form.nextReminderDate?.toISOString() }),
+          message: form.message,
+          recipients: reminder?.recipients ?? []
+        },
+        form.channels.map((channel) => toChannelInput(channelFormSchema.parse(channel)))
+      )
+    );
+    return false;
+  };
+  let content = (
+    <ReminderFields
+      secretId={secretId}
+      projectId={projectId}
+      canEdit={canEdit}
+      alert={alert}
+      members={toMemberEmails(orgUsers.data)}
+      form={form}
+      errors={errors}
+      channelErrors={channelErrors}
+      hasNoRecipients={Boolean(reminder) && !alert}
+      onPatch={(value) => {
+        setDraft((current) => ({ ...(current ?? initial), ...value }));
+        setErrors({});
+      }}
+      onChannelErrorsChange={setChannelErrors}
+    />
+  );
+  if (isLoading && alerts.error)
+    content = (
+      <SmallText muted>
+        Couldn&apos;t load this reminder&apos;s channels. Close and reopen to try again.
+      </SmallText>
+    );
+  else if (isLoading)
+    content = (
+      <Stack gap={12}>
+        <Skeleton height={56} />
+        <Skeleton height={56} />
+        <Skeleton height={160} />
+      </Stack>
+    );
+  return (
+    <>
+      <MultiStep
+        variant="sheet"
+        size="md"
+        open={open}
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true);
+          else if (!pending) requestDiscard();
+        }}
+        title={reminder ? "Edit reminder" : "Add reminder"}
+        description={`Notify the channels below when ${secretName} in ${environmentLabel} is due for rotation.`}
+        cancelLabel="Close"
+        completeLabel={reminder ? "Update reminder" : "Create reminder"}
+        onComplete={save}
+        footerStart={
+          reminder &&
+          canEdit && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              icon="trash"
+              loading={pending === "delete"}
+              disabled={Boolean(pending)}
+              onClick={() => run("delete", () => onSave(undefined))}
+            >
+              Delete
+            </Button>
+          )
+        }
+        steps={[
+          {
+            title: "Reminder",
+            disabledReason: reminderDisabledReason({
+              canEdit,
+              isLoading,
+              loadFailed: Boolean(alerts.error),
+              pending,
+              dirty
+            }),
+            validate,
+            content
+          }
+        ]}
+      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
+  );
+}

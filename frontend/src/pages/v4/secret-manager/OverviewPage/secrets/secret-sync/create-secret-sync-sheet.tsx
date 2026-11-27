@@ -1,0 +1,1304 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  Controller,
+  type FieldValues,
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch
+} from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
+import { Alert } from "@infisical/cipher/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import { Combobox } from "@infisical/cipher/ui/combobox";
+import { DataTable } from "@infisical/cipher/ui/data-table";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
+import { FieldError } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
+import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
+import { Switch } from "@infisical/cipher/ui/switch";
+import { SmallText } from "@infisical/cipher/ui/text";
+import slugify from "@sindresorhus/slugify";
+import { ArrowRightIcon } from "lucide-react";
+
+import { EnterpriseSecretSyncsUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
+import {
+  getSecretSyncDestinationConfig,
+  SecretSyncFormSchema
+} from "@app/components/secret-syncs/forms/schemas";
+import {
+  ProjectPermissionSecretSyncActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
+  POPULAR_SECRET_SYNCS,
+  SECRET_SYNC_CONNECTION_MAP,
+  SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP,
+  SECRET_SYNC_MAP
+} from "@app/helpers/secretSyncs";
+import type { TChannelForm } from "@app/hooks/api/alerts/types";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProjectType } from "@app/hooks/api/projects/types";
+import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
+import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
+import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
+
+import { useProjectPermission } from "../../../../access/permissions";
+import { useAlertMembers } from "../../../../cert-manager/SettingsPage/alert-members";
+import { useV4Adapter } from "../../../../data/adapters";
+import {
+  connectionRedirect,
+  startConnectionRedirect
+} from "../../../../data/integrations/connection-redirect";
+import { useV4Session } from "../../../../data/session/contract";
+import { useUpgradeGate } from "../../../../license";
+import type { FlowFeedback, FlowScope } from "../flows";
+import { ProviderLogo } from "../flows/provider-logo";
+import {
+  ReviewSection,
+  RotationField as SyncField,
+  TextField
+} from "../flows/secret-rotation/fields";
+import { DiscardDialog } from "../flows/shared";
+import { useCreateBlock } from "../row-actions/permissions";
+import type { RowActionTone } from "../row-actions/types";
+import {
+  buildProjectAdminsChannel,
+  canManageFailureAlert,
+  FAILURE_ALERT_FIELDS,
+  failureAlertReviewItems
+} from "./failure-alert";
+import { FailureAlertFields } from "./failure-alert-fields";
+import { enabledBadge, SyncConnections } from "./sync-fields";
+import { IMPORT_CAPABLE_SYNCS, type LocalSecretSync, type LocalSyncConnection } from "./sync-model";
+import { SYNC_VIEWS } from "./sync-views";
+
+import flowStyles from "../flows/flows.module.css";
+import styles from "./secret-sync.module.css";
+
+type SyncEnvironment = { slug: string; id: string; name: string };
+
+const DOCS = "https://infisical.com/docs/integrations/secret-syncs";
+
+const formTabs = (destination: SecretSync, destinationName: string) => [
+  {
+    name: "Source",
+    key: "source",
+    title: "Source secrets",
+    rightDescription: "The environment and path set which secrets this sync pushes.",
+    fields:
+      destination === SecretSync.AzureEntraIdScim
+        ? ["secretPath", "environment", "syncOptions"]
+        : ["secretPath", "environment"]
+  },
+  {
+    name: "Destination",
+    key: "destination",
+    title: `Connect to ${destinationName}`,
+    rightDescription: `Where in ${destinationName} Infisical writes secrets.`,
+    fields: ["connection", "destinationConfig"]
+  },
+  {
+    name: "Initial sync",
+    key: "initialSync",
+    title: "Initial sync behavior",
+    rightDescription: "Applies to the first run only. Later runs follow your sync options.",
+    fields: ["syncOptions"]
+  },
+  {
+    name: "Sync options",
+    key: "options",
+    title: "Sync options",
+    rightDescription: "These apply on every run.",
+    fields: ["syncOptions"]
+  },
+  {
+    name: "Details",
+    key: "details",
+    title: "Sync details",
+    rightDescription: "The description shows as a tooltip in the sync list.",
+    fields: ["name", "description"]
+  },
+  {
+    name: "Alerts",
+    key: "alerts",
+    title: "Failure alert",
+    rightDescription: "You can change this alert later from the sync's page.",
+    fields: FAILURE_ALERT_FIELDS
+  },
+  {
+    name: "Review",
+    key: "review",
+    title: "Review and create",
+    rightDescription: "You can edit these settings later.",
+    fields: [] as string[]
+  }
+];
+
+export const SYNC_DRAFT_STORAGE_KEY = "v4-secret-sync-draft";
+
+const canImport = (destination: SecretSync) => IMPORT_CAPABLE_SYNCS.includes(destination);
+
+const nameOf = (destination: SecretSync) => SECRET_SYNC_MAP[destination].name;
+
+function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => void }) {
+  const { organization } = useV4Session();
+  const adapter = useV4Adapter("secrets");
+  const plan = adapter.useOverviewPlan(organization.id).data;
+  const syncOptions = adapter.useSecretSyncOptions().data;
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const choose = (destination: SecretSync) => {
+    const isEnterprise = syncOptions?.some(
+      (option) => option.destination === destination && option.enterprise
+    );
+    if (isEnterprise && plan && !plan.enterpriseSecretSyncs) {
+      openUpgradeGate({
+        intent: EnterpriseSecretSyncsUpgradeIntent,
+        paywallKey: "secret-manager.secret-sync-provider"
+      });
+      return;
+    }
+    onSelect(destination);
+  };
+  const items = (Object.values(SecretSync) as SecretSync[])
+    .filter((destination) => SECRET_SYNC_MAP[destination])
+    .sort((first, second) => nameOf(first).localeCompare(nameOf(second)))
+    .map((destination) => {
+      const { name, image, category, aliases } = SECRET_SYNC_MAP[destination];
+      return {
+        value: destination,
+        title: name,
+        eyebrow: category,
+        media: <ProviderLogo image={image} />,
+        popular: POPULAR_SECRET_SYNCS.includes(destination),
+        keywords: [destination, ...(aliases ?? [])]
+      };
+    });
+  return (
+    <>
+      <TilePicker
+        items={items}
+        onSelect={(destination) => choose(destination as SecretSync)}
+        searchLabel="Search secret sync providers"
+        searchPlaceholder="Search providers like AWS, Vercel, GitHub Actions, Vault..."
+        allLabel="All providers"
+        noun="providers"
+      />
+      {upgradeGate}
+    </>
+  );
+}
+
+const useSyncValues = () => useWatch() as FieldValues;
+const useSyncFormContext = () => useFormContext<FieldValues>();
+
+export const useSourceConflicts = (projectId: string, values: FieldValues) => {
+  const enabled =
+    Boolean(values.destination) &&
+    Boolean(values.syncOptions?.includeAllSubFolders) &&
+    Boolean(values.environment?.slug) &&
+    Boolean(values.secretPath);
+  const { data } = useV4Adapter("secrets").useSecretSyncRecursiveConflicts(
+    {
+      destination: values.destination,
+      projectId,
+      environment: values.environment?.slug,
+      secretPath: values.secretPath,
+      keySchema: values.syncOptions?.keySchema
+    },
+    { enabled }
+  );
+  return enabled ? (data?.conflicts ?? []) : [];
+};
+
+const MAX_DISPLAYED_CONFLICTS = 5;
+
+function IncludeSubfoldersSwitch({
+  checked,
+  onChange
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const { setValue } = useSyncFormContext();
+  return (
+    <Switch
+      layout="row"
+      label="Include secrets from all subfolders"
+      description="Includes every nested folder. Secret names must be unique across them."
+      checked={checked}
+      onCheckedChange={(next) => {
+        onChange(next);
+        if (next)
+          setValue(
+            "syncOptions.initialSyncBehavior",
+            SecretSyncInitialSyncBehavior.OverwriteDestination
+          );
+      }}
+    />
+  );
+}
+
+export function SourceFields({
+  environments,
+  conflicts
+}: {
+  environments: SyncEnvironment[];
+  conflicts: { key: string; paths: string[] }[];
+}) {
+  const { destination, syncOptions } = useSyncValues();
+  const Source = SYNC_VIEWS[destination as SecretSync]?.Source;
+  return (
+    <Stack gap={16}>
+      <Controller
+        name="environment"
+        render={({ field, fieldState: { error } }) => (
+          <SyncField label="Environment" error={error?.message}>
+            <Combobox
+              label="Environment"
+              value={field.value?.slug ?? ""}
+              onValueChange={(slug) =>
+                field.onChange(environments.find((environment) => environment.slug === slug))
+              }
+              options={environments.map((environment) => ({
+                value: environment.slug,
+                label: environment.name
+              }))}
+              placeholder="Select environment..."
+              invalid={Boolean(error)}
+            />
+          </SyncField>
+        )}
+      />
+      <TextField name="secretPath" label="Secret path" placeholder="/" />
+      {Source ? (
+        <Source />
+      ) : (
+        <Controller
+          name="syncOptions.includeAllSubFolders"
+          render={({ field }) => (
+            <Stack gap={12}>
+              <IncludeSubfoldersSwitch checked={Boolean(field.value)} onChange={field.onChange} />
+              {Boolean(field.value) && canImport(destination) && (
+                <Alert tone="warn" title="Initial sync is set to overwrite the destination">
+                  A sync that includes subfolders cannot import secrets from the destination into
+                  Infisical, because there is no single folder to import them into.
+                </Alert>
+              )}
+              {Boolean(syncOptions?.includeAllSubFolders) && conflicts.length > 0 && (
+                <Alert
+                  tone="bad"
+                  title={
+                    conflicts.length === 1
+                      ? "1 secret name conflicts across folders"
+                      : `${conflicts.length} secret names conflict across folders`
+                  }
+                >
+                  <Stack gap={8}>
+                    <span>
+                      This destination stores secrets in a single flat list, so each name can be
+                      used only once. Rename or move one secret in each pair, or point the sync at a
+                      narrower secret path.
+                    </span>
+                    {conflicts.slice(0, MAX_DISPLAYED_CONFLICTS).map((conflict) => (
+                      <span key={conflict.key}>
+                        <code>&quot;{conflict.key}&quot;</code> is used in {conflict.paths.length}{" "}
+                        folders:
+                        <ul className={styles.conflictList}>
+                          {conflict.paths.map((path) => (
+                            <li key={path}>
+                              <code>{path}</code>
+                            </li>
+                          ))}
+                        </ul>
+                      </span>
+                    ))}
+                    {conflicts.length > MAX_DISPLAYED_CONFLICTS && (
+                      <span>and {conflicts.length - MAX_DISPLAYED_CONFLICTS} more</span>
+                    )}
+                  </Stack>
+                </Alert>
+              )}
+            </Stack>
+          )}
+        />
+      )}
+    </Stack>
+  );
+}
+
+type SyncState = "unchanged" | "updated" | "added" | "imported" | "removed" | "absent";
+type ExampleRow = { key: string; infisical: SyncState; destination: SyncState };
+type Variant = "overwrite" | "prioritize-infisical" | "prioritize-destination";
+
+const STATE_LABEL: Record<SyncState, string> = {
+  unchanged: "Unchanged",
+  updated: "Updated",
+  added: "Added",
+  imported: "Imported",
+  removed: "Removed",
+  absent: "Not present"
+};
+const EXAMPLE: Record<Variant, ExampleRow[]> = {
+  overwrite: [
+    { key: "API_KEY", infisical: "unchanged", destination: "updated" },
+    { key: "DB_URL", infisical: "unchanged", destination: "added" },
+    { key: "LEGACY_TOKEN", infisical: "absent", destination: "removed" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
+  ],
+  "prioritize-infisical": [
+    { key: "API_KEY", infisical: "unchanged", destination: "updated" },
+    { key: "DB_URL", infisical: "unchanged", destination: "added" },
+    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
+  ],
+  "prioritize-destination": [
+    { key: "API_KEY", infisical: "updated", destination: "unchanged" },
+    { key: "DB_URL", infisical: "unchanged", destination: "added" },
+    { key: "LEGACY_TOKEN", infisical: "imported", destination: "unchanged" },
+    { key: "SENTRY_DSN", infisical: "unchanged", destination: "unchanged" }
+  ]
+};
+
+const variantOf = (behavior: string): Variant => {
+  if (behavior === SecretSyncInitialSyncBehavior.OverwriteDestination) return "overwrite";
+  if (behavior === SecretSyncInitialSyncBehavior.ImportPrioritizeSource)
+    return "prioritize-infisical";
+  return "prioritize-destination";
+};
+
+function DiagramColumn({ label, rows }: { label: string; rows: { name: string }[] }) {
+  return (
+    <div className={styles.diagramColumn}>
+      <span className={flowStyles.eyebrow}>{label}</span>
+      {rows.map((row) => (
+        <div key={row.name} className={styles.diagramRow}>
+          <span>{row.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const STATE_WIDTH = 120;
+const isUnchanged = (row: ExampleRow) =>
+  row.infisical === "unchanged" && row.destination === "unchanged";
+
+const stateCell = (state: SyncState) =>
+  state === "unchanged" ? (
+    <span className={styles.unchangedMark}>
+      <Icon name="check" size="var(--cipher-size-icon-small)" />
+      <span className={flowStyles.srOnly}>{STATE_LABEL.unchanged}</span>
+    </span>
+  ) : (
+    <span className={styles.syncState} data-state={state}>
+      {STATE_LABEL[state]}
+    </span>
+  );
+
+function InitialSyncExample({
+  rows,
+  title,
+  destinationName
+}: {
+  rows: ExampleRow[];
+  title: string;
+  destinationName: string;
+}) {
+  return (
+    <Card variant="framed" size="sm" flush title={<span title={title}>{title}</span>}>
+      <DataTable
+        label="What the first sync does to each secret"
+        rows={[...rows].sort((a, b) => Number(isUnchanged(a)) - Number(isUnchanged(b)))}
+        getRowId={(row) => row.key}
+        empty="Neither side has secrets yet"
+        rowLabel={(row) => row.key}
+        columns={[
+          {
+            id: "key",
+            header: "Key",
+            primary: true,
+            mono: true,
+            grow: true,
+            render: (row) => <span title={row.key}>{row.key}</span>
+          },
+          {
+            id: "infisical",
+            header: "Infisical",
+            width: STATE_WIDTH,
+            render: (row) => stateCell(row.infisical)
+          },
+          {
+            id: "destination",
+            header: destinationName,
+            width: STATE_WIDTH,
+            render: (row) => stateCell(row.destination)
+          }
+        ]}
+      />
+    </Card>
+  );
+}
+
+const shortNameOf = (name: string) =>
+  name.startsWith("Digital Ocean") ? "Digital Ocean" : name.split(" ")[0];
+
+const behaviorCopy = (key: SecretSyncInitialSyncBehavior, destinationName: string) => {
+  const shortName = shortNameOf(destinationName);
+  if (key === SecretSyncInitialSyncBehavior.OverwriteDestination)
+    return {
+      title: `Overwrite ${destinationName}`,
+      description: `Infisical writes its secrets to ${destinationName} and imports nothing. Depending on your options, secrets in ${shortName} can be removed.`
+    };
+  if (key === SecretSyncInitialSyncBehavior.ImportPrioritizeSource)
+    return {
+      title: `Import from ${shortName}, prioritize Infisical`,
+      description: `Imports secrets from ${destinationName} first. Where a secret exists in both, the Infisical value is kept.`
+    };
+  return {
+    title: `Import from ${shortName}, prioritize ${shortName}`,
+    description: `Imports secrets from ${destinationName} first. Where a secret exists in both, the ${shortName} value overwrites Infisical.`
+  };
+};
+
+const BEHAVIOR_ORDER = [
+  SecretSyncInitialSyncBehavior.OverwriteDestination,
+  SecretSyncInitialSyncBehavior.ImportPrioritizeSource,
+  SecretSyncInitialSyncBehavior.ImportPrioritizeDestination
+];
+
+const isVercelSensitive = (values: FieldValues) =>
+  values.destination === SecretSync.Vercel && Boolean(values.destinationConfig?.sensitive);
+
+function InitialSyncAlerts({
+  onGoToInitialSync,
+  onGoToOptions
+}: {
+  onGoToInitialSync?: () => void;
+  onGoToOptions?: () => void;
+}) {
+  const values = useSyncValues();
+  const { syncOptions } = values;
+  if (
+    isVercelSensitive(values) ||
+    syncOptions?.initialSyncBehavior !== SecretSyncInitialSyncBehavior.OverwriteDestination ||
+    syncOptions?.disableSecretDeletion ||
+    syncOptions?.keySchema
+  )
+    return null;
+  const remedy = (text: string, onClick?: () => void) =>
+    onClick ? (
+      <Button type="button" variant="link" size="xs" onClick={onClick}>
+        {text}
+      </Button>
+    ) : (
+      text
+    );
+  return (
+    <Alert tone="warn" title="External secrets will be deleted">
+      Anything in {nameOf(values.destination)} not in Infisical will be removed. To keep them,{" "}
+      {remedy("import from provider", onGoToInitialSync)},{" "}
+      {remedy("customize key names", onGoToOptions)}, or{" "}
+      {remedy("prevent secret deletion", onGoToOptions)}.
+    </Alert>
+  );
+}
+
+export function InitialSyncFields() {
+  const values = useSyncValues();
+  const destination = values.destination as SecretSync;
+  const destinationName = nameOf(destination);
+  const vercelSensitive = isVercelSensitive(values);
+  const includeAllSubFolders = Boolean(values.syncOptions?.includeAllSubFolders);
+  const importable = canImport(destination);
+  const current = values.syncOptions?.initialSyncBehavior;
+  const keys =
+    importable && !vercelSensitive && !includeAllSubFolders
+      ? BEHAVIOR_ORDER
+      : [SecretSyncInitialSyncBehavior.OverwriteDestination];
+  return (
+    <Stack gap={16}>
+      {includeAllSubFolders && importable && (
+        <Alert tone="info" title="Importing secrets is not supported with subfolders">
+          With subfolders included, there is no single folder to import into. Turn off subfolders on
+          the Source step to import.
+        </Alert>
+      )}
+      {!vercelSensitive && !includeAllSubFolders && !importable && (
+        <Alert tone="warn" title="Importing secrets is not supported">
+          {destinationName} only supports overwrite.
+          {!values.syncOptions?.disableSecretDeletion &&
+            !values.syncOptions?.keySchema &&
+            " Secrets not in Infisical will be removed. Add a key schema or prevent secret deletion to keep them."}
+        </Alert>
+      )}
+      {vercelSensitive && (
+        <Alert tone="warn" title="Overwrite only">
+          Vercel can&apos;t read sensitive secrets back, so Infisical must overwrite the
+          destination.
+        </Alert>
+      )}
+      {destination === SecretSync.Vercel &&
+        !vercelSensitive &&
+        current !== SecretSyncInitialSyncBehavior.OverwriteDestination && (
+          <Alert tone="warn" title="Limited import for team-scoped syncs">
+            Only shared environment variables whose scope exactly matches this sync&apos;s targets
+            (environments, projects, and Apply to all Custom Environments) are imported. Broader or
+            per-environment variables are not.
+          </Alert>
+        )}
+      <Controller
+        name="syncOptions.initialSyncBehavior"
+        render={({ field, fieldState: { error } }) => (
+          <Stack gap={16}>
+            <RadioGroup
+              value={field.value}
+              onValueChange={field.onChange}
+              className={styles.choiceGroup}
+              aria-label="Initial sync behavior"
+            >
+              {keys.map((key) => {
+                const { title, description } = behaviorCopy(key, destinationName);
+                const id = `initial-sync-${key}`;
+                return (
+                  <label
+                    key={key}
+                    htmlFor={id}
+                    className={styles.choice}
+                    data-checked={field.value === key || undefined}
+                  >
+                    <span className={styles.choiceText}>
+                      <span className={styles.choiceTitle}>{title}</span>
+                      <span className={styles.choiceDescription}>{description}</span>
+                    </span>
+                    <RadioGroupItem
+                      value={key}
+                      id={id}
+                      aria-invalid={Boolean(error) || undefined}
+                    />
+                  </label>
+                );
+              })}
+            </RadioGroup>
+            {field.value && (
+              <Stack gap={8}>
+                <span className={flowStyles.eyebrow}>Example</span>
+                <InitialSyncExample
+                  rows={EXAMPLE[variantOf(field.value)]}
+                  title={behaviorCopy(field.value, destinationName).title}
+                  destinationName={destinationName}
+                />
+              </Stack>
+            )}
+            {error?.message && <FieldError>{error.message}</FieldError>}
+          </Stack>
+        )}
+      />
+    </Stack>
+  );
+}
+
+const SAMPLE_KEY = "API_KEY";
+
+function KeySchemaField({ destinationName }: { destinationName: string }) {
+  const { setValue, getValues, formState } = useSyncFormContext();
+  const hasError = Boolean(
+    (formState.errors.syncOptions as Record<string, unknown> | undefined)?.keySchema
+  );
+  const [enabled, setEnabled] = useState(Boolean(getValues("syncOptions.keySchema")));
+  const preview = (schema?: string) =>
+    (schema || SAMPLE_KEY)
+      .replaceAll("{{secretKey}}", SAMPLE_KEY)
+      .replaceAll("{{environment}}", "prod") || SAMPLE_KEY;
+  return (
+    <Stack gap={16}>
+      <Switch
+        layout="row"
+        label="Customize key names"
+        description={`A prefix or suffix marks the keys Infisical manages in ${destinationName}. Other keys are left alone.`}
+        checked={enabled || hasError}
+        onCheckedChange={(checked) => {
+          setEnabled(checked);
+          if (!checked)
+            setValue("syncOptions.keySchema", undefined, {
+              shouldValidate: true,
+              shouldDirty: true
+            });
+        }}
+      />
+      {(enabled || hasError) && (
+        <Controller
+          name="syncOptions.keySchema"
+          render={({ field, fieldState: { error } }) => (
+            <Stack gap={12}>
+              <SyncField
+                label="Key schema"
+                help={
+                  <DocumentationLink href={`${DOCS}/overview#key-schemas`} subject="key schemas" />
+                }
+                error={error?.message}
+                description={
+                  <>
+                    Use <code>{"{{secretKey}}"}</code> as a placeholder, and optionally{" "}
+                    <code>{"{{environment}}"}</code>.
+                  </>
+                }
+              >
+                <Input
+                  ref={field.ref}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  placeholder="INFISICAL_{{secretKey}}"
+                  mono
+                  autoComplete="off"
+                />
+              </SyncField>
+              <div className={styles.keyPreview} aria-hidden="true">
+                <DiagramColumn label="Infisical" rows={[{ name: SAMPLE_KEY }]} />
+                <span className={styles.keyPreviewArrow}>
+                  <Icon icon={ArrowRightIcon} size="var(--cipher-size-icon-xs)" />
+                </span>
+                <DiagramColumn label={destinationName} rows={[{ name: preview(field.value) }]} />
+              </div>
+            </Stack>
+          )}
+        />
+      )}
+    </Stack>
+  );
+}
+
+export function OptionsFields() {
+  const { destination } = useSyncValues();
+  const destinationName = nameOf(destination);
+  const [confirmAllowDeletion, setConfirmAllowDeletion] = useState<(value: boolean) => void>();
+  const Extra = SYNC_VIEWS[destination as SecretSync]?.Options;
+  const support = useV4Adapter("secrets")
+    .useSecretSyncOptions()
+    .data?.find((entry) => entry.destination === destination);
+  return (
+    <Stack gap={16}>
+      {support?.supportsDisableSecretDeletion !== false && (
+        <Controller
+          name="syncOptions.disableSecretDeletion"
+          render={({ field }) => (
+            <Switch
+              ref={field.ref}
+              layout="row"
+              label="Prevent secret deletion"
+              description={`Infisical adds and updates secrets in ${destinationName} but never deletes them.`}
+              checked={Boolean(field.value)}
+              onCheckedChange={(checked) => {
+                if (checked) field.onChange(true);
+                else setConfirmAllowDeletion(() => field.onChange);
+              }}
+            />
+          )}
+        />
+      )}
+      <Controller
+        name="isAutoSyncEnabled"
+        render={({ field }) => (
+          <Switch
+            ref={field.ref}
+            layout="row"
+            label="Auto-sync on changes"
+            checked={Boolean(field.value)}
+            onCheckedChange={field.onChange}
+          />
+        )}
+      />
+      {support?.supportsKeySchema !== false && <KeySchemaField destinationName={destinationName} />}
+      {Extra && <Extra />}
+      <AlertDialog
+        open={Boolean(confirmAllowDeletion)}
+        onOpenChange={(open) => !open && setConfirmAllowDeletion(undefined)}
+      >
+        <AlertDialogContent icon="alert">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Allow secret deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              The sync can then delete secrets in {destinationName} that Infisical does not manage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep protection on</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirmAllowDeletion?.(false);
+                setConfirmAllowDeletion(undefined);
+              }}
+            >
+              Allow deletion
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Stack>
+  );
+}
+
+const suggestedNameOf = (values: FieldValues) => {
+  const destination = values.destination as SecretSync;
+  const config = getSecretSyncDestinationConfig(destination, values.destinationConfig);
+  let label = "";
+  if (config) {
+    try {
+      label = getSecretSyncDestinationColValues({
+        destination,
+        destinationConfig: config,
+        connection: values.connection
+      } as TSecretSync).primaryText;
+    } catch {
+      label = "";
+    }
+  }
+  const environmentSlug = values.environment?.slug
+    ? slugify(values.environment.slug, { lowercase: true, decamelize: false })
+    : "";
+  const prefix = slugify(`${nameOf(destination)} ${label}`, { lowercase: true, decamelize: false })
+    .slice(0, environmentSlug ? Math.max(0, 63 - environmentSlug.length) : 64)
+    .replace(/-+$/, "");
+  return [prefix, environmentSlug].filter(Boolean).join("-");
+};
+
+export function DetailsFields() {
+  const { setValue, getValues } = useSyncFormContext();
+  const suggested = suggestedNameOf(getValues());
+  return (
+    <Stack gap={16}>
+      <Controller
+        name="name"
+        render={({ field, fieldState: { error } }) => (
+          <SyncField
+            label="Name"
+            error={error?.message}
+            description={
+              <>
+                Must be slug-friendly.{" "}
+                {suggested && !field.value && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="xs"
+                    onClick={() =>
+                      setValue("name", suggested, { shouldValidate: true, shouldDirty: true })
+                    }
+                  >
+                    Use {suggested}
+                  </Button>
+                )}
+              </>
+            }
+          >
+            <Input
+              ref={field.ref}
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              placeholder={suggested}
+              autoFocus
+              autoComplete="off"
+            />
+          </SyncField>
+        )}
+      />
+      <TextField
+        name="description"
+        label="Description"
+        optional
+        placeholder="Describe the purpose of this sync..."
+        multiline
+        rows={4}
+      />
+    </Stack>
+  );
+}
+
+function ReviewFields({
+  duplicateProject,
+  projectId,
+  canManageAlert
+}: {
+  duplicateProject?: string;
+  projectId: string;
+  canManageAlert: boolean;
+}) {
+  const values = useSyncValues();
+  const members = useAlertMembers(projectId);
+  const destination = values.destination as SecretSync;
+  const view = SYNC_VIEWS[destination];
+  const options = values.syncOptions ?? {};
+  return (
+    <Stack gap={24}>
+      <ReviewSection
+        label="Source"
+        items={[
+          ["Environment", values.environment?.name],
+          ["Secret path", values.secretPath]
+        ]}
+      />
+      <Stack gap={12}>
+        {duplicateProject !== undefined && (
+          <Alert tone="warn" title="Duplicate destination detected">
+            <Stack gap={8}>
+              <span>
+                Another secret sync in your organization is already configured with the same
+                destination. This may lead to conflicts or unexpected behavior.
+              </span>
+              <span>
+                Duplicate found in project <code>{duplicateProject}</code>.
+              </span>
+            </Stack>
+          </Alert>
+        )}
+        <ReviewSection
+          label="Destination"
+          items={[
+            ["Service", <ProviderLabel key="service" kind="secret-sync" value={destination} />],
+            ["Connection", values.connection?.name],
+            ...(view?.destinationReview(values.destinationConfig ?? {}) ?? [])
+          ]}
+        />
+      </Stack>
+      <ReviewSection
+        label="Sync options"
+        items={[
+          ["Auto-sync", enabledBadge(values.isAutoSyncEnabled)],
+          [
+            "Initial sync behavior",
+            options.initialSyncBehavior &&
+              SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[
+                options.initialSyncBehavior as SecretSyncInitialSyncBehavior
+              ](nameOf(destination)).name
+          ],
+          ["Key schema", options.keySchema],
+          ...(view?.optionsReview?.(options) ?? []),
+          ["Include all subfolders", enabledBadge(options.includeAllSubFolders)],
+          ["Secret deletion protection", enabledBadge(options.disableSecretDeletion)]
+        ]}
+      />
+      <ReviewSection
+        label="Details"
+        items={[
+          ["Name", values.name],
+          ["Description", values.description]
+        ]}
+      />
+      <ReviewSection
+        label="Failure alert"
+        items={failureAlertReviewItems({
+          enabled: Boolean(values.isFailureAlertEnabled),
+          channels: values.channels ?? [],
+          canManage: canManageAlert,
+          members
+        })}
+      />
+    </Stack>
+  );
+}
+
+const createSyncResolver = zodResolver(SecretSyncFormSchema());
+
+const mergeDefaults = (base: FieldValues, extra: FieldValues): FieldValues => ({
+  ...base,
+  ...extra,
+  destinationConfig: { ...base.destinationConfig, ...extra.destinationConfig },
+  syncOptions: { ...base.syncOptions, ...extra.syncOptions }
+});
+
+const sameConfig = (destination: SecretSync, first: unknown, second: unknown) =>
+  JSON.stringify(getSecretSyncDestinationConfig(destination, first) ?? null) ===
+  JSON.stringify(getSecretSyncDestinationConfig(destination, second) ?? null);
+
+export function CreateSecretSyncSheet({
+  open,
+  onOpenChange,
+  scope,
+  initial,
+  syncs,
+  onCreate,
+  onToast,
+  destination: requestedDestination,
+  draft,
+  returnTo
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  scope: FlowScope;
+  initial?: { environment: string; path: string };
+  syncs: readonly LocalSecretSync[];
+  onCreate: (
+    sync: LocalSecretSync,
+    feedback: FlowFeedback,
+    failureAlertChannels?: TChannelForm[]
+  ) => void;
+  onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
+  destination?: SecretSync;
+  draft?: FieldValues;
+  returnTo?: string;
+}) {
+  const environments: SyncEnvironment[] = scope.environments.map((environment) => ({
+    slug: environment.value,
+    id: environment.value,
+    name: environment.label
+  }));
+  const [destination, setDestination] = useState<SecretSync | null>(null);
+  const [step, setStep] = useState(0);
+  const [discard, setDiscard] = useState<"close" | "provider">();
+  const [confirming, setConfirming] = useState(false);
+  const closing = useRef(false);
+  const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
+  const connectionApp = destination ? SECRET_SYNC_CONNECTION_MAP[destination] : AppConnection.AWS;
+  const loadedConnections = useV4Adapter("secrets").useSyncConnections(
+    connectionApp,
+    scope.project,
+    {
+      enabled: Boolean(destination)
+    }
+  ).data;
+  const connections = [
+    ...(loadedConnections ?? []).map((connection) => ({
+      id: connection.id,
+      name: connection.name,
+      app: connectionApp
+    })),
+    ...addedConnections
+  ];
+  const { permission } = useProjectPermission(scope.project);
+  const alertScopeOf = (formValues: FieldValues) => ({
+    environment: formValues.environment?.slug,
+    secretPath: formValues.secretPath,
+    connectionId: formValues.connection?.id
+  });
+  const form = useForm<FieldValues>({
+    resolver: (formValues, context, options) =>
+      createSyncResolver(
+        canManageFailureAlert(permission, alertScopeOf(formValues))
+          ? formValues
+          : { ...formValues, isFailureAlertEnabled: false },
+        context,
+        options
+      ),
+    mode: "onChange",
+    reValidateMode: "onChange"
+  });
+  const values = useWatch({ control: form.control }) as FieldValues;
+  const { isDirty } = form.formState;
+
+  const destinationName = destination ? nameOf(destination) : "";
+  const tabs = destination ? formTabs(destination, destinationName) : [];
+  const createBlock = useCreateBlock(
+    scope.project,
+    ProjectPermissionSub.SecretSyncs,
+    ProjectPermissionSecretSyncActions.Create,
+    values.environment?.slug ? [values.environment.slug] : environments.map((entry) => entry.slug),
+    values.secretPath ?? initial?.path ?? "/",
+    "create secret syncs here"
+  );
+  const conflicts = useSourceConflicts(scope.project, values);
+  const canManageAlert = canManageFailureAlert(permission, alertScopeOf(values));
+  const duplicate =
+    destination && values.connection?.id
+      ? syncs.find(
+          (sync) =>
+            sync.destination === destination &&
+            sync.connectionId === values.connection.id &&
+            sync.destinationConfig &&
+            sameConfig(destination, sync.destinationConfig, values.destinationConfig)
+        )
+      : undefined;
+
+  const select = (next: SecretSync) => {
+    const environment =
+      environments.find((entry) => entry.slug === initial?.environment) ?? environments[0];
+    form.reset(
+      mergeDefaults(
+        {
+          destination: next,
+          isAutoSyncEnabled: true,
+          isFailureAlertEnabled: true,
+          channels: [buildProjectAdminsChannel(scope.project)],
+          environment,
+          secretPath: initial?.path ?? "/",
+          syncOptions: {
+            initialSyncBehavior: canImport(next)
+              ? SecretSyncInitialSyncBehavior.ImportPrioritizeSource
+              : SecretSyncInitialSyncBehavior.OverwriteDestination,
+            disableSecretDeletion: true
+          }
+        },
+        SYNC_VIEWS[next]?.defaults ?? {}
+      )
+    );
+    setStep(0);
+    setDestination(next);
+  };
+  useEffect(() => {
+    if (open && requestedDestination && SYNC_VIEWS[requestedDestination])
+      select(requestedDestination);
+  }, [open, requestedDestination]);
+  useEffect(() => {
+    if (!open || !draft?.destination || !SYNC_VIEWS[draft.destination as SecretSync]) return;
+    const next = draft.destination as SecretSync;
+    if (draft.connection)
+      setAddedConnections((list) => [
+        ...list,
+        { ...draft.connection, app: SECRET_SYNC_CONNECTION_MAP[next] }
+      ]);
+    form.reset(
+      {
+        isFailureAlertEnabled: true,
+        ...draft,
+        channels: [buildProjectAdminsChannel(scope.project)]
+      },
+      { keepDefaultValues: false }
+    );
+    setDestination(next);
+    setStep(1);
+  }, [open, draft]);
+  const connectionOption = useV4Adapter("integrations")
+    .useConnectionOptions(ProjectType.SecretManager)
+    .data?.find((entry) => entry.app === connectionApp);
+  const redirect = returnTo
+    ? connectionRedirect({
+        returnTo,
+        projectId: scope.project,
+        option: connectionOption as Record<string, unknown> | undefined
+      })
+    : undefined;
+  const close = () => {
+    setDestination(null);
+    setStep(0);
+    setConfirming(false);
+    onOpenChange(false);
+  };
+  const request = (target: "close" | "provider") => {
+    if (destination && isDirty) {
+      setDiscard(target);
+      return;
+    }
+    if (target === "close") close();
+    else setDestination(null);
+  };
+  const isStepValid = (index: number) => form.trigger(tabs[index].fields);
+  const submit = (data: FieldValues) => {
+    setConfirming(false);
+    if (!destination) return;
+    if (syncs.some((sync) => sync.project === scope.project && sync.name === data.name)) {
+      onToast("bad", {
+        title: "Failed to create secret sync",
+        description: `A secret sync with the name "${data.name}" already exists in this project.`
+      });
+      return;
+    }
+    const environment = data.environment as SyncEnvironment;
+    onCreate(
+      {
+        id: `${scope.project}:${environment.slug}:${data.secretPath}:sync:${data.name}`,
+        name: data.name,
+        description: data.description || undefined,
+        destination,
+        project: scope.project,
+        environment: environment.slug,
+        path: data.secretPath,
+        status: null,
+        autoSync: data.isAutoSyncEnabled,
+        connectionId: data.connection.id,
+        connectionName: data.connection.name,
+        destinationConfig: data.destinationConfig,
+        syncOptions: data.syncOptions
+      },
+      {
+        title: `Successfully added ${destinationName} sync`
+      },
+      canManageAlert && data.isFailureAlertEnabled ? data.channels : undefined
+    );
+    close();
+  };
+  const willDeleteUnmatched =
+    values.syncOptions?.initialSyncBehavior ===
+      SecretSyncInitialSyncBehavior.OverwriteDestination &&
+    !values.syncOptions?.disableSecretDeletion &&
+    !values.syncOptions?.keySchema;
+  const goTo = (key: string) => setStep(tabs.findIndex((tab) => tab.key === key));
+  const goToFirstError = (errors: FieldValues) => {
+    setConfirming(false);
+    const index = tabs.findIndex((tab) => tab.fields.some((field) => field in errors));
+    if (index >= 0) setStep(index);
+  };
+  const Destination = destination ? SYNC_VIEWS[destination]?.Destination : undefined;
+
+  const stepBody = (index: number) => {
+    if (index === 0) return <SourceFields environments={environments} conflicts={conflicts} />;
+    if (index === 1) return Destination ? <Destination /> : null;
+    if (index === 2) return <InitialSyncFields />;
+    if (index === 3) return <OptionsFields />;
+    if (index === 4) return <DetailsFields />;
+    if (index === 5)
+      return <FailureAlertFields projectId={scope.project} canManage={canManageAlert} />;
+    return (
+      <ReviewFields
+        duplicateProject={duplicate ? duplicate.project : undefined}
+        projectId={scope.project}
+        canManageAlert={canManageAlert}
+      />
+    );
+  };
+  const disabledReason = (index: number) => {
+    if (index === 0 && conflicts.length)
+      return "Resolve the secret name conflicts before you continue.";
+    return index === tabs.length - 1 ? createBlock : undefined;
+  };
+  const steps: MultiStepStep[] = [
+    {
+      title: "Provider",
+      summary: destinationName || undefined,
+      footer: false,
+      content: <ProviderPicker onSelect={select} />
+    },
+    ...tabs.map((tab, index) => ({
+      title: tab.name,
+      heading: tab.title,
+      validate: () => isStepValid(index),
+      disabledReason: disabledReason(index),
+      aside: {
+        description:
+          index >= 2 ? (
+            <Stack gap={12}>
+              <span>{tab.rightDescription}</span>
+              <InitialSyncAlerts
+                onGoToInitialSync={() => goTo("initialSync")}
+                onGoToOptions={() => goTo("options")}
+              />
+            </Stack>
+          ) : (
+            tab.rightDescription
+          )
+      },
+      content: stepBody(index)
+    }))
+  ];
+
+  return (
+    <SyncConnections
+      value={{
+        projectId: scope.project,
+        connections,
+        addConnection: (connection) => setAddedConnections((list) => [...list, connection]),
+        redirect: redirect && {
+          ...redirect,
+          start: (href, pending) => {
+            sessionStorage.setItem(
+              SYNC_DRAFT_STORAGE_KEY,
+              JSON.stringify({ ...form.getValues(), channels: undefined })
+            );
+            startConnectionRedirect(href, pending);
+          }
+        }
+      }}
+    >
+      <FormProvider {...form}>
+        <MultiStep
+          variant="sheet"
+          layout="aside"
+          open={open}
+          onCancel={() => {
+            // MultiStep resets to the first step before asking to close; keep the step if the discard is cancelled.
+            closing.current = true;
+          }}
+          onOpenChange={(next) => {
+            closing.current = false;
+            if (!next) request("close");
+          }}
+          step={destination ? step + 1 : 0}
+          onStepChange={(next) => {
+            if (closing.current) return;
+            if (next === 0) request("provider");
+            else setStep(next - 1);
+          }}
+          media={
+            destination ? (
+              <ProviderLogo image={SECRET_SYNC_MAP[destination].image} size={28} />
+            ) : undefined
+          }
+          title={destination ? `${destinationName} sync` : "Choose a destination"}
+          badges={
+            destination ? (
+              <DocumentationLink
+                href={`${DOCS}/${destination}`}
+                subject={`${destinationName} syncs`}
+              />
+            ) : undefined
+          }
+          description={
+            destination ? undefined : "You can't change the destination later without a new sync."
+          }
+          footerStart={isDirty ? <SmallText muted>Unsaved changes</SmallText> : undefined}
+          completeLabel="Create sync"
+          onComplete={() => {
+            setConfirming(true);
+            return false;
+          }}
+          steps={steps}
+        />
+        <AlertDialog open={confirming} onOpenChange={setConfirming}>
+          <AlertDialogContent icon="alert">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Secret sync behavior</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  <Stack gap={8}>
+                    <span>
+                      Infisical is the source of truth. Secrets in the destination are overwritten,
+                      including direct edits made there later.
+                    </span>
+                    {willDeleteUnmatched && (
+                      <span>
+                        Secrets in {destinationName} that don&apos;t exist in Infisical are deleted.
+                      </span>
+                    )}
+                  </Stack>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={form.handleSubmit(submit, goToFirstError)}>
+                I understand
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <DiscardDialog
+          open={Boolean(discard)}
+          title="Discard sync setup?"
+          description="Your progress will be lost."
+          onKeep={() => setDiscard(undefined)}
+          onDiscard={() => {
+            if (discard === "close") close();
+            else setDestination(null);
+            setDiscard(undefined);
+          }}
+        />
+      </FormProvider>
+    </SyncConnections>
+  );
+}

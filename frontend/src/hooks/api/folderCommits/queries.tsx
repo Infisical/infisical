@@ -8,6 +8,7 @@ import {
 import { format } from "date-fns";
 
 import { apiRequest } from "@app/config/request";
+import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 
 import {
   Commit,
@@ -216,13 +217,14 @@ export const useCommitRevert = ({
   return useMutation({
     mutationFn: () => fetchRevert(commitId, projectId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: commitKeys.details({ projectId, commitId }) });
       queryClient.invalidateQueries({
-        queryKey: [
-          commitKeys.details({ projectId, commitId }),
-          commitKeys.history({ projectId, environment, directory }),
-          commitKeys.count({ projectId, environment, directory })
-        ]
+        queryKey: [commitKeys.history({ projectId, environment, directory })]
       });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ projectId, environment, directory })
+      });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
     }
   });
 };
@@ -249,13 +251,14 @@ export const useCommitRollback = ({
     mutationFn: (message: string) =>
       fetchRollback(folderId, commitId, projectId, deepRollback, message, envSlug),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: commitKeys.details({ projectId, commitId }) });
       queryClient.invalidateQueries({
-        queryKey: [
-          commitKeys.details({ projectId, commitId }),
-          commitKeys.history({ projectId, environment, directory }),
-          commitKeys.count({ projectId, environment, directory })
-        ]
+        queryKey: [commitKeys.history({ projectId, environment, directory })]
       });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ projectId, environment, directory })
+      });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all() });
     }
   });
 };

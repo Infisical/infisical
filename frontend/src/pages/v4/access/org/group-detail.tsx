@@ -1,0 +1,632 @@
+import { useState } from "react";
+import { Alert } from "@infisical/cipher/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@infisical/cipher/ui/alert-dialog";
+import { Button } from "@infisical/cipher/ui/button";
+import { Card } from "@infisical/cipher/ui/card";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@infisical/cipher/ui/data-table";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@infisical/cipher/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Field } from "@infisical/cipher/ui/field";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { DetailLayout, Stack, Inline } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
+import { useParams } from "@tanstack/react-router";
+
+import {
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects
+} from "@app/context/OrgPermissionContext/types";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import {
+  FilterMemberType,
+  GroupMembersOrderBy,
+  GroupMemberType,
+  type TGroup,
+  type TGroupMember
+} from "@app/hooks/api/groups/types";
+import { SearchIdentitiesScope } from "@app/hooks/api/identities/types";
+import { OrgAccessControlTabSections } from "@app/types/org";
+
+import { copyText } from "../../clipboard";
+import { usePageSize } from "../../components/use-page-size";
+import { useV4Adapter } from "../../data/adapters";
+import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
+import { accessLinks } from "../links";
+import { useGo } from "../navigation";
+import { useOrgId, useOrgPermission } from "../permissions";
+import { formatDate, orgRoleName, orgRoleSlug } from "../roles";
+import { failed, saved, toast } from "../toast";
+import {
+  AccessRestricted,
+  EditDetailsButton,
+  Gate,
+  ListToolbar,
+  Muted,
+  RESTRICTED,
+  type Sort
+} from "../ui";
+import { GroupDialog } from "./group-dialog";
+import { ProjectMembershipsSection } from "./project-memberships";
+import { useDebounced } from "./use-debounced";
+import { displayName } from "./users";
+
+import css from "./org.module.css";
+
+const memberName = (member: TGroupMember) =>
+  member.type === GroupMemberType.USER
+    ? (displayName(member.user) ?? member.user.email ?? member.user.username)
+    : member.machineIdentity.name;
+
+const memberEmail = (member: TGroupMember) =>
+  member.type === GroupMemberType.USER && displayName(member.user)
+    ? member.user.email || member.user.username
+    : undefined;
+
+const AddMembersDialog = ({
+  group,
+  oidcManaged,
+  onOpenChange
+}: {
+  group: TGroup;
+  oidcManaged: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  const access = useV4Adapter("access");
+  const orgId = useOrgId();
+  const addUser = access.useAddUserToGroup();
+  const addIdentity = access.useAddIdentityToGroup();
+  const { data: users = [] } = access.useOrgUsers(orgId);
+  const { data: identities } = access.useSearchOrgIdentities({
+    orgId,
+    offset: 0,
+    limit: 100,
+    scope: [SearchIdentitiesScope.OrganizationScope],
+    search: {}
+  });
+  const { data: identityMembers } = access.useGroupMembers({
+    id: group.id,
+    groupSlug: group.slug,
+    offset: 0,
+    limit: 100,
+    search: "",
+    memberTypeFilter: [FilterMemberType.MACHINE_IDENTITIES]
+  });
+  const [selected, setSelected] = useState<string[]>([]);
+  const [pending, setPending] = useState(false);
+  const memberIdentityIds = new Set(identityMembers?.members.map((member) => member.id));
+  const options = [
+    ...(oidcManaged ? [] : users)
+      .filter(
+        (member) => member.membership && !member.groups.some((entry) => entry.id === group.id)
+      )
+      .map((member) => ({
+        value: `user:${member.user.username}`,
+        label: displayName(member.user) ?? member.user.username,
+        description: member.user.email ?? undefined,
+        group: "Users"
+      })),
+    ...(identities?.identities ?? [])
+      .filter((row) => !memberIdentityIds.has(row.identity.id))
+      .map((row) => ({
+        value: `identity:${row.identity.id}`,
+        label: row.identity.name,
+        group: "Machine identities"
+      }))
+  ];
+  const count = selected.length;
+  const plural = (n: number) => `${n} member${n === 1 ? "" : "s"}`;
+  const noun = oidcManaged ? "machine identities" : "members";
+
+  const assign = async () => {
+    setPending(true);
+    const results = await Promise.allSettled(
+      selected.map((value) => {
+        const [kind, id] = value.split(/:(.*)/s);
+        return kind === "user"
+          ? addUser.mutateAsync({ groupId: group.id, slug: group.slug, username: id })
+          : addIdentity.mutateAsync({ groupId: group.id, slug: group.slug, identityId: id });
+      })
+    );
+    setPending(false);
+    const succeeded = results.filter((result) => result.status === "fulfilled").length;
+    const failure = results.find((result) => result.status === "rejected");
+    if (succeeded) saved(`Successfully assigned ${plural(succeeded)} to the group`);
+    if (failure)
+      failed(`Failed to assign ${plural(results.length - succeeded)} to the group`, failure.reason);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent pending={pending}>
+        <DialogHeader>
+          <DialogTitle>Add group members</DialogTitle>
+        </DialogHeader>
+        {oidcManaged && (
+          <Alert tone="info">
+            Users in this group come from your OIDC provider. Only machine identities can be added
+            here.
+          </Alert>
+        )}
+        <Field label={oidcManaged ? "Machine identities" : "Members"}>
+          <MultiSelect
+            label={oidcManaged ? "Machine identities" : "Members"}
+            searchable
+            placeholder={
+              options.length
+                ? `Search and select ${oidcManaged ? "machine identities" : "users or machine identities"}...`
+                : `All ${noun} are already in the group`
+            }
+            disabled={!options.length}
+            options={options}
+            value={selected}
+            onChange={setSelected}
+          />
+        </Field>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" disabled={!count} loading={pending} onClick={assign}>
+            {count ? `Assign ${plural(count)}` : "Assign members"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const OIDC_MANAGED = "Managed by your OIDC provider";
+
+const removeReason = (member: TGroupMember, canEdit: boolean, oidcManaged: boolean) => {
+  if (!canEdit) return RESTRICTED;
+  return member.type === GroupMemberType.USER && oidcManaged ? OIDC_MANAGED : undefined;
+};
+
+const RemoveMemberDialog = ({
+  group,
+  member,
+  onClose
+}: {
+  group: TGroup;
+  member: TGroupMember | undefined;
+  onClose: () => void;
+}) => {
+  const access = useV4Adapter("access");
+  const removeUser = access.useRemoveUserFromGroup();
+  const removeIdentity = access.useRemoveIdentityFromGroup();
+  const remove = async (target: TGroupMember) => {
+    try {
+      if (target.type === GroupMemberType.USER) {
+        await removeUser.mutateAsync({
+          groupId: group.id,
+          slug: group.slug,
+          username: target.user.username
+        });
+        saved(`Successfully removed user ${target.user.username} from the group`);
+      } else {
+        await removeIdentity.mutateAsync({
+          groupId: group.id,
+          slug: group.slug,
+          identityId: target.machineIdentity.id
+        });
+        saved(`Successfully removed identity ${target.machineIdentity.name} from the group`);
+      }
+    } catch (error) {
+      failed("Failed to remove member from the group", error);
+    }
+  };
+  return (
+    <AlertDialog open={Boolean(member)} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent tone="danger" confirmText="confirm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {`Are you sure you want to remove ${member ? (memberEmail(member) ?? memberName(member)) : ""} from the group?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            They lose any access granted through this group.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={async () => {
+              if (member) await remove(member);
+              onClose();
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+const GroupMembersSection = ({
+  group,
+  canEdit,
+  isLinked
+}: {
+  group: TGroup;
+  canEdit: boolean;
+  isLinked: boolean;
+}) => {
+  const access = useV4Adapter("access");
+  const orgId = useOrgId();
+  const { data: oidcManaged = false } = access.useOidcManageGroupMemberships(orgId);
+  const [search, setSearch] = useState("");
+  const [kinds, setKinds] = useState<FilterMemberType[]>([]);
+  const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = usePageSize("groupMembersTable", 20);
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState<TGroupMember>();
+  const debouncedSearch = useDebounced(search.trim());
+  const { data, isPending } = access.useGroupMembers({
+    id: group.id,
+    groupSlug: group.slug,
+    offset: (page - 1) * perPage,
+    limit: perPage,
+    search: debouncedSearch,
+    orderBy: GroupMembersOrderBy.Name,
+    orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC,
+    memberTypeFilter: kinds.length ? kinds : undefined
+  });
+  const members = data?.members ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const filtered = Boolean(debouncedSearch || kinds.length);
+  const addButton = isLinked ? null : (
+    <Gate allowed={canEdit}>
+      <Button variant="accent" icon="plus" disabled={!canEdit} onClick={() => setAdding(true)}>
+        Add member
+      </Button>
+    </Gate>
+  );
+  const columns: DataTableColumn<TGroupMember>[] = [
+    {
+      id: "name",
+      header: "Name",
+      sortable: true,
+      grow: true,
+      render: (member) => {
+        const isUser = member.type === GroupMemberType.USER;
+        const email = memberEmail(member);
+        return (
+          <Inline gap={8} wrap={false}>
+            <span
+              className={css.typeIcon}
+              role="img"
+              aria-label={isUser ? "User" : "Machine identity"}
+            >
+              <Icon name={isUser ? "user" : "machine"} size="var(--cipher-size-icon-small)" />
+            </span>
+            <span>{memberName(member)}</span>
+            {email && <Muted>{`(${email})`}</Muted>}
+          </Inline>
+        );
+      }
+    },
+    { id: "added", header: "Added on", render: (member) => formatDate(member.joinedGroupAt) }
+  ];
+
+  const rowActions: DataTableRowActions<TGroupMember> = {
+    renderMenu: (member) => (
+      <DropdownMenuItem
+        variant="destructive"
+        disabled={Boolean(removeReason(member, canEdit, oidcManaged))}
+        description={removeReason(member, canEdit, oidcManaged)}
+        onSelect={() => setRemoving(member)}
+      >
+        <Icon name="trash" />
+        {member.type === GroupMemberType.USER
+          ? "Remove user from group"
+          : "Remove identity from group"}
+      </DropdownMenuItem>
+    )
+  };
+
+  return (
+    <>
+      <Card
+        variant="framed"
+        title="Group members"
+        action={
+          <Inline gap={8} wrap={false}>
+            <ListToolbar
+              search={search}
+              onSearch={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              placeholder="Search members"
+              filter={{
+                label: "Filter by member type",
+                options: [
+                  { value: FilterMemberType.USERS, label: "Users" },
+                  { value: FilterMemberType.MACHINE_IDENTITIES, label: "Machine identities" }
+                ],
+                selected: kinds,
+                onToggle: (kind) => {
+                  setKinds((current) =>
+                    current.includes(kind as FilterMemberType)
+                      ? current.filter((k) => k !== kind)
+                      : [...current, kind as FilterMemberType]
+                  );
+                  setPage(1);
+                }
+              }}
+            />
+            {addButton}
+          </Inline>
+        }
+      >
+        <DataTable
+          label={`Members of ${group.name}`}
+          rows={members}
+          columns={columns}
+          rowActions={isLinked ? undefined : rowActions}
+          getRowId={(member) => `${member.type}:${member.id}`}
+          rowLabel={memberName}
+          loading={isPending}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
+          pagination={
+            !isPending && totalCount > 0 ? (
+              <Pagination
+                variant="compact"
+                page={page}
+                total={totalCount}
+                pageSize={perPage}
+                pageSizeOptions={[10, 20, 50, 100]}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPerPage(size);
+                  setPage(1);
+                }}
+              />
+            ) : undefined
+          }
+          filtered={filtered}
+          empty={
+            filtered ? (
+              <EmptyState size="sm" icon="search" title="No members match this search" />
+            ) : (
+              <EmptyState size="sm" icon="user" title="This group does not have any members" />
+            )
+          }
+        />
+      </Card>
+      {adding && (
+        <AddMembersDialog group={group} oidcManaged={oidcManaged} onOpenChange={setAdding} />
+      )}
+      <RemoveMemberDialog group={group} member={removing} onClose={() => setRemoving(undefined)} />
+    </>
+  );
+};
+
+export const OrgGroupDetail = () => {
+  const scope = useOrgPageScope();
+  const { groupId } = useParams({ from: "/v4/organizations/$orgId/groups/$groupId" });
+  const access = useV4Adapter("access");
+  const orgId = useOrgId();
+  const go = useGo();
+  const { permission, isPending: permissionPending } = useOrgPermission();
+  const { data, isPending } = access.useGroup(groupId);
+  const { data: roles = [] } = access.useOrgRoles(orgId);
+  const remove = access.useDeleteGroup();
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const back = () => go(accessLinks.org(orgId, OrgAccessControlTabSections.Groups));
+  if (permissionPending || isPending) return <Loader size="page" label="Loading group" />;
+  if (!permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups))
+    return <AccessRestricted requirement="read Groups" />;
+  const group = data?.group;
+  if (!group)
+    return (
+      <EmptyState
+        icon="user"
+        title="Group not found"
+        actions={
+          <Button variant="outline" onClick={back}>
+            Back to groups
+          </Button>
+        }
+      />
+    );
+  const canEdit = permission.can(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+  const isLinked = group.orgId !== orgId;
+  return (
+    <div className={css.detailPage}>
+      <Stack gap={24}>
+        <PageHeader
+          scope={scope}
+          breadcrumb={[
+            {
+              label: "Organization groups",
+              link: go.link(accessLinks.org(orgId, OrgAccessControlTabSections.Groups))
+            }
+          ]}
+          title={group.name}
+          actions={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" iconRight="more">
+                  Options
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={async () => {
+                    if (await copyText(group.id))
+                      toast({ tone: "neutral", title: "Group ID copied to clipboard" });
+                  }}
+                >
+                  <Icon name="copy" />
+                  Copy group ID
+                </DropdownMenuItem>
+                {!isLinked && (
+                  <DropdownMenuItem
+                    disabled={!canEdit}
+                    description={canEdit ? undefined : RESTRICTED}
+                    onSelect={() => setEditing(true)}
+                  >
+                    <Icon name="pencil" />
+                    Edit group
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={
+                    !permission.can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups)
+                  }
+                  description={
+                    permission.can(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups)
+                      ? undefined
+                      : RESTRICTED
+                  }
+                  onSelect={() => setDeleting(true)}
+                >
+                  <Icon name="trash" />
+                  {isLinked ? "Unlink group" : "Delete group"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+        <DetailLayout
+          asideLabel="Details"
+          aside={
+            <Card
+              variant="framed"
+              title="Details"
+              action={
+                !isLinked && (
+                  <EditDetailsButton
+                    label="Edit group"
+                    allowed={canEdit}
+                    onClick={() => setEditing(true)}
+                  />
+                )
+              }
+            >
+              <DataList
+                variant="props"
+                density="compact"
+                items={[
+                  ["Name", group.name],
+                  [
+                    "ID",
+                    <TruncatedValue
+                      key="id"
+                      value={group.id}
+                      copyLabel="Copy group ID to clipboard"
+                    />
+                  ],
+                  ["Slug", <CopyValue key="slug" value={group.slug} label="Copy slug" />],
+                  ["Organization role", orgRoleName(roles, group)],
+                  ["Created", formatDate(group.createdAt)]
+                ]}
+              />
+            </Card>
+          }
+        >
+          <div className={css.column}>
+            <GroupMembersSection group={group} canEdit={canEdit} isLinked={isLinked} />
+            <ProjectMembershipsSection
+              subject="group"
+              subjectId={group.id}
+              subjectName={group.name}
+              canEdit={canEdit}
+              canAdd={!isLinked}
+            />
+          </div>
+        </DetailLayout>
+      </Stack>
+      {editing && (
+        <GroupDialog
+          group={{
+            id: group.id,
+            name: group.name,
+            slug: group.slug,
+            roleSlug: orgRoleSlug(roles, group)
+          }}
+          roleLabel="Role"
+          open
+          onOpenChange={setEditing}
+        />
+      )}
+      <AlertDialog open={deleting} onOpenChange={setDeleting}>
+        <AlertDialogContent tone="danger" confirmText="confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLinked
+                ? `Are you sure you want to unlink the group "${group.name}" from this sub-organization?`
+                : `Are you sure you want to delete the group named ${group.name}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>This action is irreversible.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await remove.mutateAsync({ id: group.id, organizationId: orgId });
+                  saved(
+                    isLinked
+                      ? "Successfully unlinked group from sub-organization"
+                      : `Successfully deleted the ${group.name} group`
+                  );
+                  back();
+                } catch (error) {
+                  failed("Failed to delete group", error);
+                  setDeleting(false);
+                }
+              }}
+            >
+              {isLinked ? "Unlink" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};

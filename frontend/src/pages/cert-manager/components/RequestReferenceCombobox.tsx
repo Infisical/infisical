@@ -2,16 +2,16 @@ import { useRef } from "react";
 
 import { Combobox, FieldError } from "@app/components/v3";
 import {
-  isSupportedSanRuleValue,
-  UNSUPPORTED_REFERENCE_MESSAGE
-} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
-import {
   COMMON_NAME_REFERENCE_DESCRIPTION,
   COMMON_NAME_REFERENCE_LABEL,
   CertRequestReference,
   formatRequestReferenceValue,
   isRequestReference
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import {
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/helpers/certificateUtils";
 
 type TRequestReferenceOption = { value: string; label: string };
 

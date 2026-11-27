@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -105,11 +105,8 @@ export const groupKeys = {
     ] as const
 };
 
-export const useGetGroupById = (groupId: string) => {
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id || "";
-
-  return useQuery({
+export const groupByIdQuery = (orgId: string, groupId: string) =>
+  queryOptions({
     enabled: Boolean(groupId),
     queryKey: groupKeys.getGroupByIdForOrg(orgId, groupId),
     queryFn: async () => {
@@ -118,6 +115,10 @@ export const useGetGroupById = (groupId: string) => {
       return { group: data };
     }
   });
+
+export const useGetGroupById = (groupId: string) => {
+  const { currentOrg } = useOrganization();
+  return useQuery(groupByIdQuery(currentOrg?.id || "", groupId));
 };
 
 export const useListGroupUsers = ({
@@ -268,15 +269,7 @@ export const useListGroupMachineIdentities = ({
   });
 };
 
-export const useListGroupProjects = ({
-  id,
-  offset = 0,
-  limit = 10,
-  search,
-  filter,
-  orderBy,
-  orderDirection
-}: {
+export type TListGroupProjectsDTO = {
   id: string;
   offset: number;
   limit: number;
@@ -284,11 +277,13 @@ export const useListGroupProjects = ({
   orderBy?: string;
   orderDirection?: OrderByDirection;
   filter?: FilterReturnedProjects;
-}) => {
-  const { currentOrg } = useOrganization();
-  const orgId = currentOrg?.id || "";
+};
 
-  return useQuery({
+export const groupProjectsQuery = (
+  orgId: string,
+  { id, offset = 0, limit = 10, search, filter, orderBy, orderDirection }: TListGroupProjectsDTO
+) =>
+  queryOptions({
     queryKey: groupKeys.specificGroupProjects({
       orgId,
       groupId: id,
@@ -321,4 +316,8 @@ export const useListGroupProjects = ({
       return data;
     }
   });
+
+export const useListGroupProjects = (dto: TListGroupProjectsDTO) => {
+  const { currentOrg } = useOrganization();
+  return useQuery(groupProjectsQuery(currentOrg?.id || "", dto));
 };

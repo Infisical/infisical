@@ -9,6 +9,7 @@ import { VercelOAuthCallbackPageQueryParamsSchema } from "./VercelOauthCallbackP
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(VercelOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

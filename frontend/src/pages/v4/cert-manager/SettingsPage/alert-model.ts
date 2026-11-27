@@ -1,0 +1,604 @@
+import type { IconName } from "@infisical/cipher/ui/icon";
+import { HashIcon, MailIcon } from "lucide-react";
+import { z } from "zod";
+
+import {
+  ALERT_CHANNEL_TYPE_LABELS,
+  AlertChannelType,
+  AlertPrincipalType,
+  AlertResourceType,
+  AlertRunStatus,
+  CertificateAlertResourceType,
+  CertificateApplicationAlertEventType,
+  CertificateManagerAlertEventType,
+  channelFormSchema,
+  MAX_CERTIFICATE_ALERT_BEFORE_DAYS,
+  MAX_CERTIFICATE_ALERT_FILTER_IDS,
+  SignerAlertEventType,
+  type TAlert,
+  type TAlertChannelRecipient,
+  type TCertificateAlertEventType,
+  type TChannelForm,
+  WebhookAuthType
+} from "@app/hooks/api/alerts/types";
+import { toChannelForm } from "@app/hooks/api/alerts/utils";
+import { CertSource } from "@app/hooks/api/certificates/enums";
+import type { OrgUser } from "@app/hooks/api/users/types";
+import { getCertSourceLabel } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
+
+export enum CertificateAlertScopeKind {
+  Application = "application",
+  CertificateManager = "certificate-manager"
+}
+
+export type TCertificateAlertScope =
+  | { kind: CertificateAlertScopeKind.Application; applicationId: string }
+  | { kind: CertificateAlertScopeKind.CertificateManager };
+
+export const CERTIFICATE_MANAGER_SCOPE: TCertificateAlertScope = {
+  kind: CertificateAlertScopeKind.CertificateManager
+};
+
+export const getAlertResourceId = (scope: TCertificateAlertScope) =>
+  scope.kind === CertificateAlertScopeKind.Application ? scope.applicationId : null;
+
+export const ALERT_EVENT_LABELS: Record<TCertificateAlertEventType, string> = {
+  [CertificateApplicationAlertEventType.Expiry]: "Certificate expiration",
+  [CertificateApplicationAlertEventType.Issuance]: "Certificate issuance",
+  [CertificateApplicationAlertEventType.Renewal]: "Certificate renewal",
+  [CertificateApplicationAlertEventType.Revocation]: "Certificate revocation",
+  [SignerAlertEventType.CertificateExpiry]: "Signer certificate expiration"
+};
+
+const ALERT_EVENT_DESCRIPTIONS: Record<TCertificateAlertEventType, (where: string) => string> = {
+  [CertificateApplicationAlertEventType.Expiry]: () =>
+    "Fires ahead of a certificate's expiry date.",
+  [CertificateApplicationAlertEventType.Issuance]: (where) =>
+    `Fires when Infisical issues a certificate ${where}.`,
+  [CertificateApplicationAlertEventType.Renewal]: (where) =>
+    `Fires when a certificate ${where} is renewed.`,
+  [CertificateApplicationAlertEventType.Revocation]: (where) =>
+    `Fires when a certificate ${where} is revoked.`,
+  [SignerAlertEventType.CertificateExpiry]: () =>
+    "Fires ahead of the expiry date of the certificate each signer currently signs with."
+};
+
+export const getAlertEventDescription = (
+  scope: TCertificateAlertScope,
+  eventType: TCertificateAlertEventType
+) =>
+  ALERT_EVENT_DESCRIPTIONS[eventType](
+    scope.kind === CertificateAlertScopeKind.Application
+      ? "in this application"
+      : "in Certificate Manager"
+  );
+
+const ALERT_EVENT_GROUPS: {
+  label: string;
+  events: TCertificateAlertEventType[];
+  scopes: CertificateAlertScopeKind[];
+}[] = [
+  {
+    label: "Certificate lifecycle",
+    events: [
+      CertificateApplicationAlertEventType.Expiry,
+      CertificateApplicationAlertEventType.Issuance,
+      CertificateApplicationAlertEventType.Renewal,
+      CertificateApplicationAlertEventType.Revocation
+    ],
+    scopes: [CertificateAlertScopeKind.Application, CertificateAlertScopeKind.CertificateManager]
+  },
+  {
+    label: "Code signing",
+    events: [SignerAlertEventType.CertificateExpiry],
+    scopes: [CertificateAlertScopeKind.CertificateManager]
+  }
+];
+
+export const getScopeEventGroups = (scope: TCertificateAlertScope) =>
+  ALERT_EVENT_GROUPS.filter((group) => group.scopes.includes(scope.kind));
+
+export const getScopeEventTypes = (scope: TCertificateAlertScope) =>
+  getScopeEventGroups(scope).flatMap((group) => group.events);
+
+export const isExpiryEventType = (eventType: TCertificateAlertEventType) =>
+  eventType === CertificateApplicationAlertEventType.Expiry ||
+  eventType === SignerAlertEventType.CertificateExpiry;
+
+export const isSignerEventType = (eventType: TCertificateAlertEventType) =>
+  eventType === SignerAlertEventType.CertificateExpiry;
+
+const API_EVENT_TYPES: Partial<
+  Record<TCertificateAlertEventType, CertificateManagerAlertEventType>
+> = {
+  [CertificateApplicationAlertEventType.Expiry]: CertificateManagerAlertEventType.Expiry,
+  [CertificateApplicationAlertEventType.Issuance]: CertificateManagerAlertEventType.Issuance,
+  [CertificateApplicationAlertEventType.Renewal]: CertificateManagerAlertEventType.Renewal,
+  [CertificateApplicationAlertEventType.Revocation]: CertificateManagerAlertEventType.Revocation
+};
+
+const EVENT_TYPES_BY_API_EVENT = Object.fromEntries(
+  Object.entries(API_EVENT_TYPES).map(([eventType, apiEventType]) => [apiEventType, eventType])
+) as Record<string, TCertificateAlertEventType>;
+
+export const toApiEventType = (
+  scope: TCertificateAlertScope,
+  eventType: TCertificateAlertEventType
+): string =>
+  (scope.kind === CertificateAlertScopeKind.CertificateManager && API_EVENT_TYPES[eventType]) ||
+  eventType;
+
+export const fromApiEventType = (eventType: string) =>
+  EVENT_TYPES_BY_API_EVENT[eventType] ?? eventType;
+
+export const getAlertResourceType = (
+  scope: TCertificateAlertScope,
+  eventType: TCertificateAlertEventType
+) => {
+  if (eventType === SignerAlertEventType.CertificateExpiry)
+    return CertificateAlertResourceType.Signer;
+  return scope.kind === CertificateAlertScopeKind.CertificateManager
+    ? CertificateAlertResourceType.CertificateManager
+    : CertificateAlertResourceType.Application;
+};
+
+export const MAX_CHANNELS = 10;
+
+const ALERT_BEFORE_PATTERN = /^(\d{1,4})([dwmy])$/;
+const DAYS_PER_UNIT: Record<string, number> = { d: 1, w: 7, m: 30, y: 365 };
+const ALERT_BEFORE_UNIT_LABELS: Record<string, string> = {
+  d: "day",
+  w: "week",
+  m: "month",
+  y: "year"
+};
+
+const alertBeforeToDays = (alertBefore: string): number | null => {
+  const match = alertBefore.trim().match(ALERT_BEFORE_PATTERN);
+  return match ? parseInt(match[1], 10) * DAYS_PER_UNIT[match[2]] : null;
+};
+
+export const formatAlertBefore = (alertBefore?: string | null) => {
+  if (!alertBefore) return undefined;
+  const match = alertBefore.trim().match(ALERT_BEFORE_PATTERN);
+  if (!match) return alertBefore;
+  const value = parseInt(match[1], 10);
+  return `${value} ${ALERT_BEFORE_UNIT_LABELS[match[2]]}${value === 1 ? "" : "s"}`;
+};
+
+export const pluralize = (count: number, noun: string) =>
+  `${count} ${noun}${count === 1 ? "" : "s"}`;
+
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+export const LAST_RUN_BADGES: Record<
+  AlertRunStatus,
+  { label: string; tone: "ok" | "warn" | "bad" }
+> = {
+  [AlertRunStatus.Success]: { label: "Success", tone: "ok" },
+  [AlertRunStatus.Partial]: { label: "Partial", tone: "warn" },
+  [AlertRunStatus.Failed]: { label: "Failed", tone: "bad" }
+};
+
+export const formatRunTimestamp = (timestamp: string) =>
+  new Date(timestamp)
+    .toISOString()
+    .replace("T", " ")
+    .replace(/\.\d+Z$/, " UTC");
+
+export type TMemberEmails = {
+  emailByUserId: Map<string, string>;
+  memberIdByEmail: Map<string, string>;
+  isAvailable: boolean;
+  unavailableReason?: string;
+};
+
+export const canReceiveAlerts = (membership: { isActive: boolean; status: string }) =>
+  membership.isActive && membership.status !== "invited";
+
+export const toMemberEmails = (orgUsers: OrgUser[] | undefined): TMemberEmails => {
+  const emailByUserId = new Map<string, string>();
+  const memberIdByEmail = new Map<string, string>();
+  (orgUsers ?? []).filter(canReceiveAlerts).forEach(({ user }) => {
+    const email = (user.email || user.username || "").toLowerCase();
+    if (!email) return;
+    emailByUserId.set(user.id, email);
+    memberIdByEmail.set(email, user.id);
+  });
+  return { emailByUserId, memberIdByEmail, isAvailable: Boolean(orgUsers) };
+};
+
+export const toRecipientEmails = (
+  recipients: TAlertChannelRecipient[],
+  { emailByUserId }: Pick<TMemberEmails, "emailByUserId">
+) =>
+  recipients.flatMap((recipient) => {
+    if (recipient.principalType === AlertPrincipalType.User) {
+      const email = emailByUserId.get(recipient.principalId);
+      return email ? [email] : [];
+    }
+    return recipient.principalType === AlertPrincipalType.Email ? [recipient.principalId] : [];
+  });
+
+export enum CertificateFilterKind {
+  Applications = "applicationIds",
+  Profiles = "profileIds",
+  Sources = "sources",
+  Signers = "signerIds"
+}
+
+export const CERTIFICATE_FILTER_KINDS = [
+  CertificateFilterKind.Applications,
+  CertificateFilterKind.Profiles,
+  CertificateFilterKind.Sources
+] as const;
+
+export const getFilterKinds = (eventType: TCertificateAlertEventType): CertificateFilterKind[] =>
+  isSignerEventType(eventType) ? [CertificateFilterKind.Signers] : [...CERTIFICATE_FILTER_KINDS];
+
+export const FILTER_DEFINITIONS: Record<
+  CertificateFilterKind,
+  {
+    label: string;
+    noun: string;
+    hint: string;
+    allLabel: string;
+    unknownLabel: string;
+  }
+> = {
+  [CertificateFilterKind.Applications]: {
+    label: "Applications",
+    noun: "application",
+    hint: "Certificates in one of these applications",
+    allLabel: "All applications",
+    unknownLabel: "Unknown application"
+  },
+  [CertificateFilterKind.Profiles]: {
+    label: "Certificate profiles",
+    noun: "certificate profile",
+    hint: "Issued from one of these profiles",
+    allLabel: "All certificate profiles",
+    unknownLabel: "Unknown profile"
+  },
+  [CertificateFilterKind.Sources]: {
+    label: "Source",
+    noun: "source",
+    hint: "Managed, imported, or discovered certificates",
+    allLabel: "All sources",
+    unknownLabel: "Unknown source"
+  },
+  [CertificateFilterKind.Signers]: {
+    label: "Signers",
+    noun: "signer",
+    hint: "Certificates of one of these signers",
+    allLabel: "All signers",
+    unknownLabel: "Unknown signer"
+  }
+};
+
+export const SOURCE_OPTIONS = Object.values(CertSource).map((source) => ({
+  value: source,
+  label: getCertSourceLabel(source)
+}));
+
+export const getNoFiltersDescription = (eventType: TCertificateAlertEventType) =>
+  isSignerEventType(eventType)
+    ? "This alert covers every active signer."
+    : "This alert covers every certificate.";
+
+export const getFilterName = (
+  kind: CertificateFilterKind,
+  id: string,
+  conditionNames: Record<string, string>
+) =>
+  kind === CertificateFilterKind.Sources
+    ? getCertSourceLabel(id as CertSource)
+    : (conditionNames[id] ?? FILTER_DEFINITIONS[kind].unknownLabel);
+
+export const toConditionNames = (alert: TAlert): Record<string, string> =>
+  Object.fromEntries(
+    Object.values(alert.filters ?? {})
+      .flat()
+      .flatMap(({ id, name }) => (name ? [[id, name]] : []))
+  );
+
+const UNFINISHED_FILTER_MESSAGES: Record<CertificateFilterKind, string> = {
+  [CertificateFilterKind.Applications]: "Select at least one application, or remove this filter",
+  [CertificateFilterKind.Profiles]: "Select at least one profile, or remove this filter",
+  [CertificateFilterKind.Sources]: "Select at least one source, or remove this filter",
+  [CertificateFilterKind.Signers]: "Select at least one signer, or remove this filter"
+};
+
+const maxIds = (noun: string) =>
+  z
+    .array(z.string())
+    .max(
+      MAX_CERTIFICATE_ALERT_FILTER_IDS,
+      `Select up to ${MAX_CERTIFICATE_ALERT_FILTER_IDS} ${noun}`
+    )
+    .optional();
+
+export const alertFormSchema = z
+  .object({
+    eventType: z.union([
+      z.nativeEnum(CertificateApplicationAlertEventType),
+      z.nativeEnum(SignerAlertEventType)
+    ]),
+    name: z.string().trim().min(1, "Name is required").max(255),
+    description: z.string().trim().max(1000),
+    alertBefore: z.string().trim(),
+    dailyReminder: z.boolean(),
+    enabled: z.boolean(),
+    applicationIds: maxIds("applications"),
+    profileIds: maxIds("profiles"),
+    sources: z.array(z.nativeEnum(CertSource)).optional(),
+    signerIds: maxIds("signers"),
+    conditionNames: z.record(z.string()),
+    channels: z.array(channelFormSchema).min(1, "Add at least one channel").max(MAX_CHANNELS)
+  })
+  .superRefine((form, ctx) => {
+    getFilterKinds(form.eventType).forEach((kind) => {
+      if (form[kind]?.length === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: [kind],
+          message: UNFINISHED_FILTER_MESSAGES[kind]
+        });
+      }
+    });
+    if (!isExpiryEventType(form.eventType)) return;
+    const days = alertBeforeToDays(form.alertBefore);
+    if (days === null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["alertBefore"],
+        message: "Use a number and a unit, for example 30d"
+      });
+    } else if (days < 1 || days > MAX_CERTIFICATE_ALERT_BEFORE_DAYS) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["alertBefore"],
+        message: `Must be between 1 and ${MAX_CERTIFICATE_ALERT_BEFORE_DAYS} days`
+      });
+    }
+  });
+
+export type TAlertForm = z.infer<typeof alertFormSchema>;
+
+export const DETAILS_FIELDS: (keyof TAlertForm)[] = [
+  "eventType",
+  "name",
+  "description",
+  "alertBefore",
+  "dailyReminder"
+];
+
+export const emptyAlertForm = (
+  eventType: TCertificateAlertEventType = CertificateApplicationAlertEventType.Expiry
+): TAlertForm => ({
+  eventType,
+  name: "",
+  description: "",
+  alertBefore: "30d",
+  dailyReminder: false,
+  enabled: true,
+  conditionNames: {},
+  channels: []
+});
+
+export const toAlertForm = (
+  alert: TAlert,
+  { emailByUserId, isAvailable }: Pick<TMemberEmails, "emailByUserId" | "isAvailable">
+): TAlertForm => ({
+  eventType: alert.eventType as TCertificateAlertEventType,
+  name: alert.name,
+  description: alert.description ?? "",
+  alertBefore: alert.condition?.alertBefore ?? "30d",
+  dailyReminder: alert.condition?.dailyReminder ?? false,
+  enabled: alert.enabled,
+  applicationIds: alert.condition?.applicationIds,
+  profileIds: alert.condition?.profileIds,
+  sources: alert.condition?.sources,
+  signerIds: alert.condition?.signerIds,
+  conditionNames: toConditionNames(alert),
+  channels: alert.channels.map((channel): TChannelForm => ({
+    ...toChannelForm(channel),
+    recipients: channel.recipients.filter(
+      (recipient) =>
+        !isAvailable ||
+        recipient.principalType !== AlertPrincipalType.User ||
+        emailByUserId.has(recipient.principalId)
+    )
+  }))
+});
+
+export const toCondition = (scope: TCertificateAlertScope, form: TAlertForm) => {
+  const filters =
+    scope.kind === CertificateAlertScopeKind.CertificateManager
+      ? Object.fromEntries(
+          getFilterKinds(form.eventType).flatMap((kind) =>
+            form[kind]?.length ? [[kind, form[kind]] as const] : []
+          )
+        )
+      : {};
+  if (isExpiryEventType(form.eventType)) {
+    return {
+      alertBefore: form.alertBefore.trim(),
+      dailyReminder: form.dailyReminder,
+      ...filters
+    };
+  }
+  return Object.keys(filters).length ? filters : null;
+};
+
+export type TFieldErrors = Record<string, string>;
+
+export const toFieldErrors = (
+  error: z.ZodError | undefined,
+  include: (path: (string | number)[]) => boolean
+): TFieldErrors => {
+  const errors: TFieldErrors = {};
+  error?.issues.forEach(({ path, message }) => {
+    const key = path.join(".");
+    if (include(path) && !errors[key]) errors[key] = message;
+  });
+  return errors;
+};
+
+export const withoutErrors = (errors: TFieldErrors, prefix: string): TFieldErrors =>
+  Object.fromEntries(
+    Object.entries(errors).filter(([key]) => key !== prefix && !key.startsWith(`${prefix}.`))
+  );
+
+export const removeIndexedErrors = (
+  errors: TFieldErrors,
+  prefix: string,
+  removed: number
+): TFieldErrors =>
+  Object.fromEntries(
+    Object.entries(errors).flatMap(([key, message]) => {
+      if (!key.startsWith(prefix)) return [[key, message]];
+      const [index, ...rest] = key.slice(prefix.length).split(".");
+      const position = Number(index);
+      if (position === removed) return [];
+      if (position < removed) return [[key, message]];
+      return [[[`${prefix}${position - 1}`, ...rest].join("."), message]];
+    })
+  );
+
+export type TDraftHeader = { uid: string; key: string; value: string };
+
+export type TDraftChannel = Omit<TChannelForm, "headers"> & {
+  uid: string;
+  headers: TDraftHeader[];
+};
+
+export const toDraftHeader = (header: { key: string; value: string }): TDraftHeader => ({
+  uid: crypto.randomUUID(),
+  ...header
+});
+
+export const toDraftChannel = (channel: TChannelForm): TDraftChannel => ({
+  ...channel,
+  uid: crypto.randomUUID(),
+  headers: (channel.headers ?? []).map(toDraftHeader)
+});
+
+export const validateChannels = (channels: TDraftChannel[]): TFieldErrors => {
+  const result = channelFormSchema.array().safeParse(channels);
+  return result.success ? {} : toFieldErrors(result.error, () => true);
+};
+
+export type TAlertDraft = Omit<TAlertForm, "channels"> & {
+  channels: TDraftChannel[];
+};
+
+export const toAlertDraft = (form: TAlertForm): TAlertDraft => ({
+  ...form,
+  channels: form.channels.map(toDraftChannel)
+});
+
+export const ENTERPRISE_CHANNEL_TYPES = [
+  AlertChannelType.SlackApp,
+  AlertChannelType.Slack,
+  AlertChannelType.Webhook,
+  AlertChannelType.PagerDuty
+];
+
+export const CHANNEL_ICONS: Record<AlertChannelType, IconName | typeof MailIcon> = {
+  [AlertChannelType.Email]: MailIcon,
+  [AlertChannelType.SlackApp]: HashIcon,
+  [AlertChannelType.Slack]: HashIcon,
+  [AlertChannelType.Webhook]: "link",
+  [AlertChannelType.PagerDuty]: "alert"
+};
+
+export const CHANNEL_LOGOS: Partial<Record<AlertChannelType, string>> = {
+  [AlertChannelType.SlackApp]: "Slack.svg",
+  [AlertChannelType.Slack]: "Slack.svg",
+  [AlertChannelType.PagerDuty]: "PagerDuty.svg"
+};
+
+export const buildNextChannel = (
+  existing: { name: string }[],
+  channelType: AlertChannelType
+): TChannelForm => {
+  const takenNames = new Set(existing.map((channel) => channel.name));
+  const baseName = ALERT_CHANNEL_TYPE_LABELS[channelType];
+  let name = baseName;
+  for (let suffix = 2; takenNames.has(name); suffix += 1) {
+    name = `${baseName} ${suffix}`;
+  }
+  return {
+    channelType,
+    name,
+    enabled: true,
+    recipients: [],
+    webhookUrl: "",
+    url: "",
+    signingSecret: "",
+    headers: [],
+    integrationKey: "",
+    workflowIntegrationId: "",
+    slackChannels: []
+  };
+};
+
+export const WEBHOOK_AUTH_COPY: Record<WebhookAuthType, { label: string; description: string }> = {
+  [WebhookAuthType.Bearer]: {
+    label: "Bearer token",
+    description: "Sends the token as Authorization: Bearer <token>."
+  },
+  [WebhookAuthType.Basic]: {
+    label: "Basic auth",
+    description: "Sends the username and password as Authorization: Basic <credentials>."
+  },
+  [WebhookAuthType.Header]: {
+    label: "API key",
+    description: "Sends the key in the header you name, such as X-API-Key."
+  }
+};
+
+export const KEEP_PLACEHOLDER = "Leave blank to keep the saved value";
+
+export type TRecipientScope = { noun: string; title: string };
+
+const PROJECT_SCOPE: TRecipientScope = { noun: "project", title: "Project" };
+
+export const recipientScopeFor = (resourceType: string): TRecipientScope =>
+  resourceType === AlertResourceType.SecretScanning
+    ? { noun: "Secret Scanning", title: "Secret Scanning" }
+    : PROJECT_SCOPE;
+
+export const projectRecipientLabels = (scope = PROJECT_SCOPE): Record<string, string> => ({
+  [AlertPrincipalType.ProjectMembers]: `All ${scope.noun} members`,
+  [AlertPrincipalType.ProjectAdmins]: `${scope.title} admins`
+});
+
+export const describeChannel = (channel: TChannelForm, members: TMemberEmails): string => {
+  switch (channel.channelType) {
+    case AlertChannelType.Email: {
+      const groupCount = channel.recipients.filter(
+        (recipient) => recipient.principalType === AlertPrincipalType.Group
+      ).length;
+      const labels = projectRecipientLabels();
+      return [
+        ...channel.recipients.flatMap(({ principalType }) =>
+          labels[principalType] ? [labels[principalType]] : []
+        ),
+        ...toRecipientEmails(channel.recipients, members),
+        ...(groupCount ? [pluralize(groupCount, "group")] : [])
+      ].join(", ");
+    }
+    case AlertChannelType.Webhook:
+      return channel.url ?? "";
+    case AlertChannelType.SlackApp:
+      return (channel.slackChannels ?? []).map(({ name }) => `#${name}`).join(", ");
+    case AlertChannelType.Slack:
+      return "Slack incoming webhook";
+    case AlertChannelType.PagerDuty:
+      return "PagerDuty Events API v2";
+    default:
+      return "";
+  }
+};

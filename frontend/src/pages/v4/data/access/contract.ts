@@ -1,0 +1,414 @@
+import type { useListAvailableAppConnections } from "@app/hooks/api/appConnections/queries";
+import type { useAssumeProjectPrivileges } from "@app/hooks/api/assumePrivileges/mutations";
+import type {
+  useAddIdentityToGroup,
+  useAddUserToGroup,
+  useCreateGroup,
+  useDeleteGroup,
+  useRemoveIdentityFromGroup,
+  useRemoveUserFromGroup,
+  useUpdateGroup
+} from "@app/hooks/api/groups/mutations";
+import type { useGetGroupById, useListGroupMembers } from "@app/hooks/api/groups/queries";
+import type { TGroupProject } from "@app/hooks/api/groups/types";
+import type {
+  useAddIdentityAliCloudAuth,
+  useAddIdentityAwsAuth,
+  useAddIdentityAzureAuth,
+  useAddIdentityGcpAuth,
+  useAddIdentityJwtAuth,
+  useAddIdentityKubernetesAuth,
+  useAddIdentityLdapAuth,
+  useAddIdentityOciAuth,
+  useAddIdentityOidcAuth,
+  useAddIdentitySpiffeAuth,
+  useAddIdentityTlsCertAuth,
+  useAddIdentityTokenAuth,
+  useAddIdentityUniversalAuth,
+  useClearIdentityLdapAuthLockouts,
+  useClearIdentityUniversalAuthLockouts,
+  useCreateIdentityUniversalAuthClientSecret,
+  useCreateTokenIdentityTokenAuth,
+  useDeleteIdentityAliCloudAuth,
+  useDeleteIdentityAwsAuth,
+  useDeleteIdentityAzureAuth,
+  useDeleteIdentityGcpAuth,
+  useDeleteIdentityJwtAuth,
+  useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityLdapAuth,
+  useDeleteIdentityOciAuth,
+  useDeleteIdentityOidcAuth,
+  useDeleteIdentitySpiffeAuth,
+  useDeleteIdentityTlsCertAuth,
+  useDeleteIdentityTokenAuth,
+  useDeleteIdentityUniversalAuth,
+  useRevokeIdentityTokenAuthToken,
+  useRevokeIdentityUniversalAuthClientSecret,
+  useUpdateIdentityAliCloudAuth,
+  useUpdateIdentityAwsAuth,
+  useUpdateIdentityAzureAuth,
+  useUpdateIdentityGcpAuth,
+  useUpdateIdentityJwtAuth,
+  useUpdateIdentityKubernetesAuth,
+  useUpdateIdentityLdapAuth,
+  useUpdateIdentityOciAuth,
+  useUpdateIdentityOidcAuth,
+  useUpdateIdentitySpiffeAuth,
+  useUpdateIdentityTlsCertAuth,
+  useUpdateIdentityTokenAuth,
+  useUpdateIdentityTokenAuthToken,
+  useUpdateIdentityUniversalAuth
+} from "@app/hooks/api/identities/mutations";
+import type {
+  useCountOrgIdentityMemberships,
+  useGetIdentityAliCloudAuth,
+  useGetIdentityAwsAuth,
+  useGetIdentityAzureAuth,
+  useGetIdentityGcpAuth,
+  useGetIdentityJwtAuth,
+  useGetIdentityKubernetesAuth,
+  useGetIdentityLdapAuth,
+  useGetIdentityOciAuth,
+  useGetIdentityOidcAuth,
+  useGetIdentityProjectMemberships,
+  useGetIdentitySpiffeAuth,
+  useGetIdentityTlsCertAuth,
+  useGetIdentityTokenAuth,
+  useGetIdentityTokensTokenAuth,
+  useGetIdentityUniversalAuth,
+  useGetIdentityUniversalAuthClientSecrets,
+  useGetOrgIdentityMembershipById,
+  useSearchOrgIdentityMemberships
+} from "@app/hooks/api/identities/queries";
+import type {
+  useCreateIdentityAuthTemplate,
+  useDeleteIdentityAuthTemplate,
+  useUpdateIdentityAuthTemplate
+} from "@app/hooks/api/identityAuthTemplates/mutations";
+import type {
+  useGetIdentityAuthTemplates,
+  useGetTemplateUsages
+} from "@app/hooks/api/identityAuthTemplates/queries";
+import type {
+  IdentityAuthTemplate,
+  MachineIdentityAuthMethod
+} from "@app/hooks/api/identityAuthTemplates/types";
+import type {
+  useCreateIdentityProjectAdditionalPrivilege,
+  useDeleteIdentityProjectAdditionalPrivilege,
+  useUpdateIdentityProjectAdditionalPrivilege
+} from "@app/hooks/api/identityProjectAdditionalPrivilege/mutation";
+import type {
+  useGetIdentityProjectPrivilegeDetails,
+  useListIdentityProjectPrivileges
+} from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
+import type {
+  useGetVaultMounts,
+  useGetVaultNamespaces,
+  useGetVaultPolicies
+} from "@app/hooks/api/migration/queries";
+import type { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api/oidcConfig/queries";
+import type {
+  useGetAvailableOrgUsers,
+  useGetOrganizationById,
+  useSearchOrganizationGroups,
+  useUpdateOrg,
+  useUpgradePrivilegeSystem
+} from "@app/hooks/api/organization/queries";
+import type { useCreateOrgGroupMembership } from "@app/hooks/api/orgGroupMembership/mutation";
+import type { TAvailableOrganizationGroups } from "@app/hooks/api/orgGroupMembership/types";
+import type {
+  useCreateOrgIdentity,
+  useDeleteOrgIdentity,
+  useUpdateOrgIdentity
+} from "@app/hooks/api/orgIdentity/mutations";
+import type { useCreateOrgIdentityMembership } from "@app/hooks/api/orgIdentityMembership/mutation";
+import type { TAvailableOrganizationIdentities } from "@app/hooks/api/orgIdentityMembership/types";
+import type { useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
+import type {
+  useCreateProjectIdentity,
+  useDeleteProjectIdentity
+} from "@app/hooks/api/projectIdentity/mutations";
+import type {
+  useCreateProjectIdentityMembership,
+  useDeleteProjectIdentityMembership,
+  useUpdateProjectIdentityMembership
+} from "@app/hooks/api/projectIdentityMembership/mutations";
+import type {
+  useGetProjectIdentityMembershipV2,
+  useListProjectIdentityMemberships
+} from "@app/hooks/api/projectIdentityMembership/queries";
+import type {
+  TAvailableProjectIdentities,
+  TListAvailableProjectIdentitiesDTO
+} from "@app/hooks/api/projectIdentityMembership/types";
+import type {
+  useAddGroupToWorkspace,
+  useDeleteGroupFromWorkspace,
+  useUpdateGroupWorkspaceRole
+} from "@app/hooks/api/projects/mutations";
+import type {
+  useDeleteUserFromWorkspace,
+  useGetIdentityPermissionAudit,
+  useGetMembershipPermissionAudit,
+  useGetAvailableProjectUsers,
+  useGetWorkspaceById,
+  useGetWorkspaceGroupMembershipDetails,
+  useGetWorkspaceUserDetails,
+  useGetWorkspaceUsers,
+  useListWorkspaceGroups,
+  useUpdateUserWorkspaceRole
+} from "@app/hooks/api/projects/queries";
+import type {
+  useCreateProjectUserAdditionalPrivilege,
+  useDeleteProjectUserAdditionalPrivilege,
+  useUpdateProjectUserAdditionalPrivilege
+} from "@app/hooks/api/projectUserAdditionalPrivilege/mutation";
+import type {
+  useGetProjectUserPrivilegeDetails,
+  useListProjectUserPrivileges
+} from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
+import type {
+  useCreateOrgRole,
+  useCreateProjectRole,
+  useDeleteOrgRole,
+  useDeleteProjectRole,
+  useUpdateOrgRole,
+  useUpdateProjectRole
+} from "@app/hooks/api/roles/mutation";
+import type {
+  useGetOrgRole,
+  useGetOrgRoles,
+  useGetProjectRoleBySlug,
+  useGetProjectRoles,
+  useGetUserOrgPermissions,
+  useGetUserProjectPermissions
+} from "@app/hooks/api/roles/queries";
+import type { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
+import type {
+  useCreateServiceToken,
+  useDeleteServiceToken,
+  useGetUserWsServiceTokens
+} from "@app/hooks/api/serviceTokens/queries";
+import type { useGetWsTags } from "@app/hooks/api/tags/queries";
+import type {
+  useAddUserToWsNonE2EE,
+  useResendOrgMemberInvitation
+} from "@app/hooks/api/users/mutation";
+import type {
+  useAddUsersToOrg,
+  useDeleteOrgMembership,
+  useDeleteOrgMembershipBatch,
+  useGetOrgMembership,
+  useGetOrgMembershipProjectMemberships,
+  useGetOrgUserAccess,
+  useListUserGroupMemberships,
+  useUpdateOrgMembership
+} from "@app/hooks/api/users/queries";
+
+import type { V4Mutation, V4QueryResult } from "../contract";
+
+type QueryHook = (...args: never[]) => { data: unknown };
+type MutationHook = () => { mutateAsync: (variables: never) => Promise<unknown> };
+
+export type QueryOf<H extends QueryHook> = (
+  ...args: Parameters<H>
+) => V4QueryResult<NonNullable<ReturnType<H>["data"]>>;
+
+export type MutationOf<H extends MutationHook> = V4Mutation<
+  Parameters<ReturnType<H>["mutateAsync"]>[0],
+  Awaited<ReturnType<ReturnType<H>["mutateAsync"]>>
+>;
+
+export type AccessAdapter = {
+  useOrgPermission: QueryOf<typeof useGetUserOrgPermissions>;
+  useProjectPermission: QueryOf<typeof useGetUserProjectPermissions>;
+  useOrganization: QueryOf<typeof useGetOrganizationById>;
+  useUpdateOrganization: MutationOf<typeof useUpdateOrg>;
+  useUpgradePrivilegeSystem: MutationOf<typeof useUpgradePrivilegeSystem>;
+  useProject: QueryOf<typeof useGetWorkspaceById>;
+  usePamProjectId: (orgId: string) => V4QueryResult<string>;
+
+  useOrgUsers: QueryOf<typeof useGetOrgUserAccess>;
+  useOrgMembership: QueryOf<typeof useGetOrgMembership>;
+  useOrgMembershipProjectMemberships: QueryOf<typeof useGetOrgMembershipProjectMemberships>;
+  useUserGroupMemberships: QueryOf<typeof useListUserGroupMemberships>;
+  useInviteOrgUsers: MutationOf<typeof useAddUsersToOrg>;
+  useUpdateOrgMembership: MutationOf<typeof useUpdateOrgMembership>;
+  useDeleteOrgMembership: MutationOf<typeof useDeleteOrgMembership>;
+  useDeleteOrgMemberships: MutationOf<typeof useDeleteOrgMembershipBatch>;
+  useResendOrgInvite: MutationOf<typeof useResendOrgMemberInvitation>;
+  useAvailableOrgUsers: QueryOf<typeof useGetAvailableOrgUsers>;
+
+  useOrgRoles: QueryOf<typeof useGetOrgRoles>;
+  useOrgRole: QueryOf<typeof useGetOrgRole>;
+  useCreateOrgRole: MutationOf<typeof useCreateOrgRole>;
+  useUpdateOrgRole: MutationOf<typeof useUpdateOrgRole>;
+  useDeleteOrgRole: MutationOf<typeof useDeleteOrgRole>;
+
+  useSearchOrgIdentities: QueryOf<typeof useSearchOrgIdentityMemberships>;
+  useOrgIdentity: QueryOf<typeof useGetOrgIdentityMembershipById>;
+  useIdentityProjectMemberships: QueryOf<typeof useGetIdentityProjectMemberships>;
+  useCreateOrgIdentity: MutationOf<typeof useCreateOrgIdentity>;
+  useUpdateOrgIdentity: MutationOf<typeof useUpdateOrgIdentity>;
+  useDeleteOrgIdentity: MutationOf<typeof useDeleteOrgIdentity>;
+  useAvailableOrgIdentities: (options?: {
+    enabled?: boolean;
+  }) => V4QueryResult<TAvailableOrganizationIdentities>;
+  useCreateOrgIdentityMembership: MutationOf<typeof useCreateOrgIdentityMembership>;
+  useIdentityUniversalAuth: QueryOf<typeof useGetIdentityUniversalAuth>;
+  useIdentityUniversalAuthClientSecrets: QueryOf<typeof useGetIdentityUniversalAuthClientSecrets>;
+  useAddIdentityUniversalAuth: MutationOf<typeof useAddIdentityUniversalAuth>;
+  useUpdateIdentityUniversalAuth: MutationOf<typeof useUpdateIdentityUniversalAuth>;
+  useDeleteIdentityUniversalAuth: MutationOf<typeof useDeleteIdentityUniversalAuth>;
+  useCreateIdentityUniversalAuthClientSecret: MutationOf<
+    typeof useCreateIdentityUniversalAuthClientSecret
+  >;
+  useRevokeIdentityUniversalAuthClientSecret: MutationOf<
+    typeof useRevokeIdentityUniversalAuthClientSecret
+  >;
+  useClearIdentityUniversalAuthLockouts: MutationOf<typeof useClearIdentityUniversalAuthLockouts>;
+  useIdentityAuthTemplates: QueryOf<typeof useGetIdentityAuthTemplates>;
+  useIdentityAuthTemplateUsages: QueryOf<typeof useGetTemplateUsages>;
+  useCreateIdentityAuthTemplate: MutationOf<typeof useCreateIdentityAuthTemplate>;
+  useUpdateIdentityAuthTemplate: MutationOf<typeof useUpdateIdentityAuthTemplate>;
+  useDeleteIdentityAuthTemplate: MutationOf<typeof useDeleteIdentityAuthTemplate>;
+  useCountOrgIdentities: QueryOf<typeof useCountOrgIdentityMemberships>;
+  useIdentityTokenAuth: QueryOf<typeof useGetIdentityTokenAuth>;
+  useIdentityTokenAuthTokens: QueryOf<typeof useGetIdentityTokensTokenAuth>;
+  useCreateIdentityTokenAuthToken: MutationOf<typeof useCreateTokenIdentityTokenAuth>;
+  useRevokeIdentityTokenAuthToken: MutationOf<typeof useRevokeIdentityTokenAuthToken>;
+  useDeleteIdentityTokenAuth: MutationOf<typeof useDeleteIdentityTokenAuth>;
+  useIdentityKubernetesAuth: QueryOf<typeof useGetIdentityKubernetesAuth>;
+  useDeleteIdentityKubernetesAuth: MutationOf<typeof useDeleteIdentityKubernetesAuth>;
+  useIdentityAwsAuth: QueryOf<typeof useGetIdentityAwsAuth>;
+  useDeleteIdentityAwsAuth: MutationOf<typeof useDeleteIdentityAwsAuth>;
+  useIdentityOidcAuth: QueryOf<typeof useGetIdentityOidcAuth>;
+  useDeleteIdentityOidcAuth: MutationOf<typeof useDeleteIdentityOidcAuth>;
+  useAddIdentityTokenAuth: MutationOf<typeof useAddIdentityTokenAuth>;
+  useUpdateIdentityTokenAuth: MutationOf<typeof useUpdateIdentityTokenAuth>;
+  useAddIdentityKubernetesAuth: MutationOf<typeof useAddIdentityKubernetesAuth>;
+  useUpdateIdentityKubernetesAuth: MutationOf<typeof useUpdateIdentityKubernetesAuth>;
+  useAddIdentityAwsAuth: MutationOf<typeof useAddIdentityAwsAuth>;
+  useUpdateIdentityAwsAuth: MutationOf<typeof useUpdateIdentityAwsAuth>;
+  useAddIdentityOidcAuth: MutationOf<typeof useAddIdentityOidcAuth>;
+  useUpdateIdentityOidcAuth: MutationOf<typeof useUpdateIdentityOidcAuth>;
+  useIdentityGcpAuth: QueryOf<typeof useGetIdentityGcpAuth>;
+  useAddIdentityGcpAuth: MutationOf<typeof useAddIdentityGcpAuth>;
+  useUpdateIdentityGcpAuth: MutationOf<typeof useUpdateIdentityGcpAuth>;
+  useDeleteIdentityGcpAuth: MutationOf<typeof useDeleteIdentityGcpAuth>;
+  useIdentityAzureAuth: QueryOf<typeof useGetIdentityAzureAuth>;
+  useAddIdentityAzureAuth: MutationOf<typeof useAddIdentityAzureAuth>;
+  useUpdateIdentityAzureAuth: MutationOf<typeof useUpdateIdentityAzureAuth>;
+  useDeleteIdentityAzureAuth: MutationOf<typeof useDeleteIdentityAzureAuth>;
+  useIdentityAliCloudAuth: QueryOf<typeof useGetIdentityAliCloudAuth>;
+  useAddIdentityAliCloudAuth: MutationOf<typeof useAddIdentityAliCloudAuth>;
+  useUpdateIdentityAliCloudAuth: MutationOf<typeof useUpdateIdentityAliCloudAuth>;
+  useDeleteIdentityAliCloudAuth: MutationOf<typeof useDeleteIdentityAliCloudAuth>;
+  useIdentityOciAuth: QueryOf<typeof useGetIdentityOciAuth>;
+  useAddIdentityOciAuth: MutationOf<typeof useAddIdentityOciAuth>;
+  useUpdateIdentityOciAuth: MutationOf<typeof useUpdateIdentityOciAuth>;
+  useDeleteIdentityOciAuth: MutationOf<typeof useDeleteIdentityOciAuth>;
+  useIdentityLdapAuth: QueryOf<typeof useGetIdentityLdapAuth>;
+  useAddIdentityLdapAuth: MutationOf<typeof useAddIdentityLdapAuth>;
+  useUpdateIdentityLdapAuth: MutationOf<typeof useUpdateIdentityLdapAuth>;
+  useDeleteIdentityLdapAuth: MutationOf<typeof useDeleteIdentityLdapAuth>;
+  useIdentityJwtAuth: QueryOf<typeof useGetIdentityJwtAuth>;
+  useAddIdentityJwtAuth: MutationOf<typeof useAddIdentityJwtAuth>;
+  useUpdateIdentityJwtAuth: MutationOf<typeof useUpdateIdentityJwtAuth>;
+  useDeleteIdentityJwtAuth: MutationOf<typeof useDeleteIdentityJwtAuth>;
+  useIdentityTlsCertAuth: QueryOf<typeof useGetIdentityTlsCertAuth>;
+  useAddIdentityTlsCertAuth: MutationOf<typeof useAddIdentityTlsCertAuth>;
+  useUpdateIdentityTlsCertAuth: MutationOf<typeof useUpdateIdentityTlsCertAuth>;
+  useDeleteIdentityTlsCertAuth: MutationOf<typeof useDeleteIdentityTlsCertAuth>;
+  useIdentitySpiffeAuth: QueryOf<typeof useGetIdentitySpiffeAuth>;
+  useAddIdentitySpiffeAuth: MutationOf<typeof useAddIdentitySpiffeAuth>;
+  useUpdateIdentitySpiffeAuth: MutationOf<typeof useUpdateIdentitySpiffeAuth>;
+  useDeleteIdentitySpiffeAuth: MutationOf<typeof useDeleteIdentitySpiffeAuth>;
+  useUpdateIdentityTokenAuthToken: MutationOf<typeof useUpdateIdentityTokenAuthToken>;
+  useClearIdentityLdapAuthLockouts: MutationOf<typeof useClearIdentityLdapAuthLockouts>;
+  useIdentityAccessTokenMaxTtl: () => number;
+  useAvailableIdentityAuthTemplates: (
+    authMethod: MachineIdentityAuthMethod,
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<IdentityAuthTemplate[]>;
+
+  useOrgGroups: (
+    ...args: Parameters<typeof useSearchOrganizationGroups>
+  ) => ReturnType<QueryOf<typeof useSearchOrganizationGroups>> & { isFetching?: boolean };
+  useGroup: QueryOf<typeof useGetGroupById>;
+  useGroupMembers: QueryOf<typeof useListGroupMembers>;
+  useGroupProjects: (groupId: string) => V4QueryResult<TGroupProject[]>;
+  useCreateGroup: MutationOf<typeof useCreateGroup>;
+  useUpdateGroup: MutationOf<typeof useUpdateGroup>;
+  useDeleteGroup: MutationOf<typeof useDeleteGroup>;
+  useAddUserToGroup: MutationOf<typeof useAddUserToGroup>;
+  useRemoveUserFromGroup: MutationOf<typeof useRemoveUserFromGroup>;
+  useAddIdentityToGroup: MutationOf<typeof useAddIdentityToGroup>;
+  useRemoveIdentityFromGroup: MutationOf<typeof useRemoveIdentityFromGroup>;
+  useAvailableOrgGroups: (options?: {
+    enabled?: boolean;
+  }) => V4QueryResult<TAvailableOrganizationGroups>;
+  useCreateOrgGroupMembership: MutationOf<typeof useCreateOrgGroupMembership>;
+  useOidcManageGroupMemberships: QueryOf<typeof useOidcManageGroupMembershipsEnabled>;
+
+  useProjectUsers: QueryOf<typeof useGetWorkspaceUsers>;
+  useProjectUser: QueryOf<typeof useGetWorkspaceUserDetails>;
+  useAvailableProjectUsers: QueryOf<typeof useGetAvailableProjectUsers>;
+  useAvailableProjectIdentities: (
+    params: TListAvailableProjectIdentitiesDTO
+  ) => V4QueryResult<TAvailableProjectIdentities>;
+  useAddProjectUsers: MutationOf<typeof useAddUserToWsNonE2EE>;
+  useUpdateProjectUserRoles: MutationOf<typeof useUpdateUserWorkspaceRole>;
+  useRemoveProjectUsers: MutationOf<typeof useDeleteUserFromWorkspace>;
+  useAssumeProjectPrivileges: MutationOf<typeof useAssumeProjectPrivileges>;
+  useMembershipPermissionAudit: QueryOf<typeof useGetMembershipPermissionAudit>;
+  useIdentityPermissionAudit: QueryOf<typeof useGetIdentityPermissionAudit>;
+  useProjectUserPrivileges: QueryOf<typeof useListProjectUserPrivileges>;
+  useProjectUserPrivilege: QueryOf<typeof useGetProjectUserPrivilegeDetails>;
+  useCreateProjectUserPrivilege: MutationOf<typeof useCreateProjectUserAdditionalPrivilege>;
+  useUpdateProjectUserPrivilege: MutationOf<typeof useUpdateProjectUserAdditionalPrivilege>;
+  useDeleteProjectUserPrivilege: MutationOf<typeof useDeleteProjectUserAdditionalPrivilege>;
+  useRevokeProjectUserPrivilegeRequest: V4Mutation<
+    { requestId: string; projectSlug: string; projectMembershipId: string },
+    unknown
+  >;
+  useIdentityProjectPrivileges: QueryOf<typeof useListIdentityProjectPrivileges>;
+  useIdentityProjectPrivilege: QueryOf<typeof useGetIdentityProjectPrivilegeDetails>;
+  useCreateIdentityProjectPrivilege: MutationOf<typeof useCreateIdentityProjectAdditionalPrivilege>;
+  useUpdateIdentityProjectPrivilege: MutationOf<typeof useUpdateIdentityProjectAdditionalPrivilege>;
+  useDeleteIdentityProjectPrivilege: MutationOf<typeof useDeleteIdentityProjectAdditionalPrivilege>;
+
+  useProjectIdentities: QueryOf<typeof useListProjectIdentityMemberships>;
+  useProjectIdentity: QueryOf<typeof useGetProjectIdentityMembershipV2>;
+  useAddProjectIdentity: MutationOf<typeof useCreateProjectIdentityMembership>;
+  useUpdateProjectIdentityRoles: MutationOf<typeof useUpdateProjectIdentityMembership>;
+  useRemoveProjectIdentity: MutationOf<typeof useDeleteProjectIdentityMembership>;
+  useCreateProjectManagedIdentity: MutationOf<typeof useCreateProjectIdentity>;
+  useDeleteProjectManagedIdentity: MutationOf<typeof useDeleteProjectIdentity>;
+  useUpdateProjectManagedIdentity: MutationOf<typeof useUpdateProjectIdentity>;
+
+  useProjectGroups: QueryOf<typeof useListWorkspaceGroups>;
+  useProjectGroup: QueryOf<typeof useGetWorkspaceGroupMembershipDetails>;
+  useAddProjectGroup: MutationOf<typeof useAddGroupToWorkspace>;
+  useUpdateProjectGroupRoles: MutationOf<typeof useUpdateGroupWorkspaceRole>;
+  useRemoveProjectGroup: MutationOf<typeof useDeleteGroupFromWorkspace>;
+
+  useServiceTokens: QueryOf<typeof useGetUserWsServiceTokens>;
+  useCreateServiceToken: MutationOf<typeof useCreateServiceToken>;
+  useDeleteServiceToken: MutationOf<typeof useDeleteServiceToken>;
+
+  useProjectRoles: (
+    ...args: Parameters<typeof useGetProjectRoles>
+  ) => ReturnType<QueryOf<typeof useGetProjectRoles>> & { refetch?: () => unknown };
+  useProjectRole: QueryOf<typeof useGetProjectRoleBySlug>;
+  useCreateProjectRole: MutationOf<typeof useCreateProjectRole>;
+  useUpdateProjectRole: MutationOf<typeof useUpdateProjectRole>;
+  useDeleteProjectRole: MutationOf<typeof useDeleteProjectRole>;
+  useProjectTags: QueryOf<typeof useGetWsTags>;
+  useProjectEnvironmentFolders: QueryOf<typeof useListProjectEnvironmentsFolders>;
+  useAvailableAppConnections: QueryOf<typeof useListAvailableAppConnections>;
+  useVaultNamespaces: QueryOf<typeof useGetVaultNamespaces>;
+  useVaultPolicies: QueryOf<typeof useGetVaultPolicies>;
+  useVaultMounts: QueryOf<typeof useGetVaultMounts>;
+};

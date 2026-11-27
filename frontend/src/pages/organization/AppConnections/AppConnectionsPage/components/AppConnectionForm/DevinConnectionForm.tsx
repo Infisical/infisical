@@ -20,34 +20,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { DevinConnectionMethod, TDevinConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { devinConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TDevinConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Devin)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(DevinConnectionMethod.ApiKey),
-    credentials: z.object({
-      apiKey: z
-        .string()
-        .trim()
-        .min(1, "API Key required")
-        .startsWith("cog_", "API Key must start with 'cog_'")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

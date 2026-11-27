@@ -21,6 +21,7 @@ export const AnalyticsEvent = {
   OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
   SecretScanningOpened: "Secret Scanning Opened",
   AgentVaultRedirectClicked: "Agent Vault Redirect Clicked",
+  NativeIntegrationCreationBlockedModalViewed: "Native Integration Creation Blocked Modal Viewed",
   SecretApprovalReviewSubmitted: "Secret Approval Review Submitted"
 } as const;
 
@@ -233,6 +234,11 @@ type AgentVaultRedirectClickedProperties = {
   action: AgentVaultRedirectAction;
 };
 
+type NativeIntegrationCreationBlockedModalViewedProperties = {
+  projectId: string;
+  projectType: string;
+};
+
 export type SecretApprovalReviewSubmittedProperties = {
   projectId: string;
   mode: "bulk" | "single";
@@ -269,10 +275,13 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
   [AnalyticsEvent.AgentVaultRedirectClicked]: AgentVaultRedirectClickedProperties;
+  [AnalyticsEvent.NativeIntegrationCreationBlockedModalViewed]: NativeIntegrationCreationBlockedModalViewedProperties;
   [AnalyticsEvent.SecretApprovalReviewSubmitted]: SecretApprovalReviewSubmittedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
+
+export type UiVersion = "v4";
 
 export type ThemePreferenceChangedProperties = {
   source: "command-menu" | "navbar-toggle" | "profile-menu";

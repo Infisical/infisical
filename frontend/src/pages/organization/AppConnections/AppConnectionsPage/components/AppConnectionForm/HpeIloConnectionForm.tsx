@@ -33,69 +33,18 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
-import { isIPv4, isIPv6 } from "@app/helpers/ip";
 import { useScopeVariant } from "@app/hooks";
 import { HpeIloConnectionMethod, THpeIloConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { hpeIloRedFishConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: THpeIloConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const isValidHostname = (value: string) =>
-  value.length <= 253 &&
-  /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
-    value
-  );
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.HpeIloRedFish)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(HpeIloConnectionMethod.BasicAuth),
-    credentials: z.object({
-      hostname: z
-        .string()
-        .trim()
-        .min(1, "Hostname is required")
-        .max(512, "Hostname cannot exceed 512 characters")
-        .refine(
-          (val) => isValidHostname(val) || isIPv4(val) || (isIPv6(val) && !val.includes("%")),
-          {
-            message: "Enter a hostname or IP address without a scheme, port, brackets, or path"
-          }
-        ),
-      port: z
-        .union([z.coerce.number().int().min(1).max(65535), z.literal("")])
-        .optional()
-        .transform((val) => (val === "" ? undefined : val)),
-      username: z
-        .string()
-        .trim()
-        .min(1, "Username is required")
-        .max(256, "Username cannot exceed 256 characters"),
-      password: z
-        .string()
-        .min(1, "Password is required")
-        .max(512, "Password cannot exceed 512 characters"),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

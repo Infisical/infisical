@@ -1,0 +1,51 @@
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cipher-space-4);
+  min-width: 0;
+}
+.line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cipher-space-8);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+.line:focus-visible {
+  outline: var(--cipher-size-focus-ring) solid var(--cipher-ink);
+  outline-offset: var(--cipher-space-2);
+}
+.chevron {
+  flex: none;
+  width: var(--cipher-size-glyph);
+  height: var(--cipher-type-mono-line-height);
+  color: var(--cipher-muted);
+  transition: rotate var(--cipher-duration-fast) var(--cipher-ease-standard);
+}
+.chevron[data-hidden] {
+  visibility: hidden;
+}
+.line[aria-expanded="true"] .chevron {
+  rotate: 90deg;
+}
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--cipher-type-mono-font-family);
+  font-size: var(--cipher-type-mono-font-size);
+  line-height: var(--cipher-type-mono-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.text[data-expanded] {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

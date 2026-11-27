@@ -23,30 +23,15 @@ import {
   TravisCIConnectionMethod,
   TTravisCIConnection
 } from "@app/hooks/api/appConnections/types/travis-ci-connection";
+import { travisCIConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TTravisCIConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.TravisCI)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(TravisCIConnectionMethod.ApiToken),
-    credentials: z.object({
-      apiToken: z.string().trim().min(1, "API Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

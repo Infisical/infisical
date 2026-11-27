@@ -21,38 +21,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { TWindmillConnection, WindmillConnectionMethod } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { windmillConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TWindmillConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Windmill)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(WindmillConnectionMethod.AccessToken),
-    credentials: z.object({
-      accessToken: z.string().trim().min(1, "Access Token required"),
-      instanceUrl: z
-        .string()
-        .trim()
-        .transform((value) => value || undefined)
-        .refine((value) => (!value ? true : z.string().url().safeParse(value).success), {
-          message: "Invalid instance URL"
-        })
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

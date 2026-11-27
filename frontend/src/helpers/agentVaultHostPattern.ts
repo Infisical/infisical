@@ -19,6 +19,22 @@ const hostKey = (raw: string): string | null => {
   return `${host.replace(/\.$/, "").toLowerCase()}:${port}`;
 };
 
+/** Whether a host pattern covers a request, with the server's rule that a wildcard matches one label. */
+export const hostPatternCovers = (pattern: string, host: string, port: string): boolean => {
+  const key = hostKey(pattern);
+  if (!key) return false;
+  const candidate = host.replace(/\.$/, "").toLowerCase();
+  if (key.startsWith("["))
+    return key === (port === "443" ? `[${candidate}]` : `[${candidate}]:${port}`);
+  const colonIdx = key.lastIndexOf(":");
+  if (key.slice(colonIdx + 1) !== port) return false;
+  const patternHost = key.slice(0, colonIdx);
+  if (!patternHost.startsWith("*.")) return patternHost === candidate;
+  const suffix = patternHost.slice(1);
+  const prefix = candidate.slice(0, candidate.length - suffix.length);
+  return candidate.endsWith(suffix) && prefix !== "" && !prefix.includes(".");
+};
+
 /**
  * A partial pre-check, so a malformed host is caught on the field that holds it rather than bounced
  * back from a submit. agent-vault-host-pattern-fns.ts stays the grammar of record.

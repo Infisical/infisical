@@ -1,0 +1,10 @@
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
+
+import { LoginPage } from "./LoginPage";
+
+export const Route = createFileRoute("/v4/_v4-auth/login/")({
+  staticData: { readiness: "full" },
+  component: LoginPage,
+  pendingComponent: lazyRouteComponent(() => import("../../V4PageLoader"), "V4PageLoader"),
+  errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
+});

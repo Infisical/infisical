@@ -35,56 +35,18 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { azureDevOpsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AzureDevOpsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
-// Base schema with common fields
-const baseSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AzureDevOps),
-  method: z.nativeEnum(AzureDevOpsConnectionMethod)
-});
-
-// Method-specific schemas
-const oauthSchema = baseSchema.extend({
-  method: z.literal(AzureDevOpsConnectionMethod.OAuth),
-  tenantId: z.string().trim().min(1, "Tenant ID is required"),
-  orgName: z.string().trim().min(1, "Organization name is required")
-});
-
-const accessTokenSchema = baseSchema.extend({
-  method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
-  credentials: z.object({
-    accessToken: z.string().trim().min(1, "Access Token is required"),
-    orgName: z.string().trim().min(1, "Organization name is required")
-  })
-});
-
-const clientSecretSchema = baseSchema.extend({
-  method: z.literal(AzureDevOpsConnectionMethod.ClientSecret),
-  credentials: z.object({
-    clientSecret: z.string().trim().min(1, "Client Secret is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required"),
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    orgName: z.string().trim().min(1, "Organization name is required"),
-    clientSecretKeyId: z.string().trim().optional()
-  })
-});
-
-// Union schema
-const formSchema = z.discriminatedUnion("method", [
-  oauthSchema,
-  accessTokenSchema,
-  clientSecretSchema
-]);
-
 type FormData = z.infer<typeof formSchema>;
-type OnSubmitForm = z.infer<typeof accessTokenSchema> | z.infer<typeof clientSecretSchema>;
+type OnSubmitForm = Extract<
+  FormData,
+  { method: AzureDevOpsConnectionMethod.AccessToken | AzureDevOpsConnectionMethod.ClientSecret }
+>;
 
 type Props = {
   appConnection?: TAzureDevOpsConnection;

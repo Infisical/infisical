@@ -12,7 +12,7 @@ import {
   CertSubjectAttributeInclude,
   CertSubjectAttributeType,
   POLICY_PRESET_IDS
-} from "./certificate-constants";
+} from "@app/helpers/certificateConstants";
 
 export const uiAttributeSchema = z.object({
   type: z.nativeEnum(CertSubjectAttributeType),

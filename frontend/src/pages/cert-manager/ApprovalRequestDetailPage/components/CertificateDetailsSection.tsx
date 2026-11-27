@@ -20,6 +20,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { CertSubjectAlternativeNameType, formatSANType } from "@app/helpers/certificateConstants";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import {
@@ -30,10 +31,6 @@ import {
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateRequest } from "@app/hooks/api/certificates/queries";
 import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
-import {
-  CertSubjectAlternativeNameType,
-  formatSANType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 type Props = {
   request: TApprovalRequest;

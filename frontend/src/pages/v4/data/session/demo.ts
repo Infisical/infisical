@@ -1,0 +1,42 @@
+import { useRouterState } from "@tanstack/react-router";
+
+import { ProjectType } from "@app/hooks/api/projects/types";
+
+import { V4_DEMO_ORG_ID } from "../../mode";
+import type { V4Session } from "./contract";
+
+export const demoSession: V4Session = {
+  user: { id: "u-sarah", name: "Sarah Lin", email: "sarah@acme.dev", superAdmin: true },
+  organization: { id: V4_DEMO_ORG_ID, name: "Acme Corp", isSubOrganization: false },
+  organizations: [
+    { id: V4_DEMO_ORG_ID, name: "Acme Corp", group: "Current organization" },
+    { id: "acme-eu", name: "acme-eu", group: "Sub-organizations" },
+    { id: "acme-labs", name: "acme-labs", group: "Sub-organizations" },
+    { id: "globex", name: "Globex", group: "Other organizations" },
+    { id: "initech", name: "Initech", group: "Other organizations" }
+  ],
+  projects: [
+    { id: "payments-api", name: "payments-api", type: ProjectType.SecretManager },
+    { id: "web-dashboard", name: "web-dashboard", type: ProjectType.SecretManager },
+    { id: "platform-core", name: "platform-core", type: ProjectType.SecretManager },
+    { id: "kms-keys", name: "kms-keys", type: ProjectType.KMS },
+    { id: "edge-signing", name: "edge-signing", type: ProjectType.KMS },
+    { id: "agent-platform", name: "agent-platform", type: ProjectType.AgentVault },
+    { id: "support-agents", name: "support-agents", type: ProjectType.AgentVault },
+    { id: "secret-scanning", name: "secret-scanning", type: ProjectType.SecretScanning },
+    { id: "internal-pki", name: "internal-pki", type: ProjectType.CertificateManager }
+  ]
+};
+
+const demoSubOrgSession: V4Session = {
+  ...demoSession,
+  organization: { id: V4_DEMO_ORG_ID, name: "acme-eu", isSubOrganization: true }
+};
+
+export const useDemoSession = () =>
+  useRouterState({
+    select: (state) =>
+      (state.location.search as { scenario?: unknown }).scenario === "sub-org"
+        ? demoSubOrgSession
+        : demoSession
+  });

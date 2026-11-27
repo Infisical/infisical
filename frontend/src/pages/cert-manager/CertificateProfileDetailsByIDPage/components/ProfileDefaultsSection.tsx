@@ -15,8 +15,6 @@ import {
   EmptyHeader,
   EmptyTitle
 } from "@app/components/v3";
-import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
-import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -25,7 +23,9 @@ import {
   formatKeyUsage,
   formatRequestReferenceValue,
   formatSANType
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+} from "@app/helpers/certificateConstants";
+import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
+import { CustomExtensionList } from "@app/pages/cert-manager/components/CustomExtensionList";
 
 type Props = {
   profile: TCertificateProfileWithDetails;

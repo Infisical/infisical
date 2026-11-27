@@ -26,55 +26,15 @@ import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/t
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { JenkinsConnectionMethod, TJenkinsConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { jenkinsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TJenkinsConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const isValidInstanceUrl = (value: string) => {
-  try {
-    const url = new URL(value);
-    return (
-      ["http:", "https:"].includes(url.protocol) &&
-      !url.username &&
-      !url.password &&
-      !url.search &&
-      !url.hash
-    );
-  } catch {
-    return false;
-  }
-};
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Jenkins)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(JenkinsConnectionMethod.ApiToken),
-    credentials: z.object({
-      instanceUrl: z
-        .string()
-        .trim()
-        .min(1, "Instance URL required")
-        .max(255)
-        .refine(
-          isValidInstanceUrl,
-          "Instance URL must be an http or https URL without credentials, a query, or a fragment"
-        ),
-      username: z.string().trim().min(1, "Username required").max(255),
-      apiToken: z.string().trim().min(1, "API Token required").max(255)
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

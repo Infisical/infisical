@@ -21,31 +21,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { CircleCIConnectionMethod, TCircleCIConnection } from "@app/hooks/api/appConnections/types";
+import { circleCIConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TCircleCIConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.CircleCI)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(CircleCIConnectionMethod.ApiToken),
-    credentials: z.object({
-      host: z.string().trim().optional(),
-      apiToken: z.string().trim().min(1, "API Token required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

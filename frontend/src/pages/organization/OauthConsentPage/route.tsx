@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { handoffToV4 } from "@app/helpers/v4Bridge";
+
 import { OauthConsentPage } from "./OauthConsentPage";
 
 const OauthConsentPageQuerySchema = z.object({
@@ -16,5 +18,6 @@ const OauthConsentPageQuerySchema = z.object({
 
 export const Route = createFileRoute("/_authenticate/organization/oauth-consent")({
   component: OauthConsentPage,
-  validateSearch: zodValidator(OauthConsentPageQuerySchema)
+  validateSearch: zodValidator(OauthConsentPageQuerySchema),
+  beforeLoad: ({ location }) => handoffToV4(location)
 });

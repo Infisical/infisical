@@ -22,32 +22,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { TSpaceliftConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { SpaceliftConnectionMethod } from "@app/hooks/api/appConnections/types/spacelift-connection";
+import { spaceliftConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TSpaceliftConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Spacelift)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(SpaceliftConnectionMethod.ApiKeySecret),
-    credentials: z.object({
-      apiUrl: z.string().trim().url("Must be a valid URL").min(1, "API URL required"),
-      apiKeyId: z.string().trim().min(1, "API Key ID required"),
-      apiKeySecret: z.string().trim().min(1, "API Key Secret required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

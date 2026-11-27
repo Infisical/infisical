@@ -24,31 +24,15 @@ import {
   SupabaseConnectionMethod,
   TSupabaseConnection
 } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { supabaseConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TSupabaseConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Supabase)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(SupabaseConnectionMethod.AccessToken),
-    credentials: z.object({
-      accessKey: z.string().trim().min(1, "Access Key required"),
-      instanceUrl: z.string().url().optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

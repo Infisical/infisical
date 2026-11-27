@@ -1,0 +1,15 @@
+// sandboxImage.ts
+import { ModalClient } from "modal";
+
+export const modal = new ModalClient();
+
+export const app = await modal.apps.fromName("agent-vault-sandboxes", { createIfMissing: true });
+
+export const image = await modal.images
+  .fromRegistry("node:24-bookworm-slim")
+  .dockerfileCommands([
+    "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*",
+    "RUN npm install -g @infisical/cli @anthropic-ai/claude-code",
+    "RUN useradd --create-home --uid 2000 agent",
+  ])
+  .build(app);

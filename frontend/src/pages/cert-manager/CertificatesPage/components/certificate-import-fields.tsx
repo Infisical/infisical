@@ -3,6 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 import { Combobox, Input } from "@app/components/v3";
+import {
+  getCertificateImportReference,
+  isCaTypeLinkable
+} from "@app/helpers/certificateImportLinkage";
 import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
 import { useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
@@ -17,8 +21,6 @@ import {
   useGetPkiApplicationPermissions
 } from "@app/hooks/api/pkiApplications";
 import { useProfileCreation } from "@app/pages/cert-manager/PoliciesPage/components/CertificateProfilesTab/useProfileCreation";
-
-import { getCertificateImportReference, isCaTypeLinkable } from "./certificate-import-linkage";
 
 export type ProfileOption = {
   id: string;

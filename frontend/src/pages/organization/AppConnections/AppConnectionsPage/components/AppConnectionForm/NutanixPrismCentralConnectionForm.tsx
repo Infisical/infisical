@@ -39,75 +39,15 @@ import {
   TNutanixPrismCentralConnection
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { nutanixPrismCentralConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TNutanixPrismCentralConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.NutanixPrismCentral)
-});
-
-const credentialsBase = z.object({
-  hostname: z
-    .string()
-    .trim()
-    .min(1, "Hostname is required")
-    .max(512, "Hostname cannot exceed 512 characters")
-    .refine(
-      (val) =>
-        !val.includes("/") &&
-        !val.includes("@") &&
-        !val.includes("?") &&
-        !val.includes(":") &&
-        !val.includes("#"),
-      { message: "Hostname must not contain /, @, ?, :, or # characters" }
-    ),
-  port: z
-    .union([z.coerce.number().int().min(1).max(65535), z.literal("")])
-    .optional()
-    .transform((val) => (val === "" ? undefined : val)),
-  sslRejectUnauthorized: z.boolean(),
-  sslCertificate: z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(NutanixPrismCentralConnectionMethod.ApiKey),
-    credentials: credentialsBase.extend({
-      apiKey: z
-        .string()
-        .trim()
-        .regex(/^[0-9a-f]{32}$/, "API key must be a 32-character lowercase hexadecimal string")
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(NutanixPrismCentralConnectionMethod.BasicAuth),
-    credentials: credentialsBase.extend({
-      username: z
-        .string()
-        .trim()
-        .min(1, "Username is required")
-        .max(256, "Username cannot exceed 256 characters"),
-      password: z
-        .string()
-        .trim()
-        .min(1, "Password is required")
-        .max(512, "Password cannot exceed 512 characters")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

@@ -74,6 +74,7 @@ const RootPage = () => {
 
 export const Route = createRootRouteWithContext<TRouterContext>()({
   component: RootPage,
+  pendingMs: Infinity,
   beforeLoad: async ({ context }) => {
     const authToken = await context.queryClient
       .fetchQuery({

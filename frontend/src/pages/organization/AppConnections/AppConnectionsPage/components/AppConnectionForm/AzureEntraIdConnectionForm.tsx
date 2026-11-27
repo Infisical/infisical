@@ -26,24 +26,11 @@ import {
   AzureEntraIdConnectionMethod,
   TAzureEntraIdConnection
 } from "@app/hooks/api/appConnections/types/azure-entra-id-connection";
+import { azureEntraIdConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
-
-const formSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AzureEntraId),
-  method: z.literal(AzureEntraIdConnectionMethod.ClientSecret),
-  credentials: z.object({
-    tenantId: z.string().trim().min(1, "Tenant ID is required"),
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    clientSecret: z.string().trim().min(1, "Client Secret is required"),
-    clientSecretKeyId: z.string().trim().optional()
-  })
-});
 
 type FormData = z.infer<typeof formSchema>;
 

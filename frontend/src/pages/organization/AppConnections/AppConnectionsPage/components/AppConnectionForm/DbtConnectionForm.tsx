@@ -21,32 +21,15 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DbtConnectionMethod, TDbtConnection } from "@app/hooks/api/appConnections/types";
+import { dbtConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TDbtConnection;
   onSubmit: (formData: FormData) => void;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.Dbt)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(DbtConnectionMethod.ApiToken),
-    credentials: z.object({
-      apiToken: z.string().trim().min(1, "API Token required"),
-      instanceUrl: z.string().trim().min(1, "Instance URL required"),
-      accountId: z.string().trim().min(1, "Account ID required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

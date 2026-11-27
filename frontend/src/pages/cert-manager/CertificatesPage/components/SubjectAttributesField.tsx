@@ -14,10 +14,10 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { CertSubjectAttributeType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
+import { CertSubjectAttributeType } from "@app/helpers/certificateConstants";
+import { PolicyNotice, PolicyRowGuidance } from "@app/helpers/certificatePolicyGuidance";
+import { SUBJECT_ATTRIBUTE_LABELS, SubjectAttribute } from "@app/helpers/certificateUtils";
 
-import { PolicyNotice, PolicyRowGuidance } from "./certificatePolicyGuidance";
-import { SUBJECT_ATTRIBUTE_LABELS, SubjectAttribute } from "./certificateUtils";
 import { PolicyNoticeList } from "./PolicyNoticeList";
 import { PolicyRowMessage } from "./PolicyRowMessage";
 

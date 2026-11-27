@@ -44,22 +44,23 @@ import {
   AzureKeyVaultConnectionMethod,
   TAzureKeyVaultConnection
 } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
+import { azureKeyVaultConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 import {
   FederatedCredentialValue,
   GENERATED_VALUE_BORDER
 } from "./shared/FederatedCredentialValue";
 
-type ClientSecretForm = z.infer<typeof clientSecretSchema>;
-type CertificateForm = z.infer<typeof certificateSchema>;
-type ManagedIdentityForm = z.infer<typeof managedIdentitySchema>;
+type ClientSecretForm = Extract<FormData, { method: AzureKeyVaultConnectionMethod.ClientSecret }>;
+type CertificateForm = Extract<FormData, { method: AzureKeyVaultConnectionMethod.Certificate }>;
+type ManagedIdentityForm = Extract<
+  FormData,
+  { method: AzureKeyVaultConnectionMethod.ManagedIdentity }
+>;
 
 type TInputFormData = ClientSecretForm | CertificateForm | ManagedIdentityForm;
 
@@ -68,51 +69,6 @@ type Props = {
   onSubmit: (formData: TInputFormData) => Promise<void>;
   projectId: string | undefined | null;
 };
-
-const baseSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AzureKeyVault),
-  method: z.nativeEnum(AzureKeyVaultConnectionMethod)
-});
-
-const oauthSchema = baseSchema.extend({
-  tenantId: z.string().trim().min(1, "Tenant ID is required"),
-  method: z.literal(AzureKeyVaultConnectionMethod.OAuth)
-});
-
-const clientSecretSchema = baseSchema.extend({
-  method: z.literal(AzureKeyVaultConnectionMethod.ClientSecret),
-  credentials: z.object({
-    clientSecret: z.string().trim().min(1, "Client Secret is required"),
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required"),
-    clientSecretKeyId: z.string().trim().optional()
-  })
-});
-
-const certificateSchema = baseSchema.extend({
-  method: z.literal(AzureKeyVaultConnectionMethod.Certificate),
-  credentials: z.object({
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    certificateBody: z.string().trim().min(1, "Certificate is required"),
-    privateKey: z.string().trim().min(1, "Private Key is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
-  })
-});
-
-const managedIdentitySchema = baseSchema.extend({
-  method: z.literal(AzureKeyVaultConnectionMethod.ManagedIdentity),
-  credentials: z.object({
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
-  })
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  oauthSchema,
-  clientSecretSchema,
-  certificateSchema,
-  managedIdentitySchema
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

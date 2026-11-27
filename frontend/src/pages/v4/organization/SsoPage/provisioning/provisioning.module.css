@@ -1,0 +1,36 @@
+.mappings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: var(--cipher-space-8);
+  align-items: start;
+}
+
+.mappingRow {
+  display: contents;
+}
+
+.mappingHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cipher-space-4);
+  font-family: var(--cipher-type-small-font-family);
+  font-size: var(--cipher-type-small-font-size);
+  line-height: var(--cipher-type-small-line-height);
+  font-weight: var(--cipher-type-small-font-weight);
+  color: var(--cipher-muted);
+}
+
+.infoMark {
+  display: inline-flex;
+}
+
+.mappingCell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--cipher-space-4);
+}
+
+.rawEvent {
+  width: min(32rem, 90vw);
+}

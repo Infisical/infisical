@@ -1,0 +1,717 @@
+import { useState } from "react";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Badge } from "@infisical/cipher/ui/badge";
+import { Button } from "@infisical/cipher/ui/button";
+import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Loader } from "@infisical/cipher/ui/loader";
+import { PageHeader } from "@infisical/cipher/ui/page-header";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { useParams, useSearch } from "@tanstack/react-router";
+import FileSaver from "file-saver";
+
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import type { CaType } from "@app/hooks/api/ca/enums";
+import type { EnrollmentType } from "@app/hooks/api/certificateProfiles/types";
+import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
+import type { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+import type { TCertificate } from "@app/hooks/api/certificates/types";
+import {
+  getApplicationCertificateAccess,
+  getCertSourceLabel
+} from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
+
+import { useDebounced } from "../../access/org/use-debounced";
+import { useProjectPermission } from "../../access/permissions";
+import { failed, saved } from "../../access/toast";
+import { RESTRICTED } from "../../access/ui";
+import { usePageSize } from "../../components/use-page-size";
+import { useV4Adapter } from "../../data/adapters";
+import { certificateHref, useGo, v4Path } from "../../links";
+import { CertificateSyncsDialog } from "../CertificateDetailsByIDPage/certificate-syncs";
+import {
+  certificateBlocks,
+  certificateName,
+  CertificateStatusBadge,
+  DeleteCertificateDialog,
+  ExpiryBadge,
+  RevokeCertificateDialog,
+  shortDate,
+  CertManagerNotSetUp,
+  useCertificateReasons,
+  useCertManagerProjectId,
+  useRevocationApprovals
+} from "../components/certificate";
+import { ExportCertificateDialog } from "../components/certificate-export";
+import { AutoRenewalDialog } from "../components/certificate-requests/auto-renewal-dialog";
+import { ImportCertificatesSheet } from "../components/certificate-requests/import-sheet";
+import { RenewCertificateSheet } from "../components/certificate-requests/renew-sheet";
+import { AssignApplicationDialog } from "./assign-application-dialog";
+import { certificatesToCsv } from "./csv-export";
+import { enrollmentLabel, filterParams, inventoryFields } from "./inventory-filters";
+import { type InventoryView, InventoryViewsMenu } from "./inventory-views";
+import { VIEW_KEY_ALGORITHMS } from "./view-key-algorithms";
+
+const routeId = v4Path("/organizations/$orgId/cert-manager/inventory");
+
+const dateIn = (days: string) => {
+  const date = new Date();
+  date.setDate(date.getDate() + Number(days));
+  return date.toISOString().split("T")[0];
+};
+
+type InventorySearch = {
+  filterStatus?: string;
+  filterEnrollmentType?: string;
+  filterKeyAlgorithm?: string;
+  filterCaId?: string;
+  filterExpiresDays?: string;
+  filterExpiresAfterDays?: string;
+  viewId?: string;
+};
+
+const filtersFromSearch = (search: InventorySearch): FilterBarFilter[] => {
+  const filters: FilterBarFilter[] = [];
+  if (search.filterStatus) filters.push({ field: "status", values: [search.filterStatus] });
+  if (search.filterEnrollmentType)
+    filters.push({
+      field: "enrollmentType",
+      values: [search.filterEnrollmentType]
+    });
+  const viewAlgorithms = VIEW_KEY_ALGORITHMS[search.viewId ?? ""];
+  if (search.filterKeyAlgorithm)
+    filters.push({
+      field: "keyAlgorithm",
+      values: [search.filterKeyAlgorithm]
+    });
+  else if (viewAlgorithms) filters.push({ field: "keyAlgorithm", values: [...viewAlgorithms] });
+  if (search.filterCaId) filters.push({ field: "caId", values: [search.filterCaId] });
+  if (search.filterExpiresDays)
+    filters.push({
+      field: "notAfter",
+      operator: "before",
+      values: [dateIn(search.filterExpiresDays)]
+    });
+  if (search.filterExpiresAfterDays)
+    filters.push({
+      field: "notAfter",
+      operator: "after",
+      values: [dateIn(search.filterExpiresAfterDays)]
+    });
+  return filters;
+};
+
+const sortKeys: Record<string, string> = {
+  expires: "notAfter",
+  issued: "notBefore"
+};
+
+const optionalColumns = [
+  { id: "serial", label: "Serial number" },
+  { id: "enrollment", label: "Enrollment" },
+  { id: "issued", label: "Issued" },
+  { id: "profile", label: "Profile" },
+  { id: "application", label: "Application" },
+  { id: "algorithm", label: "Algorithm" },
+  { id: "source", label: "Source" }
+];
+
+const algorithmLabel = (algorithm?: string | null) =>
+  (algorithm && certKeyAlgorithmToNameMap[algorithm as CertKeyAlgorithm]) || algorithm || "None";
+
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+const inventoryColumns = (
+  orgId: string,
+  go: ReturnType<typeof useGo>
+): DataTableColumn<TCertificate>[] => [
+  {
+    id: "cn",
+    header: "SAN / CN",
+    primary: true,
+    grow: true,
+    minWidth: 160,
+    text: (r) => certificateName(r),
+    render: (r) => {
+      const extra = (r.altNames?.split(",").filter(Boolean).length ?? 0) - 1;
+      return (
+        <Inline gap={8} align="center" wrap={false}>
+          <RowLink link={go.link(certificateHref(orgId, r.id))}>
+            {certificateName(r)}
+            {extra > 0 && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--cipher-space-8)",
+                  marginInlineStart: "var(--cipher-space-8)",
+                  verticalAlign: "middle"
+                }}
+              >
+                <Badge size="sm" tone="outline">{`+${extra}`}</Badge>
+              </span>
+            )}
+          </RowLink>
+        </Inline>
+      );
+    }
+  },
+  {
+    id: "serial",
+    header: "Serial number",
+    width: 128,
+    text: (r) => r.serialNumber,
+    render: (r) => <code>{`${r.serialNumber.slice(0, 5)}…${r.serialNumber.slice(-5)}`}</code>
+  },
+  {
+    id: "enrollment",
+    header: "Enrollment",
+    width: 96,
+    render: (r) => enrollmentLabel[r.enrollmentType as EnrollmentType] ?? r.enrollmentType ?? "None"
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: 112,
+    render: (r) => <CertificateStatusBadge cert={r} />
+  },
+  {
+    id: "issued",
+    header: "Issued",
+    sortable: true,
+    width: 112,
+    render: (r) => shortDate(r.notBefore)
+  },
+  {
+    id: "expires",
+    header: "Expires",
+    sortable: true,
+    width: 184,
+    render: (r) => (
+      <Inline gap={8} align="center" wrap={false}>
+        {shortDate(r.notAfter)}
+        <ExpiryBadge cert={r} />
+      </Inline>
+    )
+  },
+  {
+    id: "ca",
+    header: "CA",
+    width: 176,
+    text: (r) => r.caName ?? "",
+    render: (r) => r.caName ?? "None"
+  },
+  {
+    id: "profile",
+    header: "Profile",
+    width: 128,
+    render: (r) => (r.profileName ? <code>{r.profileName}</code> : "None")
+  },
+  {
+    id: "application",
+    header: "Application",
+    width: 160,
+    text: (r) => r.applicationName ?? "",
+    render: (r) => r.applicationName ?? "None"
+  },
+  {
+    id: "algorithm",
+    header: "Algorithm",
+    width: 104,
+    render: (r) => algorithmLabel(r.keyAlgorithm)
+  },
+  {
+    id: "source",
+    header: "Source",
+    width: 104,
+    render: (r) => getCertSourceLabel(r.source ?? null)
+  }
+];
+
+type RowActionKind = "export" | "renew" | "autoRenew" | "sync" | "assign" | "revoke" | "delete";
+type RowAction = { kind: RowActionKind; cert: TCertificate };
+
+const InventoryRowMenu = ({
+  cert,
+  caType,
+  projectId,
+  isAdmin,
+  onView,
+  onAction
+}: {
+  cert: TCertificate;
+  caType?: CaType;
+  projectId: string;
+  isAdmin: boolean;
+  onView: () => void;
+  onAction: (kind: RowActionKind) => void;
+}) => {
+  const revocation = useRevocationApprovals(cert.applicationId)(cert);
+  const blocks = certificateBlocks(cert, {
+    isInventoryView: !cert.applicationName,
+    caType,
+    revocation
+  });
+  const { editReason, renewReason, autoRenewReason, syncReason, revokeReason, deleteReason } =
+    useCertificateReasons(cert, projectId, blocks, revocation);
+  const updateRenewal = useV4Adapter("certificates").useUpdateRenewalConfig();
+  const isAutoRenewalEnabled = Boolean(cert.renewBeforeDays && cert.renewBeforeDays > 0);
+  const disableAutoRenewal = async () => {
+    try {
+      await updateRenewal.mutateAsync({ certificateId: cert.id, enableAutoRenewal: false });
+      saved(`Auto renewal disabled for ${certificateName(cert)}`);
+    } catch (error) {
+      failed("Failed to disable auto renewal", error);
+    }
+  };
+  return (
+    <>
+      <DropdownMenuItem onSelect={onView}>
+        <Icon name="eye" />
+        View details
+      </DropdownMenuItem>
+      <DropdownMenuItem disabledReason={blocks.export} onSelect={() => onAction("export")}>
+        <Icon name="download" />
+        Export certificate
+      </DropdownMenuItem>
+      <DropdownMenuItem disabledReason={renewReason} onSelect={() => onAction("renew")}>
+        <Icon name="sync" />
+        Renew now
+      </DropdownMenuItem>
+      <DropdownMenuItem disabledReason={autoRenewReason} onSelect={() => onAction("autoRenew")}>
+        <Icon name="clock" />
+        {isAutoRenewalEnabled ? "Manage auto renewal" : "Enable auto renewal"}
+      </DropdownMenuItem>
+      {isAutoRenewalEnabled && !blocks.autoRenew && (
+        <DropdownMenuItem disabledReason={editReason} onSelect={disableAutoRenewal}>
+          <Icon name="x" />
+          Disable auto renewal
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuItem disabledReason={syncReason} onSelect={() => onAction("sync")}>
+        <Icon name="link" />
+        Manage certificate syncs
+      </DropdownMenuItem>
+      {!cert.applicationId && !cert.deletedAt && (
+        <DropdownMenuItem
+          disabledReason={isAdmin ? undefined : RESTRICTED}
+          onSelect={() => onAction("assign")}
+        >
+          <Icon name="app-window" />
+          Assign to application
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem
+        variant="destructive"
+        disabledReason={revokeReason}
+        onSelect={() => onAction("revoke")}
+      >
+        <Icon name="x" />
+        {revocation.isRevocationApprovalRequired ? "Request revocation" : "Revoke certificate"}
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        variant="destructive"
+        disabledReason={deleteReason}
+        onSelect={() => onAction("delete")}
+      >
+        <Icon name="trash" />
+        Delete certificate
+      </DropdownMenuItem>
+    </>
+  );
+};
+
+const InventoryRenewSheet = ({
+  cert,
+  projectId,
+  onClose
+}: {
+  cert: TCertificate;
+  projectId: string;
+  onClose: () => void;
+}) => {
+  const { permission } = useProjectPermission(projectId);
+  const { data: appAccess } = useV4Adapter("pkiApplications").useApplicationPermissions(
+    cert.applicationId ?? ""
+  );
+  const canRevoke = cert.applicationId
+    ? getApplicationCertificateAccess({
+        applicationName: cert.applicationName ?? "this application",
+        permission: appAccess?.permission
+      }).canDelete
+    : permission.can(ProjectPermissionCertificateActions.Delete, ProjectPermissionSub.Certificates);
+  return <RenewCertificateSheet cert={cert} canRevoke={canRevoke} onClose={onClose} />;
+};
+
+const InventoryRowDialogs = ({
+  action: { kind, cert },
+  caType,
+  projectId,
+  onClose
+}: {
+  action: RowAction;
+  caType?: CaType;
+  projectId: string;
+  onClose: () => void;
+}) => {
+  const { isRevocationApprovalRequired } = useRevocationApprovals(cert.applicationId)(cert);
+  switch (kind) {
+    case "export":
+      return <ExportCertificateDialog cert={cert} projectId={projectId} onClose={onClose} />;
+    case "renew":
+      return <InventoryRenewSheet cert={cert} projectId={projectId} onClose={onClose} />;
+    case "autoRenew":
+      return <AutoRenewalDialog cert={cert} onClose={onClose} />;
+    case "sync":
+      return (
+        <CertificateSyncsDialog
+          open
+          onOpenChange={(next) => !next && onClose()}
+          certificate={cert}
+          projectId={projectId}
+        />
+      );
+    case "assign":
+      return <AssignApplicationDialog cert={cert} onClose={onClose} />;
+    case "revoke":
+      return (
+        <RevokeCertificateDialog
+          cert={cert}
+          isRevocationApprovalRequired={isRevocationApprovalRequired}
+          onClose={onClose}
+        />
+      );
+    default:
+      return (
+        <DeleteCertificateDialog
+          cert={cert}
+          caType={caType}
+          projectId={projectId}
+          onClose={onClose}
+        />
+      );
+  }
+};
+
+const inventoryDescription = (totals?: { expiringSoon: number; expired: number }) =>
+  totals && (totals.expiringSoon || totals.expired)
+    ? `Every certificate across your infrastructure. ${plural(totals.expiringSoon, "certificate expires", "certificates expire")} within 30 days and ${totals.expired} ${totals.expired === 1 ? "has" : "have"} expired.`
+    : "Every certificate across your infrastructure.";
+
+const sourceLine = (total: number, authorities: number) =>
+  `${plural(total, "certificate", "certificates")} from ${plural(authorities, "certificate authority", "certificate authorities")}`;
+
+const useInventoryAccess = (projectId: string) => {
+  const { permission } = useProjectPermission(projectId);
+  const { data: access } = useV4Adapter("certificates").useProjectPermission({ projectId });
+  const can = (action: ProjectPermissionCertificateActions) =>
+    permission.can(action, ProjectPermissionSub.Certificates);
+  return {
+    canImport: can(ProjectPermissionCertificateActions.Import),
+    isAdmin: Boolean(
+      access?.memberships.some((membership) =>
+        membership.roles.some((role) => role.role === "admin")
+      )
+    )
+  };
+};
+
+const ColumnsMenu = ({
+  hidden,
+  onChange
+}: {
+  hidden: string[];
+  onChange: (next: string[]) => void;
+}) => (
+  <DropdownMenu>
+    <Tooltip content="Columns" side="bottom">
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" icon="sidebar" iconOnly>
+          Columns
+        </Button>
+      </DropdownMenuTrigger>
+    </Tooltip>
+    <DropdownMenuContent align="end">
+      <DropdownMenuLabel>Columns</DropdownMenuLabel>
+      {optionalColumns.map((column) => (
+        <DropdownMenuCheckboxItem
+          key={column.id}
+          checked={!hidden.includes(column.id)}
+          onCheckedChange={(checked) =>
+            onChange(checked ? hidden.filter((id) => id !== column.id) : [...hidden, column.id])
+          }
+        >
+          {column.label}
+        </DropdownMenuCheckboxItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
+
+export const ExportCsvButton = ({ rows }: { rows: TCertificate[] }) => {
+  const button = (
+    <Button
+      variant="outline"
+      size="icon"
+      icon="download"
+      iconOnly
+      disabledReason={rows.length ? undefined : "No certificates to export"}
+      onClick={() =>
+        FileSaver.saveAs(
+          new Blob([certificatesToCsv(rows)], { type: "text/csv;charset=utf-8;" }),
+          `certificates-export-${new Date().toISOString().split("T")[0]}.csv`
+        )
+      }
+    >
+      Export CSV
+    </Button>
+  );
+  return rows.length ? (
+    <Tooltip content="Export CSV" side="bottom">
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
+};
+
+const useApplicationField = (filters: FilterBarFilter[]) => {
+  const applications = useV4Adapter("pkiApplications");
+  const [search, setSearch] = useState("");
+  const query = useDebounced(search.trim());
+  const searchParams = { search: query || undefined, limit: 20 };
+  const selectedIds = filters.find((filter) => filter.field === "applicationId")?.values ?? [];
+  const results = applications.useApplications(searchParams);
+  const { data: selected } = applications.useApplications(
+    selectedIds.length ? { applicationIds: selectedIds, limit: 100 } : searchParams
+  );
+  const byId = new Map(
+    [...(selected?.applications ?? []), ...(results.data?.applications ?? [])].map((app) => [
+      app.id,
+      app.name
+    ])
+  );
+  return {
+    options: [...byId].map(([value, label]) => ({ value, label })),
+    onSearch: setSearch,
+    loading: results.isPending
+  };
+};
+
+const Inventory = ({ orgId, projectId }: { orgId: string; projectId: string }) => {
+  const search = useSearch({ from: routeId });
+  const go = useGo();
+  const certificates = useV4Adapter("certificates");
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<FilterBarFilter[]>(() => filtersFromSearch(search));
+  const [hidden, setHidden] = useState<string[]>(["issued", "application", "algorithm", "source"]);
+  const hiddenSet = new Set(hidden);
+  const [sort, setSort] = useState<{
+    columnId: string;
+    direction: "asc" | "desc";
+  }>({
+    columnId: "expires",
+    direction: "asc"
+  });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize, showPagination] = usePageSize("pkiCertificateInventoryTable", 25);
+  const [importing, setImporting] = useState(false);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [activeViewId, setActiveViewId] = useState<string | null>(search.viewId ?? null);
+  const [action, setAction] = useState<RowAction>();
+
+  const { data, isPending } = certificates.useCertificates({
+    projectId,
+    offset: (page - 1) * pageSize,
+    limit: pageSize,
+    search: query.trim() || undefined,
+    ...filterParams(filters),
+    includeDeleted: includeDeleted || undefined,
+    sortBy: sortKeys[sort.columnId],
+    sortOrder: sort.direction
+  });
+  const { data: stats } = certificates.useDashboardStats(projectId);
+  const { canImport, isAdmin } = useInventoryAccess(projectId);
+  const { data: authorities = [] } = certificates.useCertificateAuthorities();
+  const { data: profiles } = certificates.useCertificateProfiles({
+    limit: 100
+  });
+  const applicationField = useApplicationField(filters);
+
+  const rows = data?.certificates ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const total = stats?.totals.total ?? totalCount;
+  const caType = (cert: TCertificate) => authorities.find((ca) => ca.id === cert.caId)?.type;
+  const open = (id: string) => go(certificateHref(orgId, id));
+  const filtered = Boolean(query.trim()) || filters.some((filter) => filter.values.length > 0);
+  const clear = () => {
+    setQuery("");
+    setFilters([]);
+    setIncludeDeleted(false);
+    setActiveViewId(null);
+    setPage(1);
+  };
+  const applyView = (viewId: string | null, view: InventoryView) => {
+    setActiveViewId(viewId);
+    setFilters(view.filters);
+    setIncludeDeleted(view.includeDeleted);
+    setPage(1);
+  };
+  return (
+    <TooltipProvider>
+      <Stack gap={24}>
+        <PageHeader
+          title="Inventory"
+          description={inventoryDescription(stats?.totals)}
+          actions={
+            <Button
+              variant="outline"
+              icon="upload"
+              disabledReason={canImport ? undefined : RESTRICTED}
+              onClick={() => setImporting(true)}
+            >
+              Import
+            </Button>
+          }
+        />
+        {importing && <ImportCertificatesSheet onClose={() => setImporting(false)} />}
+        <FilterBar
+          label="Certificate filters"
+          fields={inventoryFields(
+            authorities,
+            (profiles?.certificateProfiles ?? []).map((entry) => ({
+              value: entry.id,
+              label: entry.slug
+            })),
+            applicationField
+          )}
+          value={filters}
+          onChange={(next) => {
+            setFilters(next);
+            setActiveViewId(null);
+            setPage(1);
+          }}
+          search={
+            <Input
+              icon="search"
+              aria-label="Search certificates"
+              placeholder="Search by SAN, CN, ID or serial number"
+              slashShortcut
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
+            />
+          }
+          actions={
+            <>
+              <InventoryViewsMenu
+                projectId={projectId}
+                activeViewId={activeViewId}
+                current={{ filters, includeDeleted }}
+                onSelect={applyView}
+              />
+              <ColumnsMenu hidden={hidden} onChange={setHidden} />
+              <ExportCsvButton rows={rows} />
+            </>
+          }
+        />
+        <DataTable
+          filtered
+          label="Certificates"
+          rows={rows}
+          loading={isPending}
+          columns={inventoryColumns(orgId, go).filter((column) => !hiddenSet.has(column.id))}
+          getRowId={(r) => r.id}
+          rowLabel={(r) => certificateName(r)}
+          rowActions={{
+            renderMenu: (r) => (
+              <InventoryRowMenu
+                cert={r}
+                caType={caType(r)}
+                projectId={projectId}
+                isAdmin={isAdmin}
+                onView={() => open(r.id)}
+                onAction={(kind) => setAction({ kind, cert: r })}
+              />
+            )
+          }}
+          sort={sort}
+          onSortChange={(next) => {
+            setSort(next);
+            setPage(1);
+          }}
+          empty={
+            <EmptyState
+              size="sm"
+              icon="search"
+              title="No certificates match"
+              actions={
+                <Button variant="link" onClick={clear}>
+                  Clear filters
+                </Button>
+              }
+            />
+          }
+          persistentStatus={
+            filtered
+              ? `${totalCount} of ${plural(total, "certificate", "certificates")}`
+              : sourceLine(total, authorities.length)
+          }
+          pagination={
+            showPagination(totalCount) && (
+              <Pagination
+                label="Certificate pages"
+                variant="compact"
+                page={page}
+                onPageChange={setPage}
+                total={totalCount}
+                pageSize={pageSize}
+                pageSizeOptions={[25, 50, 100]}
+                onPageSizeChange={(next) => {
+                  setPageSize(next);
+                  setPage(1);
+                }}
+              />
+            )
+          }
+        />
+      </Stack>
+      {action && (
+        <InventoryRowDialogs
+          action={action}
+          caType={caType(action.cert)}
+          projectId={projectId}
+          onClose={() => setAction(undefined)}
+        />
+      )}
+    </TooltipProvider>
+  );
+};
+
+export const InventoryPage = () => {
+  const { orgId } = useParams({ from: routeId });
+  const { projectId, isPending } = useCertManagerProjectId(orgId);
+  if (isPending) return <Loader size="page" label="Loading certificates" />;
+  if (!projectId) return <CertManagerNotSetUp orgId={orgId} />;
+  return <Inventory orgId={orgId} projectId={projectId} />;
+};

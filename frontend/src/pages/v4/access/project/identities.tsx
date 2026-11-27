@@ -1,0 +1,365 @@
+import { useEffect, useMemo, useState } from "react";
+import { FilterBar, type FilterBarFilter } from "@infisical/cipher/patterns/filter-bar";
+import { Button } from "@infisical/cipher/ui/button";
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "@infisical/cipher/ui/data-table";
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger
+} from "@infisical/cipher/ui/dropdown-menu";
+import { EmptyState } from "@infisical/cipher/ui/empty";
+import { Icon } from "@infisical/cipher/ui/icon";
+import { Input } from "@infisical/cipher/ui/input";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { Pagination } from "@infisical/cipher/ui/pagination";
+import { RowLink } from "@infisical/cipher/ui/row-link";
+
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
+
+import { ProviderLabel } from "../../components/provider-label";
+import { usePageSize } from "../../components/use-page-size";
+import { useV4Adapter } from "../../data/adapters";
+import { accessLinks } from "../links";
+import { useGo } from "../navigation";
+import { useProjectPermission } from "../permissions";
+import { Gate, RESTRICTED, RoleBadges, type Sort } from "../ui";
+import { AddProjectIdentitySheet } from "./identity-add-sheet";
+import { useAuthMethodFlows } from "./identity-auth";
+import {
+  AssumePrivilegesDialog,
+  DELETE_PROTECTED,
+  IdentityRemovalDialog,
+  identitySubject,
+  isProjectManaged,
+  LockedBadge,
+  lockoutText,
+  ManagedByBadge,
+  type ProjectIdentityMembership
+} from "./identity-common";
+import { accessLabel, accessNoun, accessThis } from "./product";
+import { useProjectScope } from "./scope";
+
+import accessStyles from "../access.module.css";
+
+type RestrictedRow = { restrictedId: string };
+type IdentityRow = ProjectIdentityMembership | RestrictedRow;
+const isRestricted = (row: IdentityRow): row is RestrictedRow => "restrictedId" in row;
+
+const useDebounced = <T,>(value: T, delay = 300) => {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+};
+
+export const ProjectIdentitiesTab = () => {
+  const go = useGo();
+  const scope = useProjectScope();
+  const { orgId, projectId } = scope;
+  const access = useV4Adapter("access");
+  const { permission } = useProjectPermission(projectId);
+  const { data: projectRoles = [] } = access.useProjectRoles(projectId, scope.projectType);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search);
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const roleFilter = useMemo(
+    () => filters.find((filter) => filter.field === "role")?.values ?? [],
+    [filters]
+  );
+  const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = usePageSize("projectIdentityTable", 20);
+  const {
+    data,
+    isPending,
+    error: identitiesError
+  } = access.useProjectIdentities({
+    projectId,
+    projectType: scope.projectType,
+    offset: (page - 1) * perPage,
+    limit: perPage,
+    orderBy: ProjectIdentityOrderBy.Name,
+    orderDirection: sort.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC,
+    search: debouncedSearch,
+    roles: roleFilter
+  });
+  const rows = data?.identityMemberships ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const restrictedCount = isPending
+    ? 0
+    : Math.max(Math.min(perPage, totalCount - (page - 1) * perPage) - rows.length, 0);
+  const tableRows: IdentityRow[] = [
+    ...rows,
+    ...Array.from({ length: restrictedCount }, (_, index) => ({
+      restrictedId: `restricted-${index}`
+    }))
+  ];
+
+  useEffect(() => {
+    if (!isPending && page > 1 && (page - 1) * perPage >= totalCount)
+      setPage(Math.max(1, Math.ceil(totalCount / perPage)));
+  }, [isPending, page, perPage, totalCount]);
+
+  const [adding, setAdding] = useState(false);
+  const [assuming, setAssuming] = useState<string>();
+  const [removing, setRemoving] = useState<ProjectIdentityMembership>();
+  const [authFor, setAuthFor] = useState<string>();
+  const authRow = rows.find((row) => row.identity.id === authFor)?.identity;
+  const { data: authMembership } = access.useProjectIdentity(
+    projectId,
+    authRow && !authRow.authMethods ? authRow.id : "",
+    scope.projectType
+  );
+  const flows = useAuthMethodFlows(
+    projectId,
+    authRow?.authMethods ? authRow : authMembership?.identity
+  );
+
+  const canCreate = permission.can(
+    ProjectPermissionIdentityActions.Create,
+    ProjectPermissionSub.Identity
+  );
+  const can = (action: ProjectPermissionIdentityActions, identityId: string) =>
+    permission.can(action, identitySubject(identityId));
+
+  const columns: DataTableColumn<IdentityRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      sortable: true,
+      grow: true,
+      render: (row) => {
+        if (isRestricted(row)) return false;
+        const lockout = lockoutText(row.identity);
+        return (
+          <RowLink
+            link={go.link(accessLinks.projectIdentity(scope, row.identity.id))}
+            title={row.identity.name}
+          >
+            {row.identity.name}
+            {lockout && (
+              <span className={accessStyles.linkBadges}>
+                <LockedBadge label={lockout} />
+              </span>
+            )}
+          </RowLink>
+        );
+      }
+    },
+    {
+      id: "role",
+      header: `${accessLabel(scope.projectType, "role")}`,
+      grow: true,
+      render: (row) => !isRestricted(row) && <RoleBadges roles={row.roles} />
+    },
+    {
+      id: "managed",
+      header: "Managed by",
+      render: (row) => !isRestricted(row) && <ManagedByBadge identity={row.identity} />
+    }
+  ];
+
+  const rowActions: DataTableRowActions<IdentityRow> = {
+    renderMenu: (row) => {
+      if (isRestricted(row)) return null;
+      const { identity } = row;
+      let removeReason: string | undefined;
+      if (!can(ProjectPermissionIdentityActions.Delete, identity.id)) removeReason = RESTRICTED;
+      else if (isProjectManaged(identity) && identity.hasDeleteProtection)
+        removeReason = DELETE_PROTECTED;
+      return (
+        <>
+          {isProjectManaged(identity) && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Icon name="key" />
+                Manage auth methods
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {(identity.authMethods ?? []).map((method) => (
+                  <DropdownMenuItem
+                    key={method}
+                    onSelect={() => {
+                      setAuthFor(identity.id);
+                      flows.view(method);
+                    }}
+                  >
+                    <ProviderLabel kind="identity-auth" value={method} size="sm" />
+                    {identity.activeLockoutAuthMethods?.includes(method) && <Icon name="lock" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuItem
+                  disabled={!can(ProjectPermissionIdentityActions.EditAuth, identity.id)}
+                  description={
+                    can(ProjectPermissionIdentityActions.EditAuth, identity.id)
+                      ? undefined
+                      : RESTRICTED
+                  }
+                  onSelect={() => {
+                    setAuthFor(identity.id);
+                    flows.add();
+                  }}
+                >
+                  <Icon name="plus" />
+                  Add auth method
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          <DropdownMenuItem
+            disabled={!can(ProjectPermissionIdentityActions.AssumePrivileges, identity.id)}
+            description={
+              can(ProjectPermissionIdentityActions.AssumePrivileges, identity.id)
+                ? undefined
+                : RESTRICTED
+            }
+            onSelect={() => setAssuming(identity.id)}
+          >
+            <Icon name="user" />
+            Assume privileges
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={Boolean(removeReason)}
+            description={removeReason}
+            onSelect={() => setRemoving(row)}
+          >
+            <Icon name="trash" />
+            {isProjectManaged(identity)
+              ? "Delete machine identity"
+              : `Remove from ${accessNoun(scope.projectType)}`}
+          </DropdownMenuItem>
+        </>
+      );
+    }
+  };
+
+  const searching = Boolean(debouncedSearch.trim() || roleFilter.length);
+
+  return (
+    <Stack gap="toolbar">
+      <FilterBar
+        label={`${accessLabel(scope.projectType, "machine identity")} filters`}
+        fields={[
+          {
+            key: "role",
+            label: `${accessLabel(scope.projectType, "role")}`,
+            type: "multi-select",
+            options: projectRoles.map((role) => ({ value: role.slug, label: role.name }))
+          }
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          setPage(1);
+        }}
+        search={
+          <Input
+            icon="search"
+            aria-label={`Search ${accessLabel(scope.projectType, "machine identities").toLowerCase()} by name...`}
+            placeholder={`Search ${accessLabel(scope.projectType, "machine identities").toLowerCase()} by name...`}
+            slashShortcut
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+          />
+        }
+        actions={
+          <Gate allowed={canCreate}>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabled={!canCreate}
+              onClick={() => setAdding(true)}
+            >
+              {`Add machine identity to ${accessNoun(scope.projectType)}`}
+            </Button>
+          </Gate>
+        }
+      />
+      <DataTable
+        filtered={searching}
+        label={`${accessLabel(scope.projectType, "machine identities")}`}
+        rows={tableRows}
+        columns={columns}
+        rowActions={rowActions}
+        getRowId={(row) => (isRestricted(row) ? row.restrictedId : row.identity.id)}
+        rowLabel={(row) => (isRestricted(row) ? "Restricted machine identity" : row.identity.name)}
+        getRowRestricted={(row) => (isRestricted(row) ? "Restricted machine identity" : undefined)}
+        loading={isPending}
+        loadingRows={10}
+        sort={sort}
+        onSortChange={(next) => {
+          setSort(next);
+          setPage(1);
+        }}
+        empty={
+          (Boolean(identitiesError) && (
+            <EmptyState
+              ghost={false}
+              size="sm"
+              icon="alert"
+              title="Couldn't load machine identities"
+            />
+          )) ||
+          (searching ? (
+            <EmptyState size="sm" icon="search" title="No machine identities match search" />
+          ) : (
+            <EmptyState
+              size="sm"
+              icon="machine"
+              title={`No machine identities have been added to ${accessThis(scope.projectType)}`}
+            />
+          ))
+        }
+        pagination={
+          !isPending && totalCount > 0 ? (
+            <Pagination
+              label="Machine identity pages"
+              variant="compact"
+              page={page}
+              total={totalCount}
+              pageSize={perPage}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPerPage(size);
+                setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+      />
+      <AddProjectIdentitySheet projectId={projectId} open={adding} onOpenChange={setAdding} />
+      <AssumePrivilegesDialog
+        orgId={orgId}
+        projectId={projectId}
+        identityId={assuming}
+        onOpenChange={(open) => !open && setAssuming(undefined)}
+      />
+      <IdentityRemovalDialog
+        projectId={projectId}
+        identity={removing?.identity}
+        from="list"
+        onOpenChange={(open) => !open && setRemoving(undefined)}
+      />
+      {flows.overlays}
+    </Stack>
+  );
+};

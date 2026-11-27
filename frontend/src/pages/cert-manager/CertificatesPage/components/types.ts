@@ -1,8 +1,7 @@
 import { z } from "zod";
 
+import { getCertificateImportReference } from "@app/helpers/certificateImportLinkage";
 import { CaType } from "@app/hooks/api/ca/enums";
-
-import { getCertificateImportReference } from "./certificate-import-linkage";
 
 export const certificateImportSchema = z
   .object({

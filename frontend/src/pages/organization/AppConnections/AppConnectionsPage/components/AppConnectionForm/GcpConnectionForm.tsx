@@ -31,13 +31,11 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { useScopeVariant, useToggle } from "@app/hooks";
 import { GcpConnectionMethod, TGcpConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { gcpConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { useAppConnectionForm } from "./AppConnectionFormContext";
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import {
   FederatedCredentialValue,
   GENERATED_VALUE_BORDER
@@ -59,10 +57,6 @@ const parseWorkloadIdentityProvider = (workloadIdentityProvider: string) => {
   return { projectNumber, poolId, providerId };
 };
 
-const PROJECT_NUMBER_PATTERN = /^[0-9]{1,20}$/;
-const POOL_OR_PROVIDER_ID_PATTERN = /^[a-z0-9-]{4,32}$/;
-const POOL_OR_PROVIDER_ID_RULE = "Use 4 to 32 lowercase letters, digits, and hyphens";
-
 type TWorkloadIdentityProviderParts = { projectNumber: string; poolId: string; providerId: string };
 
 const toWorkloadIdentityProvider = ({
@@ -76,49 +70,6 @@ const toWorkloadIdentityProvider = ({
 // getRandomValues rather than randomUUID, which browsers only expose over HTTPS or localhost.
 const randomGcpId = () =>
   `infisical-${Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.GCP)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(GcpConnectionMethod.ServiceAccountImpersonation),
-    credentials: z.object({
-      serviceAccountEmail: z.string().email().trim().min(1, "Service account email required")
-    })
-  }),
-  rootSchema.extend({
-    method: z.literal(GcpConnectionMethod.WorkloadIdentityFederation),
-    credentials: z.object({
-      projectNumber: z
-        .string()
-        .trim()
-        .min(1, "Project number is required")
-        .regex(PROJECT_NUMBER_PATTERN, "Use the project number, which is digits only"),
-      poolId: z
-        .string()
-        .trim()
-        .min(1, "Pool ID is required")
-        .regex(POOL_OR_PROVIDER_ID_PATTERN, POOL_OR_PROVIDER_ID_RULE),
-      providerId: z
-        .string()
-        .trim()
-        .min(1, "Provider ID is required")
-        .regex(POOL_OR_PROVIDER_ID_PATTERN, POOL_OR_PROVIDER_ID_RULE),
-      serviceAccountEmail: z
-        .union([
-          z.literal(""),
-          z
-            .string()
-            .trim()
-            .email("Enter a valid service account email")
-            .max(254, "Service account email cannot exceed 254 characters")
-        ])
-        .optional()
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 

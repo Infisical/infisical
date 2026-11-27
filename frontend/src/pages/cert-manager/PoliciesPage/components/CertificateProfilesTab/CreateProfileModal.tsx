@@ -42,6 +42,18 @@ import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import {
+  CertPolicyState,
+  CertSubjectAlternativeNameType,
+  CertSubjectAttributeType,
+  mapPolicyKeyAlgorithmToApi,
+  mapPolicySignatureAlgorithmToApi
+} from "@app/helpers/certificateConstants";
+import {
+  filterUsages,
+  isSupportedSanRuleValue,
+  UNSUPPORTED_REFERENCE_MESSAGE
+} from "@app/helpers/certificateUtils";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import {
@@ -74,19 +86,7 @@ import {
 import { ApiErrorTypes } from "@app/hooks/api/types";
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { normalizeSlugInput } from "@app/lib/schemas";
-import {
-  filterUsages,
-  isSupportedSanRuleValue,
-  UNSUPPORTED_REFERENCE_MESSAGE
-} from "@app/pages/cert-manager/CertificatesPage/components/certificateUtils";
 import { useCaCreation } from "@app/pages/cert-manager/components/useCaCreation";
-import {
-  CertPolicyState,
-  CertSubjectAlternativeNameType,
-  CertSubjectAttributeType,
-  mapPolicyKeyAlgorithmToApi,
-  mapPolicySignatureAlgorithmToApi
-} from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import {

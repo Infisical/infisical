@@ -9,6 +9,7 @@ import { NetlifyOAuthCallbackPageQueryParamsSchema } from "./NetlifyOauthCallbac
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback"
 )({
+  staticData: { v3Alias: true },
   validateSearch: zodValidator(NetlifyOAuthCallbackPageQueryParamsSchema),
   beforeLoad: ({ context, search }) => {
     const orgId = context.organizationId;

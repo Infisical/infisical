@@ -35,17 +35,21 @@ import {
   useGetAppConnectionOption
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { azureClientSecretsConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AzureClientSecretsFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 import { CredentialRotationForm } from "./shared/CredentialRotationForm";
 
-type ClientSecretForm = z.infer<typeof clientSecretSchema>;
-type CertificateForm = z.infer<typeof certificateSchema>;
+type ClientSecretForm = Extract<
+  FormData,
+  { method: AzureClientSecretsConnectionMethod.ClientSecret }
+>;
+type CertificateForm = Extract<
+  FormData,
+  { method: AzureClientSecretsConnectionMethod.Certificate }
+>;
 
 type TInputFormData = ClientSecretForm | CertificateForm;
 
@@ -54,42 +58,6 @@ type Props = {
   onSubmit: (formData: TInputFormData) => Promise<void>;
   projectId: string | undefined | null;
 };
-
-const baseSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.AzureClientSecrets),
-  method: z.nativeEnum(AzureClientSecretsConnectionMethod)
-});
-
-const oauthSchema = baseSchema.extend({
-  tenantId: z.string().trim().min(1, "Tenant ID is required"),
-  method: z.literal(AzureClientSecretsConnectionMethod.OAuth)
-});
-
-const clientSecretSchema = baseSchema.extend({
-  method: z.literal(AzureClientSecretsConnectionMethod.ClientSecret),
-  credentials: z.object({
-    clientSecret: z.string().trim().min(1, "Client Secret is required"),
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required"),
-    clientSecretKeyId: z.string().trim().optional()
-  })
-});
-
-const certificateSchema = baseSchema.extend({
-  method: z.literal(AzureClientSecretsConnectionMethod.Certificate),
-  credentials: z.object({
-    clientId: z.string().trim().min(1, "Client ID is required"),
-    certificateBody: z.string().trim().min(1, "Certificate is required"),
-    privateKey: z.string().trim().min(1, "Private Key is required"),
-    tenantId: z.string().trim().min(1, "Tenant ID is required")
-  })
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  oauthSchema,
-  clientSecretSchema,
-  certificateSchema
-]);
 
 type FormData = z.infer<typeof formSchema>;
 
