@@ -3286,6 +3286,7 @@ export const registerRoutes = async (
     approvalRequestGrantsDAL,
     certificateRequestDAL,
     scepTransactionDAL,
+    pamDeviceVerificationDAL,
     honeyTokenCleanupQueue,
     agentVaultSessionInlineServiceDAL,
     agentVaultSessionInlineSkillDAL

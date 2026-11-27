@@ -113,6 +113,11 @@ describe("evaluateRipplingChecks", () => {
     ]);
   });
 
+  test("fails No Pending OS Update when Rippling doesn't report queued actions", () => {
+    const [, ...rest] = evaluateRipplingChecks(config(), facts({ pending_actions: undefined }), NOW);
+    expect(rest.find((r) => r.check === PamDevicePostureCheck.NoPendingOsUpdate)).toMatchObject({ passed: false });
+  });
+
   test("skips a minimum version not set for the device's platform", () => {
     const results = evaluateRipplingChecks(
       config({ [PamDevicePostureCheck.MinimumOsVersion]: { windows: "10.0.22631" } }),

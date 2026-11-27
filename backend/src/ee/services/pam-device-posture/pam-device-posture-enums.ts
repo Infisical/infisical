@@ -29,6 +29,7 @@ export enum PamDevicePlatform {
 
 export enum PamDevicePostureErrorCode {
   VerificationRequired = "DEVICE_VERIFICATION_REQUIRED",
+  CodeExpired = "DEVICE_VERIFICATION_CODE_EXPIRED",
   PostureFailed = "DEVICE_POSTURE_FAILED"
 }
 

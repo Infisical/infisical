@@ -23,7 +23,7 @@ export type TRipplingDeviceFacts = {
   requesterFound: boolean;
   requesterActive: boolean;
   encrypted: boolean | null;
-  pendingOsUpdate: boolean;
+  pendingOsUpdate: boolean | null;
   lastCheckInAt: string | null;
 };
 
@@ -70,7 +70,7 @@ export const toRipplingDeviceFacts = ({
       requesterFound: Boolean(worker),
       requesterActive: false,
       encrypted: null,
-      pendingOsUpdate: false,
+      pendingOsUpdate: null,
       lastCheckInAt: null
     };
   }
@@ -88,11 +88,13 @@ export const toRipplingDeviceFacts = ({
     requesterFound: Boolean(worker),
     requesterActive: Boolean(worker && !INACTIVE_WORKER_STATUSES.has(worker.status ?? "")),
     encrypted: device.is_encrypted,
-    pendingOsUpdate: (device.pending_actions ?? []).some(
-      (action) =>
-        action.action_type === PENDING_OS_UPDATE_ACTION &&
-        !FINISHED_ACTION_STATES.has((action.state ?? "").toUpperCase())
-    ),
+    pendingOsUpdate: device.pending_actions
+      ? device.pending_actions.some(
+          (action) =>
+            action.action_type === PENDING_OS_UPDATE_ACTION &&
+            !FINISHED_ACTION_STATES.has((action.state ?? "").toUpperCase())
+        )
+      : null,
     lastCheckInAt: device.last_checkin_at
   };
 };
@@ -198,14 +200,10 @@ export const evaluateRipplingChecks = (
   }
 
   if (checks[PamDevicePostureCheck.NoPendingOsUpdate]) {
-    results.push(
-      check(
-        provider,
-        PamDevicePostureCheck.NoPendingOsUpdate,
-        !facts.pendingOsUpdate,
-        facts.pendingOsUpdate ? "Rippling has an OS update queued for this device." : "No OS update is queued."
-      )
-    );
+    let detail = "No OS update is queued.";
+    if (facts.pendingOsUpdate === null) detail = "Rippling didn't report this device's queued actions.";
+    else if (facts.pendingOsUpdate) detail = "Rippling has an OS update queued for this device.";
+    results.push(check(provider, PamDevicePostureCheck.NoPendingOsUpdate, facts.pendingOsUpdate === false, detail));
   }
 
   const checkIn = checks[PamDevicePostureCheck.RecentCheckIn];
@@ -266,7 +264,8 @@ export const getDevicePostureProviderNames = (policy: TPamDevicePosturePolicy | 
 
 export const describeDevice = (facts: TDevicePostureFacts, serial: string) => {
   const found = Object.values(facts).find(
-    (entry): entry is { facts: TRipplingDeviceFacts } => "facts" in entry && entry.facts.found
+    (entry): entry is { facts: TRipplingDeviceFacts } =>
+      "facts" in entry && entry.facts.found && entry.facts.assignedToRequester
   )?.facts;
   return {
     serial,

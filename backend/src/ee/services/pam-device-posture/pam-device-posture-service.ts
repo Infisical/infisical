@@ -65,7 +65,7 @@ type TPamDevicePostureServiceFactoryDep = {
   pamPermissionService: Pick<TPamPermissionService, "getPamPermission" | "assertAccountAccess" | "canAccessAccount">;
   projectPermissionService: Pick<TProjectPermissionService, "getProjectPermission">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
-  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "getActiveGrants">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "getActiveGrant">;
   autoApprovalService: Pick<TAutoApprovalServiceFactory, "findByPolicyIds">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -99,11 +99,11 @@ const getGrantDeviceSerialNumber = (attributes: unknown) => {
   return typeof serial === "string" && serial ? serial : null;
 };
 
-// Access is bound only when every active grant is; one unbound grant allows any device
-export const getBoundSerialNumbers = (grants: { attributes?: unknown }[]) => {
-  const serials = grants.map((grant) => getGrantDeviceSerialNumber(grant.attributes));
-  if (!serials.length || serials.some((serial) => !serial)) return null;
-  return [...new Set(serials as string[])];
+// The same grant session launch uses for its duration, so a device can't borrow another grant's expiry
+export const getBoundSerialNumbers = (grant: { attributes?: unknown; expiresAt?: Date | null } | null) => {
+  if (!grant || (grant.expiresAt && new Date(grant.expiresAt) <= new Date())) return null;
+  const serial = getGrantDeviceSerialNumber(grant.attributes);
+  return serial ? [serial] : null;
 };
 
 const CLI_UPGRADE_HINT = "If the Infisical CLI doesn't offer a device check, update it to the latest version.";
@@ -165,6 +165,19 @@ export const enforceDevicePosture = async (
     throw requireVerification(account.id, accessType, `${message} The device check you sent has expired.`);
   }
 
+  // A check made under earlier settings, or with none, must still pass the template's current policy
+  if (
+    templatePolicy &&
+    row.status === PamDeviceVerificationStatus.Passed &&
+    !evaluateDevicePosture(templatePolicy, (row.facts as TDevicePostureFacts | null) ?? {}).passed
+  ) {
+    throw requireVerification(
+      account.id,
+      accessType,
+      `${message} The device check you sent doesn't cover the account's current device posture settings.`
+    );
+  }
+
   if (row.status !== PamDeviceVerificationStatus.Passed) {
     throw new ForbiddenRequestError({
       message: "This device doesn't meet the account's device posture policy.",
@@ -174,7 +187,7 @@ export const enforceDevicePosture = async (
   }
   if (boundSerialNumbers?.length && !boundSerialNumbers.includes(row.deviceSerialNumber ?? "")) {
     throw new ForbiddenRequestError({
-      message: `This access was approved for the device with serial ${boundSerialNumbers.join(" or ")}.`,
+      message: "This isn't the device the request was approved for.",
       name: PamDevicePostureErrorCode.PostureFailed,
       details: { code: PamDevicePostureErrorCode.PostureFailed, verification: toVerificationResponse(row) }
     });
@@ -232,13 +245,13 @@ export const pamDevicePostureServiceFactory = ({
     accessType: PamAccessType
   ) => {
     if (!account.folderId) return null;
-    const grants = await approvalPolicyService.getActiveGrants(
+    const grant = await approvalPolicyService.getActiveGrant(
       ApprovalPolicyType.PamAccess,
       account.projectId,
       { id: userId, type: ActorType.USER },
       { accountId: account.id, folderId: account.folderId, accessType }
     );
-    return getBoundSerialNumbers(grants);
+    return getBoundSerialNumbers(grant);
   };
 
   const lookupFacts = async (
@@ -342,7 +355,7 @@ export const pamDevicePostureServiceFactory = ({
         passed: matches,
         detail: matches
           ? "This is the device the request was approved for."
-          : `Access was approved for the device with serial ${boundSerialNumbers.join(" or ")}.`
+          : "This isn't the device the request was approved for."
       });
       if (!matches) status = PamDeviceVerificationStatus.Failed;
     }
@@ -487,7 +500,10 @@ export const pamDevicePostureServiceFactory = ({
       throw new ConflictError({ message: "That code was already used. Start again from your browser." });
     }
     if (new Date(row.expiresAt).getTime() < Date.now()) {
-      throw new BadRequestError({ message: "That code expired. Start again from your browser." });
+      throw new BadRequestError({
+        name: PamDevicePostureErrorCode.CodeExpired,
+        message: "That code expired. Start again from your browser."
+      });
     }
 
     const account = await loadAccount(row.accountId, projectId);

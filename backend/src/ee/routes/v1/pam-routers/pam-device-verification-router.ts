@@ -49,7 +49,6 @@ export const registerPamDeviceVerificationRouter = async (server: FastifyZodProv
       event: {
         type: EventType.PAM_DEVICE_POSTURE_CHECK,
         metadata: {
-          verificationId: row.id,
           accountId: account.id,
           accountName: account.name,
           folderId: account.folderId ?? null,

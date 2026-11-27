@@ -20,7 +20,6 @@ import {
   IconButton,
   Input
 } from "@app/components/v3";
-import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -243,13 +242,9 @@ const ProviderCard = ({
   onRemove: () => void;
 }) => {
   const idPrefix = useId();
-  const { currentProject } = useProject();
   const { app, kind, requirement } = PROVIDERS[config.provider];
   const { name, image } = APP_CONNECTION_MAP[app];
-  const { data: connections = [], isPending } = useListAvailableAppConnections(
-    app,
-    currentProject.id
-  );
+  const { data: connections = [], isPending } = useListAvailableAppConnections(app, undefined);
   const connectionCreation = useOrgConnectionCreation<TAvailableAppConnection>(app, (connection) =>
     onChange({ ...config, connectionId: connection.id })
   );

@@ -3,6 +3,7 @@ import { TAgentVaultSessionInlineSkillDALFactory } from "@app/ee/services/agent-
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { THoneyTokenCleanupQueueFactory } from "@app/ee/services/honey-token/honey-token-cleanup-queue";
+import { TPamDeviceVerificationDALFactory } from "@app/ee/services/pam-device-posture/pam-device-verification-dal";
 import { TScepTransactionDALFactory } from "@app/ee/services/pki-scep/pki-scep-transaction-dal";
 import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
@@ -43,6 +44,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "markExpiredGrants">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "markExpiredApprovalRequests">;
   scepTransactionDAL: Pick<TScepTransactionDALFactory, "pruneExpiredTransactions">;
+  pamDeviceVerificationDAL: Pick<TPamDeviceVerificationDALFactory, "pruneExpired">;
   honeyTokenCleanupQueue: Pick<THoneyTokenCleanupQueueFactory, "queueFolderlessHoneyTokenCleanup">;
   agentVaultSessionInlineServiceDAL: Pick<TAgentVaultSessionInlineServiceDALFactory, "deleteSecretsOfEndedSessions">;
   agentVaultSessionInlineSkillDAL: Pick<TAgentVaultSessionInlineSkillDALFactory, "deleteFilesOfEndedSessions">;
@@ -70,6 +72,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   approvalRequestGrantsDAL,
   certificateRequestDAL,
   scepTransactionDAL,
+  pamDeviceVerificationDAL,
   honeyTokenCleanupQueue,
   agentVaultSessionInlineServiceDAL,
   agentVaultSessionInlineSkillDAL
@@ -104,6 +107,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         await userNotificationDAL.pruneNotifications();
         await keyValueStoreDAL.pruneExpiredKeys();
         await scepTransactionDAL.pruneExpiredTransactions();
+        await pamDeviceVerificationDAL.pruneExpired();
         await identityAccessTokenRevocationDAL.removeExpiredRevocations();
       }
     });

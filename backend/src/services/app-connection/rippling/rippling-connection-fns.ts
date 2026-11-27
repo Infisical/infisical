@@ -2,6 +2,7 @@ import { isAxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { RipplingConnectionMethod } from "./rippling-connection-enums";
@@ -15,6 +16,7 @@ import {
 const RIPPLING_API_URL = "https://rest.ripplingapis.com";
 const RIPPLING_REQUEST_TIMEOUT_MS = 15_000;
 const RIPPLING_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+const RIPPLING_MAX_PAGES = 5;
 const RIPPLING_REQUIRED_SCOPES_MESSAGE = "The token needs the devices.read and workers.read scopes";
 
 const RipplingResource = {
@@ -94,13 +96,23 @@ const fetchResults = async <T>(
   resource: TRipplingResource,
   params: Record<string, string | number | undefined>
 ) => {
-  let data: TRipplingListResponse<T> | undefined;
-  try {
-    data = await ripplingRequest<TRipplingListResponse<T>>(config, resource.path, params);
-  } catch (error) {
-    throw new BadRequestError({ message: getRipplingErrorMessage(error, resource) });
+  const results: T[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < RIPPLING_MAX_PAGES; page += 1) {
+    let data: TRipplingListResponse<T> | undefined;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      data = await ripplingRequest<TRipplingListResponse<T>>(config, resource.path, { ...params, cursor });
+    } catch (error) {
+      throw new BadRequestError({ message: getRipplingErrorMessage(error, resource) });
+    }
+    if (Array.isArray(data?.results)) results.push(...data.results);
+    const nextLink = data?.next_link;
+    cursor = nextLink ? (new URL(nextLink, RIPPLING_API_URL).searchParams.get("cursor") ?? undefined) : undefined;
+    if (!cursor) return results;
   }
-  return Array.isArray(data?.results) ? data.results : [];
+  logger.warn(`Rippling ${resource.path} lookup stopped after ${RIPPLING_MAX_PAGES} pages`);
+  return results;
 };
 
 // A re-enrolled serial can have an old decommissioned record too, so the enrolled one wins

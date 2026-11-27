@@ -12,6 +12,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
+      t.index("projectId");
 
       t.uuid("accountId").notNullable();
       t.foreign("accountId").references("id").inTable(TableName.PamAccount).onDelete("CASCADE");

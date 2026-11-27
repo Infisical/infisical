@@ -65,6 +65,24 @@ describe("getRipplingDeviceBySerial", () => {
     expect(config?.headers).toMatchObject({ Authorization: "Bearer tok", Accept: "application/json" });
   });
 
+  test("follows next_link and prefers the enrolled record for a re-enrolled serial", async () => {
+    mockedGet
+      .mockResolvedValueOnce({
+        data: {
+          results: [{ id: "old", serial_number: "C02XYZ", enrollment_status: "UNENROLLED" }],
+          next_link: "https://rest.ripplingapis.com/devices/?cursor=page2"
+        }
+      })
+      .mockResolvedValueOnce({
+        data: { results: [{ id: "new", serial_number: "C02XYZ", enrollment_status: "ENROLLED" }], next_link: null }
+      });
+
+    const device = await getRipplingDeviceBySerial(connection, "C02XYZ");
+
+    expect(device?.id).toBe("new");
+    expect(mockedGet.mock.calls[1][1]?.params).toMatchObject({ cursor: "page2" });
+  });
+
   test("returns null when no device matches", async () => {
     mockedGet.mockResolvedValue({ data: { results: [], next_link: null } });
     expect(await getRipplingDeviceBySerial(connection, "NOPE")).toBeNull();

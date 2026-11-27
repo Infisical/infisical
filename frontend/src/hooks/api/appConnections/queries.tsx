@@ -124,7 +124,7 @@ export const useListAvailableAppConnectionsForApps = (apps: AppConnection[], pro
 
 export const useListAvailableAppConnections = (
   app: AppConnection,
-  projectId: string,
+  projectId: string | undefined,
   options?: Omit<
     UseQueryOptions<
       TAvailableAppConnection[],

@@ -7689,7 +7689,6 @@ interface PamAccountSetRotationAccountEvent {
 interface PamDevicePostureCheckEvent {
   type: EventType.PAM_DEVICE_POSTURE_CHECK;
   metadata: {
-    verificationId: string;
     accountId: string;
     accountName: string;
     folderId?: string | null;
