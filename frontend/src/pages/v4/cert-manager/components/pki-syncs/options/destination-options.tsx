@@ -25,19 +25,25 @@ const AUTOMATIC = "automatic";
 
 const toFieldError = (message?: string) => [message ? { message } : undefined];
 
+let lastRowKey = 0;
+const nextRowKey = () => {
+  lastRowKey += 1;
+  return lastRowKey;
+};
+
 const useDraftList = <T,>(name: string) => {
   const field = useDraftField<T[] | undefined>(name);
   const items = field.value ?? [];
-  const [keys, setKeys] = useState(() => items.map(() => crypto.randomUUID()));
+  const [keys, setKeys] = useState(() => items.map(() => nextRowKey()));
   const rowKeys =
     keys.length >= items.length
       ? keys
-      : [...keys, ...items.slice(keys.length).map(() => crypto.randomUUID())];
+      : [...keys, ...items.slice(keys.length).map(() => nextRowKey())];
   return {
     items,
     keys: rowKeys,
     append: (item: T) => {
-      setKeys([...rowKeys.slice(0, items.length), crypto.randomUUID()]);
+      setKeys([...rowKeys.slice(0, items.length), nextRowKey()]);
       field.onChange([...items, item]);
     },
     remove: (index: number) => {
