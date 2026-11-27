@@ -1,48 +1,35 @@
 import { useEffect, useRef } from "react";
-import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { StatusText, SmallText } from "@infisical/cipher/ui/text";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
-import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 import type { TAwsListener } from "@app/hooks/api/pkiSyncs/types";
 
 import { RegionCombobox } from "../../../../components/region-combobox";
 import { useV4Adapter } from "../../../../data/adapters";
 import { PkiSyncConnectionField } from "../connection-field";
-import { errorOf } from "../fields";
+import { useDraftField, useDraftValue, usePkiSyncDraft } from "../fields";
 import { fetchErrorOf, ListField } from "./list-field";
 
-type TAwsRegionForm = TPkiSyncForm & {
-  destination: PkiSync.AwsCertificateManager | PkiSync.AwsSecretsManager;
-};
-
 function RegionSelect({ help, disabled }: { help: string; disabled?: boolean }) {
-  const { control } = useFormContext<TAwsRegionForm>();
+  const field = useDraftField<string | undefined>("destinationConfig.region");
   return (
-    <Controller
-      control={control}
-      name="destinationConfig.region"
-      render={({ field, fieldState: { error } }) => (
-        <Field label="AWS region" help={help} error={errorOf(error)}>
-          <RegionCombobox
-            label="AWS region"
-            value={field.value ?? ""}
-            onValueChange={field.onChange}
-            placeholder="Select an AWS region"
-            disabled={disabled}
-            invalid={Boolean(error)}
-          />
-        </Field>
-      )}
-    />
+    <Field label="AWS region" help={help} error={field.error}>
+      <RegionCombobox
+        label="AWS region"
+        value={field.value ?? ""}
+        onValueChange={field.onChange}
+        placeholder="Select an AWS region"
+        disabled={disabled}
+        invalid={Boolean(field.error)}
+      />
+    </Field>
   );
 }
 
 export function AwsRegionFields({ help }: { help: string }) {
-  const { setValue } = useFormContext<TAwsRegionForm>();
+  const { setValue } = usePkiSyncDraft();
   return (
     <Stack gap={16}>
       <PkiSyncConnectionField onChange={() => setValue("destinationConfig.region", "")} />
@@ -51,8 +38,6 @@ export function AwsRegionFields({ help }: { help: string }) {
   );
 }
 
-type TElbForm = TPkiSyncForm & { destination: PkiSync.AwsElasticLoadBalancer };
-
 const toListener = (listener: TAwsListener) => ({
   listenerArn: listener.listenerArn,
   port: listener.port,
@@ -60,18 +45,21 @@ const toListener = (listener: TAwsListener) => ({
 });
 
 export function AwsElasticLoadBalancerFields() {
-  const { control, setValue } = useFormContext<TElbForm>();
+  const { setValue } = usePkiSyncDraft();
   const adapter = useV4Adapter("pkiSyncs");
 
-  const connectionId = useWatch({ control, name: "connection.id" });
-  const region = useWatch({ control, name: "destinationConfig.region" });
-  const loadBalancerArn = useWatch({ control, name: "destinationConfig.loadBalancerArn" });
+  const connectionId = useDraftValue<string>("connection.id");
+  const region = useDraftValue<string>("destinationConfig.region");
+  const loadBalancerArn = useDraftValue<string>("destinationConfig.loadBalancerArn");
+  const listenersField = useDraftField<TAwsListener[] | undefined>("destinationConfig.listeners");
+  const fields = listenersField.value ?? [];
 
   const isInitialMount = useRef(true);
   const previousRegion = useRef(region);
   const previousLoadBalancerArn = useRef(loadBalancerArn);
 
-  const { fields, replace } = useFieldArray({ control, name: "destinationConfig.listeners" });
+  const replace = (next: ReturnType<typeof toListener>[]) =>
+    setValue("destinationConfig.listeners", next);
 
   const loadBalancersEnabled = Boolean(connectionId && region);
   const loadBalancers = adapter.useAwsLoadBalancers(
@@ -96,29 +84,28 @@ export function AwsElasticLoadBalancerFields() {
 
     if (region && previousRegion.current && region !== previousRegion.current) {
       setValue("destinationConfig.loadBalancerArn", "");
-      replace([]);
+      setValue("destinationConfig.listeners", []);
     }
     previousRegion.current = region;
-  }, [region, loadBalancerArn, setValue, replace]);
+  }, [region, loadBalancerArn, setValue]);
 
   useEffect(() => {
     if (!loadBalancerArn || !listenerList || listenerList.length === 0) return;
 
     if (previousLoadBalancerArn.current && loadBalancerArn !== previousLoadBalancerArn.current) {
-      replace(listenerList.map(toListener));
+      setValue("destinationConfig.listeners", listenerList.map(toListener));
       previousLoadBalancerArn.current = loadBalancerArn;
       return;
     }
 
     previousLoadBalancerArn.current = loadBalancerArn;
 
-    const hasValidListeners =
-      fields.length > 0 &&
-      fields.some((selected) =>
-        listenerList.some((listener) => listener.listenerArn === selected.listenerArn)
-      );
-    if (!hasValidListeners) replace(listenerList.map(toListener));
-  }, [listenerList, loadBalancerArn, fields, replace]);
+    const selected = listenersField.value ?? [];
+    const hasValidListeners = selected.some((entry) =>
+      listenerList.some((listener) => listener.listenerArn === entry.listenerArn)
+    );
+    if (!hasValidListeners) setValue("destinationConfig.listeners", listenerList.map(toListener));
+  }, [listenerList, loadBalancerArn, listenersField.value, setValue]);
 
   const selectedArns = new Set(fields.map((listener) => listener.listenerArn));
 
@@ -162,25 +149,9 @@ export function AwsElasticLoadBalancerFields() {
           replace([]);
         }}
       />
-      <Controller
-        control={control}
-        name="destinationConfig.region"
-        render={({ field, fieldState: { error } }) => (
-          <Field
-            label="AWS region"
-            help="The AWS region where your Elastic Load Balancers are located."
-            error={errorOf(error)}
-          >
-            <RegionCombobox
-              label="AWS region"
-              value={field.value ?? ""}
-              onValueChange={field.onChange}
-              placeholder="Select an AWS region"
-              disabled={!connectionId}
-              invalid={Boolean(error)}
-            />
-          </Field>
-        )}
+      <RegionSelect
+        help="The AWS region where your Elastic Load Balancers are located."
+        disabled={!connectionId}
       />
       <ListField
         name="destinationConfig.loadBalancerArn"
@@ -202,20 +173,14 @@ export function AwsElasticLoadBalancerFields() {
         onSelect={() => replace([])}
       />
       {loadBalancerArn && (
-        <Controller
-          control={control}
-          name="destinationConfig.listeners"
-          render={({ fieldState: { error } }) => (
-            <Field
-              group
-              label="HTTPS/TLS listeners"
-              help="The listeners that receive the certificate. You can set a default certificate from the certificates table after creating the sync."
-              error={errorOf(error)}
-            >
-              {renderListeners()}
-            </Field>
-          )}
-        />
+        <Field
+          group
+          label="HTTPS/TLS listeners"
+          help="The listeners that receive the certificate. You can set a default certificate from the certificates table after creating the sync."
+          error={listenersField.error}
+        >
+          {renderListeners()}
+        </Field>
       )}
     </Stack>
   );

@@ -1,11 +1,8 @@
-import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
-import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 import {
   GCP_CERTIFICATE_MANAGER_GLOBAL_LOCATION,
   GCP_CERTIFICATE_MANAGER_SCOPES,
@@ -14,23 +11,24 @@ import {
 
 import { useV4Adapter } from "../../../../data/adapters";
 import { PkiSyncConnectionField } from "../connection-field";
-import { errorOf, TextField } from "../fields";
+import { TextField, useDraftField, useDraftValue, usePkiSyncDraft } from "../fields";
 import { fetchErrorOf, ListField } from "./list-field";
 
-type TGcpForm = TPkiSyncForm & { destination: PkiSync.GcpCertificateManager };
-
 export function GcpCertificateManagerFields({ isUpdate }: { isUpdate?: boolean }) {
-  const { control, setValue } = useFormContext<TGcpForm>();
+  const { setValue } = usePkiSyncDraft();
   const adapter = useV4Adapter("pkiSyncs");
 
-  const connectionId = useWatch({ control, name: "connection.id" });
-  const gcpProjectId = useWatch({ control, name: "destinationConfig.gcpProjectId" });
-  const location = useWatch({ control, name: "destinationConfig.location" });
-  const scope = useWatch({ control, name: "destinationConfig.scope" });
-  const certificateMapBinding = useWatch({
-    control,
-    name: "destinationConfig.certificateMapBinding"
-  });
+  const connectionId = useDraftValue<string>("connection.id");
+  const gcpProjectId = useDraftValue<string>("destinationConfig.gcpProjectId");
+  const location = useDraftValue<string>("destinationConfig.location");
+  const scopeField = useDraftField<GcpCertificateManagerScope | undefined>(
+    "destinationConfig.scope"
+  );
+  const scope = scopeField.value;
+  const certificateMapBinding = useDraftValue<{ certificateMap: string } | undefined>(
+    "destinationConfig.certificateMapBinding"
+  );
+  const scopeValue = scope ?? GcpCertificateManagerScope.Default;
 
   const isGlobal = location === GCP_CERTIFICATE_MANAGER_GLOBAL_LOCATION;
   const immutableFieldHelpText = isUpdate
@@ -126,42 +124,30 @@ export function GcpCertificateManagerFields({ isUpdate }: { isUpdate?: boolean }
             setValue("destinationConfig.scope", GcpCertificateManagerScope.Default);
         }}
       />
-      <Controller
-        control={control}
-        name="destinationConfig.scope"
-        defaultValue={GcpCertificateManagerScope.Default}
-        render={({ field, fieldState: { error } }) => {
-          const value =
-            (field.value as GcpCertificateManagerScope | undefined) ??
-            GcpCertificateManagerScope.Default;
-          return (
-            <Field
-              label="Scope"
-              description={`${GCP_CERTIFICATE_MANAGER_SCOPES[value].description}${immutableFieldHelpText ? ` ${immutableFieldHelpText}` : ""}`}
-              error={errorOf(error)}
-            >
-              <Select
-                aria-label="Scope"
-                value={value}
-                onValueChange={(nextScope) => {
-                  field.onChange(nextScope);
-                  if (nextScope !== GcpCertificateManagerScope.Default)
-                    setValue("destinationConfig.certificateMapBinding", undefined);
-                }}
-                options={Object.values(GcpCertificateManagerScope)
-                  .filter((option) => isGlobal || option !== GcpCertificateManagerScope.AllRegions)
-                  .map((option) => ({
-                    value: option,
-                    label: GCP_CERTIFICATE_MANAGER_SCOPES[option].label
-                  }))}
-                placeholder="Select a scope"
-                disabled={isUpdate || !location}
-                invalid={Boolean(error)}
-              />
-            </Field>
-          );
-        }}
-      />
+      <Field
+        label="Scope"
+        description={`${GCP_CERTIFICATE_MANAGER_SCOPES[scopeValue].description}${immutableFieldHelpText ? ` ${immutableFieldHelpText}` : ""}`}
+        error={scopeField.error}
+      >
+        <Select
+          aria-label="Scope"
+          value={scopeValue}
+          onValueChange={(nextScope) => {
+            scopeField.onChange(nextScope);
+            if (nextScope !== GcpCertificateManagerScope.Default)
+              setValue("destinationConfig.certificateMapBinding", undefined);
+          }}
+          options={Object.values(GcpCertificateManagerScope)
+            .filter((option) => isGlobal || option !== GcpCertificateManagerScope.AllRegions)
+            .map((option) => ({
+              value: option,
+              label: GCP_CERTIFICATE_MANAGER_SCOPES[option].label
+            }))}
+          placeholder="Select a scope"
+          disabled={isUpdate || !location}
+          invalid={Boolean(scopeField.error)}
+        />
+      </Field>
       <Switch
         label="Attach to a certificate map"
         description={certificateMapBindingHelpText}
@@ -170,8 +156,7 @@ export function GcpCertificateManagerFields({ isUpdate }: { isUpdate?: boolean }
         onCheckedChange={(checked) =>
           setValue(
             "destinationConfig.certificateMapBinding",
-            checked ? { certificateMap: "" } : undefined,
-            { shouldDirty: true }
+            checked ? { certificateMap: "" } : undefined
           )
         }
       />

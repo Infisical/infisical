@@ -1,10 +1,8 @@
 import type { ReactNode } from "react";
-import { Controller, type FieldPath } from "react-hook-form";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Field, FieldHelp } from "@infisical/cipher/ui/field";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
 import { buildHostCommandTooltipDescriptions } from "@app/helpers/pkiSyncs";
 import {
   HostCommandVariable,
@@ -12,7 +10,7 @@ import {
   type PkiSyncExportFormat
 } from "@app/hooks/api/pkiSyncs/enums";
 
-import { errorOf, type PkiSyncFieldName, usePkiSyncForm, useWatchedValue } from "../fields";
+import { type PkiSyncFieldName, useDraftField, useDraftValue } from "../fields";
 import { HostCommandInput } from "./host-command-input";
 
 function HostCommandVariablesHelp({
@@ -63,8 +61,8 @@ export function HostCommandField({
   canEditCommand?: boolean;
   action?: ReactNode;
 }) {
-  const { control } = usePkiSyncForm();
-  const exportFormat = useWatchedValue<PkiSyncExportFormat | undefined>("syncOptions.exportFormat");
+  const field = useDraftField<string | undefined>(name);
+  const exportFormat = useDraftValue<PkiSyncExportFormat | undefined>("syncOptions.exportFormat");
   const isKeystore = isKeystoreExportFormat(exportFormat);
   const variables = Object.values(HostCommandVariable).filter(
     (variable) =>
@@ -73,39 +71,31 @@ export function HostCommandField({
   );
 
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field, fieldState: { error } }) => (
-        <Stack gap={8}>
-          <Field
-            label={label}
-            help={
-              <HostCommandVariablesHelp
-                variables={variables}
-                descriptions={buildHostCommandTooltipDescriptions(descriptions)}
-                footer={tooltipFooter}
-              />
-            }
-            description={canEditCommand ? description : noPermissionDescription}
-            error={errorOf(error)}
-          >
-            <HostCommandInput
-              inputRef={field.ref}
-              name={field.name}
-              value={(field.value as string | undefined) ?? ""}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
-              variables={variables}
-              descriptions={descriptions}
-              invalid={Boolean(error)}
-              disabled={!canEditCommand}
-              placeholder={canEditCommand ? placeholder : undefined}
-            />
-          </Field>
-          {action}
-        </Stack>
-      )}
-    />
+    <Stack gap={8}>
+      <Field
+        label={label}
+        help={
+          <HostCommandVariablesHelp
+            variables={variables}
+            descriptions={buildHostCommandTooltipDescriptions(descriptions)}
+            footer={tooltipFooter}
+          />
+        }
+        description={canEditCommand ? description : noPermissionDescription}
+        error={field.error}
+      >
+        <HostCommandInput
+          name={name}
+          value={field.value ?? ""}
+          onChange={field.onChange}
+          variables={variables}
+          descriptions={descriptions}
+          invalid={Boolean(field.error)}
+          disabled={!canEditCommand}
+          placeholder={canEditCommand ? placeholder : undefined}
+        />
+      </Field>
+      {action}
+    </Stack>
   );
 }

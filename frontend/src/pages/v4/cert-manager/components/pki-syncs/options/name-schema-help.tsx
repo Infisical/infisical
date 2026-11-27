@@ -4,11 +4,11 @@ import { Stack } from "@infisical/cipher/ui/layout";
 
 import type { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 
-import { useWatchedValue } from "../fields";
+import { useDraftValue } from "../fields";
 import { usePkiSyncOption } from "../shared";
 
 export function NameSchemaHelp({ children }: { children: ReactNode }) {
-  const destination = useWatchedValue<PkiSync>("destination");
+  const destination = useDraftValue<PkiSync>("destination");
   const { syncOption } = usePkiSyncOption(destination);
   return (
     <FieldHelp label="Name schema placeholders">

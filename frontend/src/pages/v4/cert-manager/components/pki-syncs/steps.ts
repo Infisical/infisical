@@ -1,6 +1,3 @@
-import type { FieldPath } from "react-hook-form";
-
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
 import {
   isPaloAltoNetworksPkiSync,
   PALO_ALTO_NETWORKS_PRIVATE_KEY_NOTE
@@ -21,7 +18,7 @@ export type PkiSyncStep = {
   key: PkiSyncStepKey;
   title: string;
   about: string[];
-  fields: FieldPath<TPkiSyncForm>[];
+  fields: string[];
 };
 
 export const pkiSyncDocsHref = (destination: PkiSync) =>
@@ -83,11 +80,7 @@ export const pkiSyncSteps = ({
   canRunHostCommands: boolean;
   needsTargetHost: boolean;
 }): PkiSyncStep[] => {
-  const step = (
-    key: PkiSyncStepKey,
-    title: string,
-    fields: FieldPath<TPkiSyncForm>[]
-  ): PkiSyncStep => ({
+  const step = (key: PkiSyncStepKey, title: string, fields: string[]): PkiSyncStep => ({
     key,
     title,
     about: pkiSyncAbout(key, { destination, mode: "create" }),
@@ -96,19 +89,15 @@ export const pkiSyncSteps = ({
   return [
     step("destination", "Destination", ["connection", "destinationConfig"]),
     ...(needsTargetHost ? [step("targetHost", "Target host", ["destinationConfig"])] : []),
-    step("options", "Sync options", [
-      "syncOptions",
-      "credentials" as FieldPath<TPkiSyncForm>,
-      "isAutoSyncEnabled"
-    ]),
+    step("options", "Sync options", ["syncOptions", "credentials", "isAutoSyncEnabled"]),
     ...(hasFieldMappings(destination) ? [step("mappings", "Field mappings", ["syncOptions"])] : []),
     step("details", "Details", ["name", "description"]),
     step("certificates", "Certificates", ["filters"]),
     ...(canRunHostCommands
       ? [
           step("hostCommands", "Commands", [
-            "syncOptions.healthCheckCommand" as FieldPath<TPkiSyncForm>,
-            "syncOptions.postSyncCommand" as FieldPath<TPkiSyncForm>
+            "syncOptions.healthCheckCommand",
+            "syncOptions.postSyncCommand"
           ])
         ]
       : []),

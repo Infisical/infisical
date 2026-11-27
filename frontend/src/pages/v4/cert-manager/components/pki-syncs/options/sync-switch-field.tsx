@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
-import { Controller, type FieldPath } from "react-hook-form";
 import { FieldError } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Switch } from "@infisical/cipher/ui/switch";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
-
-import { type PkiSyncFieldName, usePkiSyncForm } from "../fields";
+import { type PkiSyncFieldName, useDraftField } from "../fields";
 
 export function SyncSwitchField({
   name,
@@ -19,24 +16,18 @@ export function SyncSwitchField({
   description?: ReactNode;
   defaultChecked?: boolean;
 }) {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<boolean | undefined>(name);
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field, fieldState: { error } }) => (
-        <Stack gap={4}>
-          <Switch
-            layout="row"
-            label={label}
-            description={description}
-            checked={(field.value as boolean | undefined) ?? defaultChecked}
-            onCheckedChange={field.onChange}
-          />
-          <FieldError errors={[error]} />
-        </Stack>
-      )}
-    />
+    <Stack gap={4}>
+      <Switch
+        layout="row"
+        label={label}
+        description={description}
+        checked={field.value ?? defaultChecked}
+        onCheckedChange={field.onChange}
+      />
+      <FieldError errors={[field.error ? { message: field.error } : undefined]} />
+    </Stack>
   );
 }
 

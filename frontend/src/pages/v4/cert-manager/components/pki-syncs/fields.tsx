@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { Controller, type FieldPath, useFormContext, useWatch } from "react-hook-form";
+import { createContext, type ReactNode, use, useCallback, useMemo, useState } from "react";
 import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -9,16 +8,69 @@ import { Textarea } from "@infisical/cipher/ui/textarea";
 
 import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
 
-export type PkiSyncFieldName = FieldPath<TPkiSyncForm> | (string & {});
+import {
+  type PkiSyncErrors,
+  type PkiSyncFieldName,
+  valueAt,
+  withoutErrorsAt,
+  withValueAt
+} from "./draft-values";
 
-export const usePkiSyncForm = () => useFormContext<TPkiSyncForm>();
+export type { PkiSyncErrors, PkiSyncFieldName } from "./draft-values";
 
-export const useWatchedValue = <T,>(name: PkiSyncFieldName) => {
-  const { control } = usePkiSyncForm();
-  return useWatch({ control, name: name as FieldPath<TPkiSyncForm> }) as T;
+type PkiSyncDraft = {
+  values: TPkiSyncForm;
+  errors: PkiSyncErrors;
+  setValue: (name: PkiSyncFieldName, value: unknown) => void;
 };
 
-export const useConnectionId = () => useWatchedValue<string | undefined>("connection.id");
+const PkiSyncDraftContext = createContext<PkiSyncDraft | null>(null);
+
+export const usePkiSyncDraftState = (initial: () => TPkiSyncForm) => {
+  const [values, setValues] = useState(initial);
+  const [errors, setErrors] = useState<PkiSyncErrors>({});
+  const setValue = useCallback((name: PkiSyncFieldName, value: unknown) => {
+    setValues((current) =>
+      Object.is(valueAt(current, name), value)
+        ? current
+        : (withValueAt(current, name.split("."), value) as TPkiSyncForm)
+    );
+    setErrors((current) => withoutErrorsAt(current, name));
+  }, []);
+  const draft = useMemo<PkiSyncDraft>(
+    () => ({ values, errors, setValue }),
+    [values, errors, setValue]
+  );
+  return { draft, values, setValues, errors, setErrors };
+};
+
+export const PkiSyncDraftProvider = ({
+  draft,
+  children
+}: {
+  draft: PkiSyncDraft;
+  children: ReactNode;
+}) => <PkiSyncDraftContext value={draft}>{children}</PkiSyncDraftContext>;
+
+export const usePkiSyncDraft = () => {
+  const draft = use(PkiSyncDraftContext);
+  if (!draft) throw new Error("usePkiSyncDraft needs a PkiSyncDraftProvider");
+  return draft;
+};
+
+export const useDraftValue = <T,>(name: PkiSyncFieldName) =>
+  valueAt(usePkiSyncDraft().values, name) as T;
+
+export const useDraftField = <T,>(name: PkiSyncFieldName) => {
+  const { values, errors, setValue } = usePkiSyncDraft();
+  return {
+    value: valueAt(values, name) as T,
+    error: errors[name],
+    onChange: (value: unknown) => setValue(name, value)
+  };
+};
+
+export const useConnectionId = () => useDraftValue<string | undefined>("connection.id");
 
 type BaseProps = {
   name: PkiSyncFieldName;
@@ -28,9 +80,6 @@ type BaseProps = {
   optional?: boolean;
   disabled?: boolean;
 };
-
-export const errorOf = (error?: { message?: string; root?: { message?: string } }) =>
-  error?.message ?? error?.root?.message;
 
 export function TextField({
   name,
@@ -55,57 +104,47 @@ export function TextField({
   mono?: boolean;
   onValueChange?: (value: string) => void;
 }) {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<string | number | undefined>(name);
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field, fieldState: { error } }) => (
-        <Field
-          label={label}
-          help={help}
-          description={description}
-          optional={optional}
-          error={errorOf(error)}
-        >
-          {multiline ? (
-            <Textarea
-              ref={field.ref}
-              name={field.name}
-              value={(field.value as string | undefined) ?? ""}
-              onBlur={field.onBlur}
-              onChange={(event) => {
-                field.onChange(event.target.value);
-                onValueChange?.(event.target.value);
-              }}
-              placeholder={placeholder}
-              rows={rows}
-              disabled={disabled}
-              aria-invalid={Boolean(error) || undefined}
-            />
-          ) : (
-            <Input
-              ref={field.ref}
-              name={field.name}
-              value={(field.value as string | number | undefined) ?? ""}
-              onBlur={field.onBlur}
-              onChange={(event) => {
-                const { value } = event.target;
-                field.onChange(numeric && value !== "" ? Number(value) : value);
-                onValueChange?.(value);
-              }}
-              type={numeric ? "number" : "text"}
-              placeholder={placeholder}
-              maxLength={maxLength}
-              disabled={disabled}
-              mono={mono}
-              invalid={Boolean(error)}
-              autoComplete="off"
-            />
-          )}
-        </Field>
+    <Field
+      label={label}
+      help={help}
+      description={description}
+      optional={optional}
+      error={field.error}
+    >
+      {multiline ? (
+        <Textarea
+          name={name}
+          value={(field.value as string | undefined) ?? ""}
+          onChange={(event) => {
+            field.onChange(event.target.value);
+            onValueChange?.(event.target.value);
+          }}
+          placeholder={placeholder}
+          rows={rows}
+          disabled={disabled}
+          aria-invalid={Boolean(field.error) || undefined}
+        />
+      ) : (
+        <Input
+          name={name}
+          value={field.value ?? ""}
+          onChange={(event) => {
+            const { value } = event.target;
+            field.onChange(numeric && value !== "" ? Number(value) : value);
+            onValueChange?.(value);
+          }}
+          type={numeric ? "number" : "text"}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          disabled={disabled}
+          mono={mono}
+          invalid={Boolean(field.error)}
+          autoComplete="off"
+        />
       )}
-    />
+    </Field>
   );
 }
 
@@ -124,34 +163,28 @@ export function SelectField({
   options: readonly SelectOption[];
   onValueChange?: (value: string) => void;
 }) {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<string | undefined>(name);
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field, fieldState: { error } }) => (
-        <Field
-          label={label}
-          help={help}
-          description={description}
-          optional={optional}
-          error={errorOf(error)}
-        >
-          <Select
-            aria-label={typeof label === "string" ? label : undefined}
-            value={(field.value as string | undefined) ?? ""}
-            onValueChange={(value) => {
-              field.onChange(value);
-              onValueChange?.(value);
-            }}
-            options={options}
-            placeholder={placeholder}
-            disabled={disabled}
-            invalid={Boolean(error)}
-          />
-        </Field>
-      )}
-    />
+    <Field
+      label={label}
+      help={help}
+      description={description}
+      optional={optional}
+      error={field.error}
+    >
+      <Select
+        aria-label={typeof label === "string" ? label : undefined}
+        value={field.value ?? ""}
+        onValueChange={(value) => {
+          field.onChange(value);
+          onValueChange?.(value);
+        }}
+        options={options}
+        placeholder={placeholder}
+        disabled={disabled}
+        invalid={Boolean(field.error)}
+      />
+    </Field>
   );
 }
 
@@ -181,40 +214,34 @@ export function ComboField({
   createLabel?: (query: string) => string;
   onValueChange?: (value: string) => void;
 }) {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<unknown>(name);
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field, fieldState: { error } }) => (
-        <Field
-          label={label}
-          help={help}
-          description={description}
-          optional={optional}
-          error={errorOf(error)}
-        >
-          <Combobox
-            label={label}
-            value={field.value === undefined || field.value === null ? "" : String(field.value)}
-            onValueChange={(value) => {
-              if (value === field.value) return;
-              field.onChange(value);
-              onValueChange?.(value);
-            }}
-            options={options}
-            placeholder={placeholder}
-            emptyText={emptyText}
-            loading={loading}
-            mono={mono}
-            onCreate={onCreate}
-            createLabel={createLabel}
-            disabled={disabled}
-            invalid={Boolean(error)}
-          />
-        </Field>
-      )}
-    />
+    <Field
+      label={label}
+      help={help}
+      description={description}
+      optional={optional}
+      error={field.error}
+    >
+      <Combobox
+        label={label}
+        value={field.value === undefined || field.value === null ? "" : String(field.value)}
+        onValueChange={(value) => {
+          if (value === field.value) return;
+          field.onChange(value);
+          onValueChange?.(value);
+        }}
+        options={options}
+        placeholder={placeholder}
+        emptyText={emptyText}
+        loading={loading}
+        mono={mono}
+        onCreate={onCreate}
+        createLabel={createLabel}
+        disabled={disabled}
+        invalid={Boolean(field.error)}
+      />
+    </Field>
   );
 }
 
@@ -229,24 +256,18 @@ export function SwitchField({
   disabledReason?: string;
   onValueChange?: (checked: boolean) => void;
 }) {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<boolean | undefined>(name);
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field }) => (
-        <Switch
-          label={label}
-          description={description}
-          checked={Boolean(field.value)}
-          disabled={disabled}
-          disabledReason={disabledReason}
-          onCheckedChange={(checked) => {
-            field.onChange(checked);
-            onValueChange?.(checked);
-          }}
-        />
-      )}
+    <Switch
+      label={label}
+      description={description}
+      checked={Boolean(field.value)}
+      disabled={disabled}
+      disabledReason={disabledReason}
+      onCheckedChange={(checked) => {
+        field.onChange(checked);
+        onValueChange?.(checked);
+      }}
     />
   );
 }

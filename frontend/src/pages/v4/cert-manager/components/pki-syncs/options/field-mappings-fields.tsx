@@ -3,7 +3,7 @@ import { Grid } from "@infisical/cipher/ui/layout";
 
 import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 
-import { TextField, useWatchedValue } from "../fields";
+import { TextField, useDraftValue } from "../fields";
 
 type TFieldMappings = {
   certificate?: string;
@@ -42,8 +42,8 @@ const MAPPED_FIELDS = [
 export const FIELD_MAPPING_DESTINATIONS: PkiSync[] = [PkiSync.Chef, PkiSync.AwsSecretsManager];
 
 export function PkiSyncFieldMappingsFields({ destination }: { destination?: PkiSync }) {
-  const watchedDestination = useWatchedValue<PkiSync>("destination");
-  const fieldMappings = useWatchedValue<TFieldMappings | undefined>("syncOptions.fieldMappings");
+  const watchedDestination = useDraftValue<PkiSync>("destination");
+  const fieldMappings = useDraftValue<TFieldMappings | undefined>("syncOptions.fieldMappings");
   const currentDestination = destination || watchedDestination;
 
   if (!FIELD_MAPPING_DESTINATIONS.includes(currentDestination)) return null;

@@ -14,7 +14,7 @@ import {
 } from "@app/components/pki-syncs/forms/pki-sync-filter-fns";
 import type { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
-import { usePkiSyncForm, useWatchedValue } from "../fields";
+import { useDraftValue, usePkiSyncDraft } from "../fields";
 import { useFormCertificateCap } from "./use-certificate-cap";
 
 const FILTER_HINTS: Record<TFilterKind, string> = {
@@ -30,8 +30,8 @@ export const PkiSyncCertificateAddMenu = ({
   applicationId?: string;
   onOpenPicker: () => void;
 }) => {
-  const { setValue } = usePkiSyncForm();
-  const filters = useWatchedValue<TPkiSyncFilters | null | undefined>("filters") ?? {};
+  const { setValue } = usePkiSyncDraft();
+  const filters = useDraftValue<TPkiSyncFilters | null | undefined>("filters") ?? {};
   const certificateCap = useFormCertificateCap();
 
   const addableFilterKinds = FILTER_KINDS.filter((kind) => {
@@ -45,7 +45,7 @@ export const PkiSyncCertificateAddMenu = ({
       return;
     }
     const next = kind === "metadata" ? [...(filters.metadata ?? []), { key: "" }] : [];
-    setValue("filters", { ...filters, [kind]: next }, { shouldDirty: true });
+    setValue("filters", { ...filters, [kind]: next });
   };
 
   if (!applicationId || addableFilterKinds.length === 0) return null;

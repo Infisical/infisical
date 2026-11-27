@@ -6,7 +6,7 @@ import {
 } from "@app/helpers/pkiSyncs";
 import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 
-import { TextField, useWatchedValue } from "../fields";
+import { TextField, useDraftValue } from "../fields";
 import { usePkiSyncOption } from "../shared";
 import {
   AwsCertificateManagerSyncOptions,
@@ -67,7 +67,7 @@ export function PkiSyncOptionsFields({
   destination?: PkiSync;
   isUpdate?: boolean;
 }) {
-  const watchedDestination = useWatchedValue<PkiSync>("destination");
+  const watchedDestination = useDraftValue<PkiSync>("destination");
   const currentDestination = destination || watchedDestination;
   const { syncOption } = usePkiSyncOption(currentDestination);
   const isElb = currentDestination === PkiSync.AwsElasticLoadBalancer;
