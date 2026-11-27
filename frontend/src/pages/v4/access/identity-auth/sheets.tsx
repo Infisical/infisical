@@ -33,7 +33,7 @@ import { Snippet } from "@infisical/cipher/ui/snippet";
 
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
-import { ProviderLabel } from "../../components/provider-label";
+import { ProviderLabel, providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { failed, readableFailure, saved } from "../toast";
 import { DetailSkeleton, FormSkeleton, Gate } from "../ui";
@@ -175,6 +175,7 @@ const MethodPicker = ({
       options={AUTH_METHOD_ORDER.map((method) => ({
         value: method,
         label: authMethodName(method),
+        media: providerMedia("identity-auth", method),
         disabled: configured.includes(method),
         meta: configured.includes(method) ? "Configured" : undefined
       }))}
@@ -261,15 +262,8 @@ const AuthMethodForm = ({
         variant="sheet"
         size="lg"
         open
-        title={
-          isUpdate && method ? (
-            <ProviderLabel kind="identity-auth" value={method}>
-              {`Edit ${authMethodName(method)}`}
-            </ProviderLabel>
-          ) : (
-            "Add auth method"
-          )
-        }
+        title={isUpdate && method ? `Edit ${authMethodName(method)}` : "Add auth method"}
+        media={method ? providerMedia("identity-auth", method, "md") : undefined}
         completeLabel={copy.complete}
         onOpenChange={(open) => {
           if (open) return;

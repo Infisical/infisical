@@ -18,6 +18,7 @@ import { CaSigningConfigType, CaStatus, CaType } from "@app/hooks/api/ca/enums";
 
 import { errorMessage, failed, saved } from "../../../access/toast";
 import { useConnectionCreation } from "../../../components/connection-creation";
+import { providerMedia } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 
 const PATH_LENGTH_OPTIONS = [-1, 0, 1, 2, 3];
@@ -340,7 +341,8 @@ export const ConnectionField = ({
         emptyText="No connections yet."
         options={connections.map((connection) => ({
           value: connection.id,
-          label: connection.name
+          label: connection.name,
+          media: providerMedia("app-connection", app)
         }))}
         creation={creation}
         onValueChange={onChange}

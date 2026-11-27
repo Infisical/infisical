@@ -28,6 +28,7 @@ import {
   type TPamAccountRotation,
   type TPamAccountTypeMetadata
 } from "@app/hooks/api/pam";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useOrgId } from "../../access/permissions";
 import { errorMessage, failed, saved, toast } from "../../access/toast";
@@ -688,7 +689,8 @@ const RecordingOverride = ({
                 ...connections.map((connection) => ({
                   value: connection.id,
                   label: connection.name,
-                  meta: connection.providerName
+                  meta: connection.providerName,
+                  media: providerMedia("app-connection", connection.app)
                 }))
               ]}
               onValueChange={(next) => edit({ connectionId: next === NONE ? null : next })}

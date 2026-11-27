@@ -52,7 +52,7 @@ import {
 import { SecretScanningScanStatus } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
-import { ProviderLabel } from "@app/pages/v4/components/provider-label";
+import { ProviderLabel, providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
@@ -542,7 +542,8 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
               type: "multi-select",
               options: availableTypes.map((type) => ({
                 value: type,
-                label: SECRET_SCANNING_DATA_SOURCE_MAP[type].name
+                label: SECRET_SCANNING_DATA_SOURCE_MAP[type].name,
+                media: providerMedia("secret-scanning", type)
               }))
             }
           ]}

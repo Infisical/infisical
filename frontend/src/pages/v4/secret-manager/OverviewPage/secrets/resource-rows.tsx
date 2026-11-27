@@ -51,6 +51,8 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import type { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { v4Path } from "../../../links";
 import { nameLabel } from "../../../shell/resource-name";
@@ -269,7 +271,12 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"rotation">;
       return (
         <>
-          <Badge tone="outline">{item.provider}</Badge>
+          <Badge
+            tone="outline"
+            media={item.type && providerMedia("secret-rotation", item.type as SecretRotation)}
+          >
+            {item.provider}
+          </Badge>
           {item.description && <InfoHint text={item.description} />}
           <span className={styles.push}>
             <RotationStatus rotation={item} />
@@ -391,7 +398,9 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       return (
         <>
-          <Badge tone="outline">{item.provider} honey token</Badge>
+          <Badge tone="outline" media={item.type && providerMedia("honey-token", item.type)}>
+            {item.provider} honey token
+          </Badge>
           {item.mappedKeys.length > 0 && (
             <InfoHint text={`Mapped secrets: ${item.mappedKeys.join(", ")}`} />
           )}
