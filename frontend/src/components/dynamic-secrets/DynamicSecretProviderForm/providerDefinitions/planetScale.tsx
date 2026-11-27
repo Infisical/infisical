@@ -94,7 +94,7 @@ const noRenewalTtlDescription =
 
 export const planetScaleDynamicSecretProvider = defineDynamicSecretProvider({
   provider: DynamicSecretProviders.PlanetScale,
-  label: "PlanetScale",
+  label: "PlanetScale Vitess",
   create: {
     schema: planetScaleCreateFormSchema,
     getDefaultValues: getPlanetScaleCreateDefaultValues,

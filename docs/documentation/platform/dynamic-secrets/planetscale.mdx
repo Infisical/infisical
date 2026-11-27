@@ -1,10 +1,10 @@
 ---
-title: "PlanetScale dynamic secrets"
-sidebarTitle: "PlanetScale"
+title: "PlanetScale Vitess dynamic secrets"
+sidebarTitle: "PlanetScale Vitess"
 description: "Learn how to issue short-lived passwords for PlanetScale Vitess databases on demand."
 ---
 
-The PlanetScale dynamic secret creates a new password for a [PlanetScale](https://planetscale.com/) database branch each time someone creates a [lease](/documentation/platform/dynamic-secrets/overview), and deletes the password when the lease ends. Use it to give an application or a CI job its own short-lived MySQL credentials instead of sharing one long-lived password.
+The PlanetScale Vitess dynamic secret creates a new password for a [PlanetScale](https://planetscale.com/) database branch each time someone creates a [lease](/documentation/platform/dynamic-secrets/overview), and deletes the password when the lease ends. Use it to give an application or a CI job its own short-lived MySQL credentials instead of sharing one long-lived password.
 
 PlanetScale Vitess databases don't support MySQL users and grants, so the [MySQL dynamic secret](/documentation/platform/dynamic-secrets/mysql) can't create users on them. PlanetScale databases that run PostgreSQL use roles instead of passwords, so this dynamic secret doesn't support them.
 
@@ -22,7 +22,7 @@ PlanetScale Vitess databases don't support MySQL users and grants, so the [MySQL
     In your project, go to the environment and folder where you want the dynamic secret, then select **Add New** > **Add Dynamic Secret**.
   </Step>
   <Step>
-    Select **PlanetScale**.
+    Select **PlanetScale Vitess**.
   </Step>
   <Step>
     Fill in the form:
