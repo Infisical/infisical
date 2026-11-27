@@ -181,7 +181,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/secret-management/$projectId/insights", "v4/secret-manager/InsightsPage/route.tsx"),
       route(
         "/secret-management/$projectId/app-connections",
-        "v4/project/AppConnectionsPage/route.tsx"
+        "v4/redirects/SecretManagerAppConnectionsRedirect/route.tsx"
       ),
       route("/secret-management/insights", "v4/organization/SecretInsightsPage/route.tsx"),
       route(

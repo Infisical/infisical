@@ -4,13 +4,13 @@ import { z } from "zod";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { AppConnectionsPage } from "./AppConnectionsPage";
+import { SecretManagerAppConnectionsRedirect } from "./SecretManagerAppConnectionsRedirect";
 
 export const Route = createFileRoute(
   "/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections"
 )({
   staticData: { readiness: "full" },
-  component: AppConnectionsPage,
+  component: SecretManagerAppConnectionsRedirect,
   validateSearch: zodValidator(
     z.object({
       connectionId: z.string().optional(),
