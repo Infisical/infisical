@@ -37,11 +37,13 @@ import {
   OrgPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TGithubOrgSyncConfig } from "@app/hooks/api/githubOrgSyncConfig/types";
 
 import { useOrgId, useOrgPermission } from "../../../access/permissions";
 import { failed, saved } from "../../../access/toast";
 import { Gate } from "../../../access/ui";
+import { ProviderLabel } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license";
 
@@ -99,7 +101,11 @@ const GithubOrgSyncConfigDialog = ({
         <DialogContent pending={isSubmitting}>
           <form onSubmit={handleSubmit(onSubmit)}>
             <DialogHeader>
-              <DialogTitle>Manage GitHub organization sync</DialogTitle>
+              <DialogTitle>
+                <ProviderLabel kind="app-connection" value={AppConnection.GitHub}>
+                  Manage GitHub organization sync
+                </ProviderLabel>
+              </DialogTitle>
               <DialogDescription>Sync your GitHub teams to Infisical groups.</DialogDescription>
             </DialogHeader>
             <Stack gap={16}>
@@ -248,7 +254,11 @@ export const GithubOrgSync = () => {
     <>
       <Card
         variant="framed"
-        title="GitHub organization sync"
+        title={
+          <ProviderLabel kind="app-connection" value={AppConnection.GitHub}>
+            GitHub organization sync
+          </ProviderLabel>
+        }
         action={
           <Button
             variant="outline"
@@ -272,7 +282,7 @@ export const GithubOrgSync = () => {
         {isPending || data ? (
           <Stack gap={16}>
             <Detail>
-              <DetailLabel>GitHub organization</DetailLabel>
+              <DetailLabel>Organization</DetailLabel>
               <DetailValue>
                 {isPending ? <Skeleton className="h-5 w-40" /> : data?.githubOrgName}
               </DetailValue>

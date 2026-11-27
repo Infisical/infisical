@@ -118,6 +118,7 @@ const logColumns: DataTableColumn<AuditLog>[] = [
     id: "source",
     header: "Source",
     width: 160,
+    dropFirst: true,
     render: (log) => userAgentTypeToNameMap[log.userAgentType] ?? log.userAgentType
   }
 ];

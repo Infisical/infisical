@@ -286,14 +286,13 @@ export function DynamicSecretLeaseList({
                   </TableCell>
                   <TableCell>
                     {status ? (
-                      <Tooltip
-                        content={statusDetails || "The provider could not revoke this lease."}
+                      <Badge
+                        reason={statusDetails || "The provider could not revoke this lease."}
+                        tone="bad"
                       >
-                        <Badge tone="bad">
-                          <Icon name="alert" />
-                          Deletion failed
-                        </Badge>
-                      </Tooltip>
+                        <Icon name="alert" />
+                        Deletion failed
+                      </Badge>
                     ) : (
                       <Badge tone="ok">Active</Badge>
                     )}

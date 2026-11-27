@@ -756,6 +756,7 @@ export const SignerKeyFields = ({
     <>
       <Field label="Key source" description={keySourceHintFor(requiresHsm, isHsm)} wide>
         <Select
+          descriptionLayout="stacked"
           aria-label="Key source"
           value={draft.keySource}
           disabled={requiresHsm}

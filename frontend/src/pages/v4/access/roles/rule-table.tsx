@@ -214,7 +214,7 @@ const RuleSheet = ({
                     options={visibleActions(scope, config, rule).map((action) => ({
                       value: action.value,
                       label: action.label,
-                      meta: action.description
+                      description: action.description
                     }))}
                     value={rule.actions}
                     onChange={(actions) => setRule({ ...rule, actions })}

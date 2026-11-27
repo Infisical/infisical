@@ -9,13 +9,20 @@ import { Select } from "@infisical/cipher/ui/select";
 import { EnterpriseAppConnectionsUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { DELEGATED_APPROVAL_DOCS_MAP } from "@app/helpers/delegatedApprovals";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { DelegatedApprovalPolicyType } from "@app/hooks/api/delegatedApprovals/enums";
 import type { TDelegatedApprovalOption } from "@app/hooks/api/delegatedApprovals/types";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useV4Adapter } from "../../../data/adapters";
 import { UpgradeGate } from "../../../license";
 import type { TApprovalPolicyFormSchema } from "./policy-form.schema";
 
 import styles from "./policies.module.css";
+
+const DELEGATED_APPROVAL_APP: Record<DelegatedApprovalPolicyType, AppConnection> = {
+  [DelegatedApprovalPolicyType.ServiceNow]: AppConnection.ServiceNow
+};
 
 const ConnectionField = ({
   option,
@@ -96,7 +103,11 @@ export const DelegatedApprovalFields = ({
               value={value ?? ""}
               disabled={isPending}
               invalid={Boolean(error)}
-              options={options.map((option) => ({ value: option.type, label: option.name }))}
+              options={options.map((option) => ({
+                value: option.type,
+                label: option.name,
+                media: providerMedia("app-connection", DELEGATED_APPROVAL_APP[option.type])
+              }))}
               onChange={(type) => {
                 const option = options.find((entry) => entry.type === type);
                 if (!option) return;

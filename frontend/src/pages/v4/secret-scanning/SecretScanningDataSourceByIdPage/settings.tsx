@@ -24,7 +24,6 @@ import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import {
   doesDataSourceSupportDiscovery,
   RESOURCE_DESCRIPTION_HELPER,
@@ -36,6 +35,7 @@ import { SecretScanningDataSource } from "@app/hooks/api/secretScanningV2/enums"
 import type { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2/types";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { slugSchema } from "@app/lib/schemas";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
@@ -55,7 +55,13 @@ const configItems = (dataSource: TSecretScanningDataSource): DataListItem[] => {
   if (dataSource.connection)
     items.push([
       "App connection",
-      `${dataSource.connection.name} (${APP_CONNECTION_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type]].name})`
+      <ProviderLabel
+        key="connection"
+        kind="app-connection"
+        value={SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type]}
+      >
+        {dataSource.connection.name}
+      </ProviderLabel>
     ]);
   if (dataSource.type === SecretScanningDataSource.Bitbucket)
     items.push(["Workspace slug", <code key="workspace">{dataSource.config.workspaceSlug}</code>]);

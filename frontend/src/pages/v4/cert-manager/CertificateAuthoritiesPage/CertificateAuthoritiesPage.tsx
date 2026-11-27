@@ -33,8 +33,10 @@ import type {
 import { CertKeySource } from "@app/hooks/api/signers/types";
 
 import { AccessRestricted, ListToolbar } from "../../access/ui";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { externalCaProvider, keySourceProvider } from "../components/ca-providers";
 import { CertManagerNotSetUp, shortDate } from "../components/certificate";
 import { CreateCaSheet } from "./create-ca-sheet";
 import { ExternalCaSheet } from "./external-ca-sheet";
@@ -52,12 +54,6 @@ import {
 const routeId = v4Path("/organizations/$orgId/cert-manager/certificate-authorities");
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
-
-const keySourceLabel: Record<CertKeySource, string> = {
-  [CertKeySource.Infisical]: "Infisical",
-  [CertKeySource.Hsm]: "HSM",
-  [CertKeySource.AwsKms]: "AWS KMS"
-};
 
 const statusOptions = Object.values(CaStatus).map((value) => ({
   value,
@@ -164,7 +160,12 @@ const InternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
       id: "key",
       header: "Key source",
       width: 128,
-      render: (ca) => keySourceLabel[ca.configuration.keySource ?? CertKeySource.Infisical]
+      render: (ca) => (
+        <ProviderLabel
+          provider={keySourceProvider(ca.configuration.keySource ?? CertKeySource.Infisical)}
+          size="sm"
+        />
+      )
     },
     {
       id: "expires",
@@ -340,7 +341,7 @@ const ExternalCas = ({ orgId, projectId }: { orgId: string; projectId: string })
       header: "Type",
       sortable: true,
       width: 240,
-      render: (ca) => EXTERNAL_CA_TYPE_NAME_MAP[ca.type] ?? ca.type
+      render: (ca) => <ProviderLabel provider={externalCaProvider(ca.type)} size="sm" />
     },
     {
       id: "status",

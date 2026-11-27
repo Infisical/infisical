@@ -23,7 +23,6 @@ import { useParams } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionPkiDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
-import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
 import {
   PkiDiscoveryType,
   type TPkiDiscovery,
@@ -43,6 +42,7 @@ import {
   BadgeList,
   DeleteDiscoveryDialog,
   DiscoveryStatusBadge,
+  DiscoveryTypeLabel,
   installationName,
   isScanInFlight,
   parsePorts,
@@ -69,7 +69,7 @@ const targetItems = (discovery: TPkiDiscovery) => {
   );
   if (discovery.discoveryType === PkiDiscoveryType.LinuxServer)
     return [
-      ["SSH connections", <BadgeList wrap key="hosts" items={connections} max={3} />],
+      ["Connections", <BadgeList wrap key="hosts" items={connections} max={3} />],
       [
         "Search folders",
         <BadgeList wrap key="search" items={targetConfig.searchFolderPaths ?? []} max={3} mono />
@@ -87,7 +87,7 @@ const targetItems = (discovery: TPkiDiscovery) => {
     ] as const;
   if (discovery.discoveryType === PkiDiscoveryType.WindowsServer)
     return [
-      ["Windows (WinRM) connections", <BadgeList wrap key="hosts" items={connections} max={3} />],
+      ["Connections", <BadgeList wrap key="hosts" items={connections} max={3} />],
       [
         "Certificate stores",
         <BadgeList
@@ -438,10 +438,7 @@ const DiscoveryDetail = ({
                 ...(discovery.description
                   ? ([["Description", discovery.description]] as const)
                   : []),
-                [
-                  "Type",
-                  PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name ?? discovery.discoveryType
-                ],
+                ["Type", <DiscoveryTypeLabel key="type" type={discovery.discoveryType} />],
                 [
                   "Status",
                   <DiscoveryStatusBadge key="status" discovery={discovery} showWarnings={false} />
