@@ -17,10 +17,10 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 
 import { useV4Adapter } from "../../../data/adapters";
+import { useDebounced } from "../../org/use-debounced";
 import { failed, saved, toast } from "../../toast";
 import { DEFAULT_PRODUCT_ROLE, memberDisplayName, ProductRoleField } from "./shared";
 
-const CANDIDATE_LIMIT = 100;
 const REQUESTER_LIMIT = 20;
 
 export const InviteMembersDialog = ({
@@ -42,6 +42,8 @@ export const InviteMembersDialog = ({
   const [selected, setSelected] = useState<string[]>([]);
   const [role, setRole] = useState<string>(DEFAULT_PRODUCT_ROLE);
   const [pending, setPending] = useState(false);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounced(search.trim());
 
   const { data: requesterMatch } = av.useMembers(
     projectId,
@@ -50,7 +52,7 @@ export const InviteMembersDialog = ({
   );
   const { data: available, isPending: loadingCandidates } = av.useAvailableMembers(
     projectId,
-    { actorType: AgentVaultMemberType.User, limit: CANDIDATE_LIMIT },
+    { actorType: AgentVaultMemberType.User, search: debouncedSearch || undefined },
     open
   );
   const { data: requesterCandidates } = av.useAvailableMembers(
@@ -79,7 +81,6 @@ export const InviteMembersDialog = ({
       meta: actor.email || actor.username
     }));
   }, [available, requester]);
-  const truncated = (available?.totalCount ?? 0) > (available?.actors.length ?? 0);
 
   useEffect(() => {
     if (!requesterEmail) return;
@@ -93,6 +94,7 @@ export const InviteMembersDialog = ({
   const close = () => {
     setSelected([]);
     setRole(DEFAULT_PRODUCT_ROLE);
+    setSearch("");
     if (requesterEmail)
       navigate({
         to: ".",
@@ -141,18 +143,16 @@ export const InviteMembersDialog = ({
           }}
         >
           <Stack gap={16}>
-            <Field
-              label="Users"
-              description={truncated ? `Showing the first ${CANDIDATE_LIMIT} users.` : undefined}
-            >
+            <Field label="Users">
               <Combobox
                 multiple
                 label="Users"
                 placeholder="Pick users..."
-                disabled={loadingCandidates}
                 noMatchText="No one matches who is not already a member"
                 options={options}
                 value={selected}
+                loading={loadingCandidates}
+                onSearch={setSearch}
                 onChange={setSelected}
               />
             </Field>

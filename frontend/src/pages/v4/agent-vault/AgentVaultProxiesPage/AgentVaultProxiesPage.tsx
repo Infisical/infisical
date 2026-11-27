@@ -65,7 +65,7 @@ import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { AgentVaultDocs } from "../resources/agent-vault-utils";
-import { DateCell, Dash } from "../resources/shared";
+import { DateCell } from "../resources/shared";
 
 import css from "../resources/resources.module.css";
 
@@ -626,9 +626,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
               </Button>
             </Tooltip>
           </Inline>
-        ) : (
-          <Dash />
-        )
+        ) : null
     },
     ...(showsSettings
       ? [
@@ -638,7 +636,7 @@ const Proxies = ({ projectId }: { projectId: string }) => {
             sortable: true,
             width: 128,
             render: (proxy: TAgentVaultProxy) =>
-              proxy.createdAt ? <DateCell value={proxy.createdAt} /> : <Dash />
+              proxy.createdAt ? <DateCell value={proxy.createdAt} /> : null
           } satisfies DataTableColumn<TAgentVaultProxy>
         ]
       : [])
