@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
+import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 
@@ -51,9 +52,10 @@ import {
   usePkiSyncOption,
   usePkiSyncScope
 } from "./shared";
-import { pkiSyncSteps } from "./steps";
+import { PkiSyncStepAbout } from "./step-about";
+import { pkiSyncDocsHref, pkiSyncSteps } from "./steps";
 
-export const pkiSyncDefaults = (
+const pkiSyncDefaults = (
   destination: PkiSync,
   syncOption?: TPkiSyncOption
 ): Partial<TPkiSyncForm> =>
@@ -149,8 +151,7 @@ const CreateSyncForm = ({
     canRunHostCommands:
       (Boolean(syncOption?.canRunHealthCheckCommand) && canSetHealthCheckCommand) ||
       (Boolean(syncOption?.canRunPostSyncCommand) && canSetPostSyncCommand),
-    needsTargetHost: connection?.app === AppConnection.LDAP,
-    mode: "create"
+    needsTargetHost: connection?.app === AppConnection.LDAP
   });
 
   const validateStep = async (index: number) => {
@@ -260,7 +261,7 @@ const CreateSyncForm = ({
       : []),
     ...formSteps.map((entry, index) => ({
       title: entry.title,
-      description: entry.description,
+      aside: { description: <PkiSyncStepAbout paragraphs={entry.about} /> },
       content: body(entry.key),
       validate: entry.key === "review" ? undefined : () => validateStep(index),
       disabledReason:
@@ -282,11 +283,17 @@ const CreateSyncForm = ({
     <FormProvider {...form}>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title={
           <ProviderLabel kind="pki-sync" value={destination}>
             {destinationName} certificate sync
           </ProviderLabel>
+        }
+        badges={
+          <DocumentationLink
+            href={pkiSyncDocsHref(destination)}
+            subject={`${destinationName} certificate syncs`}
+          />
         }
         open
         step={step}
@@ -380,7 +387,7 @@ export const CreatePkiSyncSheet = ({
       <>
         <MultiStep
           variant="sheet"
-          size="lg"
+          layout="aside"
           title="Add certificate sync"
           open
           onOpenChange={(next) => !next && close()}
