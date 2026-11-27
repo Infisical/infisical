@@ -21,7 +21,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Select } from "@infisical/cipher/ui/select";
-import { Sheet } from "@infisical/cipher/ui/sheet";
+import { Sheet, SheetContent } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { StatusText } from "@infisical/cipher/ui/text";
 
@@ -64,6 +64,7 @@ const IntegrationSheet = ({
 }) => {
   const { orgId, projectId } = useProjectScope();
   const [chosen, setChosen] = useState<WorkflowIntegrationPlatform>();
+  const [pending, setPending] = useState(false);
   const platform = fixedPlatform ?? chosen;
   const close = () => {
     setChosen(undefined);
@@ -87,14 +88,16 @@ const IntegrationSheet = ({
       />
     </Field>
   );
-  const props = { projectId, orgId, title, lead, onClose: close };
+  const props = { projectId, orgId, title, lead, pending, setPending, onClose: close };
   return (
     <Sheet open={open} onOpenChange={(next) => !next && close()}>
-      {platform === WorkflowIntegrationPlatform.SLACK && <SlackIntegrationForm {...props} />}
-      {platform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
-        <MicrosoftTeamsIntegrationForm {...props} />
-      )}
-      {!platform && <SheetForm title={title} lead={lead} saveDisabled />}
+      <SheetContent size="md" pending={pending}>
+        {platform === WorkflowIntegrationPlatform.SLACK && <SlackIntegrationForm {...props} />}
+        {platform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+          <MicrosoftTeamsIntegrationForm {...props} />
+        )}
+        {!platform && <SheetForm title={title} lead={lead} saveDisabled />}
+      </SheetContent>
     </Sheet>
   );
 };

@@ -176,7 +176,7 @@ const copy = async (
   if (await copyText(value, failure)) report(done, "ok");
 };
 
-function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
+export function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
   const [focused, setFocused] = useState(false);
   const loader = useValueLoader();
   const shown = visible || focused;

@@ -2511,6 +2511,7 @@ export const OverviewPage = () => {
                                     sourceSecrets={sourceSecrets}
                                     projectId={project}
                                     sites={sitesOf(entries as Of<"import">[])}
+                                    revealAll={single ? revealAll : showValues}
                                   />
                                 );
                               if (first.kind === "folder")
