@@ -13,6 +13,20 @@ export enum SamlProviders {
   AUTH0_SAML = "auth0-saml"
 }
 
+// Non-secret config fields recorded on create and update audit events.
+export const SAML_CONFIG_AUDIT_FIELDS = [
+  "authProvider",
+  "isActive",
+  "entryPoint",
+  "issuer",
+  "enableGroupSync",
+  "mfaSignalAttribute",
+  "mfaAuthnContexts",
+  "mfaAttributeValues"
+] as const;
+
+export type TSamlConfigAuditFields = Pick<TCreateSamlCfgDTO, (typeof SAML_CONFIG_AUDIT_FIELDS)[number]>;
+
 export type TCreateSamlCfgDTO = {
   authProvider: SamlProviders;
   isActive: boolean;
@@ -78,9 +92,11 @@ export type TSamlLoginDTO = {
 };
 
 export type TSamlConfigServiceFactory = {
-  createSamlCfg: (arg: TCreateSamlCfgDTO) => Promise<TSamlConfigs>;
-  updateSamlCfg: (arg: TUpdateSamlCfgDTO) => Promise<TSamlConfigs & { ssoEnforcementDisabled: boolean }>;
-  deleteSamlCfg: (arg: TDeleteSamlCfgDTO) => Promise<TSamlConfigs>;
+  createSamlCfg: (arg: TCreateSamlCfgDTO) => Promise<TSamlConfigs & { organizationName: string }>;
+  updateSamlCfg: (
+    arg: TUpdateSamlCfgDTO
+  ) => Promise<TSamlConfigs & { organizationName: string; ssoEnforcementDisabled: boolean }>;
+  deleteSamlCfg: (arg: TDeleteSamlCfgDTO) => Promise<TSamlConfigs & { organizationName: string }>;
   getSaml: (arg: TGetSamlCfgDTO) => Promise<{
     id: string;
     organization: string;

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -364,6 +365,146 @@ func TestSAMLConfig_Delete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, res.StatusCode())
 		require.True(t, readConfig(t, s.Tenant.Admin).IsActive)
+	})
+}
+
+func TestSAMLConfig_AuditLog(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should record a readable event without the certificate when an admin creates a config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		event := fixture.RequireAuditedBy(t, tn, tn.Admin, "create-saml-config", "samlConfigId", res.JSON200.Id.String())
+		require.NotEmpty(t, event["organizationName"])
+		require.Equal(t, string(body.AuthProvider), event["authProvider"])
+		require.Equal(t, body.Issuer, event["issuer"])
+		require.Equal(t, redactedURL(t, body.EntryPoint), event["entryPoint"])
+		require.NotContains(t, event, "cert")
+	})
+
+	t.Run("should record what changed when an admin updates the config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		replacement := samlidp.New(t)
+
+		// Action
+		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
+			EntryPoint: new(replacement.EntryPoint),
+			Cert:       new(replacement.CertPEM()),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		event := fixture.RequireAuditedBy(t, s.Tenant, s.Tenant.Admin, "update-saml-config", "samlConfigId", s.ConfigID.String())
+		require.Equal(t, redactedURL(t, replacement.EntryPoint), event["entryPoint"])
+		require.Equal(t, true, event["certUpdated"])
+		require.Equal(t, false, event["ssoEnforcementDisabled"])
+		require.NotContains(t, event, "cert")
+		require.NotContains(t, event, "issuer")
+	})
+
+	t.Run("should record the delete when an admin deletes the config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+
+		// Action
+		res, err := s.Tenant.Admin.API.DeleteSamlConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		event := fixture.RequireAuditedBy(t, s.Tenant, s.Tenant.Admin, "delete-saml-config", "samlConfigId", s.ConfigID.String())
+		require.NotEmpty(t, event["organizationName"])
+	})
+}
+
+// redactedURL is what an audit event keeps of a URL: its origin, with the path replaced.
+func redactedURL(t *testing.T, raw string) string {
+	t.Helper()
+	u, err := url.Parse(raw)
+	require.NoError(t, err)
+	return u.Scheme + "://" + u.Host + "/[REDACTED]"
+}
+
+func TestSAMLConfig_OneSsoMethod(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse a SAML config while the organization has an OIDC config and create nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sso.NewOIDC(t, tn)
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "already has OIDC configured")
+		requireNoConfig(t, tn)
+	})
+
+	t.Run("should refuse an inactive SAML config while the organization has an inactive OIDC config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sso.NewOIDC(t, tn)
+		deactivated, err := tn.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
+			IsActive: new(false),
+		})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, deactivated.StatusCode(), "%s", apierr.Body(deactivated.Body))
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
+		body.IsActive = false
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		requireNoConfig(t, tn)
+	})
+
+	t.Run("should create a SAML config once the OIDC config is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sso.NewOIDC(t, tn)
+		deleted, err := tn.Admin.API.DeleteOidcConfigWithResponse(t.Context())
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, deleted.StatusCode(), "%s", apierr.Body(deleted.Body))
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, body.EntryPoint, readConfig(t, tn.Admin).EntryPoint)
 	})
 }
 

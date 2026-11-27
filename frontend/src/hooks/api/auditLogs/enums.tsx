@@ -300,6 +300,9 @@ export enum EventType {
   CREATE_OIDC_CONFIG = "create-oidc-config",
   UPDATE_OIDC_CONFIG = "update-oidc-config",
   DELETE_OIDC_CONFIG = "delete-oidc-config",
+  CREATE_SAML_CONFIG = "create-saml-config",
+  UPDATE_SAML_CONFIG = "update-saml-config",
+  DELETE_SAML_CONFIG = "delete-saml-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",

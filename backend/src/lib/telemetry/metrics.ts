@@ -10,6 +10,7 @@ import type { Knex } from "knex";
 
 import { classifyError } from "@app/lib/errors/classify";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
+import { SsoProvider } from "@app/lib/types";
 import { getAgentPoolStats } from "@app/lib/validator/agent-pool";
 
 import { getConfig } from "../config/env";
@@ -640,12 +641,6 @@ export const recordScimOperationMetric = (params: {
 };
 
 // -- SSO config lifecycle (InfisicalCore meter) -----------------------------------------------------
-export enum SsoProvider {
-  Saml = "saml",
-  Oidc = "oidc",
-  Ldap = "ldap"
-}
-
 export enum SsoConfigAction {
   Create = "create",
   Update = "update",

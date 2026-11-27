@@ -420,7 +420,6 @@ ORG_ID="180870b7-f464-4740-8ffe-9d11c9245ea7"
 curl -X POST http://localhost:8080/api/v1/sso/oidc/config \
   -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
   -d '{
-    "organizationId": "'"$ORG_ID"'",
     "configurationType": "discoveryURL",
     "discoveryURL": "http://keycloak:8080/realms/infisical/.well-known/openid-configuration",
     "clientId": "infisical-dev",
@@ -431,6 +430,13 @@ curl -X POST http://localhost:8080/api/v1/sso/oidc/config \
 ```
 
 **Create the LDAP config:**
+
+An organization holds one SSO config at a time (SAML, OIDC or LDAP), so creating a second one returns
+409. Delete the OIDC config first, or use another organization:
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/sso/oidc/config -H "Authorization: Bearer $JWT"
+```
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/sso/ldap/config \

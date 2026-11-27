@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
@@ -367,6 +368,47 @@ func TestOIDCConfig_Delete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.True(t, readConfig(t, o.Tenant.Admin).IsActive)
+	})
+}
+
+func TestOIDCConfig_OneSsoMethod(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse an OIDC config while the organization has a SAML config and create nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sso.NewSAML(t, tn, sso.Okta)
+
+		// Action
+		res, err := tn.Admin.API.CreateOidcConfigWithResponse(t.Context(), configBody(t, tn))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "already has SAML configured")
+		requireNoConfig(t, tn)
+	})
+
+	t.Run("should create an OIDC config once the SAML config is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sso.NewSAML(t, tn, sso.Okta)
+		deleted, err := tn.Admin.API.DeleteSamlConfigWithResponse(t.Context())
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, deleted.StatusCode(), "%s", apierr.Body(deleted.Body))
+
+		// Action
+		res, err := tn.Admin.API.CreateOidcConfigWithResponse(t.Context(), configBody(t, tn))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.True(t, readConfig(t, tn.Admin).IsActive)
 	})
 }
 

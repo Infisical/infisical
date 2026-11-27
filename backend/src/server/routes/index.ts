@@ -1608,6 +1608,8 @@ export const registerRoutes = async (
 
   const samlService = samlConfigServiceFactory({
     instanceConfigService,
+    oidcConfigDAL,
+    ldapConfigDAL,
     auditLogService,
     identityMetadataDAL,
     additionalPrivilegeDAL,
@@ -1644,6 +1646,8 @@ export const registerRoutes = async (
 
   const ldapService = ldapConfigServiceFactory({
     instanceConfigService,
+    samlConfigDAL,
+    oidcConfigDAL,
     auditLogService,
     additionalPrivilegeDAL,
     ldapConfigDAL,
@@ -3255,6 +3259,8 @@ export const registerRoutes = async (
 
   const oidcService = oidcConfigServiceFactory({
     instanceConfigService,
+    samlConfigDAL,
+    ldapConfigDAL,
     additionalPrivilegeDAL,
     orgDAL,
     userDAL,

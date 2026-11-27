@@ -89,6 +89,12 @@ export type ProjectServiceActor = {
   orgId: string;
 };
 
+export enum SsoProvider {
+  Saml = "saml",
+  Oidc = "oidc",
+  Ldap = "ldap"
+}
+
 export enum RunMode {
   Api = "api",
   GeneralWorkers = "general-workers",

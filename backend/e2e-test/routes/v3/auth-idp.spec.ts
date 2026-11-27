@@ -5,6 +5,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { ActorType, AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
@@ -141,6 +142,15 @@ describe("Auth IdP Service-Level Tests", () => {
     const orgFlags = () =>
       getDb()(TableName.Organization).where({ id: TEST_ORG_ID }).first("authEnforced", "scimEnabled");
 
+    // Stored config secrets must be encrypted with the org's data key, as the services write them.
+    const encryptForOrg = async (...values: string[]) => {
+      const { encryptor } = await getServices().kmsDataKeyService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: TEST_ORG_ID
+      });
+      return values.map((value) => encryptor({ plainText: Buffer.from(value) }).cipherTextBlob as Buffer);
+    };
+
     afterEach(async () => {
       await getDb()(TableName.SamlConfig).where({ orgId: TEST_ORG_ID }).del();
       await getDb()(TableName.OidcConfig).where({ orgId: TEST_ORG_ID }).del();
@@ -150,14 +160,15 @@ describe("Auth IdP Service-Level Tests", () => {
     });
 
     test("editing only the SAML MFA signal keeps SSO enforcement, SCIM and the active config", async () => {
+      const [entryPoint, issuer, cert] = await encryptForOrg("entry-point", "issuer", "cert");
       await getDb()(TableName.SamlConfig).insert({
         orgId: TEST_ORG_ID,
         authProvider: AuthMethod.OKTA_SAML,
         isActive: true,
         lastUsed: new Date(),
-        encryptedSamlEntryPoint: Buffer.from("entry-point"),
-        encryptedSamlIssuer: Buffer.from("issuer"),
-        encryptedSamlCertificate: Buffer.from("cert")
+        encryptedSamlEntryPoint: entryPoint,
+        encryptedSamlIssuer: issuer,
+        encryptedSamlCertificate: cert
       });
       await enforceSsoAndScim();
 
@@ -213,13 +224,14 @@ describe("Auth IdP Service-Level Tests", () => {
     });
 
     test("editing only the OIDC MFA signal keeps SSO enforcement and SCIM", async () => {
+      const [clientId, clientSecret] = await encryptForOrg("client-id", "client-secret");
       await getDb()(TableName.OidcConfig).insert({
         orgId: TEST_ORG_ID,
         configurationType: "discoveryURL",
         isActive: true,
         lastUsed: new Date(),
-        encryptedOidcClientId: Buffer.from("client-id"),
-        encryptedOidcClientSecret: Buffer.from("client-secret")
+        encryptedOidcClientId: clientId,
+        encryptedOidcClientSecret: clientSecret
       });
       await enforceSsoAndScim();
 
@@ -247,6 +259,7 @@ describe("Auth IdP Service-Level Tests", () => {
     });
 
     test("resending unchanged OIDC connection fields keeps SSO enforcement, SCIM and lastUsed", async () => {
+      const [clientId, clientSecret] = await encryptForOrg("client-id", "client-secret");
       await getDb()(TableName.OidcConfig).insert({
         orgId: TEST_ORG_ID,
         configurationType: "custom",
@@ -255,8 +268,8 @@ describe("Auth IdP Service-Level Tests", () => {
         jwtSignatureAlgorithm: "RS256",
         isActive: true,
         lastUsed: new Date(),
-        encryptedOidcClientId: Buffer.from("client-id"),
-        encryptedOidcClientSecret: Buffer.from("client-secret")
+        encryptedOidcClientId: clientId,
+        encryptedOidcClientSecret: clientSecret
       });
       await enforceSsoAndScim();
 

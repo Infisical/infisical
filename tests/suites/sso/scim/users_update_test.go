@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/samlidp"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
@@ -176,11 +175,9 @@ func TestScimUser_Patch(t *testing.T) {
 		// Setup
 		s := setup(t)
 		user := s.provision(t, s.person())
-		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			IsActive: new(false),
-		})
+		res, err := s.tn.Admin.API.DeleteSamlConfigWithResponse(t.Context())
 		require.NoError(t, err)
-		requireOK(t, reply{res.StatusCode(), res.Body}, "deactivating SAML")
+		requireOK(t, reply{res.StatusCode(), res.Body}, "deleting SAML")
 		sso.NewOIDCConfig(t, s.tn)
 		requireOK(t, setScimEnabled(t, s.tn, true), "re-enabling SCIM")
 

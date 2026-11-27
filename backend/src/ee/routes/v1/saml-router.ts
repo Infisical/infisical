@@ -14,12 +14,22 @@ import { AuthenticateOptions } from "@node-saml/passport-saml/lib/types";
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { extractSamlAuthnContextClassRefs } from "@app/ee/services/saml-config/saml-assertion-fns";
-import { buildSamlAcsUrl, getSamlSpEntityId } from "@app/ee/services/saml-config/saml-config-fns";
-import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
+import {
+  buildSamlAcsUrl,
+  getSamlSpEntityId,
+  sanitizeSamlConfigAuditFields
+} from "@app/ee/services/saml-config/saml-config-fns";
+import {
+  SAML_CONFIG_AUDIT_FIELDS,
+  SamlProviders,
+  TGetSamlCfgDTO
+} from "@app/ee/services/saml-config/saml-config-types";
 import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
@@ -541,6 +551,19 @@ export const registerSamlConfigRouter = async (
         orgId: permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: permission.orgId,
+        event: {
+          type: EventType.CREATE_SAML_CONFIG,
+          metadata: {
+            samlConfigId: samlCfg.id,
+            organizationName: samlCfg.organizationName,
+            ...sanitizeSamlConfigAuditFields(pick(req.body, [...SAML_CONFIG_AUDIT_FIELDS]))
+          }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
@@ -623,6 +646,21 @@ export const registerSamlConfigRouter = async (
         orgId: permission.orgId
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: permission.orgId,
+        event: {
+          type: EventType.UPDATE_SAML_CONFIG,
+          metadata: {
+            samlConfigId: samlCfg.id,
+            organizationName: samlCfg.organizationName,
+            ...sanitizeSamlConfigAuditFields(pick(req.body, [...SAML_CONFIG_AUDIT_FIELDS])),
+            certUpdated: cert !== undefined,
+            ssoEnforcementDisabled: samlCfg.ssoEnforcementDisabled
+          }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
@@ -669,6 +707,18 @@ export const registerSamlConfigRouter = async (
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           orgId: req.permission.orgId
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.DELETE_SAML_CONFIG,
+            metadata: {
+              samlConfigId: samlCfg.id,
+              organizationName: samlCfg.organizationName
+            }
+          }
         });
 
         return samlCfg;

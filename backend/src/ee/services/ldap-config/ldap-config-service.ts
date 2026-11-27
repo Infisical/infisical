@@ -27,8 +27,11 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
+import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { assertNoOtherSsoMethod } from "@app/ee/services/sso-config/sso-config-fns";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -41,9 +44,9 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric,
   recordSsoConfigChangeMetric,
-  SsoConfigAction,
-  SsoProvider
+  SsoConfigAction
 } from "@app/lib/telemetry/metrics";
+import { SsoProvider } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -93,6 +96,8 @@ import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 type TLdapConfigServiceFactoryDep = {
   instanceConfigService: TInstanceConfigService;
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
   orgDAL: Pick<
@@ -150,6 +155,8 @@ type TLdapConfigServiceFactoryDep = {
 export type TLdapConfigServiceFactory = ReturnType<typeof ldapConfigServiceFactory>;
 
 export const ldapConfigServiceFactory = ({
+  samlConfigDAL,
+  oidcConfigDAL,
   instanceConfigService,
   ldapConfigDAL,
   auditLogService,
@@ -233,6 +240,12 @@ export const ldapConfigServiceFactory = ({
           "You cannot enable LDAP SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable LDAP SSO."
       });
     }
+
+    await assertNoOtherSsoMethod({
+      orgId,
+      method: SsoProvider.Ldap,
+      otherMethods: { [SsoProvider.Saml]: samlConfigDAL, [SsoProvider.Oidc]: oidcConfigDAL }
+    });
 
     await blockLocalAndPrivateIpAddresses(url);
 

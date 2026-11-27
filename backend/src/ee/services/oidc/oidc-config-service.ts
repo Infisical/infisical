@@ -20,10 +20,13 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { assertNoOtherSsoMethod } from "@app/ee/services/sso-config/sso-config-fns";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
@@ -40,10 +43,9 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric,
   recordSsoConfigChangeMetric,
-  SsoConfigAction,
-  SsoProvider
+  SsoConfigAction
 } from "@app/lib/telemetry/metrics";
-import { OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor, SsoProvider } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
@@ -134,6 +136,8 @@ type TOidcConfigServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create" | "deleteById" | "transaction">;
+  samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "findOne">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId" | "findGroupOrgIds">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -165,6 +169,8 @@ export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFacto
 
 export const oidcConfigServiceFactory = ({
   instanceConfigService,
+  samlConfigDAL,
+  ldapConfigDAL,
   orgDAL,
   userDAL,
   userAliasDAL,
@@ -854,6 +860,12 @@ export const oidcConfigServiceFactory = ({
           "You cannot enable OIDC SSO while Google OAuth is enforced. Disable Google OAuth enforcement to enable OIDC SSO."
       });
     }
+
+    await assertNoOtherSsoMethod({
+      orgId: org.id,
+      method: SsoProvider.Oidc,
+      otherMethods: { [SsoProvider.Saml]: samlConfigDAL, [SsoProvider.Ldap]: ldapConfigDAL }
+    });
 
     if (discoveryURL) {
       await blockLocalAndPrivateIpAddresses(discoveryURL);

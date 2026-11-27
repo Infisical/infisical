@@ -66,12 +66,12 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateSSOConfig,
-  useDeleteSSOConfig,
   useGetEmailDomains,
   useGetLDAPConfig,
   useGetOIDCConfig,
   useGetSSOConfig,
-  useUpdateLDAPConfig
+  useUpdateLDAPConfig,
+  useUpdateSSOConfig
 } from "@app/hooks/api";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 import { useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
@@ -119,7 +119,7 @@ export const OrgSsoTab = withPermission(
       to: "saml" | "oidc" | "ldap";
     } | null>(null);
 
-    const { mutateAsync: deleteSamlAsync } = useDeleteSSOConfig();
+    const { mutateAsync: updateSamlAsync } = useUpdateSSOConfig();
     const { mutateAsync: createSamlAsync, isPending: isCreatingSamlConfig } = useCreateSSOConfig();
     const { mutateAsync: updateOidcAsync } = useUpdateOIDCConfig();
     const { mutateAsync: updateLdapAsync } = useUpdateLDAPConfig();
@@ -293,7 +293,16 @@ export const OrgSsoTab = withPermission(
       }
 
       if (from === "saml") {
-        await deleteSamlAsync({ organizationId: currentOrg.id });
+        await updateSamlAsync({
+          organizationId: currentOrg.id,
+          isActive: false,
+          entryPoint: "",
+          issuer: "",
+          cert: "",
+          mfaSignalAttribute: null,
+          mfaAuthnContexts: null,
+          mfaAttributeValues: null
+        });
       } else if (from === "oidc") {
         await updateOidcAsync({
           organizationId: currentOrg.id,

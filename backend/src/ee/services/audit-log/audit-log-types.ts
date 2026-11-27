@@ -18,6 +18,7 @@ import {
   ResourceAuthMethodType,
   TSettableAuthMethod
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { TSamlConfigAuditFields } from "@app/ee/services/saml-config/saml-config-types";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   TCreateSecretRotationV2DTO,
@@ -753,6 +754,9 @@ export enum EventType {
   CREATE_OIDC_CONFIG = "create-oidc-config",
   UPDATE_OIDC_CONFIG = "update-oidc-config",
   DELETE_OIDC_CONFIG = "delete-oidc-config",
+  CREATE_SAML_CONFIG = "create-saml-config",
+  UPDATE_SAML_CONFIG = "update-saml-config",
+  DELETE_SAML_CONFIG = "delete-saml-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -6240,6 +6244,32 @@ interface DeleteOidcConfigEvent {
   };
 }
 
+interface CreateSamlConfigEvent {
+  type: EventType.CREATE_SAML_CONFIG;
+  metadata: {
+    samlConfigId: string;
+    organizationName: string;
+  } & TSamlConfigAuditFields;
+}
+
+interface UpdateSamlConfigEvent {
+  type: EventType.UPDATE_SAML_CONFIG;
+  metadata: {
+    samlConfigId: string;
+    organizationName: string;
+    certUpdated: boolean;
+    ssoEnforcementDisabled: boolean;
+  } & Partial<TSamlConfigAuditFields>;
+}
+
+interface DeleteSamlConfigEvent {
+  type: EventType.DELETE_SAML_CONFIG;
+  metadata: {
+    samlConfigId: string;
+    organizationName: string;
+  };
+}
+
 interface OrgAiConfigUpdateEvent {
   type: EventType.UPDATE_ORG_AI_CONFIG;
   metadata: {
@@ -9578,6 +9608,9 @@ export type Event =
   | CreateOidcConfigEvent
   | UpdateOidcConfigEvent
   | DeleteOidcConfigEvent
+  | CreateSamlConfigEvent
+  | UpdateSamlConfigEvent
+  | DeleteSamlConfigEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent

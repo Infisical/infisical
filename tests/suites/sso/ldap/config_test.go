@@ -7,7 +7,9 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/ldap"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/samlidp"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
@@ -126,5 +128,46 @@ func TestLDAPConnection(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.False(t, *res.JSON200)
+	})
+}
+
+func TestLDAPConfig_OneSsoMethod(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse an LDAP config while the organization has a SAML config and create nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sso.NewSAML(t, tn, sso.Okta)
+		d := newDirectory(t, tn)
+
+		// Action
+		res := createConfig(t, tn.Admin.API, d.configBody())
+
+		// Assert
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "already has SAML configured")
+		require.Equal(t, http.StatusNotFound, storedConfig(t, tn).StatusCode())
+	})
+
+	t.Run("should refuse a SAML config while the organization has an LDAP config and create nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		configured(t, tn)
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "already has LDAP configured")
+		saml, err := tn.Admin.API.GetSamlConfigWithResponse(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, saml.StatusCode())
 	})
 }

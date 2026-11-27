@@ -33,7 +33,8 @@ import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { recordSsoConfigChangeMetric, SsoConfigAction, SsoProvider } from "@app/lib/telemetry/metrics";
+import { recordSsoConfigChangeMetric, SsoConfigAction } from "@app/lib/telemetry/metrics";
+import { SsoProvider } from "@app/lib/types";
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -74,10 +75,13 @@ import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
+import { TLdapConfigDALFactory } from "../ldap-config/ldap-config-dal";
+import { TOidcConfigDALFactory } from "../oidc/oidc-config-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { assertNoOtherSsoMethod } from "../sso-config/sso-config-fns";
 import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { buildSamlAcsUrl, getSamlSpEntityId } from "./saml-config-fns";
@@ -92,6 +96,8 @@ type TSamlConfigServiceFactoryDep = {
     TSamlConfigDALFactory,
     "create" | "findOne" | "update" | "findById" | "deleteById" | "transaction"
   >;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   userDAL: Pick<
     TUserDALFactory,
@@ -150,6 +156,8 @@ type TSamlConfigServiceFactoryDep = {
 export const samlConfigServiceFactory = ({
   instanceConfigService,
   samlConfigDAL,
+  oidcConfigDAL,
+  ldapConfigDAL,
   auditLogService,
   orgDAL,
   userDAL,
@@ -399,6 +407,12 @@ export const samlConfigServiceFactory = ({
       });
     }
 
+    await assertNoOtherSsoMethod({
+      orgId,
+      method: SsoProvider.Saml,
+      otherMethods: { [SsoProvider.Oidc]: oidcConfigDAL, [SsoProvider.Ldap]: ldapConfigDAL }
+    });
+
     if (enableGroupSync && !GROUP_SYNC_SUPPORTED_PROVIDERS.includes(authProvider)) {
       throw new BadRequestError({
         message: "Group sync is not supported for this SAML provider."
@@ -440,7 +454,7 @@ export const samlConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
 
-    return samlConfig;
+    return { ...samlConfig, organizationName: org.name };
   };
 
   const updateSamlCfg: TSamlConfigServiceFactory["updateSamlCfg"] = async ({
@@ -566,7 +580,7 @@ export const samlConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Update, orgId });
 
-    return { ...ssoConfig, ssoEnforcementDisabled: shouldDisableEnforcement };
+    return { ...ssoConfig, organizationName: org.name, ssoEnforcementDisabled: shouldDisableEnforcement };
   };
 
   const deleteSamlCfg: TSamlConfigServiceFactory["deleteSamlCfg"] = async ({
@@ -594,8 +608,8 @@ export const samlConfigServiceFactory = ({
     const deletedCfg = await samlConfigDAL.transaction(async (tx) => {
       const deleted = await samlConfigDAL.deleteById(samlConfig.id, tx);
       // SSO enforcement and SCIM both require an active SSO config; leaving them on would lock users out
-      await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false }, tx);
-      return deleted;
+      const org = await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false }, tx);
+      return { ...deleted, organizationName: org.name };
     });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Delete, orgId });
