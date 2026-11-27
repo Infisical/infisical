@@ -2,7 +2,10 @@ import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
 import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
+import { StateConflictError } from "@app/domains/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError } from "@app/lib/errors";
+import { hasPostgresConstraintViolation } from "@app/lib/errors/postgres";
 
 import { WorkflowIntegrationProvider, WorkflowIntegrationStatus } from "../models/enums";
 import { WorkflowIntegration } from "../models/workflow-integration";
@@ -109,6 +112,16 @@ const oldestFirst = <T extends Knex.QueryBuilder>(query: T): T =>
     .orderBy(`${TableName.WorkflowIntegrations}.createdAt`, "asc")
     .orderBy(`${TableName.WorkflowIntegrations}.id`, "asc") as T;
 
+const SLUG_CONSTRAINT = "workflow_integrations_orgid_slug_unique";
+
+const slugConflictOr = (error: unknown, slug: string, name: string) =>
+  hasPostgresConstraintViolation(error, DatabaseErrorCode.UniqueViolation, SLUG_CONSTRAINT)
+    ? new StateConflictError({
+        message: `A workflow integration with the slug '${slug}' already exists in this organization.`,
+        cause: error
+      })
+    : new DatabaseError({ error, name });
+
 export class WorkflowIntegrationStore implements TWorkflowIntegrationStore {
   constructor(private readonly connection: TStoreConnection) {}
 
@@ -179,9 +192,9 @@ export class WorkflowIntegrationStore implements TWorkflowIntegrationStore {
   }
 
   async create(integration: WorkflowIntegration): Promise<void> {
+    const record = integration.toJSON();
     try {
       const knex = this.connection.writer();
-      const record = integration.toJSON();
       await knex(TableName.WorkflowIntegrations).insert({
         id: record.id,
         orgId: record.orgId,
@@ -196,14 +209,14 @@ export class WorkflowIntegrationStore implements TWorkflowIntegrationStore {
         await knex(TableName.MicrosoftTeamsIntegrations).insert({ id: record.id, ...record.microsoftTeams } as never);
       }
     } catch (error) {
-      throw new DatabaseError({ error, name: "Create workflow integration" });
+      throw slugConflictOr(error, record.slug, "Create workflow integration");
     }
   }
 
   async save(integration: WorkflowIntegration): Promise<void> {
+    const record = integration.toJSON();
     try {
       const knex = this.connection.writer();
-      const record = integration.toJSON();
       await knex(TableName.WorkflowIntegrations)
         .where({ id: record.id })
         .update({ slug: record.slug, description: record.description, status: record.status });
@@ -213,7 +226,7 @@ export class WorkflowIntegrationStore implements TWorkflowIntegrationStore {
         await knex(TableName.MicrosoftTeamsIntegrations).where({ id: record.id }).update(record.microsoftTeams);
       }
     } catch (error) {
-      throw new DatabaseError({ error, name: "Save workflow integration" });
+      throw slugConflictOr(error, record.slug, "Save workflow integration");
     }
   }
 

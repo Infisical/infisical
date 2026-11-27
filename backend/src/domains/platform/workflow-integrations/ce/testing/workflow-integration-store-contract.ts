@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
+import { StateConflictError } from "@app/domains/lib/errors";
+
 import { WorkflowIntegrationProvider, WorkflowIntegrationStatus } from "../models/enums";
 import { MicrosoftTeamsTokenKind } from "../models/microsoft-teams-installation";
 import { TWorkflowIntegrationStore } from "../services/dependencies";
@@ -241,8 +243,29 @@ export const describeWorkflowIntegrationStoreContract = (name: string, setup: TS
       const result = store.create(microsoftTeamsIntegration({ orgId, slug: "shared-slug" }));
 
       // Assert
-      await expect(result).rejects.toThrow();
+      await expect(result).rejects.toThrow(
+        new StateConflictError({
+          message: "A workflow integration with the slug 'shared-slug' already exists in this organization."
+        })
+      );
       expect((await store.listByOrg(orgId)).map((i) => i.toJSON())).toEqual([first.toJSON()]);
+    });
+
+    test("should refuse renaming to a slug another integration of the org has", async () => {
+      // Setup
+      const { store, newOrgId } = await setup();
+      const orgId = await newOrgId();
+      await store.create(slackIntegration({ orgId, slug: "taken" }));
+      const second = slackIntegration({ orgId, slug: "free" });
+      await store.create(second);
+      second.rename({ slug: "taken" });
+
+      // Action
+      const result = store.save(second);
+
+      // Assert
+      await expect(result).rejects.toBeInstanceOf(StateConflictError);
+      expect((await store.findById(second.id))?.slug).toBe("free");
     });
 
     test("should allow the same slug in another org", async () => {

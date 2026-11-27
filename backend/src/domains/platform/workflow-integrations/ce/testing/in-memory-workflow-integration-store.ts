@@ -1,3 +1,4 @@
+import { StateConflictError } from "@app/domains/lib/errors";
 import { DatabaseError } from "@app/lib/errors";
 
 import { WorkflowIntegrationProvider } from "../models/enums";
@@ -30,6 +31,11 @@ const copyRecord = (record: TWorkflowIntegrationRecord): TWorkflowIntegrationRec
 };
 
 const toModel = (row: TStoredRow) => WorkflowIntegration.restore(copyRecord(row.record));
+
+const slugConflict = (slug: string) =>
+  new StateConflictError({
+    message: `A workflow integration with the slug '${slug}' already exists in this organization.`
+  });
 
 export class InMemoryWorkflowIntegrationStore implements TWorkflowIntegrationStore {
   private rows = new Map<string, TStoredRow>();
@@ -84,7 +90,8 @@ export class InMemoryWorkflowIntegrationStore implements TWorkflowIntegrationSto
     const duplicate = [...this.rows.values()].some(
       (row) => row.record.orgId === record.orgId && row.record.slug === record.slug
     );
-    if (duplicate || this.rows.has(record.id))
+    if (duplicate) throw slugConflict(record.slug);
+    if (this.rows.has(record.id))
       throw new DatabaseError({
         error: new Error("duplicate workflow integration"),
         name: "Create workflow integration"
@@ -100,11 +107,7 @@ export class InMemoryWorkflowIntegrationStore implements TWorkflowIntegrationSto
     const duplicate = [...this.rows.values()].some(
       (row) => row.record.id !== record.id && row.record.orgId === record.orgId && row.record.slug === record.slug
     );
-    if (duplicate)
-      throw new DatabaseError({
-        error: new Error("duplicate workflow integration slug"),
-        name: "Save workflow integration"
-      });
+    if (duplicate) throw slugConflict(record.slug);
     this.rows.set(record.id, { sequence: existing.sequence, record: copyRecord(record) });
   }
 

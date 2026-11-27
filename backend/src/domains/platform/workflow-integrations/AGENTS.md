@@ -11,16 +11,16 @@ notification configs, Alerting's `slack-app` channel), renders the message, and 
 `chatDeliveryService.post({ orgId, integrationId, message: ChatMessage.slack(...) | ChatMessage.microsoftTeams(...),
 channelIds, teamId?, limits? })`. Never add product vocabulary (event names, wording, URLs into a product) here.
 
-| Piece | Holds |
-| --- | --- |
-| `models/workflow-integration.ts` | `WorkflowIntegration`: slug, description, status, and the provider's install (`SlackInstallation` or `MicrosoftTeamsInstallation`). A Slack install starts installed, a Teams one pending until the bot is in the tenant |
-| `models/microsoft-teams-installation.ts` | Tenant, catalog app id and the cached Graph and Bot Framework tokens; `cachedToken(kind, now)` refuses a token with five minutes or less left |
-| `models/chat-message.ts` | `ChatMessage`, a message already rendered for one provider |
-| `clients/slack/`, `clients/microsoft-teams/` | The Slack SDKs, Entra/Graph/Bot Framework calls and the Teams bot (`MicrosoftTeamsBot`, the `CloudAdapter`, process state). They map provider errors into `ChatPostFailure` |
-| `services/workflow-integration/` | `listByOrg` for the org's list route; `findInOrg` / `listInOrg` for products checking an id they store |
-| `services/slack-integration/`, `services/microsoft-teams-integration/` | Install flows and the integration routes |
-| `services/chat-delivery/` | `post` |
-| `router/` | `/api/v1/workflow-integrations`, `/slack/*` and `/microsoft-teams/*`, taking its services as `TWorkflowIntegrationsRouterDeps` |
+| Piece                                                                  | Holds                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `models/workflow-integration.ts`                                       | `WorkflowIntegration`: slug, description, status, and the provider's install (`SlackInstallation` or `MicrosoftTeamsInstallation`). A Slack install starts installed, a Teams one pending until the bot is in the tenant |
+| `models/microsoft-teams-installation.ts`                               | Tenant, catalog app id and the cached Graph and Bot Framework tokens; `cachedToken(kind, now)` refuses a token with five minutes or less left                                                                            |
+| `models/chat-message.ts`                                               | `ChatMessage`, a message already rendered for one provider                                                                                                                                                               |
+| `clients/slack/`, `clients/microsoft-teams/`                           | The Slack SDKs, Entra/Graph/Bot Framework calls and the Teams bot (`MicrosoftTeamsBot`, the `CloudAdapter`, process state). They map provider errors into `ChatPostFailure`                                              |
+| `services/workflow-integration/`                                       | `listByOrg` for the org's list route; `findInOrg` / `listInOrg` for products checking an id they store                                                                                                                   |
+| `services/slack-integration/`, `services/microsoft-teams-integration/` | Install flows and the integration routes                                                                                                                                                                                 |
+| `services/chat-delivery/`                                              | `post`                                                                                                                                                                                                                   |
+| `router/`                                                              | `/api/v1/workflow-integrations`, `/slack/*` and `/microsoft-teams/*`, taking its services as `TWorkflowIntegrationsRouterDeps`                                                                                           |
 
 ## Rules
 
