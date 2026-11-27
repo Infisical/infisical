@@ -26,7 +26,7 @@ Every device check adds a **Check PAM Device Posture** event to the [audit log](
 
 ### Device identification
 
-The [Infisical CLI](/cli/overview) reads the computer's hardware serial number, and Infisical looks up the device with that serial number in Rippling. Everything else Infisical checks, such as disk encryption and the OS version, comes from Rippling, not from the computer. The CLI can read the serial number on macOS and Windows. On Linux, reading it usually needs root.
+The [Infisical CLI](/cli/overview) reads the computer's hardware serial number, and Infisical looks up the device with that serial number in Rippling. Everything else Infisical checks, such as disk encryption and the OS version, comes from Rippling, not from the computer. The CLI can read the serial number on macOS and Windows. On Linux, the serial number must be readable by the user who runs the CLI.
 
 <Warning>
   Device checks aren't hardware-backed attestation. Infisical trusts the serial number that the CLI sends from the user's computer, so a user could send the serial number of another device that Rippling assigns to them. Treat a passed check as confirmation that the user is on a company-managed device, not as proof of which computer sent the request.
@@ -119,7 +119,7 @@ A folder's [auto-approval](/documentation/platform/pam/access-requests/auto-appr
     Rippling assigns the device to a worker whose work email doesn't match your email address in Infisical. Ask your IT team to assign the device to you in Rippling, or to make your Rippling work email match your Infisical email address.
   </Accordion>
   <Accordion title="The CLI can't read the serial number on Linux">
-    On most Linux systems, only root can read the serial number. Run the command with `sudo -E`, which keeps your Infisical CLI login, or ask your IT team to make `/sys/class/dmi/id/product_serial` readable. Virtual machines and some hardware don't have a readable serial number.
+    On most Linux systems, only root can read the serial number. Ask your IT team to make `/sys/class/dmi/id/product_serial` readable by your user, for example with a `udev` rule. Don't run the CLI as root for this, since the whole session would then run as root. Virtual machines and some hardware don't have a readable serial number.
   </Accordion>
   <Accordion title="The code expired">
     Each code works once and expires after 5 minutes. Select **Try Again** in the browser to get a new code, then run the new command.
