@@ -6,6 +6,7 @@ import { AppConnection } from "../app-connection-enums";
 import {
   AzureClientSecretsConnectionCertificateOutputCredentialsSchema,
   AzureClientSecretsConnectionClientSecretOutputCredentialsSchema,
+  AzureClientSecretsConnectionManagedIdentityOutputCredentialsSchema,
   AzureClientSecretsConnectionOAuthOutputCredentialsSchema,
   AzureClientSecretsConnectionSchema,
   CreateAzureClientSecretsConnectionSchema,
@@ -26,6 +27,8 @@ export type TAzureClientSecretsConnectionConfig = DiscriminativePick<
   "method" | "app" | "credentials"
 > & {
   orgId: string;
+  projectId?: string | null;
+  connection?: { id: string; name: string };
 };
 
 export type TAzureClientSecretsConnectionCredentials = z.infer<
@@ -38,6 +41,10 @@ export type TAzureClientSecretsConnectionClientSecretCredentials = z.infer<
 
 export type TAzureClientSecretsConnectionCertificateCredentials = z.infer<
   typeof AzureClientSecretsConnectionCertificateOutputCredentialsSchema
+>;
+
+export type TAzureClientSecretsConnectionManagedIdentityCredentials = z.infer<
+  typeof AzureClientSecretsConnectionManagedIdentityOutputCredentialsSchema
 >;
 
 export interface ExchangeCodeAzureResponse {

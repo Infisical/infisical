@@ -817,10 +817,23 @@ export const POPULAR_APP_CONNECTIONS: AppConnection[] = [
   AppConnection.Vercel
 ];
 
-export const isFederatedAppConnection = ({ app, method }: Pick<TAppConnection, "app" | "method">) =>
-  (app === AppConnection.AzureKeyVault &&
-    method === AzureKeyVaultConnectionMethod.ManagedIdentity) ||
-  (app === AppConnection.GCP && method === GcpConnectionMethod.WorkloadIdentityFederation);
+// Created before it can be verified, so creating it is a step of the form rather than the end of it
+export const isFederatedAppConnection = ({
+  app,
+  method
+}: Pick<TAppConnection, "app" | "method">) => {
+  switch (method) {
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDNSConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
+      return true;
+    default:
+      return app === AppConnection.GCP && method === GcpConnectionMethod.WorkloadIdentityFederation;
+  }
+};
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
   switch (method) {
@@ -949,6 +962,11 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureKeyVaultConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDNSConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
       return { name: "Managed Identity", icon: IdCardIcon };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:

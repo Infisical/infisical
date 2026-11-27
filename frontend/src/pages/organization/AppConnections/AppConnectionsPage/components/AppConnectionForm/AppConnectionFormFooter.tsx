@@ -14,12 +14,14 @@ type Props = {
    * out secrets on edit and must allow re-submitting an unchanged form (e.g. OAuth reconnects).
    */
   allowPristineSubmit?: boolean;
+  hint?: string;
 };
 
 export const AppConnectionFormFooter = ({
   submitLabel,
   isDisabled,
-  allowPristineSubmit
+  allowPristineSubmit,
+  hint
 }: Props) => {
   const { onCancel, layout } = useAppConnectionForm();
   const {
@@ -45,6 +47,7 @@ export const AppConnectionFormFooter = ({
         >
           {submitLabel}
         </Button>
+        {hint && <span className="text-xs text-muted">{hint}</span>}
       </DialogFooter>
     );
 
@@ -61,6 +64,7 @@ export const AppConnectionFormFooter = ({
       >
         {submitLabel}
       </Button>
+      {hint && <span className="text-xs text-muted">{hint}</span>}
     </SheetFooter>
   );
 };

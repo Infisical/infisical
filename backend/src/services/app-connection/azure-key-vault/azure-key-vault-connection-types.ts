@@ -6,7 +6,6 @@ import { AppConnection } from "../app-connection-enums";
 import {
   AzureKeyVaultConnectionCertificateOutputCredentialsSchema,
   AzureKeyVaultConnectionClientSecretOutputCredentialsSchema,
-  AzureKeyVaultConnectionFederatedCredentialSchema,
   AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema,
   AzureKeyVaultConnectionOAuthOutputCredentialsSchema,
   AzureKeyVaultConnectionSchema,
@@ -53,8 +52,4 @@ export type TAzureKeyVaultConnectionCertificateCredentials = z.infer<
 
 export type TAzureKeyVaultConnectionManagedIdentityCredentials = z.infer<
   typeof AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema
->;
-
-export type TAzureKeyVaultConnectionFederatedCredential = z.infer<
-  typeof AzureKeyVaultConnectionFederatedCredentialSchema
 >;

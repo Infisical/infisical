@@ -436,7 +436,8 @@ export const SecretSyncFns = {
         return azureDevOpsSyncFactory({
           appConnectionDAL,
           kmsDataKeyService,
-          instanceConfigService
+          instanceConfigService,
+          oidcIssuerService
         }).syncSecrets(secretSync, payload);
       case SecretSync.Databricks:
         return databricksSyncFactory({
@@ -527,7 +528,11 @@ export const SecretSyncFns = {
       case SecretSync.CircleCI:
         return CircleCISyncFns.syncSecrets(secretSync, payload);
       case SecretSync.AzureEntraIdScim:
-        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, payload, { appConnectionDAL, kmsDataKeyService });
+        return AzureEntraIdScimSyncFns.syncSecrets(secretSync, payload, {
+          appConnectionDAL,
+          kmsDataKeyService,
+          oidcIssuerService
+        });
       case SecretSync.ExternalInfisical:
         return ExternalInfisicalSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.OVH:
@@ -611,7 +616,8 @@ export const SecretSyncFns = {
         secretMap = await azureDevOpsSyncFactory({
           appConnectionDAL,
           kmsDataKeyService,
-          instanceConfigService
+          instanceConfigService,
+          oidcIssuerService
         }).getSecrets(secretSync);
         break;
       case SecretSync.Databricks:
@@ -830,7 +836,8 @@ export const SecretSyncFns = {
         return azureDevOpsSyncFactory({
           appConnectionDAL,
           kmsDataKeyService,
-          instanceConfigService
+          instanceConfigService,
+          oidcIssuerService
         }).removeSecrets(secretSync);
       case SecretSync.Databricks:
         return databricksSyncFactory({

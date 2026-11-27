@@ -562,7 +562,12 @@ describe("gitHubPreSaveTransformDestinationConfig", () => {
   const appConnectionDAL = {
     findById: vi.fn(async () => ({ orgId: "org", projectId: null, encryptedCredentials: Buffer.from("") }))
   } as any;
-  const deps = { appConnectionDAL, kmsDataKeyService: {} as any, secretV2BridgeDAL: {} as any };
+  const deps = {
+    appConnectionDAL,
+    kmsDataKeyService: {} as any,
+    secretV2BridgeDAL: {} as any,
+    oidcIssuerService: {} as any
+  };
 
   it("leaves non-Codespaces configs alone without reading the connection", async () => {
     const destinationConfig = repoConfig(GitHubSyncSecretType.Dependabot);
