@@ -89,15 +89,19 @@ export const ProjectRolesTab = () => {
     },
     [subscription]
   );
+  const hasRbac = subscription?.rbac;
+  const createReady = canCreate && !isCertManager && hasRbac !== undefined;
   useEffect(() => {
-    if (!createRequested) return;
+    if (!createRequested || !createReady) return;
+    if (hasRbac)
+      setSheet((current) => ({ open: true, mode: { kind: "create" }, key: current.key + 1 }));
+    else setUpgrade("rbac");
     navigate({
       to: ".",
-      search: (prev: object) => ({ ...prev, createRole: undefined }),
+      search: ((prev: Record<string, unknown>) => ({ ...prev, createRole: false })) as never,
       replace: true
     });
-    if (canCreate) openSheet({ kind: "create" });
-  }, [createRequested, canCreate, navigate, openSheet]);
+  }, [createRequested, createReady, hasRbac, navigate]);
 
   const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
