@@ -893,7 +893,6 @@ export const registerRoutes = async (
     licenseBilling: domains.licenseBilling,
     organizationsService,
     projectsService,
-    certManagerService,
     breakdownDAL: licenseV2BreakdownDAL
   });
 

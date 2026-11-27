@@ -1,5 +1,4 @@
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import {
   Meter,
   TCatalogProduct,
@@ -65,7 +64,6 @@ type TLicenseV2ServiceFactoryDep = {
   orgPermissionService: TOrgPermissionService;
   organizationsService: TOrganizationsService;
   projectsService: TProjectsService;
-  certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
   licenseService: TLicenseService;
   // Seeds per_resource quantities with what's provisioned now, so preview and charge match reality.
@@ -415,7 +413,6 @@ export const licenseV2ServiceFactory = ({
   licenseBilling,
   organizationsService,
   projectsService,
-  certManagerService,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
   const buildProductLineItem = async (
@@ -1130,16 +1127,19 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.InternalCas: {
-        const rows = await certManagerService.getInternalCaOrgBreakdown(scopeOrgId);
-        return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
+        const usage = await usageMeteringService.getUsageBreakdown(Meter.InternalCas, scopeOrgId ?? null);
+        return { breakdown: buildOrgOnlyBreakdown(usage?.rows ?? [], "internal CA") };
       }
       case BillingV2BreakdownDimension.ActiveCerts:
       case BillingV2BreakdownDimension.WildcardCerts: {
-        const rows = await certManagerService.getActiveCertificateOrgBreakdown(scopeOrgId);
         const isWildcard = dimensionKey === BillingV2BreakdownDimension.WildcardCerts;
+        const usage = await usageMeteringService.getUsageBreakdown(
+          isWildcard ? Meter.WildcardCerts : Meter.ActiveCerts,
+          scopeOrgId ?? null
+        );
         return {
           breakdown: buildOrgOnlyBreakdown(
-            rows.map((row) => ({ orgId: row.orgId, count: isWildcard ? row.wildcard : row.count })),
+            usage?.rows ?? [],
             isWildcard ? "wildcard certificate" : "active certificate"
           )
         };

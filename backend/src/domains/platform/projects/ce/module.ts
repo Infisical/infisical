@@ -39,7 +39,7 @@ export type {
 } from "./services/project-resource-permission/service";
 export type { TProjectsTransaction } from "./services/projects/projects-transaction";
 export type { TProjectsService } from "./services/projects/service";
-export type { TProjectAccessListener } from "./services/dependencies";
+export type { TProjectAccessListener, TProjectName } from "./services/dependencies";
 
 export type TProjectsDeps = {
   db: TDbClient;

@@ -210,8 +210,6 @@ describe("CertificateV3Service", () => {
     isCertificateQuotaKeyActive: vi.fn((orgId: string | undefined, quotaKey: string) =>
       Promise.resolve(Boolean(orgId && quotaKey && false))
     ),
-    getInternalCaOrgBreakdown: vi.fn(async () => []),
-    getActiveCertificateOrgBreakdown: vi.fn(async () => []),
     getPkiUsageByRootOrg: vi.fn(async () => [])
   };
 

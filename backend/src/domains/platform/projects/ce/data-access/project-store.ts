@@ -3,7 +3,7 @@ import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-a
 import { DatabaseError } from "@app/lib/errors";
 
 import { Project } from "../models/project";
-import { TProjectStore } from "../services/dependencies";
+import { TProjectName, TProjectStore } from "../services/dependencies";
 
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
@@ -32,6 +32,19 @@ export class ProjectStore implements TProjectStore {
       return toCount(row?.count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count workspaces" });
+    }
+  }
+
+  async findProjectNames(projectIds: string[], options?: TReadOptions): Promise<TProjectName[]> {
+    if (!projectIds.length) return [];
+    try {
+      return (await this.connection
+        .reader(options)(TableName.Project)
+        .whereIn("id", projectIds)
+        .whereNull("deleteAfter")
+        .select("id", "name", "orgId")) as TProjectName[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project names" });
     }
   }
 

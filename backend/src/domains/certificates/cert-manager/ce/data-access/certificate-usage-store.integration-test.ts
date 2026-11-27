@@ -117,11 +117,35 @@ describe("CertManagerModule usage counters", () => {
     const built = build();
 
     // Action
-    const rows = await built.module.certManagerService.getActiveCertificateOrgBreakdown(pki.root.id);
+    const breakdown = await usageCounter(built.module.usageCounters, Meter.ActiveCerts).breakdown(pki.root.id);
 
     // Assert
-    expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(2);
+    expect(breakdown.rows.reduce((sum, r) => sum + r.count, 0)).toBe(2);
+    expect(breakdown.total).toBe(2);
   });
+
+  test.each([Meter.InternalCas, Meter.ActiveCerts, Meter.WildcardCerts])(
+    "should break %s down into rows that add up to its count",
+    async (meter) => {
+      // Setup
+      const pki = await seedPkiOrgs(h.db, h.factories);
+      await pki.internalCa(pki.rootProject.id);
+      await pki.internalCa(pki.subProject.id);
+      await pki.certificate(pki.rootProject.id, "*.a.test");
+      await pki.certificate(pki.subProject.id, "*.a.test");
+      await pki.certificate(pki.subProject.id, "b.test");
+      const built = build();
+      const counter = usageCounter(built.module.usageCounters, meter);
+
+      // Action
+      const [counted, breakdown] = await Promise.all([counter.count(pki.root.id), counter.breakdown(pki.root.id)]);
+
+      // Assert
+      expect(counted).toBeGreaterThan(0);
+      expect(breakdown).toMatchObject({ total: counted, users: 0 });
+      expect(breakdown.rows.reduce((sum, r) => sum + r.count, 0)).toBe(counted);
+    }
+  );
 
   test("should read the primary and not the replica when asked for the primary", async () => {
     // Setup

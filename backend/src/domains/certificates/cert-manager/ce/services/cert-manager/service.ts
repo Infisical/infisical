@@ -1,13 +1,11 @@
 import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 
-import { TCertificateOrgUnitCount, TCertificateUsageStore, TOrgUnitCount, TPkiRootOrgUsage } from "../dependencies";
+import { TCertificateUsageStore, TPkiRootOrgUsage } from "../dependencies";
 
 export type TCertManagerService = {
   // No orgId = whole instance.
   countActiveCertificateQuota(orgId?: string): Promise<{ total: number; wildcard: number }>;
   isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string): Promise<boolean>;
-  getInternalCaOrgBreakdown(orgId?: string): Promise<TOrgUnitCount[]>;
-  getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitCount[]>;
   getPkiUsageByRootOrg(): Promise<TPkiRootOrgUsage[]>;
   // Quota counts span the org tree, so their cache is keyed on the root.
   resolveRootOrgId(orgId: string): Promise<string>;
@@ -25,14 +23,6 @@ export class CertManagerService implements TCertManagerService {
 
   isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string) {
     return this.certificateUsageStore.isCertificateQuotaKeyActive(orgId, quotaKey);
-  }
-
-  getInternalCaOrgBreakdown(orgId?: string) {
-    return this.certificateUsageStore.getInternalCaOrgBreakdown(orgId);
-  }
-
-  getActiveCertificateOrgBreakdown(orgId?: string) {
-    return this.certificateUsageStore.getActiveCertificateOrgBreakdown(orgId);
   }
 
   getPkiUsageByRootOrg() {
