@@ -76,7 +76,7 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
   an alert is emitted exactly when its scan closes; the DAL keeps only the guarded transitions (`scans.markCompleted`,
   `scans.markFailed`), and the queue keeps what runs after commit (pull request check, telemetry, audit logs).
 - `secrets-detected` fires only for news (`countNewUnresolvedByScanId`): unresolved findings this scan created, plus,
-  for diff scans only, findings it reopened, each counted once. A known value turning up in a new place, in any
+  for diff scans only, findings it reopened. A known value turning up in a new place, in any
   resource, is no news and never alerts. The creating scan is the finding's `scanId`, set under the advisory locks;
   never infer it from location `createdAt` (transaction start time), and keep that column when the rollback-only
   finding columns go. A resource's first full scan alerts like any other: don't exempt it, since a scan that found

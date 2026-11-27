@@ -372,9 +372,7 @@ const buildOutcome = ({
           reopenedFindings: Array.from({ length: reopened }, (_, i) => ({ id: `reopened-${i}`, rule: "rule" }))
         })),
         countByScanId: vi.fn(async () => counts),
-        countNewUnresolvedByScanId: vi.fn(
-          async (_scanId: string, { alsoIds = [] }: { alsoIds?: string[] } = {}) => createdUnresolved + alsoIds.length
-        )
+        countNewUnresolvedByScanId: vi.fn(async () => createdUnresolved)
       }
     } as unknown as TScanOutcomeDeps["secretScanningV2DAL"],
     projectDAL: {
@@ -430,11 +428,6 @@ describe("completeDiffScan", () => {
 
     expect(result.counts).toEqual(counts);
     expect(emit.mock.calls[0][0][0].data).toMatchObject({ unresolvedFindings: 2 });
-    expect(deps.secretScanningV2DAL.findings.countNewUnresolvedByScanId).toHaveBeenCalledWith(
-      "scan-1",
-      { alsoIds: ["reopened-0", "reopened-1"] },
-      "tx"
-    );
   });
 
   test("keeps the findings of a scan already closed but reports no counts", async () => {

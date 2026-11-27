@@ -1187,32 +1187,20 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Counts the unresolved findings that are news to this scan: the ones it created, plus any `alsoIds` (the findings a
-   * diff scan reopened), each once. A known value turning up somewhere new is no news. A finding's scanId is written
+   * Counts the unresolved findings this scan created. A known value turning up somewhere new is no news. A finding's scanId is written
    * once, by the scan that inserts it under the advisory locks, so it names the creating scan however many batches or
    * attempts that scan took. Location timestamps can't tell: now() is when a transaction began, so a scan that began
    * earlier but took the lock later would sort first on a finding it didn't create. A resource delete can point an
    * older finding's scanId at a later scan (detachResources), so a finding found before the scan began is never its.
    */
-  const countNewUnresolvedByScanId = async (
-    scanId: string,
-    { alsoIds = [] }: { alsoIds?: string[] } = {},
-    tx?: Knex
-  ) => {
+  const countNewUnresolvedByScanId = async (scanId: string, tx?: Knex) => {
     try {
       const [result] = (await (tx || db)(TableName.SecretScanningFinding)
-        .where("status", SecretScanningFindingStatus.Unresolved)
-        .where((news) => {
-          void news.where((created) => {
-            void created
-              .where({ scanId })
-              .whereRaw(`"createdAt" >= (SELECT s."createdAt" FROM ?? AS s WHERE s.id = ?)`, [
-                TableName.SecretScanningScan,
-                scanId
-              ]);
-          });
-          if (alsoIds.length) void news.orWhereRaw("?? = ANY(?::uuid[])", ["id", alsoIds]);
-        })
+        .where({ scanId, status: SecretScanningFindingStatus.Unresolved })
+        .whereRaw(`"createdAt" >= (SELECT s."createdAt" FROM ?? AS s WHERE s.id = ?)`, [
+          TableName.SecretScanningScan,
+          scanId
+        ])
         .count("* as count")) as { count: string }[];
 
       return Number(result?.count ?? 0);
