@@ -36,4 +36,18 @@ describe("SecretsModule usage counters", () => {
     expect(breakdown.users + breakdown.rows.reduce((sum, row) => sum + row.count, 0)).toBe(counted);
     expect(breakdown).toMatchObject({ total: 3, users: 2 });
   });
+
+  test("should break secret identities down across the whole instance into rows that add up to the instance count", async () => {
+    // Setup
+    await seedBillableActors(h.db);
+    const counter = usageCounter(build().usageCounters, Meter.SecretIdentities);
+
+    // Action
+    const [counted, breakdown] = await Promise.all([counter.count(null), counter.breakdown(null)]);
+
+    // Assert
+    expect(counted).toBeGreaterThan(0);
+    expect(breakdown.total).toBe(counted);
+    expect(breakdown.users + breakdown.rows.reduce((sum, row) => sum + row.count, 0)).toBe(counted);
+  });
 });

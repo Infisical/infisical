@@ -32,4 +32,18 @@ describe("PamModule usage counters", () => {
     expect(breakdown.users + breakdown.rows.reduce((sum, row) => sum + row.count, 0)).toBe(counted);
     expect(breakdown).toMatchObject({ total: 4, users: 3 });
   });
+
+  test("should break PAM identities down across the whole instance into rows that add up to the instance count", async () => {
+    // Setup
+    await seedBillableActors(h.db);
+    const counter = usageCounter(build().usageCounters, Meter.PamIdentities);
+
+    // Action
+    const [counted, breakdown] = await Promise.all([counter.count(null), counter.breakdown(null)]);
+
+    // Assert
+    expect(counted).toBeGreaterThan(0);
+    expect(breakdown.total).toBe(counted);
+    expect(breakdown.users + breakdown.rows.reduce((sum, row) => sum + row.count, 0)).toBe(counted);
+  });
 });

@@ -147,6 +147,25 @@ describe("CertManagerModule usage counters", () => {
     }
   );
 
+  test.each([Meter.InternalCas, Meter.ActiveCerts, Meter.WildcardCerts])(
+    "should break %s down across the whole instance into rows that add up to the instance count",
+    async (meter) => {
+      // Setup
+      const pki = await seedPkiOrgs(h.db, h.factories);
+      await pki.internalCa(pki.subProject.id);
+      await pki.certificate(pki.subProject.id, "*.instance.test");
+      const counter = usageCounter(build().module.usageCounters, meter);
+
+      // Action
+      const [counted, breakdown] = await Promise.all([counter.count(null), counter.breakdown(null)]);
+
+      // Assert
+      expect(counted).toBeGreaterThan(0);
+      expect(breakdown).toMatchObject({ total: counted, users: 0 });
+      expect(breakdown.rows.reduce((sum, r) => sum + r.count, 0)).toBe(counted);
+    }
+  );
+
   test("should read the primary and not the replica when asked for the primary", async () => {
     // Setup
     const pki = await seedPkiOrgs(h.db, h.factories);
