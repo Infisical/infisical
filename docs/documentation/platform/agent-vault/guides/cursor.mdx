@@ -9,6 +9,8 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
 
 You can run [Cursor Cloud Agents](https://cursor.com/docs/cloud-agent/self-hosted) on your own Kubernetes cluster, where each run gets a worker: a pod that runs Cursor's worker process. Cursor still runs the model and decides what the agent does, while the worker runs the agent's commands and file edits.
 
+This guide sets up Agent Vault for Cursor's workers specifically. For agents of your own on Kubernetes, see [Kubernetes](/documentation/platform/agent-vault/guides/kubernetes).
+
 The agent's commands often need credentials, such as a GitHub token to push a branch. A [prompt injection](/documentation/platform/agent-vault/why-agent-vault) can make the agent read any credential on the worker and send it somewhere. With Agent Vault, the worker has no credentials. Its commands send requests through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies), and the proxy attaches the real credential to requests for the APIs you allow.
 
 <Info>

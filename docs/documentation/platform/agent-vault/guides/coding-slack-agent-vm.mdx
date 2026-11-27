@@ -1,0 +1,26 @@
+---
+title: "Coding Slack agent on a virtual machine with Agent Vault"
+sidebarTitle: "Coding Slack agent on a virtual machine"
+description: "Ask for code changes and pull requests from Slack, with an agent that runs on a virtual machine and holds no API keys."
+icon: "code"
+---
+
+Mention the coding agent in a Slack channel, and it answers questions about your repo, or makes the change you ask for on a branch and opens a pull request. This version runs the agent and an Agent Vault proxy as two systemd services on a Debian or Ubuntu virtual machine. The agent holds no API keys.
+
+<Card title="Deploy the coding agent on a virtual machine" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/coding#on-a-vm" horizontal>
+  The code and the full setup steps, in the reference repo.
+</Card>
+
+To run it on Docker instead, see [Coding Slack agent on Docker](/documentation/platform/agent-vault/guides/coding-slack-agent-docker).
+
+## How it works
+
+1. A Slack bridge receives each mention and runs [Claude Code](/documentation/platform/agent-vault/guides/claude-code) with the message, in a clone of your repo that it keeps between messages.
+2. Claude Code changes the code, runs the repo's tests, and uses `git` and `gh` to push a branch and open a pull request.
+3. Every request goes through the Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, GitHub, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
+## What you need
+
+- An Agent Vault project where you have the Admin role
+- A Slack workspace where you can create apps
+- A GitHub repo with at least one commit
+- A Debian or Ubuntu virtual machine with outbound internet access and `sudo`, such as an EC2 instance or a DigitalOcean Droplet

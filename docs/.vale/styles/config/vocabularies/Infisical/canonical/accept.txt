@@ -715,3 +715,7 @@ gVisor
 
 # --- Surfaced by the Agent Vault E2B guide ---
 SOCKS5
+
+# --- Surfaced by the Agent Vault guide catalog ---
+Ashby
+Droplet

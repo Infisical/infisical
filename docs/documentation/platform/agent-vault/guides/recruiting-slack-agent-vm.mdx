@@ -1,0 +1,26 @@
+---
+title: "Recruiting Slack agent on a virtual machine with Agent Vault"
+sidebarTitle: "Recruiting Slack agent on a virtual machine"
+description: "Answer questions about jobs and candidates from Ashby in Slack, with an agent that runs on a virtual machine and holds no API keys."
+icon: "contact"
+---
+
+Mention the recruiting agent in your hiring team's Slack channel, and it answers questions about open jobs, candidates, and where each candidate is in the pipeline, from Ashby. This version runs the agent and an Agent Vault proxy as two systemd services on a Debian or Ubuntu virtual machine. The agent holds no API keys.
+
+<Card title="Deploy the recruiting agent on a virtual machine" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/recruiting#on-a-vm" horizontal>
+  The code and the full setup steps, in the reference repo.
+</Card>
+
+To run it on Docker instead, see [Recruiting Slack agent on Docker](/documentation/platform/agent-vault/guides/recruiting-slack-agent-docker).
+
+## How it works
+
+1. A Slack bridge receives each mention and runs [Claude Code](/documentation/platform/agent-vault/guides/claude-code) with the message.
+2. Claude Code reads Ashby through Ashby's [MCP server](/documentation/platform/agent-vault/mcp-servers), signed in with OAuth. The proxy hides every Ashby tool except the read tools you allow, so the agent can't change anything.
+3. Every request goes through the Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, Ashby, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
+## What you need
+
+- An Agent Vault project where you have the Admin role
+- A Slack workspace where you can create apps, and a private channel for your hiring team
+- An Ashby account whose access matches what the hiring team may see
+- A Debian or Ubuntu virtual machine with outbound internet access and `sudo`, such as an EC2 instance or a DigitalOcean Droplet

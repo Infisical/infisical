@@ -1,0 +1,31 @@
+---
+title: "Deploy Hermes Agent on a DigitalOcean Droplet with Agent Vault"
+sidebarTitle: "Deploy on a DigitalOcean Droplet"
+description: "Host your own Hermes Agent on a Droplet and message it from Telegram without giving it your API keys."
+---
+
+Run your own [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) on a DigitalOcean Droplet, and message it from Telegram. Hermes keeps running when your computer is off, and it holds no API keys.
+
+<Card title="Deploy Hermes on a DigitalOcean Droplet" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/telegram-agents/hermes" horizontal>
+  The systemd services and the full setup steps, in the reference repo.
+</Card>
+
+To run Hermes on your own computer instead, see [Getting started](/documentation/platform/agent-vault/guides/hermes).
+
+## How it works
+
+1. The [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) runs under [`infisical agent-vault run`](/cli/reference#agent-vault-run), which sends all of the gateway's traffic through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) on the same Droplet.
+2. The gateway polls Telegram for your messages and sends them to Anthropic.
+3. The proxy puts the real bot token in each Telegram request's URL and attaches the Anthropic key, and blocks hosts outside Hermes's [access bundle](/documentation/platform/agent-vault/access-bundles).
+
+The Droplet's firewall allows only SSH in, because the gateway connects out to Telegram.
+
+<Note>
+  The gateway polls Telegram every few seconds, and each poll counts as a brokered request, even when nobody messages Hermes. An idle gateway uses thousands of requests a day, so stop it when you're not using it.
+</Note>
+
+## What you need
+
+- An Agent Vault project where you have the Admin role
+- A Telegram account
+- A DigitalOcean account, with an SSH key added to it

@@ -1,0 +1,26 @@
+---
+title: "On-call Slack agent on Docker with Agent Vault"
+sidebarTitle: "On-call Slack agent on Docker"
+description: "Investigate production errors from Slack, with an agent that runs on Docker and holds no API keys."
+icon: "bell"
+---
+
+Mention the on-call agent in a Slack channel, and it reads the error in Sentry, traces it to the code and the commit that caused it, and proposes a fix. This version runs the agent and an Agent Vault proxy as two containers, started with Docker Compose. The agent holds no API keys.
+
+<Card title="Deploy the on-call agent on Docker" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/on-call/docker" horizontal>
+  The code and the full setup steps, in the reference repo.
+</Card>
+
+To run it on a virtual machine instead, see [On-call Slack agent on a virtual machine](/documentation/platform/agent-vault/guides/on-call-slack-agent-vm).
+
+## How it works
+
+1. A Slack bridge receives each mention and runs [Claude Code](/documentation/platform/agent-vault/guides/claude-code) with the message, in a clone of your repo.
+2. Claude Code reads the error from the Sentry API, and uses `git` and `gh` to find the commit, and to open a pull request or file an issue when you ask.
+3. Every request goes through the Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, GitHub, Sentry, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
+## What you need
+
+- An Agent Vault project where you have the Admin role
+- A Slack workspace where you can create apps
+- A Sentry project, and a GitHub repo with at least one commit
+- Docker with Compose, or a container platform such as Amazon ECS or Render

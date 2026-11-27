@@ -45,6 +45,10 @@ Every proxy starts from the same proxy token, so you set up the proxy once, no m
   Only sandboxes linked to the proxy's sandbox can reach the proxy, so nothing outside the run can send requests through it.
 </Accordion>
 
+<Tip>
+  To deploy a complete agent on Daytona, see the [team assistant](/documentation/platform/agent-vault/guides/team-assistant-daytona), a Slack assistant that works with the access of whoever asks it.
+</Tip>
+
 ## Prerequisites
 
 - The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
@@ -290,7 +294,7 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
         # The proxy serves only after it has loaded its settings from Infisical.
         wait = agent_sandbox.process.exec(
             "for i in $(seq 60); do "
-            f"curl -fs http://{proxy_address}/_agent-vault/ca > /dev/null && exit 0; "
+            f"curl --noproxy '*' -fs http://{proxy_address}/_agent-vault/ca > /dev/null && exit 0; "
             "sleep 0.5; done; exit 1"
         )
         if wait.exit_code != 0:
@@ -405,7 +409,7 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
     // The proxy serves only after it has loaded its settings from Infisical.
     const wait = await agentSandbox.process.executeCommand(
       "for i in $(seq 60); do " +
-        `curl -fs http://${proxyAddress}/_agent-vault/ca > /dev/null && exit 0; ` +
+        `curl --noproxy '*' -fs http://${proxyAddress}/_agent-vault/ca > /dev/null && exit 0; ` +
         "sleep 0.5; done; exit 1",
     );
     if (wait.exitCode !== 0) {
@@ -619,7 +623,7 @@ func runAgent(ctx context.Context, client *daytona.Client, prompt string) (outpu
 
 	// The proxy serves only after it has loaded its settings from Infisical.
 	wait, err := agentSandbox.Process.ExecuteCommand(ctx, "for i in $(seq 60); do "+
-		"curl -fs http://"+proxyAddress+"/_agent-vault/ca > /dev/null && exit 0; "+
+		"curl --noproxy '*' -fs http://"+proxyAddress+"/_agent-vault/ca > /dev/null && exit 0; "+
 		"sleep 0.5; done; exit 1")
 	if err != nil {
 		return "", err
@@ -754,7 +758,7 @@ def run_agent(daytona, prompt)
     # The proxy serves only after it has loaded its settings from Infisical.
     wait = agent_sandbox.process.exec(
       command: "for i in $(seq 60); do " \
-               "curl -fs http://#{proxy_address}/_agent-vault/ca > /dev/null && exit 0; " \
+               "curl --noproxy '*' -fs http://#{proxy_address}/_agent-vault/ca > /dev/null && exit 0; " \
                "sleep 0.5; done; exit 1"
     )
     unless wait.exit_code.zero?
@@ -925,7 +929,7 @@ public class RunAgent {
             // The proxy serves only after it has loaded its settings from Infisical.
             CommandResult wait = run(agentSandbox,
                 "for i in $(seq 60); do "
-                    + "curl -fs http://" + proxyAddress + "/_agent-vault/ca > /dev/null && exit 0; "
+                    + "curl --noproxy '*' -fs http://" + proxyAddress + "/_agent-vault/ca > /dev/null && exit 0; "
                     + "sleep 0.5; done; exit 1",
                 Duration.ofSeconds(45));
             if (!wait.succeeded()) {
@@ -1087,6 +1091,11 @@ Each proxy's sandbox holds a copy of the proxy token. If you think someone took 
     - `INFISICAL_AGENT_VAULT_PROXY_TOKEN` has the current proxy token (a token stops working when you rotate it)
     - If you use EU Cloud or self-host Infisical, `INFISICAL_URL` in your code is the URL of your instance
     - The snapshot has a recent Infisical CLI (change `SNAPSHOT` to a new name to build one with the latest CLI)
+  </Accordion>
+  <Accordion title="Creating a sandbox fails because the snapshot is inactive">
+    If no sandbox has used the snapshot recently, Daytona marks the snapshot inactive. Creating a sandbox from it then fails with an error such as `Snapshot agent-vault-agent is inactive`. The code in [Step 3](#step-3-create-the-snapshot) builds the snapshot only if it doesn't exist, so it doesn't rebuild an inactive one.
+
+    Change `SNAPSHOT` to a new name. The next time your code runs, it builds a new snapshot with the latest Infisical CLI and Claude Code.
   </Accordion>
   <Accordion title="Creating the session fails">
     Check the following:
