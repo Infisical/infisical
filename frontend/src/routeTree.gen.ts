@@ -103,7 +103,9 @@ import { Route as certManagerDashboardPageRouteIndexImport } from './pages/cert-
 import { Route as organizationSettingsPageOauthCallbackPageRouteImport } from './pages/organization/SettingsPage/OauthCallbackPage/route'
 import { Route as secretScanningSettingsPageRouteImport } from './pages/secret-scanning/SettingsPage/route'
 import { Route as secretScanningSecretScanningFindingsPageRouteImport } from './pages/secret-scanning/SecretScanningFindingsPage/route'
+import { Route as organizationProductSettingsPageSecretScanningRouteImport } from './pages/organization/ProductSettingsPage/SecretScanning/route'
 import { Route as organizationSecretInsightsPageRouteImport } from './pages/organization/SecretInsightsPage/route'
+import { Route as organizationProductSettingsPageCertManagerRouteImport } from './pages/organization/ProductSettingsPage/CertManager/route'
 import { Route as pamPamTemplatesPageRouteImport } from './pages/pam/PamTemplatesPage/route'
 import { Route as pamPamSessionsPageRouteImport } from './pages/pam/PamSessionsPage/route'
 import { Route as pamPamDiscoveryPageRouteImport } from './pages/pam/PamDiscoveryPage/route'
@@ -1337,10 +1339,24 @@ const secretScanningSecretScanningFindingsPageRouteRoute =
     getParentRoute: () => secretScanningLayoutRoute,
   } as any)
 
+const organizationProductSettingsPageSecretScanningRouteRoute =
+  organizationProductSettingsPageSecretScanningRouteImport.update({
+    id: '/secret-scanning/product-settings',
+    path: '/secret-scanning/product-settings',
+    getParentRoute: () => organizationProjectsPageRouteRoute,
+  } as any)
+
 const organizationSecretInsightsPageRouteRoute =
   organizationSecretInsightsPageRouteImport.update({
     id: '/secret-management/insights',
     path: '/secret-management/insights',
+    getParentRoute: () => organizationProjectsPageRouteRoute,
+  } as any)
+
+const organizationProductSettingsPageCertManagerRouteRoute =
+  organizationProductSettingsPageCertManagerRouteImport.update({
+    id: '/cert-manager/product-settings',
+    path: '/cert-manager/product-settings',
     getParentRoute: () => organizationProjectsPageRouteRoute,
   } as any)
 
@@ -3496,11 +3512,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pamPamTemplatesPageRouteImport
       parentRoute: typeof pamLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/product-settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/product-settings'
+      path: '/cert-manager/product-settings'
+      fullPath: '/organizations/$orgId/projects/cert-manager/product-settings'
+      preLoaderRoute: typeof organizationProductSettingsPageCertManagerRouteImport
+      parentRoute: typeof organizationProjectsPageRouteImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights'
       path: '/secret-management/insights'
       fullPath: '/organizations/$orgId/projects/secret-management/insights'
       preLoaderRoute: typeof organizationSecretInsightsPageRouteImport
+      parentRoute: typeof organizationProjectsPageRouteImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/product-settings': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/product-settings'
+      path: '/secret-scanning/product-settings'
+      fullPath: '/organizations/$orgId/projects/secret-scanning/product-settings'
+      preLoaderRoute: typeof organizationProductSettingsPageSecretScanningRouteImport
       parentRoute: typeof organizationProjectsPageRouteImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings': {
@@ -5503,7 +5533,9 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSecretManag
 
 interface organizationProjectsPageRouteRouteChildren {
   organizationProjectsPageProjectTypePageRouteRoute: typeof organizationProjectsPageProjectTypePageRouteRoute
+  organizationProductSettingsPageCertManagerRouteRoute: typeof organizationProductSettingsPageCertManagerRouteRoute
   organizationSecretInsightsPageRouteRoute: typeof organizationSecretInsightsPageRouteRoute
+  organizationProductSettingsPageSecretScanningRouteRoute: typeof organizationProductSettingsPageSecretScanningRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsKmipServersRouteWithChildren
@@ -5519,8 +5551,12 @@ const organizationProjectsPageRouteRouteChildren: organizationProjectsPageRouteR
   {
     organizationProjectsPageProjectTypePageRouteRoute:
       organizationProjectsPageProjectTypePageRouteRoute,
+    organizationProductSettingsPageCertManagerRouteRoute:
+      organizationProductSettingsPageCertManagerRouteRoute,
     organizationSecretInsightsPageRouteRoute:
       organizationSecretInsightsPageRouteRoute,
+    organizationProductSettingsPageSecretScanningRouteRoute:
+      organizationProductSettingsPageSecretScanningRouteRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultProjectIdRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsAgentVaultProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute:
@@ -6437,7 +6473,9 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/pam/discovery': typeof pamPamDiscoveryPageRouteRoute
   '/organizations/$orgId/pam/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
+  '/organizations/$orgId/projects/cert-manager/product-settings': typeof organizationProductSettingsPageCertManagerRouteRoute
   '/organizations/$orgId/projects/secret-management/insights': typeof organizationSecretInsightsPageRouteRoute
+  '/organizations/$orgId/projects/secret-scanning/product-settings': typeof organizationProductSettingsPageSecretScanningRouteRoute
   '/organizations/$orgId/secret-scanning/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/organizations/$orgId/secret-scanning/settings': typeof secretScanningSettingsPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
@@ -6732,7 +6770,9 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/pam/discovery': typeof pamPamDiscoveryPageRouteRoute
   '/organizations/$orgId/pam/sessions': typeof pamPamSessionsPageRouteRoute
   '/organizations/$orgId/pam/templates': typeof pamPamTemplatesPageRouteRoute
+  '/organizations/$orgId/projects/cert-manager/product-settings': typeof organizationProductSettingsPageCertManagerRouteRoute
   '/organizations/$orgId/projects/secret-management/insights': typeof organizationSecretInsightsPageRouteRoute
+  '/organizations/$orgId/projects/secret-scanning/product-settings': typeof organizationProductSettingsPageSecretScanningRouteRoute
   '/organizations/$orgId/secret-scanning/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/organizations/$orgId/secret-scanning/settings': typeof secretScanningSettingsPageRouteRoute
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
@@ -7021,7 +7061,9 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/discovery': typeof pamPamDiscoveryPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions': typeof pamPamSessionsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates': typeof pamPamTemplatesPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/product-settings': typeof organizationProductSettingsPageCertManagerRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights': typeof organizationSecretInsightsPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/product-settings': typeof organizationProductSettingsPageSecretScanningRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings': typeof secretScanningSecretScanningFindingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings': typeof secretScanningSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
@@ -7328,7 +7370,9 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/pam/discovery'
     | '/organizations/$orgId/pam/sessions'
     | '/organizations/$orgId/pam/templates'
+    | '/organizations/$orgId/projects/cert-manager/product-settings'
     | '/organizations/$orgId/projects/secret-management/insights'
+    | '/organizations/$orgId/projects/secret-scanning/product-settings'
     | '/organizations/$orgId/secret-scanning/findings'
     | '/organizations/$orgId/secret-scanning/settings'
     | '/organizations/$orgId/settings/oauth/callback'
@@ -7622,7 +7666,9 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/pam/discovery'
     | '/organizations/$orgId/pam/sessions'
     | '/organizations/$orgId/pam/templates'
+    | '/organizations/$orgId/projects/cert-manager/product-settings'
     | '/organizations/$orgId/projects/secret-management/insights'
+    | '/organizations/$orgId/projects/secret-scanning/product-settings'
     | '/organizations/$orgId/secret-scanning/findings'
     | '/organizations/$orgId/secret-scanning/settings'
     | '/organizations/$orgId/settings/oauth/callback'
@@ -7909,7 +7955,9 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/discovery'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/sessions'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout/templates'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/product-settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/product-settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
@@ -8481,7 +8529,9 @@ export const routeTree = rootRoute
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/product-settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/product-settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/kmip-servers",
@@ -8760,8 +8810,16 @@ export const routeTree = rootRoute
       "filePath": "pam/PamTemplatesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/pam/_pam-layout"
     },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/product-settings": {
+      "filePath": "organization/ProductSettingsPage/CertManager/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
+    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/insights": {
       "filePath": "organization/SecretInsightsPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/product-settings": {
+      "filePath": "organization/ProductSettingsPage/SecretScanning/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout/findings": {

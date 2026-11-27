@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { HouseIcon, SendIcon, UserPlusIcon, UserXIcon } from "lucide-react";
+import { HouseIcon, SendIcon, SlidersHorizontalIcon, UserPlusIcon, UserXIcon } from "lucide-react";
 
 import { RequestProjectAccessModal } from "@app/components/projects";
 import { Button } from "@app/components/v3";
 import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import {
   OrgPermissionAdminConsoleAction,
+  OrgPermissionCertManagerActions,
   OrgPermissionProjectActions
 } from "@app/context/OrgPermissionContext/types";
 import { resolveCertManagerProjectId } from "@app/helpers/certManagerActiveProject";
@@ -149,6 +150,29 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
     OrgPermissionSubjects.Project
   );
 
+  const productSettingsLink = (() => {
+    if (
+      certManagerOrgId &&
+      certManagerInstance?.isMultiInstance &&
+      permission.can(
+        OrgPermissionCertManagerActions.ManageInstance,
+        OrgPermissionSubjects.CertManager
+      )
+    ) {
+      return {
+        to: "/organizations/$orgId/projects/cert-manager/product-settings",
+        params: { orgId: certManagerOrgId }
+      } as const;
+    }
+    if (secretScanningOrgId && secretScanningInstance?.isMultiInstance) {
+      return {
+        to: "/organizations/$orgId/projects/secret-scanning/product-settings",
+        params: { orgId: secretScanningOrgId }
+      } as const;
+    }
+    return null;
+  })();
+
   const handleAccessProject = async () => {
     if (!projectId) return;
     await orgAdminAccessProject.mutateAsync({
@@ -249,6 +273,14 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
             >
               <SendIcon />
               {requestButtonText}
+            </Button>
+          )}
+          {productSettingsLink && (
+            <Button variant="outline" asChild>
+              <Link {...productSettingsLink}>
+                <SlidersHorizontalIcon />
+                Manage Projects
+              </Link>
             </Button>
           )}
           <Button variant={canJoinAsAdmin || canRequestAccess ? "outline" : "project"} asChild>
