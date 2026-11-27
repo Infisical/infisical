@@ -58,7 +58,7 @@ export const SignUpPage = () => {
   const [activeStep, setActiveStep] = useState(BootstrapStep.Account);
   const [accountData, setAccountData] = useState<AdminSignUpFormData>();
   const [formError, setFormError] = useState<string>();
-  const [activationTokenError, setActivationTokenError] = useState<string>();
+  const [setupTokenError, setSetupTokenError] = useState<string>();
   const [passwordError, setPasswordError] = useState<string>();
   const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
@@ -76,7 +76,7 @@ export const SignUpPage = () => {
   const handleAccountContinue = (values: AdminSignUpFormData) => {
     setAccountData(values);
     setFormError(undefined);
-    setActivationTokenError(undefined);
+    setSetupTokenError(undefined);
     setPasswordError(undefined);
     setActiveStep(BootstrapStep.Organization);
   };
@@ -96,7 +96,7 @@ export const SignUpPage = () => {
         firstName: accountData.firstName,
         lastName: accountData.lastName || undefined,
         organizationName,
-        activationToken: accountData.activationToken || undefined
+        setupToken: accountData.setupToken || undefined
       });
 
       SecurityClient.setToken(result.token);
@@ -115,10 +115,8 @@ export const SignUpPage = () => {
         ? error.response?.data
         : undefined;
 
-      if (responseData?.error === SuperAdminErrorCode.InvalidActivationToken) {
-        setActivationTokenError(
-          responseData.message || "The activation token is missing or incorrect."
-        );
+      if (responseData?.error === SuperAdminErrorCode.InvalidSetupToken) {
+        setSetupTokenError(responseData.message || "The setup token is missing or incorrect.");
         setActiveStep(BootstrapStep.Account);
         return;
       }
@@ -145,7 +143,7 @@ export const SignUpPage = () => {
           {activeStep === BootstrapStep.Account ? (
             <AdminSignUpForm
               defaultValues={accountData}
-              activationTokenError={activationTokenError}
+              setupTokenError={setupTokenError}
               passwordError={passwordError}
               onContinue={handleAccountContinue}
             />

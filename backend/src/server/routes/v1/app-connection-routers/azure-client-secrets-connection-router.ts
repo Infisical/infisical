@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedAzureClientSecretsConnectionSchema,
   UpdateAzureClientSecretsConnectionSchema
 } from "@app/services/app-connection/azure-client-secrets";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -42,7 +42,7 @@ export const registerAzureClientSecretsConnectionRouter = async (server: Fastify
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const clients = await server.services.appConnection.azureClientSecrets.listApps(connectionId, req.permission);
+      const clients = await server.services.appConnection.azureClientSecrets.listApps(connectionId, req.actor);
 
       return { clients };
     }

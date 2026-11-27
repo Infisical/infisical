@@ -1,32 +1,25 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionActions,
   OrgPermissionMemberActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError } from "@app/lib/errors";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor } from "@app/lib/types";
 import { constructGroupOrgMembershipRoleMappings } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-fns";
 import { TSyncExternalGroupOrgMembershipRoleMappingsDTO } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-types";
-import { roleNeedsPrivilegeBoundary } from "@app/services/membership/membership-fns";
+import { roleNeedsPrivilegeBoundary, toBoundsTargets } from "@app/services/membership/membership-fns";
 
-import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-role-mapping-dal";
 
 type TExternalGroupOrgRoleMappingServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
   licenseService: TLicenseService;
   roleDAL: TRoleDALFactory;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TExternalGroupOrgRoleMappingServiceFactory = ReturnType<typeof externalGroupOrgRoleMappingServiceFactory>;
@@ -34,25 +27,20 @@ export type TExternalGroupOrgRoleMappingServiceFactory = ReturnType<typeof exter
 export const externalGroupOrgRoleMappingServiceFactory = ({
   externalGroupOrgRoleMappingDAL,
   licenseService,
-  permissionService,
-  roleDAL,
-  orgDAL
+  orgPermissionService,
+  roleDAL
 }: TExternalGroupOrgRoleMappingServiceFactoryDep) => {
-  const listExternalGroupOrgRoleMappings = async (actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
+  const listExternalGroupOrgRoleMappings = async (actor: TActorContext) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
     // TODO: will need to change if we add support for ldap, oidc, etc.
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Scim });
 
     const mappings = await externalGroupOrgRoleMappingDAL.find({
-      orgId: actor.orgId
+      orgId: actor.org.id
     });
 
     return mappings;
@@ -60,19 +48,15 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
 
   const updateExternalGroupOrgRoleMappings = async (
     dto: TSyncExternalGroupOrgMembershipRoleMappingsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
     // TODO: will need to change if we add support for ldap, oidc, etc.
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Scim });
 
     const seenGroupNames = new Set<string>();
     for (const { groupName } of dto.mappings) {
@@ -87,15 +71,11 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
       mappingsDTO: dto.mappings,
       roleDAL,
       licenseService,
-      orgId: actor.orgId
+      orgId: actor.org.id
     });
 
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
-      orgDAL.findById(actor.orgId)
-    );
-
     const currentMappings = await externalGroupOrgRoleMappingDAL.find(
-      { orgId: actor.orgId },
+      { orgId: actor.org.id },
       { tx: externalGroupOrgRoleMappingDAL.primaryNode() }
     );
     const currentByGroupName = new Map(currentMappings.map((mapping) => [mapping.groupName, mapping]));
@@ -117,7 +97,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
     const replacedCustomRoleIds = replacedMappings.flatMap(({ roleId }) => (roleId ? [roleId] : []));
     const replacedCustomRoleSlugById = new Map(
       replacedCustomRoleIds.length
-        ? (await roleDAL.find({ orgId: actor.orgId, $in: { id: replacedCustomRoleIds } })).map((role) => [
+        ? (await roleDAL.find({ orgId: actor.org.id, $in: { id: replacedCustomRoleIds } })).map((role) => [
             role.id,
             role.slug
           ])
@@ -148,22 +128,23 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
 
     if (boundaryChecks.length) {
       const roleSlugsToCheck = [...new Set(boundaryChecks.map(({ roleSlug }) => roleSlug))];
-      const rolePermissions = await permissionService.getOrgPermissionByRoles(roleSlugsToCheck, actor.orgId);
+      const rolePermissions = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: actor.org.id,
+        roles: roleSlugsToCheck
+      });
 
       for (const { roleSlug, baseMessage } of boundaryChecks) {
-        assertRoleSetBoundary({
-          shouldUseNewPrivilegeSystem,
-          opActions: OrgPermissionMemberActions.GrantPrivileges,
-          opSubject: OrgPermissionSubjects.Member,
-          actorPermission: permission,
-          targetPermissions: [rolePermissions[roleSlugsToCheck.indexOf(roleSlug)]],
-          baseMessage
+        permission.assertBounds({
+          actions: OrgPermissionMemberActions.GrantPrivileges,
+          subject: OrgPermissionSubjects.Member,
+          targets: toBoundsTargets([rolePermissions[roleSlugsToCheck.indexOf(roleSlug)]]),
+          message: baseMessage
         });
       }
     }
 
     const data = await externalGroupOrgRoleMappingDAL.updateExternalGroupOrgRoleMappingForOrg(
-      actor.orgId,
+      actor.org.id,
       mappings,
       currentMappings
     );

@@ -12,7 +12,7 @@ export const AzureAdCsExternalConfigSchema = z.object({
   template: z
     .string()
     .min(1, "Template name is required for Azure AD CS")
-    .describe("Certificate template name for Azure AD CS")
+    .describe("The name of the Microsoft certificate template on the Azure AD CS server to issue from.")
 });
 
 /**
@@ -23,7 +23,7 @@ export const ADCSExternalConfigSchema = z.object({
     .string()
     .min(1, "Template name is required for Active Directory Certificate Service")
     .refine((v) => RE_NO_NEWLINES.test(v), "Template name must not contain newline characters")
-    .describe("Certificate template name for Active Directory Certificate Service")
+    .describe("The name of the Microsoft certificate template on the AD CS server to issue from.")
 });
 
 /**

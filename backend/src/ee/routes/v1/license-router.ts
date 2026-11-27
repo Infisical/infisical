@@ -1,28 +1,21 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
 // lives on the License Server v2 routes in license-v2-router.
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   // Any member of the org can read its plan, which is always its root org's.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
-    await server.services.permission.getOrgPermission({
-      actorId: req.permission.id,
-      actor: req.permission.type,
-      orgId,
-      actorOrgId: req.permission.orgId,
-      actorAuthMethod: req.permission.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+    await server.services.orgPermissionService.getOrgPermission({ actor: req.actor, orgId });
     if (refreshCache) {
-      await server.services.licenseService.refreshPlan(req.permission.rootOrgId);
+      await server.services.licenseService.refreshPlan(req.actor.rootOrgId);
     }
-    return server.services.licenseService.getPlan(req.permission.rootOrgId);
+    const plan = await server.services.licenseService.getPlan(req.actor.rootOrgId);
+    return plan.toJSON();
   };
 
   server.route({
@@ -46,8 +39,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const plan = await readOrgPlan(req, req.params.organizationId, req.query.refreshCache);
-      return { plan: plan.toJSON() };
+      return { plan: await readOrgPlan(req, req.params.organizationId, req.query.refreshCache) };
     }
   });
 
@@ -66,7 +58,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return (await readOrgPlan(req, req.params.organizationId, false)).toJSON();
+      return readOrgPlan(req, req.params.organizationId, false);
     }
   });
 };

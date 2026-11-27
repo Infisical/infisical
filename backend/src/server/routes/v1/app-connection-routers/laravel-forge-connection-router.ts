@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedLaravelForgeConnectionSchema,
   UpdateLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -44,10 +44,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const organizations = await server.services.appConnection.laravelForge.listOrganizations(
-        connectionId,
-        req.permission
-      );
+      const organizations = await server.services.appConnection.laravelForge.listOrganizations(connectionId, req.actor);
 
       return organizations;
     }
@@ -82,7 +79,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
       const { organizationSlug } = req.query;
       const servers = await server.services.appConnection.laravelForge.listServers(
         connectionId,
-        req.permission,
+        req.actor,
         organizationSlug
       );
 
@@ -120,7 +117,7 @@ export const registerLaravelForgeConnectionRouter = async (server: FastifyZodPro
       const { organizationSlug, serverId } = req.query;
       const sites = await server.services.appConnection.laravelForge.listSites(
         connectionId,
-        req.permission,
+        req.actor,
         organizationSlug,
         serverId
       );

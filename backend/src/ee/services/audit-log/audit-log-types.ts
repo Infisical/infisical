@@ -1,4 +1,4 @@
-import { ProjectType } from "@app/db/schemas";
+import { ProjectType, TOidcConfigs } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
@@ -6,6 +6,7 @@ import {
   MicrosoftAutoenrollmentIssuanceResult,
   MicrosoftAutoenrollmentKeytabSource
 } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-types";
+import { OIDC_CONFIG_AUDIT_FIELDS } from "@app/ee/services/oidc/oidc-config-types";
 import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -36,15 +37,15 @@ import {
   TUpdateSecretScanningDataSourceDTO,
   TUpdateSecretScanningFindingDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { KerberosFailureReason } from "@app/lib/kerberos";
-import { TOrgPermission, TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { CaCrlRegenerationTrigger, CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
@@ -112,7 +113,7 @@ export type TListProjectAuditLogDTO = {
     secretKey?: string;
     eventMetadata?: Record<string, string>;
   };
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateAuditLogDTO = {
   event: Event;
@@ -209,7 +210,7 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
-  getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
+  getAuditLogPostgresStorageStatus: (arg: TActorInput) => Promise<{
     clickHouseConfigured: boolean;
     auditLogGenerationDisabled: boolean;
     auditLogStorageDisabled: boolean;
@@ -241,7 +242,8 @@ export enum UserAgentType {
   TERRAFORM = "terraform",
   OTHER = "other",
   PYTHON_SDK = "InfisicalPythonSDK",
-  NODE_SDK = "InfisicalNodeSDK"
+  NODE_SDK = "InfisicalNodeSDK",
+  REMOTE_MCP = "remote-mcp"
 }
 
 export enum EventType {
@@ -747,6 +749,10 @@ export enum EventType {
 
   UPDATE_ORG = "update-org",
   UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
+  UPDATE_ORG_SSO_SETTINGS = "update-org-sso-settings",
+  CREATE_OIDC_CONFIG = "create-oidc-config",
+  UPDATE_OIDC_CONFIG = "update-oidc-config",
+  DELETE_OIDC_CONFIG = "delete-oidc-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -972,6 +978,7 @@ export enum EventType {
   RENEW_PKI_SIGNER_CERTIFICATE = "renew-pki-signer-certificate",
   REVOKE_PKI_SIGNER_CERTIFICATE = "revoke-pki-signer-certificate",
   PKI_SIGNER_CERTIFICATE_REVOCATION_DECIDED = "pki-signer-certificate-revocation-decided",
+  PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA = "pki-signer-certificate-revoked-by-ca",
   IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
@@ -1050,6 +1057,7 @@ export enum EventType {
   CREATE_HONEY_TOKEN = "create-honey-token",
   UPDATE_HONEY_TOKEN = "update-honey-token",
   REVOKE_HONEY_TOKEN = "revoke-honey-token",
+  DELETE_HONEY_TOKEN = "delete-honey-token",
   TRIGGER_HONEY_TOKEN = "trigger-honey-token",
 
   // Project Grants
@@ -5443,6 +5451,19 @@ interface PkiSignerCertificateRevocationDecidedEvent {
   };
 }
 
+interface PkiSignerCertificateRevokedByCaEvent {
+  type: EventType.PKI_SIGNER_CERTIFICATE_REVOKED_BY_CA;
+  metadata: {
+    signerId: string;
+    name: string;
+    certificateId: string;
+    certificateCommonName: string;
+    serialNumber: string;
+    previousStatus: string;
+    status: string;
+  };
+}
+
 interface ImportPkiSignerCertificateEvent {
   type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE;
   metadata: {
@@ -6179,6 +6200,44 @@ interface SecretReminderDeleteEvent {
 interface SecretScanningConfigReadEvent {
   type: EventType.SECRET_SCANNING_CONFIG_GET;
   metadata?: Record<string, never>; // not needed, based off projectId
+}
+
+interface OrgSsoSettingsUpdateEvent {
+  type: EventType.UPDATE_ORG_SSO_SETTINGS;
+  metadata: {
+    authEnforced?: boolean;
+    googleSsoAuthEnforced?: boolean;
+    bypassOrgAuthEnabled?: boolean;
+    ssoMfaTrust?: string;
+  };
+}
+
+type TOidcConfigAuditFields = Pick<TOidcConfigs, (typeof OIDC_CONFIG_AUDIT_FIELDS)[number]>;
+
+interface CreateOidcConfigEvent {
+  type: EventType.CREATE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    organizationName: string;
+  } & TOidcConfigAuditFields;
+}
+
+interface UpdateOidcConfigEvent {
+  type: EventType.UPDATE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    organizationName: string;
+    clientCredentialsUpdated: boolean;
+    ssoEnforcementDisabled: boolean;
+  } & Partial<TOidcConfigAuditFields>;
+}
+
+interface DeleteOidcConfigEvent {
+  type: EventType.DELETE_OIDC_CONFIG;
+  metadata: {
+    oidcConfigId: string;
+    organizationName: string;
+  };
 }
 
 interface OrgAiConfigUpdateEvent {
@@ -7680,6 +7739,7 @@ interface PamApprovalConfigUpdateEvent {
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
     autoApprovalRuleCount?: number;
+    emailApproversOnRequest?: boolean;
   };
 }
 
@@ -8561,6 +8621,8 @@ interface OauthClientAuthorizeEvent {
   metadata: {
     clientId: string;
     clientName: string;
+    scopes: string[];
+    resource?: string;
   };
 }
 
@@ -8874,6 +8936,17 @@ interface UpdateHoneyTokenEvent {
 
 interface RevokeHoneyTokenEvent {
   type: EventType.REVOKE_HONEY_TOKEN;
+  metadata: {
+    honeyTokenId: string;
+    name: string;
+    type: HoneyTokenType;
+    environment: string;
+    secretPath: string;
+  };
+}
+
+interface DeleteHoneyTokenEvent {
+  type: EventType.DELETE_HONEY_TOKEN;
   metadata: {
     honeyTokenId: string;
     name: string;
@@ -9419,6 +9492,7 @@ export type Event =
   | RenewPkiSignerCertificateEvent
   | RevokePkiSignerCertificateEvent
   | PkiSignerCertificateRevocationDecidedEvent
+  | PkiSignerCertificateRevokedByCaEvent
   | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
@@ -9500,6 +9574,10 @@ export type Event =
   | SecretScanningConfigReadEvent
   | OrgUpdateEvent
   | OrgAiConfigUpdateEvent
+  | OrgSsoSettingsUpdateEvent
+  | CreateOidcConfigEvent
+  | UpdateOidcConfigEvent
+  | DeleteOidcConfigEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent
@@ -9740,6 +9818,7 @@ export type Event =
   | CreateHoneyTokenEvent
   | UpdateHoneyTokenEvent
   | RevokeHoneyTokenEvent
+  | DeleteHoneyTokenEvent
   | TriggerHoneyTokenEvent
   | CreateGroupEvent
   | UpdateGroupEvent

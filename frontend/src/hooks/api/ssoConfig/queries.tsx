@@ -39,7 +39,8 @@ export const useCreateSSOConfig = () => {
       cert,
       enableGroupSync,
       mfaSignalAttribute,
-      mfaAuthnContexts
+      mfaAuthnContexts,
+      mfaAttributeValues
     }: {
       organizationId: string;
       authProvider: string;
@@ -50,6 +51,7 @@ export const useCreateSSOConfig = () => {
       enableGroupSync?: boolean;
       mfaSignalAttribute?: string | null;
       mfaAuthnContexts?: string[] | null;
+      mfaAttributeValues?: string[] | null;
     }) => {
       const { data } = await apiRequest.post("/api/v1/sso/config", {
         organizationId,
@@ -60,7 +62,8 @@ export const useCreateSSOConfig = () => {
         cert,
         ...(enableGroupSync !== undefined ? { enableGroupSync } : {}),
         ...(mfaSignalAttribute !== undefined ? { mfaSignalAttribute } : {}),
-        ...(mfaAuthnContexts !== undefined ? { mfaAuthnContexts } : {})
+        ...(mfaAuthnContexts !== undefined ? { mfaAuthnContexts } : {}),
+        ...(mfaAttributeValues !== undefined ? { mfaAttributeValues } : {})
       });
 
       return data;
@@ -85,7 +88,8 @@ export const useUpdateSSOConfig = () => {
       cert,
       enableGroupSync,
       mfaSignalAttribute,
-      mfaAuthnContexts
+      mfaAuthnContexts,
+      mfaAttributeValues
     }: {
       organizationId: string;
       authProvider?: string;
@@ -96,6 +100,7 @@ export const useUpdateSSOConfig = () => {
       enableGroupSync?: boolean;
       mfaSignalAttribute?: string | null;
       mfaAuthnContexts?: string[] | null;
+      mfaAttributeValues?: string[] | null;
     }) => {
       const { data } = await apiRequest.patch("/api/v1/sso/config", {
         organizationId,
@@ -106,7 +111,8 @@ export const useUpdateSSOConfig = () => {
         ...(cert !== undefined ? { cert } : {}),
         ...(enableGroupSync !== undefined ? { enableGroupSync } : {}),
         ...(mfaSignalAttribute !== undefined ? { mfaSignalAttribute } : {}),
-        ...(mfaAuthnContexts !== undefined ? { mfaAuthnContexts } : {})
+        ...(mfaAuthnContexts !== undefined ? { mfaAuthnContexts } : {}),
+        ...(mfaAttributeValues !== undefined ? { mfaAttributeValues } : {})
       });
 
       return data;

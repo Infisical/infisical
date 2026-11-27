@@ -9,7 +9,6 @@ export const getDefaultOnPremFeatures = () => {
     slug: null,
     tier: -1,
     workspaceLimit: null,
-    workspacesUsed: 0,
     dynamicSecret: false,
     memberLimit: null,
     identityLimit: null,

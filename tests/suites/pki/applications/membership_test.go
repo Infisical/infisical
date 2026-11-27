@@ -54,7 +54,7 @@ func TestApplicationMembership_Role(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		res, err := tn.Admin.API.UpdatePkiApplicationUserMemberRoleWithResponse(t.Context(), g.App.ID, auditor.ID, api.UpdatePkiApplicationUserMemberRoleJSONRequestBody{Role: "operator"})
@@ -73,7 +73,7 @@ func TestApplicationMembership_Role(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		res, err := auditor.API.UpdatePkiApplicationUserMemberRoleWithResponse(t.Context(), g.App.ID, auditor.ID, api.UpdatePkiApplicationUserMemberRoleJSONRequestBody{Role: "operator"})
@@ -91,7 +91,7 @@ func TestApplicationMembership_Role(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		kept := member(t, tn, g, "admin")
+		kept := member(t, g, "admin")
 		policyID := pki.NewApprovalPolicy(t, g.App, g.Profile, pki.UserApprover(g.Operator.ID), pki.UserApprover(kept.ID))
 
 		// Action
@@ -183,7 +183,7 @@ func TestApplicationMembership_Remove(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		_, groupID := operatorGroupMember(t, tn, g)
-		kept := member(t, tn, g, "admin")
+		kept := member(t, g, "admin")
 		policyID := pki.NewApprovalPolicy(t, g.App, g.Profile, pki.GroupApprover(groupID), pki.UserApprover(kept.ID))
 
 		// Action

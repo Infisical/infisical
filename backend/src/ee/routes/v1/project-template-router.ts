@@ -1,16 +1,16 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectTemplatesSchema, ProjectType } from "@app/db/schemas";
+import { ProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
+import { UnpackedPermissionSchema } from "@app/lib/casl/permission-schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MAX_JSON_SIZE_LIMIT_IN_BYTES = 32_768;
@@ -229,7 +229,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const projectTemplates = await server.services.projectTemplate.listProjectTemplatesByOrg(
-        req.permission,
+        req.actor,
         req.query.type
       );
 
@@ -237,7 +237,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_PROJECT_TEMPLATES,
           metadata: {
@@ -275,12 +275,12 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const projectTemplate = await server.services.projectTemplate.findProjectTemplateById(
         req.params.templateId,
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_PROJECT_TEMPLATE,
           metadata: {
@@ -333,11 +333,11 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const projectTemplate = await server.services.projectTemplate.createProjectTemplate(req.body, req.permission);
+      const projectTemplate = await server.services.projectTemplate.createProjectTemplate(req.body, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_PROJECT_TEMPLATE,
           metadata: req.body
@@ -348,7 +348,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         .sendPostHogEvents({
           event: PostHogEventTypes.ProjectTemplateCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { templateId: projectTemplate.id, name: projectTemplate.name }
         })
         .catch(() => {});
@@ -405,12 +405,12 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
       const projectTemplate = await server.services.projectTemplate.updateProjectTemplateById(
         req.params.templateId,
         req.body,
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_PROJECT_TEMPLATE,
           metadata: {
@@ -424,7 +424,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         .sendPostHogEvents({
           event: PostHogEventTypes.ProjectTemplateUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             templateId: projectTemplate.id,
             name: projectTemplate.name
@@ -458,12 +458,12 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const projectTemplate = await server.services.projectTemplate.deleteProjectTemplateById(
         req.params.templateId,
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_PROJECT_TEMPLATE,
           metadata: {
@@ -476,7 +476,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         .sendPostHogEvents({
           event: PostHogEventTypes.ProjectTemplateDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             templateId: projectTemplate.id,
             name: projectTemplate.name

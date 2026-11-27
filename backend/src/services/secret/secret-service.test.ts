@@ -1,22 +1,23 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretServiceFactory } from "./secret-service";
 
 type TDeps = Parameters<typeof secretServiceFactory>[0];
 type TSlotOptions = Parameters<TConcurrencySlot>[1];
 
-const readsSecrets = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
-  { action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }
-] as never);
+const readsSecrets = Permission.fromRules({
+  rules: [{ action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }] as never
+});
 
 const makeService = () => {
   const findByFolderIds = vi.fn().mockResolvedValue([
@@ -30,7 +31,9 @@ const makeService = () => {
   ]);
 
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: readsSecrets }) },
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({ permission: readsSecrets, folderGrants: FolderGrants.none() })
+    },
     folderDAL: {
       findBySecretPath: vi.fn().mockResolvedValue({ id: "root-folder" }),
       findByManySecretPath: vi.fn().mockResolvedValue([{ id: "shared-folder", envId: "env", path: "/shared" }])
@@ -59,11 +62,8 @@ const request = (overrides: { path?: string; recursive?: boolean; includeImports
   projectId: "project",
   environment: "dev",
   path: "/app",
-  actor: ActorType.USER as const,
-  actorId: "user-1",
-  actorOrgId: "org",
-  actorAuthMethod: null,
-  ...overrides
+  ...overrides,
+  actor: actorContext({ principal: userPrincipal({ id: "user-1" }), org: actorOrg({ id: "org" }) })
 });
 
 const recordingSlot = () => {

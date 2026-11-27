@@ -1,16 +1,15 @@
-import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import { SecretType, TSecretFolders, TSecretsV2, TSecretsV2Insert, TSecretsV2Update } from "@app/db/schemas";
 import { TCipherPair, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
+import { ProjectPermission, ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -77,7 +76,8 @@ export type TGetSecretsDTO = {
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
   secretReadSlot?: TConcurrencySlot;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSecretsMissingReadValuePermissionDTO = Omit<
   TGetSecretsDTO,
@@ -98,49 +98,49 @@ export type TGetASecretDTO = {
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
   secretReadSlot?: TConcurrencySlot;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TCreateSecretDTO = TProjectPermission & {
-  secretName: string;
-  secretPath: string;
-  environment: string;
-  secretValue: string;
-  type: SecretType;
-  tagIds?: string[];
-  secretComment?: string;
-  skipMultilineEncoding?: boolean | null;
-  secretReminderRepeatDays?: number | null;
-  secretReminderNote?: string | null;
-  secretMetadata?: ResourceMetadataWithEncryptionDTO;
-};
-
-export type TUpdateSecretDTO = TProjectPermission & {
-  secretPath: string;
-  environment: string;
-  secretName: string;
-  secretValue?: string;
-  newSecretName?: string;
-  secretComment?: string;
-  type: SecretType;
-  tagIds?: string[];
-  skipMultilineEncoding?: boolean | null;
-  secretReminderRepeatDays?: number | null;
-  secretReminderNote?: string | null;
-  secretReminderRecipients?: string[] | null;
-  metadata?: {
-    source?: string;
+export type TCreateSecretDTO = { projectId: string } & TActorInput & {
+    secretName: string;
+    secretPath: string;
+    environment: string;
+    secretValue: string;
+    type: SecretType;
+    tagIds?: string[];
+    secretComment?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
   };
-  secretMetadata?: ResourceMetadataWithEncryptionDTO;
-};
 
-export type TDeleteSecretDTO = TProjectPermission & {
-  secretPath: string;
-  environment: string;
-  secretName: string;
-  type: SecretType;
-};
+export type TUpdateSecretDTO = { projectId: string } & TActorInput & {
+    secretPath: string;
+    environment: string;
+    secretName: string;
+    secretValue?: string;
+    newSecretName?: string;
+    secretComment?: string;
+    type: SecretType;
+    tagIds?: string[];
+    skipMultilineEncoding?: boolean | null;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    secretReminderRecipients?: string[] | null;
+    metadata?: {
+      source?: string;
+    };
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
+  };
 
-export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
+export type TDeleteSecretDTO = { projectId: string } & TActorInput & {
+    secretPath: string;
+    environment: string;
+    secretName: string;
+    type: SecretType;
+  };
+
+export type TCreateManySecretDTO = TActorInput & {
   secretPath: string;
   projectId: string;
   environment: string;
@@ -158,7 +158,7 @@ export type TCreateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   }[];
 };
 
-export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
+export type TUpdateManySecretDTO = TActorInput & {
   secretPath: string;
   projectId: string;
   environment: string;
@@ -177,7 +177,7 @@ export type TUpdateManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   }[];
 };
 
-export type TDeleteManySecretDTO = Omit<TProjectPermission, "projectId"> & {
+export type TDeleteManySecretDTO = TActorInput & {
   secretPath: string;
   projectId: string;
   environment: string;
@@ -187,7 +187,7 @@ export type TDeleteManySecretDTO = Omit<TProjectPermission, "projectId"> & {
   }[];
 };
 
-export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
+export type TGetSecretVersionsDTO = TActorInput & {
   limit?: number;
   offset?: number;
   secretId: string;
@@ -303,7 +303,7 @@ export type TFnSecretMove = {
   actor: ActorType;
   actorId: string;
   actorOrgId: string;
-  permission: MongoAbility<ProjectPermissionSet>;
+  permission: ProjectPermission;
   tx: Knex;
   kmsDataKeyService: TKmsDataKeyService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
@@ -340,10 +340,10 @@ export type TFnSecretMoveResult = {
   destinationFolder: TMoveSecretResolvedFolder;
 };
 
-export type TFnSecretMoveInTransaction = Omit<TFnSecretMove, "permission"> & {
-  actorAuthMethod: ActorAuthMethod;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-};
+export type TFnSecretMoveInTransaction = Omit<TFnSecretMove, "permission" | "actor" | "actorId" | "actorOrgId"> &
+  TActorInput & {
+    secretsPermissionService: TSecretsPermissionService;
+  };
 
 // post-commit side effects for a single move: sync the affected source/destination folders.
 export type TDispatchSecretMoveSideEffectsDTO = {
@@ -382,7 +382,7 @@ export type TRemoveSecretReminderDTO = {
   projectId: string;
 };
 
-export type TBackFillSecretReferencesDTO = TProjectPermission;
+export type TBackFillSecretReferencesDTO = { projectId: string } & TActorInput;
 
 export type TCreateManySecretsFnFactory = {
   projectDAL: TProjectDALFactory;
@@ -462,7 +462,7 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDuplicateSecretAttributes = {
   value?: boolean;
@@ -481,7 +481,7 @@ export type TDuplicateSecretDTO = {
   secretIds: string[];
   shouldOverwrite: boolean;
   attributesToCopy: TDuplicateSecretAttributes;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TAttachSecretTagsDTO = {
   projectId: string;
@@ -490,21 +490,21 @@ export type TAttachSecretTagsDTO = {
   environment: string;
   secretPath: string;
   type: SecretType;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetSecretReferencesTreeDTO = {
   projectId: string;
   secretName: string;
   environment: string;
   secretPath: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetSecretReferencesDTO = {
   projectId: string;
   secretName: string;
   environment: string;
   secretPath: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TFindSecretsByFolderIdsFilter = {
   limit?: number;
@@ -523,17 +523,7 @@ export type TFindSecretsByFolderIdsFilter = {
 
 export type TGetSecretsMultiEnvDTO = Pick<
   TGetSecretsDTO,
-  | "actorId"
-  | "actor"
-  | "path"
-  | "projectId"
-  | "actorOrgId"
-  | "actorAuthMethod"
-  | "search"
-  | "tagSlugs"
-  | "orderDirection"
-  | "limit"
-  | "offset"
+  "actor" | "path" | "projectId" | "search" | "tagSlugs" | "orderDirection" | "limit" | "offset"
 > & {
   orderBy?: SecretSortField;
   sortEnvironment?: string;
@@ -543,7 +533,7 @@ export type TGetSecretsMultiEnvDTO = Pick<
 
 export type TGetSecretKeyEnvironmentsDTO = Pick<
   TGetSecretsMultiEnvDTO,
-  "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "environments"
+  "actor" | "path" | "projectId" | "environments"
 > & {
   secretKey: string;
 };

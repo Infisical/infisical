@@ -3,15 +3,22 @@ import { z } from "zod";
 import { SecretImportsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
+
+const ImportEnvResponseSchema = z.object({
+  name: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.name),
+  slug: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.slug),
+  id: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.id),
+  projectId: z.string().describe(SECRET_IMPORTS.RESPONSE.importEnv.projectId)
+});
 
 export const registerSecretImportRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -57,7 +64,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
             z.object({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: ImportEnvResponseSchema
             })
           )
         })
@@ -72,10 +79,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.createImport({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         projectId: req.body.projectId,
         data: req.body.import
@@ -100,7 +104,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretImportCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.body.projectId,
           importFromEnvironment: secretImport.importEnv.slug,
@@ -160,7 +164,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
             z.object({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: ImportEnvResponseSchema
             })
           )
         })
@@ -175,10 +179,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.updateImport({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.projectId,
@@ -204,7 +205,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretImportUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { importId: secretImport.id, projectId: req.body.projectId }
         })
         .catch(() => {});
@@ -242,7 +243,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           message: z.string(),
           secretImport: SecretImportsSchema.omit({ importEnv: true }).merge(
             z.object({
-              importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() })
+              importEnv: ImportEnvResponseSchema
             })
           )
         })
@@ -257,10 +258,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.deleteImport({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.projectId
@@ -286,7 +284,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretImportDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { importId: secretImport.id, projectId: req.body.projectId }
         })
         .catch(() => {});
@@ -326,10 +324,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { message } = await server.services.secretImport.resyncSecretImportReplication({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.projectId
@@ -365,12 +360,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
           message: z.string(),
           secretImports: SecretImportsSchema.omit({ importEnv: true })
             .extend({
-              importEnv: z.object({
-                name: z.string(),
-                slug: z.string(),
-                id: z.string(),
-                projectId: z.string().optional()
-              }),
+              importEnv: ImportEnvResponseSchema,
               sourceProjectName: z.string().optional()
             })
             .array()
@@ -386,10 +376,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImports = await server.services.secretImport.getImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.projectId
       });
@@ -438,7 +425,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
               slug: z.string()
             }),
             projectId: z.string(),
-            importEnv: z.object({ name: z.string(), slug: z.string(), id: z.string() }),
+            importEnv: ImportEnvResponseSchema,
             secretPath: z.string()
           })
         })
@@ -454,10 +441,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.getImportById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId
       });
 
@@ -521,10 +505,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       const orgBudget = server.secretsOrgBudget(req, reply);
       const readSlot = server.secretReadSlot(req, reply);
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         secretReadSlot: async (work, opts) => {
           await orgBudget.check();

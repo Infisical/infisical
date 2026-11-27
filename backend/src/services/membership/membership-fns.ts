@@ -1,3 +1,4 @@
+import { AbilityTuple } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -8,13 +9,19 @@ import {
   ProjectType,
   TableName
 } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission, TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
 import { PlanProduct, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
+import type { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { delegatedOauthOf } from "@app/lib/auth/principal";
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 // secretsTemporaryAccess gates temporary (time-bound) role assignment in Secret Management projects.
 // It is ignored when null (no restriction); an explicit boolean enforces it, blocking temporary role
@@ -69,6 +76,8 @@ export const roleNeedsPrivilegeBoundary = (role: string) =>
 export const filterRolesNeedingPrivilegeBoundary = <T extends { role: string }>(roles: T[]) =>
   roles.filter((el) => roleNeedsPrivilegeBoundary(el.role));
 
+const isActiveRole = (role: TMembershipRole) => TemporaryAccess.restore(role).isActive();
+
 export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
   ...new Set(
     roles
@@ -77,6 +86,9 @@ export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
       .filter((slug) => slug !== OrgMembershipRole.NoAccess && slug !== ProjectMembershipRole.NoAccess)
   )
 ];
+
+export const toBoundsTargets = (rolePermissions: { permission: Permission<AbilityTuple>; role?: { slug: string } }[]) =>
+  rolePermissions.map(({ permission, role }) => ({ permission, roleSlug: role?.slug }));
 
 type TAssertWillRetainProjectAdminArg = {
   scopeProjectId: string;
@@ -148,5 +160,63 @@ export const assertProductWillRetainAdmin = async ({
     excludeMembershipIds,
     productLabel: project.type === ProjectType.AgentVault ? "This project" : productLabel,
     tx
+  });
+};
+
+type TMemberActorContextDeps = {
+  actorContextService: Pick<TActorContextService, "forPrincipal" | "forSession">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+};
+
+// For building the member's own permission. The requester's delegated OAuth scopes carry over; for a user target
+// so does its sign-in method (or the stored one, for queued work), which is checked against the org's sign-in policy.
+export const buildMemberActorContext = async (
+  { actorContextService, userDAL, identityDAL }: TMemberActorContextDeps,
+  {
+    target,
+    orgId,
+    requester,
+    authMethod
+  }: {
+    target: { type: ActorType.USER | ActorType.IDENTITY; id: string };
+    orgId: string;
+    requester?: TActorContext;
+    authMethod?: ActorAuthMethod;
+  }
+): Promise<TActorContext> => {
+  if (requester && requester.principal.type === target.type && requester.principal.id === target.id) {
+    return requester;
+  }
+  if (target.type === ActorType.USER) {
+    const requestingUser = requester?.principal.type === ActorType.USER ? requester.principal : undefined;
+    const oauth = delegatedOauthOf(requester?.principal);
+    const user = await requestMemoize(requestMemoKeys.userFindById(target.id), () => userDAL.findById(target.id));
+    const userAuthMethod = requestingUser?.authMethod ?? authMethod ?? null;
+    const principal = {
+      type: ActorType.USER as const,
+      id: target.id,
+      username: user?.username ?? "",
+      email: user?.email ?? null,
+      authMethod: userAuthMethod,
+      isSuperAdmin: Boolean(user?.superAdmin),
+      oauth
+    };
+    return userAuthMethod
+      ? actorContextService.forSession({ principal, orgId })
+      : actorContextService.forPrincipal({ principal, orgId });
+  }
+  const identity = await requestMemoize(requestMemoKeys.identityFindById(target.id), () =>
+    identityDAL.findById(target.id)
+  );
+  return actorContextService.forPrincipal({
+    principal: {
+      type: ActorType.IDENTITY,
+      id: target.id,
+      name: identity?.name ?? "",
+      isInstanceAdmin: false,
+      oauth: delegatedOauthOf(requester?.principal)
+    },
+    orgId
   });
 };

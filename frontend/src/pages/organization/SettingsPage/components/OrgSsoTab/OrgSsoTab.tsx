@@ -300,7 +300,8 @@ export const OrgSsoTab = withPermission(
           issuer: "",
           cert: "",
           mfaSignalAttribute: null,
-          mfaAuthnContexts: null
+          mfaAuthnContexts: null,
+          mfaAttributeValues: null
         });
       } else if (from === "oidc") {
         await updateOidcAsync({

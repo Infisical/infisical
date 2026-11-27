@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -54,6 +54,7 @@ import {
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import { formatAccessDurationLimit, getAccessDurationOptions } from "./accessDuration";
 import { AccessTypeBadge } from "./AccessTypeBadge";
 import { useAccountSheetDetails } from "./accountSheetDetails";
 import {
@@ -61,17 +62,6 @@ import {
   toAutoApprovalInputValues
 } from "./auto-approval/AutoApprovalRequestInputs";
 import { PamDetailSheet } from "./PamDetailSheet";
-
-// Mirrors the membership expiry picker options, capped at the default 7d policy maximum and
-// without "No expiry" since every approved access must be time-boxed.
-const DURATION_OPTIONS = [
-  { value: "15m", label: "15 minutes" },
-  { value: "1h", label: "1 hour" },
-  { value: "4h", label: "4 hours" },
-  { value: "1d", label: "1 day" },
-  { value: "3d", label: "3 days" },
-  { value: "7d", label: "1 week" }
-];
 
 // Reason requiredness follows the template's Require Reason policy, same as the API and CLI
 const makeSchema = (requireReason: boolean, breakGlass: boolean) => {
@@ -217,22 +207,42 @@ export const RequestAccessSheet = ({
     [requireReason, breakGlassOnSubmit]
   );
 
+  const maxAccessDurationSeconds = account?.maxAccessDurationSeconds ?? null;
+  const durationOptions = useMemo(
+    () => getAccessDurationOptions(maxAccessDurationSeconds),
+    [maxAccessDurationSeconds]
+  );
+  const defaultDuration = durationOptions.some((opt) => opt.value === "1h")
+    ? "1h"
+    : durationOptions[durationOptions.length - 1].value;
+
   const {
     control,
     handleSubmit,
     reset,
+    getValues,
     formState: { isDirty }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { duration: "1h", reason: "" }
+    defaultValues: { duration: defaultDuration, reason: "" }
   });
+
+  useEffect(() => {
+    reset({ duration: defaultDuration, reason: "" });
+  }, [account?.id]);
+
+  useEffect(() => {
+    if (!durationOptions.some((opt) => opt.value === getValues("duration"))) {
+      reset({ duration: defaultDuration, reason: getValues("reason") });
+    }
+  }, [durationOptions, defaultDuration]);
 
   const autoApprovalInputDetails = approverData?.autoApprovalInputs ?? [];
   const hasAutoApprovalValues = Object.values(autoApprovalValues).some((value) => value.trim());
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      reset();
+      reset({ duration: defaultDuration, reason: "" });
       setBypassReason("");
       setBreakGlassChosen(false);
       setAutoApprovalValues({});
@@ -321,7 +331,7 @@ export const RequestAccessSheet = ({
           }
 
           createNotification({ text, type });
-          reset();
+          reset({ duration: defaultDuration, reason: "" });
           setAutoApprovalValues({});
           onOpenChange(false);
           if ((breakGlassOnSubmit || request?.autoApprovedAt) && account) {
@@ -496,7 +506,7 @@ export const RequestAccessSheet = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          {DURATION_OPTIONS.map((opt) => (
+                          {durationOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
@@ -507,6 +517,8 @@ export const RequestAccessSheet = ({
                         {isCredentialRequest
                           ? "How long you can reveal the credential for."
                           : "How long you can launch sessions for once approved."}
+                        {maxAccessDurationSeconds !== null &&
+                          ` This account allows up to ${formatAccessDurationLimit(maxAccessDurationSeconds)}.`}
                       </FieldDescription>
                     </FieldContent>
                   </Field>

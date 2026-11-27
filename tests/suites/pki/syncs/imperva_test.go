@@ -108,6 +108,7 @@ func TestImpervaPkiSync_Sync(t *testing.T) {
 		site := s.cp.State(t).Sites[s.site]
 		require.Len(t, site.Certificates, 1)
 		require.True(t, strings.HasPrefix(site.Certificates["RSA"].Certificate, strings.TrimSpace(renewed.JSON200.Certificate)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, site.Certificates["RSA"].Certificate, site.Certificates["RSA"].PrivateKey)
 	})
 
 	t.Run("should clear the website's custom certificate", func(t *testing.T) {

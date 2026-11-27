@@ -1,7 +1,6 @@
 package certificates_test
 
 import (
-	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -89,17 +88,5 @@ func withSAN(body api.CreateCertificateJSONRequestBody, names ...string) api.Cre
 	return body
 }
 
-func publicKeyOf(t *testing.T, privatePEM string) interface{ Equal(crypto.PublicKey) bool } {
-	t.Helper()
-	block, _ := pem.Decode([]byte(privatePEM))
-	require.NotNil(t, block, "no private key PEM: %q", privatePEM)
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
-	}
-	require.NoError(t, err)
-	return key.(crypto.Signer).Public().(interface{ Equal(crypto.PublicKey) bool })
-}
-
-const crossOrgWhy = `[BUG?] An unknown id answers 404 and another organization's id 403 naming the
-	project, which tells a caller the id exists.`
+const crossOrgWhy = `Another organization's id answers exactly like an unknown one, so a caller can't
+	tell that the id exists.`

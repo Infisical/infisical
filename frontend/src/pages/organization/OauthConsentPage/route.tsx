@@ -11,7 +11,8 @@ const OauthConsentPageQuerySchema = z.object({
   state: z.string().optional(),
   code_challenge: z.string().optional(),
   code_challenge_method: z.string().optional(),
-  scope: z.string().optional()
+  scope: z.string().optional(),
+  resource: z.string().optional()
 });
 
 export const Route = createFileRoute("/_authenticate/organization/oauth-consent")({

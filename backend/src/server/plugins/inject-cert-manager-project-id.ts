@@ -37,7 +37,7 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
   server.decorateRequest("internalCertManagerProjectId", "");
 
   server.addHook("preValidation", async (req) => {
-    if (!req.permission?.orgId) return;
+    if (!req.actor?.orgId) return;
 
     const routePath = req.routeOptions.url ?? "";
     if (!CERT_MANAGER_PREFIXES.some((prefix) => routePath.startsWith(prefix))) return;
@@ -57,7 +57,7 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
       }
       const isValidForOrg = await server.services.certManagerProjectResolver.isCertManagerProject(
         explicit,
-        req.permission.orgId
+        req.actor.orgId
       );
       if (!isValidForOrg) {
         throw new BadRequestError({
@@ -68,11 +68,11 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
       return;
     }
 
-    const fromCookie = readProjectIdFromCookie(req.cookies, req.permission.orgId);
+    const fromCookie = readProjectIdFromCookie(req.cookies, req.actor.orgId);
     if (fromCookie) {
       const isValidForOrg = await server.services.certManagerProjectResolver.isCertManagerProject(
         fromCookie,
-        req.permission.orgId
+        req.actor.orgId
       );
       if (isValidForOrg) {
         req.internalCertManagerProjectId = fromCookie;
@@ -80,6 +80,6 @@ export const injectCertManagerProjectId: FastifyPluginAsync = fp(async (server) 
       }
     }
 
-    req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.permission.orgId);
+    req.internalCertManagerProjectId = await server.services.certManagerProjectResolver.resolve(req.actor.orgId);
   });
 });

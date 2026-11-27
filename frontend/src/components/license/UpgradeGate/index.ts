@@ -20,7 +20,6 @@ export {
   MachineIdentityTemplatesUpgradeIntent,
   MfaEnforcementUpgradeIntent,
   OidcSsoUpgradeIntent,
-  ProjectLimitUpgradeIntent,
   ProjectTemplatesUpgradeIntent,
   SamlSsoUpgradeIntent,
   ScimUpgradeIntent,

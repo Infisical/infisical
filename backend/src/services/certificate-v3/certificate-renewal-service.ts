@@ -1,17 +1,19 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { TCertificates, ProjectType } from "@app/db/schemas";
+import { TApplicationPermissionService } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -19,7 +21,6 @@ import { ms } from "@app/lib/ms";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
@@ -34,12 +35,19 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { extractSubjectAltNames } from "@app/services/certificate-common/certificate-csr-utils";
+import { certificateNotFoundError } from "@app/services/certificate-common/certificate-errors";
 import {
   TProfileCustomExtension,
   TResolvedCustomExtension
 } from "@app/services/certificate-common/certificate-extension-fns";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { describePolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import {
+  profileHasNoCaError,
+  profilePolicyMissingError
+} from "@app/services/certificate-profile/certificate-profile-errors";
 import {
   ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
@@ -80,7 +88,8 @@ import {
 import {
   assertCanEditCertificate,
   assertCanEditCertificateResult,
-  assertCanRevokeCertificate
+  assertCanRevokeCertificate,
+  TCertificateIssuanceCaller
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -154,7 +163,8 @@ import {
   TRenewalAuditChange,
   TRenewalConfigResponse,
   TRenewCertificateDTO,
-  TUpdateRenewalConfigDTO
+  TUpdateRenewalConfigDTO,
+  TRenewCertificateInput
 } from "./certificate-v3-types";
 
 type TCertificateRenewalServiceFactoryDep = {
@@ -176,7 +186,8 @@ type TCertificateRenewalServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateRequestAgainstPolicy" | "getPolicyById">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "findPkiSyncIdsByCertificateId"
@@ -232,14 +243,19 @@ class RenewalBlockedError extends BadRequestError {
 type TRenewalActor = {
   actor: ActorType;
   actorId: string;
-  actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
 };
+
+const toRenewalActor = (actor: TActorContext): TRenewalActor => ({
+  actor: actor.principal.type,
+  actorId: actor.principal.id,
+  actorOrgId: actor.org.id
+});
 
 export type TResolveApplicationIdForProfile = (
   profile: { id: string; projectId: string; slug: string },
   explicitApplicationId: string | undefined,
-  actorCtx: { actor: ActorType; actorId: string; actorAuthMethod: ActorAuthMethod; actorOrgId: string },
+  caller: TCertificateIssuanceCaller,
   enrollmentType: EnrollmentType
 ) => Promise<string | undefined>;
 
@@ -270,7 +286,8 @@ export const certificateRenewalServiceFactory = ({
   certificateProfileDAL,
   certificatePolicyService,
   internalCaService,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -491,7 +508,6 @@ export const certificateRenewalServiceFactory = ({
     effectiveSignatureAlgorithm,
     actor,
     actorId,
-    actorAuthMethod,
     actorOrgId,
     removeRootsFromChain,
     resolvedCustomExtensions,
@@ -514,7 +530,6 @@ export const certificateRenewalServiceFactory = ({
     effectiveSignatureAlgorithm: CertSignatureAlgorithm;
     actor: ActorType;
     actorId: string;
-    actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
     removeRootsFromChain?: boolean;
     resolvedCustomExtensions?: TResolvedCustomExtension[];
@@ -553,10 +568,6 @@ export const certificateRenewalServiceFactory = ({
     const pendingRequest = await $openRenewalRequest(
       {
         internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         projectId: originalCert.projectId,
         caId: ca.id,
         profileId: originalCert.profileId ?? undefined,
@@ -681,7 +692,7 @@ export const certificateRenewalServiceFactory = ({
   ) => {
     const originalCert = await certificateDAL.findByIdForUpdate(certificateId, tx);
     if (!originalCert) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
 
     if (!originalCert.profileId) {
@@ -693,7 +704,10 @@ export const certificateRenewalServiceFactory = ({
 
     const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId, tx);
     if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+      throw new NotFoundError({
+        message:
+          "The certificate profile this certificate was issued from no longer exists, so it cannot be renewed. Issue a new certificate instead."
+      });
     }
 
     const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(originalCert.id, tx);
@@ -730,12 +744,12 @@ export const certificateRenewalServiceFactory = ({
     {
       originalCert,
       profile,
-      actorCtx,
+      actor,
       isEditingCertificate
     }: {
       originalCert: TCertificates;
       profile: { id: string; projectId: string; slug: string };
-      actorCtx: TRenewalActor;
+      actor: TActorContext;
       isEditingCertificate: boolean;
     },
     tx?: Knex
@@ -743,27 +757,29 @@ export const certificateRenewalServiceFactory = ({
     const { certMetadata, projectPermission } = isEditingCertificate
       ? await assertCanEditCertificate({
           certificate: originalCert,
-          ...actorCtx,
-          permissionService,
+          actor,
+          projectPermissionService,
+          applicationPermissionService,
           resourceMetadataDAL,
           tx
         })
       : { certMetadata: [] as { key: string; value: string }[], projectPermission: undefined };
 
     if (originalCert.applicationId) {
-      await $resolveApplicationIdForProfile(profile, originalCert.applicationId, actorCtx, EnrollmentType.API);
+      await $resolveApplicationIdForProfile(profile, originalCert.applicationId, { actor }, EnrollmentType.API);
       return { certMetadata, projectPermission };
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      ...actorCtx,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: profile.projectId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.IssueCert,
-      subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.IssueCert,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: { slug: profile.slug }
+    });
 
     return { certMetadata, projectPermission };
   };
@@ -771,13 +787,13 @@ export const certificateRenewalServiceFactory = ({
   const $readImportedCertificateAltNames = async ({
     certificate,
     encryptedCertificate,
-    actorCtx,
+    actor,
     isEditingCertificate,
     internal
   }: {
     certificate: TCertificates;
     encryptedCertificate?: Buffer | null;
-    actorCtx: TRenewalActor;
+    actor?: TActorContext;
     isEditingCertificate: boolean;
     internal: boolean;
   }) => {
@@ -785,8 +801,8 @@ export const certificateRenewalServiceFactory = ({
       ? await certificateProfileDAL.findByIdWithConfigs(certificate.profileId)
       : undefined;
     if (!profile) return [];
-    if (!internal) {
-      await $authorizeRenewal({ originalCert: certificate, profile, actorCtx, isEditingCertificate });
+    if (!internal && actor) {
+      await $authorizeRenewal({ originalCert: certificate, profile, actor, isEditingCertificate });
     }
 
     if (!encryptedCertificate) return [];
@@ -802,13 +818,13 @@ export const certificateRenewalServiceFactory = ({
     {
       originalCert,
       profile,
-      actorCtx,
+      actor,
       internal,
       requestedTtl
     }: {
       originalCert: TCertificates;
       profile: TCertificateProfileWithConfigs;
-      actorCtx: TRenewalActor;
+      actor?: TActorContext;
       internal: boolean;
       requestedTtl?: string;
     },
@@ -821,19 +837,16 @@ export const certificateRenewalServiceFactory = ({
     if (issuerType === IssuerType.CA) {
       const caId = profile.caId || originalCert.caId;
       if (!caId) {
-        throw new NotFoundError({ message: "Certificate Authority ID not found" });
+        throw profileHasNoCaError(profile.slug);
       }
 
       ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
-      if (!ca) {
-        throw new NotFoundError({ message: "Certificate Authority not found" });
-      }
 
       assertCaInProfileProject(ca, profile);
 
       const eligibilityCheck = validateRenewalEligibility(originalCert, ca, requestedTtl);
       if (!eligibilityCheck.isEligible) {
-        throw new RenewalBlockedError(`Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`);
+        throw new RenewalBlockedError(`Certificate is not eligible for renewal: ${eligibilityCheck.errors.join("; ")}`);
       }
 
       caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
@@ -843,10 +856,10 @@ export const certificateRenewalServiceFactory = ({
     }
 
     const policyId = profile.certificatePolicyId || originalCert.certificateTemplateId;
-    const policy = policyId ? await certificatePolicyService.getPolicyById({ ...actorCtx, policyId, internal }) : null;
+    const policy = policyId ? await certificatePolicyService.getPolicyById({ actor, policyId, internal }) : null;
 
     if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
+      throw profilePolicyMissingError();
     }
 
     return { issuerType, ca, caType, policy };
@@ -923,7 +936,7 @@ export const certificateRenewalServiceFactory = ({
       profileCustomExtensions
     });
     if (!validationResult.isValid) {
-      throw new RenewalBlockedError(`Certificate renewal failed. Errors: ${validationResult.errors.join(", ")}`);
+      throw new RenewalBlockedError(describePolicyViolations(validationResult.errors));
     }
 
     return {
@@ -1066,7 +1079,6 @@ export const certificateRenewalServiceFactory = ({
         {
           internal: true,
           customExtensions: resolvedCustomExtensions,
-          ...actorCtx,
           projectId: originalCert.projectId,
           tx,
           caId: ca?.id || originalCert.caId || undefined,
@@ -1170,7 +1182,6 @@ export const certificateRenewalServiceFactory = ({
     const pendingRequest = await $openRenewalRequest(
       {
         internal: true,
-        ...actorCtx,
         projectId: originalCert.projectId,
         caId: ca.id,
         profileId: originalCert.profileId ?? undefined,
@@ -1226,7 +1237,6 @@ export const certificateRenewalServiceFactory = ({
         state: certificateRequest.state,
         locality: certificateRequest.locality,
         domainComponents: certificateRequest.domainComponents,
-        ...actorCtx,
         internal: true,
         onPersisted: async (newCert, tx) => {
           await attachCertificateToPendingRequest(
@@ -1421,7 +1431,6 @@ export const certificateRenewalServiceFactory = ({
         createCertificateRequest: async () => {
           const heldRequest = await certificateRequestService.createCertificateRequest({
             internal: true,
-            ...actorCtx,
             projectId: originalCert.projectId,
             tx,
             caId,
@@ -1515,9 +1524,7 @@ export const certificateRenewalServiceFactory = ({
   const renewCertificate = async ({
     certificateId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    organizationId,
     internal = false,
     removeRootsFromChain,
     renewalKeySource: requestedKeySource,
@@ -1525,8 +1532,7 @@ export const certificateRenewalServiceFactory = ({
     attributes,
     externalConfiguration,
     approvedRenewal
-  }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
-    internal?: boolean;
+  }: TRenewCertificateInput & {
     approvedRenewal?: {
       certificateRequestId: string;
       reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
@@ -1534,7 +1540,9 @@ export const certificateRenewalServiceFactory = ({
     };
   }): Promise<TCertificateIssuanceResponse> => {
     const approvedCertificateRequestId = approvedRenewal?.certificateRequestId;
-    const actorCtx: TRenewalActor = { actor, actorId, actorAuthMethod, actorOrgId };
+    const actorCtx: TRenewalActor = actor
+      ? toRenewalActor(actor)
+      : { actor: ActorType.PLATFORM, actorId: "", actorOrgId: organizationId ?? "" };
     const callerKeySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr: requestedCsr });
     let keySource = callerKeySource;
     let csr = requestedCsr;
@@ -1546,7 +1554,15 @@ export const certificateRenewalServiceFactory = ({
     // Redis and the License Server, and the renewal transaction must hold no network call.
     const certForLicenseChecks = await certificateDAL.findById(certificateId);
     if (!certForLicenseChecks) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
+    }
+    if (!internal) {
+      await assertPkiResourceInActorOrg({
+        projectDAL,
+        projectId: certForLicenseChecks.projectId,
+        actorOrgId: actorCtx.actorOrgId,
+        notFoundError: () => certificateNotFoundError({ id: certificateId })
+      });
     }
 
     // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
@@ -1573,7 +1589,7 @@ export const certificateRenewalServiceFactory = ({
             : await $readImportedCertificateAltNames({
                 certificate: certForLicenseChecks,
                 encryptedCertificate: importedBody?.encryptedCertificate,
-                actorCtx,
+                actor,
                 isEditingCertificate,
                 internal
               })
@@ -1610,9 +1626,12 @@ export const certificateRenewalServiceFactory = ({
 
     const approvalPolicy = approvedRenewal
       ? null
-      : await $matchRenewalApprovalPolicy({ originalCert: certForLicenseChecks, actor });
+      : await $matchRenewalApprovalPolicy({ originalCert: certForLicenseChecks, actor: actorCtx.actor });
     const approval = approvalPolicy
-      ? { policy: approvalPolicy, requester: await $resolveRequesterInfo(actor, actorId, EnrollmentType.API) }
+      ? {
+          policy: approvalPolicy,
+          requester: await $resolveRequesterInfo(actorCtx.actor, actorCtx.actorId, EnrollmentType.API)
+        }
       : null;
 
     const runRenewal = () =>
@@ -1626,9 +1645,10 @@ export const certificateRenewalServiceFactory = ({
           originatingRequest
         } = await $loadRenewalSubject({ certificateId, keySource }, tx);
 
-        const renewalAuth = internal
-          ? undefined
-          : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
+        const renewalAuth =
+          internal || !actor
+            ? undefined
+            : await $authorizeRenewal({ originalCert, profile, actor, isEditingCertificate }, tx);
 
         assertCertificateNotDeleted(originalCert);
 
@@ -1636,7 +1656,7 @@ export const certificateRenewalServiceFactory = ({
           {
             originalCert,
             profile,
-            actorCtx,
+            actor,
             internal,
             requestedTtl: csrRenewalRequest?.validity?.ttl ?? attributes?.ttl
           },
@@ -1685,7 +1705,7 @@ export const certificateRenewalServiceFactory = ({
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
 
-        if (externalConfiguration?.reissue && !internal) {
+        if (externalConfiguration?.reissue && !internal && actor) {
           const requestedNames = new Set(
             [
               certificateRequest.commonName,
@@ -1700,8 +1720,9 @@ export const certificateRenewalServiceFactory = ({
           if (isRemovingName) {
             await assertCanRevokeCertificate({
               certificate: originalCert,
-              ...actorCtx,
-              permissionService,
+              actor,
+              projectPermissionService,
+              applicationPermissionService,
               resourceMetadataDAL,
               tx
             });
@@ -1947,10 +1968,7 @@ export const certificateRenewalServiceFactory = ({
       const response = await $completeKeyPreservingRenewal({
         ...renewalResult,
         approvedCertificateRequestId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
+        ...actorCtx,
         removeRootsFromChain
       });
       return {
@@ -1996,10 +2014,6 @@ export const certificateRenewalServiceFactory = ({
         {
           internal: true,
           customExtensions: resolvedCustomExtensions,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
           projectId: originalCert.projectId,
           profileId: profile?.id,
           applicationId: originalCert.applicationId ?? undefined,
@@ -2034,7 +2048,7 @@ export const certificateRenewalServiceFactory = ({
           sourceCertificateId: originalCert.id,
           targetCertificateRequestId: certificateRequest.id,
           targetCertificateRequestCreatedAt: certificateRequest.createdAt,
-          orgId: actorOrgId,
+          orgId: actorCtx.actorOrgId,
           tx
         });
       });
@@ -2094,29 +2108,27 @@ export const certificateRenewalServiceFactory = ({
 
   const $loadCertificateForRenewalConfig = async ({
     certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     certificateId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
     const certificate = await certificateDAL.findById(certificateId);
     if (!certificate) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificate.projectId,
+      actorOrgId: actor.org.id,
+      notFoundError: () => certificateNotFoundError({ id: certificateId })
+    });
 
     await assertCanEditCertificate({
       certificate,
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      permissionService,
+      projectPermissionService,
+      applicationPermissionService,
       resourceMetadataDAL
     });
 
@@ -2131,25 +2143,10 @@ export const certificateRenewalServiceFactory = ({
     return certificate;
   };
 
-  const getRenewalPreview = async ({
-    certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: {
-    certificateId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-  }) => {
+  const getRenewalPreview = async ({ certificateId, actor }: { certificateId: string; actor: TActorContext }) => {
     const certificate = await $loadCertificateForRenewalConfig({
       certificateId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+      actor
     });
 
     const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificate.id);
@@ -2161,17 +2158,11 @@ export const certificateRenewalServiceFactory = ({
   const updateRenewalConfig = async ({
     certificateId,
     renewBeforeDays,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TUpdateRenewalConfigDTO): Promise<TRenewalConfigResponse> => {
     const certificate = await $loadCertificateForRenewalConfig({
       certificateId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+      actor
     });
 
     const enrollmentType = await certificateDAL.getRequestEnrollmentTypeByCertId(certificate.id);
@@ -2243,17 +2234,11 @@ export const certificateRenewalServiceFactory = ({
 
   const disableRenewalConfig = async ({
     certificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TDisableRenewalConfigDTO): Promise<TDisableRenewalResponse> => {
     const certificate = await $loadCertificateForRenewalConfig({
       certificateId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+      actor
     });
 
     await certificateDAL.updateById(certificateId, { renewBeforeDays: null });
@@ -2289,10 +2274,7 @@ export const certificateRenewalServiceFactory = ({
     reviewedCertificateRequest: TCertRequestRequestData["certificateRequest"];
   }) =>
     renewCertificate({
-      actor: ActorType.PLATFORM,
-      actorId: "",
-      actorAuthMethod: null,
-      actorOrgId: organizationId,
+      organizationId,
       internal: true,
       certificateId: await $findLatestRenewalOf(renewal.certificateId),
       renewalKeySource: renewal.renewalKeySource,

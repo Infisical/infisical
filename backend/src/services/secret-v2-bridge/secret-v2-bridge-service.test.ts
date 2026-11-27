@@ -1,14 +1,15 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
 import { SecretType } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretV2BridgeServiceFactory } from "./secret-v2-bridge-service";
 
@@ -20,10 +21,12 @@ vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
 type TDeps = Parameters<typeof secretV2BridgeServiceFactory>[0];
 type TSlotOptions = Parameters<TConcurrencySlot>[1];
 
-const readsSecrets = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
-  { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },
-  { action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }
-] as never);
+const readsSecrets = Permission.fromRules({
+  rules: [
+    { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },
+    { action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }
+  ] as never
+});
 
 const secretRow = (key: string, folderId: string) => ({
   id: key,
@@ -45,7 +48,9 @@ const makeService = ({ secretInFolder = false }: { secretInFolder?: boolean } = 
   const findImportedSecrets = vi.fn().mockResolvedValue(["A", "B"].map((key) => secretRow(key, "shared-folder")));
 
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: readsSecrets }) },
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({ permission: readsSecrets, folderGrants: FolderGrants.none() })
+    },
     folderDAL: {
       findBySecretPath: vi.fn().mockResolvedValue({ id: "root-folder" }),
       findByManySecretPath: vi.fn().mockResolvedValue([{ id: "shared-folder", envId: "env", path: "/shared" }])
@@ -87,11 +92,8 @@ const request = (overrides: { secretName?: string; path?: string } = {}) => ({
   type: SecretType.Shared,
   viewSecretValue: true,
   includeImports: true,
-  actor: ActorType.USER as const,
-  actorId: "user-1",
-  actorOrgId: "org",
-  actorAuthMethod: null,
-  ...overrides
+  ...overrides,
+  actor: actorContext({ principal: userPrincipal({ id: "user-1" }), org: actorOrg({ id: "org" }) })
 });
 
 const recordingSlot = () => {

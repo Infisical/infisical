@@ -13,7 +13,8 @@ import {
   applyCommonNameDefaultSan,
   applyIssuerNameOverride,
   applyProfileDefaults,
-  getCommonNameCopySubjectAltNames
+  getCommonNameCopySubjectAltNames,
+  resolveEffectiveTtl
 } from "./certificate-v3-fns";
 
 const BARE_CSR = `-----BEGIN CERTIFICATE REQUEST-----
@@ -93,6 +94,17 @@ const TLS_DEFAULTS: TCertificateProfileDefaults = {
 
 const forCsr = (csr: string, defaults: TCertificateProfileDefaults | null) =>
   applyProfileDefaults(extractCertificateRequestFromCSR(csr), defaults);
+
+describe("resolveEffectiveTtl", () => {
+  it("reads m in the policy maximum as months, as the policy does when the profile is saved", () => {
+    expect(resolveEffectiveTtl({ profileDefaultTtlDays: 30, policyMaxValidity: "1m", flowDefaultTtl: "90d" })).toBe(
+      "30d"
+    );
+    expect(() =>
+      resolveEffectiveTtl({ profileDefaultTtlDays: 31, policyMaxValidity: "1m", flowDefaultTtl: "90d" })
+    ).toThrow();
+  });
+});
 
 describe("applyProfileDefaults", () => {
   it("fills in key usages the CSR omits, so a required-usage policy is satisfied", () => {

@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import {
   Combobox,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -120,9 +121,27 @@ export const AcmeFields = ({
         )}
       />
     )}
+    {dnsProvider === AcmeDnsProvider.Rfc2136 && (
+      <Controller
+        control={control}
+        defaultValue=""
+        name="configuration.dnsProviderConfig.hostedZoneId"
+        render={({ field, fieldState: { error } }) => (
+          <Field className="mb-4">
+            <FieldLabel>
+              Zone <span className="text-muted">(optional)</span>
+            </FieldLabel>
+            <FieldDescription>Leave empty to detect the zone from the DNS server.</FieldDescription>
+            <Input {...field} placeholder="example.com" isError={Boolean(error)} />
+            <FieldError errors={[error]} />
+          </Field>
+        )}
+      />
+    )}
     {dnsProvider &&
       dnsProvider !== AcmeDnsProvider.ROUTE53 &&
-      dnsProvider !== AcmeDnsProvider.GcpCloudDns && (
+      dnsProvider !== AcmeDnsProvider.GcpCloudDns &&
+      dnsProvider !== AcmeDnsProvider.Rfc2136 && (
         <Controller
           name="configuration.dnsProviderConfig.hostedZoneId"
           control={control}

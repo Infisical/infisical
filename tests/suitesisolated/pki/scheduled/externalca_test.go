@@ -25,9 +25,9 @@ func newOrderer(t *testing.T, proj *pki.Project, ca pki.CA) orderer {
 
 // order requests a certificate and waits for the request to reach one of want, returning
 // the request's id and the settled request.
-func (o orderer) order(t *testing.T, name string, want ...api.GetCertificateRequest200JSONResponseBodyStatus) (string, *api.GetCertificateRequestResponse) {
+func (o orderer) order(t *testing.T, body api.CreateCertificateJSONRequestBody, want ...api.GetCertificateRequest200JSONResponseBodyStatus) (string, *api.GetCertificateRequestResponse) {
 	t.Helper()
-	res := pki.Request(t, o.Operator, o.App, o.Profile, pki.ServerCertificate(name))
+	res := pki.Request(t, o.Operator, o.App, o.Profile, body)
 	require.NotNilf(t, res.JSON200, "ordering a certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	got := o.Settled(t, res.JSON200.CertificateRequestId, want...)
 	require.Contains(t, want, got.JSON200.Status, "error: %v", got.JSON200.ErrorMessage)
@@ -44,7 +44,7 @@ func TestOrderPollingJob(t *testing.T) {
 		ca, dc := pki.NewDigiCertCA(t, proj)
 		o := newOrderer(t, proj, ca)
 		name := "www." + id.Short() + ".digicert.test"
-		requestID, _ := o.order(t, name, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
+		requestID, _ := o.order(t, pki.ServerCertificate(name), api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
 		var placed *digicert.Order
 		for _, ord := range dc.State(t).Orders {
 			placed = ord
@@ -69,7 +69,7 @@ func TestOrderPollingJob(t *testing.T) {
 		proj := pki.CertManager(t, tn)
 		ca, _ := pki.NewDigiCertCA(t, proj)
 		o := newOrderer(t, proj, ca)
-		requestID, _ := o.order(t, "www."+id.Short()+".digicert.test", api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
+		requestID, _ := o.order(t, pki.ServerCertificate("www."+id.Short()+".digicert.test"), api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
 
 		// Action
 		runJob(t, h, api.DigicertOrderPolling)
@@ -86,7 +86,7 @@ func TestOrderPollingJob(t *testing.T) {
 		ca, gd := pki.NewGoDaddyCA(t, proj)
 		o := newOrderer(t, proj, ca)
 		name := id.Short() + ".godaddy.test"
-		requestID, _ := o.order(t, name, api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
+		requestID, _ := o.order(t, pki.ServerCertificate(name), api.GetCertificateRequest200JSONResponseBodyStatusPendingValidation)
 		var ordered *godaddy.Certificate
 		for _, c := range gd.State(t).Certificates {
 			ordered = c
@@ -117,8 +117,8 @@ func TestDigiCertRevocationSyncJob(t *testing.T) {
 		domain := id.Short() + ".digicert.test"
 		dc.Seed(t, digicert.WithValidatedDomain(domain))
 		o := newOrderer(t, proj, ca)
-		revoked := o.issued(t, "www."+domain)
-		kept := o.issued(t, "api."+domain)
+		revoked := o.issued(t, pki.ServerCertificate("www."+domain))
+		kept := o.issued(t, pki.ServerCertificate("api."+domain))
 		dc.Seed(t, digicert.RevokeOrder(orderFor(t, dc, "www."+domain)))
 
 		// Action
@@ -131,9 +131,9 @@ func TestDigiCertRevocationSyncJob(t *testing.T) {
 }
 
 // issued orders a certificate the CA issues at once and returns its id.
-func (o orderer) issued(t *testing.T, name string) uuid.UUID {
+func (o orderer) issued(t *testing.T, body api.CreateCertificateJSONRequestBody) uuid.UUID {
 	t.Helper()
-	_, got := o.order(t, name, api.GetCertificateRequest200JSONResponseBodyStatusIssued)
+	_, got := o.order(t, body, api.GetCertificateRequest200JSONResponseBodyStatusIssued)
 	require.NotNil(t, got.JSON200.CertificateId)
 	certID, err := uuid.Parse(*got.JSON200.CertificateId)
 	require.NoError(t, err)

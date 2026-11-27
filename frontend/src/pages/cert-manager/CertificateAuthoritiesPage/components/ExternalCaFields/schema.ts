@@ -20,10 +20,21 @@ const acmeConfigurationSchema = z
       id: z.string().min(1, "DNS Connection is required"),
       name: z.string()
     }),
-    dnsProviderConfig: z.object({
-      provider: z.nativeEnum(AcmeDnsProvider),
-      hostedZoneId: z.string().trim().min(1, "Hosted Zone ID is required")
-    }),
+    dnsProviderConfig: z
+      .object({
+        provider: z.nativeEnum(AcmeDnsProvider),
+        hostedZoneId: z.string().trim()
+      })
+      // RFC 2136 can detect the zone from the DNS server; every other provider needs it
+      .superRefine(({ provider, hostedZoneId }, ctx) => {
+        if (!hostedZoneId && provider !== AcmeDnsProvider.Rfc2136) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Hosted Zone ID is required",
+            path: ["hostedZoneId"]
+          });
+        }
+      }),
     directoryUrl: z.string().trim().min(1, "Directory URL is required").url("Must be a valid URL"),
     accountEmail: z
       .string()

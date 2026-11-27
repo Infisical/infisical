@@ -3,9 +3,9 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
@@ -46,7 +46,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_CREATE,
@@ -142,7 +142,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_UPDATE,
@@ -189,7 +189,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.AGENT_VAULT_HOOK_DELETE,

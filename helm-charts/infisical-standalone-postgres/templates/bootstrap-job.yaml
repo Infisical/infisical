@@ -60,6 +60,13 @@ spec:
             - --organization={{ $infisicalValues.autoBootstrap.organization }}
             - --k8-secret-template={{ $infisicalValues.autoBootstrap.secretTemplate }}
             - --ignore-if-bootstrapped=true
+          env:
+            - name: INSTANCE_SETUP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $infisicalValues.kubeSecretRef }}
+                  key: INSTANCE_SETUP_TOKEN
+                  optional: true
           envFrom:
             - secretRef:
                 name: {{ $infisicalValues.autoBootstrap.credentialSecret.name }}

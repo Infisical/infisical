@@ -1,7 +1,6 @@
 package certificates_test
 
 import (
-	"crypto"
 	"fmt"
 	"net/http"
 	"testing"
@@ -64,7 +63,7 @@ func TestCertificate_Read(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, pki.ParseLeaf(t, issued.Certificate).Raw, cert.Raw)
 		require.Len(t, chain, 2)
-		require.True(t, publicKeyOf(t, issued.PrivateKey).Equal(key.(crypto.Signer).Public()))
+		require.True(t, pki.ParsePrivateKey(t, issued.PrivateKey).Equal(key))
 	})
 
 	t.Run("should refuse the private key of a certificate issued from a CSR", func(t *testing.T) {
@@ -99,7 +98,7 @@ func TestCertificate_Read(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "This project does not belong to your selected organization.", apierr.Message(res.Body))
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "Certificate with ID '"+issued.ID.String()+"' not found. Search your organization's certificates with POST /api/v1/cert-manager/certificates/search to find the right one.", apierr.Message(res.Body))
 	})
 }

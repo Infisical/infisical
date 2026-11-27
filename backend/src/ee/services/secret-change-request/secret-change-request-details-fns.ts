@@ -1,9 +1,8 @@
-import { MongoAbility } from "@casl/ability";
-
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 
-import { hasSecretReadValueOrDescribePermission } from "../permission/permission-fns";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "../permission/project-permission";
 import { TSecretApprovalBridgeCommit } from "./secret-change-request-merge-fns";
 
 export type TSecretApprovalCommitValueAccess = (tags: { slug: string }[]) => boolean;
@@ -20,7 +19,7 @@ export const buildSecretApprovalCommitValueAccess =
     environment,
     secretPath
   }: {
-    permission: MongoAbility<ProjectPermissionSet>;
+    permission: Permission<ProjectPermissionSet>;
     isReviewer: boolean;
     isRequestOpen: boolean;
     environment: string;
@@ -28,7 +27,7 @@ export const buildSecretApprovalCommitValueAccess =
   }): TSecretApprovalCommitValueAccess =>
   (tags) =>
     (isReviewer && isRequestOpen) ||
-    hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+    SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
       environment,
       secretPath: secretPath || "/",
       secretTags: tags.map((tag) => tag.slug)

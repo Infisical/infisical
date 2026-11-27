@@ -11,13 +11,16 @@ import {
 } from "@app/db/schemas";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -33,7 +36,6 @@ import { TOrgInviteQuota } from "@app/services/org/org-invite-quota";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
@@ -77,14 +79,9 @@ type TMembershipUserServiceFactoryDep = {
   >;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    | "getProjectPermission"
-    | "getProjectPermissionByRoles"
-    | "getOrgPermission"
-    | "getOrgPermissionByRoles"
-    | "getResourcePermission"
-  >;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   userAliasDAL: TUserAliasDALFactory;
@@ -117,7 +114,9 @@ export const membershipUserServiceFactory = ({
   roleDAL,
   membershipRoleDAL,
   userDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
+  secretsPermissionService,
   orgDAL,
   userAliasDAL,
   licenseService,
@@ -141,7 +140,7 @@ export const membershipUserServiceFactory = ({
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
-      permissionService,
+      orgPermissionService,
       licenseService,
       instanceConfigService,
       smtpService,
@@ -157,7 +156,8 @@ export const membershipUserServiceFactory = ({
     }),
     [AccessScope.Project]: newProjectMembershipUserFactory({
       orgDAL,
-      permissionService,
+      projectPermissionService,
+      secretsPermissionService,
       membershipUserDAL,
       projectDAL,
       smtpService,
@@ -261,8 +261,8 @@ export const membershipUserServiceFactory = ({
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
-      orgDAL.findById(dto.permission.orgId)
+    const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.actor.org.id), () =>
+      orgDAL.findById(dto.actor.org.id)
     );
 
     // If roles array is empty and scope is Organization, use org's default role
@@ -274,7 +274,7 @@ export const membershipUserServiceFactory = ({
       if (isCustomOrgRole(defaultMembershipRole)) {
         const customRoles = await roleDAL.find({
           id: defaultMembershipRole,
-          orgId: dto.permission.orgId
+          orgId: dto.actor.org.id
         });
         if (customRoles.length === 0) {
           throw new NotFoundError({ message: "Default custom role not found" });
@@ -328,7 +328,7 @@ export const membershipUserServiceFactory = ({
     const sanitizedEmails = dto.data.usernames.map((el) => sanitizeEmail(el));
     const { existingUsers: users, newUserEmails } = await $resolveUsers(
       sanitizedEmails,
-      dto.permission.orgId,
+      dto.actor.org.id,
       orgDetails.rootOrgId
     );
     const existingMemberships = await membershipUserDAL.find({
@@ -646,7 +646,7 @@ export const membershipUserServiceFactory = ({
         message: "User doesn't have membership"
       });
 
-    if (existingMembership.actorUserId === dto.permission.id)
+    if (existingMembership.actorUserId === dto.actor.principal.id)
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
@@ -657,11 +657,11 @@ export const membershipUserServiceFactory = ({
         // advisory lock and count are race-safe with the delete itself.
         const [doc] = await deleteOrgMembershipsFn({
           orgMembershipIds: [existingMembership.id],
-          orgId: dto.permission.orgId,
+          orgId: dto.actor.org.id,
           orgDAL,
           userAliasDAL,
           usageMeteringService,
-          userId: dto.permission.id,
+          userId: dto.actor.principal.id,
           membershipUserDAL,
           userGroupMembershipDAL,
           projectAccessRevokeService,

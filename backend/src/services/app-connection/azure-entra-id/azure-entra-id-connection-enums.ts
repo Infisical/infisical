@@ -1,3 +1,4 @@
 export enum AzureEntraIdConnectionMethod {
-  ClientSecret = "client-secret"
+  ClientSecret = "client-secret",
+  ManagedIdentity = "managed-identity"
 }

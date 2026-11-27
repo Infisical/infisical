@@ -15,6 +15,8 @@ import { PendingAction } from "../secretFolders/types";
 import { secretKeys } from "./queries";
 import {
   TCreateCommitResponse,
+  TCreateCommitsDTO,
+  TCreateCommitsResponse,
   TCreateSecretBatchDTO,
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
@@ -632,6 +634,92 @@ export const useCreateCommit = ({
       });
     },
     ...options
+  });
+};
+
+export const useCreateCommits = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCreateCommitsResponse, object, TCreateCommitsDTO>({
+    mutationFn: async ({ projectId, secretPath, message, secrets }) => {
+      const environments = [...new Set(secrets.map((secret) => secret.environment))];
+      const results = await Promise.allSettled(
+        environments.map(async (environment) => {
+          const envSecrets = secrets.filter((secret) => secret.environment === environment);
+          const { data } = await apiRequest.post<TCreateCommitResponse>(
+            "/api/v1/pit/batch/commit",
+            {
+              projectId,
+              environment,
+              secretPath,
+              message: message || undefined,
+              changes: {
+                secrets: {
+                  create: envSecrets
+                    .filter((secret) => secret.isCreate)
+                    .map(({ secretKey, secretValue, secretComment }) => ({
+                      secretKey,
+                      secretValue,
+                      secretComment
+                    })),
+                  update: envSecrets
+                    .filter((secret) => !secret.isCreate)
+                    .map(({ secretKey, secretValue, secretComment, tagIds }) => ({
+                      secretKey,
+                      secretValue,
+                      secretComment,
+                      tagIds
+                    }))
+                },
+                folders: {}
+              }
+            }
+          );
+          return data;
+        })
+      );
+      return {
+        commits: environments.map((environment, index) => {
+          const result = results[index];
+          return result.status === "fulfilled"
+            ? { environment, commit: result.value }
+            : { environment, error: result.reason as unknown };
+        })
+      };
+    },
+    onSuccess: ({ commits: allCommits }, { projectId, secretPath }) => {
+      const commits = allCommits.filter(({ commit }) => commit);
+      if (!commits.length) return;
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] as { projectId?: string })?.projectId === projectId &&
+          (query.queryKey[1] === "secrets-import-sec" ||
+            query.queryKey[1] === "imported-folders-all-envs")
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
+          (query.queryKey[1] as { projectId?: string })?.projectId === projectId
+      });
+      commits.forEach(({ environment }) => {
+        queryClient.invalidateQueries({
+          queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
+        });
+        queryClient.invalidateQueries({
+          queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
+        });
+      });
+      queryClient.invalidateQueries({ queryKey: secretApprovalRequestKeys.count({ projectId }) });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
+      });
+    }
   });
 };
 

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { asNonSharedBuffer } from "@app/lib/fn";
 
+import { joinPolicyViolations } from "../certificate-policy/certificate-policy-fns";
 import { CertExtensionCriticality, certificateExtensionOidSchema } from "./certificate-constants";
 import {
   appendCustomExtensions,
@@ -384,6 +385,15 @@ describe("resolveCustomExtensions", () => {
     expect(errors[0]).toContain("does not match any value required by this policy");
   });
 
+  it("quotes the required values when a required extension is missing", () => {
+    const { errors } = resolveCustomExtensions({
+      declarations: [],
+      rules: [{ oid: SID_OID, required: ["release.", "a,b"] }]
+    });
+
+    expect(errors[0]).toContain("matching one of: 'release.', 'a,b'.");
+  });
+
   it("accepts a request SID inside the allowed AD domain", () => {
     const { extensions, errors } = resolveCustomExtensions({
       declarations: [{ oid: SID_OID }],
@@ -456,6 +466,16 @@ describe("resolveCustomExtensions", () => {
     });
 
     expect(errors[0]).toContain("is denied by this policy");
+  });
+
+  it("quotes literal rule values so a trailing period survives a combined policy error", () => {
+    const { errors } = resolveCustomExtensions({
+      declarations: [{ oid: TEMPLATE_NAME_OID }],
+      rules: [{ oid: TEMPLATE_NAME_OID, allowed: ["release."] }],
+      requestExtensions: [{ oid: TEMPLATE_NAME_OID, value: "draft" }]
+    });
+
+    expect(joinPolicyViolations([...errors, "Another violation"])).toContain("Allowed values: 'release.';");
   });
 
   it("reports a required rule that nothing satisfies, and respects skipRequired", () => {

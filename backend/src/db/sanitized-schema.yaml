@@ -233,6 +233,7 @@ tables:
       - expiresAt
       - createdAt
       - updatedAt
+      - autoApprovedAt
 
   - name: certificate_authorities
     source: public.certificate_authorities
@@ -1259,6 +1260,16 @@ tables:
       - replicationStatus
       - lastReplicated
       - isReserved
+
+  - name: secret_references_v2
+    source: public.secret_references_v2
+    columns:
+      - id
+      - environment
+      - secretPath
+      - secretKey
+      - secretId
+      - targetProjectSlug
 
   - name: secret_rotations
     source: public.secret_rotations

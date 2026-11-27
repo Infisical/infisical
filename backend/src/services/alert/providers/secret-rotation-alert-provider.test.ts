@@ -1,6 +1,8 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { vi } from "vitest";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import {
   emitSecretRotationFailed,
   SECRET_ROTATION_FAILED_EVENT,
@@ -53,14 +55,15 @@ const buildProvider = (
         return opts.unresolvedPath ? [] : [{ id: "folder-1", path: "/databases" }];
       }
     } as never,
-    permissionService: {
-      getProjectPermission: async () => ({
-        permission: createMongoAbility(
-          (opts.rules ?? [
+    secretsPermissionService: {
+      getSecretsPermission: async () => ({
+        permission: Permission.fromRules({
+          rules: (opts.rules ?? [
             { action: "read", subject: "secret-rotation" },
             { action: "edit", subject: "secret-rotation" }
           ]) as never
-        )
+        }),
+        folderGrants: FolderGrants.none()
       })
     } as never
   });
@@ -89,7 +92,10 @@ const failedEvent = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-const actor = { actor: "user", actorId: "user-1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "user-1", authMethod: null },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: null }
+} as never;
 
 const permissionInput = (action: AlertPermissionAction, resourceId: string | null = "rotation-1") => ({
   action,
@@ -181,11 +187,11 @@ describe("secret rotation alert provider", () => {
   });
 
   describe("listing a project's rotation alerts without naming a rotation", () => {
-    // A CASL error is what the permission-denied audit hook records, with the action and subject it names.
+    // Has to be a denial so the permission-denied audit hook records it, with the action and subject.
     const expectAuditableReadDenial = async (result: Promise<void>) => {
       const error = await result.catch((err: unknown) => err);
-      expect(error).toBeInstanceOf(ForbiddenError);
-      expect(error).toMatchObject({ action: "read", subjectType: "secret-rotation" });
+      expect(error).toBeInstanceOf(PermissionDeniedError);
+      expect(error).toMatchObject({ denial: { action: "read", subject: "secret-rotation" } });
     };
 
     const listInput = permissionInput(AlertPermissionAction.Read, null);

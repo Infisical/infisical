@@ -3,12 +3,12 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { ms } from "@app/lib/ms";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -41,6 +41,12 @@ import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-ut
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -664,13 +670,13 @@ export const AzureAdCsCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAzureAdCsCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { azureAdcsConnectionId } = configuration;
     const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(azureAdcsConnectionId, AppConnection.AzureADCS);
     }
 
     if (appConnection.app !== AppConnection.AzureADCS) {
@@ -711,16 +717,14 @@ export const AzureAdCsCertificateAuthorityFns = ({
       } catch (error) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAzureAdCsCertificateAuthority(caEntity);
@@ -736,7 +740,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAzureAdCsCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
@@ -745,7 +749,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
 
       if (!appConnection) {
-        throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(azureAdcsConnectionId, AppConnection.AzureADCS);
       }
 
       if (appConnection.app !== AppConnection.AzureADCS) {
@@ -757,7 +761,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       const ca = await certificateAuthorityDAL.findById(id);
 
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await appConnectionService.validateAppConnectionUsageById(

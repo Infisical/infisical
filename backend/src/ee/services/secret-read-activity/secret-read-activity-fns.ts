@@ -1,13 +1,12 @@
 import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
-import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import {
-  buildFolderScopedPrivilegeRulesByGrant,
-  canonicalFolderPath,
-  hasSecretReadValueOrDescribePermission,
-  isFolderPathBelow
-} from "@app/ee/services/permission/permission-fns";
-import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+  FolderGrant,
+  FolderGrants,
+  isFolderPathBelow,
+  SecretReadAccess
+} from "@app/domains/secrets-manager/secrets/ce/module";
+import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
@@ -147,24 +146,28 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
   secretTags: secret.tags?.map((tag) => tag.slug)
 });
 
-export const buildFolderGrantSourceRules = <T extends TProjectFolderScopedPrivilege>(grants: T[]) => {
+export const buildFolderGrantSourceRules = (grants: FolderGrant[]) => {
   // Every recursive grant is compared with every later one, so each path is canonicalized once up front rather
   // than once per comparison.
-  const rulesByGrant = buildFolderScopedPrivilegeRulesByGrant(grants).map((grant) => {
-    const secretPath = canonicalFolderPath(grant.privilege.secretPath);
-    return { ...grant, secretPath, pathsBelow: secretPath === "/" ? "/" : `${secretPath}/` };
-  });
+  const rulesByGrant = FolderGrants.of(grants)
+    .rulesByGrant()
+    .map(({ grant, rules }) => ({
+      grant,
+      rules: rules.rules,
+      secretPath: grant.folderPath,
+      pathsBelow: grant.folderPath === "/" ? "/" : `${grant.folderPath}/`
+    }));
   return new Map(
-    rulesByGrant.map(({ privilege, rules, secretPath, pathsBelow }, index) => [
-      privilege.id,
-      privilege.appliesToSubfolders
+    rulesByGrant.map(({ grant, rules, secretPath, pathsBelow }, index) => [
+      grant.id,
+      grant.appliesToSubfolders
         ? [
             ...rules,
             ...rulesByGrant
               .slice(index + 1)
               .filter(
                 (later) =>
-                  later.privilege.environmentSlug === privilege.environmentSlug &&
+                  later.grant.environmentSlug === grant.environmentSlug &&
                   later.secretPath !== secretPath &&
                   later.secretPath.startsWith(pathsBelow)
               )
@@ -231,7 +234,7 @@ export const createAccessDating = (
       const permission = source.permission();
       let granted = checks.get(permission);
       if (granted === undefined) {
-        granted = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject);
+        granted = SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, subject);
         checks.set(permission, granted);
       }
       return granted;
@@ -293,9 +296,7 @@ export const summarizeSecretAccess = (
   const subject = subjectOf(activity);
   const entitled = unique(
     readersByRules
-      .filter(([{ permission }]) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject)
-      )
+      .filter(([{ permission }]) => SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, subject))
       .flat(),
     (reader) => reader.actorId
   );
@@ -355,16 +356,14 @@ const BUILT_IN_ROLE_NAMES = new Map<string, string>(
   getPredefinedRoles({ projectId: "", projectType: ProjectType.SecretManager }).map((role) => [role.slug, role.name])
 );
 
-export const toUnusedAccessFolderAccess = (
-  grants: TProjectFolderScopedPrivilege[]
-): TUnusedAccessPaths["folderAccess"] =>
-  grants.map(({ id, folderId, role, environmentSlug, secretPath, appliesToSubfolders }) => ({
-    id,
-    folderId,
-    environment: environmentSlug,
-    secretPath,
-    role: role as SecretFolderRole,
-    isPermissionRecursive: appliesToSubfolders
+export const toUnusedAccessFolderAccess = (grants: FolderGrant[]): TUnusedAccessPaths["folderAccess"] =>
+  grants.map((grant) => ({
+    id: grant.id,
+    folderId: grant.folderId,
+    environment: grant.environmentSlug,
+    secretPath: grant.secretPath,
+    role: grant.role as SecretFolderRole,
+    isPermissionRecursive: grant.appliesToSubfolders
   }));
 
 // A built-in role has no id and is named after its predefined role; a custom role keeps its own id and name.

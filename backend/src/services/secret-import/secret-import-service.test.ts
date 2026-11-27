@@ -1,31 +1,32 @@
-import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import {
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretImportServiceFactory } from "./secret-import-service";
 
 type TDeps = Parameters<typeof secretImportServiceFactory>[0];
 type TSlotOptions = Parameters<TConcurrencySlot>[1];
 
-const ability = (rules: Parameters<typeof createMongoAbility>[0]) =>
-  createMongoAbility<MongoAbility<ProjectPermissionSet>>(rules as never);
+const ability = (rules: unknown[]) => Permission.fromRules({ rules: rules as never });
 
 const readsImportedSecrets = ability([
   { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports },
   { action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }
 ]);
 
-const makeService = ({
-  permission = readsImportedSecrets
-}: { permission?: MongoAbility<ProjectPermissionSet> } = {}) => {
+const makeService = ({ permission = readsImportedSecrets }: { permission?: ReturnType<typeof ability> } = {}) => {
   const decrypt = vi.fn(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob);
   const findSecrets = vi.fn().mockResolvedValue(
     ["A", "B"].map((key) => ({
@@ -45,7 +46,9 @@ const makeService = ({
   );
 
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({ permission, folderGrants: FolderGrants.none() })
+    },
     folderDAL: {
       findBySecretPath: vi.fn().mockResolvedValue({ id: "root-folder" }),
       findByManySecretPath: vi.fn().mockResolvedValue([{ id: "shared-folder", envId: "env", path: "/shared" }])
@@ -77,15 +80,12 @@ const makeService = ({
   return { service: secretImportServiceFactory(deps as unknown as TDeps), decrypt, findSecrets };
 };
 
-const request = (overrides: { path?: string; actorId?: string } = {}) => ({
+const request = ({ actorId = "user-1", ...overrides }: { path?: string; actorId?: string } = {}) => ({
   projectId: "project",
   environment: "dev",
   path: "/app",
-  actor: ActorType.USER as const,
-  actorId: "user-1",
-  actorOrgId: "org",
-  actorAuthMethod: null,
-  ...overrides
+  ...overrides,
+  actor: actorContext({ principal: userPrincipal({ id: actorId }), org: actorOrg({ id: "org" }) })
 });
 
 const recordingSlot = () => {

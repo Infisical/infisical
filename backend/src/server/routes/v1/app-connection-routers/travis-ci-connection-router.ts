@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedTravisCIConnectionSchema,
   UpdateTravisCIConnectionSchema
 } from "@app/services/app-connection/travis-ci";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -47,7 +47,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const repositories = await server.services.appConnection.travisCI.listRepositories(connectionId, req.permission);
+      const repositories = await server.services.appConnection.travisCI.listRepositories(connectionId, req.actor);
 
       return repositories;
     }
@@ -81,11 +81,7 @@ export const registerTravisCIConnectionRouter = async (server: FastifyZodProvide
       const { connectionId } = req.params;
       const { repositoryId } = req.query;
 
-      const branches = await server.services.appConnection.travisCI.listBranches(
-        connectionId,
-        repositoryId,
-        req.permission
-      );
+      const branches = await server.services.appConnection.travisCI.listBranches(connectionId, repositoryId, req.actor);
 
       return branches;
     }

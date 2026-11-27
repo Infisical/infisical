@@ -5,11 +5,14 @@ import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 
-import { AgentVaultEeModule } from "./agent-vault/agent-vault/ee/module";
+import { AgentVaultEeModule, AgentVaultProjectRoles } from "./agent-vault/agent-vault/ee/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
+import { CodeSigningModule } from "./certificates/code-signing/ce/module";
+import { KmsModule, kmsProjectRoles } from "./kms/kms/ce/module";
 import { TDomainCron, TDomainQueue } from "./lib/jobs";
 import { TDomainKeyStore } from "./lib/key-store";
-import { PamModule } from "./pam/pam/ce/module";
+import { PamModule, PamProjectRoles } from "./pam/pam/ce/module";
+import { AccessControlModule } from "./platform/access-control/ce/module";
 import { EventsModule } from "./platform/events/ce/module";
 import { InstanceConfigCoreModule } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule } from "./platform/kms-core/ce/module";
@@ -17,7 +20,8 @@ import { ExternalKmsEeModule } from "./platform/kms-core/ee/external-kms-module"
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
-import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
+import { OrganizationsModule } from "./platform/organizations/ce/module";
+import { ProjectsModule, TProjectAccessListener } from "./platform/projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 
 type TKmsCoreEnvConfig = Pick<
@@ -46,11 +50,14 @@ export type TDomainDeps = {
     | "INTERNAL_REGION"
     | "isCloud"
     | "isProductionMode"
+    | "isTestMode"
     | "isSecondaryInstance"
     | "isGeneralWorkerRunModeEnabled"
     | "OTEL_TELEMETRY_COLLECTION_ENABLED"
   > &
     TKmsCoreEnvConfig;
+  // Gets each actor's project access as it resolves, feeding the request's audit context.
+  onProjectAccess?: TProjectAccessListener;
 };
 
 const kmsCoreEnv = (envConfig: TKmsCoreEnvConfig) => ({
@@ -122,11 +129,49 @@ export const createDomains = async (deps: TDomainDeps) => {
     isTelemetryEnabled: deps.envConfig.OTEL_TELEMETRY_COLLECTION_ENABLED
   });
 
-  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
-  const { organizationsProjectsService } = organizationsProjects;
-  const secrets = new SecretsModule({ organizationsProjectsService });
-  const pam = new PamModule({ organizationsProjectsService });
-  const certManager = new CertManagerModule({ db: deps.db, organizationsProjectsService });
+  const accessControl = new AccessControlModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    // Marker off in tests so a grant change shows up on the very next request.
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
+  const organizations = new OrganizationsModule({
+    db: deps.db,
+    actorGrantsService: accessControl.actorGrantsService,
+    roleService: accessControl.roleService,
+    actorOrgCacheTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
+  const { organizationsService } = organizations;
+  const projects = new ProjectsModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    actorGrantsService: accessControl.actorGrantsService,
+    roleService: accessControl.roleService,
+    groupService: accessControl.groupService,
+    orgPermissionService: organizations.orgPermissionService,
+    projectRoles: [new PamProjectRoles(), new AgentVaultProjectRoles(), kmsProjectRoles],
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined,
+    onProjectAccess: deps.onProjectAccess
+  });
+  const { projectsService } = projects;
+  const { projectPermissionService, projectResourcePermissionService } = projects;
+  const secrets = new SecretsModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    projectPermissionService,
+    actorGrantsService: accessControl.actorGrantsService,
+    groupService: accessControl.groupService,
+    projectsService,
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
+  const pam = new PamModule({
+    projectsService,
+    projectResourcePermissionService,
+    actorGrantsService: accessControl.actorGrantsService
+  });
+  const certManager = new CertManagerModule({ db: deps.db, organizationsService, projectResourcePermissionService });
+  const codeSigning = new CodeSigningModule({ projectResourcePermissionService });
+  const kms = new KmsModule({ projectPermissionService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = await LicenseModule.create({
@@ -137,7 +182,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     startLocalRefresh,
     licensePolicyService: licenseEe.licensePolicyService,
     licenseServer: licenseEe.licenseServerClient,
-    organizationsProjectsService,
+    organizationsService,
     usageCounters: [...secrets.usageCounters, ...pam.usageCounters, ...certManager.usageCounters]
   });
 
@@ -148,7 +193,9 @@ export const createDomains = async (deps: TDomainDeps) => {
     keyStore: deps.keyStore,
     licenseService: license.licenseService,
     usageMeteringService: license.usageMeteringService,
-    organizationsProjectsService
+    organizationsService,
+    projectPermissionService,
+    actorGrantsService: accessControl.actorGrantsService
   });
 
   // Before KMS Core writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot before
@@ -178,6 +225,7 @@ export const createDomains = async (deps: TDomainDeps) => {
   });
 
   return {
+    accessControl,
     events,
     license,
     licenseBilling,
@@ -185,8 +233,13 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsCore,
     externalKms,
     instanceConfigCore,
-    organizationsProjects,
+    organizations,
+    projects,
+    secrets,
+    pam,
     certManager,
+    codeSigning,
+    kms,
     agentVault
   };
 };

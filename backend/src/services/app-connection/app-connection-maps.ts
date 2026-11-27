@@ -99,7 +99,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.S3Compatible]: "S3-Compatible Storage",
   [AppConnection.Jira]: "Jira",
   [AppConnection.ClickHouse]: "ClickHouse",
-  [AppConnection.IncidentIo]: "incident.io"
+  [AppConnection.IncidentIo]: "incident.io",
+  [AppConnection.Rfc2136]: "DNS Server (RFC 2136)"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -201,5 +202,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.S3Compatible]: AppConnectionPlanType.Regular,
   [AppConnection.Jira]: AppConnectionPlanType.Regular,
   [AppConnection.ClickHouse]: AppConnectionPlanType.Regular,
-  [AppConnection.IncidentIo]: AppConnectionPlanType.Regular
+  [AppConnection.IncidentIo]: AppConnectionPlanType.Regular,
+  [AppConnection.Rfc2136]: AppConnectionPlanType.Regular
 };

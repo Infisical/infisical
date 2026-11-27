@@ -4,7 +4,7 @@ sidebarTitle: "Azure DNS"
 description: "Learn how to configure an Azure DNS Connection for Infisical."
 ---
 
-Infisical supports connecting to Azure DNS using a Service Principal with Client Secrets for secure access to manage DNS records in your Azure DNS zones.
+An Azure DNS connection lets Infisical manage DNS records in your Azure DNS zones. Infisical supports two methods for connecting to Azure DNS: Client Secret and Managed Identity.
 
 <Accordion title="Client Secret Authentication">
   To use client secret authentication, ensure your Azure Service Principal has the required permissions to manage DNS records in your Azure DNS Zone.
@@ -36,6 +36,26 @@ Infisical supports connecting to Azure DNS using a Service Principal with Client
   </Steps>
 </Accordion>
 
+<Accordion title="Managed Identity Authentication">
+  With managed identity authentication, Infisical connects as a [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with access to the DNS zone you want to use, and doesn't store a secret for the connection.
+
+  If you self-host Infisical, set `SITE_URL` to a URL that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it.
+
+  <Steps>
+    <Step>
+      In the Azure portal, go to **Managed Identities** and select **Create**. Choose a subscription, resource group, region, and name, then select **Review + create** and **Create**.
+    </Step>
+    <Step>
+      Open the managed identity and copy the **Client ID** from its **Overview** page. Copy your **Tenant ID** from the **Overview** page of **Microsoft Entra ID**.
+    </Step>
+    <Step>
+      Open your DNS zone and select **Access control (IAM)** > **Add** > **Add role assignment**. Choose the **DNS Zone Contributor** role, then select **Next**.
+
+      Under **Assign access to**, select **Managed identity**, then use **Select members** to pick your managed identity. Select **Review + assign**.
+    </Step>
+  </Steps>
+</Accordion>
+
 ## Setup Azure DNS connection in Infisical
 
 <Steps>
@@ -48,17 +68,41 @@ Infisical supports connecting to Azure DNS using a Service Principal with Client
     ![Select Azure DNS Connection](/images/app-connections/azure-dns/azure-dns-app-connection-select.png)
   </Step>
   <Step title="Create Connection">
-    Fill in the **Tenant ID**, **Client ID**, **Client Secret**, and **Subscription ID** fields with the credentials from your Azure Service Principal.
+    <Tabs>
+      <Tab title="Client Secret">
+        Fill in the **Tenant ID**, **Client ID**, **Client Secret**, and **Subscription ID** fields with the credentials from your Azure Service Principal.
 
-    ![Connect to Azure DNS](/images/app-connections/azure-dns/azure-dns-app-connection-form.png)
+        ![Connect to Azure DNS](/images/app-connections/azure-dns/azure-dns-app-connection-form.png)
 
-    <Tip>
-      You can find your **Subscription ID** in the Azure Portal under **Subscriptions**. The **Tenant ID** and **Client ID** can be found in your App Registration's **Overview** page.
-    </Tip>
+        <Tip>
+          You can find your **Subscription ID** in the Azure Portal under **Subscriptions**. The **Tenant ID** and **Client ID** can be found in your App Registration's **Overview** page.
+        </Tip>
 
-    <Tip>
-        You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
-    </Tip>
+        <Tip>
+            You can optionally enable **Automatic Credential Rotation** for this connection. See the [Automatic Credential Rotation](#automatic-credential-rotation) section below for details.
+        </Tip>
+      </Tab>
+      <Tab title="Managed Identity">
+        <Steps>
+          <Step>
+            Select the **Managed Identity** method and enter the **Tenant ID** and **Client ID** of your managed identity. Also enter the **Subscription ID** that holds your DNS zones. Then select **Configure Federated Credential**. Infisical creates the connection and shows the **Issuer**, **Subject Identifier**, and **Audience** to add to the managed identity.
+          </Step>
+          <Step>
+            In the Azure portal, open your managed identity, go to **Settings** > **Federated credentials**, and select **Add Credential**. Choose the **Other issuer** scenario and fill in the form:
+
+            - **Issuer URL**: the **Issuer** from Infisical
+            - **Subject identifier**: the **Subject Identifier** from Infisical
+            - **Name**: any name, such as `infisical`
+            - **Audience**: the **Audience** from Infisical, which Azure fills in by default
+
+            Then select **Add**.
+          </Step>
+          <Step>
+            Back in Infisical, select **Verify Connection**. If verification fails right after you add the credential, wait a minute for Azure to apply it, then select **Retry Verification**.
+          </Step>
+        </Steps>
+      </Tab>
+    </Tabs>
   </Step>
   <Step title="Connection Created">
     Your **Azure DNS Connection** is now available for use in your Infisical projects.
@@ -68,7 +112,7 @@ Infisical supports connecting to Azure DNS using a Service Principal with Client
 
 ## Automatic credential rotation
 
-Infisical can automatically rotate the Client Secret of your Azure application on a recurring schedule. When enabled, Infisical will immediately generate a new Client Secret on connection creation and revoke the original one, ensuring that no external party retains access using the credentials you provided.
+When using the **Client Secret** authentication method, Infisical can automatically rotate the Client Secret of your Azure application on a recurring schedule. When enabled, Infisical will immediately generate a new Client Secret on connection creation and revoke the original one, ensuring that no external party retains access using the credentials you provided.
 
 <Steps>
     <Step title="Locate the Key ID of your Client Secret">

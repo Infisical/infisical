@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedTriggerDevConnectionSchema,
   UpdateTriggerDevConnectionSchema
 } from "@app/services/app-connection/trigger-dev";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -50,7 +50,7 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const projects = await server.services.appConnection.triggerDev.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.triggerDev.listProjects(connectionId, req.actor);
       return projects;
     }
   });
@@ -86,7 +86,7 @@ export const registerTriggerDevConnectionRouter = async (server: FastifyZodProvi
       const environments = await server.services.appConnection.triggerDev.listEnvironments(
         connectionId,
         projectRef,
-        req.permission
+        req.actor
       );
       return environments;
     }

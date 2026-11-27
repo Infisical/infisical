@@ -6,9 +6,9 @@ import {
 } from "@app/domains/platform/events/ce/module";
 import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 
 import { auditRevokedProjectAccess } from "./org-access-fns";

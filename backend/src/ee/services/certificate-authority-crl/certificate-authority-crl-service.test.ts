@@ -1,17 +1,19 @@
 import { webcrypto } from "node:crypto";
 
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { buildLocalCaSigner } from "@app/services/certificate-authority/ca-signer";
 import { CaCrlRegenerationTrigger } from "@app/services/certificate-authority/certificate-authority-enums";
 import { rebuildCaCrl } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -43,10 +45,10 @@ const auditLogInfo = {
 
 const actorFields = {
   caId: CA_ID,
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: "org-1",
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: "org-1" }
+  } as unknown as TActorContext,
   auditLogInfo
 };
 
@@ -70,8 +72,8 @@ const buildService = ({
 } = {}) =>
   certificateAuthorityCrlServiceFactory({
     certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn(async () => ca) },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({ permission: createMongoAbility(rules as never) }))
+    projectPermissionService: {
+      getProjectPermission: vi.fn(async () => Permission.fromRules({ rules: rules as never }))
     },
     projectDAL: {
       findById: vi.fn(async () => ({ id: "project-1", orgId: caOrgId })),
@@ -127,7 +129,7 @@ describe("certificateAuthorityCrlService.regenerateCrl", () => {
     vi.mocked(rebuildCaCrl).mockClear();
     const service = buildService({ rules: [editRule({ name: "other-ca" })] });
 
-    await expect(service.regenerateCrl(actorFields)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(service.regenerateCrl(actorFields)).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(rebuildCaCrl).not.toHaveBeenCalled();
   });
 
@@ -142,7 +144,7 @@ describe("certificateAuthorityCrlService.regenerateCrl", () => {
       ]
     });
 
-    await expect(service.regenerateCrl(actorFields)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(service.regenerateCrl(actorFields)).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(rebuildCaCrl).not.toHaveBeenCalled();
   });
 
@@ -206,5 +208,11 @@ describe("certificateAuthorityCrlService.getCaCrls", () => {
     const { crls } = await service.getCaCrls(actorFields);
 
     expect(crls).toEqual([expect.objectContaining({ id: "crl-1", crlNumber: null, thisUpdate, nextUpdate })]);
+  });
+
+  test("answers a CA in another organization the same as an unknown one", async () => {
+    const service = buildService({ caOrgId: "org-2" });
+
+    await expect(service.getCaCrls(actorFields)).rejects.toThrow(`Certificate authority with ID '${CA_ID}' not found.`);
   });
 });

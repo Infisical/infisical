@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -7,13 +8,12 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
-import { OrderByDirection, TGenericPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -26,7 +26,7 @@ export type TCreateGroupDTO = {
   name: string;
   slug?: string;
   role: string;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TUpdateGroupDTO = {
   id: string;
@@ -35,15 +35,15 @@ export type TUpdateGroupDTO = {
   slug: string;
   role: string;
 }> &
-  TGenericPermission;
+  TActorInput;
 
 export type TDeleteGroupDTO = {
   id: string;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TGetGroupByIdDTO = {
   id: string;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TListGroupUsersDTO = {
   id: string;
@@ -52,7 +52,7 @@ export type TListGroupUsersDTO = {
   username?: string;
   search?: string;
   filter?: FilterReturnedUsers;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TListGroupMachineIdentitiesDTO = {
   id: string;
@@ -60,7 +60,7 @@ export type TListGroupMachineIdentitiesDTO = {
   limit: number;
   search?: string;
   filter?: FilterReturnedMachineIdentities;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TListGroupMembersDTO = {
   id: string;
@@ -70,7 +70,7 @@ export type TListGroupMembersDTO = {
   orderBy?: GroupMembersOrderBy;
   orderDirection?: OrderByDirection;
   memberTypeFilter?: FilterMemberType[];
-} & TGenericPermission;
+} & TActorInput;
 
 export type TListGroupProjectsDTO = {
   id: string;
@@ -80,7 +80,7 @@ export type TListGroupProjectsDTO = {
   filter?: FilterReturnedProjects;
   orderBy?: GroupProjectsOrderBy;
   orderDirection?: OrderByDirection;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TListProjectGroupUsersDTO = TListGroupUsersDTO & {
   projectId: string;
@@ -89,22 +89,22 @@ export type TListProjectGroupUsersDTO = TListGroupUsersDTO & {
 export type TAddUserToGroupDTO = {
   id: string;
   username: string;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TAddMachineIdentityToGroupDTO = {
   id: string;
   identityId: string;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TRemoveUserFromGroupDTO = {
   id: string;
   username: string;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TRemoveMachineIdentityFromGroupDTO = {
   id: string;
   identityId: string;
-} & TGenericPermission;
+} & TActorInput;
 
 // group fns types
 
@@ -169,8 +169,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   usageMeteringService: TUsageMeteringService;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -181,7 +180,7 @@ export type TRemoveIdentitiesFromGroup = {
   identityIds: string[];
   actorId?: string;
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActors">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
   groupDAL: TGroupOrgIdsDAL;
   identityGroupMembershipDAL: Pick<
     TIdentityGroupMembershipDALFactory,
@@ -192,7 +191,7 @@ export type TRemoveIdentitiesFromGroup = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService: TUsageMeteringService;
   eventEmitter: TEventEmitter;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;

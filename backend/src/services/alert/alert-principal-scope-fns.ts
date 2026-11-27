@@ -1,10 +1,10 @@
 import { Knex } from "knex";
 
 import { OrgMembershipStatus, ProjectMembershipRole } from "@app/db/schemas";
+import { TemporaryAccess } from "@app/domains/platform/access-control/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -74,7 +74,7 @@ export const findProjectAdminUserIds = async (
   { orgId, projectId }: { orgId: string; projectId: string }
 ): Promise<Set<string>> => {
   const admins = (await deps.projectMembershipDAL.findAllProjectMembers(projectId)).filter((member) =>
-    member.roles.some((role) => role.role === ProjectMembershipRole.Admin && isActiveRole(role))
+    member.roles.some((role) => role.role === ProjectMembershipRole.Admin && TemporaryAccess.restore(role).isActive())
   );
   return findUsersWithOrgAccess(deps, { orgId, userIds: [...new Set(admins.map((member) => member.user.id))] });
 };

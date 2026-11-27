@@ -17,6 +17,7 @@ import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audi
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -35,7 +36,6 @@ import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@a
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
-import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
@@ -280,7 +280,7 @@ export const secretQueueFactory = ({
         (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
       ) {
         await reminderService.createReminder({
-          ...actor,
+          actor,
           reminder: {
             secretId: newSecret.id,
             message: secretReminderNote,

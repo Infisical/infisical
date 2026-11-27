@@ -29,7 +29,7 @@ const testAccount = "harness-a@proj.iam.gserviceaccount.com"
 
 func newGCP(t *testing.T) (*httptest.Server, *GCPControlPlane) {
 	t.Helper()
-	fakes, adminURL := fakenet.ServeInProcess(t, Google, GCPIAMCredentials, GCPCertificateManager)
+	fakes, adminURL := fakenet.ServeInProcess(t, Google, GCPIAMCredentials, GCPCertificateManager, GCPCloudDNS)
 	return fakes, OpenGCP(t, adminURL, testAccount)
 }
 

@@ -3,12 +3,12 @@ import { isDeepStrictEqual } from "node:util";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { OrganizationActionScope, TAlertChannels } from "@app/db/schemas";
+import { TAlertChannels } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { TGenericPermission } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -40,7 +40,7 @@ export type TAlertChannelServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "find">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   slackIntegrationDAL: TAlertChannelScopeDeps["slackIntegrationDAL"];
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: Pick<TOrgPermissionService, "getOrgPermission">;
 };
 
 export type TAlertChannelServiceFactory = ReturnType<typeof alertChannelServiceFactory>;
@@ -57,7 +57,7 @@ export type TCreateChannelInput = {
   orgId: string;
   projectId?: string | null;
   recipientScope: TAlertRecipientScope;
-  actor: TGenericPermission;
+  actor: TActorContext;
   createdByActorId: string | null;
   createdByActorType: string;
 };
@@ -70,7 +70,7 @@ export type TUpdateChannelInput = {
   enabled?: boolean;
   recipients?: TChannelRecipientInput[];
   recipientScope: TAlertRecipientScope;
-  actor: TGenericPermission;
+  actor: TActorContext;
 };
 
 const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
@@ -83,7 +83,7 @@ export const alertChannelServiceFactory = ({
   groupDAL,
   emailDomainDAL,
   slackIntegrationDAL,
-  permissionService
+  orgPermissionService
 }: TAlertChannelServiceFactoryDep) => {
   const $idsOfType = (recipients: TChannelRecipientInput[], principalType: AlertPrincipalType) => [
     ...new Set(recipients.filter((r) => r.principalType === principalType).map((r) => r.principalId))
@@ -207,7 +207,7 @@ export const alertChannelServiceFactory = ({
     config,
     existingConfig
   }: {
-    actor: TGenericPermission;
+    actor: TActorContext;
     channelType: string;
     config: Record<string, unknown>;
     existingConfig?: Record<string, unknown>;
@@ -215,15 +215,8 @@ export const alertChannelServiceFactory = ({
     const required = getChannelDefinition(channelType).requiredOrgPermission;
     if (!required) return;
     if (existingConfig && isDeepStrictEqual(config, existingConfig)) return;
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.actor,
-      actorId: actor.actorId,
-      orgId: actor.actorOrgId,
-      actorAuthMethod: actor.actorAuthMethod,
-      actorOrgId: actor.actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    if (permission.cannot(...required.permission)) {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    if (permission.cannot(required.permission)) {
       throw new ForbiddenRequestError({ message: required.message });
     }
   };

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { TableName } from "@app/db/schemas";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { approvalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   ApprovalNotificationEvent,
@@ -13,7 +14,7 @@ import {
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
 import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { TApprovalActor, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
+import { TApprovalActorContext, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
 import {
   approvalRequestApprovalsDALFactory,
   approvalRequestDALFactory,
@@ -22,7 +23,6 @@ import {
   TApprovalRequestDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { NotificationType } from "@app/services/notification/notification-types";
 
 import { createIsolatedOrgAndProject } from "./testUtils/fixtures";
@@ -36,11 +36,27 @@ const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(testDb);
 const userGroupMembershipDAL = userGroupMembershipDALFactory(testDb);
 const approvalPolicyDAL = approvalPolicyDALFactory(testDb);
 
-const asApprover = (userId: string, orgId: string): TApprovalActor => ({
+const asApprover = (userId: string, orgId: string): TApprovalActorContext => ({
   id: userId,
   type: ActorType.USER,
   authMethod: AuthMethod.EMAIL,
-  orgId
+  orgId,
+  principal: {
+    type: ActorType.USER,
+    id: userId,
+    username: userId,
+    email: null,
+    authMethod: AuthMethod.EMAIL,
+    isSuperAdmin: false
+  },
+  org: {
+    id: orgId,
+    name: orgId,
+    rootOrgId: orgId,
+    parentOrgId: orgId,
+    shouldUseNewPrivilegeSystem: true,
+    ssoPolicy: { authEnforced: false, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: false }
+  }
 });
 
 // The service is driven directly, with real approval DALs and a stand-in certificate-request resource that
@@ -69,7 +85,7 @@ const buildService = () => {
       approvalRequestApprovalsDAL,
       userGroupMembershipDAL,
       approvalPolicyDAL,
-      permissionService: { getOrgPermission: async () => ({}) },
+      orgPermissionService: { getOrgPermission: async () => ({}) },
       notificationService: {
         createUserNotifications: async (rows: { userId: string; title: string }[]) => {
           delivered.push(...rows.map(({ userId, title }) => ({ userId, title })));

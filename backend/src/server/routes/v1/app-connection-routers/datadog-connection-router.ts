@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedDatadogConnectionSchema,
   UpdateDatadogConnectionSchema
 } from "@app/services/app-connection/datadog";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -46,10 +46,7 @@ export const registerDatadogConnectionRouter = async (server: FastifyZodProvider
         params: { connectionId }
       } = req;
 
-      const serviceAccounts = await server.services.appConnection.datadog.listServiceAccounts(
-        connectionId,
-        req.permission
-      );
+      const serviceAccounts = await server.services.appConnection.datadog.listServiceAccounts(connectionId, req.actor);
       return { serviceAccounts };
     }
   });
