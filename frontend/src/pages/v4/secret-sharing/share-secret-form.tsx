@@ -310,7 +310,6 @@ export const useShareSecretForm = ({
                 <Input
                   type={showPassword ? "text" : "password"}
                   value={form.password}
-                  placeholder="Password"
                   autoComplete="off"
                   spellCheck={false}
                   data-1p-ignore
