@@ -1,5 +1,6 @@
 import { CaType } from "@app/hooks/api/ca/enums";
 import { ScepChallengeType } from "@app/hooks/api/certificateProfiles/types";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 /**
  * Mirror of backend's `ApplicationPermissionSub` for type-safe `permission.can(...)` checks
@@ -226,10 +227,20 @@ export type TRemovePkiApplicationMemberDTO = {
   memberId: string;
 };
 
+export enum PkiApplicationOrderBy {
+  Name = "name",
+  ProfileCount = "profileCount",
+  MemberCount = "memberCount",
+  CertificateCount = "certificateCount",
+  CreatedAt = "createdAt"
+}
+
 export type TListPkiApplicationsParams = {
   search?: string;
   limit?: number;
   offset?: number;
+  orderBy?: PkiApplicationOrderBy;
+  orderDirection?: OrderByDirection;
   applicationIds?: string[];
 };
 

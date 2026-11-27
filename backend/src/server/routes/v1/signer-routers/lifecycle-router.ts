@@ -4,12 +4,13 @@ import { PkiSignersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
+import { auditSafeText, openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertKeySource, SIGNER_CERTIFICATE_REQUEST_STATUSES } from "@app/services/signer/signer-enums";
+import { CertKeySource, SIGNER_CERTIFICATE_REQUEST_STATUSES, SignerOrderBy } from "@app/services/signer/signer-enums";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import {
@@ -160,7 +161,9 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         projectId: z.string().trim().optional().describe(openApiHidden()),
         offset: z.coerce.number().int().min(0).default(0),
         limit: z.coerce.number().int().min(1).max(100).default(20),
-        search: z.string().trim().optional()
+        search: auditSafeText(z.string().trim().max(255)).optional(),
+        orderBy: z.nativeEnum(SignerOrderBy).default(SignerOrderBy.CreatedAt),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.DESC)
       }),
       response: {
         200: z.object({

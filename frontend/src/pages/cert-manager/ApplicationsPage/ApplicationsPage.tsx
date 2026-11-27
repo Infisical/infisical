@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  InfoIcon,
+  MoreHorizontalIcon,
+  PlusIcon,
+  SearchIcon,
+  SlidersHorizontalIcon
+} from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -20,6 +28,9 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   PageHeader,
   PageLoader,
   Pagination,
@@ -31,6 +42,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSortDirection,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -42,8 +54,14 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { TPkiApplication, useListPkiApplications } from "@app/hooks/api/pkiApplications";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
+import {
+  PkiApplicationOrderBy,
+  TPkiApplication,
+  useListPkiApplications
+} from "@app/hooks/api/pkiApplications";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { useResetPageHelper } from "@app/hooks/useResetPageHelper";
 
@@ -59,8 +77,18 @@ export const ApplicationsPage = () => {
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, 20)
   );
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search, 300);
+  const [orderBy, setOrderBy] = useState(PkiApplicationOrderBy.CreatedAt);
+  const [orderDirection, setOrderDirection] = useState(OrderByDirection.DESC);
   const offset = (page - 1) * perPage;
-  const { data, isPending } = useListPkiApplications({ limit: perPage, offset });
+  const { data, isPending } = useListPkiApplications({
+    limit: perPage,
+    offset,
+    search: debouncedSearch || undefined,
+    orderBy,
+    orderDirection
+  });
   const applications = data?.applications;
   const totalCount = data?.total ?? 0;
 
@@ -70,6 +98,34 @@ export const ApplicationsPage = () => {
     setPerPage(newPerPage);
     setUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, newPerPage);
   };
+
+  const getSortDirection = (column: PkiApplicationOrderBy): TableSortDirection => {
+    if (orderBy !== column) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
+
+  const handleSortChange = (column: PkiApplicationOrderBy, direction: TableSortDirection) => {
+    setOrderBy(column);
+    setOrderDirection(direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC);
+    setPage(1);
+  };
+
+  const renderSortableHead = (column: PkiApplicationOrderBy, label: string, className: string) => (
+    <TableHead
+      className={className}
+      sortDirection={getSortDirection(column)}
+      onSortChange={(direction) => handleSortChange(column, direction)}
+    >
+      {label}
+      <ChevronDownIcon
+        className={twMerge(
+          "size-3 transition-transform",
+          getSortDirection(column) === "descending" && "rotate-180",
+          orderBy !== column && "opacity-30"
+        )}
+      />
+    </TableHead>
+  );
 
   const { hasProjectRole } = useProjectPermission();
   const canCreateApplication = hasProjectRole("admin");
@@ -86,9 +142,13 @@ export const ApplicationsPage = () => {
       return (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>No existing applications</EmptyTitle>
+            <EmptyTitle>
+              {debouncedSearch ? "No applications match search" : "No existing applications"}
+            </EmptyTitle>
             <EmptyDescription>
-              Create an application to issue certificates for a workload
+              {debouncedSearch
+                ? "Try adjusting your search"
+                : "Create an application to issue certificates for a workload"}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -98,11 +158,19 @@ export const ApplicationsPage = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-full">Name</TableHead>
-            <TableHead className="whitespace-nowrap">Profiles</TableHead>
-            <TableHead className="whitespace-nowrap">Members</TableHead>
-            <TableHead className="whitespace-nowrap">Certificates</TableHead>
-            <TableHead className="whitespace-nowrap">Created</TableHead>
+            {renderSortableHead(PkiApplicationOrderBy.Name, "Name", "w-full")}
+            {renderSortableHead(
+              PkiApplicationOrderBy.ProfileCount,
+              "Profiles",
+              "whitespace-nowrap"
+            )}
+            {renderSortableHead(PkiApplicationOrderBy.MemberCount, "Members", "whitespace-nowrap")}
+            {renderSortableHead(
+              PkiApplicationOrderBy.CertificateCount,
+              "Certificates",
+              "whitespace-nowrap"
+            )}
+            {renderSortableHead(PkiApplicationOrderBy.CreatedAt, "Created", "whitespace-nowrap")}
             <TableHead className="w-5" />
           </TableRow>
         </TableHeader>
@@ -201,6 +269,21 @@ export const ApplicationsPage = () => {
                 ) : null}
               </CardHeader>
               <CardContent>
+                <InputGroup className="mb-4">
+                  <InputGroupAddon>
+                    <SearchIcon />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
+                    placeholder="Search applications..."
+                    aria-label="Search applications"
+                    maxLength={255}
+                  />
+                </InputGroup>
                 {renderApplications()}
                 {totalCount > 0 ? (
                   <Pagination

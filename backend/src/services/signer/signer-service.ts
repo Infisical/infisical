@@ -1250,6 +1250,8 @@ export const signerServiceFactory = ({
       offset: dto.offset,
       limit: dto.limit,
       search: dto.search,
+      orderBy: dto.orderBy,
+      orderDirection: dto.orderDirection,
       signerIds
     });
 

@@ -4,10 +4,12 @@ import { PkiApplicationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { auditSafeText, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { PkiApplicationOrderBy } from "@app/services/pki-application/pki-application-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { registerPkiApplicationAlertRoutes } from "./pki-application-alert-router";
@@ -93,9 +95,11 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       description: "List applications.",
       tags: [ApiDocsTags.PkiApplications],
       querystring: z.object({
-        search: z.string().optional(),
+        search: auditSafeText(z.string().trim().max(255)).optional(),
         limit: z.coerce.number().int().min(1).max(100).default(20),
         offset: z.coerce.number().int().min(0).default(0),
+        orderBy: z.nativeEnum(PkiApplicationOrderBy).default(PkiApplicationOrderBy.CreatedAt),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.DESC),
         applicationIds: z
           .string()
           .optional()
@@ -124,6 +128,8 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
         search: req.query.search,
         limit: req.query.limit,
         offset: req.query.offset,
+        orderBy: req.query.orderBy,
+        orderDirection: req.query.orderDirection,
         applicationIds: req.query.applicationIds
       });
 

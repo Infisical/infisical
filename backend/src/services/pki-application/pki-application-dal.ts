@@ -5,8 +5,17 @@ import { RESOURCE_SCOPE, ResourceType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
-import { TPkiApplicationListItem } from "./pki-application-types";
+import { PkiApplicationOrderBy, TPkiApplicationListItem } from "./pki-application-types";
+
+const ORDER_BY_COLUMN: Record<PkiApplicationOrderBy, string> = {
+  [PkiApplicationOrderBy.Name]: `${TableName.PkiApplication}.name`,
+  [PkiApplicationOrderBy.ProfileCount]: "profileCount",
+  [PkiApplicationOrderBy.MemberCount]: "memberCount",
+  [PkiApplicationOrderBy.CertificateCount]: "certificateCount",
+  [PkiApplicationOrderBy.CreatedAt]: `${TableName.PkiApplication}.createdAt`
+};
 
 export type TPkiApplicationDALFactory = ReturnType<typeof pkiApplicationDALFactory>;
 
@@ -28,12 +37,21 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
       search?: string;
       limit?: number;
       offset?: number;
+      orderBy?: PkiApplicationOrderBy;
+      orderDirection?: OrderByDirection;
       applicationIds?: string[];
     } = {},
     tx?: Knex
   ): Promise<TPkiApplicationListItem[]> => {
     try {
-      const { search, limit = 20, offset = 0, applicationIds } = options;
+      const {
+        search,
+        limit = 20,
+        offset = 0,
+        orderBy = PkiApplicationOrderBy.CreatedAt,
+        orderDirection = OrderByDirection.DESC,
+        applicationIds
+      } = options;
       const knex = tx || db.replicaNode();
 
       const profileCountSub = knex(TableName.PkiApplicationProfile)
@@ -77,7 +95,8 @@ export const pkiApplicationDALFactory = (db: TDbClient) => {
           knex.raw('COALESCE(mc.count, 0)::int as "memberCount"'),
           knex.raw('COALESCE(cc.count, 0)::int as "certificateCount"')
         )
-        .orderBy(`${TableName.PkiApplication}.createdAt`, "desc")
+        .orderBy(ORDER_BY_COLUMN[orderBy], orderDirection)
+        .orderBy(`${TableName.PkiApplication}.id`, orderDirection)
         .limit(limit)
         .offset(offset);
 

@@ -1,4 +1,4 @@
-import { TActorInput } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 
 export type TPkiApplicationListItem = {
   id: string;
@@ -50,10 +50,20 @@ export type TGetPkiApplicationByNameDTO = {
   projectId: string;
 } & TActorInput;
 
+export enum PkiApplicationOrderBy {
+  Name = "name",
+  ProfileCount = "profileCount",
+  MemberCount = "memberCount",
+  CertificateCount = "certificateCount",
+  CreatedAt = "createdAt"
+}
+
 export type TListPkiApplicationsDTO = {
   search?: string;
   limit?: number;
   offset?: number;
+  orderBy?: PkiApplicationOrderBy;
+  orderDirection?: OrderByDirection;
   applicationIds?: string[];
   projectId: string;
 } & TActorInput;

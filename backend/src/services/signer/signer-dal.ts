@@ -5,9 +5,10 @@ import { TableName, TPkiSigners, TPkiSignersUpdate } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
-import { SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
+import { SignerIssuanceJobStatus, SignerOrderBy, SignerStatus } from "./signer-enums";
 
 export type TSignerWithCertificate = TPkiSigners & {
   certificateCommonName: string | null;
@@ -36,6 +37,13 @@ export type TSignerWithCertificateSummary = TPkiSigners & {
   certificateStatus: string | null;
   approvalPolicyName: string | null;
   hasOpenCertificateRequest: boolean;
+};
+
+const SIGNER_ORDER_BY_COLUMN: Record<SignerOrderBy, string> = {
+  [SignerOrderBy.Name]: `${TableName.PkiSigners}.name`,
+  [SignerOrderBy.CertificateNotAfter]: `${TableName.Certificate}.notAfter`,
+  [SignerOrderBy.LastSignedAt]: `${TableName.PkiSigners}.lastSignedAt`,
+  [SignerOrderBy.CreatedAt]: `${TableName.PkiSigners}.createdAt`
 };
 
 export type TSignerDALFactory = ReturnType<typeof signerDALFactory>;
@@ -129,12 +137,16 @@ export const signerDALFactory = (db: TDbClient) => {
       offset = 0,
       limit = 25,
       search,
-      signerIds
+      signerIds,
+      orderBy = SignerOrderBy.CreatedAt,
+      orderDirection = OrderByDirection.DESC
     }: {
       offset?: number;
       limit?: number;
       search?: string;
       signerIds?: string[];
+      orderBy?: SignerOrderBy;
+      orderDirection?: OrderByDirection;
     },
     tx?: Knex
   ) => {
@@ -171,7 +183,8 @@ export const signerDALFactory = (db: TDbClient) => {
       }
 
       return (await query
-        .orderBy(`${TableName.PkiSigners}.createdAt`, "desc")
+        .orderBy(SIGNER_ORDER_BY_COLUMN[orderBy], orderDirection, "last")
+        .orderBy(`${TableName.PkiSigners}.id`, orderDirection)
         .offset(offset)
         .limit(limit)) as TSignerWithCertificateSummary[];
     } catch (error) {
