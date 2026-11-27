@@ -191,7 +191,9 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                           `code-signing/${signer.id}`
                         )!}
                       >
-                        {signer.name}
+                        <span className="relative z-[2]" title={signer.name}>
+                          {signer.name}
+                        </span>
                       </RowLink>
                     </TableCell>
                     <TableCell data-row-interactive className="cursor-default">

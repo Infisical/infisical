@@ -2937,6 +2937,22 @@ export const PKI_COLLECTIONS = {
   }
 };
 
+export const PKI_APPLICATIONS = {
+  LIST: {
+    search: "Filter applications whose name or description contains this text.",
+    orderBy: "The column to order applications by.",
+    orderDirection: "The direction to order applications in."
+  }
+};
+
+export const PKI_SIGNERS = {
+  LIST: {
+    search: "Filter signers whose name or certificate common name contains this text.",
+    orderBy: "The column to order signers by. Signers with no value for the column are listed last.",
+    orderDirection: "The direction to order signers in."
+  }
+};
+
 export const PROJECT_ROLE = {
   CREATE: {
     projectSlug: "Slug of the project to create the role for.",

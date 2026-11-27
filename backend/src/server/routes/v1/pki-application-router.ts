@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PkiApplicationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, PKI_APPLICATIONS } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -95,11 +95,17 @@ export const registerPkiApplicationRouter = async (server: FastifyZodProvider) =
       description: "List applications.",
       tags: [ApiDocsTags.PkiApplications],
       querystring: z.object({
-        search: auditSafeText(z.string().trim().max(255)).optional(),
+        search: auditSafeText(z.string().trim().max(255)).optional().describe(PKI_APPLICATIONS.LIST.search),
         limit: z.coerce.number().int().min(1).max(100).default(20),
         offset: z.coerce.number().int().min(0).default(0),
-        orderBy: z.nativeEnum(PkiApplicationOrderBy).default(PkiApplicationOrderBy.CreatedAt),
-        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.DESC),
+        orderBy: z
+          .nativeEnum(PkiApplicationOrderBy)
+          .default(PkiApplicationOrderBy.CreatedAt)
+          .describe(PKI_APPLICATIONS.LIST.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.DESC)
+          .describe(PKI_APPLICATIONS.LIST.orderDirection),
         applicationIds: z
           .string()
           .optional()

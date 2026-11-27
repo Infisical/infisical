@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PkiSignersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, PKI_SIGNERS } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -161,9 +161,12 @@ export const registerSignerLifecycleRouter = async (server: FastifyZodProvider) 
         projectId: z.string().trim().optional().describe(openApiHidden()),
         offset: z.coerce.number().int().min(0).default(0),
         limit: z.coerce.number().int().min(1).max(100).default(20),
-        search: auditSafeText(z.string().trim().max(255)).optional(),
-        orderBy: z.nativeEnum(SignerOrderBy).default(SignerOrderBy.CreatedAt),
-        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.DESC)
+        search: auditSafeText(z.string().trim().max(255)).optional().describe(PKI_SIGNERS.LIST.search),
+        orderBy: z.nativeEnum(SignerOrderBy).default(SignerOrderBy.CreatedAt).describe(PKI_SIGNERS.LIST.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.DESC)
+          .describe(PKI_SIGNERS.LIST.orderDirection)
       }),
       response: {
         200: z.object({
