@@ -176,6 +176,7 @@ export const CreateIdentityDialog = ({
                 )}
                 <Field label="Role">
                   <Select
+                    descriptionLayout="stacked"
                     label="Role"
                     value={draft.role}
                     options={ROLE_OPTIONS}

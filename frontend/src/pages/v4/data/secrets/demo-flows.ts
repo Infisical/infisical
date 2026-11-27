@@ -30,7 +30,7 @@ import type { DemoImport, DemoSecret, DemoVersion, SecretsFixtures } from "./fix
 type Scoped = { projectId: string; environment: string; path: string };
 
 const REPLICATION_FOLDER_PREFIX = "__reserve_replication_";
-export const reservedPathOf = (entry: { id: string; path: string }) =>
+const reservedPathOf = (entry: { id: string; path: string }) =>
   childPath(entry.path, `${REPLICATION_FOLDER_PREFIX}${entry.id}`);
 
 const versionsOf = (store: DemoStore, secret: DemoSecret): SecretVersions[] => {
@@ -455,34 +455,6 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
       error: null
     };
   },
-  useImportedSecretsAt: ({ projectId, environment, secretPath }) => {
-    const state = useStore().use();
-    return {
-      data: state.imports
-        .filter(
-          (entry) =>
-            !entry.isReserved &&
-            entry.projectId === projectId &&
-            entry.environment === environment &&
-            entry.path === secretPath &&
-            entry.importEnv.projectId &&
-            entry.importEnv.projectId !== projectId
-        )
-        .map((entry) => ({
-          importId: entry.id,
-          secrets: state.secrets
-            .filter(
-              (secret) =>
-                secret.projectId === entry.importEnv.projectId &&
-                secret.env === entry.importEnv.slug &&
-                secret.path === entry.importPath
-            )
-            .map(sanitize)
-        })),
-      isPending: false,
-      error: null
-    };
-  },
   useFetchSecretsAt: () => {
     const store = useStore();
     return ({ projectId, environment, secretPath = "/" }) =>
@@ -706,18 +678,18 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
     return {};
   }),
   useCreateSecretImport: demoMutation((store, dto) => {
-    const { projects } = store.get();
-    const project = projects.find((entry) => entry.id === dto.projectId);
-    const sourceProject = projects.find(
-      (entry) => entry.id === (dto.import.sourceProjectId ?? dto.projectId)
-    );
-    const sourceEnv = sourceProject?.environments.find(
-      (entry) => entry.slug === dto.import.environment
-    );
+    const project = store.get().projects.find((entry) => entry.id === dto.projectId);
+    const { sourceProjectId } = dto.import;
+    const source = sourceProjectId
+      ? {
+          id: `${sourceProjectId}-${dto.import.environment}`,
+          slug: dto.import.environment,
+          name: dto.import.environment,
+          projectId: sourceProjectId
+        }
+      : project?.environments.find((entry) => entry.slug === dto.import.environment);
     const destination = project?.environments.find((entry) => entry.slug === dto.environment);
-    if (!sourceProject || !sourceEnv || !destination)
-      throw new Error("Source environment not found");
-    const source = { ...sourceEnv, projectId: sourceProject.id };
+    if (!source || !destination) throw new Error("Source environment not found");
     const timestamp = now();
     const id = crypto.randomUUID();
     const folderId = `${dto.projectId}:${dto.environment}:${dto.path ?? "/"}`;
@@ -754,7 +726,7 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
             folderId,
             importPath: dto.import.path,
             importEnv: source,
-            sourceProjectName: sourceProject.id === dto.projectId ? undefined : sourceProject.name,
+            sourceProjectName: sourceProjectId,
             position: String(last + 1),
             createdAt: timestamp,
             updatedAt: timestamp,

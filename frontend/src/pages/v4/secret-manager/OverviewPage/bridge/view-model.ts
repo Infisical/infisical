@@ -7,20 +7,17 @@ import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/t
 import { SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
+import type { ImportedSecretGroup } from "../../../data/secrets/contract";
 import { importName, type Resource, type Secret, type ValueState } from "../secrets-model";
 
 export type ScopeSecrets = { environment: string; path: string; secrets: SecretV3RawSanitized[] };
-export type ImportedSecrets = {
-  environment: string;
-  groups: { importId?: string; secrets: SecretV3RawSanitized[] }[];
-};
 
 export const valueKey = (
   environment: string,
   path: string,
   key: string,
   isOverride = false,
-  version: number | string = 0
+  version = 0
 ) => [environment, path, key, isOverride ? "override" : `v${version}`].join("\u0000");
 
 export type LoadedValues = Record<string, string | { error: string }>;
@@ -53,7 +50,7 @@ const honeyStatusOf = (status: HoneyTokenStatus) => {
 };
 
 const valueOf = (
-  secret: SecretV3RawSanitized,
+  secret: Pick<SecretV3RawSanitized, "secretValueHidden" | "value" | "isEmpty" | "key" | "version">,
   environment: string,
   path: string,
   values: LoadedValues
@@ -65,31 +62,6 @@ const valueOf = (
   if (typeof loaded === "string") return { status: "present", value: loaded };
   if (loaded) return { status: "failed", message: loaded.error };
   return { status: "loading" };
-};
-
-export const readVersion = (version: number, readFrom?: Secret["readFrom"]) =>
-  readFrom?.revision ? `${version}@${readFrom.revision}` : version;
-
-export const readThrough = (
-  secret: Secret,
-  readFrom: NonNullable<Secret["readFrom"]>,
-  values: LoadedValues
-): Secret => {
-  if (secret.value.status === "unreadable") return { ...secret, readFrom };
-  const loaded =
-    values[
-      valueKey(
-        readFrom.environment,
-        readFrom.path,
-        secret.name,
-        false,
-        readVersion(secret.version, readFrom)
-      )
-    ];
-  if (typeof loaded === "string")
-    return { ...secret, readFrom, value: { status: "present", value: loaded } };
-  if (loaded) return { ...secret, readFrom, value: { status: "failed", message: loaded.error } };
-  return { ...secret, readFrom, value: { status: "loading" } };
 };
 
 const isoOf = (date?: Date | string | null) => (date ? new Date(date).toISOString() : undefined);
@@ -109,14 +81,35 @@ const reminderOf = (secret: SecretV3RawSanitized) => {
   };
 };
 
+export const toImportedSecret = (
+  projectId: string,
+  environment: string,
+  path: string,
+  secret: ImportedSecretGroup["secrets"][number],
+  values: LoadedValues
+): Secret => ({
+  kind: "secret",
+  id: secret.id,
+  project: projectId,
+  environment,
+  path,
+  name: secret.key,
+  value: valueOf(secret, environment, path, values),
+  comment: "",
+  tags: [],
+  metadata: [],
+  version: secret.version,
+  createdAt: "",
+  updatedAt: ""
+});
+
 export const toSecretResource = (
   projectId: string,
   environment: string,
   path: string,
   secret: SecretV3RawSanitized,
   values: LoadedValues,
-  rotationNames: Record<string, string>,
-  readFrom?: Secret["readFrom"]
+  rotationNames: Record<string, string>
 ): Secret => {
   const override = values[valueKey(environment, path, secret.key, true)];
   return {
@@ -126,7 +119,7 @@ export const toSecretResource = (
     environment,
     path,
     name: secret.key,
-    value: valueOf(secret, readFrom?.environment ?? environment, readFrom?.path ?? path, values),
+    value: valueOf(secret, environment, path, values),
     comment: secret.comment ?? "",
     tags: (secret.tags ?? []).map((tag) => tag.slug),
     metadata: (secret.secretMetadata ?? []).map((entry) => ({
@@ -143,8 +136,7 @@ export const toSecretResource = (
     reminder: reminderOf(secret),
     skipMultilineEncoding: secret.skipMultilineEncoding ?? undefined,
     createdAt: secret.createdAt,
-    updatedAt: secret.updatedAt,
-    readFrom
+    updatedAt: secret.updatedAt
   };
 };
 
@@ -154,7 +146,6 @@ export const buildResources = ({
   overview,
   folderTree,
   scopes,
-  imported,
   values
 }: {
   projectId: string;
@@ -162,7 +153,6 @@ export const buildResources = ({
   overview?: DashboardProjectSecretsOverview;
   folderTree?: TProjectEnvironmentsFolders;
   scopes: ScopeSecrets[];
-  imported: ImportedSecrets[];
   values: LoadedValues;
 }): Resource[] => {
   const resources: Resource[] = [];
@@ -186,18 +176,22 @@ export const buildResources = ({
 
   (overview?.imports ?? [])
     .filter((entry) => !entry.isReserved)
-    .forEach((entry) => {
-      const source = {
-        project: entry.importEnv.projectId ?? projectId,
-        environment: entry.importEnv.slug,
-        path: entry.importPath
-      };
+    .forEach((entry) =>
       push({
         ...at(entry.environment ?? ""),
         kind: "import",
         id: entry.id,
-        name: importName(source, projectId),
-        source,
+        name: importName(
+          projectId,
+          entry.importEnv.projectId ?? projectId,
+          entry.importEnv.slug,
+          entry.importPath
+        ),
+        source: {
+          project: entry.importEnv.projectId ?? projectId,
+          environment: entry.importEnv.slug,
+          path: entry.importPath
+        },
         sourceProjectName: entry.sourceProjectName,
         revoked: Boolean(entry.isAccessRevoked),
         replicated: Boolean(entry.isReplication),
@@ -207,26 +201,8 @@ export const buildResources = ({
         lastReplicated: entry.lastReplicated,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt
-      });
-      if (source.project === projectId) return;
-      const readFrom = { environment: entry.environment ?? "", path };
-      imported
-        .find((scope) => scope.environment === readFrom.environment)
-        ?.groups.find((group) => group.importId === entry.id)
-        ?.secrets.forEach((secret) =>
-          push(
-            toSecretResource(
-              source.project,
-              source.environment,
-              source.path,
-              secret,
-              values,
-              rotationNames,
-              readFrom
-            )
-          )
-        );
-    });
+      })
+    );
   (overview?.folders ?? []).forEach((entry) =>
     push({
       ...at(entry.environment),
@@ -296,6 +272,7 @@ export const buildResources = ({
       id: entry.id,
       name: entry.name,
       provider: HONEY_TOKEN_MAP[entry.type]?.name ?? entry.type,
+      type: entry.type,
       managedBy: entry.config?.managedBy,
       status: honeyStatusOf(entry.status),
       description: entry.description ?? "",

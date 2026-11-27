@@ -40,6 +40,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { failed, saved, toast } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
 import { copyText } from "../../../clipboard";
+import { ProviderLabel, providerMedia } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import type { HoneyTokenConnectionTest } from "../../../data/product-settings/contract";
 
@@ -176,7 +177,11 @@ const HoneyTokenSheet = ({
       <Sheet open onOpenChange={(next) => (next ? undefined : guard.requestDiscard())}>
         <SheetContent size="lg" pending={pending}>
           <SheetHeader>
-            <SheetTitle>Configure AWS honey tokens</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel kind="honey-token" value={HoneyTokenType.AWS}>
+                Configure AWS honey tokens
+              </ProviderLabel>
+            </SheetTitle>
             <SheetDescription>
               Plant a decoy IAM credential in your AWS account. Infisical alerts on every access
               attempt.
@@ -202,7 +207,8 @@ const HoneyTokenSheet = ({
                     invalid={Boolean(issues?.connectionId)}
                     options={awsConnections.map((connection) => ({
                       value: connection.id,
-                      label: connection.name
+                      label: connection.name,
+                      media: providerMedia("app-connection", AppConnection.AWS)
                     }))}
                     value={draft.connectionId}
                     onChange={(connectionId) => setDraft({ ...draft, connectionId })}
@@ -340,14 +346,16 @@ export const HoneyTokensCard = ({ canSetup }: { canSetup: boolean }) => {
         flush
         loading={isPending}
         title={
-          <Inline gap={8} wrap={false}>
+          <ProviderLabel kind="honey-token" value={HoneyTokenType.AWS}>
             AWS honey tokens
-            {config && (
-              <Badge tone={verified ? "ok" : "warn"} dot>
-                {verified ? "Verified" : "Pending verification"}
-              </Badge>
-            )}
-          </Inline>
+          </ProviderLabel>
+        }
+        badges={
+          config && (
+            <Badge tone={verified ? "ok" : "warn"} dot>
+              {verified ? "Verified" : "Pending verification"}
+            </Badge>
+          )
         }
         description="Plant decoy IAM credentials in your AWS account. Infisical alerts on every access attempt."
         action={

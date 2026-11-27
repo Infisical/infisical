@@ -32,7 +32,6 @@ import { useV4Adapter } from "../../../../data/adapters";
 import type { Secret, SecretVersion } from "../../secrets-model";
 import { ActionButton } from "../overview-cells";
 
-import flowStyles from "../flows/flows.module.css";
 import styles from "./row-actions.module.css";
 
 const mask = "••••••••••••••••••••";
@@ -310,10 +309,7 @@ export function VersionHistorySheet({
   });
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className={flowStyles.secretSheet}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-      >
+      <SheetContent size="md" onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Version history</SheetTitle>
         </SheetHeader>

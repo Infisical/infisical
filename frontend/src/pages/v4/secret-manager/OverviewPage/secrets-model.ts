@@ -1,4 +1,4 @@
-import type { HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
+import type { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 export type ResourceApplyOptions = { shouldOverwrite?: boolean; quiet?: boolean };
 
@@ -47,7 +47,6 @@ export type Secret = ResourceBase & {
   reminder?: SecretReminder;
   skipMultilineEncoding?: boolean;
   versions?: SecretVersion[];
-  readFrom?: { environment: string; path: string; revision?: string };
 };
 export type Resource =
   | Secret
@@ -100,6 +99,7 @@ export type Resource =
   | (ResourceBase & {
       kind: "honey";
       provider: string;
+      type?: HoneyTokenType;
       managedBy?: HoneyTokenManagedBy;
       status: "active" | "triggered" | "revoked";
       description: string;
@@ -148,10 +148,12 @@ export const scopeMatches = (resource: Scope, scope: Scope) =>
   resource.project === scope.project &&
   resource.environment === scope.environment &&
   resource.path === scope.path;
-export const importName = (source: Scope, project: string) =>
-  source.project === project
-    ? `${source.environment}:${source.path}`
-    : `${source.project}/${source.environment}:${source.path}`;
+export const importName = (
+  projectId: string,
+  sourceProject: string,
+  environment: string,
+  path: string
+) => `${sourceProject === projectId ? "" : `${sourceProject}:`}${environment}:${path}`;
 export const resourceKey = (resource: Pick<Resource, "kind" | "name">) =>
   `${resource.kind}:${resource.name}`;
 export const selectionKey = (resource: Pick<Resource, "kind" | "name" | "environment">) =>

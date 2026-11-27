@@ -31,9 +31,10 @@ import {
 } from "@app/hooks/api/pkiDiscovery/types";
 
 import { readableFailure } from "../../access/toast";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { GatewayPicker } from "../../networking/gateway-picker";
-import { BadgeList, DiscoveryTypeIcon } from "./discovery-shared";
+import { BadgeList, DiscoveryTypeIcon, DiscoveryTypeLabel } from "./discovery-shared";
 import {
   CA_CERTIFICATE_STORES,
   createJobDto,
@@ -170,14 +171,20 @@ const HostsStep = ({
   const missingSelected = draft.connections.filter(
     (selected) => !connections.some((connection) => connection.id === selected.id)
   );
+  const media = providerMedia("app-connection", app);
   const options = [
     ...listed.map((connection) => ({
       value: connection.id,
       label: connection.name,
+      media,
       description: unusableReason(connection),
       disabled: Boolean(unusableReason(connection))
     })),
-    ...missingSelected.map((connection) => ({ value: connection.id, label: connection.name }))
+    ...missingSelected.map((connection) => ({
+      value: connection.id,
+      label: connection.name,
+      media
+    }))
   ];
   const names = new Map(options.map((option) => [option.value, option.label]));
   return (
@@ -432,7 +439,7 @@ const ReviewStep = ({ draft }: { draft: JobDraft }) => {
   const enabled = (value: boolean) => (value ? "Enabled" : "Disabled");
   const connectionNames = draft.connections.map((connection) => connection.name);
   const items: (readonly [string, React.ReactNode])[] = [
-    ["Type", PKI_DISCOVERY_TYPE_MAP[draft.discoveryType].name],
+    ["Type", <DiscoveryTypeLabel key="type" type={draft.discoveryType} />],
     ["Name", <code key="name">{draft.name}</code>],
     ["Description", draft.description || "None"],
     [
@@ -452,7 +459,7 @@ const ReviewStep = ({ draft }: { draft: JobDraft }) => {
     );
   if (draft.discoveryType === PkiDiscoveryType.LinuxServer)
     items.push(
-      ["SSH connections", <BadgeList key="hosts" items={connectionNames} max={4} />],
+      ["Connections", <BadgeList key="hosts" items={connectionNames} max={4} />],
       ["Search folders", <BadgeList key="search" items={draft.searchFolderPaths} max={4} mono />],
       ["Skip folders", <BadgeList key="skip" items={draft.skipFolderPaths} max={4} mono />],
       ["Folder depth", String(draft.maxFolderDepth)],
@@ -460,7 +467,7 @@ const ReviewStep = ({ draft }: { draft: JobDraft }) => {
     );
   if (draft.discoveryType === PkiDiscoveryType.WindowsServer)
     items.push(
-      ["Windows (WinRM) connections", <BadgeList key="hosts" items={connectionNames} max={4} />],
+      ["Connections", <BadgeList key="hosts" items={connectionNames} max={4} />],
       [
         "Certificate stores",
         <BadgeList
@@ -659,7 +666,7 @@ const JobSheet = ({
       <MultiStep
         variant="sheet"
         size="lg"
-        title={title}
+        title={type ? <DiscoveryTypeLabel type={type}>{title}</DiscoveryTypeLabel> : title}
         badges={
           type ? (
             <DocumentationLink href={getDiscoveryDocsUrl(type)} subject="Certificate discovery" />

@@ -51,11 +51,12 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import type { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { v4Path } from "../../../links";
 import { nameLabel } from "../../../shell/resource-name";
 import { withoutDefaults } from "../../search-defaults";
-import type { ScopeState } from "../bridge/scopes";
 import {
   environments,
   type Resource,
@@ -134,12 +135,10 @@ function InfoHint({ text }: { text: string }) {
 function RotationStatus({ rotation }: { rotation: Of<"rotation"> }) {
   if (rotation.status === "failed")
     return (
-      <Tooltip content={`Failure reason: ${rotation.statusDetails ?? "unknown"}`}>
-        <Badge tone="bad">
-          <Icon icon={XIcon} />
-          Rotation failed
-        </Badge>
-      </Tooltip>
+      <Badge reason={`Failure reason: ${rotation.statusDetails ?? "unknown"}`} tone="bad">
+        <Icon icon={XIcon} />
+        Rotation failed
+      </Badge>
     );
   if (!rotation.autoRotation)
     return (
@@ -174,28 +173,23 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         <>
           <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
-            <Tooltip
-              content={
-                item.statusDetails ?? "The provider returned an error while revoking leases."
-              }
+            <Badge
+              reason={item.statusDetails ?? "The provider returned an error while revoking leases."}
+              tone={item.status === "deleting" ? "warn" : "bad"}
             >
-              <Badge tone={item.status === "deleting" ? "warn" : "bad"}>
-                <Icon icon={TriangleAlertIcon} />
-                {item.status === "deleting" ? "Revoking" : "Deletion failed"}
-              </Badge>
-            </Tooltip>
+              <Icon icon={TriangleAlertIcon} />
+              {item.status === "deleting" ? "Revoking" : "Deletion failed"}
+            </Badge>
           )}
         </>
       );
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "dynamic" && entry.status) && (
-        <Tooltip content="One or more dynamic secrets have issues.">
-          <Badge tone="bad">
-            <Icon icon={XIcon} />
-            Deletion failed
-          </Badge>
-        </Tooltip>
+        <Badge reason="One or more dynamic secrets have issues." tone="bad">
+          <Icon icon={XIcon} />
+          Deletion failed
+        </Badge>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"dynamic">;
@@ -277,7 +271,12 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"rotation">;
       return (
         <>
-          <Badge tone="outline">{item.provider}</Badge>
+          <Badge
+            tone="outline"
+            media={item.type && providerMedia("secret-rotation", item.type as SecretRotation)}
+          >
+            {item.provider}
+          </Badge>
           {item.description && <InfoHint text={item.description} />}
           <span className={styles.push}>
             <RotationStatus rotation={item} />
@@ -287,12 +286,10 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "rotation" && entry.status === "failed") && (
-        <Tooltip content="One or more secrets failed to rotate.">
-          <Badge tone="bad">
-            <Icon icon={XIcon} />
-            Rotation failed
-          </Badge>
-        </Tooltip>
+        <Badge reason="One or more secrets failed to rotate." tone="bad">
+          <Icon icon={XIcon} />
+          Rotation failed
+        </Badge>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"rotation">;
@@ -401,7 +398,9 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       return (
         <>
-          <Badge tone="outline">{item.provider} honey token</Badge>
+          <Badge tone="outline" media={item.type && providerMedia("honey-token", item.type)}>
+            {item.provider} honey token
+          </Badge>
           {item.mappedKeys.length > 0 && (
             <InfoHint text={`Mapped secrets: ${item.mappedKeys.join(", ")}`} />
           )}
@@ -967,7 +966,6 @@ export function ImportRow({
   entries,
   ctx,
   sourceSecrets,
-  sourceState,
   projectId,
   sites,
   revealAll
@@ -976,7 +974,6 @@ export function ImportRow({
   entries: Of<"import">[];
   ctx: RowContext;
   sourceSecrets: (entry: Of<"import">) => Secret[];
-  sourceState: (entry: Of<"import">) => ScopeState;
   projectId: string;
   sites: EnvironmentOption[];
   revealAll: boolean;
@@ -1080,13 +1077,6 @@ export function ImportRow({
     ) : undefined
   };
   const keys = ctx.single && expanded ? sourceSecrets(first) : [];
-  const nested = !ctx.single && expanded ? sourceSecrets(first) : [];
-  const state = sourceState(first);
-  const notice = {
-    loading: "Loading secrets…",
-    failed: "Couldn't load the secrets in this folder.",
-    loaded: "No secrets in this folder."
-  }[state];
   return (
     <>
       <RowContextMenu {...rowActions}>
@@ -1159,23 +1149,13 @@ export function ImportRow({
           <TableRow key={secret.id} className={styles.importedRow}>
             <TableCell pin="start" selection divider={false} />
             <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
-              <div className={styles.nameLine}>
-                <span className={styles.truncate}>{secret.name}</span>
-              </div>
+              <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
-              <SecretValue secret={secret} visible={revealAll} references={false} />
+              <SecretValue secret={secret} visible={revealAll} />
             </TableCell>
           </TableRow>
         ))}
-      {ctx.single && expanded && !first.revoked && (keys.length === 0 || state === "failed") && (
-        <TableRow className={styles.importedRow}>
-          <TableCell pin="start" selection divider={false} />
-          <TableCell colSpan={3} className={styles.subtle}>
-            {notice}
-          </TableCell>
-        </TableRow>
-      )}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
           <TableCell pin="start" selection divider={false} />
@@ -1200,26 +1180,22 @@ export function ImportRow({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {first.revoked || nested.length === 0 || state === "failed" ? (
+                {first.revoked ? (
                   <TableRow>
                     <TableCell selection divider={false} />
                     <TableCell colSpan={2} className={styles.subtle}>
-                      {first.revoked
-                        ? "Access to this source was revoked, so its secrets are not shown."
-                        : notice}
+                      Access to this source was revoked, so its secrets are not shown.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  nested.map((secret) => (
+                  sourceSecrets(first).map((secret) => (
                     <TableRow key={secret.id} className={styles.row}>
                       <TableCell selection divider={false} />
                       <TableCell className={styles.envName}>
-                        <div className={styles.nameLine}>
-                          <span className={styles.truncate}>{secret.name}</span>
-                        </div>
+                        <span className={styles.truncate}>{secret.name}</span>
                       </TableCell>
                       <TableCell className={styles.valueCell}>
-                        <SecretValue secret={secret} visible={revealAll} references={false} />
+                        <SecretValue secret={secret} visible={revealAll} />
                       </TableCell>
                     </TableRow>
                   ))

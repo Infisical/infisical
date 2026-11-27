@@ -32,7 +32,7 @@ import { useV4Session } from "../../../data/session/contract";
 import { useProjectPermission } from "../../permissions";
 import { useProjectScope } from "../../project/scope";
 import { failed, saved } from "../../toast";
-import { Gate, Muted } from "../../ui";
+import { Gate } from "../../ui";
 import { InviteMembersDialog } from "./members-invite-dialog";
 import {
   ChangeRoleDialog,
@@ -73,7 +73,7 @@ export const AgentVaultMembersTab = () => {
       grow: true,
       render: (member) => {
         const name = [member.firstName, member.lastName].filter(Boolean).join(" ");
-        return name ? <span title={name}>{name}</span> : <Muted>-</Muted>;
+        return name ? <span title={name}>{name}</span> : null;
       }
     },
     {

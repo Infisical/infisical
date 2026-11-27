@@ -176,28 +176,26 @@ const copy = async (
   if (await copyText(value, failure)) report(done, "ok");
 };
 
-export function SecretValue({
-  secret,
-  visible,
-  references = true
-}: {
-  secret?: Secret;
-  visible: boolean;
-  references?: boolean;
-}) {
+export function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
   const [focused, setFocused] = useState(false);
   const loader = useValueLoader();
   const shown = visible || focused;
   const loading = secret?.value.status === "loading";
   useEffect(() => {
     if (secret && shown && loading) loader.request([secret]);
-  }, [shown, loading, secret?.id, secret?.version, secret?.readFrom?.revision]);
+  }, [shown, loading, secret?.id, secret?.version]);
   if (!secret) return <span className={styles.subtle}>Not set in this environment</span>;
   const value = loading ? mask : readableValue(secret);
   if (value === undefined)
     return (
       <span className={styles.nameLine}>
-        <Tooltip content="You do not have access to view the current value.">
+        <Tooltip
+          content={
+            secret.value.status === "failed"
+              ? secret.value.message
+              : "You do not have access to view the current value."
+          }
+        >
           <span className={styles.hint}>
             <Icon icon={EyeOffIcon} label="Value hidden" />
           </span>
@@ -216,12 +214,7 @@ export function SecretValue({
       onBlur={() => setFocused(false)}
     >
       {value === "" && <span className={styles.emptyValue}>Empty</span>}
-      {value !== "" &&
-        (shown && !loading ? (
-          <ReferenceText value={value} scope={references ? secret : undefined} />
-        ) : (
-          mask
-        ))}
+      {value !== "" && (shown && !loading ? <ReferenceText value={value} scope={secret} /> : mask)}
     </span>
   );
 }

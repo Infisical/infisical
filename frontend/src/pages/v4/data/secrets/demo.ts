@@ -19,7 +19,7 @@ import { secretsAccessInsightsDemo } from "./demo-access-insights";
 import { secretsActivationDemo } from "./demo-activation";
 import { secretsChangeRequestsDemo } from "./demo-change-requests";
 import { secretsExternalImportDemo } from "./demo-external-import";
-import { reservedPathOf, secretsFlowsDemo } from "./demo-flows";
+import { secretsFlowsDemo } from "./demo-flows";
 import { secretsPlanDemo } from "./demo-plan";
 import { secretsQuickSearchDemo } from "./demo-quick-search";
 import { secretsReminderChannelsDemo } from "./demo-reminder-channels";
@@ -38,7 +38,23 @@ import {
   within
 } from "./demo-store";
 import { secretsUpgradeDemo } from "./demo-upgrade";
-import type { DemoSecret, SecretsFixtures } from "./fixtures";
+import type { DemoImport, DemoSecret, SecretsFixtures } from "./fixtures";
+
+const foreignImportKeys = (entry: DemoImport) => {
+  const base = (entry.importPath.split("/").filter(Boolean).pop() ?? "shared")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "_");
+  return [`${base}_API_KEY`, `${base}_URL`];
+};
+
+const isForeignImportAt =
+  (projectId: string, environment: string, path: string) => (entry: DemoImport) =>
+    entry.projectId === projectId &&
+    entry.environment === environment &&
+    entry.path === path &&
+    !entry.isReserved &&
+    Boolean(entry.importEnv.projectId) &&
+    entry.importEnv.projectId !== projectId;
 
 const overviewOf = (
   state: SecretsFixtures,
@@ -392,6 +408,25 @@ export const secretsDemo: SecretsAdapter = {
       };
     return { data, isPending: false, error: null, refetch };
   },
+  useImportedSecrets: ({ projectId, environments, path }) => {
+    const state = useStore().use();
+    return Object.fromEntries(
+      environments.map((environment) => [
+        environment,
+        state.imports.filter(isForeignImportAt(projectId, environment, path)).map((entry) => ({
+          importId: entry.id,
+          environment: entry.importEnv.slug,
+          secretPath: entry.importPath,
+          secrets: foreignImportKeys(entry).map((key) => ({
+            id: `${entry.id}:${key}`,
+            key,
+            secretValueHidden: false,
+            version: 1
+          }))
+        }))
+      ])
+    );
+  },
   useSecretKeyCheck: () => {
     const store = useStore();
     return async (dto) =>
@@ -405,44 +440,24 @@ export const secretsDemo: SecretsAdapter = {
     const scenario = useScenario();
     const state = useStore().use();
     if (options?.enabled === false) return { data: undefined, isPending: true, error: null };
-    const replication = state.imports.find(
-      (entry) =>
-        entry.isReplication &&
-        entry.projectId === dto.projectId &&
-        entry.environment === dto.environment &&
-        reservedPathOf(entry) === dto.secretPath
+    const secret = state.secrets.find(
+      secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)
     );
-    const secret =
-      state.secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)) ??
-      (replication
-        ? state.secrets.find(
-            secretAt(
-              replication.importEnv.projectId ?? dto.projectId,
-              replication.importEnv.slug,
-              replication.importPath,
-              dto.secretKey
-            )
-          )
-        : state.imports
-            .filter(
-              (entry) =>
-                !entry.isReserved &&
-                entry.projectId === dto.projectId &&
-                entry.environment === dto.environment &&
-                entry.path === dto.secretPath
-            )
-            .sort((a, b) => Number(b.position) - Number(a.position))
-            .map((entry) =>
-              state.secrets.find(
-                secretAt(
-                  entry.importEnv.projectId ?? dto.projectId,
-                  entry.importEnv.slug,
-                  entry.importPath,
-                  dto.secretKey
-                )
-              )
-            )
-            .find(Boolean));
+    const imported =
+      !secret &&
+      state.imports
+        .filter(isForeignImportAt(dto.projectId, dto.environment, dto.secretPath))
+        .flatMap(foreignImportKeys)
+        .includes(dto.secretKey);
+    if (imported)
+      return {
+        data: {
+          value: `fake-${dto.secretKey.toLowerCase().replaceAll("_", "-")}`,
+          valueOverride: undefined
+        },
+        isPending: false,
+        error: null
+      };
     if (!secret || (scenario === "permissions" && secret.key === "STRIPE_SECRET_KEY"))
       return { data: undefined, isPending: false, error: new Error("You cannot read this value") };
     return {

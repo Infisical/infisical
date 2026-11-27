@@ -42,7 +42,7 @@ export type SecretPoliciesAdapter = {
     projectId: string,
     options: { enabled: boolean }
   ) => V4QueryResult<TProjectFolderGrant[]>;
-  useFolderGrantsReceived: (
+  useReceivedFolderGrants: (
     projectId: string,
     options: { enabled: boolean }
   ) => V4QueryResult<TProjectFolderGrantReceived[]>;

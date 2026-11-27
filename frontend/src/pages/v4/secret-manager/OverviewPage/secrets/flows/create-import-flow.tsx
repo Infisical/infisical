@@ -12,7 +12,6 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Select } from "@infisical/cipher/ui/select";
-import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 
 import {
@@ -22,7 +21,7 @@ import {
 
 import { useOrgId } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
-import { importName, type Scope } from "../../secrets-model";
+import { importName } from "../../secrets-model";
 import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
@@ -52,65 +51,68 @@ export function CreateImportFlow({
     scope.path,
     "add secret imports here"
   );
+  const policies = useV4Adapter("secretPolicies");
+  const gates = policies.useGates(useOrgId()).data;
+  const { data: grants = [] } = policies.useReceivedFolderGrants(scope.project, {
+    enabled:
+      open &&
+      Boolean(gates?.allowCrossProjectSecretSharing && gates.crossProjectSecretSharingInPlan)
+  });
+  const [sourceProject, setSourceProject] = useState(scope.project);
   const [environment, setEnvironment] = useState("");
   const [secretPath, setSecretPath] = useState("/");
   const [replication, setReplication] = useState(false);
-  const [error, setError] = useState<string>();
-  const [fromOtherProject, setFromOtherProject] = useState(false);
-  const [grant, setGrant] = useState<{ project?: string; environment?: string; path?: string }>({});
-  const [grantErrors, setGrantErrors] = useState<{
-    project?: string;
-    environment?: string;
-    path?: string;
-  }>({});
+  const [errors, setErrors] = useState<{ environment?: string; path?: string }>({});
   const { plan, guard } = usePlanGates();
-  const policies = useV4Adapter("secretPolicies");
-  const { data: gates } = policies.useGates(useOrgId());
-  const { data: receivedGrants = [] } = policies.useFolderGrantsReceived(scope.project, {
-    enabled: Boolean(gates?.allowCrossProjectSecretSharing && gates.crossProjectSecretSharingInPlan)
-  });
-  const unique = (values: { value: string; label: string }[]) =>
-    values.filter(
-      (entry, index) => values.findIndex((other) => other.value === entry.value) === index
-    );
-  const projectOptions = unique(
-    receivedGrants.map((entry) => ({
-      value: entry.sourceProjectId,
-      label: entry.sourceProjectName
-    }))
-  );
-  const projectGrants = receivedGrants.filter((entry) => entry.sourceProjectId === grant.project);
-  const environmentOptions = unique(
-    projectGrants.map((entry) => ({ value: entry.environmentSlug, label: entry.environmentName }))
-  );
-  const folderOptions = projectGrants
-    .filter((entry) => entry.environmentSlug === grant.environment)
-    .map((entry) => ({ value: entry.secretPath, label: entry.secretPath }));
 
-  const alreadyImports = (source: Scope, replicated: boolean) =>
-    resources.some(
-      (resource) =>
-        resource.kind === "import" &&
-        resource.project === scope.project &&
-        resource.environment === destination &&
-        resource.path === scope.path &&
-        resource.source.project === source.project &&
-        resource.source.environment === source.environment &&
-        resource.source.path === source.path &&
-        Boolean(resource.replicated) === replicated
-    );
+  const crossProject = sourceProject !== scope.project;
+  const projectGrants = grants.filter((grant) => grant.sourceProjectId === sourceProject);
+  const projectOptions = [
+    { value: scope.project, label: "This project" },
+    ...[...new Map(grants.map((grant) => [grant.sourceProjectId, grant])).values()].map(
+      (grant) => ({ value: grant.sourceProjectId, label: grant.sourceProjectName })
+    )
+  ];
+  const environmentOptions = crossProject
+    ? [...new Map(projectGrants.map((grant) => [grant.environmentSlug, grant])).values()].map(
+        (grant) => ({
+          value: grant.environmentSlug,
+          label: grant.environmentName,
+          meta: grant.environmentSlug
+        })
+      )
+    : scope.environments.map((entry) => ({ ...entry, meta: entry.value }));
+  const pathOptions = projectGrants
+    .filter((grant) => grant.environmentSlug === environment)
+    .map((grant) => ({ value: grant.secretPath, label: grant.secretPath }));
 
-  const submitFromGrant = () => {
-    const next = {
-      project: grant.project ? undefined : "Required",
-      environment: grant.environment ? undefined : "Required",
-      path: grant.path ? undefined : "Required"
-    };
-    setGrantErrors(next);
-    if (!grant.project || !grant.environment || !grant.path) return;
-    const source = { project: grant.project, environment: grant.environment, path: grant.path };
-    if (alreadyImports(source, false)) {
-      setGrantErrors({ path: "This folder already imports this path." });
+  const submitCrossProject = () => {
+    const grant = projectGrants.find(
+      (entry) => entry.environmentSlug === environment && entry.secretPath === secretPath
+    );
+    if (!grant) {
+      setErrors({
+        environment: environment ? undefined : "Required",
+        path: "Required"
+      });
+      return;
+    }
+    if (
+      resources.some(
+        (resource) =>
+          resource.kind === "import" &&
+          resource.project === scope.project &&
+          resource.environment === destination &&
+          resource.path === scope.path &&
+          resource.source.project === grant.sourceProjectId &&
+          resource.source.environment === grant.environmentSlug &&
+          resource.source.path === grant.secretPath
+      )
+    ) {
+      onError({
+        title: "Import was not created",
+        description: `This folder already imports ${grant.secretPath} from ${grant.sourceProjectName}.`
+      });
       return;
     }
     onCreate(
@@ -120,24 +122,34 @@ export function CreateImportFlow({
           project: scope.project,
           environment: destination,
           path: scope.path,
-          name: importName(source, scope.project),
-          source,
+          name: importName(
+            scope.project,
+            grant.sourceProjectId,
+            grant.environmentSlug,
+            grant.secretPath
+          ),
+          source: {
+            project: grant.sourceProjectId,
+            environment: grant.environmentSlug,
+            path: grant.secretPath
+          },
+          sourceProjectName: grant.sourceProjectName,
           revoked: false,
           replicated: false
         }
       ],
-      { title: "Successfully linked secrets." }
+      { title: "Successfully linked." }
     );
     onOpenChange(false);
   };
 
   const submit = () => {
-    if (fromOtherProject) {
-      submitFromGrant();
+    if (crossProject) {
+      submitCrossProject();
       return;
     }
     if (!environment) {
-      setError("Required");
+      setErrors({ environment: "Required" });
       return;
     }
     if (replication && plan && !plan.secretApproval) {
@@ -165,7 +177,18 @@ export function CreateImportFlow({
       });
       return;
     }
-    if (alreadyImports(source, replication)) {
+    if (
+      resources.some(
+        (resource) =>
+          resource.kind === "import" &&
+          resource.project === scope.project &&
+          resource.environment === destination &&
+          resource.path === scope.path &&
+          resource.source.environment === environment &&
+          resource.source.path === sourcePath &&
+          Boolean(resource.replicated) === replication
+      )
+    ) {
       onError({
         title: "Import was not created",
         description: `This folder already imports ${sourcePath} from ${environmentLabel(environment)}.`
@@ -179,7 +202,7 @@ export function CreateImportFlow({
           project: scope.project,
           environment: destination,
           path: scope.path,
-          name: importName(source, scope.project),
+          name: `${environment}:${sourcePath}`,
           source,
           revoked: false,
           replicated: replication
@@ -196,7 +219,9 @@ export function CreateImportFlow({
         <DialogHeader>
           <DialogTitle>Add secret import</DialogTitle>
           <DialogDescription>
-            Reference secrets from another folder. Changes at the source show up here.
+            {grants.length > 0
+              ? "Reference secrets from another environment, folder or project. Changes at the source show up here."
+              : "Reference secrets from another environment or folder. Changes at the source show up here."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -208,105 +233,73 @@ export function CreateImportFlow({
             submit();
           }}
         >
-          {projectOptions.length > 0 && (
-            <Tabs
-              variant="segmented"
-              width="full"
-              label="Import from"
-              value={fromOtherProject ? "other" : "this"}
-              onChange={(next) => setFromOtherProject(next === "other")}
-              tabs={[
-                { value: "this", label: "This project" },
-                { value: "other", label: "Another project" }
-              ]}
-            />
+          {grants.length > 0 && (
+            <Field label="Project">
+              <Combobox
+                label="Project"
+                options={projectOptions}
+                value={sourceProject}
+                onValueChange={(value) => {
+                  setSourceProject(value);
+                  setEnvironment("");
+                  setSecretPath("/");
+                  setErrors({});
+                }}
+              />
+            </Field>
           )}
-          {fromOtherProject ? (
-            <>
-              <Field label="Project" error={grantErrors.project}>
-                <Combobox
-                  label="Project"
-                  options={projectOptions}
-                  value={grant.project ?? ""}
-                  placeholder="Select project..."
-                  invalid={Boolean(grantErrors.project)}
-                  onValueChange={(value) => {
-                    setGrant({ project: value });
-                    setGrantErrors({});
-                  }}
-                />
-              </Field>
-              <Field label="Environment" error={grantErrors.environment}>
-                <Combobox
-                  label="Environment"
-                  options={environmentOptions}
-                  value={grant.environment ?? ""}
-                  placeholder="Select environment..."
-                  disabled={!grant.project}
-                  invalid={Boolean(grantErrors.environment)}
-                  onValueChange={(value) => {
-                    setGrant((current) => ({ project: current.project, environment: value }));
-                    setGrantErrors((current) => ({
-                      ...current,
-                      environment: undefined,
-                      path: undefined
-                    }));
-                  }}
-                />
-              </Field>
-              <Field label="Secret path" error={grantErrors.path}>
-                <Combobox
-                  label="Secret path"
-                  options={folderOptions}
-                  value={grant.path ?? ""}
-                  placeholder="Select path..."
-                  disabled={!grant.environment}
-                  invalid={Boolean(grantErrors.path)}
-                  onValueChange={(value) => {
-                    setGrant((current) => ({ ...current, path: value }));
-                    setGrantErrors((current) => ({ ...current, path: undefined }));
-                  }}
-                />
-              </Field>
-            </>
-          ) : (
-            <>
-              <Field label="Environment" error={error}>
-                <Combobox
-                  label="Environment"
-                  options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
-                  value={environment}
-                  placeholder="Select environment..."
-                  invalid={Boolean(error)}
-                  onValueChange={(value) => {
-                    setEnvironment(value);
-                    setError(undefined);
-                  }}
-                />
-              </Field>
-              <Field label="Secret path">
-                <Input
-                  mono
-                  value={secretPath}
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(event) => setSecretPath(event.target.value)}
-                />
-              </Field>
-              <div className={styles.stackTight}>
-                <Select
-                  label="Secret approval policies"
-                  value={replication ? "true" : "false"}
-                  options={replicationOptions}
-                  onChange={(value) => setReplication(value === "true")}
-                />
-                <SmallText muted>
-                  {replication
-                    ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
-                    : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
-                </SmallText>
-              </div>
-            </>
+          <Field label="Environment" error={errors.environment}>
+            <Combobox
+              label="Environment"
+              options={environmentOptions}
+              value={environment}
+              placeholder="Select environment..."
+              invalid={Boolean(errors.environment)}
+              onValueChange={(value) => {
+                setEnvironment(value);
+                if (crossProject) setSecretPath("");
+                setErrors({});
+              }}
+            />
+          </Field>
+          <Field label="Secret path" error={errors.path}>
+            {crossProject ? (
+              <Combobox
+                label="Secret path"
+                options={pathOptions}
+                value={secretPath}
+                placeholder={environment ? "Select folder..." : "Select an environment first"}
+                disabled={!environment}
+                invalid={Boolean(errors.path)}
+                onValueChange={(value) => {
+                  setSecretPath(value);
+                  setErrors({});
+                }}
+              />
+            ) : (
+              <Input
+                mono
+                value={secretPath}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setSecretPath(event.target.value)}
+              />
+            )}
+          </Field>
+          {!crossProject && (
+            <div className={styles.stackTight}>
+              <Select
+                label="Secret approval policies"
+                value={replication ? "true" : "false"}
+                options={replicationOptions}
+                onChange={(value) => setReplication(value === "true")}
+              />
+              <SmallText muted>
+                {replication
+                  ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
+                  : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
+              </SmallText>
+            </div>
           )}
         </form>
         <DialogFooter>

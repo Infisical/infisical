@@ -1,4 +1,7 @@
-import type { TProjectFolderGrant } from "@app/hooks/api/projectFolderGrants/types";
+import type {
+  TProjectFolderGrant,
+  TProjectFolderGrantReceived
+} from "@app/hooks/api/projectFolderGrants/types";
 import { ProjectType, type UpdateProjectDTO } from "@app/hooks/api/projects/types";
 import type { TGetSecretBlindIndexStatusResponse } from "@app/hooks/api/secretInsights/types";
 import {
@@ -68,6 +71,35 @@ const grant = (
   targetProjectName: targetProjectId,
   secretCount
 });
+
+const received = (
+  sourceProjectId: string,
+  sourceProjectName: string,
+  env: string,
+  secretPath: string,
+  secretCount: number
+): TProjectFolderGrantReceived => ({
+  id: `received-${sourceProjectId}-${env}-${secretPath}`,
+  sourceProjectId,
+  sourceFolderId: `${sourceProjectId}:${env}:${secretPath}`,
+  targetProjectId: DEMO_PROJECT,
+  createdAt: "2026-10-20T09:00:00.000Z",
+  updatedAt: "2026-10-20T09:00:00.000Z",
+  folderName: secretPath.split("/").filter(Boolean).pop() ?? "root",
+  secretPath,
+  environmentName: environment(sourceProjectId, env).name,
+  environmentSlug: env,
+  sourceProjectName,
+  sourceProjectSlug: sourceProjectId,
+  secretCount
+});
+
+const RECEIVED = [
+  received("platform-core", "Platform Core", "prod", "/shared", 8),
+  received("platform-core", "Platform Core", "prod", "/observability/datadog", 4),
+  received("platform-core", "Platform Core", "staging", "/shared", 8),
+  received("identity-gateway", "Identity Gateway", "prod", "/oauth", 5)
+];
 
 const store = createFixtureStore<PoliciesState>({
   rules: [
@@ -219,17 +251,8 @@ export const secretPoliciesDemo: SecretPoliciesAdapter = {
   }),
   useFolderGrants: (projectId) =>
     ok(store.use().grants.filter((entry) => entry.sourceProjectId === projectId)),
-  useFolderGrantsReceived: (projectId) =>
-    ok(
-      store
-        .use()
-        .grants.filter((entry) => entry.targetProjectId === projectId)
-        .map((entry) => ({
-          ...entry,
-          sourceProjectName: entry.sourceProjectId,
-          sourceProjectSlug: entry.sourceProjectId
-        }))
-    ),
+  useReceivedFolderGrants: (projectId) =>
+    ok(RECEIVED.filter((entry) => entry.targetProjectId === projectId)),
   useFolderGrantsUsage: (grantIds) => ({
     isChecking: false,
     isError: false,

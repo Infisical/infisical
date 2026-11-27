@@ -283,6 +283,7 @@ const AlertSheet = ({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open
         onOpenChange={(next) => {
           if (next || completed.current) {

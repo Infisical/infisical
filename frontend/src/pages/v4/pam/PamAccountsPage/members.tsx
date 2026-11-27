@@ -15,7 +15,6 @@ import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { StatusText } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -346,11 +345,13 @@ const Expiry = ({ expiresAt }: { expiresAt?: string | null }) => {
   if (remaining <= 0) tone = "bad";
   else if (remaining < ONE_DAY_MS) tone = "warn";
   return (
-    <Tooltip content={format(new Date(expiresAt), "MMMM do, yyyy 'at' h:mm a")}>
-      <StatusText tone={tone} icon="clock" tabIndex={0}>
-        {remaining <= 0 ? "Expired" : formatDistanceToNow(new Date(expiresAt), { addSuffix: true })}
-      </StatusText>
-    </Tooltip>
+    <StatusText
+      reason={format(new Date(expiresAt), "MMMM do, yyyy 'at' h:mm a")}
+      tone={tone}
+      icon="clock"
+    >
+      {remaining <= 0 ? "Expired" : formatDistanceToNow(new Date(expiresAt), { addSuffix: true })}
+    </StatusText>
   );
 };
 

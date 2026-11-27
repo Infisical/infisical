@@ -19,6 +19,7 @@ import { Gate } from "../../access/ui";
 import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { GatewaysPanel } from "./gateways";
 import { RelaysPanel } from "./relays";
 import { UpgradeDialog } from "./upgrade-dialog";
@@ -34,6 +35,7 @@ const docs = {
 export type NetworkingDialog = "gateway" | "pool" | "relay" | "upgrade";
 
 export const NetworkingPage = () => {
+  const scope = useOrgPageScope();
   const { orgId } = useParams({ from: routeId });
   const { selectedTab, gatewayView = "all-gateways", action } = useSearch({ from: routeId });
   const navigate = useNavigate({ from: v4Path("/organizations/$orgId/networking") });
@@ -118,6 +120,7 @@ export const NetworkingPage = () => {
   return (
     <Stack gap={24}>
       <PageHeader
+        scope={scope}
         title="Networking"
         description="Gateways and relays connect Infisical to your private infrastructure."
         badges={

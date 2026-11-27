@@ -93,6 +93,7 @@ export const HsmRoutePicker = ({
   const { gateways, pools, isPending } = useHsmRoutes(plan, value);
   return (
     <Select
+      descriptionLayout="stacked"
       id={id}
       value={value}
       disabled={isPending}

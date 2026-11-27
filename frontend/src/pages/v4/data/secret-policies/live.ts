@@ -87,7 +87,7 @@ export const secretPoliciesLive: SecretPoliciesAdapter = {
     };
   },
   useFolderGrants: (projectId, { enabled }) => useListProjectFolderGrants(projectId, enabled),
-  useFolderGrantsReceived: (projectId, { enabled }) =>
+  useReceivedFolderGrants: (projectId, { enabled }) =>
     useListProjectFolderGrantsReceived(enabled ? projectId : ""),
   useFolderGrantsUsage: (grantIds, projectId, { enabled }) =>
     useGetProjectFolderGrantsUsageTotal(grantIds, projectId, enabled),

@@ -76,7 +76,6 @@ const sourceTooltip = (source: SourceRef) =>
     .join(". ");
 
 const SourceBadges = ({ sources }: { sources: readonly SourceRef[] }) => {
-  if (!sources.length) return <Muted>-</Muted>;
   const [first, ...rest] = sources;
   return (
     <Inline gap={4} wrap={false}>
@@ -139,9 +138,10 @@ const columns: DataTableColumn<Row>[] = [
     id: "source",
     header: "Granted by",
     width: 220,
-    render: (row) => (
-      <SourceBadges sources={row.grantedBy.length ? row.grantedBy : row.forbiddenBy} />
-    )
+    render: (row) => {
+      const sources = row.grantedBy.length ? row.grantedBy : row.forbiddenBy;
+      return sources.length ? <SourceBadges sources={sources} /> : null;
+    }
   }
 ];
 

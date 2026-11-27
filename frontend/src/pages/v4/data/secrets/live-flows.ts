@@ -22,7 +22,6 @@ import {
   useResyncSecretReplication,
   useUpdateSecretImport
 } from "@app/hooks/api/secretImports/mutation";
-import { useGetImportedSecretsSingleEnv } from "@app/hooks/api/secretImports/queries";
 import {
   useCreateCommit,
   useCreateSecretBatch,
@@ -67,8 +66,6 @@ export const secretsFlowsLive: SecretsFlowsAdapter = {
   useDeleteReminder,
   useProjectFolders: useListProjectEnvironmentsFolders,
   useSecretsAt: useGetProjectSecrets,
-  useImportedSecretsAt: ({ projectId, environment, secretPath }) =>
-    useGetImportedSecretsSingleEnv({ projectId, environment, path: secretPath }),
   useFetchSecretsAt: () => (dto) =>
     fetchProjectSecrets(dto).then(({ secrets }) => mergePersonalSecrets(secrets)),
   useCreateSecretBatch: withMutationMeta(useCreateSecretBatch),

@@ -19,7 +19,6 @@ import { useV4Adapter } from "../../../data/adapters";
 import { useProjectPermission } from "../../permissions";
 import { useProjectScope } from "../../project/scope";
 import { formatDate } from "../../roles";
-import { Muted } from "../../ui";
 import {
   ALL_MEMBERS,
   DELEGATION_DOCS_URL,
@@ -103,9 +102,7 @@ export const AgentVaultIdentityDelegationSection = ({
               subject.key === ALL_MEMBERS ? "project members" : subjectOnBehalfOf(subject)
             }
           />
-        ) : (
-          <Muted>-</Muted>
-        )
+        ) : null
     }
   ];
 

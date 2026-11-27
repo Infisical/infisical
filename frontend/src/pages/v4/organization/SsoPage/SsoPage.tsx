@@ -7,6 +7,7 @@ import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-rou
 
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { ProvisioningTab } from "./provisioning/ProvisioningTab";
 import { SsoTab } from "./sso/SsoTab";
 
@@ -16,6 +17,7 @@ const tabs = [
 ];
 
 export const SsoPage = () => {
+  const scope = useOrgPageScope();
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/sso" });
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/sso" });
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ export const SsoPage = () => {
     <TooltipProvider>
       <Stack gap={24}>
         <PageHeader
+          scope={scope}
           title="SSO & provisioning"
           description="Configure how members sign in and how their accounts are provisioned."
           badges={

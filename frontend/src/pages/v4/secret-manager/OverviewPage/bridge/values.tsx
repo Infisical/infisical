@@ -12,13 +12,13 @@ import {
 import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { Secret } from "../secrets-model";
-import { type LoadedValues, readVersion, valueKey } from "./view-model";
+import { type LoadedValues, valueKey } from "./view-model";
 
 type ValueRequest = {
   environment: string;
   path: string;
   key: string;
-  version: number | string;
+  version: number;
   isOverride?: boolean;
 };
 type Waiter = { keys: string[]; resolve: (values: LoadedValues) => void };
@@ -36,10 +36,10 @@ const ValueLoaderContext = createContext<ValueLoader>({
 export const useValueLoader = () => useContext(ValueLoaderContext);
 
 const toRequest = (secret: Secret, isOverride?: boolean): ValueRequest => ({
-  environment: secret.readFrom?.environment ?? secret.environment,
-  path: secret.readFrom?.path ?? secret.path,
+  environment: secret.environment,
+  path: secret.path,
   key: secret.name,
-  version: readVersion(secret.version, secret.readFrom),
+  version: secret.version,
   isOverride
 });
 const keyOf = (request: ValueRequest) =>

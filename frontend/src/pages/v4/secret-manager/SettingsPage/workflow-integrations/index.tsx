@@ -21,7 +21,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Select } from "@infisical/cipher/ui/select";
-import { Sheet } from "@infisical/cipher/ui/sheet";
+import { Sheet, SheetContent } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { StatusText } from "@infisical/cipher/ui/text";
 
@@ -30,13 +30,14 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
 import { saved } from "../../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../../access/ui";
 import { useV4Adapter } from "../../../data/adapters";
-import { PLATFORM_LABELS, SheetForm } from "./shared";
+import { PLATFORM_LABELS, platformOf, SheetForm } from "./shared";
 import { SlackIntegrationForm } from "./slack-form";
 import { MicrosoftTeamsIntegrationForm } from "./teams-form";
 
@@ -64,14 +65,19 @@ const IntegrationSheet = ({
 }) => {
   const { orgId, projectId } = useProjectScope();
   const [chosen, setChosen] = useState<WorkflowIntegrationPlatform>();
+  const [pending, setPending] = useState(false);
   const platform = fixedPlatform ?? chosen;
   const close = () => {
     setChosen(undefined);
     onClose();
   };
-  const title = fixedPlatform
-    ? `Edit ${PLATFORM_LABELS[fixedPlatform]} integration`
-    : "Add workflow integration";
+  const title = fixedPlatform ? (
+    <ProviderLabel provider={platformOf(fixedPlatform)}>
+      Edit {PLATFORM_LABELS[fixedPlatform]} integration
+    </ProviderLabel>
+  ) : (
+    "Add workflow integration"
+  );
   const lead = fixedPlatform ? undefined : (
     <Field wide label="Platform">
       <Select
@@ -87,14 +93,16 @@ const IntegrationSheet = ({
       />
     </Field>
   );
-  const props = { projectId, orgId, title, lead, onClose: close };
+  const props = { projectId, orgId, title, lead, pending, setPending, onClose: close };
   return (
     <Sheet open={open} onOpenChange={(next) => !next && close()}>
-      {platform === WorkflowIntegrationPlatform.SLACK && <SlackIntegrationForm {...props} />}
-      {platform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
-        <MicrosoftTeamsIntegrationForm {...props} />
-      )}
-      {!platform && <SheetForm title={title} lead={lead} saveDisabled />}
+      <SheetContent size="md" pending={pending}>
+        {platform === WorkflowIntegrationPlatform.SLACK && <SlackIntegrationForm {...props} />}
+        {platform === WorkflowIntegrationPlatform.MICROSOFT_TEAMS && (
+          <MicrosoftTeamsIntegrationForm {...props} />
+        )}
+        {!platform && <SheetForm title={title} lead={lead} saveDisabled />}
+      </SheetContent>
     </Sheet>
   );
 };
@@ -200,14 +208,15 @@ export const WorkflowIntegrationsSettings = () => {
       id: "provider",
       header: "Provider",
       width: 200,
-      render: (row) =>
-        canEdit ? (
-          <Button variant="link" underline="hover" onClick={() => edit(row)}>
-            {PLATFORM_LABELS[row.platform]}
-          </Button>
-        ) : (
-          PLATFORM_LABELS[row.platform]
-        )
+      render: (row) => (
+        <ProviderLabel provider={platformOf(row.platform)}>
+          {canEdit ? (
+            <Button variant="link" underline="hover" onClick={() => edit(row)}>
+              {PLATFORM_LABELS[row.platform]}
+            </Button>
+          ) : undefined}
+        </ProviderLabel>
+      )
     },
     {
       id: "accessRequest",
