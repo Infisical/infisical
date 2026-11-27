@@ -162,6 +162,85 @@ describe("item links", () => {
   });
 });
 
+describe("alert description", () => {
+  const withDescription = (description: string): TAlertPayload => {
+    const payload = samplePayload();
+    payload.alert.description = description;
+    return payload;
+  };
+
+  const renderEmail = async (payload: TAlertPayload) =>
+    render(
+      React.createElement(AlertNotificationTemplate, {
+        ...(await captureEmailSubstitutions(payload)),
+        siteUrl: "https://app.infisical.com"
+      } as React.ComponentProps<typeof AlertNotificationTemplate>)
+    );
+
+  test.each(["\r\n", "\n"])(
+    "email shows the description below the summary, keeping %j line breaks",
+    async (lineBreak) => {
+      const html = await renderEmail(withDescription(`Renew it before Friday.${lineBreak}Then tell #pki-ops.`));
+      expect(html).toMatch(/Renew it before Friday\.<br\s*\/?>Then tell #pki-ops\./);
+      // Without it, one long URL widens the whole email past a phone screen.
+      expect(html).toMatch(/overflow-wrap:anywhere[^>]*>Renew it before Friday/);
+
+      // The summary is also the email's preview text, so the body copy is its last occurrence.
+      const descriptionAt = html.indexOf("Renew it before Friday.");
+      expect(html.lastIndexOf(samplePayload().summary)).toBeLessThan(descriptionAt);
+      expect(descriptionAt).toBeLessThan(html.indexOf(samplePayload().items[0].title));
+    }
+  );
+
+  test("email escapes markup in the description", async () => {
+    const escaped = await renderEmail(withDescription("<b>x</b>"));
+    expect(escaped).toContain("&lt;b&gt;x&lt;/b&gt;");
+    expect(escaped).not.toContain("<b>x</b>");
+  });
+
+  test("email sends no description when the alert has none", async () => {
+    const substitutions: { summary?: unknown; description?: unknown } | undefined =
+      await captureEmailSubstitutions(samplePayload());
+    expect(substitutions?.summary).toBe(samplePayload().summary);
+    expect(substitutions?.description).toBeUndefined();
+  });
+
+  test("slack shows the description verbatim in a plain_text block right after the summary", () => {
+    const blocks = buildSlackPayload(withDescription("*bold* & <x>")).attachments?.[0].blocks ?? [];
+    expect(blocks[1]).toEqual({ type: "section", text: { type: "plain_text", text: "*bold* & <x>", emoji: true } });
+  });
+
+  test("slack puts the description, escaped, in the top-level text that previews and screen readers get", () => {
+    const { summary } = samplePayload();
+    const { text } = buildSlackPayload(withDescription("Renew it.\n<!channel> & co"));
+    expect(text?.endsWith(`${summary}\nRenew it.\n&lt;!channel&gt; &amp; co`)).toBe(true);
+    expect(buildSlackPayload(samplePayload()).text?.endsWith(summary)).toBe(true);
+  });
+
+  test("slack adds no block when the alert has no description", () => {
+    const withBlock = buildSlackPayload(withDescription("Page the on-call.")).attachments?.[0].blocks ?? [];
+    const without = buildSlackPayload(samplePayload()).attachments?.[0].blocks ?? [];
+    expect(without).toEqual([withBlock[0], ...withBlock.slice(2)]);
+  });
+
+  test("webhook carries the description on data.alert, and omits the key without one", () => {
+    expect(buildWebhookPayload(withDescription("Page the on-call.")).data.alert.description).toBe("Page the on-call.");
+    expect(buildWebhookPayload(samplePayload()).data.alert.description).toBeUndefined();
+  });
+
+  test("pagerduty carries the description in custom_details, and omits the key without one", () => {
+    const payload = withDescription("Page the on-call.");
+    expect(buildPagerDutyEvent(payload, payload.items[0], "a".repeat(32)).payload.custom_details.description).toBe(
+      "Page the on-call."
+    );
+
+    const plain = samplePayload();
+    expect(
+      buildPagerDutyEvent(plain, plain.items[0], "a".repeat(32)).payload.custom_details.description
+    ).toBeUndefined();
+  });
+});
+
 describe("alert channel registry", () => {
   test("exposes all four channels with correct directed flags", () => {
     expect(ALERT_CHANNEL_REGISTRY[AlertChannelType.EMAIL].directed).toBe(true);

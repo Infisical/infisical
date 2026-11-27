@@ -1,5 +1,7 @@
 import { ErrorCode } from "@slack/web-api";
 
+import { TSlackPayload } from "@app/lib/slack/slack-webhook";
+
 import { SlackAppChannelConfigSchema, TAlertChannelDeps, TAlertPayload } from "../alert-channel-types";
 import { assertSlackAppConfigInScope, sendSlackAppNotification } from "./alert-channel-slack-app-fns";
 
@@ -9,7 +11,8 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const { postMessage, clientOptions } = vi.hoisted(() => ({
-  postMessage: vi.fn<(args: { channel: string; text: string }) => Promise<unknown>>(),
+  postMessage:
+    vi.fn<(args: { channel: string; text: string; attachments?: TSlackPayload["attachments"] }) => Promise<unknown>>(),
   clientOptions: [] as unknown[]
 }));
 
@@ -144,6 +147,21 @@ describe("sendSlackAppNotification", () => {
     await expect(send()).resolves.toEqual({ success: true });
     expect(postMessage.mock.calls.map(([args]) => args.channel)).toEqual(["C0123ABCD", "C0456EFGH"]);
     expect(postMessage.mock.calls[0][0].text).toContain("prod-cert-expiry");
+  });
+
+  test("posts the alert's description as plain text", async () => {
+    postMessage.mockResolvedValue({ ok: true });
+
+    await sendSlackAppNotification({
+      channelId: "chan-1",
+      config,
+      payload: { ...payload(), alert: { ...payload().alert, description: "Page the on-call." } },
+      deps: deps()
+    });
+    expect(postMessage.mock.calls[0][0].attachments?.[0].blocks).toContainEqual({
+      type: "section",
+      text: { type: "plain_text", text: "Page the on-call.", emoji: true }
+    });
   });
 
   test("bounds the Slack client's retries and timeout", async () => {

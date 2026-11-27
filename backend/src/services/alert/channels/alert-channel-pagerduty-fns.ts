@@ -30,6 +30,7 @@ type TPagerDutyPayload = {
     class: string;
     custom_details: {
       alert_name: string;
+      description?: string;
       condition?: string;
       title: string;
       identifier?: string;
@@ -58,6 +59,7 @@ export const buildPagerDutyEvent = (
     class: payload.eventKey,
     custom_details: {
       alert_name: payload.alert.name,
+      ...(payload.alert.description ? { description: payload.alert.description } : {}),
       ...(payload.alert.condition ? { condition: payload.alert.condition } : {}),
       title: item.title || "N/A",
       ...(item.identifier ? { identifier: item.identifier } : {}),

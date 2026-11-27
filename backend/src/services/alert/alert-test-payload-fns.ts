@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { getConfig } from "@app/lib/config/env";
 
 import { TAlertPayload } from "./alert-channel-types";
+import { alertDescriptionField } from "./alert-format-fns";
 
 const TEST_ALERT_NAME = "Sample alert";
 
@@ -19,12 +20,14 @@ export const buildTestAlertPayload = ({
   projectId,
   alertId = crypto.randomUUID(),
   resourceId,
+  description,
   getWebhookSource
 }: {
   orgId: string;
   projectId?: string | null;
   alertId?: string;
   resourceId?: string | null;
+  description?: string;
   getWebhookSource?: (input: { alertId: string; resourceId?: string | null }) => string | undefined;
 }): TAlertPayload => {
   const appCfg = getConfig();
@@ -38,6 +41,7 @@ export const buildTestAlertPayload = ({
       ...(projectId ? { projectId } : {}),
       resourceType: "alert.channel.test",
       ...(webhookSource && resourceId ? { resourceId } : {}),
+      ...alertDescriptionField(description),
       viewUrl: appCfg.SITE_URL ?? ""
     },
     ...(webhookSource ? { webhookSource } : {}),

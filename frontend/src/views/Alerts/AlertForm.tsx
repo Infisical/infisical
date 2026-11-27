@@ -147,6 +147,7 @@ export const AlertForm = ({
     handleSubmit,
     getValues,
     setValue,
+    trigger,
     formState: { errors, isSubmitting }
   } = formMethods;
 
@@ -244,6 +245,7 @@ export const AlertForm = ({
                 isError={Boolean(errors.description)}
                 {...register("description")}
               />
+              <FieldDescription>Included in every notification this alert sends.</FieldDescription>
               <FieldError errors={[errors.description]} />
             </FieldContent>
           </Field>
@@ -342,6 +344,8 @@ export const AlertForm = ({
             resourceType={resourceType}
             resourceId={resourceId ?? alert?.resourceId ?? null}
             channelPaywall={channelPaywall}
+            getAlertDescription={() => getValues("description")}
+            validateAlertDescription={() => trigger("description", { shouldFocus: true })}
           />
         </div>
 

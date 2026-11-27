@@ -162,7 +162,7 @@ An identity can have one alert for each event.
     | Field | Description |
     |-------|-------------|
     | **Name** | A name for the alert, such as `ua-secret-expiry` |
-    | **Description** | Optional notes about what the alert is for |
+    | **Description** | Optional text included in every notification the alert sends |
     | **Event** | **Credential Expiration** or **Auth Method Change** (you can't change the event later) |
     | **Enabled** | Whether Infisical sends notifications for the alert (on by default) |
     | **Condition** | For **Credential Expiration** only: how many days before a credential expires to send the notification, from `1` to `90` |
@@ -198,6 +198,8 @@ Infisical sends each webhook as a [CloudEvents](https://cloudevents.io/) 1.0 JSO
 - `com.infisical.identity.authentication.expiration` for credential expiration
 - `com.infisical.identity.authentication.auth-method-changed` for an auth method change
 
+If the alert has a description, `data.alert.description` holds it; otherwise, the request leaves the field out.
+
 For credential expiration, `data.items` lists each credential that the daily check found:
 
 ```json expandable
@@ -214,7 +216,8 @@ For credential expiration, `data.items` lists each credential that the daily che
       "id": "1bd09748-1d5b-4642-8034-f4ca88f59996",
       "name": "ua-secret-expiry",
       "resourceType": "identity.authentication",
-      "condition": "7d"
+      "condition": "7d",
+      "description": "Rotate the client secret in the CI vault before it expires."
     },
     "items": [
       {

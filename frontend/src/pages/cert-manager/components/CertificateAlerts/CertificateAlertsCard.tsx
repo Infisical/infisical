@@ -199,7 +199,7 @@ const AlertRow = ({
                 <InfoIcon className="size-3.5 shrink-0 text-accent" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
-                {alert.description}
+                <p className="line-clamp-6 break-words whitespace-pre-wrap">{alert.description}</p>
               </TooltipContent>
             </Tooltip>
           ) : null}

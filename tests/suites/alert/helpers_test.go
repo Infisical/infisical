@@ -7,7 +7,10 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fakes/webhook"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -23,6 +26,7 @@ const (
 // body would refuse to express, such as an empty channel list.
 type alertBody struct {
 	Name         string    `json:"name"`
+	Description  string    `json:"description,omitempty"`
 	ResourceType string    `json:"resourceType"`
 	ResourceID   string    `json:"resourceId,omitempty"`
 	EventType    string    `json:"eventType"`
@@ -77,9 +81,10 @@ type alertDelivery struct {
 	Subject string `json:"subject"`
 	Data    struct {
 		Alert struct {
-			ID           string `json:"id"`
-			Name         string `json:"name"`
-			ResourceType string `json:"resourceType"`
+			ID           string  `json:"id"`
+			Name         string  `json:"name"`
+			ResourceType string  `json:"resourceType"`
+			Description  *string `json:"description"`
 		} `json:"alert"`
 		Items []struct {
 			Title  string `json:"title"`
@@ -89,6 +94,30 @@ type alertDelivery struct {
 			} `json:"fields"`
 		} `json:"items"`
 	} `json:"data"`
+}
+
+func expectDelivery(t *testing.T, sink *fixture.WebhookSink) alertDelivery {
+	t.Helper()
+	got := sink.ExpectEvent[webhook.DeliveryReceived](t, nil, fakenet.Within(alertDispatch))
+	var d alertDelivery
+	require.NoError(t, json.Unmarshal([]byte(got.Body), &d), got.Body)
+	return d
+}
+
+// testWebhookChannel sends raw JSON because the generated body predates `description`.
+func testWebhookChannel(t *testing.T, actor *harness.Principal, identityID uuid.UUID, url, description string) *api.TestAlertChannelResponse {
+	t.Helper()
+	raw, err := json.Marshal(map[string]any{
+		"resourceType": identityAuthentication,
+		"resourceId":   identityID.String(),
+		"channelType":  "webhook",
+		"config":       map[string]any{"url": url},
+		"description":  description,
+	})
+	require.NoError(t, err)
+	res, err := actor.API.TestAlertChannelWithBodyWithResponse(t.Context(), "application/json", bytes.NewReader(raw))
+	require.NoError(t, err)
+	return res
 }
 
 func fieldsOf(t *testing.T, d alertDelivery) map[string]string {

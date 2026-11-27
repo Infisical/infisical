@@ -10,6 +10,7 @@ import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-cry
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetResult } from "./alert-channel-types";
+import { alertDescriptionField } from "./alert-format-fns";
 import { getDedupCutoff, TAlertHistoryDALFactory } from "./alert-history-dal";
 import { getRecipientScope } from "./alert-principal-scope-fns";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
@@ -85,6 +86,8 @@ export const alertEngineFactory = ({
       condition: alert.condition
     };
     const viewUrl = await provider.buildViewUrl(alertContext);
+    // Attached here, not by providers, because it belongs to the alert row and a provider that forgot it would drop it.
+    const descriptionField = alertDescriptionField(alert.description);
 
     const { decryptor } = await getAlertChannelCipher(kmsDataKeyService, {
       orgId: alert.orgId,
@@ -128,11 +131,12 @@ export const alertEngineFactory = ({
           return { ...base, success: false, error: "Failed to decrypt channel config" };
         }
 
-        const payload = provider.buildPayload(
+        const builtPayload = provider.buildPayload(
           alertContext,
           due.map((target) => target.target),
           viewUrl
         );
+        const payload = { ...builtPayload, alert: { ...builtPayload.alert, ...descriptionField } };
 
         try {
           if (definition.directed) {

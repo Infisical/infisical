@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  alertDescriptionFormSchema,
   AlertPrincipalType,
   CertificateAlertResourceType,
   CertificateApplicationAlertEventType,
@@ -326,7 +327,7 @@ export const certificateAlertFormSchema = z
       z.nativeEnum(SignerAlertEventType)
     ]),
     name: z.string().trim().min(1, "Name is required").max(255),
-    description: z.string().trim().max(1000),
+    description: alertDescriptionFormSchema,
     alertBefore: z.string().trim(),
     dailyReminder: z.boolean(),
     enabled: z.boolean(),

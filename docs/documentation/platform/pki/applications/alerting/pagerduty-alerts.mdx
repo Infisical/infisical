@@ -134,6 +134,10 @@ Each incident's PagerDuty severity comes from the alert's event. For expiration 
 | Renewal | `info` |
 | Revocation | `warning` |
 
+## Alert description
+
+If the alert has a description, each incident shows it in the incident's custom details, under `description`.
+
 ## Incident grouping
 
 Each certificate gets its own incident. If the same alert fires again for the same certificate, PagerDuty updates the existing incident instead of opening a new one.

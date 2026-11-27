@@ -543,6 +543,35 @@ describe("alert engine", () => {
   });
 });
 
+describe("alert engine, alert description", () => {
+  const payloadSentFor = async (description: string | null, channelType = AlertChannelType.SLACK_APP) => {
+    const send = vi.spyOn(ALERT_CHANNEL_REGISTRY[channelType], "send").mockResolvedValue({ success: true });
+    try {
+      const { engine } = buildEngine({
+        targets: [{ id: "t1" }],
+        channels: [{ id: "c-1", channelType, encryptedConfig: encConfig({}), enabled: true }]
+      });
+      await engine.runAlert({ ...makeAlert(), description });
+      expect(send).toHaveBeenCalledTimes(1);
+      return send.mock.calls[0][0].payload;
+    } finally {
+      send.mockRestore();
+    }
+  };
+
+  // Email is directed, so it sends once per recipient on a separate path from the undirected channels.
+  test.each([AlertChannelType.SLACK_APP, AlertChannelType.EMAIL])(
+    "hands the %s channel the alert's description, trimmed, though the provider never set it",
+    async (channelType) => {
+      expect((await payloadSentFor("  Page the on-call.\n", channelType)).alert.description).toBe("Page the on-call.");
+    }
+  );
+
+  test.each([null, "   \n "])("leaves the description off the payload when the alert's is %j", async (description) => {
+    expect((await payloadSentFor(description)).alert.description).toBeUndefined();
+  });
+});
+
 describe("alert engine, event path", () => {
   const eventAlert = () => ({ ...makeAlert(), triggerType: "event", eventType: "test.resource.opened" });
   const EVENT = {

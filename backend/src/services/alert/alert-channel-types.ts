@@ -45,6 +45,7 @@ export type TAlertPayload = {
     resourceType: string; // dot-namespaced, e.g. "pki.certificate"
     resourceId?: string;
     condition?: string; // display label for the "when", e.g. "30d"
+    description?: string; // trimmed, and absent when the alert has none
     viewUrl: string; // deep link into the app, built by the provider
   };
   eventKey: string; // dot-namespaced event, e.g. "pki.certificate.expiration"

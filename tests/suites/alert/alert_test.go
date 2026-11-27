@@ -195,3 +195,70 @@ func TestAlert_Create(t *testing.T) {
 		require.Equal(t, sink.URL, got.JSON200.Alert.Channels[0].Config["url"])
 	})
 }
+
+func TestAlert_Description(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should post the alert's description to the webhook", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		bot := tn.NewMachineIdentity(t)
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		description := "Rotate the CI credential.\nPing the platform team if this was not you."
+		newAlert(t, tn.Admin, alertBody{
+			Name: "auth changes", Description: description, ResourceType: identityAuthentication,
+			ResourceID: bot.ID.String(), EventType: authMethodChanged, Channels: []channel{webhookChannel(sink.URL)},
+		})
+
+		// Action
+		addClientSecret(t, tn, bot, "ci-deploy")
+
+		// Assert
+		d := expectDelivery(t, sink)
+		require.NotNil(t, d.Data.Alert.Description, "data.alert.description is missing")
+		require.Equal(t, description, *d.Data.Alert.Description)
+	})
+
+	t.Run("should leave the description out of the webhook body when the alert has none", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		bot := tn.NewMachineIdentity(t)
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		newAlert(t, tn.Admin, alertBody{
+			Name: "auth changes", ResourceType: identityAuthentication, ResourceID: bot.ID.String(),
+			EventType: authMethodChanged, Channels: []channel{webhookChannel(sink.URL)},
+		})
+
+		// Action
+		addClientSecret(t, tn, bot, "ci-deploy")
+
+		// Assert
+		d := expectDelivery(t, sink)
+		require.Nil(t, d.Data.Alert.Description)
+	})
+
+	t.Run("should post the description a channel test sends", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		bot := tn.NewMachineIdentity(t)
+		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
+		description := "Unsaved text from the alert form"
+
+		// Action
+		res := testWebhookChannel(t, tn.Admin, bot.ID, sink.URL, description)
+
+		// Assert
+		require.NotNilf(t, res.JSON200, "testing the channel returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.True(t, res.JSON200.Success)
+		d := expectDelivery(t, sink)
+		require.NotNil(t, d.Data.Alert.Description, "data.alert.description is missing")
+		require.Equal(t, description, *d.Data.Alert.Description)
+	})
+}

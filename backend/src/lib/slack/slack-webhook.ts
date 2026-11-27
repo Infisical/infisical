@@ -3,6 +3,7 @@ export const SLACK_WEBHOOK_TIMEOUT = 7 * 1000;
 export type TSlackBlock =
   | { type: "header"; text: { type: "plain_text"; text: string; emoji?: boolean } }
   | { type: "section"; text: { type: "mrkdwn"; text: string } }
+  | { type: "section"; text: { type: "plain_text"; text: string; emoji?: boolean } }
   | { type: "section"; fields: Array<{ type: "mrkdwn"; text: string }> }
   | { type: "context"; elements: Array<{ type: "mrkdwn"; text: string }> }
   | { type: "divider" }
