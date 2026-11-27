@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { getBoundGrants } from "./pam-device-posture-service";
+import { getBoundGrants, getUnboundGrant } from "./pam-device-posture-service";
 
 const bound = (serial: string, minutes = 60) => ({
   attributes: { deviceSerialNumber: serial },
@@ -24,5 +24,17 @@ describe("getBoundGrants", () => {
 
   test("doesn't bind without grants", () => {
     expect(getBoundGrants([])).toBeNull();
+  });
+});
+
+describe("getUnboundGrant", () => {
+  test("picks the longest lasting grant that allows any device", () => {
+    const short = { attributes: {}, expiresAt: new Date(Date.now() + 60_000) };
+    const long = { attributes: {}, expiresAt: new Date(Date.now() + 120_000) };
+    expect(getUnboundGrant([bound("A", 600), short, long])).toBe(long);
+  });
+
+  test("returns null when every grant is bound", () => {
+    expect(getUnboundGrant([bound("A")])).toBeNull();
   });
 });

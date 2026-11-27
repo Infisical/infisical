@@ -101,12 +101,24 @@ const getGrantDeviceSerialNumber = (attributes: unknown) => {
 
 type TBindableGrant = { attributes?: unknown; expiresAt?: Date | null };
 
+const isActiveGrant = (grant: TBindableGrant) => !grant.expiresAt || new Date(grant.expiresAt) > new Date();
+
 // Access is bound only when every active grant is; one unbound grant, such as a manual approval, allows any device
 export const getBoundGrants = <T extends TBindableGrant>(grants: T[]): T[] | null => {
-  const active = grants.filter((grant) => !grant.expiresAt || new Date(grant.expiresAt) > new Date());
+  const active = grants.filter(isActiveGrant);
   if (!active.length || active.some((grant) => !getGrantDeviceSerialNumber(grant.attributes))) return null;
   return active;
 };
+
+// Without a device binding, only the grants allowing any device authorize access; the longest lasting one caps it
+export const getUnboundGrant = <T extends TBindableGrant>(grants: T[]): T | null =>
+  grants
+    .filter((grant) => isActiveGrant(grant) && !getGrantDeviceSerialNumber(grant.attributes))
+    .sort((a, b) => {
+      if (!a.expiresAt) return -1;
+      if (!b.expiresAt) return 1;
+      return new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime();
+    })[0] ?? null;
 
 const serialsOf = (grants: TBindableGrant[] | null) =>
   grants ? [...new Set(grants.map((grant) => getGrantDeviceSerialNumber(grant.attributes) as string))] : null;
@@ -244,19 +256,19 @@ export const pamDevicePostureServiceFactory = ({
     );
   };
 
-  const findBoundGrants = async (
+  const findActiveGrants = async (
     account: { id: string; projectId: string; folderId?: string | null },
     userId: string,
     accessType: PamAccessType
   ) => {
-    if (!account.folderId) return null;
+    if (!account.folderId) return [];
     const grants = await approvalPolicyService.getActiveGrants(
       ApprovalPolicyType.PamAccess,
       account.projectId,
       { id: userId, type: ActorType.USER },
       { accountId: account.id, folderId: account.folderId, accessType }
     );
-    return getBoundGrants(grants);
+    return grants;
   };
 
   const lookupFacts = async (
@@ -317,7 +329,7 @@ export const pamDevicePostureServiceFactory = ({
   }) => {
     const templatePolicy = resolveAccessControls(account.templatePolicies).devicePosture;
     const autoApprovalPolicies = forAutoApproval ? await getAutoApprovalPolicies(account) : [];
-    const boundSerialNumbers = serialsOf(await findBoundGrants(account, userId, accessType));
+    const boundSerialNumbers = serialsOf(getBoundGrants(await findActiveGrants(account, userId, accessType)));
     const user = await userDAL.findById(userId);
     const email = (user?.email ?? user?.username ?? null)?.toLowerCase() ?? null;
 
@@ -569,14 +581,15 @@ export const pamDevicePostureServiceFactory = ({
     actor: TActorContext;
   }) => {
     const isUser = actor.principal.type === ActorType.USER;
-    const boundGrants =
+    const activeGrants =
       isUser && account.projectId && resolveAccessControls(account.templatePolicies).requiresApproval
-        ? await findBoundGrants(
+        ? await findActiveGrants(
             { id: account.id, projectId: account.projectId, folderId: account.folderId },
             actor.principal.id,
             accessType
           )
-        : null;
+        : [];
+    const boundGrants = getBoundGrants(activeGrants);
     const row = await enforceDevicePosture(
       { pamDeviceVerificationDAL },
       {
@@ -588,10 +601,12 @@ export const pamDevicePostureServiceFactory = ({
         actorId: actor.principal.id
       }
     );
-    // The grant that allows this device, which then caps the session instead of whichever grant is found first
-    const grant =
-      boundGrants?.find((candidate) => getGrantDeviceSerialNumber(candidate.attributes) === row?.deviceSerialNumber) ??
-      null;
+    // The grant that authorizes this access caps the session, instead of whichever grant is found first
+    const grant = boundGrants
+      ? (boundGrants.find(
+          (candidate) => getGrantDeviceSerialNumber(candidate.attributes) === row?.deviceSerialNumber
+        ) ?? null)
+      : getUnboundGrant(activeGrants);
     return { grant };
   };
 
