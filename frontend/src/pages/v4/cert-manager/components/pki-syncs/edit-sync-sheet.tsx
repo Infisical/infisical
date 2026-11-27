@@ -40,6 +40,7 @@ import type {
 import { failed, saved } from "../../../access/toast";
 import { ProviderIcon } from "../../../components/provider-icon";
 import { useV4Adapter } from "../../../data/adapters";
+import { stepAside } from "../step-aside";
 import { PkiSyncCertificatesFields } from "./certificates/certificates-fields";
 import { PkiSyncDestinationFields } from "./destinations/destination-fields";
 import { PkiSyncTargetHostField } from "./destinations/target-host-field";
@@ -51,7 +52,6 @@ import { PkiSyncHealthCheckCommandFields } from "./options/health-check-command-
 import { PkiSyncOptionsFields } from "./options/options-fields";
 import { PkiSyncPostSyncCommandFields } from "./options/post-sync-command-fields";
 import { destinationNameOf, useCanSetHealthCheckCommand, useCanSetPostSyncCommand } from "./shared";
-import { PkiSyncStepAbout } from "./step-about";
 import { pkiSyncDocsHref, pkiSyncEditAbout, type PkiSyncStepKey } from "./steps";
 import {
   arePkiSyncRemovalOptionsComplete,
@@ -379,13 +379,9 @@ export const EditPkiSyncSheet = ({
         steps={[
           {
             title: SECTION[section].title,
-            aside: {
-              description: (
-                <PkiSyncStepAbout
-                  paragraphs={pkiSyncEditAbout(section, { destination: sync.destination, isLdap })}
-                />
-              )
-            },
+            aside: stepAside(
+              ...pkiSyncEditAbout(section, { destination: sync.destination, isLdap })
+            ),
             content: (
               <EditSectionFields
                 sync={sync}
