@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { ClientClosedRequestError } from "@app/lib/errors";
+import { BadRequestError, ClientClosedRequestError } from "@app/lib/errors";
 
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 
@@ -109,6 +109,18 @@ describe("fnSecretsV2FromImports", () => {
     });
 
     await expect(fnSecretsV2FromImports(args)).rejects.toBeInstanceOf(ClientClosedRequestError);
+  });
+
+  it("fails instead of returning the unexpanded value of a secret too large to expand", async () => {
+    const tooLarge = new BadRequestError({ name: "SecretReferenceExpansionTooLarge", message: "too large" });
+    const { args } = makeArgs({
+      expandSecretReferences: async ({ secretKey }) => {
+        if (secretKey === "B") throw tooLarge;
+        return `expanded-${secretKey}`;
+      }
+    });
+
+    await expect(fnSecretsV2FromImports(args)).rejects.toBe(tooLarge);
   });
 
   it("keeps other expansion failures non-fatal", async () => {

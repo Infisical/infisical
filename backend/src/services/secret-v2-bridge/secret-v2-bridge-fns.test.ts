@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
-import { ClientClosedRequestError } from "@app/lib/errors";
+import { BadRequestError, ClientClosedRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import {
@@ -299,6 +299,22 @@ describe("expandSecretReferencesGroupedByPath", () => {
         }
       })
     ).rejects.toBeInstanceOf(ClientClosedRequestError);
+  });
+
+  test("rethrows a secret too large to expand instead of reporting it with the other failures", async () => {
+    const secrets = [makeSecret("/a", "A1"), makeSecret("/b", "B1")];
+    const tooLarge = new BadRequestError({ name: "SecretReferenceExpansionTooLarge", message: "too large" });
+
+    await expect(
+      expandSecretReferencesGroupedByPath({
+        secrets,
+        environment: "dev",
+        expandSecretReferences: async ({ secretKey }) => {
+          if (secretKey === "B1") throw tooLarge;
+          throw new Error(`cannot expand ${secretKey}`);
+        }
+      })
+    ).rejects.toBe(tooLarge);
   });
 
   test("keeps the mapping correct across many paths", async () => {

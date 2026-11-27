@@ -184,6 +184,21 @@ export const assertSecretReferencesWithinLimit = (secrets: { secretKey: string; 
     }
   }
 };
+
+const SECRET_REFERENCE_EXPANSION_TOO_LARGE = "SecretReferenceExpansionTooLarge";
+
+// For callers that tolerate other expansion failures: an oversized secret must still fail the read, or the response
+// carries its unexpanded value as if expansion had succeeded.
+export const throwIfAnySettledExpansionTooLarge = (results: PromiseSettledResult<unknown>[]) => {
+  const tooLarge = results.find(
+    (result): result is PromiseRejectedResult =>
+      result.status === "rejected" &&
+      result.reason instanceof BadRequestError &&
+      result.reason.name === SECRET_REFERENCE_EXPANSION_TOO_LARGE
+  );
+  if (tooLarge) throw tooLarge.reason;
+};
+
 export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
@@ -331,7 +346,7 @@ export const expandSecretReferencesFactory = ({
     const budget = { references: 0, characters: 0 };
     const throwExpansionTooLarge = (reason: string) => {
       throw new BadRequestError({
-        name: "SecretReferenceExpansionTooLarge",
+        name: SECRET_REFERENCE_EXPANSION_TOO_LARGE,
         message: `Unable to expand the references in secret '${dto.secretKey}' in environment '${dto.environment}' at path '${dto.secretPath}' because ${reason}. Reduce the references in this secret or in the secrets it references.`
       });
     };
@@ -661,10 +676,15 @@ export const expandSecretReferencesFactory = ({
       return expanded;
     };
 
+    // In relative-import mode an imported secret is expanded under the importing folder's name for it, so a reference
+    // to that name reads the folder's own value rather than the imported one. An expansion cached under another root
+    // may pass through that secret, which is circular under this root, so it cannot be reused here.
+    const rootSecretId = currentSecret.id;
+
     expandReferencedValue = async (reference, depth, ancestors) => {
       const cacheKey = `${dto.shouldStackTrace ? "trace" : "value"}:${depth}:${reference.nodeId}`;
       const cached = expandedValueCache.get(cacheKey);
-      if (cached) {
+      if (cached && !(rootSecretId && cached.referencedSecretIds.has(rootSecretId))) {
         chargeReferences(cached.referenceCount);
         chargeCharacters(cached.characterCount);
         return cached;

@@ -312,20 +312,15 @@ describe("expandSecretReferencesFactory expansion", () => {
       decryptSecretValue: (value) => value?.toString(),
       canExpandValue
     });
-    const expand = (secretKey: string, environment = "dev", secretPath = "/") =>
+    const expand = (
+      secretKey: string,
+      environment = "dev",
+      secretPath = "/",
+      value = folders[`${environment}:${secretPath}`][secretKey]
+    ) =>
       shouldStackTrace
-        ? factory.getExpandedSecretStackTrace({
-            secretKey,
-            value: folders[`${environment}:${secretPath}`][secretKey],
-            environment,
-            secretPath
-          })
-        : factory.expandSecretReferences({
-            secretKey,
-            value: folders[`${environment}:${secretPath}`][secretKey],
-            environment,
-            secretPath
-          });
+        ? factory.getExpandedSecretStackTrace({ secretKey, value, environment, secretPath })
+        : factory.expandSecretReferences({ secretKey, value, environment, secretPath });
     return { expand, findByFolderId };
   };
 
@@ -481,6 +476,19 @@ describe("expandSecretReferencesFactory expansion", () => {
     const warm = expanderFor(folders);
     await warm.expand("R1");
     expect(await warm.expand("R2")).toBe(fresh);
+  });
+
+  it("does not reuse an expansion that passed through the root when the root's value is not the folder's", async () => {
+    // A relative-mode import expands its value under the importing folder's A, whose own value differs. B reaches A,
+    // which is circular when the imported A is the root, but not when R is.
+    const folders = { "dev:/": { A: `\${X}`, B: `\${A}`, X: "x", R: `\${B}` } };
+    const importedValue = `\${B}`;
+    const fresh = await expanderFor(folders).expand("A", "dev", "/", importedValue);
+    expect(fresh).toBe(`\${X}`);
+
+    const warm = expanderFor(folders);
+    expect(await warm.expand("R")).toBe("x");
+    expect(await warm.expand("A", "dev", "/", importedValue)).toBe(fresh);
   });
 
   it("lists each distinct referenced secret once in the reference tree, with its own references nested", async () => {
