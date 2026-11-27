@@ -164,7 +164,7 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
       items={items}
       onSelect={(type) => onSelect(type as SecretRotation)}
       searchLabel="Search secret rotation providers"
-      searchPlaceholder="Search providers like PostgreSQL, AWS, Cloudflare..."
+      searchPlaceholder="Search providers..."
       noun="providers"
     />
   );
@@ -719,9 +719,6 @@ export function SecretRotationFlow({
             ) : (
               <SheetHeader>
                 <SheetTitle>Choose a rotation provider</SheetTitle>
-                <SheetDescription>
-                  Pick the service whose credentials Infisical rotates on a schedule.
-                </SheetDescription>
               </SheetHeader>
             )}
             {type ? (

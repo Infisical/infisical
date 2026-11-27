@@ -1,13 +1,13 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Stack } from "@infisical/cipher/ui/layout";
 import {
   SheetBody,
   SheetClose,
-  SheetContent,
   SheetFooter,
   SheetHeader,
+  SheetSections,
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
@@ -36,6 +36,8 @@ export type PlatformFormProps = {
   orgId: string;
   title: ReactNode;
   lead?: ReactNode;
+  pending: boolean;
+  setPending: (pending: boolean) => void;
   onClose: () => void;
 };
 
@@ -55,40 +57,50 @@ export const SheetForm = ({
   saveDisabled?: boolean;
   onSubmit?: () => void;
   children?: ReactNode;
-}) => (
-  <SheetContent size="md" pending={pending}>
-    <form
-      autoComplete="off"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit?.();
-      }}
+}) => {
+  const formId = useId();
+  return (
+    <SheetSections
+      header={
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+        </SheetHeader>
+      }
+      footer={
+        <SheetFooter>
+          <Button
+            type="submit"
+            form={formId}
+            variant="primary"
+            loading={pending}
+            disabled={saveDisabled || loading}
+          >
+            Save
+          </Button>
+          <SheetClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </SheetClose>
+        </SheetFooter>
+      }
     >
-      <SheetHeader>
-        <SheetTitle>{title}</SheetTitle>
-      </SheetHeader>
       <SheetBody>
-        <Stack gap={16}>
-          {lead}
-          {loading ? <Skeleton lines={4} height={32} /> : children}
-        </Stack>
-      </SheetBody>
-      <SheetFooter>
-        <Button
-          type="submit"
-          variant="primary"
-          loading={pending}
-          disabled={saveDisabled || loading}
+        <form
+          id={formId}
+          autoComplete="off"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit?.();
+          }}
         >
-          Save
-        </Button>
-        <SheetClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </SheetClose>
-      </SheetFooter>
-    </form>
-  </SheetContent>
-);
+          <Stack gap={16}>
+            {lead}
+            {loading ? <Skeleton lines={4} height={32} /> : children}
+          </Stack>
+        </form>
+      </SheetBody>
+    </SheetSections>
+  );
+};
 
 export const NoOrgIntegration = ({
   orgId,
