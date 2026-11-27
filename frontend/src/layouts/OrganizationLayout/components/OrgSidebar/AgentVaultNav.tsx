@@ -29,19 +29,25 @@ import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAuditLogsActions,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProjectPermission,
   useSubscription,
   useProject
 } from "@app/context";
-import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
+import {
+  canOpenAgentVaultAccessControl,
+  canReadAgentVaultAccessBundles,
+  canReadAgentVaultProxies,
+  canReadAgentVaultServices,
+  canReadAgentVaultSessions,
+  canReadAgentVaultSkills,
+  canUseAgentVaultServices
+} from "@app/helpers/agentVaultPermissions";
 import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings,
-  useListGrantedAgentVaultServicesRequiringSetup
+  useListAssignedAgentVaultServicesRequiringSetup
 } from "@app/hooks/api/agentVault";
 
 import { ProjectNavList } from "./ProjectNavLink";
@@ -56,10 +62,6 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     ProjectPermissionActions.Read,
     ProjectPermissionSub.Settings
   );
-  const canReadMembers =
-    permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member) ||
-    permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Groups) ||
-    permission.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity);
   const canReadAuditLogs = permission.can(
     ProjectPermissionAuditLogsActions.Read,
     ProjectPermissionSub.AuditLogs
@@ -74,27 +76,41 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     canReadSessionLogSettings
   );
   const { subscription } = useSubscription();
-  // Services is where a member sets up their personal values. An admin can use any bundle, but the nav only nags about
-  // services in the ones granted to them.
-  const { data: grantedRequiringSetup } = useListGrantedAgentVaultServicesRequiringSetup(projectId);
-  const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
+  // Services is where a member sets up their personal values. The nav only nags about the services a role names one by
+  // one, so a role that can use every service, such as Admin, isn't asked about each.
+  const { data: assignedRequiringSetup } = useListAssignedAgentVaultServicesRequiringSetup(
+    projectId,
+    canUseAgentVaultServices(permission)
+  );
+  const needsSetup = Boolean(assignedRequiringSetup?.totalCount);
   const setupProgress = useAgentVaultSetupProgress();
 
   const accessItems: NavItem[] = [
-    { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
+    {
+      label: "Sessions",
+      icon: IdCard,
+      pathSuffix: "sessions",
+      hidden: !canReadAgentVaultSessions(permission)
+    },
+    {
+      label: "Access Bundles",
+      icon: Package,
+      pathSuffix: "access-bundles",
+      hidden: !canReadAgentVaultAccessBundles(permission)
+    },
     {
       label: "Services",
       icon: Plug,
       pathSuffix: "services",
-      alertVariant: needsSetup ? "warning" : undefined
+      alertVariant: needsSetup ? "warning" : undefined,
+      hidden: !canReadAgentVaultServices(permission)
     },
     { label: "Variables", icon: Braces, pathSuffix: "variables" },
     {
       label: "Skills",
       icon: BookOpenText,
       pathSuffix: "skills",
-      hidden: !canManageAgentVaultSkills(permission)
+      hidden: !canReadAgentVaultSkills(permission)
     },
     {
       label: "Hooks",
@@ -108,7 +124,12 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   ];
 
   const infrastructureItems: NavItem[] = [
-    { label: "Proxies", icon: Server, pathSuffix: "proxies" }
+    {
+      label: "Proxies",
+      icon: Server,
+      pathSuffix: "proxies",
+      hidden: !canReadAgentVaultProxies(permission)
+    }
   ];
 
   let settingsAlert: NavItem["alertVariant"];
@@ -125,7 +146,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       icon: Shield,
       pathSuffix: "access-management",
       activeMatch: /\/access-management|\/groups\/|\/identities\/|\/members\/|\/roles\//,
-      hidden: !canReadMembers
+      hidden: !canOpenAgentVaultAccessControl(permission)
     },
     { label: "Audit Logs", icon: FileText, pathSuffix: "audit-logs", hidden: !canReadAuditLogs },
     {
@@ -142,9 +163,11 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   return (
     <>
       <ProjectNavList items={accessItems} onSubmenuOpen={onSubmenuOpen} />
-      <SidebarCollapsibleGroup label="Infrastructure">
-        <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
-      </SidebarCollapsibleGroup>
+      {infrastructureItems.some((item) => !item.hidden) && (
+        <SidebarCollapsibleGroup label="Infrastructure">
+          <ProjectNavList items={infrastructureItems} onSubmenuOpen={onSubmenuOpen} />
+        </SidebarCollapsibleGroup>
+      )}
       <SidebarCollapsibleGroup label="Administration">
         <ProjectNavList items={administrationItems} onSubmenuOpen={onSubmenuOpen} />
       </SidebarCollapsibleGroup>

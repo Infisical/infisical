@@ -5,7 +5,7 @@ import { ForbiddenError } from "@casl/ability";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultVariableActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -14,7 +14,6 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -41,7 +40,13 @@ import {
   AgentVaultVariableType
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import {
+  agentVaultServiceSubject,
+  getAgentVaultPermission,
+  getAgentVaultReachability,
+  usableServiceIdsOf
+} from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   manualOauthClient,
@@ -129,6 +134,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TAgentVaultServiceDALFactory,
     | "findByIdInProject"
     | "findBundlesForServices"
+    | "findIdsInBundles"
     | "findByIdPrimary"
     | "compareAndSwapCredential"
     | "addRequiredScopes"
@@ -138,7 +144,10 @@ type TAgentVaultOauthServiceFactoryDep = {
     "findOauthForOwner" | "compareAndSwapOauth" | "addRequiredScopes"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultReachDAL: Pick<
+    TAgentVaultReachDALFactory,
+    "findAccessBundleIds" | "findServiceIds" | "findSkillIds" | "findServiceIdsInAnyBundle"
+  >;
   agentVaultVariableDAL: Pick<
     TAgentVaultVariableDALFactory,
     | "findByIdInProject"
@@ -360,7 +369,7 @@ export const agentVaultOauthServiceFactory = ({
   agentVaultServiceDAL,
   agentVaultPersonalValueDAL,
   permissionService,
-  membershipDAL,
+  agentVaultReachDAL,
   agentVaultVariableDAL,
   projectDAL,
   agentVaultSessionInlineServiceDAL,
@@ -432,17 +441,16 @@ export const agentVaultOauthServiceFactory = ({
     registration: requestedRegistration,
     personal
   }: TCreateAuthorizationDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    // A member's own sign-in needs only the reach to use the service; connecting the service itself is an admin's job.
-    ForbiddenError.from(permission).throwUnlessCan(
-      personal
-        ? ProjectPermissionAgentVaultAccessBundleActions.Read
-        : ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    const reachability = await getAgentVaultReachability({ permissionService, agentVaultReachDAL }, { projectId, ctx });
+    const { permission } = reachability;
+    // A member's own sign-in needs only the reach to use the service; connecting the service itself takes editing it,
+    // or creating one when it isn't saved yet.
+    if (!personal) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        serviceId ? ProjectPermissionAgentVaultServiceActions.Edit : ProjectPermissionAgentVaultServiceActions.Create,
+        serviceId ? agentVaultServiceSubject(serviceId) : ProjectPermissionSub.AgentVaultServices
+      );
+    }
 
     if (ctx.actor !== ActorType.USER) {
       throw new BadRequestError({
@@ -476,12 +484,13 @@ export const agentVaultOauthServiceFactory = ({
     let memberSetup: string | undefined;
     if (serviceId) {
       const service = await agentVaultServiceDAL.findByIdInProject({ id: serviceId, projectId });
-      // A member reaches a service through any bundle it is in. One they can't reach reads like one that doesn't exist.
-      const reachable =
-        service &&
-        (!accessBundleIds ||
-          ((await agentVaultServiceDAL.findBundlesForServices([service.id], accessBundleIds)).get(service.id) ?? [])
-            .length > 0);
+      // A member reaches a service they can use, directly or through a bundle that holds it. One they can't reach reads
+      // like one that doesn't exist.
+      const usable =
+        service && personal
+          ? await usableServiceIdsOf({ agentVaultServiceDAL, agentVaultReachDAL }, reachability, projectId)
+          : null;
+      const reachable = service && (usable === null || usable.includes(service.id));
       if (!service || !reachable) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
       if (service.type !== AgentVaultServiceType.Mcp) {
         throw new BadRequestError({

@@ -12,10 +12,12 @@ import {
 } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
-import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import { deniedReason } from "@app/components/agent-vault/DisabledReasonTooltip";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ServicesCard } from "@app/components/agent-vault/ServicesCard";
+import { WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -24,7 +26,6 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -34,14 +35,21 @@ import {
   PageLoader
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
-  ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionAgentVaultSkillActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useProject
 } from "@app/context";
+import {
+  canOnAgentVaultAccessBundle,
+  canOnAgentVaultService,
+  canReadOthersAgentVaultSessions,
+  canUseAgentVaultAccessBundle,
+  canUseNewAgentVaultService
+} from "@app/helpers/agentVaultPermissions";
 import {
   AgentVaultSessionScope,
   useGetAgentVaultAccessBundle,
@@ -60,38 +68,38 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const canReadSkills = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Read,
-    ProjectPermissionSub.AgentVaultSkills
-  );
-  const canEditBundle = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Edit,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
-  const canDeleteBundle = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Delete,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
-  const canManageBundleMembers = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
-  const canReadAnySession = permission.can(
-    ProjectPermissionAgentVaultSessionActions.ReadAny,
-    ProjectPermissionSub.AgentVaultSessions
-  );
-
   const accessBundleId = useParams({
     strict: false,
     select: (params) => params.accessBundleId as string
   });
+
+  const canEditBundle = canOnAgentVaultAccessBundle(
+    permission,
+    ProjectPermissionAgentVaultAccessBundleActions.Edit,
+    accessBundleId
+  );
+  const canDeleteBundle = canOnAgentVaultAccessBundle(
+    permission,
+    ProjectPermissionAgentVaultAccessBundleActions.Delete,
+    accessBundleId
+  );
+  // A service created here goes straight into this bundle, so it takes a bundle edit as well, and using a new service.
+  const canCreateServices =
+    canEditBundle &&
+    permission.can(
+      ProjectPermissionAgentVaultServiceActions.Create,
+      ProjectPermissionSub.AgentVaultServices
+    ) &&
+    canUseNewAgentVaultService(permission);
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+  const canReadAnySession = canReadOthersAgentVaultSessions(permission);
 
   const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(projectId, accessBundleId);
   const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
-  // Listing every session takes Read Any on sessions, and so does the note that reads this.
+  // Listing everyone's sessions takes read on sessions other people started, and so does the note that reads this.
   const { data: sessions } = useListAgentVaultSessions(
     projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
@@ -102,8 +110,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
   );
 
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
@@ -112,7 +120,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
       setServiceToEdit(null);
       setIsServiceSheetOpen(true);
     },
-    canEditBundle && Boolean(accessBundle)
+    canCreateServices && Boolean(accessBundle)
   );
 
   if (isPending)
@@ -130,7 +138,7 @@ export const AgentVaultAccessBundleDetailPage = () => {
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>Access bundle not found</EmptyTitle>
-              <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
+              <EmptyDescription>It was deleted, or you can&apos;t see it.</EmptyDescription>
             </EmptyHeader>
             <Button variant="av" asChild>
               <Link
@@ -154,7 +162,9 @@ export const AgentVaultAccessBundleDetailPage = () => {
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title={accessBundle.name}
-        description={accessBundle.description || "No description"}
+        description={
+          <span className="wrap-anywhere">{accessBundle.description || "No description"}</span>
+        }
         backLink={
           <Link
             to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
@@ -165,36 +175,44 @@ export const AgentVaultAccessBundleDetailPage = () => {
           </Link>
         }
       >
-        {(canManageBundleMembers || canEditBundle || canDeleteBundle) && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                Options
-                <EllipsisIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {canManageBundleMembers && (
-                <DropdownMenuItem onClick={() => setIsManageAccessOpen(true)}>
-                  <UsersIcon />
-                  Manage Access
-                </DropdownMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              Options
+              <EllipsisIcon />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DisabledReasonMenuItem
+              disabledReason={deniedReason(
+                canEditBundle,
+                "You don't have permission to edit this access bundle"
               )}
-              {canEditBundle && (
-                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
-                  <PencilIcon />
-                  Edit Access Bundle
-                </DropdownMenuItem>
+              onClick={() => setIsEditOpen(true)}
+            >
+              <PencilIcon />
+              Edit Access Bundle
+            </DisabledReasonMenuItem>
+            <DisabledReasonMenuItem
+              disabledReason={deniedReason(canReadRoles, "You don't have permission to view roles")}
+              onClick={() => setIsWhoCanUseOpen(true)}
+            >
+              <UsersIcon />
+              Who Can Use
+            </DisabledReasonMenuItem>
+            <DisabledReasonMenuItem
+              variant="danger"
+              disabledReason={deniedReason(
+                canDeleteBundle,
+                "You don't have permission to delete this access bundle"
               )}
-              {canDeleteBundle && (
-                <DropdownMenuItem variant="danger" onClick={() => setIsDeleteOpen(true)}>
-                  <TrashIcon />
-                  Delete Access Bundle
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+              onClick={() => setIsDeleteOpen(true)}
+            >
+              <TrashIcon />
+              Delete Access Bundle
+            </DisabledReasonMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       {needsSetup.length > 0 && (
@@ -241,20 +259,34 @@ export const AgentVaultAccessBundleDetailPage = () => {
           accessBundleId={accessBundle.id}
           onSetUp={setServiceToSetUp}
           services={accessBundle.services}
-          canManage={canEditBundle}
+          canAdd={canEditBundle}
+          canEditService={(service) =>
+            canOnAgentVaultService(
+              permission,
+              ProjectPermissionAgentVaultServiceActions.Edit,
+              service.id
+            )
+          }
+          canRemoveService={() => canEditBundle}
+          canOpenService={(service) =>
+            canUseAgentVaultAccessBundle(permission, accessBundle.id) ||
+            [
+              ProjectPermissionAgentVaultServiceActions.Read,
+              ProjectPermissionAgentVaultServiceActions.Use
+            ].some((action) => canOnAgentVaultService(permission, action, service.id))
+          }
           onAdd={() => setIsAddServiceOpen(true)}
           onEdit={(service) => {
             setServiceToEdit(service);
             setIsServiceSheetOpen(true);
           }}
         />
-        {canReadSkills && (
-          <SkillsCard
-            accessBundleId={accessBundle.id}
-            accessBundleName={accessBundle.name}
-            canManage={canEditBundle}
-          />
-        )}
+        {/* Whoever can see the bundle sees what it holds, skills included. */}
+        <SkillsCard
+          accessBundleId={accessBundle.id}
+          accessBundleName={accessBundle.name}
+          canManage={canEditBundle}
+        />
       </div>
 
       <PersonalValuesDialog
@@ -264,20 +296,19 @@ export const AgentVaultAccessBundleDetailPage = () => {
         }}
       />
 
-      <ManageAccessSheet
-        accessBundle={isManageAccessOpen ? accessBundle : null}
-        onOpenChange={setIsManageAccessOpen}
-      />
-
       <AddBundleServiceDialog
         accessBundleId={accessBundle.id}
         bundleServiceIds={accessBundle.services.map((service) => service.id)}
         isOpen={isAddServiceOpen}
         onOpenChange={setIsAddServiceOpen}
-        onCreateNew={() => {
-          setServiceToEdit(null);
-          setIsServiceSheetOpen(true);
-        }}
+        onCreateNew={
+          canCreateServices
+            ? () => {
+                setServiceToEdit(null);
+                setIsServiceSheetOpen(true);
+              }
+            : undefined
+        }
       />
 
       <ServiceSheet
@@ -285,6 +316,12 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsServiceSheetOpen}
         accessBundleId={accessBundle.id}
         service={serviceToEdit}
+      />
+
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={{ kind: "accessBundle", id: accessBundle.id, name: accessBundle.name }}
       />
 
       <AccessBundleFormDialog

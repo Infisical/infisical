@@ -8,7 +8,6 @@ import { ApiErrorTypes } from "../types";
 import { AgentVaultSessionErrorCode } from "./enums";
 import { agentVaultKeys } from "./queries";
 import {
-  TAddAgentVaultMembersDTO,
   TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundle,
   TAgentVaultActorIdsDTO,
@@ -16,7 +15,6 @@ import {
   TAgentVaultBundleSkill,
   TAgentVaultDelegation,
   TAgentVaultDelegationDetail,
-  TAgentVaultGrantedMember,
   TAgentVaultMcpTool,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
@@ -341,55 +339,6 @@ export const useRemoveAgentVaultAccessBundleService = (projectId: string) => {
   });
 };
 
-export const useAddAgentVaultAccessBundleMembers = (projectId: string) => {
-  const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.post<
-        TAgentVaultMemberWriteResult<TAgentVaultGrantedMember>
-      >(`/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, params);
-      return data;
-    },
-    // accessBundles() prefixes accessBundle(), so it covers the bundle's members too. Invalidating
-    // both would refetch them twice, since the member check can't be cancelled midway.
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
-      });
-      // A grant changes which services the caller reaches and the bundles listed beside each one.
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
-      });
-    }
-  });
-};
-
-export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
-  const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ accessBundleId, ...params }: TAddAgentVaultMembersDTO) => {
-      const { data } = await apiRequest.delete<TAgentVaultMemberWriteResult<TAgentVaultActorRef>>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`,
-        { data: params }
-      );
-      return data;
-    },
-    // accessBundles() prefixes accessBundle(), so it covers the bundle's members too. Invalidating
-    // both would refetch them twice, since the member check can't be cancelled midway.
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
-      });
-      // A grant changes which services the caller reaches and the bundles listed beside each one.
-      queryClient.invalidateQueries({
-        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
-      });
-    }
-  });
-};
-
 // The create session form shows a refused service or skill under its field, and toasts any other 400 itself.
 export const CREATE_SESSION_HANDLED_ERROR_CODES: string[] = [
   ApiErrorTypes.BadRequestError,
@@ -535,7 +484,7 @@ export const useRevokeAgentVaultProxyAccess = (projectId: string) => {
   });
 };
 
-// Removing a product member strips their bundle grants, so the bundle queries go too.
+// A member's roles decide which bundles, services and skills they can use, and how many hold each role a bundle lists.
 const invalidateMembers = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
@@ -543,6 +492,8 @@ const invalidateMembers = (
 ) => {
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(orgId, projectId) });
   queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) });
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.services(orgId, projectId) });
+  queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(orgId, projectId) });
 };
 
 export const useAddAgentVaultMembers = (projectId: string) => {
@@ -969,6 +920,12 @@ const invalidateBundleSkillChange = (
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.skill(orgId, projectId, skillId),
         exact: true
+      })
+    ),
+    // A role that uses the bundle can now use the skill, or no longer can.
+    ...skillIds.map((skillId) =>
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.skillRoles(orgId, projectId, skillId)
       })
     ),
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId, projectId) })

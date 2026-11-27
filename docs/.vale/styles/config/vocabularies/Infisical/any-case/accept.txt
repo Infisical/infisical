@@ -50,6 +50,7 @@
 # Acronyms that collide with ordinary English words, shell commands, or
 # Kubernetes units.
 (?i)MAC
+(?i)MACs
 (?i)PIN
 (?i)SAN
 (?i)SANs

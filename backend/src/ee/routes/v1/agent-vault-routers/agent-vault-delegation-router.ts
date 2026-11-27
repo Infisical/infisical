@@ -10,7 +10,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId, withDeprecatedRole } from "./agent-vault-router-fns";
 import { AgentVaultProductMemberSchema, agentVaultListQuery, AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 const MAX_DELEGATION_SUBJECTS = 100;
@@ -98,7 +98,8 @@ const SubjectChangeBodySchema = (docs: { userIds: string; groupIds: string }) =>
 const projectQuery = z.object({ projectId: AgentVaultProjectIdSchema });
 
 const machineIdentityParams = z.object({
-  machineIdentityId: z.string().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
+  // A role's conditions compare ids exactly, so the id reaches them in the case the database returns.
+  machineIdentityId: z.string().toLowerCase().uuid().describe(AGENT_VAULT.DELEGATION.machineIdentityId)
 });
 
 const auditDelegationFields = (delegation: z.infer<typeof DelegationSchema>) => ({
@@ -305,12 +306,14 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { projectId: requestedProjectId, ...query } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
-      return server.services.agentVaultDelegation.listAvailableDelegationSubjects({
+      const { members, totalCount } = await server.services.agentVaultDelegation.listAvailableDelegationSubjects({
         ...query,
         projectId,
         ctx: actorContext(req),
         machineIdentityId: req.params.machineIdentityId
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), totalCount };
     }
   });
 
@@ -467,7 +470,13 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         properties: telemetryDelegationFields(delegation)
       });
 
-      return { delegation };
+      return {
+        delegation: await server.services.agentVaultDelegation.hideUnreadableSubjects({
+          projectId,
+          ctx: actorContext(req),
+          delegation
+        })
+      };
     }
   });
 };

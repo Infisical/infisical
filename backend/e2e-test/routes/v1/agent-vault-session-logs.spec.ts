@@ -3,9 +3,19 @@ import crypto from "node:crypto";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
-import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
+import {
+  agentVaultRequester,
+  convertAgentVaultMemberRows,
+  createAgentVaultProject,
+  deleteAgentVaultProject
+} from "e2e-test/testUtils/agent-vault";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
+import {
+  addUserMembership as addAnyUserMembership,
+  createUser,
+  createUserAccessToken,
+  deleteUsers
+} from "e2e-test/testUtils/users";
 import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -34,6 +44,13 @@ initLogger();
 // The spec's own Agent Vault project, created in beforeAll. Project-level requests name it.
 let projectId: string;
 
+
+// A Member row written straight to the database points at the project's Member role, as the role migration leaves it.
+const addUserMembership = async (dto: Parameters<typeof addAnyUserMembership>[0]) => {
+  const membershipId = await addAnyUserMembership(dto);
+  if (dto.projectId && dto.role === ProjectMembershipRole.Member) await convertAgentVaultMemberRows(dto.projectId);
+  return membershipId;
+};
 const inject = agentVaultRequester(jwtAuthToken, () => projectId);
 
 const createAccessBundle = async (name: string) => {
@@ -177,6 +194,8 @@ describe("Agent Vault session logs", async () => {
 
   beforeAll(async () => {
     projectId = await createAgentVaultProject({ authToken: jwtAuthToken, name: `session-logs-${Date.now()}` });
+    // A Member role as the role migration makes one, which members added as `member` here name.
+    await convertAgentVaultMemberRows(projectId);
     connectionName = `session-logs-aws-${Date.now()}`;
     connectionId = await createAwsAppConnection({ name: connectionName, authToken: jwtAuthToken });
   });

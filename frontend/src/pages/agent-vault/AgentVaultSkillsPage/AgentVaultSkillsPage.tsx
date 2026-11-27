@@ -3,7 +3,7 @@ import { BookOpenTextIcon } from "lucide-react";
 import { PageTitle } from "@app/components/PageTitle";
 import { AccessRestrictedDialog, PageHeader } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
-import { canManageAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
+import { canReadAgentVaultSkills } from "@app/helpers/agentVaultPermissions";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { SkillsCard } from "./components/SkillsCard";
@@ -21,7 +21,7 @@ export const AgentVaultSkillsPage = () => {
         title="Skills"
         description="Keep the instructions agents follow and deliver them through access bundles."
       />
-      {canManageAgentVaultSkills(permission) ? <SkillsCard /> : <AccessRestrictedDialog />}
+      {canReadAgentVaultSkills(permission) ? <SkillsCard /> : <AccessRestrictedDialog />}
     </div>
   );
 };

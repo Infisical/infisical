@@ -15,6 +15,12 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
 import {
@@ -39,7 +45,6 @@ import {
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -65,6 +70,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { canReadAgentVaultProxies } from "@app/helpers/agentVaultPermissions";
 import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
@@ -144,7 +150,7 @@ enum SortColumn {
 const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
-export const AgentVaultProxiesPage = () => {
+const AgentVaultProxiesPageContent = () => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
   const canProxy = (action: ProjectPermissionAgentVaultProxyActions) =>
@@ -155,7 +161,6 @@ export const AgentVaultProxiesPage = () => {
   const canIssueTokens = canProxy(ProjectPermissionAgentVaultProxyActions.IssueToken);
   const canRevokeProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Revoke);
   const canDeleteProxies = canProxy(ProjectPermissionAgentVaultProxyActions.Delete);
-  const hasProxyActions = showsSettings || canIssueTokens || canRevokeProxies || canDeleteProxies;
   // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
   // refuse a proxy that serves its own CA.
   const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
@@ -272,14 +277,23 @@ export const AgentVaultProxiesPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.proxies} />
           </CardTitle>
           <CardDescription>An agent points its HTTP traffic at one of these.</CardDescription>
-          {canCreateProxies && (
-            <CardAction>
-              <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+          <CardAction>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                canCreateProxies,
+                "You don't have permission to create proxies"
+              )}
+            >
+              <Button
+                variant="av"
+                isDisabled={!canCreateProxies}
+                onClick={() => setIsCreateOpen(true)}
+              >
                 <PlusIcon />
                 Create Proxy
               </Button>
-            </CardAction>
-          )}
+            </DisabledReasonTooltip>
+          </CardAction>
         </CardHeader>
 
         {!isPending && totalCount === 0 ? (
@@ -288,7 +302,9 @@ export const AgentVaultProxiesPage = () => {
               <EmptyHeader>
                 <EmptyTitle>No proxies yet</EmptyTitle>
                 <EmptyDescription>
-                  Create a proxy and start it where agent traffic leaves your network.
+                  {canCreateProxies
+                    ? "Create a proxy and start it where agent traffic leaves your network."
+                    : "Someone who can create proxies can add one here."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -424,47 +440,57 @@ export const AgentVaultProxiesPage = () => {
                       </TableCell>
                     )}
                     <TableCell variant="action">
-                      {hasProxyActions && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton variant="ghost" size="xs" aria-label="Open proxy actions">
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            {showsSettings && (
-                              <DropdownMenuItem onClick={() => setProxyToEdit(proxy)}>
-                                <PencilIcon />
-                                Edit Settings
-                              </DropdownMenuItem>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" size="xs" aria-label="Open proxy actions">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              showsSettings,
+                              "You don't have permission to edit proxies"
                             )}
-                            {canIssueTokens && (
-                              <DropdownMenuItem onClick={() => setProxyToRotate(proxy)}>
-                                <RefreshCwIcon />
-                                Rotate Proxy Token
-                              </DropdownMenuItem>
+                            onClick={() => setProxyToEdit(proxy)}
+                          >
+                            <PencilIcon />
+                            Edit Settings
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canIssueTokens,
+                              "You don't have permission to issue proxy tokens"
                             )}
-                            {canRevokeProxies && (
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setProxyToRevoke(proxy)}
-                              >
-                                <BanIcon />
-                                Revoke Access
-                              </DropdownMenuItem>
+                            onClick={() => setProxyToRotate(proxy)}
+                          >
+                            <RefreshCwIcon />
+                            Rotate Proxy Token
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            variant="danger"
+                            disabledReason={deniedReason(
+                              canRevokeProxies,
+                              "You don't have permission to revoke proxies"
                             )}
-                            {canDeleteProxies && (
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setProxyToDelete(proxy)}
-                              >
-                                <TrashIcon />
-                                Delete
-                              </DropdownMenuItem>
+                            onClick={() => setProxyToRevoke(proxy)}
+                          >
+                            <BanIcon />
+                            Revoke Access
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            variant="danger"
+                            disabledReason={deniedReason(
+                              canDeleteProxies,
+                              "You don't have permission to delete proxies"
                             )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                            onClick={() => setProxyToDelete(proxy)}
+                          >
+                            <TrashIcon />
+                            Delete
+                          </DisabledReasonMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -570,4 +596,19 @@ export const AgentVaultProxiesPage = () => {
       />
     </div>
   );
+};
+
+export const AgentVaultProxiesPage = () => {
+  const { permission } = useProjectPermission();
+  if (!canReadAgentVaultProxies(permission)) {
+    return (
+      <AgentVaultRestrictedPage
+        title="Proxies"
+        icon={ServerIcon}
+        description="Manage the proxies your agents route their requests through."
+        requirement={{ action: "read", subject: ProjectPermissionSub.AgentVaultProxies }}
+      />
+    );
+  }
+  return <AgentVaultProxiesPageContent />;
 };

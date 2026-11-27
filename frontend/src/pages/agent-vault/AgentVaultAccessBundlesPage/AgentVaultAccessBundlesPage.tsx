@@ -15,8 +15,14 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
-import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
+import { AgentVaultRestrictedPage } from "@app/components/agent-vault/AgentVaultRestrictedPage";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
+import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -33,7 +39,6 @@ import {
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -58,12 +63,17 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useProject
 } from "@app/context";
+import {
+  canOnAgentVaultAccessBundle,
+  canReadAgentVaultAccessBundles
+} from "@app/helpers/agentVaultPermissions";
 import { nameList } from "@app/helpers/string";
 import {
   getUserTablePreference,
@@ -88,7 +98,7 @@ enum SortColumn {
   Created = "createdAt"
 }
 
-export const AgentVaultAccessBundlesPage = () => {
+const AgentVaultAccessBundlesPageContent = () => {
   const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -97,18 +107,19 @@ export const AgentVaultAccessBundlesPage = () => {
     ProjectPermissionAgentVaultAccessBundleActions.Create,
     ProjectPermissionSub.AgentVaultAccessBundles
   );
-  const canEditBundles = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Edit,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
-  const canDeleteBundles = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.Delete,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
-  const canManageBundleMembers = permission.can(
-    ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-    ProjectPermissionSub.AgentVaultAccessBundles
-  );
+  const canEditBundle = (accessBundleId: string) =>
+    canOnAgentVaultAccessBundle(
+      permission,
+      ProjectPermissionAgentVaultAccessBundleActions.Edit,
+      accessBundleId
+    );
+  const canDeleteBundle = (accessBundleId: string) =>
+    canOnAgentVaultAccessBundle(
+      permission,
+      ProjectPermissionAgentVaultAccessBundleActions.Delete,
+      accessBundleId
+    );
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -124,9 +135,8 @@ export const AgentVaultAccessBundlesPage = () => {
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
     null
   );
-  const [bundleToManage, setBundleToManage] = useState<TAgentVaultAccessBundleListItem | null>(
-    null
-  );
+  const [whoCanUse, setWhoCanUse] = useState<TWhoCanUseTarget | null>(null);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
 
   const { data, isPending } = useListAgentVaultAccessBundles(projectId, {
     search: debouncedSearch.trim() || undefined,
@@ -174,10 +184,10 @@ export const AgentVaultAccessBundlesPage = () => {
     emptyDescription = "Try a different search term.";
   } else if (canCreateBundles) {
     emptyTitle = "No access bundles yet";
-    emptyDescription = "Create one to group the services an agent can reach.";
+    emptyDescription = "Create one to group the services and skills a session can start from.";
   } else {
-    emptyTitle = "No access bundles available";
-    emptyDescription = "Ask an admin to grant you an access bundle.";
+    emptyTitle = "No access bundles you can see";
+    emptyDescription = "Ask an Agent Vault admin for a role that can use one.";
   }
 
   return (
@@ -187,7 +197,7 @@ export const AgentVaultAccessBundlesPage = () => {
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title="Access Bundles"
-        description="Group the services an agent can reach through a session."
+        description="Group the services and skills a session can start from."
       />
 
       {bundlesNeedingSetup.length > 0 && (
@@ -226,17 +236,26 @@ export const AgentVaultAccessBundlesPage = () => {
             <DocumentationLinkBadge href={AgentVaultDocsUrls.accessBundles} />
           </CardTitle>
           <CardDescription>
-            Each bundle holds the services an agent can reach and the members who can create
-            sessions with it.
+            Each bundle is a named set of services and skills. A role that can use a bundle can
+            start sessions from it with every service and skill in it.
           </CardDescription>
-          {canCreateBundles && (
-            <CardAction>
-              <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+          <CardAction>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                canCreateBundles,
+                "You don't have permission to create access bundles"
+              )}
+            >
+              <Button
+                variant="av"
+                isDisabled={!canCreateBundles}
+                onClick={() => setIsCreateOpen(true)}
+              >
                 <PlusIcon />
                 Create Access Bundle
               </Button>
-            </CardAction>
-          )}
+            </DisabledReasonTooltip>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <InputGroup>
@@ -289,7 +308,6 @@ export const AgentVaultAccessBundlesPage = () => {
                   Services
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Services)} />
                 </TableHead>
-                <TableHead>Members</TableHead>
                 <TableHead
                   sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
                   onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
@@ -306,7 +324,7 @@ export const AgentVaultAccessBundlesPage = () => {
                 Array.from({ length: 3 }).map((_, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <TableRow key={`bundle-skeleton-${index}`}>
-                    {Array.from({ length: 4 }).map((__, cell) => (
+                    {Array.from({ length: 3 }).map((__, cell) => (
                       // eslint-disable-next-line react/no-array-index-key
                       <TableCell key={`bundle-skeleton-${index}-${cell}`}>
                         <Skeleton className="h-4 w-full" />
@@ -344,24 +362,6 @@ export const AgentVaultAccessBundlesPage = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      {canManageBundleMembers ? (
-                        <button
-                          type="button"
-                          className="cursor-pointer underline decoration-muted underline-offset-2 hover:decoration-foreground"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setBundleToManage(bundle);
-                          }}
-                        >
-                          {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}
-                        </button>
-                      ) : (
-                        <>
-                          {bundle.memberCount} member{bundle.memberCount === 1 ? "" : "s"}
-                        </>
-                      )}
-                    </TableCell>
-                    <TableCell>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-sm">
@@ -395,56 +395,65 @@ export const AgentVaultAccessBundlesPage = () => {
                       </div>
                     </TableCell>
                     <TableCell variant="action">
-                      {(canManageBundleMembers || canEditBundles || canDeleteBundles) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label="Open access bundle actions"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            {canManageBundleMembers && (
-                              <DropdownMenuItem
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToManage(bundle);
-                                }}
-                              >
-                                <UsersIcon />
-                                Manage Access
-                              </DropdownMenuItem>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label="Open access bundle actions"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canEditBundle(bundle.id),
+                              "You don't have permission to edit this access bundle"
                             )}
-                            {canEditBundles && (
-                              <DropdownMenuItem
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToEdit(bundle);
-                                }}
-                              >
-                                <PencilIcon />
-                                Edit
-                              </DropdownMenuItem>
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setBundleToEdit(bundle);
+                            }}
+                          >
+                            <PencilIcon />
+                            Edit
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canReadRoles,
+                              "You don't have permission to view roles"
                             )}
-                            {canDeleteBundles && (
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setBundleToDelete(bundle);
-                                }}
-                              >
-                                <TrashIcon />
-                                Delete
-                              </DropdownMenuItem>
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setWhoCanUse({
+                                kind: "accessBundle",
+                                id: bundle.id,
+                                name: bundle.name
+                              });
+                              setIsWhoCanUseOpen(true);
+                            }}
+                          >
+                            <UsersIcon />
+                            Who Can Use
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            variant="danger"
+                            disabledReason={deniedReason(
+                              canDeleteBundle(bundle.id),
+                              "You don't have permission to delete this access bundle"
                             )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setBundleToDelete(bundle);
+                            }}
+                          >
+                            <TrashIcon />
+                            Delete
+                          </DisabledReasonMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -490,19 +499,32 @@ export const AgentVaultAccessBundlesPage = () => {
         }}
         accessBundle={bundleToEdit ?? undefined}
       />
-      <ManageAccessSheet
-        accessBundle={bundleToManage}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setBundleToManage(null);
-        }}
-      />
-
       <DeleteAccessBundleDialog
         accessBundle={bundleToDelete}
         onOpenChange={(isOpen) => {
           if (!isOpen) setBundleToDelete(null);
         }}
       />
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={whoCanUse}
+      />
     </div>
   );
+};
+
+export const AgentVaultAccessBundlesPage = () => {
+  const { permission } = useProjectPermission();
+  if (!canReadAgentVaultAccessBundles(permission)) {
+    return (
+      <AgentVaultRestrictedPage
+        title="Access Bundles"
+        icon={PackageIcon}
+        description="Group the services and skills a session can start from."
+        requirement={{ action: "read", subject: ProjectPermissionSub.AgentVaultAccessBundles }}
+      />
+    );
+  }
+  return <AgentVaultAccessBundlesPageContent />;
 };

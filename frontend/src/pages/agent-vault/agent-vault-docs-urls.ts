@@ -19,5 +19,6 @@ export const AgentVaultDocsUrls = {
   dockerGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/docker`,
   kubernetesSetupGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/kubernetes-setup`,
   cursorGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/cursor`,
-  sessionLogs: `${AGENT_VAULT_DOCS_BASE_URL}/session-logs`
+  sessionLogs: `${AGENT_VAULT_DOCS_BASE_URL}/session-logs`,
+  permissions: "https://infisical.com/docs/internals/permissions/project-permissions#agent-vault"
 } as const;

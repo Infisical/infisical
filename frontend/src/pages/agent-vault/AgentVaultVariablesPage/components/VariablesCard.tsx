@@ -13,6 +13,11 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import { useOAuthAuthorize } from "@app/components/agent-vault/service-sheet/useOAuthAuthorize";
 import { VariableFormSheet } from "@app/components/agent-vault/VariableFormSheet";
@@ -28,7 +33,6 @@ import {
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -240,8 +244,6 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   const canEdit = canGlobal(ProjectPermissionAgentVaultVariableActions.Edit);
   const canDelete = canGlobal(ProjectPermissionAgentVaultVariableActions.Delete);
   const canReadValue = canGlobal(ProjectPermissionAgentVaultVariableActions.ReadValue);
-  const hasRowActions = (variable: TAgentVaultVariable) =>
-    canEdit || canDelete || (isOAuthVariable(variable) ? canCreate : canReadValue);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -348,6 +350,13 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
   const hasVariables = totalCount > 0 || Boolean(searchTerm);
   const maxVariables = isPersonal ? MAX_PERSONAL_VARIABLES : MAX_VARIABLES;
   const isAtLimit = (unfilteredData?.totalCount ?? 0) >= maxVariables;
+  let addDisabledReason: string | undefined;
+  if (!canCreate) addDisabledReason = "You don't have permission to create global variables";
+  else if (isAtLimit) {
+    addDisabledReason = isPersonal
+      ? `You can keep at most ${maxVariables} personal variables. Delete an unused one first.`
+      : `This project can hold at most ${maxVariables} global variables. Delete an unused one first.`;
+  }
 
   const openForm = (
     variable: TAgentVaultVariable | null,
@@ -423,30 +432,16 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
           )}
         </CardDescription>
         <CardAction>
-          {canCreate && isAtLimit && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-                <span tabIndex={0}>
-                  <Button variant="av" isDisabled>
-                    <PlusIcon />
-                    Add {isPersonal ? "Personal" : "Global"} Variable
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                {isPersonal
-                  ? `You can keep at most ${maxVariables} personal variables. Delete an unused one first.`
-                  : `This project can hold at most ${maxVariables} global variables. Delete an unused one first.`}
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {canCreate && !isAtLimit && (
-            <Button variant="av" onClick={() => openForm(null)}>
+          <DisabledReasonTooltip disabledReason={addDisabledReason} contentClassName="max-w-xs">
+            <Button
+              variant="av"
+              isDisabled={Boolean(addDisabledReason)}
+              onClick={() => openForm(null)}
+            >
               <PlusIcon />
               Add {isPersonal ? "Personal" : "Global"} Variable
             </Button>
-          )}
+          </DisabledReasonTooltip>
         </CardAction>
       </CardHeader>
 
@@ -474,6 +469,9 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
               </EmptyTitle>
               <EmptyDescription>
                 {hasVariables && "Try a different search term."}
+                {!hasVariables &&
+                  !canCreate &&
+                  "Someone who can create global variables can add them here."}
                 {!hasVariables &&
                   canCreate &&
                   (isPersonal
@@ -555,18 +553,24 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                       {!isOAuth && (
                         <div className="flex items-center gap-1.5">
                           <RevealableValue value={revealedValue} />
-                          {canReadValue && (
+                          <DisabledReasonTooltip
+                            disabledReason={deniedReason(
+                              canReadValue,
+                              "You don't have permission to read variable values"
+                            )}
+                          >
                             <IconButton
                               variant="ghost"
                               size="xs"
                               className="shrink-0"
                               aria-label={`${isRevealed ? "Hide" : "Reveal"} ${variable.key}`}
+                              isDisabled={!canReadValue}
                               isPending={revealingId === variable.id}
                               onClick={() => toggleReveal(variable)}
                             >
                               {isRevealed ? <EyeOffIcon /> : <EyeIcon />}
                             </IconButton>
-                          )}
+                          </DisabledReasonTooltip>
                         </div>
                       )}
                     </TableCell>
@@ -574,51 +578,61 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                       <UsedByServiceBadges usedByServices={variable.usedByServices} />
                     </TableCell>
                     <TableCell variant="action">
-                      {hasRowActions(variable) && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <IconButton
-                              variant="ghost"
-                              size="xs"
-                              aria-label="Open variable actions"
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" size="xs" aria-label="Open variable actions">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          {!isOAuth && (
+                            <DisabledReasonMenuItem
+                              disabledReason={deniedReason(
+                                canReadValue,
+                                "You don't have permission to read variable values"
+                              )}
+                              onClick={() => copyValue(variable)}
                             >
-                              <MoreHorizontalIcon />
-                            </IconButton>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent sideOffset={2} align="end">
-                            {canReadValue && !isOAuth && (
-                              <DropdownMenuItem onClick={() => copyValue(variable)}>
-                                <CopyIcon />
-                                Copy Value
-                              </DropdownMenuItem>
+                              <CopyIcon />
+                              Copy Value
+                            </DisabledReasonMenuItem>
+                          )}
+                          {isOAuth && !variable.oauth?.redirectUri && (
+                            <DisabledReasonMenuItem
+                              disabledReason={deniedReason(
+                                canAuthorize,
+                                "You don't have permission to edit variables"
+                              )}
+                              isDisabled={isAuthorizing}
+                              onClick={() => authorize(variable)}
+                            >
+                              <KeyRoundIcon />
+                              {variable.oauth?.connection ? "Reauthorize" : "Authorize"}
+                            </DisabledReasonMenuItem>
+                          )}
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canEdit,
+                              "You don't have permission to edit variables"
                             )}
-                            {canAuthorize && (
-                              <DropdownMenuItem
-                                isDisabled={isAuthorizing}
-                                onClick={() => authorize(variable)}
-                              >
-                                <KeyRoundIcon />
-                                {variable.oauth?.connection ? "Reauthorize" : "Authorize"}
-                              </DropdownMenuItem>
+                            onClick={() => openForm(variable)}
+                          >
+                            <PencilIcon />
+                            Edit
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
+                            variant="danger"
+                            disabledReason={deniedReason(
+                              canDelete,
+                              "You don't have permission to delete variables"
                             )}
-                            {canEdit && (
-                              <DropdownMenuItem onClick={() => openForm(variable)}>
-                                <PencilIcon />
-                                Edit
-                              </DropdownMenuItem>
-                            )}
-                            {canDelete && (
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setVariableToDelete(variable)}
-                              >
-                                <TrashIcon />
-                                Delete
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                            onClick={() => setVariableToDelete(variable)}
+                          >
+                            <TrashIcon />
+                            Delete
+                          </DisabledReasonMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

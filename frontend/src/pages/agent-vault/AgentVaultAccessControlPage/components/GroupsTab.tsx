@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
-import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
+import { ProductRoleBadges } from "@app/components/agent-vault/ProductRoleBadge";
+import { useAgentVaultAdminGuard } from "@app/components/agent-vault/useAgentVaultAdminGuard";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/utilities/HighlightText";
@@ -12,7 +18,6 @@ import {
   ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -31,7 +36,13 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
+import { agentVaultMemberActionDeniedReason } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -46,6 +57,9 @@ import { AddGroupDialog } from "./AddGroupDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
 type TGroupMember = TAgentVaultProductMemberOf<AgentVaultMemberType.Group>;
+
+const REMOVE_DESCRIPTION =
+  "Everyone in the group loses access to this project through it, along with every role the group holds here.";
 
 export const GroupsTab = () => {
   const { projectId } = useProject();
@@ -63,6 +77,8 @@ export const GroupsTab = () => {
     offset: (page - 1) * perPage
   });
   const revokeMembers = useRevokeAgentVaultMembers(projectId);
+  const { permission } = useProjectPermission();
+  const { blockedReasonFor } = useAgentVaultAdminGuard();
 
   const rows = data?.members ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -104,10 +120,14 @@ export const GroupsTab = () => {
         </InputGroup>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Groups}>
           {(isAllowed) => (
-            <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
-              <PlusIcon />
-              Add Group
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(isAllowed, "You don't have permission to add groups")}
+            >
+              <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
+                <PlusIcon />
+                Add Group
+              </Button>
+            </DisabledReasonTooltip>
           )}
         </ProjectPermissionCan>
       </CardContent>
@@ -134,7 +154,7 @@ export const GroupsTab = () => {
               <TableHead isTruncatable className="w-2/3">
                 Name
               </TableHead>
-              <TableHead>Product Role</TableHead>
+              <TableHead>Roles</TableHead>
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
@@ -158,7 +178,7 @@ export const GroupsTab = () => {
                     <HighlightText text={row.name} highlight={debouncedSearch} />
                   </TableCell>
                   <TableCell>
-                    <ProductRoleBadge role={row.role} />
+                    <ProductRoleBadges roles={row.roles} roleDetails={row.roleDetails} />
                   </TableCell>
                   <TableCell variant="action">
                     <DropdownMenu>
@@ -168,14 +188,27 @@ export const GroupsTab = () => {
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
-                        <DropdownMenuItem onClick={() => setGroupToEdit(row)}>
+                        <DisabledReasonMenuItem
+                          disabledReason={
+                            blockedReasonFor(row.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, row, "edit")
+                          }
+                          onClick={() => setGroupToEdit(row)}
+                        >
                           <PencilIcon />
-                          Change Role
-                        </DropdownMenuItem>
-                        <DropdownMenuItem variant="danger" onClick={() => setGroupToRemove(row)}>
+                          Edit Roles
+                        </DisabledReasonMenuItem>
+                        <DisabledReasonMenuItem
+                          variant="danger"
+                          disabledReason={
+                            blockedReasonFor(row.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, row, "remove")
+                          }
+                          onClick={() => setGroupToRemove(row)}
+                        >
                           <Trash2Icon />
                           Remove
-                        </DropdownMenuItem>
+                        </DisabledReasonMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -219,7 +252,7 @@ export const GroupsTab = () => {
           if (!isOpen) setGroupToRemove(null);
         }}
         title={`Remove "${groupToRemove?.name ?? ""}"`}
-        description="Everyone in the group loses access to this project, along with every access bundle granted to the group."
+        description={REMOVE_DESCRIPTION}
         confirmKey={groupToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={revokeMembers.isPending}

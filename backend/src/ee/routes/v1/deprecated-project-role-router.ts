@@ -4,6 +4,11 @@ import { z } from "zod";
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  findDroppedDenySubjects,
+  PROJECT_SUBJECTS_WITHOUT_DENY_V1
+} from "@app/ee/services/permission/dropped-deny-fns";
+import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
+import {
   backfillPermissionV1SchemaToV2Schema,
   ProjectPermissionV1Schema
 } from "@app/ee/services/permission/project-permission";
@@ -15,6 +20,24 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchemaV1 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+// The checks the v2 routes run on a role's rules, such as a condition on an action that takes none. A V1 rule reads the
+// same to them: V1 differs only in its secret and identity rules, which carry none of the actions and conditions they
+// check.
+const assertValidPermissionCombination = (permissions: z.infer<typeof ProjectPermissionV1Schema>[]) =>
+  checkForInvalidPermissionCombination(permissions as Parameters<typeof checkForInvalidPermissionCombination>[0]);
+
+// Read from the raw body before parsing, which drops `inverted` on subjects whose schema lacks it.
+const droppedDeniesByRequest = new WeakMap<object, string[]>();
+const recordDroppedDenies = async (req: { body: unknown }) => {
+  droppedDeniesByRequest.set(
+    req,
+    findDroppedDenySubjects(
+      (req.body as { permissions?: unknown } | null)?.permissions,
+      PROJECT_SUBJECTS_WITHOUT_DENY_V1
+    )
+  );
+};
 
 export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -51,7 +74,9 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    preValidation: recordDroppedDenies,
     handler: async (req) => {
+      assertValidPermissionCombination(req.body.permissions);
       const stringifiedPermissions = JSON.stringify(
         packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true))
       );
@@ -61,6 +86,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         orgId: req.permission.orgId
       });
       const role = await server.services.role.createRole({
+        droppedDenySubjects: droppedDeniesByRequest.get(req),
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
@@ -141,7 +167,9 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    preValidation: recordDroppedDenies,
     handler: async (req) => {
+      if (req.body.permissions) assertValidPermissionCombination(req.body.permissions);
       const stringifiedPermissions = req.body.permissions
         ? JSON.stringify(packRules(backfillPermissionV1SchemaToV2Schema(req.body.permissions, true)))
         : undefined;
@@ -152,6 +180,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       });
 
       const role = await server.services.role.updateRole({
+        droppedDenySubjects: droppedDeniesByRequest.get(req),
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,

@@ -7,14 +7,21 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
 import { DeleteSkillDialog } from "@app/components/agent-vault/skills/DeleteSkillDialog";
 import { downloadSkillVersion } from "@app/components/agent-vault/skills/downloadSkillVersion";
 import { SkillBundleBadges } from "@app/components/agent-vault/skills/SkillBundleBadges";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
+import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -52,12 +59,14 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import {
+  ProjectPermissionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useProject
 } from "@app/context";
+import { canOnAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -84,14 +93,6 @@ export const SkillsCard = () => {
     ProjectPermissionAgentVaultSkillActions.Create,
     ProjectPermissionSub.AgentVaultSkills
   );
-  const canEdit = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Edit,
-    ProjectPermissionSub.AgentVaultSkills
-  );
-  const canDelete = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Delete,
-    ProjectPermissionSub.AgentVaultSkills
-  );
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -101,6 +102,9 @@ export const SkillsCard = () => {
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [skillToDelete, setSkillToDelete] = useState<TAgentVaultSkill | null>(null);
+  const [whoCanUse, setWhoCanUse] = useState<TWhoCanUseTarget | null>(null);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
 
   const searchTerm = debouncedSearch.trim();
 
@@ -151,14 +155,16 @@ export const SkillsCard = () => {
           A skill is a folder of instructions agents load when a task calls for it, delivered
           through the access bundles you add it to.
         </CardDescription>
-        {canCreate && (
-          <CardAction>
-            <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+        <CardAction>
+          <DisabledReasonTooltip
+            disabledReason={deniedReason(canCreate, "You don't have permission to create skills")}
+          >
+            <Button variant="av" isDisabled={!canCreate} onClick={() => setIsCreateOpen(true)}>
               <PlusIcon />
               Create Skill
             </Button>
-          </CardAction>
-        )}
+          </DisabledReasonTooltip>
+        </CardAction>
       </CardHeader>
 
       {hasSkills && (
@@ -182,9 +188,11 @@ export const SkillsCard = () => {
             <EmptyHeader>
               <EmptyTitle>{hasSkills ? "No skills match your search" : "No skills yet"}</EmptyTitle>
               <EmptyDescription>
-                {hasSkills
-                  ? "Try a different search term."
-                  : "Create or upload a skill, or push one with the Infisical CLI."}
+                {hasSkills && "Try a different search term."}
+                {!hasSkills &&
+                  (canCreate
+                    ? "Create or upload a skill, or push one with the Infisical CLI."
+                    : "Someone who can create skills can add them here.")}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -264,28 +272,53 @@ export const SkillsCard = () => {
                         align="end"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        {canEdit && (
-                          <DropdownMenuItem onClick={() => openSkill(skill)}>
-                            <PencilIcon />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canOnAgentVaultSkill(
+                              permission,
+                              ProjectPermissionAgentVaultSkillActions.Edit,
+                              skill.id
+                            ),
+                            "You don't have permission to edit this skill"
+                          )}
+                          onClick={() => openSkill(skill)}
+                        >
+                          <PencilIcon />
+                          Edit
+                        </DisabledReasonMenuItem>
                         <DropdownMenuItem onClick={() => downloadSkill(skill)}>
                           <DownloadIcon />
                           Download
                         </DropdownMenuItem>
-                        {canDelete && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setSkillToDelete(skill)}
-                            >
-                              <TrashIcon />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canReadRoles,
+                            "You don't have permission to view roles"
+                          )}
+                          onClick={() => {
+                            setWhoCanUse({ kind: "skill", id: skill.id, name: skill.name });
+                            setIsWhoCanUseOpen(true);
+                          }}
+                        >
+                          <UsersIcon />
+                          Who Can Use
+                        </DisabledReasonMenuItem>
+                        <DropdownMenuSeparator />
+                        <DisabledReasonMenuItem
+                          variant="danger"
+                          disabledReason={deniedReason(
+                            canOnAgentVaultSkill(
+                              permission,
+                              ProjectPermissionAgentVaultSkillActions.Delete,
+                              skill.id
+                            ),
+                            "You don't have permission to delete this skill"
+                          )}
+                          onClick={() => setSkillToDelete(skill)}
+                        >
+                          <TrashIcon />
+                          Delete
+                        </DisabledReasonMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -319,6 +352,11 @@ export const SkillsCard = () => {
 
       <SkillSheet />
 
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={whoCanUse}
+      />
       <DeleteSkillDialog
         skill={skillToDelete}
         onOpenChange={(isOpen) => {

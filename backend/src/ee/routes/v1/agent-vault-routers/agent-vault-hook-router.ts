@@ -181,7 +181,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
         actorContext(req),
         req.params.hookId
       );
-      const { hook } = await server.services.agentVaultHook.deleteHook({
+      const { hook, auditUsedBy } = await server.services.agentVaultHook.deleteHook({
         projectId,
         ctx: actorContext(req),
         hookId: req.params.hookId
@@ -197,7 +197,7 @@ export const registerAgentVaultHookRouter = async (server: FastifyZodProvider) =
             hookId: hook.id,
             hookName: hook.name,
             url: hook.url,
-            services: hook.usedBy.map(({ id, name }) => ({ id, name }))
+            services: auditUsedBy.map(({ id, name }) => ({ id, name }))
           }
         }
       });

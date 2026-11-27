@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrganizationActionScope, ProjectMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
@@ -8,6 +8,7 @@ import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { lockProjectRoleChanges } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
@@ -101,6 +102,9 @@ export const orgAdminServiceFactory = ({
     // case a caller (e.g. PAM's bootstrap) just wrote this actor's membership moments earlier.
     const { isExistingMember, membership: updatedMembership } = await membershipUserDAL.transaction(async (tx) => {
       await lockAndAssertActiveOrgAccess({ orgDAL, orgId: actorOrgId, userIds: [actorId] }, tx);
+      // Agent Vault role changes all take the project's role-change lock, so a concurrent grant or revoke can't act on
+      // roles this swap replaces.
+      if (project.type === ProjectType.AgentVault) await lockProjectRoleChanges(projectId, tx);
       const projectMembership = await membershipUserDAL.findOne(
         { scopeProjectId: projectId, scope: AccessScope.Project, actorUserId: actorId },
         tx

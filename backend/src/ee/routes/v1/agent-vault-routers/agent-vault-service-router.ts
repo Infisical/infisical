@@ -11,6 +11,7 @@ import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { pick } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -32,6 +33,7 @@ import {
   AgentVaultListedProjectServiceSchema,
   AgentVaultProjectIdSchema,
   AgentVaultProjectServiceSchema,
+  AgentVaultRoleThatCanUseSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
@@ -76,7 +78,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "listAgentVaultServices",
       description:
-        "List the services in an Agent Vault project and the access bundles each is in. A member sees only the services in access bundles they have been granted.",
+        "List the services in an Agent Vault project that you can see, and the access bundles each is in that you can use. You see a service your roles let you read or use, directly or through an access bundle you can use.",
       tags: [ApiDocsTags.AgentVaultServices],
       querystring: z
         .object({
@@ -86,12 +88,18 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
             .transform((value) => value === "true")
             .optional()
             .describe(AGENT_VAULT.SERVICE.requiresSetup),
-          // Only true: false would read like "only the ones I reach as an admin", which the list doesn't do.
+          // Only true: false would read like "only the ones a role covers without naming", which the list doesn't do.
+          assigned: z
+            .literal("true")
+            .transform(() => true)
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.assigned),
+          // The older name of assigned, which the SDKs still send. It goes on 2027-01-04 with the grant endpoints.
           granted: z
             .literal("true")
             .transform(() => true)
             .optional()
-            .describe(AGENT_VAULT.SERVICE.granted),
+            .describe(openApiHidden()),
           onBehalfOfUserId: z.string().uuid().optional().describe(AGENT_VAULT.SERVICE.onBehalfOfUserId),
           onBehalfOfUserEmail: z
             .string()
@@ -108,10 +116,17 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
           message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
         })
-        .refine((query) => query.granted === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail), {
-          message:
-            "granted filters your own services, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
-        }),
+        .refine((query) => query.assigned === undefined || query.granted === undefined, {
+          message: "granted is the older name of assigned, so send only assigned"
+        })
+        .refine(
+          (query) =>
+            (query.assigned ?? query.granted) === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail),
+          {
+            message:
+              "assigned filters your own services, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
+          }
+        ),
       response: {
         200: z.object({
           services: AgentVaultListedProjectServiceSchema.array(),
@@ -121,12 +136,20 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      const {
+        projectId: requestedProjectId,
+        onBehalfOfUserId,
+        onBehalfOfUserEmail,
+        assigned,
+        granted,
+        ...query
+      } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultAccessBundle.listServices({
         projectId,
         ctx: actorContext(req),
         ...query,
+        assigned: assigned ?? granted,
         onBehalfOf:
           onBehalfOfUserId || onBehalfOfUserEmail
             ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
@@ -143,7 +166,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "getAgentVaultService",
       description:
-        "Get a service in an Agent Vault project and the access bundles it is in. A member can get only a service in an access bundle they have been granted.",
+        "Get a service in an Agent Vault project and the access bundles it is in that you can use. You can get a service your roles let you read or use, directly or through an access bundle you can use.",
       tags: [ApiDocsTags.AgentVaultServices],
       params: ServiceIdParamsSchema,
       response: { 200: z.object({ service: AgentVaultProjectServiceSchema }) }
@@ -155,6 +178,33 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         req.params.serviceId
       );
       return server.services.agentVaultAccessBundle.getService({
+        projectId,
+        ctx: actorContext(req),
+        serviceId: req.params.serviceId
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:serviceId/roles",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultServiceRoles",
+      description:
+        "List the roles that let someone use a service in an Agent Vault project, directly or through an access bundle that holds it, and how many members hold each.",
+      tags: [ApiDocsTags.AgentVaultServices],
+      params: ServiceIdParamsSchema,
+      response: { 200: z.object({ roles: AgentVaultRoleThatCanUseSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromService(
+        actorContext(req),
+        req.params.serviceId
+      );
+      return server.services.agentVaultAccessBundle.listServiceRoles({
         projectId,
         ctx: actorContext(req),
         serviceId: req.params.serviceId
@@ -192,7 +242,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
-      const { service } = await server.services.agentVaultAccessBundle.createService({
+      const { service, visibleService } = await server.services.agentVaultAccessBundle.createService({
         ...body,
         projectId,
         ctx: actorContext(req)
@@ -250,7 +300,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         }
       });
 
-      return { service };
+      return { service: visibleService };
     }
   });
 
@@ -276,7 +326,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.serviceId
       );
-      const { service, update, credentialReplaced, personalValuesCleared } =
+      const { service, visibleService, update, credentialReplaced, personalValuesCleared } =
         await server.services.agentVaultAccessBundle.updateService({
           projectId,
           ctx: actorContext(req),
@@ -371,7 +421,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         }
       });
 
-      return { service };
+      return { service: visibleService };
     }
   });
 
@@ -429,7 +479,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         actorContext(req),
         req.params.serviceId
       );
-      const { service } = await server.services.agentVaultAccessBundle.deleteService({
+      const { service, visibleService } = await server.services.agentVaultAccessBundle.deleteService({
         projectId,
         ctx: actorContext(req),
         serviceId: req.params.serviceId
@@ -454,7 +504,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         properties: { serviceId: service.id }
       });
 
-      return { service };
+      return { service: visibleService };
     }
   });
 

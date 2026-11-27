@@ -14,7 +14,8 @@ import {
   deriveMcpHostPattern,
   dropReadBackServiceFields,
   findUnsupportedServiceFields,
-  resolveServiceHostPattern
+  resolveServiceHostPattern,
+  serviceMoveOf
 } from "./agent-vault-service-type-fns";
 
 const http = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Http];
@@ -381,5 +382,62 @@ describe("the audit's CA change", () => {
   test("reports nothing for the same CA pasted with other line endings", () => {
     expect(describeNativeTlsCaChange(withCa(PEM), withCa(PEM.replace(/\n/g, "\r\n")))).toBeUndefined();
     expect(describeNativeTlsCaChange(withCa(), withCa())).toBeUndefined();
+  });
+});
+
+describe("what counts as moving a service", () => {
+  const database = (tls?: { enabled?: boolean; verify?: boolean; ca?: string }) => ({
+    hostPattern: null,
+    config: { host: "db.internal", port: 5432, database: "app", ...(tls ? { tls } : {}) }
+  });
+  const PEM = "-----BEGIN CERTIFICATE-----\nAAAA\nBBBB\n-----END CERTIFICATE-----";
+  const SECURE = { enabled: true, verify: true };
+
+  test.each([
+    ["turning TLS off", database(SECURE), database({ ...SECURE, enabled: false })],
+    ["turning certificate verification off", database(SECURE), database({ ...SECURE, verify: false })],
+    ["setting a CA", database(SECURE), database({ ...SECURE, ca: PEM })],
+    ["replacing the CA", database({ ...SECURE, ca: PEM }), database({ ...SECURE, ca: PEM.replace("AAAA", "CCCC") })],
+    ["removing the CA", database({ ...SECURE, ca: PEM }), database(SECURE)],
+    ["turning TLS off on a service saved before TLS settings existed", database(), database({ enabled: false })]
+  ])("%s is a move over a weaker connection", (_change, current, next) => {
+    expect(serviceMoveOf(current, next)).toBe("tls");
+  });
+
+  test.each([
+    ["turning TLS on", database({ enabled: false, verify: true }), database(SECURE)],
+    ["turning certificate verification on", database({ enabled: true, verify: false }), database(SECURE)],
+    [
+      "the same CA pasted with other line endings",
+      database({ ...SECURE, ca: PEM }),
+      database({ ...SECURE, ca: PEM.replace(/\n/g, "\r\n") })
+    ],
+    ["nothing", database(SECURE), database(SECURE)]
+  ])("%s is not a move", (_change, current, next) => {
+    expect(serviceMoveOf(current, next)).toBeNull();
+  });
+
+  test("a new destination is a move, whatever happens to TLS", () => {
+    expect(
+      serviceMoveOf(database(SECURE), { hostPattern: null, config: { ...database(SECURE).config, port: 6432 } })
+    ).toBe("destination");
+    expect(
+      serviceMoveOf(
+        { hostPattern: "api.example.com", config: {} },
+        { hostPattern: "api.example.com,api2.example.com", config: {} }
+      )
+    ).toBe("destination");
+  });
+
+  test("an HTTP or SSH service has no TLS settings to weaken", () => {
+    expect(
+      serviceMoveOf({ hostPattern: "api.example.com", config: {} }, { hostPattern: "api.example.com", config: {} })
+    ).toBeNull();
+    expect(
+      serviceMoveOf(
+        { hostPattern: null, config: { host: "bastion.internal", port: 22 } },
+        { hostPattern: null, config: { host: "bastion.internal", port: 22 } }
+      )
+    ).toBeNull();
   });
 });

@@ -13,7 +13,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId, withDeprecatedRole } from "./agent-vault-router-fns";
 import {
   AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST,
   AgentVaultActorRefSchema,
@@ -28,6 +28,7 @@ import {
   AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
   AgentVaultProjectIdSchema,
+  AgentVaultRoleThatCanUseSchema,
   agentVaultServiceResponseSchema,
   AgentVaultProjectServiceSchema,
   AgentVaultSkippedBundleItemSchema
@@ -60,11 +61,17 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             .transform((value) => value === "true")
             .optional()
             .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
+          assigned: z
+            .enum(["true", "false"])
+            .transform((value) => value === "true")
+            .optional()
+            .describe(AGENT_VAULT.ACCESS_BUNDLE.assigned),
+          // The older name of assigned, which the SDKs still send. It goes on 2027-01-04 with the grant endpoints.
           granted: z
             .enum(["true", "false"])
             .transform((value) => value === "true")
             .optional()
-            .describe(AGENT_VAULT.ACCESS_BUNDLE.granted),
+            .describe(openApiHidden()),
           orderBy: z
             .enum(["name", "serviceCount", "createdAt"])
             .default("createdAt")
@@ -85,15 +92,23 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
           message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
         })
-        .refine((query) => query.granted === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail), {
-          message:
-            "granted filters your own access bundles, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
-        }),
+        .refine((query) => query.assigned === undefined || query.granted === undefined, {
+          message: "granted is the older name of assigned, so send only assigned"
+        })
+        .refine(
+          (query) =>
+            (query.assigned ?? query.granted) === undefined || !(query.onBehalfOfUserId || query.onBehalfOfUserEmail),
+          {
+            message:
+              "assigned filters your own access bundles, so it can't be combined with onBehalfOfUserId or onBehalfOfUserEmail"
+          }
+        ),
       response: {
         200: z.object({
           accessBundles: AccessBundleSchema.extend({
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
-            memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
+            // Holders of the bundle's own role, which only the deprecated grant endpoints give. Kept for SDKs until 2027-01-04.
+            memberCount: z.number().describe(openApiHidden()),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
             nativeServices: z
               .object({
@@ -116,12 +131,20 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      const {
+        projectId: requestedProjectId,
+        onBehalfOfUserId,
+        onBehalfOfUserEmail,
+        assigned,
+        granted,
+        ...query
+      } = req.query;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultAccessBundle.listAccessBundles({
         projectId,
         ctx: actorContext(req),
         ...query,
+        assigned: assigned ?? granted,
         onBehalfOf:
           onBehalfOfUserId || onBehalfOfUserEmail
             ? { userId: onBehalfOfUserId, userEmail: onBehalfOfUserEmail }
@@ -150,7 +173,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const { projectId: requestedProjectId, ...body } = req.body;
       const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
-      const accessBundle = await server.services.agentVaultAccessBundle.createAccessBundle({
+      const { accessBundle, role } = await server.services.agentVaultAccessBundle.createAccessBundle({
         projectId,
         ctx: actorContext(req),
         ...body
@@ -165,7 +188,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           metadata: {
             accessBundleId: accessBundle.id,
             name: accessBundle.name,
-            description: accessBundle.description
+            description: accessBundle.description,
+            ...(role ? { roleId: role.id, roleSlug: role.slug } : {})
           }
         }
       });
@@ -300,7 +324,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const accessBundle = await server.services.agentVaultAccessBundle.deleteAccessBundle({
+      const { accessBundle, removedRole } = await server.services.agentVaultAccessBundle.deleteAccessBundle({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId
@@ -312,7 +336,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
-          metadata: { accessBundleId: accessBundle.id, name: accessBundle.name }
+          metadata: {
+            accessBundleId: accessBundle.id,
+            name: accessBundle.name,
+            ...(removedRole ? { deletedRoleId: removedRole.id, deletedRoleSlug: removedRole.slug } : {})
+          }
         }
       });
 
@@ -604,12 +632,47 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
   server.route({
     method: "GET",
-    url: "/:accessBundleId/members",
+    url: "/:accessBundleId/roles",
     config: { rateLimit: readLimit },
     schema: {
       hide: false,
+      operationId: "listAgentVaultAccessBundleRoles",
+      description:
+        "List the roles that let someone use an Agent Vault access bundle, and how many members hold each. Give one of these roles to let a user, group or machine identity use the bundle.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      response: {
+        200: z.object({
+          roles: AgentVaultRoleThatCanUseSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      return server.services.agentVaultAccessBundle.listBundleRoles({
+        projectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId
+      });
+    }
+  });
+
+  // The grant routes below work through the bundle's role (agent-vault-bundle-role-fns.ts) for clients built before
+  // roles. They are left out of the API reference and go after 2027-01-04.
+  server.route({
+    method: "GET",
+    url: "/:accessBundleId/members",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
       operationId: "listAgentVaultAccessBundleMembers",
-      description: "List who can reach an Agent Vault access bundle",
+      description: "Deprecated: list who holds an Agent Vault access bundle's role. List the bundle's roles instead.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -640,9 +703,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members/available",
     config: { rateLimit: readLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "listAvailableAgentVaultAccessBundleMembers",
-      description: "List the Agent Vault members who can still be granted an access bundle",
+      description: "Deprecated: list the Agent Vault members who don't hold an access bundle's role yet.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -664,12 +727,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      return server.services.agentVaultAccessBundle.listAvailableMembers({
+      const { members, totalCount } = await server.services.agentVaultAccessBundle.listAvailableMembers({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.query
       });
+      const memberRoleSlug = await server.services.agentVaultMembership.findMemberRoleSlug(projectId);
+      return { members: members.map(withDeprecatedRole(memberRoleSlug)), totalCount };
     }
   });
 
@@ -678,9 +743,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "addAgentVaultAccessBundleMembers",
-      description: "Grant an Agent Vault access bundle to users, machine identities or groups",
+      description:
+        "Deprecated: give users, machine identities or groups an Agent Vault access bundle's role. Give members a role that can use the bundle instead.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -699,7 +765,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
+      const { members, skipped, accessBundleName, role } = await server.services.agentVaultAccessBundle.addMembers({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -717,6 +783,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               metadata: {
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
+                roleId: role.id,
+                roleSlug: role.slug,
                 ...auditActorFields(member)
               }
             }
@@ -740,9 +808,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     url: "/:accessBundleId/members",
     config: { rateLimit: writeLimit },
     schema: {
-      hide: false,
+      hide: true,
       operationId: "revokeAgentVaultAccessBundleMembers",
-      description: "Revoke an Agent Vault access bundle from users, machine identities or groups",
+      description:
+        "Deprecated: take an Agent Vault access bundle's role from users, machine identities or groups. Change members' roles instead.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -761,7 +830,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.revokeMembers({
+      const { members, skipped, accessBundleName, role } = await server.services.agentVaultAccessBundle.revokeMembers({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -779,6 +848,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               metadata: {
                 accessBundleId: req.params.accessBundleId,
                 accessBundleName,
+                ...(role ? { roleId: role.id, roleSlug: role.slug } : {}),
                 ...auditActorFields(member)
               }
             }

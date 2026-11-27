@@ -6,6 +6,7 @@ import { testFeatures } from "@app/domains/platform/license/ce/testing/test-feat
 import { ConflictError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
+import { agentVaultTestReachDAL } from "../agent-vault/testing/agent-vault-test-roles";
 import { AGENT_VAULT_HOOKS_NOT_ON_PLAN_MESSAGE } from "./agent-vault-hook-fns";
 import { agentVaultHookServiceFactory } from "./agent-vault-hook-service";
 
@@ -47,7 +48,8 @@ const buildService = ({
   existingByName,
   stored = storedHook,
   usedBy = [LINEAR, GITHUB],
-  reachesEveryBundle = true
+  reachesEveryBundle = true,
+  projectServiceIds = ["service-in-granted", "service-read", "service-other"]
 }: {
   hooksOnPlan?: boolean;
   rules?: RawRuleOf<MongoAbility>[];
@@ -56,6 +58,7 @@ const buildService = ({
   stored?: typeof storedHook | null;
   usedBy?: { id: string; name: string; type: string; hostPattern: string | null }[];
   reachesEveryBundle?: boolean;
+  projectServiceIds?: string[];
 } = {}) => {
   const tx = { raw: vi.fn() };
   const agentVaultHookDAL = {
@@ -92,16 +95,27 @@ const buildService = ({
         memberships: []
       })
     },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue([{ isActive: true, actorGroupId: null, scopeResourceId: "bundle-granted" }])
+    agentVaultReachDAL: agentVaultTestReachDAL({
+      accessBundleIds: ["bundle-granted", "bundle-other"],
+      serviceIds: projectServiceIds
+    }),
+    agentVaultServiceDAL: {
+      findIdsInBundles: async (bundleIds: string[]) =>
+        bundleIds.includes("bundle-granted") ? ["service-in-granted"] : []
     }
   } as unknown as Parameters<typeof agentVaultHookServiceFactory>[0]);
   return { service, agentVaultHookDAL, licenseService, tx };
 };
 
-const memberRules: RawRuleOf<MongoAbility>[] = [{ action: "read", subject: "agent-vault-hooks" }];
+// Reads hooks, and can use one bundle, so the services it reaches are that bundle's.
+const memberRules: RawRuleOf<MongoAbility>[] = [
+  { action: "read", subject: "agent-vault-hooks" },
+  {
+    action: ["read", "use"],
+    subject: "agent-vault-access-bundles",
+    conditions: { accessBundleId: { $in: ["bundle-granted"] } }
+  }
+];
 
 describe("createHook", () => {
   test("seals the secret and never returns it, and a new hook is used by nothing", async () => {
@@ -227,6 +241,22 @@ describe("deleteHook", () => {
     expect(licenseService.getPlan).not.toHaveBeenCalled();
   });
 
+  test("answers with only the services the caller can see, and keeps them all for the audit log", async () => {
+    const { service } = buildService({
+      rules: [
+        { action: "delete", subject: "agent-vault-hooks" },
+        { action: "read", subject: "agent-vault-services", conditions: { serviceId: { $eq: GITHUB.id } } }
+      ],
+      reachesEveryBundle: false,
+      projectServiceIds: [GITHUB.id, LINEAR.id]
+    });
+
+    const result = await service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID });
+
+    expect(result.hook.usedBy).toEqual([GITHUB]);
+    expect(result.auditUsedBy).toEqual([GITHUB, LINEAR]);
+  });
+
   test("takes the project's service-names lock, then locks the services using it before the hook, then reads them again under the hook's lock", async () => {
     const { service, agentVaultHookDAL, tx } = buildService();
 
@@ -266,10 +296,21 @@ describe("reads", () => {
     );
   });
 
-  test("usedBy lists only the services in bundles the caller reaches, and every service for one who reaches all", async () => {
+  test("usedBy lists only the services the caller can see, and every service for one who sees all", async () => {
     const member = buildService({ rules: memberRules, reachesEveryBundle: false });
     await member.service.listHooks({ projectId: PROJECT_ID, ctx, limit: 20, offset: 0 });
-    expect(member.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["bundle-granted"], undefined);
+    expect(member.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["service-in-granted"], undefined);
+
+    // A role that reads a service directly, through no bundle, sees it too.
+    const reader = buildService({
+      rules: [
+        { action: "read", subject: "agent-vault-hooks" },
+        { action: "read", subject: "agent-vault-services", conditions: { serviceId: { $in: ["service-read"] } } }
+      ],
+      reachesEveryBundle: false
+    });
+    await reader.service.listHooks({ projectId: PROJECT_ID, ctx, limit: 20, offset: 0 });
+    expect(reader.agentVaultHookDAL.findUsedBy).toHaveBeenCalledWith([HOOK_ID], ["service-read"], undefined);
 
     const admin = buildService();
     await admin.service.getHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID });
@@ -281,6 +322,35 @@ describe("reads", () => {
 
     await expect(service.getHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID })).rejects.toThrow(
       `Hook with ID '${HOOK_ID}' not found`
+    );
+  });
+});
+
+describe("a hook the caller can't see", () => {
+  const RANDOM_ID = "00000000-0000-4000-8000-0000000000bb";
+  const noHookRules: RawRuleOf<MongoAbility>[] = [{ action: "read", subject: "agent-vault-proxies" }];
+  const byId = (service: ReturnType<typeof buildService>["service"], hookId: string) => [
+    service.getHook({ projectId: PROJECT_ID, ctx, hookId }),
+    service.updateHook({ projectId: PROJECT_ID, ctx, hookId, name: "renamed" }),
+    service.deleteHook({ projectId: PROJECT_ID, ctx, hookId })
+  ];
+
+  test("answers 404 by id, whether or not it exists, so a 403 never confirms an id", async () => {
+    const existing = buildService({ rules: noHookRules });
+    const missing = buildService({ rules: noHookRules, stored: null });
+    for (const call of [...byId(existing.service, HOOK_ID), ...byId(missing.service, RANDOM_ID)]) {
+      // eslint-disable-next-line no-await-in-loop
+      await expect(call).rejects.toBeInstanceOf(NotFoundError);
+    }
+  });
+
+  test("answers 403 when the caller can see hooks but not change them", async () => {
+    const { service } = buildService({ rules: [{ action: "read", subject: "agent-vault-hooks" }] });
+    await expect(
+      service.updateHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID, name: "renamed" })
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(service.deleteHook({ projectId: PROJECT_ID, ctx, hookId: HOOK_ID })).rejects.toBeInstanceOf(
+      ForbiddenError
     );
   });
 });

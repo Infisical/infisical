@@ -26,6 +26,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import {
+  ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useProject,
@@ -35,6 +36,7 @@ import { useGetAgentVaultDelegation } from "@app/hooks/api/agentVault";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
+import { deniedReason, DisabledReasonTooltip } from "./DisabledReasonTooltip";
 import { ManageDelegationSheet, TDelegationSubjectRow } from "./ManageDelegationSheet";
 import { memberDisplayName, MemberName } from "./MemberName";
 import { MissingAccessBundlesHint } from "./MissingAccessBundlesHint";
@@ -44,8 +46,9 @@ type Props = {
   machineIdentityName: string;
 };
 
-// A delegation is read with Read on its machine identity and changed with Edit, so without Read the section is hidden.
-// Changes happen in the Manage Delegation sheet; this lists who the delegation covers.
+// A delegation is read with Read on its machine identity and changed with Edit on it plus Manage Delegations on sessions,
+// so without Read the section is hidden. Changes happen in the Manage Delegation sheet; this lists who the delegation
+// covers.
 export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityName }: Props) => {
   const { projectId } = useProject();
   const { permission } = useProjectPermission();
@@ -53,7 +56,12 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
     identityId: machineIdentityId
   });
   const canReadDelegation = permission.can(ProjectPermissionIdentityActions.Read, identitySubject);
-  const canEditDelegation = permission.can(ProjectPermissionIdentityActions.Edit, identitySubject);
+  const canEditDelegation =
+    permission.can(ProjectPermissionIdentityActions.Edit, identitySubject) &&
+    permission.can(
+      ProjectPermissionAgentVaultSessionActions.ManageDelegations,
+      ProjectPermissionSub.AgentVaultSessions
+    );
 
   const { data, isPending, isError, isFetching, refetch } = useGetAgentVaultDelegation(
     projectId,
@@ -189,12 +197,23 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           Lets this machine identity start sessions on behalf of these users and groups, using each
           user&apos;s personal values. It can still start its own sessions.
         </CardDescription>
-        {canEditDelegation && !isPending && !isLoadError && (
+        {!isPending && !isLoadError && (
           <CardAction>
-            <Button variant="av" onClick={() => setIsManageOpen(true)}>
-              <UserCogIcon />
-              Manage Delegation
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                canEditDelegation,
+                "You don't have permission to manage this machine identity's delegation"
+              )}
+            >
+              <Button
+                variant="av"
+                isDisabled={!canEditDelegation}
+                onClick={() => setIsManageOpen(true)}
+              >
+                <UserCogIcon />
+                Manage Delegation
+              </Button>
+            </DisabledReasonTooltip>
           </CardAction>
         )}
       </CardHeader>

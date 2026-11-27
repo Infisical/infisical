@@ -23,10 +23,6 @@ export const AgentVaultSettingsPage = () => {
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.Project
   );
-  const canDeleteProject = permission.can(
-    ProjectPermissionActions.Delete,
-    ProjectPermissionSub.Project
-  );
   const { selectedTab } = useSearch({
     from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/settings"
   });
@@ -56,7 +52,7 @@ export const AgentVaultSettingsPage = () => {
       ) : (
         <>
           <ProjectOverviewChangeSection />
-          {canDeleteProject && <DeleteProjectSection />}
+          <DeleteProjectSection />
         </>
       )}
     </div>

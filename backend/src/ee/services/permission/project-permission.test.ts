@@ -91,3 +91,40 @@ describe("ProjectPermissionV2Schema secret paths", () => {
     });
   });
 });
+
+describe("ProjectPermissionV2Schema Agent Vault id conditions", () => {
+  const SERVICE_ID = "8A6F2C1E-3B4D-4E5F-8A9B-0C1D2E3F4A5B";
+  const useServices = (conditions: unknown) => ({
+    subject: ProjectPermissionSub.AgentVaultServices,
+    action: ["use"],
+    conditions
+  });
+
+  test.each([
+    ["a bare id", SERVICE_ID],
+    ["$eq", { $eq: SERVICE_ID }],
+    ["$in", { $in: [SERVICE_ID] }]
+  ])("takes %s and stores the id in lowercase", (_name, condition) => {
+    const stored = JSON.stringify(ProjectPermissionV2Schema.parse(useServices({ serviceId: condition })));
+    expect(stored).toContain(SERVICE_ID.toLowerCase());
+    expect(stored).not.toContain(SERVICE_ID);
+  });
+
+  test.each([
+    ["conditions that name no id, which would match every id", {}],
+    ["$eq and $in together", { serviceId: { $eq: SERVICE_ID, $in: [SERVICE_ID] } }],
+    ["an operator object that names nothing", { serviceId: {} }],
+    ["an empty $in", { serviceId: { $in: [] } }],
+    ["a pattern", { serviceId: { $glob: "*" } }],
+    ["a value that isn't an id", { serviceId: "prod-db" }],
+    ["a field other than the id", { serviceId: SERVICE_ID, name: "prod-db" }]
+  ])("refuses %s", (_name, conditions) => {
+    expect(ProjectPermissionV2Schema.safeParse(useServices(conditions)).success).toBe(false);
+  });
+
+  test("a rule with no conditions covers every service", () => {
+    expect(
+      ProjectPermissionV2Schema.safeParse({ subject: ProjectPermissionSub.AgentVaultServices, action: ["use"] }).success
+    ).toBe(true);
+  });
+});

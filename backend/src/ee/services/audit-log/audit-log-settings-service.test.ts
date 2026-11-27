@@ -2,12 +2,12 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { agentVaultMemberTestRules } from "@app/ee/services/agent-vault/testing/agent-vault-test-roles";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions,
   projectAdminPermissions,
   projectMemberPermissions,
   projectViewerPermission
@@ -486,7 +486,7 @@ describe("built-in roles", () => {
     ["Agent Vault admin", agentVaultProjectAdminPermissions, true],
     ["project member", projectMemberPermissions, false],
     ["project viewer", projectViewerPermission, false],
-    ["Agent Vault member", agentVaultProjectMemberPermissions, false]
+    ["Agent Vault member", agentVaultMemberTestRules(), false]
   ])("%s can edit project audit log settings: %s", (_, rules, expected) => {
     const ability = createMongoAbility(rules as never);
     expect(ability.can(ProjectPermissionAuditLogsActions.Edit, ProjectPermissionSub.AuditLogs)).toBe(expected);

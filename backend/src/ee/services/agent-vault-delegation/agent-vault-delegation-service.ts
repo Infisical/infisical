@@ -1,29 +1,40 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
+import { AccessScope, ProjectType, TMemberships } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
+import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TRoleDALFactory } from "@app/services/role/role-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
+import { AgentVaultDelegationScope, AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import {
-  AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE,
-  AgentVaultDelegationScope,
-  AgentVaultMemberType
-} from "../agent-vault/agent-vault-enums";
-import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+  getAgentVaultPermission,
+  getAgentVaultReachability,
+  intersectIds,
+  reachOf as reachOfPermission,
+  readableIdentityIdsOf,
+  TAgentVaultPermission
+} from "../agent-vault/agent-vault-permission";
+import { TAgentVaultReachDALFactory } from "../agent-vault/agent-vault-reach-dal";
 import {
   TAgentVaultDelegationDALFactory,
   TAgentVaultDelegationSubjectDALFactory,
@@ -49,6 +60,7 @@ type TAgentVaultDelegationServiceFactoryDep = {
     | "lockForIdentity"
     | "removeSubjectsByActors"
     | "findViews"
+    | "findIdentityIds"
     | "findForIdentity"
     | "delete"
     | "transaction"
@@ -57,8 +69,10 @@ type TAgentVaultDelegationServiceFactoryDep = {
   agentVaultDelegationSubjectDAL: Pick<TAgentVaultDelegationSubjectDALFactory, "find" | "delete" | "insertMany">;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActor">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  roleDAL: Pick<TRoleDALFactory, "find">;
+  agentVaultReachDAL: Pick<TAgentVaultReachDALFactory, "findAccessBundleIds" | "findServiceIds" | "findSkillIds">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
@@ -79,6 +93,28 @@ const withNoMissingAccessBundles = (delegation: TAgentVaultDelegationView) => ({
 
 const quoted = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
 
+const canReadUsers = (permission: TAgentVaultPermission["permission"]) =>
+  permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member);
+
+const canReadGroups = (permission: TAgentVaultPermission["permission"]) =>
+  permission.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+
+// The users a delegation covers show only to someone who can read members, and its groups only to someone who can read
+// groups, as in the member lists. The machine identity itself sees whom it acts for, so an orchestrator can check
+// before it acts.
+const withReadableSubjects = <T extends { machineIdentity: { id: string }; users: unknown[]; groups: unknown[] }>(
+  permission: TAgentVaultPermission["permission"],
+  ctx: TGenericPermission,
+  delegation: T
+): T => {
+  if (ctx.actor === ActorType.IDENTITY && ctx.actorId === delegation.machineIdentity.id) return delegation;
+  return {
+    ...delegation,
+    users: canReadUsers(permission) ? delegation.users : [],
+    groups: canReadGroups(permission) ? delegation.groups : []
+  };
+};
+
 type TLockedMembership = Pick<TMemberships, "id" | "actorIdentityId" | "actorUserId" | "actorGroupId">;
 
 // The Agent Vault memberships of the named users and groups, which is what a delegation's subject rows reference.
@@ -98,11 +134,14 @@ export const agentVaultDelegationServiceFactory = ({
   agentVaultMemberDAL,
   membershipDAL,
   membershipRoleDAL,
+  roleDAL,
+  agentVaultReachDAL,
   userGroupMembershipDAL,
   permissionService
 }: TAgentVaultDelegationServiceFactoryDep) => {
-  // A delegation says whom an identity can act as, so managing one is managing the identity, which in Agent Vault only
-  // the admin role can do.
+  // A delegation says whom an identity can act as, so managing one is managing the identity. Changing one also takes
+  // manage-delegations on sessions: a delegation's sessions send the covered users' personal values, which editing an
+  // identity alone must not reach.
   const checkIdentityPermission = async (
     { projectId, ctx, machineIdentityId }: { projectId: string; ctx: TGenericPermission; machineIdentityId?: string },
     action: ProjectPermissionIdentityActions
@@ -111,9 +150,16 @@ export const agentVaultDelegationServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       action,
       machineIdentityId
-        ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
+        ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId.toLowerCase() })
         : ProjectPermissionSub.Identity
     );
+    if (action !== ProjectPermissionIdentityActions.Read) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAgentVaultSessionActions.ManageDelegations,
+        ProjectPermissionSub.AgentVaultSessions
+      );
+    }
+    return permission;
   };
 
   // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
@@ -216,7 +262,7 @@ export const agentVaultDelegationServiceFactory = ({
   }) => {
     try {
       const { accessBundleIds } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
+        { permissionService, agentVaultReachDAL },
         { projectId, ctx: { actor: actor.type, actorId: actor.id, actorOrgId: orgId, actorAuthMethod: null } }
       );
       return accessBundleIds;
@@ -226,43 +272,43 @@ export const agentVaultDelegationServiceFactory = ({
     }
   };
 
-  // A group reaches nothing without a live Agent Vault role, every bundle with the admin role, and otherwise the
-  // bundles granted to it, which is what a group's grants add to its members' reach.
+  // The bundles a group's live roles let it use, which is what the group adds to its members' reach. Built from the
+  // roles the way an actor's permission is, since a group has no permission of its own to load.
   const groupReachOf = async ({ projectId, groupIds }: { projectId: string; groupIds: string[] }) => {
     const reaches = new Map<string, string[] | null>();
     if (!groupIds.length) return reaches;
 
-    const [memberships, grants] = await Promise.all([
-      membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId, $in: { actorGroupId: groupIds } }),
-      membershipDAL.find({
-        scope: RESOURCE_SCOPE,
-        scopeProjectId: projectId,
-        scopeResourceType: ResourceType.AgentVaultAccessBundle,
-        $in: { actorGroupId: groupIds }
-      })
-    ]);
+    const memberships = await membershipDAL.find({
+      scope: AccessScope.Project,
+      scopeProjectId: projectId,
+      $in: { actorGroupId: groupIds }
+    });
     const roles = memberships.length
       ? await membershipRoleDAL.find({ $in: { membershipId: memberships.map((membership) => membership.id) } })
       : [];
+    const customRoleIds = [...new Set(roles.flatMap((role) => (role.customRoleId ? [role.customRoleId] : [])))];
+    const customRoles = customRoleIds.length ? await roleDAL.find({ $in: { id: customRoleIds } }) : [];
 
-    groupIds.forEach((groupId) => {
-      const membershipIds = new Set(
-        memberships.filter((m) => m.actorGroupId === groupId && m.isActive).map((membership) => membership.id)
-      );
-      const liveRoles = roles.filter((role) => membershipIds.has(role.membershipId) && isActiveRole(role));
-      if (!liveRoles.length) {
-        reaches.set(groupId, []);
-      } else if (liveRoles.some((role) => AGENT_VAULT_ROLES_REACHING_EVERY_BUNDLE.includes(role.role))) {
-        reaches.set(groupId, null);
-      } else {
-        reaches.set(
-          groupId,
-          grants
-            .filter((grant) => grant.actorGroupId === groupId && grant.isActive)
-            .map((grant) => grant.scopeResourceId!)
+    await Promise.all(
+      groupIds.map(async (groupId) => {
+        const membershipIds = new Set(
+          memberships.filter((m) => m.actorGroupId === groupId && m.isActive).map((membership) => membership.id)
         );
-      }
-    });
+        const liveRoles = roles.filter((role) => membershipIds.has(role.membershipId) && isActiveRole(role));
+        const ability = createMongoAbility<ProjectPermissionSet>(
+          buildProjectPermissionRules(
+            liveRoles.map((role) => ({
+              role: role.role,
+              permissions: customRoles.find((custom) => custom.id === role.customRoleId)?.permissions ?? []
+            })),
+            ProjectType.AgentVault
+          ),
+          { conditionsMatcher }
+        );
+        const { accessBundleIds } = await reachOfPermission(ability, { agentVaultReachDAL }, projectId);
+        reaches.set(groupId, accessBundleIds);
+      })
+    );
     return reaches;
   };
 
@@ -272,12 +318,17 @@ export const agentVaultDelegationServiceFactory = ({
   const withMissingAccessBundles = async ({
     projectId,
     ctx,
-    delegation
+    delegation,
+    permission
   }: {
     projectId: string;
     ctx: TGenericPermission;
     delegation: TAgentVaultDelegationView;
+    // The caller's, when it is already loaded. Only the bundles it lets them see are listed.
+    permission?: Awaited<ReturnType<typeof getAgentVaultPermission>>["permission"];
   }) => {
+    const callerPermission =
+      permission ?? (await getAgentVaultPermission({ permissionService }, { projectId, ctx })).permission;
     const identityReach = await reachOf({
       projectId,
       orgId: ctx.actorOrgId,
@@ -287,7 +338,18 @@ export const agentVaultDelegationServiceFactory = ({
       identityReach === null
         ? []
         : (await agentVaultAccessBundleDAL.find({ projectId }, { sort: [["name", "asc"]] }))
-            .filter((bundle) => !identityReach.includes(bundle.id))
+            .filter(
+              (bundle) =>
+                !identityReach.includes(bundle.id) &&
+                (callerPermission.can(
+                  ProjectPermissionAgentVaultAccessBundleActions.Read,
+                  subject(ProjectPermissionSub.AgentVaultAccessBundles, { accessBundleId: bundle.id })
+                ) ||
+                  callerPermission.can(
+                    ProjectPermissionAgentVaultAccessBundleActions.Use,
+                    subject(ProjectPermissionSub.AgentVaultAccessBundles, { accessBundleId: bundle.id })
+                  ))
+            )
             .map((bundle) => ({ id: bundle.id, name: bundle.name }));
     const missingFrom = (reach: string[] | null) =>
       reach === null ? lacking : lacking.filter((bundle) => reach.includes(bundle.id));
@@ -322,18 +384,45 @@ export const agentVaultDelegationServiceFactory = ({
         ? lacking
         : lacking.filter((bundle) => missingIds.has(bundle.id));
 
-    return { ...toDelegation(delegation), users, groups, missingAccessBundles };
+    return withReadableSubjects(callerPermission, ctx, {
+      ...toDelegation(delegation),
+      users,
+      groups,
+      missingAccessBundles
+    });
   };
 
+  // For a response built from a delegation the audit log records in full.
+  const hideUnreadableSubjects = async ({
+    projectId,
+    ctx,
+    delegation
+  }: {
+    projectId: string;
+    ctx: TGenericPermission;
+    delegation: ReturnType<typeof toDelegation>;
+  }) => {
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    return withReadableSubjects(permission, ctx, delegation);
+  };
+
+  // Only the delegations of machine identities the caller can read, narrowed in the query so the page and its count
+  // agree.
   const listDelegations = async ({ projectId, ctx, machineIdentityIds, limit, offset }: TListDelegationsDTO) => {
-    await checkIdentityPermission({ projectId, ctx }, ProjectPermissionIdentityActions.Read);
+    const permission = await checkIdentityPermission({ projectId, ctx }, ProjectPermissionIdentityActions.Read);
+    const readableIds = await readableIdentityIdsOf(permission, () =>
+      agentVaultDelegationDAL.findIdentityIds(projectId)
+    );
     const { delegations, totalCount } = await agentVaultDelegationDAL.findViews({
       projectId,
-      identityIds: machineIdentityIds,
+      identityIds: intersectIds(machineIdentityIds ?? null, readableIds) ?? undefined,
       limit,
       offset
     });
-    return { delegations: delegations.map(toDelegation), totalCount };
+    return {
+      delegations: delegations.map((delegation) => withReadableSubjects(permission, ctx, toDelegation(delegation))),
+      totalCount
+    };
   };
 
   // An identity may read its own, so an orchestrator can check what it was allowed before it acts.
@@ -351,17 +440,17 @@ export const agentVaultDelegationServiceFactory = ({
       delegations: [delegation]
     } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] });
     if (!delegation) throw notFound(machineIdentityId);
-    // The missing bundles were never granted to the identity, so reading its own delegation can't reveal them. Only
-    // someone who can see every bundle's grants gets them.
+    // The missing bundles are ones the identity can't use, so reading its own delegation can't reveal them. Only someone
+    // who can read bundles gets them, and only the ones they can see.
     if (
       permission.cannot(
-        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
+        ProjectPermissionAgentVaultAccessBundleActions.Read,
         ProjectPermissionSub.AgentVaultAccessBundles
       )
     ) {
-      return { delegation: withNoMissingAccessBundles(delegation) };
+      return { delegation: withReadableSubjects(permission, ctx, withNoMissingAccessBundles(delegation)) };
     }
-    return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
+    return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation, permission }) };
   };
 
   const setDelegation = async ({ projectId, ctx, machineIdentityId, scope, userIds, groupIds }: TSetDelegationDTO) => {
@@ -519,7 +608,25 @@ export const agentVaultDelegationServiceFactory = ({
     limit,
     offset
   }: TListAvailableDelegationSubjectsDTO) => {
-    await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Read);
+    // The list is for adding to the delegation, so it takes what adding takes, and lists only the kinds of member the
+    // caller can read.
+    const permission = await checkIdentityPermission(
+      { projectId, ctx, machineIdentityId },
+      ProjectPermissionIdentityActions.Edit
+    );
+    const asked = actorType ? [actorType] : [AgentVaultMemberType.User, AgentVaultMemberType.Group];
+    const readable = asked.filter((type) =>
+      type === AgentVaultMemberType.User ? canReadUsers(permission) : canReadGroups(permission)
+    );
+    if (!readable.length) {
+      if (asked[0] === AgentVaultMemberType.User) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionMemberActions.Read,
+          ProjectPermissionSub.Member
+        );
+      }
+      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+    }
 
     const [identityMembership] = await membershipDAL.find({
       scope: AccessScope.Project,
@@ -532,7 +639,7 @@ export const agentVaultDelegationServiceFactory = ({
     return agentVaultMemberDAL.findProductMembers({
       projectId,
       orgId: ctx.actorOrgId,
-      actorTypes: actorType ? [actorType] : [AgentVaultMemberType.User, AgentVaultMemberType.Group],
+      actorTypes: readable,
       search,
       limit,
       offset,
@@ -570,6 +677,7 @@ export const agentVaultDelegationServiceFactory = ({
     removeDelegationSubjects,
     listAvailableDelegationSubjects,
     withMissingAccessBundles,
+    hideUnreadableSubjects,
     deleteDelegation
   };
 };

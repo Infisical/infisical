@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { EyeIcon, MoreHorizontalIcon, PlusIcon, TrashIcon } from "lucide-react";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
 import { createNotification } from "@app/components/notifications";
@@ -16,7 +21,6 @@ import {
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -40,6 +44,11 @@ import {
   useProject
 } from "@app/context";
 import {
+  canOnAgentVaultSkill,
+  canUseAgentVaultAccessBundle,
+  canUseNewAgentVaultSkill
+} from "@app/helpers/agentVaultPermissions";
+import {
   useAddAgentVaultAccessBundleSkill,
   useListAgentVaultAccessBundleSkills,
   useRemoveAgentVaultAccessBundleSkill
@@ -61,10 +70,20 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
   const { permission } = useProjectPermission();
   const { openSheet } = useAgentVaultSheetState("skillId");
   const { currentOrg } = useOrganization();
-  const canCreateSkills = permission.can(
-    ProjectPermissionAgentVaultSkillActions.Create,
-    ProjectPermissionSub.AgentVaultSkills
-  );
+  // A skill created here is added to the bundle next, which only someone who can use it may do.
+  const canCreateSkills =
+    permission.can(
+      ProjectPermissionAgentVaultSkillActions.Create,
+      ProjectPermissionSub.AgentVaultSkills
+    ) && canUseNewAgentVaultSkill(permission);
+  // Viewing the bundle shows which skills it holds, but opening one takes viewing or using it, or using the bundle.
+  const canUseBundle = canUseAgentVaultAccessBundle(permission, accessBundleId);
+  const canOpenSkill = (skillId: string) =>
+    canUseBundle ||
+    [
+      ProjectPermissionAgentVaultSkillActions.Read,
+      ProjectPermissionAgentVaultSkillActions.Use
+    ].some((action) => canOnAgentVaultSkill(permission, action, skillId));
   const { data: bundleSkills = [], isPending } = useListAgentVaultAccessBundleSkills(
     projectId,
     accessBundleId
@@ -110,14 +129,23 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
           Agents running with this bundle get these skills, at their latest version, when they
           start.
         </CardDescription>
-        {canManage && (
-          <CardAction>
-            <Button variant="av" isDisabled={isPending} onClick={() => setIsAddOpen(true)}>
+        <CardAction>
+          <DisabledReasonTooltip
+            disabledReason={deniedReason(
+              canManage,
+              "You don't have permission to add skills to this access bundle"
+            )}
+          >
+            <Button
+              variant="av"
+              isDisabled={isPending || !canManage}
+              onClick={() => setIsAddOpen(true)}
+            >
               <PlusIcon />
               Add Skills
             </Button>
-          </CardAction>
-        )}
+          </DisabledReasonTooltip>
+        </CardAction>
       </CardHeader>
 
       {!isPending && bundleSkills.length === 0 ? (
@@ -126,7 +154,9 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
             <EmptyHeader>
               <EmptyTitle>No skills yet</EmptyTitle>
               <EmptyDescription>
-                Add skills to give agents running with this bundle instructions for their tasks.
+                {canManage
+                  ? "Add skills to give agents running with this bundle instructions for their tasks."
+                  : "This bundle has no skills yet. Someone who can edit it can add them."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -157,54 +187,69 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
                 </TableRow>
               ))}
             {!isPending &&
-              bundleSkills.map((skill) => (
-                <TableRow key={skill.id} linked>
-                  <TableCell isTruncatable>
-                    <RowLink
-                      to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
-                      params={{ orgId: currentOrg.id, projectId, accessBundleId }}
-                      search={(prev) => ({ ...prev, skillId: skill.id })}
-                      title={skill.description}
-                    >
-                      {skill.name}
-                    </RowLink>
-                  </TableCell>
-                  <TableCell isTruncatable>{skill.description}</TableCell>
-                  <TableCell variant="action">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton
-                          variant="ghost"
-                          size="xs"
-                          aria-label="Open skill actions"
+              bundleSkills.map((skill) => {
+                const canOpen = canOpenSkill(skill.id);
+                return (
+                  <TableRow key={skill.id} linked={canOpen}>
+                    <TableCell isTruncatable>
+                      {canOpen ? (
+                        <RowLink
+                          to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                          params={{ orgId: currentOrg.id, projectId, accessBundleId }}
+                          search={(prev) => ({ ...prev, skillId: skill.id })}
+                          title={skill.description}
+                        >
+                          {skill.name}
+                        </RowLink>
+                      ) : (
+                        skill.name
+                      )}
+                    </TableCell>
+                    <TableCell isTruncatable>{skill.description}</TableCell>
+                    <TableCell variant="action">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label="Open skill actions"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          sideOffset={2}
+                          align="end"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          <MoreHorizontalIcon />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        sideOffset={2}
-                        align="end"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <DropdownMenuItem onClick={() => openSheet(skill.id)}>
-                          <EyeIcon />
-                          View Skill
-                        </DropdownMenuItem>
-                        {canManage && (
-                          <DropdownMenuItem
+                          <DisabledReasonMenuItem
+                            disabledReason={deniedReason(
+                              canOpen,
+                              "You don't have permission to view this skill"
+                            )}
+                            onClick={() => openSheet(skill.id)}
+                          >
+                            <EyeIcon />
+                            View Skill
+                          </DisabledReasonMenuItem>
+                          <DisabledReasonMenuItem
                             variant="danger"
+                            disabledReason={deniedReason(
+                              canManage,
+                              "You don't have permission to edit this access bundle"
+                            )}
                             onClick={() => setSkillToRemove(skill)}
                           >
                             <TrashIcon />
                             Remove From Bundle
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                          </DisabledReasonMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
       )}

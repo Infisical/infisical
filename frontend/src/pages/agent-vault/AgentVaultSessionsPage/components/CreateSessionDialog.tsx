@@ -45,6 +45,10 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
+import {
+  canUseAgentVaultAccessBundle,
+  canUseAgentVaultAccessBundles
+} from "@app/helpers/agentVaultPermissions";
 import { useDebounce } from "@app/hooks";
 import {
   CREATE_SESSION_HANDLED_ERROR_CODES,
@@ -176,7 +180,12 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       orderBy: "name",
       orderDirection: "asc",
       limit: 50
-    }
+    },
+    { enabled: canUseAgentVaultAccessBundles(permission) }
+  );
+  // The list also returns bundles the caller can only read, which a session is refused.
+  const usableBundles = (accessBundles?.accessBundles ?? []).filter((bundle) =>
+    canUseAgentVaultAccessBundle(permission, bundle.id)
   );
   const { data: proxies } = useListAgentVaultProxies(
     projectId,
@@ -290,7 +299,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       <FieldContent>
         <Combobox
           id="agent-vault-session-bundle"
-          options={accessBundles?.accessBundles ?? []}
+          options={usableBundles}
           value={accessBundle}
           shouldFilter={false}
           isLoading={isSearchingBundles}
@@ -363,7 +372,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           <FieldContent>
             <FieldDescription>
               Your code creates sessions as a machine identity. Ask an Agent Vault admin for the
-              client ID and client secret of one that&apos;s granted this access bundle.
+              client ID and client secret of one with a role that can use this access bundle.
             </FieldDescription>
           </FieldContent>
         </Field>

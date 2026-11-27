@@ -369,6 +369,17 @@ export const needsStoredSecretFor = (credential: TAgentVaultCredentialUpdate, se
   );
 };
 
+// Whether an update's write keeps part of the sealed secret that the request didn't send, which a save that moves the
+// service can't do. A certificate the stored key never had isn't kept.
+export const keepsStoredSecretPart = (credential: TAgentVaultCredentialUpdate, service: TAgentVaultServices) => {
+  if (!needsStoredSecretFor(credential, service)) return false;
+  if (credential.type !== AgentVaultCredentialType.SshKey) return true;
+  return SSH_KEY_PARTS.some(
+    (part) =>
+      sentSshKeyPart(credential, part) === undefined && (part !== "certificate" || storedHasCertificate(service))
+  );
+};
+
 // Each member's sign-in is bound to the service's server, issuer and client, so a change to any of them, or a new
 // client secret, ends every member's connection: their tokens can't be refreshed through anything else.
 export const memberOauthChangeOf = ({
@@ -391,20 +402,23 @@ export const memberOauthChangeOf = ({
   };
 };
 
-// Which saved personal values an admin's save deletes: a new credential type, no member fields left, or a member
-// sign-in rebound to something else drops all of them, and a field the admin takes back drops that field's.
+// Which saved personal values an admin's save deletes: a new credential type, no member fields left, a member sign-in
+// rebound to something else, or a new destination drops all of them, and a field the admin takes back drops that
+// field's.
 export const personalValuesToClearOf = ({
   credentialTypeChanged,
   memberFieldsChanged,
   nextMemberFields,
-  oauthMembersRebound
+  oauthMembersRebound,
+  destinationChanged
 }: {
   credentialTypeChanged: boolean;
   memberFieldsChanged: boolean;
   nextMemberFields: TAgentVaultMemberProvidedField[] | null;
   oauthMembersRebound: boolean;
+  destinationChanged: boolean;
 }): "none" | "all" | "fields-taken-back" => {
-  if (credentialTypeChanged || oauthMembersRebound) return "all";
+  if (credentialTypeChanged || oauthMembersRebound || destinationChanged) return "all";
   if (!memberFieldsChanged) return "none";
   if (!nextMemberFields?.length) return "all";
   return "fields-taken-back";

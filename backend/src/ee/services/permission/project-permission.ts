@@ -300,25 +300,26 @@ export enum ProjectPermissionProxiedServiceActions {
   ReportUsage = "report-usage"
 }
 
+// Use lets a session carry the bundle, and name its services and skills one by one, without access to them directly.
 export enum ProjectPermissionAgentVaultAccessBundleActions {
   Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
-  Delete = "delete",
-  ManageMembers = "manage-members"
+  Delete = "delete"
 }
 
-// Read, Edit and Revoke reach only the actor's own sessions; the Any actions reach everyone's.
+// Read, Edit and Revoke reach every session, or with an actorId condition only the caller's own (or only everyone
+// else's). ManageDelegations sets which users a machine identity may start sessions on behalf of, whose sessions then
+// send those users' personal values.
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
   Edit = "edit",
   Revoke = "revoke",
-  ReadAny = "read-any",
-  EditAny = "edit-any",
-  RevokeAny = "revoke-any",
   CreateWithInlineServices = "create-with-inline-services",
-  CreateWithInlineSkills = "create-with-inline-skills"
+  CreateWithInlineSkills = "create-with-inline-skills",
+  ManageDelegations = "manage-delegations"
 }
 
 // Global variables only. A personal variable belongs to the actor who saved it, and no permission reaches another's.
@@ -342,6 +343,17 @@ export enum ProjectPermissionAgentVaultProxyActions {
 
 export enum ProjectPermissionAgentVaultSkillActions {
   Read = "read",
+  Use = "use",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+// Edit can widen what a service's stored values are used for at its destination (methods, paths, tools), but a move to
+// another destination has to send them again, so Edit never delivers a stored value somewhere new.
+export enum ProjectPermissionAgentVaultServiceActions {
+  Read = "read",
+  Use = "use",
   Create = "create",
   Edit = "edit",
   Delete = "delete"
@@ -434,6 +446,7 @@ export enum ProjectPermissionSub {
   AgentVaultSessions = "agent-vault-sessions",
   AgentVaultProxies = "agent-vault-proxies",
   AgentVaultSkills = "agent-vault-skills",
+  AgentVaultServices = "agent-vault-services",
   AgentVaultVariables = "agent-vault-variables",
   AgentVaultHooks = "agent-vault-hooks",
   Insights = "insights"
@@ -482,7 +495,34 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
   [ProjectPermissionSub.Groups]: {
     [ProjectPermissionGroupActions.GrantPrivileges]: ["groupName", "assignableRole"],
     [ProjectPermissionGroupActions.AssignRole]: ["groupName", "assignableRole"]
+  },
+  // Create has no id to name yet.
+  [ProjectPermissionSub.AgentVaultAccessBundles]: {
+    [ProjectPermissionAgentVaultAccessBundleActions.Create]: []
+  },
+  [ProjectPermissionSub.AgentVaultServices]: {
+    [ProjectPermissionAgentVaultServiceActions.Create]: []
+  },
+  [ProjectPermissionSub.AgentVaultSkills]: {
+    [ProjectPermissionAgentVaultSkillActions.Create]: []
   }
+};
+
+export type AgentVaultAccessBundleSubjectFields = {
+  accessBundleId: string;
+};
+
+export type AgentVaultServiceSubjectFields = {
+  serviceId: string;
+};
+
+export type AgentVaultSkillSubjectFields = {
+  skillId: string;
+};
+
+// The user or machine identity that started the session, null once it is deleted.
+export type AgentVaultSessionSubjectFields = {
+  actorId: string | null;
 };
 
 export type SecretSubjectFields = {
@@ -755,10 +795,35 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.ProxiedServices> & ProxiedServiceSubjectFields)
       )
     ]
-  | [ProjectPermissionAgentVaultAccessBundleActions, ProjectPermissionSub.AgentVaultAccessBundles]
-  | [ProjectPermissionAgentVaultSessionActions, ProjectPermissionSub.AgentVaultSessions]
+  | [
+      ProjectPermissionAgentVaultAccessBundleActions,
+      (
+        | ProjectPermissionSub.AgentVaultAccessBundles
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultAccessBundles> & AgentVaultAccessBundleSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAgentVaultServiceActions,
+      (
+        | ProjectPermissionSub.AgentVaultServices
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultServices> & AgentVaultServiceSubjectFields)
+      )
+    ]
+  | [
+      ProjectPermissionAgentVaultSessionActions,
+      (
+        | ProjectPermissionSub.AgentVaultSessions
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSessions> & AgentVaultSessionSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultProxyActions, ProjectPermissionSub.AgentVaultProxies]
-  | [ProjectPermissionAgentVaultSkillActions, ProjectPermissionSub.AgentVaultSkills]
+  | [
+      ProjectPermissionAgentVaultSkillActions,
+      (
+        | ProjectPermissionSub.AgentVaultSkills
+        | (ForcedSubject<ProjectPermissionSub.AgentVaultSkills> & AgentVaultSkillSubjectFields)
+      )
+    ]
   | [ProjectPermissionAgentVaultVariableActions, ProjectPermissionSub.AgentVaultVariables]
   | [ProjectPermissionAgentVaultHookActions, ProjectPermissionSub.AgentVaultHooks]
   | [
@@ -988,6 +1053,67 @@ const HoneyTokenConditionSchema = z
     secretPath: SECRET_PATH_PERMISSION_OPERATOR_SCHEMA
   })
   .partial();
+
+// Stored lowercase, the way Postgres returns ids: CASL compares condition values exactly, so a rule saved with an id in
+// capitals would never match the row it names.
+// Every id a role names is checked against the project's items on each request that reads the role's reach, so a role
+// can't name more than this in one condition (see AGENT_VAULT_MAX_ROLE_RULES for the rules in one role).
+export const AGENT_VAULT_MAX_IDS_PER_CONDITION = 1000;
+
+const AGENT_VAULT_ID_SCHEMA = z
+  .string()
+  .uuid()
+  .transform((id) => id.toLowerCase());
+
+// Ids only, equal or one of: a role names the bundles, services and skills it covers, never a pattern that could start
+// matching one created later. One operator per condition, since $eq and $in together cover only the ids both name.
+const AGENT_VAULT_ID_CONDITION_SCHEMA = z.union([
+  AGENT_VAULT_ID_SCHEMA,
+  z
+    .object({
+      [PermissionConditionOperators.$EQ]: AGENT_VAULT_ID_SCHEMA,
+      [PermissionConditionOperators.$IN]: AGENT_VAULT_ID_SCHEMA.array()
+        .min(1)
+        .max(
+          AGENT_VAULT_MAX_IDS_PER_CONDITION,
+          `Name at most ${AGENT_VAULT_MAX_IDS_PER_CONDITION} IDs in one condition`
+        )
+    })
+    .partial()
+    .strict()
+    .refine((value) => Object.keys(value).length > 0, "Name at least one by ID")
+    .refine((value) => Object.keys(value).length < 2, "Name the IDs with $eq or $in, not both")
+]);
+
+// The id is required: conditions that name nothing match every id, which is what leaving the conditions out says.
+const AgentVaultAccessBundleConditionSchema = z.object({ accessBundleId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
+
+const AgentVaultServiceConditionSchema = z.object({ serviceId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
+
+const AgentVaultSkillConditionSchema = z.object({ skillId: AGENT_VAULT_ID_CONDITION_SCHEMA }).strict();
+
+// Filled in with the caller's user or machine identity id when their permission is built.
+export const AGENT_VAULT_SESSION_SELF = "{{identity.id}}";
+
+// The actions that act on a session someone already started, the only ones a condition on who started it can limit.
+export const AGENT_VAULT_SESSION_ACTOR_ACTIONS: string[] = [
+  ProjectPermissionAgentVaultSessionActions.Read,
+  ProjectPermissionAgentVaultSessionActions.Edit,
+  ProjectPermissionAgentVaultSessionActions.Revoke
+];
+
+// A rule names whose sessions it covers only relative to the caller: their own ($eq) or everyone else's ($ne). The
+// services decide a check by asking about the caller's session and one other actor's, which is exact only while nothing
+// else can be named here.
+const AgentVaultSessionConditionSchema = z
+  .object({
+    actorId: z.union([
+      z.literal(AGENT_VAULT_SESSION_SELF),
+      z.object({ [PermissionConditionOperators.$EQ]: z.literal(AGENT_VAULT_SESSION_SELF) }).strict(),
+      z.object({ [PermissionConditionOperators.$NEQ]: z.literal(AGENT_VAULT_SESSION_SELF) }).strict()
+    ])
+  })
+  .strict();
 
 const ProxiedServiceConditionSchema = z
   .object({
@@ -1701,14 +1827,30 @@ const GeneralPermissionSchema = [
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultAccessBundleActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: AgentVaultAccessBundleConditionSchema.describe(
+      "When specified, only the access bundles with these IDs are covered."
+    ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.AgentVaultServices).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultServiceActions).describe(
+      "Describe what action an entity can take."
+    ),
+    conditions: AgentVaultServiceConditionSchema.describe(
+      "When specified, only the services with these IDs are covered."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AgentVaultSessions).describe("The entity this permission pertains to."),
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSessionActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: AgentVaultSessionConditionSchema.describe(
+      `When specified, only the sessions the caller started (actorId: { $eq: "${AGENT_VAULT_SESSION_SELF}" }) or only everyone else's ($ne) are covered.`
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AgentVaultProxies).describe("The entity this permission pertains to."),
@@ -1722,7 +1864,10 @@ const GeneralPermissionSchema = [
     inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionAgentVaultSkillActions).describe(
       "Describe what action an entity can take."
-    )
+    ),
+    conditions: AgentVaultSkillConditionSchema.describe(
+      "When specified, only the skills with these IDs are covered."
+    ).optional()
   }),
   z.object({
     subject: z.literal(ProjectPermissionSub.AgentVaultVariables).describe("The entity this permission pertains to."),

@@ -191,7 +191,13 @@ export const DeleteProjectSection = () => {
           <CardAction className="@xs:self-center">
             <ProjectPermissionCan
               I={ProjectPermissionActions.Edit}
-              a={ProjectPermissionSub.Settings}
+              a={
+                // Agent Vault keeps Settings for its session log settings, so the project's own
+                // protection goes by edit on the project, as the API checks it.
+                currentProject?.type === ProjectType.AgentVault
+                  ? ProjectPermissionSub.Project
+                  : ProjectPermissionSub.Settings
+              }
             >
               {(isAllowed) => (
                 <Toggle

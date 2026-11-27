@@ -1,14 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import {
-  AccessScope,
-  OrgMembershipStatus,
-  RESOURCE_SCOPE,
-  ResourceType,
-  TableName,
-  TAgentVaultAccessBundles
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, TableName, TAgentVaultAccessBundles, TRoles } from "@app/db/schemas";
 import {
   AGENT_VAULT_ACTOR_COLUMN,
   AgentVaultMemberType,
@@ -69,12 +62,13 @@ type TFindAccessBundlesDTO = {
   offset: number;
 };
 
-const grantScope = (projectId: string, accessBundleId?: string) => ({
-  scope: RESOURCE_SCOPE,
-  scopeProjectId: projectId,
-  scopeResourceType: ResourceType.AgentVaultAccessBundle,
-  ...(accessBundleId ? { scopeResourceId: accessBundleId } : {})
-});
+// Keeps the membership_roles rows that still grant something, as isActiveRole decides: an ended time-limited role
+// grants nothing, so it isn't held.
+export const whereRoleRowIsLive = (query: Knex.QueryBuilder) => {
+  void query
+    .whereRaw(`?? IS NOT TRUE`, [`${TableName.MembershipRole}.isTemporary`])
+    .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+};
 
 export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
@@ -145,11 +139,17 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const pageIds = ((await pageQuery) as { id: string }[]).map((row) => row.id);
       if (!pageIds.length) return { accessBundles: [], totalCount };
 
-      const memberCounts = conn(TableName.Membership)
-        .select("scopeResourceId")
-        .where({ ...grantScope(projectId), isActive: true })
+      // How many hold the bundle's role (see agent-vault-bundle-role-fns): the members the deprecated grant endpoints list.
+      const memberCounts = conn(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .whereNotNull(`${TableName.MembershipRole}.customRoleId`)
+        .where(whereRoleRowIsLive)
+        .select(`${TableName.MembershipRole}.customRoleId`)
         .count("* as count")
-        .groupBy("scopeResourceId")
+        .groupBy(`${TableName.MembershipRole}.customRoleId`)
         .as("mc");
 
       const rows = (await conn(TableName.AgentVaultAccessBundle)
@@ -164,9 +164,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultService}.id`,
           `${TableName.AgentVaultAccessBundleService}.serviceId`
         )
-        .leftJoin(memberCounts, function joinMemberCount() {
-          this.on(db.raw(`mc."scopeResourceId" = ??.id::text`, [TableName.AgentVaultAccessBundle]));
-        })
+        .leftJoin(memberCounts, "mc.customRoleId", `${TableName.AgentVaultAccessBundle}.grantRoleId`)
         .select(
           db.ref("id").withSchema(TableName.AgentVaultAccessBundle),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle),
@@ -239,8 +237,8 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Inside addMember's transaction, so a concurrent bundle delete either waits for the grant and reaps
-  // it, or leaves nothing to grant to.
+  // Inside a grant's transaction, so a concurrent bundle delete either waits for the grant and then takes the bundle's
+  // role from everyone holding it, or leaves nothing to grant to.
   const lockByIdInProject = async (
     { id, projectId }: { id: string; projectId: string },
     tx: Knex
@@ -252,20 +250,62 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Locks a bundle's role row, so an edit to the role waits for this transaction and a check of its rules holds until
+  // the transaction ends.
+  const lockBundleRole = async (
+    { id, projectId }: { id: string; projectId: string },
+    tx: Knex
+  ): Promise<TRoles | undefined> => {
+    try {
+      return await tx(TableName.Role).where({ id, projectId }).forUpdate().first();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault access bundle role" });
+    }
+  };
+
+  // How many active project members hold each role, built-in roles by slug and custom roles by id. An ended temporary
+  // role isn't held.
+  const countRoleHolders = async (projectId: string, tx?: Knex) => {
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.MembershipRole)
+        .join(TableName.Membership, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where(`${TableName.Membership}.isActive`, true)
+        .where(whereRoleRowIsLive)
+        .select(
+          db.raw(`COALESCE(??::text, ??) AS "key"`, [
+            `${TableName.MembershipRole}.customRoleId`,
+            `${TableName.MembershipRole}.role`
+          ])
+        )
+        .countDistinct(`${TableName.MembershipRole}.membershipId as count`)
+        .groupBy("key")) as { key: string; count: string }[];
+      return new Map(rows.map((row) => [row.key, Number(row.count)]));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault role holders" });
+    }
+  };
+
+  // Who holds the bundle's role, for the deprecated grant endpoints.
   const findMembers = async (
     {
       projectId,
       orgId,
-      accessBundleId,
-      actorType,
+      roleId,
+      actorTypes,
+      identityIds,
       search,
       limit,
       offset
     }: {
       projectId: string;
       orgId: string;
-      accessBundleId: string;
-      actorType?: AgentVaultMemberType;
+      roleId: string;
+      // The kinds of member to list. Omit for every kind.
+      actorTypes?: AgentVaultMemberType[];
+      // Set to list only these machine identities.
+      identityIds?: string[];
       search?: string;
       limit: number;
       offset: number;
@@ -277,13 +317,29 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query
-          .where({ ...grantScope(projectId, accessBundleId), isActive: true })
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, projectId)
+          .where(`${TableName.Membership}.isActive`, true)
+          .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+          .where(`${TableName.MembershipRole}.customRoleId`, roleId)
+          .where(whereRoleRowIsLive)
           .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
           .leftJoin(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
           .leftJoin(TableName.Groups, `${TableName.Membership}.actorGroupId`, `${TableName.Groups}.id`);
 
-        if (actorType) {
-          void query.whereNotNull(`${TableName.Membership}.${AGENT_VAULT_ACTOR_COLUMN[actorType]}`);
+        if (actorTypes) {
+          void query.where((ofType) => {
+            actorTypes.forEach((type) => {
+              void ofType.orWhereNotNull(`${TableName.Membership}.${AGENT_VAULT_ACTOR_COLUMN[type]}`);
+            });
+          });
+        }
+        if (identityIds) {
+          void query.where((ofIdentity) => {
+            void ofIdentity
+              .whereNull(`${TableName.Membership}.actorIdentityId`)
+              .orWhereIn(`${TableName.Membership}.actorIdentityId`, identityIds);
+          });
         }
 
         if (search) {
@@ -314,7 +370,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("actorGroupId").withSchema(TableName.Membership).as("groupId"),
-          db.ref("createdAt").withSchema(TableName.Membership),
+          db.ref("createdAt").withSchema(TableName.MembershipRole),
           db.ref("username").withSchema(TableName.Users).as("userUsername"),
           db.ref("firstName").withSchema(TableName.Users).as("userFirstName"),
           db.ref("lastName").withSchema(TableName.Users).as("userLastName"),
@@ -328,10 +384,10 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
             [TableName.Membership, AccessScope.Organization, orgId, TableName.Membership, OrgMembershipStatus.Invited]
           )
         )
-        // The id breaks ties: createdAt is the transaction's start time, so a bulk grant leaves a hundred rows
-        // sharing one, and offset paging would show some twice and others never.
-        .orderBy(`${TableName.Membership}.createdAt`, "asc")
-        .orderBy(`${TableName.Membership}.id`, "asc")
+        // Oldest grant first. The id breaks ties: createdAt is the transaction's start time, so a bulk grant leaves a
+        // hundred rows sharing one, and offset paging would show some twice and others never.
+        .orderBy(`${TableName.MembershipRole}.createdAt`, "asc")
+        .orderBy(`${TableName.MembershipRole}.id`, "asc")
         .limit(limit)
         .offset(offset)) as {
         userId: string | null;
@@ -381,5 +437,5 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForList, findByIdInProject, lockByIdInProject, findMembers };
+  return { ...orm, findForList, findByIdInProject, lockByIdInProject, lockBundleRole, findMembers, countRoleHolders };
 };

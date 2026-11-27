@@ -29,9 +29,11 @@ import {
   isMemberProvidedOAuthService,
   isOAuthVariableCredential,
   isOAuthVariableService,
+  isServiceDestinationChanged,
   McpToolScope,
   newOAuthAuthorizationId,
   serverUrlOf,
+  serviceMoveOf,
   storedMemberFields,
   storedOAuthVariableKey,
   TServiceForm,
@@ -86,15 +88,18 @@ const buildBearerCredential = (data: TServiceForm) => {
 };
 
 // Left out on edit unless the variable changes, so the stored one stays: naming a variable needs permission to read
-// its value, which keeping it doesn't. An empty key is one the caller can't see.
+// its value, which keeping it doesn't. A move names it again, since the API sends a new destination no saved
+// sign-in. An empty key is one the caller can't see.
 const oauthVariableCredential = (
   data: TServiceForm,
   service?: TAgentVaultService | null
 ): TAgentVaultOauthCredentialInput | undefined => {
   if (!data.oauthVariableKey) return undefined;
   if (
+    service &&
     isOAuthVariableService(service) &&
-    data.oauthVariableKey === storedOAuthVariableKey(service)
+    data.oauthVariableKey === storedOAuthVariableKey(service) &&
+    !isServiceDestinationChanged(data, service)
   ) {
     return undefined;
   }
@@ -554,6 +559,18 @@ export const membersClearedNotice = (
     return {
       title: "Remove Members' Values?",
       description: `Every member's ${noun} for this service will be removed${nextCredentialTail(data)}`
+    };
+  }
+  const move = serviceMoveOf(data, service);
+  if (move) {
+    const noun = typedValuesNoun(storedFields, storedType);
+    const reason =
+      move === "tls"
+        ? "since the service's TLS settings changed"
+        : "since the service now connects somewhere else";
+    return {
+      title: "Remove Members' Values?",
+      description: `Every member's ${noun} for this service will be removed, ${reason}. Each member has to enter theirs again.`
     };
   }
   const takenBack = storedFields.filter((field) => !data.memberProvidedFields.includes(field));

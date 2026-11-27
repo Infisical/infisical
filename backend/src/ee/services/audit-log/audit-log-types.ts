@@ -6924,6 +6924,9 @@ interface AgentVaultAccessBundleCreateEvent {
     accessBundleId: string;
     name: string;
     description?: string | null;
+    // The role made to let the bundle's creator use it, when their own roles couldn't.
+    roleId?: string;
+    roleSlug?: string;
   };
 }
 
@@ -6941,6 +6944,9 @@ interface AgentVaultAccessBundleDeleteEvent {
   metadata: {
     accessBundleId: string;
     name: string;
+    // The bundle's own role, deleted with it and taken from everyone who held it.
+    deletedRoleId?: string;
+    deletedRoleSlug?: string;
   };
 }
 
@@ -7365,7 +7371,9 @@ interface AgentVaultProductMemberAddEvent {
     groupName?: string;
     machineIdentityId?: string;
     machineIdentityName?: string;
+    // What the event carried when a member had one role: admin or member when they hold either, else their first role.
     role: string;
+    roles: string[];
   };
 }
 
@@ -7379,7 +7387,9 @@ interface AgentVaultProductMemberUpdateEvent {
     groupName?: string;
     machineIdentityId?: string;
     machineIdentityName?: string;
+    // What the event carried when a member had one role: admin or member when they hold either, else their first role.
     role: string;
+    roles: string[];
   };
 }
 
@@ -7401,6 +7411,9 @@ interface AgentVaultAccessBundleMemberAddEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
+    // The bundle's role, which the member was given.
+    roleId?: string;
+    roleSlug?: string;
     userId?: string;
     userName?: string;
     userEmail?: string;
@@ -7416,6 +7429,9 @@ interface AgentVaultAccessBundleMemberRemoveEvent {
   metadata: {
     accessBundleId: string;
     accessBundleName: string;
+    // The bundle's role, which was taken from the member.
+    roleId?: string;
+    roleSlug?: string;
     userId?: string;
     userName?: string;
     userEmail?: string;

@@ -9,7 +9,13 @@ import {
   VaultIcon
 } from "lucide-react";
 
-import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
+import { ProductRoleBadges } from "@app/components/agent-vault/ProductRoleBadge";
+import { useAgentVaultAdminGuard } from "@app/components/agent-vault/useAgentVaultAdminGuard";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/utilities/HighlightText";
@@ -21,7 +27,6 @@ import {
   ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -47,8 +52,10 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
+import { agentVaultMemberActionDeniedReason } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -69,6 +76,9 @@ import { ProductRoleDialog } from "./ProductRoleDialog";
 
 type TMachineIdentityMember = TAgentVaultProductMemberOf<AgentVaultMemberType.MachineIdentity>;
 
+const REMOVE_DESCRIPTION =
+  "It loses access to this project, along with every role it holds here. The machine identity won't be deleted because it isn't managed by Agent Vault.";
+
 export const IdentitiesTab = () => {
   const { currentProject, projectId } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
@@ -87,6 +97,8 @@ export const IdentitiesTab = () => {
     offset: (page - 1) * perPage
   });
   const revokeMembers = useRevokeAgentVaultMembers(projectId);
+  const { permission } = useProjectPermission();
+  const { blockedReasonFor } = useAgentVaultAdminGuard();
   const deleteIdentity = useDeleteProjectIdentity();
   const updateIdentity = useUpdateProjectIdentity();
 
@@ -177,10 +189,17 @@ export const IdentitiesTab = () => {
           a={ProjectPermissionSub.Identity}
         >
           {(isAllowed) => (
-            <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
-              <PlusIcon />
-              Add Machine Identity
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(
+                isAllowed,
+                "You don't have permission to add machine identities"
+              )}
+            >
+              <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsAddOpen(true)}>
+                <PlusIcon />
+                Add Machine Identity
+              </Button>
+            </DisabledReasonTooltip>
           )}
         </ProjectPermissionCan>
       </CardContent>
@@ -209,7 +228,7 @@ export const IdentitiesTab = () => {
               <TableHead isTruncatable className="w-2/3">
                 Name
               </TableHead>
-              <TableHead>Product Role</TableHead>
+              <TableHead>Roles</TableHead>
               <TableHead>Managed By</TableHead>
               <TableHead variant="action" />
             </TableRow>
@@ -239,7 +258,7 @@ export const IdentitiesTab = () => {
                     </RowLink>
                   </TableCell>
                   <TableCell>
-                    <ProductRoleBadge role={identity.role} />
+                    <ProductRoleBadges roles={identity.roles} roleDetails={identity.roleDetails} />
                   </TableCell>
                   <TableCell>{renderManagedByBadge(identity)}</TableCell>
                   <TableCell variant="action">
@@ -250,14 +269,27 @@ export const IdentitiesTab = () => {
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
-                        <DropdownMenuItem onClick={() => setToEdit(identity)}>
+                        <DisabledReasonMenuItem
+                          disabledReason={
+                            blockedReasonFor(identity.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, identity, "edit")
+                          }
+                          onClick={() => setToEdit(identity)}
+                        >
                           <PencilIcon />
-                          Change Role
-                        </DropdownMenuItem>
-                        <DropdownMenuItem variant="danger" onClick={() => setToRemove(identity)}>
+                          Edit Roles
+                        </DisabledReasonMenuItem>
+                        <DisabledReasonMenuItem
+                          variant="danger"
+                          disabledReason={
+                            blockedReasonFor(identity.roles) ??
+                            agentVaultMemberActionDeniedReason(permission, identity, "remove")
+                          }
+                          onClick={() => setToRemove(identity)}
+                        >
                           <Trash2Icon />
                           {isAgentVaultManaged(identity) ? "Delete" : "Remove"}
-                        </DropdownMenuItem>
+                        </DisabledReasonMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -308,7 +340,7 @@ export const IdentitiesTab = () => {
         description={
           toRemove && isAgentVaultManaged(toRemove)
             ? "This machine identity is managed by Agent Vault. Deleting it removes the identity along with its access. This cannot be undone."
-            : "It loses access to this project, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
+            : REMOVE_DESCRIPTION
         }
         confirmKey={toRemove?.name ?? ""}
         confirmLabel={toRemove && isAgentVaultManaged(toRemove) ? "Delete" : "Remove"}

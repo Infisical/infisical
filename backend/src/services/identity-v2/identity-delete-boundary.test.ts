@@ -93,7 +93,8 @@ const createProjectGuard = ({
         .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: projectAbilityByRole[role] })))
     } as never,
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
-    membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never
+    membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never,
+    projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-id", type: "secret-manager" }) } as never
   });
 
   return () =>

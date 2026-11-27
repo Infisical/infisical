@@ -512,12 +512,21 @@ export enum ProjectType {
 // rows written before a product joined this list are not re-validated.
 const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
   [ProjectType.CertificateManager]: "Certificate Manager",
-  [ProjectType.PAM]: "Privileged Access Manager",
-  [ProjectType.AgentVault]: "Agent Vault"
+  [ProjectType.PAM]: "Privileged Access Manager"
 };
 
 export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
   projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
+
+// These products are run from inside the project, so a removal or role change must leave it an admin. Agent Vault has
+// custom roles, unlike the admin-or-member products, and still needs an admin to manage them.
+const ADMIN_REQUIRED_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
+  ...ADMIN_MEMBER_ONLY_PRODUCT_LABELS,
+  [ProjectType.AgentVault]: "Agent Vault"
+};
+
+export const getAdminRequiredProductLabel = (projectType?: string | null) =>
+  projectType ? ADMIN_REQUIRED_PRODUCT_LABELS[projectType as ProjectType] : undefined;
 
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,

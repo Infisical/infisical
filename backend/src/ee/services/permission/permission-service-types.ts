@@ -7,6 +7,7 @@ import {
   AccessScopeData,
   ActionProjectType,
   OrganizationActionScope,
+  ProjectType,
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
@@ -127,6 +128,7 @@ export type TPermissionServiceFactory = {
   }>;
   getProjectPermission: (arg: TGetProjectPermissionArg) => Promise<{
     permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+    projectType?: ProjectType;
     memberships: Array<
       TMemberships & {
         roles: {

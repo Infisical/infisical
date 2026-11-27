@@ -11,10 +11,16 @@ import {
   SearchIcon,
   TrashIcon,
   TriangleAlertIcon,
-  UnlinkIcon
+  UnlinkIcon,
+  UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import {
@@ -24,6 +30,7 @@ import {
   SERVICE_TYPE_LABELS
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
+import { TWhoCanUseTarget, WhoCanUseDialog } from "@app/components/agent-vault/WhoCanUseDialog";
 import { createNotification } from "@app/components/notifications";
 import {
   Badge,
@@ -61,7 +68,13 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
@@ -123,7 +136,14 @@ type Props = {
   // than deleting it from the project.
   accessBundleId?: string;
   services: TListedService[];
-  canManage: boolean;
+  // Adding creates a service in the project, or on a bundle's page puts one in the bundle, which is a bundle edit.
+  canAdd: boolean;
+  canEditService: (service: TListedService) => boolean;
+  // Deletes the service from the project, or on a bundle's page takes it out of the bundle.
+  canRemoveService: (service: TListedService) => boolean;
+  // Whether the caller can look into a service beyond its row, such as who can use it. A bundle's page lists services
+  // its viewers may not see anywhere else.
+  canOpenService?: (service: TListedService) => boolean;
   onAdd: () => void;
   onEdit: (service: TListedService) => void;
   onSetUp: (service: TAgentVaultService) => void;
@@ -157,7 +177,7 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
-const TargetCell = ({ service }: { service: TAgentVaultService }) => {
+export const TargetCell = ({ service }: { service: TAgentVaultService }) => {
   if (service.type === AgentVaultServiceType.Mcp) {
     return (
       <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
@@ -221,7 +241,10 @@ const PersonalSetupBadge = ({
 export const ServicesCard = ({
   accessBundleId,
   services,
-  canManage,
+  canAdd,
+  canEditService,
+  canRemoveService,
+  canOpenService = () => true,
   onAdd,
   onEdit,
   onSetUp,
@@ -232,10 +255,14 @@ export const ServicesCard = ({
 }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
+  const canReadRoles = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
   const [localSearch, setLocalSearch] = useState("");
   const search = serverPaging?.search ?? localSearch;
   const setSearch = serverPaging?.onSearchChange ?? setLocalSearch;
   const [serviceToDelete, setServiceToDelete] = useState<TListedService | null>(null);
+  const [whoCanUse, setWhoCanUse] = useState<TWhoCanUseTarget | null>(null);
+  const [isWhoCanUseOpen, setIsWhoCanUseOpen] = useState(false);
   const deleteService = useDeleteAgentVaultService(projectId);
   const removeService = useRemoveAgentVaultAccessBundleService(projectId);
   const isBundle = Boolean(accessBundleId);
@@ -299,10 +326,22 @@ export const ServicesCard = ({
   let emptyDescription = "Try a different search term or filter.";
   if (!isNarrowed && emptyDescriptionOverride) emptyDescription = emptyDescriptionOverride;
   else if (!isNarrowed) {
-    emptyDescription = isBundle
-      ? "Add services to give this bundle access to external hosts."
-      : "Add a service for each API, MCP server, database or SSH server agents need.";
+    if (canAdd) {
+      emptyDescription = isBundle
+        ? "Add services to give this bundle access to external hosts."
+        : "Add a service for each API, MCP server, database or SSH server agents need.";
+    } else {
+      emptyDescription = isBundle
+        ? "This bundle has no services yet. Someone who can edit it can add them."
+        : "Someone who can create services can add them here.";
+    }
   }
+  const addDisabledReason = deniedReason(
+    canAdd,
+    isBundle
+      ? "You don't have permission to add services to this access bundle"
+      : "You don't have permission to create services"
+  );
 
   const handleDelete = async () => {
     try {
@@ -335,16 +374,16 @@ export const ServicesCard = ({
         <CardDescription>
           {isBundle
             ? "The services agents can reach with this bundle. Each one is defined once in the project and can be in any number of bundles."
-            : `A service defines one API, MCP server, database or SSH server the agent can reach, and the credential the proxy uses for it.${canManage ? " Add it to access bundles to give agents access." : ""}`}
+            : `A service defines one API, MCP server, database or SSH server the agent can reach, and the credential the proxy uses for it.${canAdd ? " Add it to access bundles to give agents access." : ""}`}
         </CardDescription>
-        {canManage && (
-          <CardAction>
-            <Button variant="av" onClick={onAdd}>
+        <CardAction>
+          <DisabledReasonTooltip disabledReason={addDisabledReason}>
+            <Button variant="av" isDisabled={!canAdd} onClick={onAdd}>
               <PlusIcon />
               Add Service
             </Button>
-          </CardAction>
-        )}
+          </DisabledReasonTooltip>
+        </CardAction>
       </CardHeader>
 
       {hasAny && (
@@ -386,7 +425,7 @@ export const ServicesCard = ({
               </EmptyTitle>
               <EmptyDescription>{emptyDescription}</EmptyDescription>
             </EmptyHeader>
-            {canManage && !isNarrowed && (
+            {canAdd && !isNarrowed && (
               <Button variant="av" onClick={onAdd}>
                 <PlusIcon />
                 Add Service
@@ -501,17 +540,23 @@ export const ServicesCard = ({
                   {!isBundle && (
                     <TableCell>
                       {service.accessBundles?.length ? (
-                        <OverflowBadgeList
-                          items={service.accessBundles}
-                          getKey={(bundle) => bundle.id}
-                          getLabel={(bundle) => bundle.name}
-                          getLinkProps={(bundle) =>
-                            linkOptions({
-                              to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
-                              params: { orgId: currentOrg.id, projectId, accessBundleId: bundle.id }
-                            })
-                          }
-                        />
+                        <div className="max-w-72">
+                          <OverflowBadgeList
+                            items={service.accessBundles}
+                            getKey={(bundle) => bundle.id}
+                            getLabel={(bundle) => bundle.name}
+                            getLinkProps={(bundle) =>
+                              linkOptions({
+                                to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId,
+                                  accessBundleId: bundle.id
+                                }
+                              })
+                            }
+                          />
+                        </div>
                       ) : (
                         <span className="text-sm text-muted">&mdash;</span>
                       )}
@@ -540,40 +585,63 @@ export const ServicesCard = ({
                     </div>
                   </TableCell>
                   <TableCell variant="action">
-                    {(canManage || service.personalValues) && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton variant="ghost" size="xs" aria-label="Open service actions">
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={2} align="end">
-                          {service.personalValues && (
-                            <DropdownMenuItem onClick={() => onSetUp(service)}>
-                              <KeyIcon />
-                              {service.personalValues.isConfigured
-                                ? "Update My Personal Values"
-                                : "Set Up My Personal Values"}
-                            </DropdownMenuItem>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" aria-label="Open service actions">
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent sideOffset={2} align="end">
+                        {service.personalValues && (
+                          <DropdownMenuItem onClick={() => onSetUp(service)}>
+                            <KeyIcon />
+                            {service.personalValues.isConfigured
+                              ? "Update My Personal Values"
+                              : "Set Up My Personal Values"}
+                          </DropdownMenuItem>
+                        )}
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canEditService(service),
+                            "You don't have permission to edit this service"
                           )}
-                          {canManage && (
-                            <>
-                              <DropdownMenuItem onClick={() => onEdit(service)}>
-                                <PencilIcon />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setServiceToDelete(service)}
-                              >
-                                {isBundle ? <UnlinkIcon /> : <TrashIcon />}
-                                {isBundle ? "Remove From Bundle" : "Delete"}
-                              </DropdownMenuItem>
-                            </>
+                          onClick={() => onEdit(service)}
+                        >
+                          <PencilIcon />
+                          Edit
+                        </DisabledReasonMenuItem>
+                        <DisabledReasonMenuItem
+                          disabledReason={deniedReason(
+                            canReadRoles && canOpenService(service),
+                            "You don't have permission to see who can use this service"
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                          onClick={() => {
+                            setWhoCanUse({
+                              kind: "service",
+                              id: service.id,
+                              name: service.name
+                            });
+                            setIsWhoCanUseOpen(true);
+                          }}
+                        >
+                          <UsersIcon />
+                          Who Can Use
+                        </DisabledReasonMenuItem>
+                        <DisabledReasonMenuItem
+                          variant="danger"
+                          disabledReason={deniedReason(
+                            canRemoveService(service),
+                            isBundle
+                              ? "You don't have permission to edit this access bundle"
+                              : "You don't have permission to delete this service"
+                          )}
+                          onClick={() => setServiceToDelete(service)}
+                        >
+                          {isBundle ? <UnlinkIcon /> : <TrashIcon />}
+                          {isBundle ? "Remove From Bundle" : "Delete"}
+                        </DisabledReasonMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -593,6 +661,11 @@ export const ServicesCard = ({
         </CardContent>
       )}
 
+      <WhoCanUseDialog
+        isOpen={isWhoCanUseOpen}
+        onOpenChange={setIsWhoCanUseOpen}
+        target={whoCanUse}
+      />
       <ConfirmationAlertDialog
         isOpen={Boolean(serviceToDelete)}
         onOpenChange={(isOpen) => {

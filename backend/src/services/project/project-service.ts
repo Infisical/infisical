@@ -1257,7 +1257,12 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    // An Agent Vault project's settings are its session log settings, which have routes of their own, so its name and
+    // delete protection go by edit on the project itself.
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      project.type === ProjectType.AgentVault ? ProjectPermissionSub.Project : ProjectPermissionSub.Settings
+    );
 
     // PAM owns one implicit project per org, so its name, slug and delete protection are not the caller's to
     // change. Create and delete are already guarded; this route was not.

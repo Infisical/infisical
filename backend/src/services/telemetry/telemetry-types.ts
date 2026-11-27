@@ -2711,12 +2711,12 @@ export type TAgentVaultFreeLimitReachedEvent = {
 
 export type TAgentVaultProductMemberAddedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberAdded;
-  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string; roleCount: number };
 };
 
 export type TAgentVaultProductMemberUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultProductMemberUpdated;
-  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string };
+  properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType; role: string; roleCount: number };
 };
 
 export type TAgentVaultProductMemberRemovedEvent = {

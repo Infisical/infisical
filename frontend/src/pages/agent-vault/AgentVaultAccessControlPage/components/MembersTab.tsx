@@ -2,9 +2,15 @@ import { useEffect, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
+import { DisabledReasonMenuItem } from "@app/components/agent-vault/DisabledReasonMenuItem";
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { PendingInvitationBadge } from "@app/components/agent-vault/PendingInvitationBadge";
-import { ProductRoleBadge } from "@app/components/agent-vault/ProductRoleBadge";
+import { ProductRoleBadges } from "@app/components/agent-vault/ProductRoleBadge";
+import { useAgentVaultAdminGuard } from "@app/components/agent-vault/useAgentVaultAdminGuard";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { HighlightText } from "@app/components/utilities/HighlightText";
@@ -15,7 +21,6 @@ import {
   ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -42,6 +47,7 @@ import {
   useUser,
   useProject
 } from "@app/context";
+import { agentVaultMemberActionDeniedReason } from "@app/helpers/agentVaultMembers";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -56,6 +62,9 @@ import { InviteMembersDialog } from "./InviteMembersDialog";
 import { ProductRoleDialog } from "./ProductRoleDialog";
 
 type TUserMember = TAgentVaultProductMemberOf<AgentVaultMemberType.User>;
+
+const REMOVE_DESCRIPTION =
+  "They lose access to this project and every role they hold here. Any active session they hold stops reaching its hosts at the next proxy poll.";
 
 export const MembersTab = () => {
   const { projectId } = useProject();
@@ -88,6 +97,7 @@ export const MembersTab = () => {
   const [memberToRemove, setMemberToRemove] = useState<TUserMember | null>(null);
 
   const { permission } = useProjectPermission();
+  const { blockedReasonFor } = useAgentVaultAdminGuard();
   const canAddMembers = permission.can(
     ProjectPermissionMemberActions.Create,
     ProjectPermissionSub.Member
@@ -131,10 +141,14 @@ export const MembersTab = () => {
         </InputGroup>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
-            <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsInviteOpen(true)}>
-              <PlusIcon />
-              Add Users
-            </Button>
+            <DisabledReasonTooltip
+              disabledReason={deniedReason(isAllowed, "You don't have permission to add users")}
+            >
+              <Button variant="av" isDisabled={!isAllowed} onClick={() => setIsInviteOpen(true)}>
+                <PlusIcon />
+                Add Users
+              </Button>
+            </DisabledReasonTooltip>
           )}
         </ProjectPermissionCan>
       </CardContent>
@@ -160,7 +174,7 @@ export const MembersTab = () => {
               <TableHead isTruncatable className="w-1/3">
                 Email
               </TableHead>
-              <TableHead>Product Role</TableHead>
+              <TableHead>Roles</TableHead>
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
@@ -181,6 +195,7 @@ export const MembersTab = () => {
               filtered.map((member) => {
                 const isSelf = member.id === user?.id;
                 const name = [member.firstName, member.lastName].filter(Boolean).join(" ");
+                const blockedReason = blockedReasonFor(member.roles);
 
                 return (
                   <TableRow key={member.id}>
@@ -202,7 +217,7 @@ export const MembersTab = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <ProductRoleBadge role={member.role} />
+                      <ProductRoleBadges roles={member.roles} roleDetails={member.roleDetails} />
                     </TableCell>
                     <TableCell variant="action">
                       <div className="flex items-center justify-end gap-2">
@@ -215,17 +230,27 @@ export const MembersTab = () => {
                               </IconButton>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent sideOffset={2} align="end">
-                              <DropdownMenuItem onClick={() => setMemberToEdit(member)}>
+                              <DisabledReasonMenuItem
+                                disabledReason={
+                                  blockedReason ??
+                                  agentVaultMemberActionDeniedReason(permission, member, "edit")
+                                }
+                                onClick={() => setMemberToEdit(member)}
+                              >
                                 <PencilIcon />
-                                Change Role
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
+                                Edit Roles
+                              </DisabledReasonMenuItem>
+                              <DisabledReasonMenuItem
                                 variant="danger"
+                                disabledReason={
+                                  blockedReason ??
+                                  agentVaultMemberActionDeniedReason(permission, member, "remove")
+                                }
                                 onClick={() => setMemberToRemove(member)}
                               >
                                 <Trash2Icon />
                                 Remove
-                              </DropdownMenuItem>
+                              </DisabledReasonMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         )}
@@ -272,7 +297,7 @@ export const MembersTab = () => {
           if (!isOpen) setMemberToRemove(null);
         }}
         title={`Remove "${memberToRemove ? memberDisplayName(memberToRemove) : ""}"`}
-        description="They lose every access bundle granted to them. Any active session they hold stops reaching its hosts at the next proxy poll."
+        description={REMOVE_DESCRIPTION}
         confirmKey={memberToRemove ? memberDisplayName(memberToRemove) : ""}
         confirmLabel="Remove"
         isPending={revokeMembers.isPending}

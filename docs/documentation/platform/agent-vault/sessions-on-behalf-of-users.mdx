@@ -27,10 +27,10 @@ sequenceDiagram
 
 ## Prerequisites
 
-- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership), or an admin of the project who can [set up the delegation](#set-up-a-delegation) for you
+- The **Admin** role in the [Agent Vault project](/documentation/platform/agent-vault/access-control#roles), or a [custom role](/documentation/platform/agent-vault/access-control#create-a-custom-role) with **Sessions on Behalf of Users** and **Edit** on machine identities (or someone with one of these roles who can [set up the delegation](#set-up-a-delegation) for you)
 - A machine identity that's a member of the project and can log in with [Universal Auth](/documentation/platform/identities/universal-auth)
-- A [grant](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) for the machine identity on each access bundle its sessions use
-- Users who are [members of the project](/documentation/platform/agent-vault/access-control#product-membership) and have a grant on the access bundles their agents use
+- A [role](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle) for the machine identity that can use each access bundle its sessions use
+- Users who are [members of the project](/documentation/platform/agent-vault/access-control#roles) and have a role that can use the access bundles their agents use
 
 ## Set up a delegation
 
@@ -121,8 +121,8 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 
 - In `onBehalfOf`, set either `userEmail` or `userId`, not both
 - In `accessBundle`, name a bundle that both the user and the machine identity can use
-- In `services`, list services from [a bundle that both of them can use](#access-bundles-and-personal-values)
-- In `skills`, list skills from [a bundle that both of them can use](#access-bundles-and-personal-values), or [send skills with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session)
+- In `services`, list services that [both of them can use](#access-bundles-and-personal-values)
+- In `skills`, list skills that [both of them can use](#access-bundles-and-personal-values), or [send skills with the session](/documentation/platform/agent-vault/skills#send-skills-with-a-session)
 - `ttl` defaults to `1h`, instead of the `7d` default for other sessions
 
 <Tip>
@@ -151,7 +151,7 @@ curl "https://app.infisical.com/api/v1/agent-vault/services?projectId=<project-i
   -H "Authorization: Bearer <access-token>"
 ```
 
-The response lists only the services in an access bundle that both the user and the machine identity can use, which are the services a session on the user's behalf can use. For each service, `personalValues` shows whether the user has set up their personal values for it. Add `requiresSetup=false` to list only the services the user has set up.
+The response lists only the services that both the user and the machine identity can use, directly or through an access bundle that both can use. These are the services a session on the user's behalf can use. For each service, `personalValues` shows whether the user has set up their personal values for it. Add `requiresSetup=false` to list only the services the user has set up.
 
 ### Find the skills a session can use
 
@@ -162,52 +162,54 @@ curl "https://app.infisical.com/api/v1/agent-vault/skills?projectId=<project-id>
   -H "Authorization: Bearer <access-token>"
 ```
 
-The response lists only the skills in an access bundle that both the user and the machine identity can use, which are the skills a session on the user's behalf can use.
+The response lists only the skills that both the user and the machine identity can use, directly or through an access bundle that both can use. These are the skills a session on the user's behalf can use.
 
 ## Access bundles and personal values
 
 A session created on behalf of a user can use an access bundle only if both the user and the machine identity can use the bundle, and the session uses the user's personal values:
 
-- The user can use the access bundles granted to them, directly or through a group (if the user is an admin of the project, every bundle)
-- The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an admin of the project, every bundle)
+- The user can use the access bundles that their roles can use, directly or through a group (if the user is an admin of the project, every bundle)
+- The machine identity can use the access bundles that its roles can use, directly or through a group (if the machine identity is an admin of the project, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
-Each service you list in `services`, and each skill you list in `skills`, also has to be in a bundle that both of them can use, unless both are admins of the project. Skills you send with the session don't need to be in a bundle.
+The user and the machine identity also have to be able to use each service you list in `services` and each skill you list in `skills` the same way: directly, or through one access bundle that both can use. If both are admins of the project, you can list any of its services and skills. Skills you send with the session don't need to be in an access bundle.
 
-If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, Infisical shows the bundle in two places:
+If a user or group in the delegation can use an access bundle that the machine identity can't use, Infisical shows the bundle in two places:
 
 - In the machine identity's **Delegation** section, the row for the user or group shows the number of excluded bundles, and hovering over the number lists them
-- The [Get delegation](/api-reference/endpoints/agent-vault-delegations/get) endpoint returns the bundles in `missingAccessBundles` (always empty if a machine identity that isn't an admin of the project reads its own delegation)
+- The [Get delegation](/api-reference/endpoints/agent-vault-delegations/get) endpoint returns the bundles in `missingAccessBundles` (only the bundles that the caller can see)
 
-To let the machine identity create sessions over one of them, [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity.
+To let the machine identity create sessions over one of them, give the machine identity a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle).
 
 ## Delegation changes
 
 Infisical checks the delegation again each time the proxy polls, once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). The proxy refuses every request on the session if any of these happen:
 
-- An admin removes the delegation, or edits it so it no longer covers the user
+- Someone removes the delegation, or edits it so it no longer covers the user
 - The delegation covered the user only through a group, and either the user leaves that group or the group is removed from the project
 - The user is removed from the project or from your organization, which also takes the user out of the delegation
 - The user or the machine identity is deactivated in your organization
-- An admin removes the machine identity from the project, which also deletes its delegation
+- Someone removes the machine identity from the project, which also deletes its delegation
 - Someone deletes the machine identity or the user (the session then shows as **Revoked**)
 
-If an admin sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
+If someone sets up the delegation again, adds the user back to it, or reactivates the user or the machine identity, the session works again. To end a session for good, [revoke it](/documentation/platform/agent-vault/revoke-a-session).
 
 If the user or the machine identity can no longer use the access bundle, the session [stops getting credentials](/documentation/platform/agent-vault/sessions#access-changes) for the bundle. The same goes for each service you listed. For a skill you listed, agents that start with the session afterwards don't get it.
 
 ## Track sessions created on behalf of users
 
-A session created on behalf of a user belongs to the machine identity, so the user can't see it. Only the machine identity and admins of the project can see the session, read its [session logs](/documentation/platform/agent-vault/session-logs), and revoke it:
+A session created on behalf of a user belongs to the machine identity, not the user. Only the following can see the session and read its [session logs](/documentation/platform/agent-vault/session-logs):
 
-- The machine identity, through the [Get session](/api-reference/endpoints/agent-vault-sessions/get), [List session logs](/api-reference/endpoints/agent-vault-session-logs/list), and [Revoke session](/api-reference/endpoints/agent-vault-sessions/revoke) endpoints
-- Admins, under **All Sessions** on the **Sessions** page
+- The machine identity, through the [Get session](/api-reference/endpoints/agent-vault-sessions/get) and [List session logs](/api-reference/endpoints/agent-vault-session-logs/list) endpoints
+- Members whose roles can view everyone's sessions, such as admins, under **All Sessions** on the **Sessions** page
+
+The machine identity can revoke the session with the [Revoke session](/api-reference/endpoints/agent-vault-sessions/revoke) endpoint, and so can members whose roles can revoke everyone's sessions.
 
 On the **Sessions** page, the **Identity** column shows the machine identity's name, followed by "on behalf of" and the user's name. The session's details list the user under **On Behalf Of**.
 
 ### Audit events
 
-When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. The audit events for changing the session's label and revoking the session include the same three fields. Infisical also writes an audit event when an admin sets up, changes, or removes a delegation.
+When the machine identity creates the session, Infisical writes an audit event with the machine identity as the actor and the user in `onBehalfOfUserId`, `onBehalfOfUserName`, and `onBehalfOfUserEmail`. The audit events for changing the session's label and revoking the session include the same three fields. Infisical also writes an audit event when someone sets up, changes, or removes a delegation.
 
 ## Considerations
 
@@ -216,7 +218,7 @@ When the machine identity creates the session, Infisical writes an audit event w
 A delegation lets a machine identity use other people's personal values, so protect who can set one and who can use one:
 
 - If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers (protect the machine identity's credentials as carefully as those users' own credentials)
-- A machine identity with the **Admin** role in the project can set delegations, including one for itself that covers every member and project admin (give a machine identity the **Admin** role only if it needs it)
+- If a machine identity has the **Admin** role, or another role that allows **Sessions on Behalf of Users** and **Edit** on machine identities, it can set delegations, including one for itself that covers every member and project admin (give a machine identity such a role only if it needs it)
 
 ### Project membership
 
@@ -230,28 +232,28 @@ A delegation lets a machine identity use other people's personal values, so prot
   <Accordion title="Creating the session fails with &quot;This machine identity isn't allowed to start sessions on behalf of users&quot;">
     The machine identity has no delegation. [Set one up](#set-up-a-delegation), or ask an admin of the project to.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to this machine identity&quot;">
-    The access bundle isn't granted to the machine identity, or no access bundle has that name. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity, or name a bundle the machine identity already has.
+  <Accordion title="Creating the session fails with &quot;This machine identity can't use an access bundle named ...&quot;">
+    None of the machine identity's roles can use the access bundle, or no access bundle has that name. Give the machine identity a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle), or name a bundle the machine identity can already use.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;No access bundle in this project is granted to this machine identity&quot;">
-    The machine identity has no grant on any access bundle in the project. A session on a user's behalf needs the machine identity to have a grant on at least one access bundle, even if the session sends only inline skills. [Grant the machine identity an access bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles).
+  <Accordion title="Creating the session fails with &quot;This machine identity can't use any access bundle, service or skill in this project&quot;">
+    None of the machine identity's roles can use anything in the project. A session on a user's behalf needs the machine identity to be able to use at least one access bundle, service, or skill, even if the session sends only inline skills. Give the machine identity a [role that can use an access bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle).
   </Accordion>
   <Accordion title="Creating the session fails with &quot;This machine identity can't start sessions on behalf of ...&quot;">
     The delegation doesn't cover the user, or no active member of your organization has that email or ID. Check the email or ID you sent, then check the users and groups in the machine identity's delegation.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;No access bundle named ... is granted to '...'&quot;">
-    The access bundle isn't granted to the user. [Grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the user, or name a bundle the user already has.
+  <Accordion title="Creating the session fails with &quot;'...' can't use an access bundle named ...&quot;">
+    None of the user's roles can use the access bundle. Give the user a [role that can use the bundle](/documentation/platform/agent-vault/access-bundles#who-can-use-an-access-bundle), or name a bundle the user can already use.
   </Accordion>
   <Accordion title="Creating the session fails with &quot;This machine identity can't use a service called ...&quot;">
-    No access bundle granted to the machine identity holds the service, or no service has that name. [Grant the machine identity a bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service, or use a service from a bundle the machine identity already has.
+    None of the machine identity's roles can use the service, directly or through an access bundle, or no service has that name. Give the machine identity a [role that can use the service](/documentation/platform/agent-vault/access-control#use-an-access-bundle-service-or-skill), or choose a service the machine identity can already use.
   </Accordion>
   <Accordion title="Creating the session fails with &quot;'...' can't use a service called ...&quot;">
-    No access bundle granted to the user holds the service. [Grant the user a bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds the service, or use a service from a bundle the user already has.
+    None of the user's roles can use the service, directly or through an access bundle. Give the user a [role that can use the service](/documentation/platform/agent-vault/access-control#use-an-access-bundle-service-or-skill), or choose a service the user can already use.
   </Accordion>
-  <Accordion title="Creating the session fails with &quot;The service ... isn't in an access bundle granted to both this machine identity and '...'&quot;">
-    The user and the machine identity can each use the service, but through different access bundles. A session on the user's behalf can use a service only if one bundle holds the service and is granted to both of them.
+  <Accordion title="Creating the session fails with &quot;This machine identity and '...' don't both reach the service ... the same way&quot;">
+    The user and the machine identity can each use the service, but in different ways, such as through different access bundles. A session on the user's behalf can use a service only if both can use it directly, or through one access bundle that both can use.
 
-    To see which services the session can use, [list the services on the user's behalf](#find-the-services-a-session-can-use). To use this service, [grant one bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) that holds it to both the user and the machine identity.
+    To see which services the session can use, [list the services on the user's behalf](#find-the-services-a-session-can-use). To use this service, give the user and the machine identity roles that can use one access bundle that holds it.
   </Accordion>
 </AccordionGroup>
 

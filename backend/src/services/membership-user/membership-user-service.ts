@@ -36,7 +36,16 @@ import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
-import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import {
+  assertProductWillRetainAdmin,
+  assertSecretsTemporaryAccessAllowed,
+  customRolesNeedRbacPlan,
+  findAgentVaultRoleChange,
+  findProjectKeepingBundleRoles,
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  withAgentVaultMemberAlias
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -65,7 +74,7 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   instanceConfigService: TInstanceConfigService;
   membershipUserDAL: TMembershipUserDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
   orgDAL: Pick<
     TOrgDALFactory,
     | "findById"
@@ -75,7 +84,7 @@ type TMembershipUserServiceFactoryDep = {
     | "findActorsWithOrgAccess"
     | "lockActorsForOrgAccess"
   >;
-  roleDAL: Pick<TRoleDALFactory, "find">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
     TPermissionServiceFactory,
@@ -260,6 +269,7 @@ export const membershipUserServiceFactory = ({
   const createMembership = async (dto: TCreateMembershipUserDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
     const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
       orgDAL.findById(dto.permission.orgId)
@@ -378,7 +388,7 @@ export const membershipUserServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -488,14 +498,16 @@ export const membershipUserServiceFactory = ({
   const updateMembership = async (dto: TUpdateMembershipUserDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
-    await factory.onUpdateMembershipUserGuard(dto);
+    const checked = await factory.onUpdateMembershipUserGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to set custom default role due to plan RBAC restriction. Upgrade plan to set custom default org membership role."
@@ -559,7 +571,13 @@ export const membershipUserServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+      // Takes the lock replaceMembershipRoles needs to keep access bundle roles, which only Agent Vault projects have.
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Organization) {
         await assertWillRetainOrgAdmin({
           scopeOrgId: scopeData.orgId,
@@ -616,13 +634,11 @@ export const membershipUserServiceFactory = ({
           });
         }
       });
-      await membershipRoleDAL.delete(
-        {
-          membershipId: doc.id
-        },
+      const insertedRoles = await replaceMembershipRoles(
+        { membershipRoleDAL },
+        { membershipId: doc.id, roleDocs, keepBundleRolesInProjectId },
         tx
       );
-      const insertedRoles = await membershipRoleDAL.insertMany(roleDocs, tx);
       return { ...doc, roles: insertedRoles };
     });
 
@@ -633,7 +649,7 @@ export const membershipUserServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onDeleteMembershipUserGuard(dto);
+    const checked = await factory.onDeleteMembershipUserGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipUserDAL.findOne({
@@ -651,6 +667,10 @@ export const membershipUserServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData: dto.scopeData, actor: dto.permission }
+    );
     const performDelete = async (tx: Knex) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
         // Org-scope last-admin guard runs inside deleteOrgMembershipsFn's transaction so the
@@ -672,6 +692,7 @@ export const membershipUserServiceFactory = ({
       }
 
       if (dto.scopeData.scope === AccessScope.Project) {
+        await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(dto.scopeData.projectId, tx),
           excludeMembershipIds: [existingMembership.id],

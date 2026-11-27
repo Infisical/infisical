@@ -18,7 +18,8 @@ import {
   FieldError,
   FieldLabel
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { canAddServiceToAgentVaultBundle } from "@app/helpers/agentVaultPermissions";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultAccessBundleService,
@@ -36,7 +37,8 @@ type Props = {
   bundleServiceIds: string[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreateNew: () => void;
+  // Left out for someone who can't create services, so the picker offers only existing ones.
+  onCreateNew?: () => void;
 };
 
 export const AddBundleServiceDialog = ({
@@ -47,6 +49,7 @@ export const AddBundleServiceDialog = ({
   onCreateNew
 }: Props) => {
   const { projectId } = useProject();
+  const { permission } = useProjectPermission();
   const addService = useAddAgentVaultAccessBundleService(projectId);
   const [services, setServices] = useState<TAgentVaultProjectService[]>([]);
   const [search, setSearch] = useState("");
@@ -58,10 +61,14 @@ export const AddBundleServiceDialog = ({
     { enabled: isOpen }
   );
 
+  // Adding a service takes Use on it from the caller's own roles, so one they reach only through a bundle shows
+  // disabled with the reason.
   const options = useMemo(() => {
     const inBundle = new Set(bundleServiceIds);
     return (data?.services ?? []).filter((option) => !inBundle.has(option.id));
   }, [data, bundleServiceIds]);
+  const canAdd = (option: TAgentVaultProjectService) =>
+    canAddServiceToAgentVaultBundle(permission, option.id);
 
   const isListTruncated = (data?.totalCount ?? 0) > (data?.services.length ?? 0);
   const isOverLimit = services.length > MAX_SERVICES_PER_ADD;
@@ -127,6 +134,7 @@ export const AddBundleServiceDialog = ({
               onSearchChange={setSearch}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
+              isOptionDisabled={(option) => !canAdd(option)}
               getOptionKeywords={(option) => [
                 option.description ?? "",
                 hostPatternOf(option) ?? ""
@@ -136,8 +144,13 @@ export const AddBundleServiceDialog = ({
                   <ServiceIcon hostPattern={hostPatternOf(option)} serviceType={option.type} />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm">{option.name}</span>
-                    {option.description && (
+                    {canAdd(option) && option.description && (
                       <span className="truncate text-xs text-muted">{option.description}</span>
+                    )}
+                    {!canAdd(option) && (
+                      <span className="truncate text-xs text-muted">
+                        You don&apos;t have permission to use this service
+                      </span>
                     )}
                   </div>
                 </div>
@@ -149,15 +162,19 @@ export const AddBundleServiceDialog = ({
               modal
               isError={isOverLimit}
               onValueChange={setServices}
-              creation={{
-                mode: "action",
-                emptyLabel: CREATE_LABEL,
-                formatLabel: () => CREATE_LABEL,
-                onAction: () => {
-                  handleClose();
-                  onCreateNew();
-                }
-              }}
+              creation={
+                onCreateNew
+                  ? {
+                      mode: "action",
+                      emptyLabel: CREATE_LABEL,
+                      formatLabel: () => CREATE_LABEL,
+                      onAction: () => {
+                        handleClose();
+                        onCreateNew();
+                      }
+                    }
+                  : undefined
+              }
             />
             {isOverLimit ? (
               <FieldError>

@@ -14,11 +14,23 @@ import {
   AgentVaultHttpMethod,
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
+import { agentVaultTestReachDAL } from "../agent-vault/testing/agent-vault-test-roles";
 import { TAgentVaultInlineServiceInsert } from "./agent-vault-session-inline-service-dal";
 import { TAgentVaultInlineSkillInsert } from "./agent-vault-session-inline-skill-dal";
 import { agentVaultSessionServiceFactory } from "./agent-vault-session-service";
 import { TAgentVaultSessionServiceSummary, TMintSessionDTO } from "./agent-vault-session-types";
 
+// What a grant on these bundles used to give: a role that can use them.
+const grantedBundleUse = (accessBundleIds: string[]) =>
+  accessBundleIds.length
+    ? [
+        {
+          action: ["read", "use"],
+          subject: "agent-vault-access-bundles",
+          conditions: { accessBundleId: { $in: accessBundleIds } }
+        }
+      ]
+    : [];
 const PROJECT_ID = "project-1";
 const HOOK_ID = "00000000-0000-4000-8000-0000000000aa";
 
@@ -84,8 +96,8 @@ const buildService = ({
     agentVaultSessionInlineSkillDAL: { insertForSession: vi.fn(async () => []) },
     agentVaultAccessBundleDAL: { find: vi.fn().mockResolvedValue([]) },
     agentVaultServiceDAL: { findByAccessBundleId: vi.fn().mockResolvedValue([]) },
+    agentVaultReachDAL: agentVaultTestReachDAL(),
     agentVaultVariableDAL: { findKeys, findOauthForResolve },
-    membershipDAL: { findResourceMembershipsForActor: vi.fn().mockResolvedValue([]) },
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({
         permission: createMongoAbility(rules),
@@ -293,7 +305,8 @@ const buildMintWithServices = ({
         {
           action: ["read", "create", "edit", "revoke", ...(canSendInline ? ["create-with-inline-services"] : [])],
           subject: "agent-vault-sessions"
-        }
+        },
+        ...grantedBundleUse(grantedBundleIds)
       ]);
   const findServiceOverrides = vi.fn().mockResolvedValue(overrides);
   const service = agentVaultSessionServiceFactory({
@@ -328,13 +341,9 @@ const buildMintWithServices = ({
       )
     },
     agentVaultResolveDAL: { findServiceOverrides },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue(
-          grantedBundleIds.map((bundleId) => ({ scopeResourceId: bundleId, isActive: true, actorGroupId: null }))
-        )
-    },
+    agentVaultReachDAL: agentVaultTestReachDAL({
+      accessBundleIds: [...new Set([...grantedBundleIds, ...Object.values(bundlesOf).flat()])]
+    }),
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
     },
@@ -386,7 +395,7 @@ describe("mintSession, services listed by name", () => {
 
     await expect(mintWith(service, ["github"])).resolves.toBeDefined();
     await expect(mintWith(service, ["linear"])).rejects.toThrow(
-      "You can't use a service called 'linear'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+      "You can't use a service called 'linear'. Check the name, or ask an Agent Vault admin for a role that can use it."
     );
   });
 
@@ -450,7 +459,7 @@ describe("mintSession, services listed by name", () => {
     const { service, insertListedServices } = buildMintWithServices({ isAdmin: true, deletedOnPrimary: [GITHUB.id] });
 
     await expect(mintWith(service, ["github"])).rejects.toThrow(
-      "You can't use a service called 'github'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+      "You can't use a service called 'github'. Check the name, or ask an Agent Vault admin for a role that can use it."
     );
     expect(insertListedServices).not.toHaveBeenCalled();
   });
@@ -827,7 +836,10 @@ const buildSkillService = ({
   const memberActions = ["read", "create", "edit", "revoke", ...(canSendSkills ? ["create-with-inline-skills"] : [])];
   const permission = isAdmin
     ? createMongoAbility([{ action: "manage", subject: "all" }])
-    : createMongoAbility([{ action: memberActions, subject: "agent-vault-sessions" }]);
+    : createMongoAbility([
+        { action: memberActions, subject: "agent-vault-sessions" },
+        ...grantedBundleUse(grantedBundleIds)
+      ]);
   const service = agentVaultSessionServiceFactory({
     agentVaultSessionDAL: {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({ raw: vi.fn() })),
@@ -853,13 +865,9 @@ const buildSkillService = ({
           .map((entry) => entry.id)
       )
     },
-    membershipDAL: {
-      findResourceMembershipsForActor: vi
-        .fn()
-        .mockResolvedValue(
-          grantedBundleIds.map((bundleId) => ({ scopeResourceId: bundleId, isActive: true, actorGroupId: null }))
-        )
-    },
+    agentVaultReachDAL: agentVaultTestReachDAL({
+      accessBundleIds: [...new Set([...grantedBundleIds, ...Object.values(bundlesOf).flat()])]
+    }),
     permissionService: {
       getProjectPermission: vi.fn().mockResolvedValue({ permission, hasRole: () => isAdmin, memberships: [] })
     },
@@ -927,7 +935,7 @@ describe("mintSession, skills", () => {
 
     await expect(mintSkills(service, ["code-review"])).resolves.toBeDefined();
     await expect(mintSkills(service, ["release-notes"])).rejects.toThrow(
-      "You can't use a skill called 'release-notes'. Check the name, or ask an Agent Vault admin to grant you an access bundle that holds it."
+      "You can't use a skill called 'release-notes'. Check the name, or ask an Agent Vault admin for a role that can use it."
     );
   });
 

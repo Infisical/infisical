@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { ProductRolesField } from "@app/components/agent-vault/ProductRolesField";
 import { createNotification } from "@app/components/notifications";
 import {
   Alert,
@@ -19,6 +20,7 @@ import {
   FieldLabel
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { defaultAgentVaultRoles } from "@app/helpers/agentVaultMembers";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultMembers,
@@ -26,9 +28,6 @@ import {
   useListAvailableAgentVaultMembers
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-
-import { ProductRoleField } from "./ProductRoleField";
 
 type TCandidate = { value: string; label: string; email: string };
 
@@ -58,7 +57,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   );
 
   const [selected, setSelected] = useState<TCandidate[]>([]);
-  const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
+  const [roles, setRoles] = useState(defaultAgentVaultRoles);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
 
@@ -127,7 +126,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const handleClose = () => {
     setSelected([]);
-    setRole(ProjectMembershipRole.Member);
+    setRoles(defaultAgentVaultRoles());
     setSearch("");
     clearRequesterEmail();
     onOpenChange(false);
@@ -137,7 +136,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
     addMembers.mutate(
       {
         userIds: selected.map((candidate) => candidate.value),
-        role
+        roles
       },
       {
         onSuccess: ({ members, skipped }) => {
@@ -204,9 +203,14 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         </Field>
 
         <Field>
-          <FieldLabel>Product Role</FieldLabel>
+          <FieldLabel htmlFor="agent-vault-invite-roles">Roles</FieldLabel>
           <FieldContent>
-            <ProductRoleField value={role} onChange={setRole} idPrefix="invite-role" />
+            <ProductRolesField
+              id="agent-vault-invite-roles"
+              projectId={projectId}
+              value={roles}
+              onChange={setRoles}
+            />
           </FieldContent>
         </Field>
 

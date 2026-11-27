@@ -1,4 +1,4 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { describe, expect, test } from "vitest";
 
@@ -19,6 +19,7 @@ import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionAgentVaultHookActions,
   ProjectPermissionAgentVaultProxyActions,
+  ProjectPermissionAgentVaultServiceActions,
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionAgentVaultVariableActions,
@@ -39,15 +40,26 @@ const abilityFor = (role: string, permissions?: unknown) =>
     ) as never
   );
 
+const OTHER_ACTOR_ID = "6f1c3a9e-2d4b-4c7a-8e1f-9b3d5a7c0e24";
+
 // Each of these replaced a check on the admin role, so the admin set has to hold every one and no other role any.
 const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
   Object.fromEntries([
     ...[
-      ProjectPermissionAgentVaultSessionActions.ReadAny,
-      ProjectPermissionAgentVaultSessionActions.EditAny,
-      ProjectPermissionAgentVaultSessionActions.RevokeAny,
-      ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices
-    ].map((action) => [`sessions ${action}`, ability.can(action, ProjectPermissionSub.AgentVaultSessions)]),
+      ProjectPermissionAgentVaultSessionActions.Read,
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionAgentVaultSessionActions.Revoke
+    ].map((action) => [
+      `sessions ${action} another actor's`,
+      ability.can(action, subject(ProjectPermissionSub.AgentVaultSessions, { actorId: OTHER_ACTOR_ID }))
+    ]),
+    [
+      "sessions create-with-inline-services",
+      ability.can(
+        ProjectPermissionAgentVaultSessionActions.CreateWithInlineServices,
+        ProjectPermissionSub.AgentVaultSessions
+      )
+    ],
     ...Object.values(ProjectPermissionAgentVaultVariableActions).map((action) => [
       `variables ${action}`,
       ability.can(action, ProjectPermissionSub.AgentVaultVariables)
@@ -61,11 +73,12 @@ const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
     ["settings edit", ability.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings)],
     ["proxies edit", ability.can(ProjectPermissionAgentVaultProxyActions.Edit, ProjectPermissionSub.AgentVaultProxies)],
     [
-      "bundles manage-members",
-      ability.can(
-        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      )
+      "bundles edit",
+      ability.can(ProjectPermissionAgentVaultAccessBundleActions.Edit, ProjectPermissionSub.AgentVaultAccessBundles)
+    ],
+    [
+      "services edit",
+      ability.can(ProjectPermissionAgentVaultServiceActions.Edit, ProjectPermissionSub.AgentVaultServices)
     ],
     ...[
       ProjectPermissionMemberActions.Create,
@@ -85,30 +98,29 @@ const replacedRoleChecks = (ability: ReturnType<typeof abilityFor>) =>
   ]) as Record<string, boolean>;
 
 describe("agent vault project roles", () => {
-  test("only the admin set holds the actions that replaced role checks", () => {
+  test("only the admin set holds the actions that replaced role checks, and No Access and Member hold nothing", () => {
     const allowed = (checks: Record<string, boolean>) => Object.keys(checks).filter((key) => checks[key]);
     const adminChecks = replacedRoleChecks(abilityFor(ProjectMembershipRole.Admin));
 
     expect(allowed(adminChecks)).toEqual(Object.keys(adminChecks));
-    expect(allowed(replacedRoleChecks(abilityFor(ProjectMembershipRole.Member)))).toEqual([]);
-    expect(
-      allowed(
-        replacedRoleChecks(
-          abilityFor(ProjectMembershipRole.Custom, packRules(agentVaultProjectAdminPermissions as never))
-        )
-      )
-    ).toEqual([]);
+    expect(allowed(replacedRoleChecks(abilityFor(ProjectMembershipRole.NoAccess)))).toEqual([]);
+    // A Member row the role migration has not converted yet.
+    expect(abilityFor(ProjectMembershipRole.Member).rules).toEqual([]);
   });
 
   test("the admin set is written out, not aliased to the generic project admin", () => {
     const admin = abilityFor(ProjectMembershipRole.Admin);
 
     expect(
-      admin.can(
-        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      )
+      admin.can(ProjectPermissionAgentVaultAccessBundleActions.Use, ProjectPermissionSub.AgentVaultAccessBundles)
     ).toBe(true);
+    expect(admin.can(ProjectPermissionAgentVaultServiceActions.Use, ProjectPermissionSub.AgentVaultServices)).toBe(
+      true
+    );
+    expect(admin.can(ProjectPermissionAgentVaultServiceActions.Edit, ProjectPermissionSub.AgentVaultServices)).toBe(
+      true
+    );
+    expect(admin.can(ProjectPermissionAgentVaultSkillActions.Use, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultProxyActions.Revoke, ProjectPermissionSub.AgentVaultProxies)).toBe(
       true
     );
@@ -121,81 +133,51 @@ describe("agent vault project roles", () => {
     ).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultSkillActions.Create, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
     expect(admin.can(ProjectPermissionAgentVaultSkillActions.Delete, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
+    expect(admin.can(ProjectPermissionAgentVaultHookActions.Edit, ProjectPermissionSub.AgentVaultHooks)).toBe(true);
 
     expect(admin.can(ProjectPermissionCmekActions.Rotate, ProjectPermissionSub.Cmek)).toBe(false);
     expect(admin.can(ProjectPermissionSecretSyncActions.Create, ProjectPermissionSub.SecretSyncs)).toBe(false);
     expect(admin.can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens)).toBe(false);
   });
 
-  test("a member can mint, label and revoke sessions, send skills with them, and read a proxy fingerprint and skills, and nothing more", () => {
-    const member = abilityFor(ProjectMembershipRole.Member);
+  test("a custom role is exactly its own rules: the full admin set grants what admin does", () => {
+    const custom = abilityFor(ProjectMembershipRole.Custom, packRules(agentVaultProjectAdminPermissions as never));
+    const allowed = (checks: Record<string, boolean>) => Object.keys(checks).filter((key) => checks[key]);
+    const checks = replacedRoleChecks(custom);
 
-    expect(member.can(ProjectPermissionAgentVaultSessionActions.Create, ProjectPermissionSub.AgentVaultSessions)).toBe(
-      true
-    );
-    expect(member.can(ProjectPermissionAgentVaultSessionActions.Edit, ProjectPermissionSub.AgentVaultSessions)).toBe(
-      true
-    );
-    expect(member.can(ProjectPermissionAgentVaultSessionActions.Revoke, ProjectPermissionSub.AgentVaultSessions)).toBe(
-      true
-    );
-    expect(
-      member.can(
-        ProjectPermissionAgentVaultSessionActions.CreateWithInlineSkills,
-        ProjectPermissionSub.AgentVaultSessions
-      )
-    ).toBe(true);
-    expect(member.can(ProjectPermissionAgentVaultProxyActions.Read, ProjectPermissionSub.AgentVaultProxies)).toBe(true);
-
-    expect(member.can(ProjectPermissionAgentVaultProxyActions.Create, ProjectPermissionSub.AgentVaultProxies)).toBe(
-      false
-    );
-    expect(
-      member.can(ProjectPermissionAgentVaultAccessBundleActions.Create, ProjectPermissionSub.AgentVaultAccessBundles)
-    ).toBe(false);
-    expect(
-      member.can(
-        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      )
-    ).toBe(false);
-    expect(member.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
-    expect(member.can(ProjectPermissionAgentVaultSkillActions.Read, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
-    expect(member.can(ProjectPermissionAgentVaultSkillActions.Create, ProjectPermissionSub.AgentVaultSkills)).toBe(
-      false
-    );
-    expect(member.can(ProjectPermissionAgentVaultSkillActions.Edit, ProjectPermissionSub.AgentVaultSkills)).toBe(false);
-    expect(member.can(ProjectPermissionAgentVaultSkillActions.Delete, ProjectPermissionSub.AgentVaultSkills)).toBe(
-      false
-    );
-    expect(member.can(ProjectPermissionAgentVaultHookActions.Read, ProjectPermissionSub.AgentVaultHooks)).toBe(true);
-
-    expect(member.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member)).toBe(false);
-    expect(member.can(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups)).toBe(false);
-    expect(member.can(ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity)).toBe(false);
+    expect(allowed(checks)).toEqual(Object.keys(checks));
   });
 
-  test("a custom role carrying the full admin rules still resolves to the member set", () => {
-    const custom = abilityFor(ProjectMembershipRole.Custom, packRules(agentVaultProjectAdminPermissions as never));
+  test("a custom role naming one bundle can use that bundle and no other, and nothing else", () => {
+    const custom = abilityFor(
+      ProjectMembershipRole.Custom,
+      packRules([
+        {
+          action: [ProjectPermissionAgentVaultAccessBundleActions.Use],
+          subject: ProjectPermissionSub.AgentVaultAccessBundles,
+          conditions: { accessBundleId: "bundle-1" }
+        }
+      ] as never)
+    );
 
     expect(
-      custom.can(ProjectPermissionAgentVaultAccessBundleActions.Read, ProjectPermissionSub.AgentVaultAccessBundles)
+      custom.can(
+        ProjectPermissionAgentVaultAccessBundleActions.Use,
+        subject(ProjectPermissionSub.AgentVaultAccessBundles, { accessBundleId: "bundle-1" })
+      )
     ).toBe(true);
     expect(
-      custom.can(ProjectPermissionAgentVaultAccessBundleActions.Delete, ProjectPermissionSub.AgentVaultAccessBundles)
-    ).toBe(false);
-    expect(
       custom.can(
-        ProjectPermissionAgentVaultAccessBundleActions.ManageMembers,
-        ProjectPermissionSub.AgentVaultAccessBundles
+        ProjectPermissionAgentVaultAccessBundleActions.Use,
+        subject(ProjectPermissionSub.AgentVaultAccessBundles, { accessBundleId: "bundle-2" })
       )
     ).toBe(false);
-    expect(custom.can(ProjectPermissionAgentVaultProxyActions.Delete, ProjectPermissionSub.AgentVaultProxies)).toBe(
+    expect(custom.can(ProjectPermissionAgentVaultSessionActions.Create, ProjectPermissionSub.AgentVaultSessions)).toBe(
       false
     );
-    expect(custom.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Project)).toBe(false);
-    expect(custom.can(ProjectPermissionAgentVaultSkillActions.Read, ProjectPermissionSub.AgentVaultSkills)).toBe(true);
-    expect(custom.can(ProjectPermissionAgentVaultSkillActions.Edit, ProjectPermissionSub.AgentVaultSkills)).toBe(false);
+    expect(custom.can(ProjectPermissionAgentVaultServiceActions.Use, ProjectPermissionSub.AgentVaultServices)).toBe(
+      false
+    );
   });
 });
 

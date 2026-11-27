@@ -38,11 +38,11 @@ import {
 } from "@app/components/v3";
 import {
   ProjectPermissionAgentVaultSkillActions,
-  ProjectPermissionSub,
   useOrganization,
   useProjectPermission,
   useProject
 } from "@app/context";
+import { canOnAgentVaultSkill } from "@app/helpers/agentVaultPermissions";
 import {
   fromDraftFiles,
   getChangedSkillPaths,
@@ -63,6 +63,8 @@ import {
 } from "@app/hooks/api/agentVault";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
+import { DisabledReasonMenuItem } from "../DisabledReasonMenuItem";
+import { deniedReason } from "../DisabledReasonTooltip";
 import { DeleteSkillDialog } from "./DeleteSkillDialog";
 import { downloadSkillVersion } from "./downloadSkillVersion";
 import { RollBackSkillAlertDialog } from "./RollBackSkillAlertDialog";
@@ -97,13 +99,15 @@ const SkillSheetBody = ({
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const canEdit = permission.can(
+  const canEdit = canOnAgentVaultSkill(
+    permission,
     ProjectPermissionAgentVaultSkillActions.Edit,
-    ProjectPermissionSub.AgentVaultSkills
+    shownSkillId
   );
-  const canDelete = permission.can(
+  const canDelete = canOnAgentVaultSkill(
+    permission,
     ProjectPermissionAgentVaultSkillActions.Delete,
-    ProjectPermissionSub.AgentVaultSkills
+    shownSkillId
   );
 
   const {
@@ -383,23 +387,29 @@ const SkillSheetBody = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {/* Listing a skill's versions takes Edit on the server. */}
-                  {canEdit && (
-                    <DropdownMenuItem onClick={() => setDialog("history")}>
-                      <HistoryIcon />
-                      Version History
-                    </DropdownMenuItem>
-                  )}
-                  {canEdit && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setDialog("upload");
-                        refetchSkill();
-                      }}
-                    >
-                      <UploadIcon />
-                      Upload New Version
-                    </DropdownMenuItem>
-                  )}
+                  <DisabledReasonMenuItem
+                    disabledReason={deniedReason(
+                      canEdit,
+                      "You don't have permission to edit this skill"
+                    )}
+                    onClick={() => setDialog("history")}
+                  >
+                    <HistoryIcon />
+                    Version History
+                  </DisabledReasonMenuItem>
+                  <DisabledReasonMenuItem
+                    disabledReason={deniedReason(
+                      canEdit,
+                      "You don't have permission to edit this skill"
+                    )}
+                    onClick={() => {
+                      setDialog("upload");
+                      refetchSkill();
+                    }}
+                  >
+                    <UploadIcon />
+                    Upload New Version
+                  </DisabledReasonMenuItem>
                   <DropdownMenuItem
                     isDisabled={!versionData}
                     onClick={() => versionData && downloadSkillVersion(skill.name, versionData)}
@@ -407,15 +417,18 @@ const SkillSheetBody = ({
                     <DownloadIcon />
                     Download
                   </DropdownMenuItem>
-                  {canDelete && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="danger" onClick={() => setDialog("delete")}>
-                        <TrashIcon />
-                        Delete Skill
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  <DropdownMenuSeparator />
+                  <DisabledReasonMenuItem
+                    variant="danger"
+                    disabledReason={deniedReason(
+                      canDelete,
+                      "You don't have permission to delete this skill"
+                    )}
+                    onClick={() => setDialog("delete")}
+                  >
+                    <TrashIcon />
+                    Delete Skill
+                  </DisabledReasonMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

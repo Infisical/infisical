@@ -24,9 +24,15 @@ import {
   InputGroupInput,
   TextArea
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { useScopeVariant } from "@app/hooks";
 import { useUpdateProject } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const baseFormSchema = z.object({
   name: z.string().min(1, "Required").max(64, "Too long, maximum length is 64 characters"),
@@ -49,7 +55,12 @@ type BaseFormData = z.infer<typeof baseFormSchema>;
 
 export const ProjectOverviewChangeSection = () => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { mutateAsync, isPending } = useUpdateProject();
+  // Agent Vault hands project edit out through custom roles, so a reader there often can't change these fields.
+  const isAgentVaultReadOnly =
+    currentProject?.type === ProjectType.AgentVault &&
+    permission.cannot(ProjectPermissionActions.Edit, ProjectPermissionSub.Project);
   const scopeVariant = useScopeVariant();
   const {
     handleSubmit,
@@ -90,7 +101,11 @@ export const ProjectOverviewChangeSection = () => {
       <Card className="gap-0 overflow-hidden p-0">
         <CardHeader className="p-6">
           <CardTitle className="font-alliance">Project Overview</CardTitle>
-          <CardDescription>Update your project name and description.</CardDescription>
+          <CardDescription>
+            {isAgentVaultReadOnly
+              ? "This project's name and description."
+              : "Update your project name and description."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="max-w-md px-6 pb-6">
           <FieldGroup>

@@ -23,7 +23,16 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import {
+  assertProductWillRetainAdmin,
+  assertSecretsTemporaryAccessAllowed,
+  customRolesNeedRbacPlan,
+  findAgentVaultRoleChange,
+  findProjectKeepingBundleRoles,
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  withAgentVaultMemberAlias
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
 import { auditRevokedProjectAccess, lockAndAssertActiveOrgAccess } from "../org/org-access-fns";
@@ -45,8 +54,8 @@ import { newProjectMembershipIdentityFactory } from "./project/project-membershi
 
 type TMembershipIdentityServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  roleDAL: Pick<TRoleDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
@@ -113,9 +122,13 @@ export const membershipIdentityServiceFactory = ({
     })
   };
 
-  const createMembership = async (dto: TCreateMembershipIdentityDTO) => {
+  const createMembership = async (input: TCreateMembershipIdentityDTO) => {
+    // Ids are compared as strings in a role's identityId conditions, and the database matches any case, so the id is
+    // put in the database's case first.
+    const dto = { ...input, data: { ...input.data, identityId: input.data.identityId.toLowerCase() } };
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
@@ -153,7 +166,7 @@ export const membershipIdentityServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -257,17 +270,22 @@ export const membershipIdentityServiceFactory = ({
     return { membership };
   };
 
-  const updateMembership = async (dto: TUpdateMembershipIdentityDTO) => {
+  const updateMembership = async (input: TUpdateMembershipIdentityDTO) => {
+    // Ids are compared as strings in the self check and in a role's identityId conditions, and the database matches any
+    // case, so the id is put in the database's case first.
+    const dto = { ...input, selector: { ...input.selector, identityId: input.selector.identityId.toLowerCase() } };
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
-    await factory.onUpdateMembershipIdentityGuard(dto);
+    const checked = await factory.onUpdateMembershipIdentityGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to identity due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -330,7 +348,13 @@ export const membershipIdentityServiceFactory = ({
     let shouldRevokeOrgTokens = false;
     let shouldRestoreOrgTokens = false;
 
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const membershipDoc = await membershipIdentityDAL.transaction(async (tx) => {
+      // Takes the lock replaceMembershipRoles needs to keep access bundle roles, which only Agent Vault projects have.
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       // The project advisory lock before the row lock, the order every other caller takes: a product-route
       // change holding the advisory lock needs KEY SHARE on this row, so the reverse order deadlocks.
       const newIsActive = data.isActive ?? existingMembership.isActive;
@@ -392,13 +416,11 @@ export const membershipIdentityServiceFactory = ({
           });
         }
       });
-      await membershipRoleDAL.delete(
-        {
-          membershipId: doc.id
-        },
+      const insertedRoleDocs = await replaceMembershipRoles(
+        { membershipRoleDAL },
+        { membershipId: doc.id, roleDocs, keepBundleRolesInProjectId },
         tx
       );
-      const insertedRoleDocs = await membershipRoleDAL.insertMany(roleDocs, tx);
 
       if (shouldRevokeOrgTokens) {
         await identityAccessTokenService.insertOrgMembershipRevocationMarker({
@@ -472,11 +494,14 @@ export const membershipIdentityServiceFactory = ({
 
   // On org removal the identity's project rows in the org are revoked here; the event only lets the reconcile
   // consumer confirm nothing's left.
-  const deleteMembership = async (dto: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
+  const deleteMembership = async (input: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
+    // Ids are compared as strings in the self check and in a role's identityId conditions, and the database matches any
+    // case, so the id is put in the database's case first.
+    const dto = { ...input, selector: { ...input.selector, identityId: input.selector.identityId.toLowerCase() } };
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onDeleteMembershipIdentityGuard(dto);
+    const checked = await factory.onDeleteMembershipIdentityGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipIdentityDAL.findOne({
@@ -496,12 +521,17 @@ export const membershipIdentityServiceFactory = ({
 
     let revoked: TRevokedProjectAccess[] = [];
 
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Organization) {
         revoked = await $removeIdentityFromOrg({ identityId: dto.selector.identityId, orgId: scopeData.orgId }, tx);
         return existingMembership;
       }
 
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       await assertProductWillRetainAdmin({
         project: await projectDAL.findById(scopeData.projectId, tx),
         excludeMembershipIds: [existingMembership.id],

@@ -21,16 +21,28 @@ export const memberSubtitle = (actor: TAgentVaultActor | TAgentVaultSessionActor
   return actor.email || actor.username;
 };
 
-export const MemberName = ({ member }: { member: TAgentVaultActor }) => {
+export const MemberName = ({
+  member,
+  isSingleLine = false
+}: {
+  member: TAgentVaultActor;
+  // The name alone, for dense rows; the icon and the screen-reader label still say what kind of member it is.
+  isSingleLine?: boolean;
+}) => {
   const { label, icon: Icon } = MEMBER_KIND[member.type];
 
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <Icon className="size-4 shrink-0 text-muted" />
+    <div className="flex min-w-0 items-start gap-2.5">
+      {/* One line tall, so the icon centers on the name's line at whatever text size the caller uses. */}
+      <span className="flex h-[1lh] shrink-0 items-center">
+        <Icon className="size-4 text-muted" />
+      </span>
       <span className="sr-only">{label}</span>
       <div className="min-w-0">
         <div className="truncate">{memberDisplayName(member)}</div>
-        <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member)}</div>
+        {!isSingleLine && (
+          <div className="truncate text-xs leading-4 text-muted">{memberSubtitle(member)}</div>
+        )}
       </div>
     </div>
   );

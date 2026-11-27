@@ -32,7 +32,16 @@ import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-da
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById, TMembershipDALFactory } from "../membership/membership-dal";
-import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
+import {
+  assertProductWillRetainAdmin,
+  assertSecretsTemporaryAccessAllowed,
+  customRolesNeedRbacPlan,
+  findAgentVaultRoleChange,
+  findProjectKeepingBundleRoles,
+  lockAgentVaultRoleChange,
+  replaceMembershipRoles,
+  withAgentVaultMemberAlias
+} from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
@@ -58,7 +67,7 @@ type TMembershipGroupServiceFactoryDep = {
     "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject" | "deleteBypassersBySubject"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
-  roleDAL: Pick<TRoleDALFactory, "find">;
+  roleDAL: Pick<TRoleDALFactory, "find" | "findById">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
@@ -128,6 +137,7 @@ export const membershipGroupServiceFactory = ({
   const createMembership = async (dto: TCreateMembershipGroupDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
     const hasNoPermanentRole = data.roles.every((el) => el.isTemporary);
     if (hasNoPermanentRole) {
@@ -166,7 +176,7 @@ export const membershipGroupServiceFactory = ({
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -253,14 +263,16 @@ export const membershipGroupServiceFactory = ({
   const updateMembership = async (dto: TUpdateMembershipGroupDTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
+    const keepBundleRolesInProjectId = await findProjectKeepingBundleRoles(projectDAL, scopeData, data.roles);
+    data.roles = await withAgentVaultMemberAlias({ projectDAL, roleDAL }, scopeData, data.roles);
 
-    const { group } = await factory.onUpdateMembershipGroupGuard(dto);
+    const { group, ...checked } = await factory.onUpdateMembershipGroupGuard(dto);
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
       const plan = await licenseService.getPlan(scopeData.orgId);
-      if (!plan?.has(PlanFeature.Rbac))
+      if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData)))
         throw new BadRequestError({
           message:
             "Failed to assign custom role to group due to plan RBAC restriction. Upgrade to Infisical Enterprise to assign custom roles."
@@ -320,7 +332,13 @@ export const membershipGroupServiceFactory = ({
 
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
+      // Takes the lock replaceMembershipRoles needs to keep access bundle roles, which only Agent Vault projects have.
+      await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
       const newIsActive = data.isActive ?? existingMembership.isActive;
       const newRolesHavePermanentAdmin =
         newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
@@ -372,13 +390,11 @@ export const membershipGroupServiceFactory = ({
           });
         }
       });
-      await membershipRoleDAL.delete(
-        {
-          membershipId: doc.id
-        },
+      const roles = await replaceMembershipRoles(
+        { membershipRoleDAL },
+        { membershipId: doc.id, roleDocs, keepBundleRolesInProjectId },
         tx
       );
-      const roles = await membershipRoleDAL.insertMany(roleDocs, tx);
       return { ...doc, roles };
     });
 
@@ -494,7 +510,7 @@ export const membershipGroupServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    const { group } = await factory.onDeleteMembershipGroupGuard(dto);
+    const { group, ...checked } = await factory.onDeleteMembershipGroupGuard(dto);
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
     const existingMembership = await membershipGroupDAL.findOne({
@@ -553,8 +569,13 @@ export const membershipGroupServiceFactory = ({
 
     let identityIdsLosingOrgAccess: string[] = [];
     let sendPamCancellations = () => {};
+    const agentVaultChange = await findAgentVaultRoleChange(
+      { projectDAL, permissionService },
+      { scopeData, actor: dto.permission }
+    );
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
+        await lockAgentVaultRoleChange(agentVaultChange, { membershipId: existingMembership.id, checked }, tx);
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(existingMembership.scopeProjectId, tx),
           excludeMembershipIds: [existingMembership.id],

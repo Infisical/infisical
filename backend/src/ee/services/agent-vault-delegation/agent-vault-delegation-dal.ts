@@ -264,6 +264,19 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The machine identities with a delegation in the project, which a delegation list is narrowed from.
+  const findIdentityIds = async (projectId: string): Promise<string[]> => {
+    try {
+      const rows = (await db
+        .replicaNode()(DELEGATION)
+        .where(`${DELEGATION}.projectId`, projectId)
+        .select(db.ref("identityId").withSchema(DELEGATION))) as { identityId: string }[];
+      return rows.map((row) => row.identityId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Agent Vault delegation identity ids" });
+    }
+  };
+
   /**
    * Under all-members every user is covered, otherwise the users the delegation names and the members of the groups
    * it names. Group membership is read the way the permission engine reads it, without isPending. A subject exists
@@ -375,6 +388,7 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     lockForIdentity,
     removeSubjectsByActors,
     findViews,
+    findIdentityIds,
     coversUser,
     findForIdentity,
     identityCoversUser,

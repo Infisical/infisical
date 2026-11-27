@@ -135,25 +135,17 @@ export const agentVaultHookDALFactory = (db: TDbClient) => {
     }
   };
 
-  /** The project's services using each hook, by name: only those in accessBundleIds, or every one when it's null. */
+  /** The project's services using each hook, by name: only those in serviceIds, or every one when it's null. */
   const findUsedBy = async (
     hookIds: string[],
-    accessBundleIds: string[] | null,
+    serviceIds: string[] | null,
     tx?: Knex
   ): Promise<Map<string, THookServiceRef[]>> => {
     const usedBy = new Map<string, THookServiceRef[]>();
-    if (!hookIds.length || accessBundleIds?.length === 0) return usedBy;
+    if (!hookIds.length || serviceIds?.length === 0) return usedBy;
     try {
       const query = (tx || db)(SERVICE).whereIn("hookId", hookIds).whereNull("sessionId");
-      if (accessBundleIds) {
-        void query.whereExists((qb) => {
-          void qb
-            .select(db.raw("1"))
-            .from(TableName.AgentVaultAccessBundleService)
-            .whereRaw(`??."serviceId" = ??.id`, [TableName.AgentVaultAccessBundleService, SERVICE])
-            .whereIn(`${TableName.AgentVaultAccessBundleService}.accessBundleId`, accessBundleIds);
-        });
-      }
+      if (serviceIds) void query.whereIn("id", serviceIds);
       const rows = (await query
         .orderBy("name", "asc")
         .select("id", "name", "type", "hostPattern", "hookId")) as (THookServiceRef & {

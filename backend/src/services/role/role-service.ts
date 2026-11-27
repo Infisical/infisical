@@ -1,8 +1,23 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  ActionProjectType,
+  OrganizationActionScope,
+  ProjectMembershipRole,
+  ProjectType,
+  TableName
+} from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  AGENT_VAULT_MAX_ROLE_IDS,
+  AGENT_VAULT_MAX_ROLE_RULES,
+  countAgentVaultRoleIds,
+  normalizeAgentVaultRoleName,
+  sessionActionsOutsideActorCondition
+} from "@app/ee/services/agent-vault-member/agent-vault-member-role-fns";
+import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -10,6 +25,7 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { customRolesNeedRbacPlan, lockProjectRoleChanges } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { ActorType } from "../auth/auth-type";
@@ -54,7 +70,7 @@ type TRoleServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find" | "delete" | "insertMany">;
   licenseService: TLicenseService;
 };
 
@@ -83,13 +99,76 @@ export const roleServiceFactory = ({
     [AccessScope.Project]: projectRoleFactory
   };
 
+  // A deny on a subject whose schema can't keep it reaches here as an allow. Agent Vault's role editor offers a deny on
+  // every row, so a role there is refused rather than saved granting what it was meant to deny.
+  const assertNoDroppedDenies = async (
+    scopeData: TCreateRoleDTO["scopeData"],
+    droppedDenySubjects: string[] | undefined
+  ) => {
+    if (!droppedDenySubjects?.length || scopeData.scope !== AccessScope.Project) return;
+    const { projectId } = scopeData;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.AgentVault) return;
+    throw new BadRequestError({
+      message: `An Agent Vault role can't deny ${droppedDenySubjects.join(", ")}: these permissions can only be allowed, so a deny would be saved as an allow. Remove the deny, and leave the permission out instead.`
+    });
+  };
+
+  // An Agent Vault role's rules are applied on every request that reads its holders' reach, so a role is capped.
+  const assertAgentVaultRuleCount = async (scopeData: TCreateRoleDTO["scopeData"], permissions: unknown) => {
+    // The role routes pass the packed rules as JSON text.
+    const rules: unknown = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
+    if (!Array.isArray(rules)) return;
+    const tooManyRules = rules.length > AGENT_VAULT_MAX_ROLE_RULES;
+    const tooManyIds = countAgentVaultRoleIds(rules) > AGENT_VAULT_MAX_ROLE_IDS;
+    if (!tooManyRules && !tooManyIds) return;
+    if (scopeData.scope !== AccessScope.Project) return;
+    const { projectId } = scopeData;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (project?.type !== ProjectType.AgentVault) return;
+    throw new BadRequestError({
+      message: tooManyRules
+        ? `An Agent Vault role can have at most ${AGENT_VAULT_MAX_ROLE_RULES} rules. Combine rules that name IDs into one rule per action, or split the role in two.`
+        : `An Agent Vault role can name at most ${AGENT_VAULT_MAX_ROLE_IDS} IDs across its rules. Give the role every item of a kind instead of listing them, or split the role in two.`
+    });
+  };
+
+  const assertSessionConditions = (permissions: unknown) => {
+    // The role routes pass the packed rules as JSON text.
+    const rules: unknown = typeof permissions === "string" ? JSON.parse(permissions) : permissions;
+    if (!Array.isArray(rules)) return;
+    const outside = sessionActionsOutsideActorCondition(rules);
+    if (!outside.length) return;
+    throw new BadRequestError({
+      message: `A rule that limits Agent Vault sessions by actorId can only hold read, edit and revoke, not ${outside.join(", ")}. Move ${outside.length === 1 ? "it" : "them"} to a rule without conditions.`
+    });
+  };
+
+  // Agent Vault members pick roles by name, so a name there is trimmed and checked (normalizeAgentVaultRoleName).
+  const agentVaultRoleNameOf = async (scopeData: TCreateRoleDTO["scopeData"], name: string | undefined) => {
+    if (name === undefined || scopeData.scope !== AccessScope.Project) return name;
+    const { projectId } = scopeData;
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    return project?.type === ProjectType.AgentVault ? normalizeAgentVaultRoleName(name) : name;
+  };
+
   const createRole = async (dto: TCreateRoleDTO) => {
     const { data, scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
+    await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
+    const name = (await agentVaultRoleNameOf(scopeData, data.name)) ?? data.name;
+    await assertAgentVaultRuleCount(scopeData, data.permissions);
+    assertSessionConditions(data.permissions);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.has(PlanFeature.Rbac)) {
+    if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
       throw new BadRequestError({
         message:
           "Failed to create custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to create custom roles."
@@ -110,7 +189,7 @@ export const roleServiceFactory = ({
     });
 
     const role = await roleDAL.create({
-      name: data.name,
+      name,
       description: data.description,
       slug: data.slug,
       permissions: data.permissions,
@@ -126,9 +205,13 @@ export const roleServiceFactory = ({
     const scope = factory.getScopeField(scopeData);
 
     await factory.onUpdateRoleGuard(dto);
+    await assertNoDroppedDenies(scopeData, dto.droppedDenySubjects);
+    const name = await agentVaultRoleNameOf(scopeData, data?.name);
+    await assertAgentVaultRuleCount(scopeData, data?.permissions);
+    assertSessionConditions(data?.permissions);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
-    if (!plan?.has(PlanFeature.Rbac)) {
+    if (!plan?.has(PlanFeature.Rbac) && (await customRolesNeedRbacPlan(projectDAL, scopeData))) {
       throw new BadRequestError({
         message:
           "Failed to update custom role due to plan RBAC restriction. Upgrade to Infisical Enterprise plan to update custom roles."
@@ -157,7 +240,7 @@ export const roleServiceFactory = ({
     });
 
     const role = await roleDAL.updateById(existingRole.id, {
-      name: data?.name,
+      name,
       description: data?.description,
       slug: data?.slug,
       permissions: data?.permissions
@@ -177,6 +260,43 @@ export const roleServiceFactory = ({
       [scope.key]: scope.value
     });
     if (!existingRole) throw new NotFoundError({ message: `Role with ${dto.selector.id} not found` });
+
+    const project =
+      scopeData.scope === AccessScope.Project
+        ? await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
+            projectDAL.findById(scopeData.projectId)
+          )
+        : null;
+    if (scopeData.scope === AccessScope.Project && project?.type === ProjectType.AgentVault) {
+      const { projectId } = scopeData;
+      const [role] = await roleDAL.transaction(async (tx) => {
+        await lockProjectRoleChanges(projectId, tx);
+        // A time limit that has ended confers nothing and no member list shows it, so only live holders keep the role,
+        // and the ended rows go with it.
+        const rows = await membershipRoleDAL.find({ customRoleId: existingRole.id }, { tx });
+        const holders = rows.filter(isActiveRole);
+        if (holders.length) {
+          throw new BadRequestError({
+            message: `${holders.length} member${holders.length > 1 ? "s hold" : " holds"} this role. Remove it from them under Access Control first.`
+          });
+        }
+        await membershipRoleDAL.delete({ customRoleId: existingRole.id }, tx);
+        // A membership needs a role row, so one whose only row was an ended assignment of this role gets No Access.
+        const membershipIds = [...new Set(rows.map((row) => row.membershipId))];
+        if (membershipIds.length) {
+          const remaining = await membershipRoleDAL.find({ $in: { membershipId: membershipIds } }, { tx });
+          const emptied = membershipIds.filter((id) => !remaining.some((row) => row.membershipId === id));
+          if (emptied.length) {
+            await membershipRoleDAL.insertMany(
+              emptied.map((membershipId) => ({ membershipId, role: ProjectMembershipRole.NoAccess })),
+              tx
+            );
+          }
+        }
+        return roleDAL.delete({ id: existingRole.id, projectId }, tx);
+      });
+      return { ...role, projectId, permissions: unpackPermissions(role.permissions) };
+    }
 
     const [roleUsageData] = await membershipRoleDAL.find(
       {

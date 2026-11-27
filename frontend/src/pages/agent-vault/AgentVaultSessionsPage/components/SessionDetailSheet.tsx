@@ -11,6 +11,10 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import {
+  deniedReason,
+  DisabledReasonTooltip
+} from "@app/components/agent-vault/DisabledReasonTooltip";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -31,7 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import { canActOnAgentVaultSession } from "@app/helpers/agentVaultPermissions";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession, TAgentVaultSessionSkill } from "@app/hooks/api/agentVault/types";
@@ -193,17 +197,12 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
-  const { user } = useUser();
 
   const isOwnerDeleted = session?.actor.id === null;
   // The API refuses edits once the owner, or the user it acts on behalf of, is deleted.
-  const canEdit =
-    !isOwnerDeleted &&
-    session?.onBehalfOf?.id !== null &&
-    Boolean(session && canActOnAgentVaultSession(permission, user.id, session, "edit"));
-  const canRevoke = Boolean(
-    session && canActOnAgentVaultSession(permission, user.id, session, "revoke")
-  );
+  const isEditable = !isOwnerDeleted && session?.onBehalfOf?.id !== null;
+  const canEdit = Boolean(session && canActOnAgentVaultSession(permission, session, "edit"));
+  const canRevoke = Boolean(session && canActOnAgentVaultSession(permission, session, "revoke"));
   const isMachineIdentity = session?.actor.type === AgentVaultMemberType.MachineIdentity;
   const hasExpired = Boolean(
     session?.expiresAt && new Date(session.expiresAt).getTime() <= Date.now()
@@ -275,32 +274,48 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke, onEdi
                     {session.label ?? "Unlabeled Session"}
                   </SheetTitle>
                   <SessionStatusBadge status={session.status} />
-                  {canEdit && (
-                    <IconButton
-                      variant="ghost"
-                      size="xs"
-                      className="shrink-0"
-                      aria-label="Edit session"
-                      onClick={() => onEdit(session)}
+                  {isEditable && (
+                    <DisabledReasonTooltip
+                      disabledReason={deniedReason(
+                        canEdit,
+                        "You don't have permission to edit this session"
+                      )}
                     >
-                      <PencilIcon />
-                    </IconButton>
+                      <IconButton
+                        variant="ghost"
+                        size="xs"
+                        className="shrink-0"
+                        aria-label="Edit session"
+                        isDisabled={!canEdit}
+                        onClick={() => onEdit(session)}
+                      >
+                        <PencilIcon />
+                      </IconButton>
+                    </DisabledReasonTooltip>
                   )}
                 </div>
                 <SheetDescription>
                   The session&apos;s details and every request the agent made.
                 </SheetDescription>
               </div>
-              {session.status === AgentVaultSessionStatus.Active && canRevoke && (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={() => onRevoke(session)}
+              {session.status === AgentVaultSessionStatus.Active && (
+                <DisabledReasonTooltip
+                  disabledReason={deniedReason(
+                    canRevoke,
+                    "You don't have permission to revoke this session"
+                  )}
                 >
-                  <BanIcon />
-                  Revoke Session
-                </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    className="shrink-0"
+                    isDisabled={!canRevoke}
+                    onClick={() => onRevoke(session)}
+                  >
+                    <BanIcon />
+                    Revoke Session
+                  </Button>
+                </DisabledReasonTooltip>
               )}
             </SheetHeader>
 

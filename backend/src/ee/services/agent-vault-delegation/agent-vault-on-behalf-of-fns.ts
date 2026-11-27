@@ -1,18 +1,22 @@
 import { OrgMembershipStatus } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionAgentVaultSessionActions } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
-import { getAgentVaultReachability, intersectAccessBundleIds } from "../agent-vault/agent-vault-permission";
+import {
+  agentVaultSessionSubject,
+  getAgentVaultReachability,
+  intersectReach,
+  REACHES_NOTHING,
+  TAgentVaultPermission,
+  TAgentVaultReach,
+  TAgentVaultReachDep
+} from "../agent-vault/agent-vault-permission";
 import { TAgentVaultDelegationDALFactory } from "./agent-vault-delegation-dal";
 
 export type TOnBehalfOfDeps = {
@@ -20,8 +24,12 @@ export type TOnBehalfOfDeps = {
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultReachDAL: TAgentVaultReachDep;
 };
+
+// Nothing at all: no bundle, service or skill. A caller who reaches nothing never gets as far as looking a user up.
+export const reachesNothing = (reach: TAgentVaultReach) =>
+  reach.accessBundleIds?.length === 0 && reach.serviceIds?.length === 0 && reach.skillIds?.length === 0;
 
 export const findCallerDelegation = async (
   { agentVaultDelegationDAL }: Pick<TOnBehalfOfDeps, "agentVaultDelegationDAL">,
@@ -43,7 +51,7 @@ export const findCallerDelegation = async (
 
 // A user who doesn't exist reads exactly like one the delegation doesn't cover.
 export const resolveOnBehalfOfUser = async (
-  { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL }: TOnBehalfOfDeps,
+  { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, agentVaultReachDAL }: TOnBehalfOfDeps,
   {
     projectId,
     ctx,
@@ -78,7 +86,7 @@ export const resolveOnBehalfOfUser = async (
 
   if (!(await agentVaultDelegationDAL.coversUser({ delegation, userId: user.id }))) throw notCovered();
 
-  // The user's own role and grants decide what they reach. actorAuthMethod is null as in resolve: the session row
+  // The user's own roles decide what they reach. actorAuthMethod is null as in resolve: the session row
   // stores no auth method.
   const userCtx: TGenericPermission = {
     actor: ActorType.USER,
@@ -88,7 +96,10 @@ export const resolveOnBehalfOfUser = async (
   };
   let reachability: Awaited<ReturnType<typeof getAgentVaultReachability>>;
   try {
-    reachability = await getAgentVaultReachability({ permissionService, membershipDAL }, { projectId, ctx: userCtx });
+    reachability = await getAgentVaultReachability(
+      { permissionService, agentVaultReachDAL },
+      { projectId, ctx: userCtx }
+    );
   } catch (error) {
     if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") {
       throw new BadRequestError({
@@ -97,50 +108,50 @@ export const resolveOnBehalfOfUser = async (
     }
     throw error;
   }
-  // Read, the check resolve repeats: the identity starts the session, so the user only needs a live Agent Vault role.
-  // Not thrown through CASL: the denial would be recorded against the identity making the request.
-  if (
-    !reachability.permission.can(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    )
-  ) {
+  // Read on their own sessions, the check resolve repeats: the identity starts the session, so the user only needs a
+  // live Agent Vault role. Not thrown through CASL: the denial would be recorded against the identity making the request.
+  if (!reachability.permission.can(ProjectPermissionAgentVaultSessionActions.Read, agentVaultSessionSubject(user.id))) {
     throw new ForbiddenRequestError({
       message: `'${identifier}' doesn't have an active Agent Vault role, so no session can be started on their behalf. An Agent Vault admin can give them one under Access Control.`
     });
   }
 
-  return { user, identifier, accessBundleIds: reachability.accessBundleIds };
+  const { accessBundleIds, serviceIds, skillIds } = reachability;
+  const reach: TAgentVaultReach = { accessBundleIds, serviceIds, skillIds };
+  return { user, identifier, reach, permission: reachability.permission };
 };
 
-// What a session on the user's behalf could use: the bundles both the user and the caller reach. Like minting that
-// session, it checks the delegation and then the caller's own bundles before it looks the user up, so a caller granted
-// no bundle learns nothing about who is in the org. The lists that offer what such a session accepts share it.
+// What a session on the user's behalf could use: what both the user and the caller reach. Like minting that session, it
+// checks the delegation and then the caller's own reach before it looks the user up, so a caller that reaches nothing
+// learns nothing about who is in the org. The lists that offer what such a session accepts share it.
 export const findOnBehalfOfListScope = async (
   deps: TOnBehalfOfDeps,
   {
     projectId,
     ctx,
     onBehalfOf,
-    callerAccessBundleIds
+    callerReach
   }: {
     projectId: string;
     ctx: TGenericPermission;
     onBehalfOf: TOnBehalfOfUser;
-    callerAccessBundleIds: string[] | null;
+    callerReach: TAgentVaultReach;
   }
-) => {
+): Promise<{
+  reach: TAgentVaultReach;
+  owner: { userId: string } | null;
+  // The user's permission, whose denies the session's lists also leave out, as mint does.
+  userPermission: TAgentVaultPermission["permission"] | null;
+}> => {
   const delegation = await findCallerDelegation(deps, { projectId, ctx });
-  if (callerAccessBundleIds?.length === 0) return { scopeIds: [] as string[], owner: null };
+  if (reachesNothing(callerReach)) {
+    return { reach: REACHES_NOTHING, owner: null, userPermission: null };
+  }
 
-  const { user, accessBundleIds: userAccessBundleIds } = await resolveOnBehalfOfUser(deps, {
-    projectId,
-    ctx,
-    onBehalfOf,
-    delegation
-  });
-  return {
-    scopeIds: intersectAccessBundleIds(userAccessBundleIds, callerAccessBundleIds),
-    owner: { userId: user.id }
-  };
+  const {
+    user,
+    reach: userReach,
+    permission: userPermission
+  } = await resolveOnBehalfOfUser(deps, { projectId, ctx, onBehalfOf, delegation });
+  return { reach: intersectReach(userReach, callerReach), owner: { userId: user.id }, userPermission };
 };

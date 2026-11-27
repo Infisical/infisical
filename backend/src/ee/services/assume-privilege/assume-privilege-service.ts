@@ -1,9 +1,9 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, ProjectType } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -38,7 +38,7 @@ export const assumePrivilegeServiceFactory = ({
     actorPermissionDetails,
     tokenVersionId
   }) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission, projectType } = await permissionService.getProjectPermission({
       actor: actorPermissionDetails.type,
       actorId: actorPermissionDetails.id,
       projectId,
@@ -46,6 +46,13 @@ export const assumePrivilegeServiceFactory = ({
       actorOrgId: actorPermissionDetails.orgId,
       actionProjectType: ActionProjectType.Any
     });
+
+    // In Agent Vault only an admin can make someone an admin, and assuming an admin's privileges would get around that.
+    if (projectType === ProjectType.AgentVault) {
+      throw new BadRequestError({
+        message: "Agent Vault projects don't support assuming another member's privileges."
+      });
+    }
 
     if (targetActorType === ActorType.USER) {
       ForbiddenError.from(permission).throwUnlessCan(

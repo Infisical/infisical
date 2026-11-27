@@ -1,42 +1,115 @@
 ---
 title: "Access control"
-description: "Understand how permissions work in an Agent Vault project."
+description: "Understand how roles decide what each member of an Agent Vault project can do."
 ---
 
-Access control in Agent Vault happens at two levels, inside each [Agent Vault project](/documentation/platform/agent-vault/projects):
+Each [Agent Vault project](/documentation/platform/agent-vault/projects) has its own members: users, groups, and [machine identities](/documentation/platform/identities/machine-identities). Each member holds one or more roles, which control what the member can do in the project, such as which [access bundles](/documentation/platform/agent-vault/access-bundles), services, and skills they can use in a [session](/documentation/platform/agent-vault/sessions).
 
-1. **Product membership:** being added to the project
-2. **Access bundle grants:** being granted an [access bundle](/documentation/platform/agent-vault/access-bundles), so your sessions can use it and the services and skills it holds
-
-Users, groups, and [machine identities](/documentation/platform/identities/machine-identities) go through both levels and use the same roles, so this page applies to all three unless it says otherwise.
+Membership in one project gives no access to another. This page applies to users, groups, and machine identities alike unless it says otherwise.
 
 <Note>
-Access control doesn't directly apply to the actual agents you run through Agent Vault:
+Roles don't apply directly to the agents you run through Agent Vault:
 
-- A user or machine identity creates a [session](/documentation/platform/agent-vault/sessions) with the access bundles, services, and skills that their access allows
-- Agents can only make requests to the services in their session
+- A user or machine identity uses their roles to create a [session](/documentation/platform/agent-vault/sessions)
+- An agent can only make requests that its session allows
 
 This keeps the user or machine identity directly accountable for what an agent can access.
 </Note>
 
-## Product membership
+## Roles
 
-Each Agent Vault project has its own member list, and membership in one project gives no access to another. Each member of a project has one of two roles:
+Every project has two built-in roles. For any other set of permissions, create a custom role:
 
-| Role | What they can do |
-|------|------------------|
-| **Admin** | <ul><li>Create and manage access bundles, services, variables, skills, [hooks](/documentation/platform/agent-vault/hooks), and proxies</li><li>Grant access bundles</li><li>Manage membership</li><li>Let machine identities [create sessions on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users)</li><li>Send [inline services](/documentation/platform/agent-vault/inline-services) with a session</li><li>Read audit logs</li></ul> |
-| **Member** | <ul><li>Create sessions with the access bundles granted to them, or with services and skills from those bundles</li><li>Send [skills with a session](/documentation/platform/agent-vault/skills#send-skills-with-a-session), with or without an access bundle</li><li>Revoke their own sessions</li><li>Set up their [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) and keep [personal variables](/documentation/platform/agent-vault/text-variables#personal-variables)</li><li>View the latest version of the skills in the access bundles granted to them</li></ul> |
+| Role | What it allows |
+|------|----------------|
+| **Admin** | Everything in the project, including managing members and roles, letting machine identities [create sessions on behalf of users](/documentation/platform/agent-vault/sessions-on-behalf-of-users), and sending [inline services](/documentation/platform/agent-vault/inline-services) with a session |
+| **No Access** | Nothing, until someone gives the member another role |
+| Custom role | Exactly the permissions you choose for the role |
 
-An admin can use every access bundle without a grant. A member can't use an access bundle until an admin grants it, and only sees the bundles granted to them. On the **Sessions** page, members see their own sessions, and admins can switch between **All Sessions** and **My Sessions**.
+If a member holds several roles, they can do everything that any of their roles allows, except what one of their roles denies.
 
-If you're an organization admin, you can add yourself to any project with the **Admin** role by selecting **Join as Admin** (see [Join as an organization admin](/documentation/platform/agent-vault/projects#join-as-an-organization-admin)). You don't need another admin to add you.
+If you invite someone to the organization with access to an Agent Vault project, you pick their role in the project: **Admin**, **No Access**, or one of the project's custom roles.
 
-### Adding members
+A member's roles have three limits:
 
-<Info>
-  You need the **Admin** role in the project to add members.
-</Info>
+- A member can hold up to 10 roles
+- **No Access** can't be combined with another role
+- You can't give a role for a limited time
+
+### Use an access bundle, service, or skill
+
+To create sessions with an access bundle, a service, or a skill, a member needs a role with **Use** on it:
+
+- **Use** on an access bundle lets a member create sessions with the bundle, including every service and skill in it, without permissions on those services and skills
+- **Use** on a service or a skill lets a member [pick it for a session](/documentation/platform/agent-vault/create-a-session) without an access bundle
+
+If one of a member's roles denies **Use** on a service or skill, the member can't pick it for a session on its own, but they still get it with any access bundle they can use that holds it. To keep a service or skill from a member, take it out of the access bundles they can use.
+
+**View** lets a member see an access bundle, service, or skill without using it. Each permission can cover every access bundle, service, or skill in the project, including ones created later, or only the ones you pick.
+
+### See who can use an access bundle, service, or skill
+
+Infisical lists the roles that allow **Use** on each access bundle, service, and skill, and the members who hold each role. For a service or skill, the list also includes the roles that can use an access bundle that holds it. The list checks each role on its own, so if a member also holds a role that denies **Use** on an access bundle, they can't use that access bundle even though the list shows their other role.
+
+To open the list, select **Who Can Use** in one of these places:
+
+- The row's actions menu on the **Access Bundles**, **Services**, or **Skills** page
+- **Options** on an access bundle's page
+
+Through the API, call the [List access bundle roles](/api-reference/endpoints/agent-vault-access-bundles/list-roles), [List service roles](/api-reference/endpoints/agent-vault-services/list-roles), or [List skill roles](/api-reference/endpoints/agent-vault-skills/list-roles) endpoint.
+
+### Create a custom role
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Control** and select the **Roles** tab.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-control-roles.png" alt="The Roles tab of the Access Control page, listing the built-in Admin and No Access roles and the custom Release Engineers role, and a Create Role button" />
+    </Frame>
+  </Step>
+  <Step>
+    Select **Create Role**, enter a **Name**, and select **Create Role** in the dialog. The new role grants nothing until you add policies to it.
+  </Step>
+  <Step>
+    On the role's page, select **Add Policies** and pick **Access Bundles**. Then select **Add Access Bundles** and check the access bundles the role needs. To cover every access bundle, including ones created later, check **All Access Bundles**.
+  </Step>
+  <Step>
+    Pick the access for each access bundle, such as **Use**. Add services, skills, and other permissions such as **Sessions** from **Add Policies** the same way, then select **Save Changes**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-control-role.png" alt="The page of the Release Engineers role, with Use on the code-review access bundle, a summary of what the role grants, and the ci-runner machine identity under Assigned To" />
+    </Frame>
+  </Step>
+</Steps>
+
+To write a role's rules as JSON, select the **JSON** tab on the role's page. The [Agent Vault permissions reference](/internals/permissions/project-permissions#agent-vault) lists every subject, action, and condition a rule can use, with an example of creating a role through the API.
+
+<Warning>
+If a member's role can edit roles, the member can change what any role allows, including their own roles. Give **Manage** on **Roles** only to people you'd trust with the **Admin** role.
+</Warning>
+
+### Give a role to members
+
+To give a role to members of the project, you need the **Admin** role, or another role with **Manage and Assign Roles** on **Members and Groups**.
+
+<Steps>
+  <Step>
+    In your Agent Vault project, go to **Access Control**, select the **Roles** tab, and select the role.
+  </Step>
+  <Step>
+    Under **Assigned To**, select **Assign**.
+  </Step>
+  <Step>
+    In **Assign To**, pick the users, machine identities, or groups, then select **Assign**.
+  </Step>
+</Steps>
+
+If you pick someone who isn't a member of the project yet, Infisical adds them to the project with only this role.
+
+## Add members
+
+To add members, you need a role that can add them, such as **Admin**.
 
 <Steps>
   <Step>
@@ -44,48 +117,30 @@ If you're an organization admin, you can add yourself to any project with the **
   </Step>
   <Step>
     Select the **Users**, **Machine Identities**, or **Groups** tab.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/access-control-users.png" alt="The Access Control page of the project on the Users tab, listing the project's members with their Admin or Member product role, one of them with a Pending Invitation, and an Add Users button" />
-    </Frame>
   </Step>
   <Step>
     Select **Add Users**, **Add Machine Identity**, or **Add Group**.
   </Step>
   <Step>
-    Select who to add, and choose **Admin** or **Member** in **Product Role**.
+    Select who to add, and pick their roles in **Roles**.
   </Step>
 </Steps>
 
 You can only add users who are already in the [organization](/documentation/platform/organization), including users whose invite is still pending. If a user's invite is pending, they can't create sessions until they accept it.
 
-<Note>
-You can't change your own role or remove your own access. Ask an admin if you need to do either.
-</Note>
+Only an admin can give someone the **Admin** role, or change or remove another admin. Only an admin can create tokens or client secrets for a machine identity that holds the **Admin** role, or change how it logs in. Roles in an Agent Vault project can't assume another member's privileges. You can't change your own roles or remove your own access, even if you're an admin. To do either, ask another admin.
 
-## Access bundle grants
+If you're an organization admin, you can add yourself to any project with the **Admin** role by selecting **Join as Admin** (see [Join as an organization admin](/documentation/platform/agent-vault/projects#join-as-an-organization-admin)). You don't need another admin to add you.
 
-Adding someone to a project doesn't automatically give their agents access to any external APIs. They also need a grant on an [access bundle](/documentation/platform/agent-vault/access-bundles), which defines the external APIs their agents can access during a [session](/documentation/platform/agent-vault/sessions).
+## Groups
 
-<Info>
-  You need the **Admin** role in the project to grant access bundles.
-</Info>
-
-Open an access bundle and select **Manage Access** to [grant it](/documentation/platform/agent-vault/access-bundles#grant-access) to a user, machine identity, or group.
-
-### Groups
-
-If you grant an access bundle to a group, every member of that group gets access to it, and each member can independently create sessions.
-
-<Note>
-If someone joins the group, they inherit access to the bundle. If they leave the group, or someone deletes the group, they lose access to the bundle. Infisical also deletes their [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the bundle's services, unless they can still use a service another way, such as through a direct grant, another group, another access bundle, or the **Admin** role.
-</Note>
+If a group holds a role, every member of the group gets what the role allows, and each member can create sessions on their own. If someone leaves the group, they lose what the group's roles allowed.
 
 ## When access changes
 
-If someone's project membership or access bundle grants change while their agent is running, the proxy applies the change to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). They don't need to restart the agent.
+If someone's roles change while their agent is running, the proxy applies the change to the agent's requests within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). They don't need to restart the agent.
 
-If someone is removed from a project or leaves it, Infisical also removes their access bundle grants and their personal values in that project. If they get added back, they'll need to be re-granted the same access bundles again before their sessions get credentials.
+If someone loses access to a service but stays in the project, Infisical keeps their [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service, and their sessions stop using them until they can use the service again. If someone is removed from the project or leaves it, Infisical deletes their personal values in the project.
 
 <Tip>
 For more information about what happens when access changes mid-run, check out [access changes](/documentation/platform/agent-vault/sessions#access-changes).

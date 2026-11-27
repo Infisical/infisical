@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { findDroppedDenySubjects } from "@app/ee/services/permission/dropped-deny-fns";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";
@@ -13,6 +14,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedRoleSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+// Read from the raw body before parsing, which drops `inverted` on subjects whose schema lacks it.
+const droppedDeniesByRequest = new WeakMap<object, string[]>();
+const recordDroppedDenies = async (req: { body: unknown }) => {
+  droppedDeniesByRequest.set(req, findDroppedDenySubjects((req.body as { permissions?: unknown } | null)?.permissions));
+};
 
 export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -54,10 +61,12 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    preValidation: recordDroppedDenies,
     handler: async (req) => {
       const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
 
       const role = await server.services.role.createRole({
+        droppedDenySubjects: droppedDeniesByRequest.get(req),
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,
@@ -144,9 +153,11 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    preValidation: recordDroppedDenies,
     handler: async (req) => {
       const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
       const role = await server.services.role.updateRole({
+        droppedDenySubjects: droppedDeniesByRequest.get(req),
         permission: req.permission,
         scopeData: {
           scope: AccessScope.Project,

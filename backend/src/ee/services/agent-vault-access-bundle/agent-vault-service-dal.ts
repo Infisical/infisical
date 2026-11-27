@@ -352,7 +352,13 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
   ): Promise<
     | Pick<
         TAgentVaultServices,
-        "id" | "credentialType" | "memberProvidedFields" | "config" | "credentialConfig" | "encryptedCredential"
+        | "id"
+        | "hostPattern"
+        | "credentialType"
+        | "memberProvidedFields"
+        | "config"
+        | "credentialConfig"
+        | "encryptedCredential"
       >
     | undefined
   > => {
@@ -360,10 +366,24 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
       return (await tx(TableName.AgentVaultService)
         .where({ id })
         .forShare()
-        .first("id", "credentialType", "memberProvidedFields", "config", "credentialConfig", "encryptedCredential")) as
+        .first(
+          "id",
+          "hostPattern",
+          "credentialType",
+          "memberProvidedFields",
+          "config",
+          "credentialConfig",
+          "encryptedCredential"
+        )) as
         | Pick<
             TAgentVaultServices,
-            "id" | "credentialType" | "memberProvidedFields" | "config" | "credentialConfig" | "encryptedCredential"
+            | "id"
+            | "hostPattern"
+            | "credentialType"
+            | "memberProvidedFields"
+            | "config"
+            | "credentialConfig"
+            | "encryptedCredential"
           >
         | undefined;
     } catch (error) {

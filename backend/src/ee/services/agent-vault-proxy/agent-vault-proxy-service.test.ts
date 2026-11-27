@@ -4,9 +4,10 @@ import { describe, expect, test, vi } from "vitest";
 import { RuleViolationError } from "@app/domains/lib/errors";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
+  agentVaultMemberTestRules,
+  agentVaultTestReachDAL
+} from "@app/ee/services/agent-vault/testing/agent-vault-test-roles";
+import { agentVaultProjectAdminPermissions } from "@app/ee/services/permission/default-roles";
 import { ConflictError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -195,15 +196,15 @@ const setup = (
       findOne: async () => sessionLogConfig,
       findByProjectIdFromPrimary: async () => sessionLogConfig
     },
-    membershipDAL: { findResourceMembershipsForActor: async () => [] },
+    agentVaultReachDAL: agentVaultTestReachDAL(),
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
     projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
     userDAL: { findById: async () => undefined as never },
     permissionService: {
-      getProjectPermission: async () =>
+      getProjectPermission: async ({ actorId }: { actorId: string }) =>
         ({
           permission: createMongoAbility(
-            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
+            isOwnerAdmin ? agentVaultProjectAdminPermissions : agentVaultMemberTestRules([], actorId)
           ),
           hasRole: () => isOwnerAdmin,
           memberships: []
@@ -641,14 +642,10 @@ describe("resolve for a session on a user's behalf", () => {
         findOne: async () => sessionLogConfig,
         findByProjectIdFromPrimary: async () => sessionLogConfig
       },
-      membershipDAL: {
-        findResourceMembershipsForActor: async ({ actorId }: { actorId: string }) =>
-          (actor(actorId).grants ?? []).map((scopeResourceId) => ({
-            isActive: true,
-            actorGroupId: null,
-            scopeResourceId
-          }))
-      } as never,
+      // The bundles the user and the identity were granted are what the project holds.
+      agentVaultReachDAL: agentVaultTestReachDAL({
+        accessBundleIds: [...new Set([...(user.grants ?? []), ...(identity.grants ?? [])])]
+      }),
       orgDAL: {
         findEffectiveOrgMembership: async ({ actorId }: { actorId: string }) =>
           ({ isActive: actor(actorId).isActive ?? true }) as never
@@ -663,7 +660,7 @@ describe("resolve for a session on a user's behalf", () => {
           }
           const roleRules = actor(actorId).isAdmin
             ? agentVaultProjectAdminPermissions
-            : agentVaultProjectMemberPermissions;
+            : agentVaultMemberTestRules(actor(actorId).grants, actorId);
           return {
             permission: createMongoAbility(actor(actorId).canRead === false ? [] : roleRules),
             hasRole: () => Boolean(actor(actorId).isAdmin),

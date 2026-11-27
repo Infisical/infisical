@@ -182,6 +182,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       projectId,
       sessionId,
       actor,
+      exceptActor,
       statuses,
       search,
       metadataFilter,
@@ -191,6 +192,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
       projectId: string;
       sessionId?: string;
       actor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
+      // Leaves out this actor's own sessions, for a caller who can read everyone's but their own.
+      exceptActor?: { type: ActorType.USER | ActorType.IDENTITY; id: string };
       statuses?: AgentVaultSessionStatus[];
       search?: string;
       metadataFilter?: TAgentVaultSessionMetadataFilter;
@@ -209,6 +212,13 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         // A session on a user's behalf is the identity's, so it is never in the user's own list.
         if (actor?.type === ActorType.USER) void query.where(`${TableName.AgentVaultSession}.userId`, actor.id);
         if (actor?.type === ActorType.IDENTITY) void query.where(`${TableName.AgentVaultSession}.identityId`, actor.id);
+        if (exceptActor) {
+          const column = `${TableName.AgentVaultSession}.${exceptActor.type === ActorType.USER ? "userId" : "identityId"}`;
+          // A plain <> drops the rows where the column is null, which are every other kind of actor's sessions.
+          void query.where((qb) => {
+            void qb.whereNull(column).orWhereNot(column, exceptActor.id);
+          });
+        }
         if (statuses?.length) {
           void query.where((qb) => {
             statuses.forEach((status) => {
