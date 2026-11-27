@@ -209,9 +209,9 @@ export const RequestDetail = ({
           {row.userId === user.id && <Badge tone="soft">You</Badge>}
           {!row.isRequired && <Badge tone="outline">Optional</Badge>}
           {!row.isActive && (
-            <Tooltip content="This user no longer has an active organization membership.">
-              <Badge tone="soft">Deactivated</Badge>
-            </Tooltip>
+            <Badge reason="This user no longer has an active organization membership." tone="soft">
+              Deactivated
+            </Badge>
           )}
         </Inline>
       )
@@ -274,9 +274,9 @@ export const RequestDetail = ({
           <>
             {status}
             {request.bypassReason && (
-              <Tooltip content="Merged without the required approvals.">
-                <Badge tone="warn">Bypassed</Badge>
-              </Tooltip>
+              <Badge reason="Merged without the required approvals." tone="warn">
+                Bypassed
+              </Badge>
             )}
           </>
         }

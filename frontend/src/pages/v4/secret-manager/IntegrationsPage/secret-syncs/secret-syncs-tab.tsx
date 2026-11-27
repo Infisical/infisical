@@ -277,11 +277,14 @@ export const SecretSyncsTab = ({
         const path = sourcePathOf(sync);
         if (!path || !sync.environment)
           return (
-            <Tooltip content="The source folder was deleted. Pick a new source or delete this sync.">
-              <StatusText tone="bad" icon="alert" tabIndex={0} data-row-interactive>
-                Source deleted
-              </StatusText>
-            </Tooltip>
+            <StatusText
+              reason="The source folder was deleted. Pick a new source or delete this sync."
+              tone="bad"
+              icon="alert"
+              data-row-interactive
+            >
+              Source deleted
+            </StatusText>
           );
         return <MiddleTruncate mono text={path} />;
       }

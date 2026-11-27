@@ -18,7 +18,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
@@ -223,11 +222,9 @@ export const RelaysPanel = ({
         ) : (
           <Inline gap={8} align="center" wrap={false}>
             {relay.name}
-            <Tooltip content="This relay is managed by Infisical.">
-              <Badge tone="soft" tabIndex={0}>
-                Managed
-              </Badge>
-            </Tooltip>
+            <Badge reason="This relay is managed by Infisical." tone="soft">
+              Managed
+            </Badge>
           </Inline>
         )
     },

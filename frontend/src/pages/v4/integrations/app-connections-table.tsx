@@ -232,9 +232,9 @@ const useConnectionColumns = (connections: TAppConnection[], scope: AppConnectio
       render: (row) => (
         <Inline gap={4} align="center" wrap={false}>
           {row.isPlatformManagedCredentials && (
-            <Tooltip content="Infisical manages this connection's credentials.">
-              <Badge tone="info">Platform managed</Badge>
-            </Tooltip>
+            <Badge reason="Infisical manages this connection's credentials." tone="info">
+              Platform managed
+            </Badge>
           )}
           <RotationBadge row={row} />
         </Inline>

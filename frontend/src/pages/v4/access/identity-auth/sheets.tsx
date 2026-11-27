@@ -30,7 +30,6 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Snippet } from "@infisical/cipher/ui/snippet";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
@@ -62,11 +61,9 @@ export type AuthIdentity = {
 };
 
 export const LockBadge = ({ label }: { label: string }) => (
-  <Tooltip content={label}>
-    <Badge tone="bad" aria-label={label}>
-      <Icon name="lock" />
-    </Badge>
-  </Tooltip>
+  <Badge reason={label} tone="bad" aria-label={label}>
+    <Icon name="lock" />
+  </Badge>
 );
 
 export const ACTIVE_LOCKOUTS = "Auth method has active lockouts";
