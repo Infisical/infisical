@@ -570,12 +570,13 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       });
     }
 
-    await deps.pamDevicePostureService.enforce({
+    const { grant: deviceGrant } = await deps.pamDevicePostureService.enforce({
       account,
       accessType: PamAccessType.Credential,
       deviceVerificationId,
       actor: ctx
     });
+    if (deviceGrant) grantExpiresAt = deviceGrant.expiresAt ? new Date(deviceGrant.expiresAt) : null;
 
     if (policy.requireMfa) {
       if (ctx.principal.type !== ActorType.USER) {

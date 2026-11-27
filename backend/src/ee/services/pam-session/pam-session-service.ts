@@ -585,7 +585,7 @@ export const pamSessionServiceFactory = ({
     const trimmedReason = reason?.trim() || null;
 
     // The device is checked before MFA, so a CLI retrying with a device check can reuse its MFA session
-    await pamDevicePostureService.enforce({ account, deviceVerificationId, actor });
+    const { grant: deviceGrant } = await pamDevicePostureService.enforce({ account, deviceVerificationId, actor });
 
     if (policy.requireMfa) {
       if (!isUserActor) {
@@ -671,8 +671,9 @@ export const pamSessionServiceFactory = ({
         });
       }
       // A null expiresAt means a never-expiring grant per the checkGrant contract
-      if (grant.expiresAt) {
-        const grantRemainingMs = new Date(grant.expiresAt).getTime() - Date.now();
+      const grantExpiresAt = deviceGrant ? deviceGrant.expiresAt : grant.expiresAt;
+      if (grantExpiresAt) {
+        const grantRemainingMs = new Date(grantExpiresAt).getTime() - Date.now();
         if (grantRemainingMs <= 0) {
           throw new ForbiddenRequestError({
             name: "PAM_GRANT_EXPIRED",

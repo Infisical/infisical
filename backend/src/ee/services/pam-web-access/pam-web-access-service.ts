@@ -271,7 +271,10 @@ export const pamWebAccessServiceFactory = ({
       });
     }
 
-    await pamDevicePostureService.enforce({ account, deviceVerificationId, actor });
+    const { grant: deviceGrant } = await pamDevicePostureService.enforce({ account, deviceVerificationId, actor });
+    if (deviceGrant) {
+      grantRemainingMs = deviceGrant.expiresAt ? new Date(deviceGrant.expiresAt).getTime() - Date.now() : null;
+    }
 
     if (policy.requireMfa) {
       await enforceMfa(

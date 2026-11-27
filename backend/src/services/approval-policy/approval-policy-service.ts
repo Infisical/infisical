@@ -2516,6 +2516,18 @@ export const approvalPolicyServiceFactory = ({
     return matched.find((grant) => !grant.expiresAt || new Date(grant.expiresAt) > now) ?? matched[0] ?? null;
   };
 
+  const getActiveGrants = async (
+    policyType: ApprovalPolicyType,
+    projectId: string,
+    actor: TApprovalSubjectActor,
+    inputs: TApprovalPolicyInputs
+  ) => {
+    const now = new Date();
+    return (await $matchingGrants(policyType, projectId, actor, inputs)).filter(
+      (grant) => !grant.expiresAt || new Date(grant.expiresAt) > now
+    );
+  };
+
   const getAccessStatuses = async (
     policyType: ApprovalPolicyType,
     projectId: string,
@@ -2992,6 +3004,7 @@ export const approvalPolicyServiceFactory = ({
       $resource(policyType).matchPolicy(projectId, inputs),
     isPendingRequestUndecidable,
     getActiveGrant,
+    getActiveGrants,
     getAccessStatuses,
     getRequestableScopes,
     getBypassableScopeIds,
