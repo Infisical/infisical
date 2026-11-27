@@ -761,6 +761,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <VenafiTppConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Netlify:
         return <NetlifyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.AzureEntraId:
+        return <AzureEntraIdConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.MicrosoftIntune:
         return <MicrosoftIntuneConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       default:

@@ -1508,13 +1508,15 @@ export const appConnectionServiceFactory = ({
       connectAppConnectionById,
       appConnectionDAL,
       kmsDataKeyService,
-      instanceConfigService
+      instanceConfigService,
+      oidcIssuerService
     ),
     azureDevOps: azureDevOpsConnectionService(
       connectAppConnectionById,
       appConnectionDAL,
       kmsDataKeyService,
-      instanceConfigService
+      instanceConfigService,
+      oidcIssuerService
     ),
     auth0: auth0ConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
     salesforce: salesforceConnectionService(connectAppConnectionById),
@@ -1548,7 +1550,7 @@ export const appConnectionServiceFactory = ({
     ldap: ldapConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService, keyStore),
     dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     ultraDNS: ultraDNSConnectionService(connectAppConnectionById),
-    azureDns: azureDnsConnectionService(connectAppConnectionById),
+    azureDns: azureDnsConnectionService(connectAppConnectionById, oidcIssuerService),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
     hasuraCloud: hasuraCloudConnectionService(connectAppConnectionById),
@@ -1573,7 +1575,12 @@ export const appConnectionServiceFactory = ({
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),
-    azureEntraId: azureEntraIdConnectionService(connectAppConnectionById, appConnectionDAL, kmsDataKeyService),
+    azureEntraId: azureEntraIdConnectionService(
+      connectAppConnectionById,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    ),
     doppler: dopplerConnectionService(connectAppConnectionById),
     digicert: digicertConnectionService(connectAppConnectionById),
     travisCI: travisCIConnectionService(connectAppConnectionById),

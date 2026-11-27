@@ -88,18 +88,15 @@ import {
   getAzureDnsConnectionListItem,
   validateAzureDnsConnectionCredentials
 } from "./azure-dns/azure-dns-connection-fns";
+import { TAzureDnsConnectionConfig } from "./azure-dns/azure-dns-connection-types";
 import {
   AzureEntraIdConnectionMethod,
   getAzureEntraIdConnectionListItem,
+  TAzureEntraIdConnectionConfig,
   validateAzureEntraIdConnectionCredentials
 } from "./azure-entra-id";
+import { AzureKeyVaultConnectionMethod, TAzureKeyVaultConnectionConfig } from "./azure-key-vault";
 import {
-  AzureKeyVaultConnectionMethod,
-  TAzureKeyVaultConnectionConfig,
-  TAzureKeyVaultConnectionFederatedCredential
-} from "./azure-key-vault";
-import {
-  getAzureKeyVaultConnectionFederatedCredential,
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault/azure-key-vault-connection-fns";
@@ -317,6 +314,7 @@ import {
   ServiceNowConnectionMethod,
   validateServiceNowConnectionCredentials
 } from "./servicenow";
+import { getAzureConnectionFederatedCredential } from "./shared/azure/azure-managed-identity-fns";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import {
   getSnowflakeConnectionListItem,
@@ -749,17 +747,20 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.AzureAppConfiguration]: ((config: TAppConnectionConfig) =>
       validateAzureAppConfigurationConnectionCredentials(
         config as TAzureAppConfigurationConnectionConfig,
-        deps.instanceConfigService
+        deps.instanceConfigService,
+        deps.oidcIssuerService
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureClientSecrets]: ((config: TAppConnectionConfig) =>
       validateAzureClientSecretsConnectionCredentials(
         config as TAzureClientSecretsConnectionConfig,
-        deps.instanceConfigService
+        deps.instanceConfigService,
+        deps.oidcIssuerService
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureDevOps]: ((config: TAppConnectionConfig) =>
       validateAzureDevOpsConnectionCredentials(
         config as TAzureDevOpsConnectionConfig,
-        deps.instanceConfigService
+        deps.instanceConfigService,
+        deps.oidcIssuerService
       )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureADCS]: validateAzureADCSConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ADCS]: validateADCSConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -797,7 +798,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.UltraDNS]: validateUltraDNSConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureDNS]: validateAzureDnsConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureDNS]: ((config: TAppConnectionConfig) =>
+      validateAzureDnsConnectionCredentials(
+        config as TAzureDnsConnectionConfig,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -820,7 +825,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Devin]: validateDevinConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.CircleCI]: validateCircleCIConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloud66]: validateCloud66ConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureEntraId]: validateAzureEntraIdConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureEntraId]: ((config: TAppConnectionConfig) =>
+      validateAzureEntraIdConnectionCredentials(
+        config as TAzureEntraIdConnectionConfig,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.MicrosoftIntune]: validateMicrosoftIntuneConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Venafi]: validateVenafiConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.VenafiTpp]: ((config: TAppConnectionConfig) =>
@@ -1026,6 +1035,11 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OVHConnectionMethod.Certificate:
       return "Certificate";
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDnsConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
       return "Managed Identity";
     case OVHConnectionMethod.Token:
       return "Token";
@@ -1081,10 +1095,22 @@ export const decryptAppConnection = async (
   } as TAppConnection;
 };
 
-type TAzureKeyVaultManagedIdentityConnection = Extract<
+type TAzureManagedIdentityConnection = Extract<
   TAppConnection,
-  { app: AppConnection.AzureKeyVault; method: AzureKeyVaultConnectionMethod.ManagedIdentity }
+  {
+    method:
+      | AzureKeyVaultConnectionMethod.ManagedIdentity
+      | AzureAppConfigurationConnectionMethod.ManagedIdentity
+      | AzureClientSecretsConnectionMethod.ManagedIdentity
+      | AzureDevOpsConnectionMethod.ManagedIdentity
+      | AzureDnsConnectionMethod.ManagedIdentity
+      | AzureEntraIdConnectionMethod.ManagedIdentity;
+  }
 >;
+
+type TAzureManagedIdentityConnectionWithFederatedCredential = TAzureManagedIdentityConnection & {
+  credentials: { federatedCredential: ReturnType<typeof getAzureConnectionFederatedCredential> };
+};
 
 type TGcpWorkloadIdentityFederationConnection = Extract<
   TAppConnection,
@@ -1095,26 +1121,11 @@ type TGcpWorkloadIdentityFederationConnection = Extract<
 export const addAppConnectionFederatedCredential = (
   appConnection: TAppConnection
 ):
-  | Exclude<TAppConnection, TAzureKeyVaultManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection>
-  | (TAzureKeyVaultManagedIdentityConnection & {
-      credentials: { federatedCredential: TAzureKeyVaultConnectionFederatedCredential };
-    })
+  | Exclude<TAppConnection, TAzureManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection>
+  | TAzureManagedIdentityConnectionWithFederatedCredential
   | (TGcpWorkloadIdentityFederationConnection & {
       credentials: { federatedCredential: TGcpConnectionFederatedCredential };
     }) => {
-  if (
-    appConnection.app === AppConnection.AzureKeyVault &&
-    appConnection.method === AzureKeyVaultConnectionMethod.ManagedIdentity
-  ) {
-    return {
-      ...appConnection,
-      credentials: {
-        ...appConnection.credentials,
-        federatedCredential: getAzureKeyVaultConnectionFederatedCredential(appConnection)
-      }
-    };
-  }
-
   if (
     appConnection.app === AppConnection.GCP &&
     appConnection.method === GcpConnectionMethod.WorkloadIdentityFederation
@@ -1132,10 +1143,27 @@ export const addAppConnectionFederatedCredential = (
     };
   }
 
-  return appConnection as Exclude<
-    TAppConnection,
-    TAzureKeyVaultManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection
-  >;
+  switch (appConnection.method) {
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+    case AzureDevOpsConnectionMethod.ManagedIdentity:
+    case AzureDnsConnectionMethod.ManagedIdentity:
+    case AzureEntraIdConnectionMethod.ManagedIdentity:
+      // TS cannot tie the spread credentials back to each connection's method, so the result is asserted
+      return {
+        ...appConnection,
+        credentials: {
+          ...appConnection.credentials,
+          federatedCredential: getAzureConnectionFederatedCredential(appConnection)
+        }
+      } as TAzureManagedIdentityConnectionWithFederatedCredential;
+    default:
+      return appConnection as Exclude<
+        TAppConnection,
+        TAzureManagedIdentityConnection | TGcpWorkloadIdentityFederationConnection
+      >;
+  }
 };
 
 const platformManagedCredentialsNotSupported: TAppConnectionTransitionCredentialsToPlatform = ({ app }) => {

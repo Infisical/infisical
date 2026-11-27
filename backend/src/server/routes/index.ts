@@ -3749,7 +3749,8 @@ export const registerRoutes = async (
     projectBotService,
     keyStore,
     licenseService,
-    alertService
+    alertService,
+    oidcIssuerService
   });
 
   const kmipService = kmipServiceFactory({

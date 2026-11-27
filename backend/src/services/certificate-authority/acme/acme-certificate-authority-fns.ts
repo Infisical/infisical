@@ -520,7 +520,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -627,7 +628,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }

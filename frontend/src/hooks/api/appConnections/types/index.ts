@@ -111,6 +111,7 @@ export * from "./azure-client-secrets-connection";
 export * from "./azure-devops-connection";
 export * from "./azure-dns-connection";
 export * from "./azure-entra-id-connection";
+export * from "./azure-federated-credential";
 export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";

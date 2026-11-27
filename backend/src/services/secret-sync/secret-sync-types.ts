@@ -16,6 +16,7 @@ import {
   TOCIVaultSyncWithCredentials
 } from "@app/ee/services/secret-sync/oci-vault";
 import { QueueJobs } from "@app/queue";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import {
   TAwsSecretsManagerSync,
@@ -675,6 +676,7 @@ export type TPreSaveTransformDeps = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findOne">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TPreSaveTransformSyncOptionsParams = {
