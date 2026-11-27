@@ -2,7 +2,7 @@ import { GcpIamServiceAccountSuffixError } from "./gcp-iam";
 import { TDynamicProviderFns } from "./models";
 import { SnowflakeUnsupportedStatementError } from "./snowflake";
 
-// Inputs saved before a validation rule was added still load, so they can be read and fixed through an update
+// Returns stored inputs as they are when they fail the GCP IAM suffix check or the Snowflake statement check
 export const validateStoredProviderInputs = async (
   provider: Pick<TDynamicProviderFns, "validateProviderInputs">,
   storedInputs: object,

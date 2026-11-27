@@ -14,7 +14,7 @@ const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
 
 export const SNOWFLAKE_SHOW_PAGE_SIZE = 100;
 
-// The driver shares session parameters across connections, so each connection sets its own bind threshold
+// Each connection sets its own bind threshold
 export const SNOWFLAKE_ARRAY_BINDING_THRESHOLD = Number.MAX_SAFE_INTEGER;
 
 const escapeSnowflakeStringLiteral = (value: string) => value.replace(/'/g, "''");
@@ -43,14 +43,18 @@ export const getSnowflakeConnectionListItem = () => {
   };
 };
 
+export const getSnowflakeConnectionOptions = (
+  credentials: TSnowflakeConnection["credentials"]
+): snowflake.ConnectionOptions => ({
+  account: credentials.account,
+  username: credentials.username,
+  password: credentials.password,
+  application: "Infisical",
+  arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD
+});
+
 export const getSnowflakeClient = async (credentials: TSnowflakeConnection["credentials"]) => {
-  const client = snowflake.createConnection({
-    account: credentials.account,
-    username: credentials.username,
-    password: credentials.password,
-    application: "Infisical",
-    arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD
-  });
+  const client = snowflake.createConnection(getSnowflakeConnectionOptions(credentials));
 
   try {
     await client.connectAsync();
@@ -75,7 +79,7 @@ export const getSnowflakeClient = async (credentials: TSnowflakeConnection["cred
   }
 };
 
-// Mirrors the driver's own check for client-side file transfer statements
+// Same three-letter test the driver uses for PUT and GET
 export const isSnowflakeFileTransferStatement = (sqlText: string) =>
   ["PUT", "GET"].includes(sqlText.trim().substring(0, 3).toUpperCase());
 

@@ -39,7 +39,7 @@ const getDaysToExpiry = (expiryDate: Date) => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-// Parses inputs and templates but skips the PUT and GET check, for revoke and renew, which check only their own statement
+// Parses inputs and templates without the PUT and GET check; revoke and renew check only their own statement
 export const parseSnowflakeProviderInputs = async (inputs: unknown) => {
   const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
   validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {
@@ -56,6 +56,16 @@ export const parseSnowflakeProviderInputs = async (inputs: unknown) => {
   return providerInputs;
 };
 
+export const getSnowflakeProviderConnectionOptions = (
+  providerInputs: z.infer<typeof DynamicSecretSnowflakeSchema>
+): snowflake.ConnectionOptions => ({
+  account: `${providerInputs.orgId}-${providerInputs.accountId}`,
+  username: providerInputs.username,
+  password: providerInputs.password,
+  application: "Infisical",
+  arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD
+});
+
 export const renderSnowflakeStatement = (template: string, values: Record<string, unknown>) => {
   const statement = handlebars.compile(template, { noEscape: true })(values);
   assertSnowflakeStatementSupported(statement);
@@ -63,7 +73,7 @@ export const renderSnowflakeStatement = (template: string, values: Record<string
 };
 
 export const SnowflakeProvider = (): TDynamicProviderFns => {
-  // Checks all three statements, so a lease is never created with a revoke statement that could not run
+  // Checks all three statements, unlike parseSnowflakeProviderInputs
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await parseSnowflakeProviderInputs(inputs);
     if (
@@ -78,13 +88,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   };
 
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSnowflakeSchema>) => {
-    const client = snowflake.createConnection({
-      account: `${providerInputs.orgId}-${providerInputs.accountId}`,
-      username: providerInputs.username,
-      password: providerInputs.password,
-      application: "Infisical",
-      arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD
-    });
+    const client = snowflake.createConnection(getSnowflakeProviderConnectionOptions(providerInputs));
 
     await client.connectAsync(noop);
 

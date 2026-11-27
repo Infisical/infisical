@@ -1,9 +1,15 @@
 import snowflake from "snowflake-sdk";
 import { describe, expect, test } from "vitest";
 
+import { getSnowflakeProviderConnectionOptions } from "@app/ee/services/dynamic-secret/providers/snowflake";
+import { getRelayConnectionOptions } from "@app/ee/services/pam-web-access/snowflake/pam-snowflake-relay-client";
 import { BadRequestError } from "@app/lib/errors";
 
-import { assertSnowflakeStatementSupported, executeSnowflakeSql } from "./snowflake-connection-fns";
+import {
+  assertSnowflakeStatementSupported,
+  executeSnowflakeSql,
+  getSnowflakeConnectionOptions
+} from "./snowflake-connection-fns";
 
 describe("assertSnowflakeStatementSupported", () => {
   test.each([
@@ -50,5 +56,28 @@ describe("executeSnowflakeSql", () => {
 
     await expect(executeSnowflakeSql(client, "PUT file://data.csv @~")).rejects.toThrow(BadRequestError);
     expect(executed).toEqual([]);
+  });
+});
+
+describe("Snowflake connection options", () => {
+  test.each([
+    {
+      client: "app connection",
+      options: getSnowflakeConnectionOptions({ account: "example-account", username: "svc", password: "unused" })
+    },
+    { client: "PAM web access", options: getRelayConnectionOptions(4100, "example-account") },
+    {
+      client: "dynamic secret",
+      options: getSnowflakeProviderConnectionOptions({
+        orgId: "example-org",
+        accountId: "example-account",
+        username: "svc",
+        password: "unused",
+        creationStatement: "CREATE USER {{username}}",
+        revocationStatement: "DROP USER {{username}}"
+      })
+    }
+  ])("$client connections send bind values inline", ({ options }) => {
+    expect(options.arrayBindingThreshold).toBe(Number.MAX_SAFE_INTEGER);
   });
 });

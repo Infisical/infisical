@@ -78,7 +78,6 @@ export const splitSnowflakeStatements = (sql: string): string[] => {
   return statements;
 };
 
-// Every statement is checked before any of them runs, so a refused query leaves nothing applied
 export const splitSupportedSnowflakeStatements = (sql: string): string[] => {
   const statements = splitSnowflakeStatements(sql);
   statements.forEach((statement) => assertSnowflakeStatementSupported(statement));
