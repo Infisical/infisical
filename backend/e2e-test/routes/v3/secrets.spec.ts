@@ -952,6 +952,146 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(secrets).toEqual([]);
     });
 
+    test("Get secret raw by version returns live generation after delete and recreate", async () => {
+      const secretKey = `RECREATED-VER-${crypto.nativeCrypto.randomUUID().slice(0, 8)}`;
+      const projectId = seedData1.projectV3.id;
+      const environment = seedData1.environment.slug;
+
+      try {
+        // Create generation 1 (versions 1..3) then delete
+        const gen1CreateRes = await testServer.inject({
+          method: "POST",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: projectId,
+            environment,
+            type: SecretType.Shared,
+            secretPath: "/",
+            secretValue: "gen1-v1",
+            secretComment: ""
+          }
+        });
+        expect(gen1CreateRes.statusCode).toBe(200);
+
+        for (const value of ["gen1-v2", "gen1-v3"]) {
+          const updateRes = await testServer.inject({
+            method: "PATCH",
+            url: `/api/v3/secrets/raw/${secretKey}`,
+            headers: { authorization: `Bearer ${authToken}` },
+            body: {
+              workspaceId: projectId,
+              environment,
+              type: SecretType.Shared,
+              secretPath: "/",
+              secretValue: value
+            }
+          });
+          expect(updateRes.statusCode).toBe(200);
+        }
+
+        const delRes = await testServer.inject({
+          method: "DELETE",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: projectId,
+            environment,
+            type: SecretType.Shared,
+            secretPath: "/"
+          }
+        });
+        expect(delRes.statusCode).toBe(200);
+
+        // Deleted key must return 404 even when fetching an earlier version number
+        const deletedVerRes = await testServer.inject({
+          method: "GET",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          query: {
+            workspaceId: projectId,
+            environment,
+            secretPath: "/",
+            version: "1"
+          }
+        });
+        expect(deletedVerRes.statusCode).toBe(404);
+
+        // Recreate generation 2 (versions 1..2)
+        const gen2CreateRes = await testServer.inject({
+          method: "POST",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: projectId,
+            environment,
+            type: SecretType.Shared,
+            secretPath: "/",
+            secretValue: "gen2-v1",
+            secretComment: ""
+          }
+        });
+        expect(gen2CreateRes.statusCode).toBe(200);
+
+        const gen2UpdateRes = await testServer.inject({
+          method: "PATCH",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: projectId,
+            environment,
+            type: SecretType.Shared,
+            secretPath: "/",
+            secretValue: "gen2-v2"
+          }
+        });
+        expect(gen2UpdateRes.statusCode).toBe(200);
+
+        const gen2V1Res = await testServer.inject({
+          method: "GET",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          query: {
+            workspaceId: projectId,
+            environment,
+            secretPath: "/",
+            version: "1"
+          }
+        });
+        expect(gen2V1Res.statusCode).toBe(200);
+        expect(JSON.parse(gen2V1Res.payload).secret.secretValue).toBe("gen2-v1");
+
+        // Version 3 only existed in deleted generation 1
+        const gen2V3Res = await testServer.inject({
+          method: "GET",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          query: {
+            workspaceId: projectId,
+            environment,
+            secretPath: "/",
+            version: "3"
+          }
+        });
+        expect(gen2V3Res.statusCode).toBe(404);
+      } finally {
+        const cleanupRes = await testServer.inject({
+          method: "DELETE",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: projectId,
+            environment,
+            type: SecretType.Shared,
+            secretPath: "/"
+          }
+        });
+        if (cleanupRes.statusCode !== 200 && cleanupRes.statusCode !== 404) {
+          throw new Error(`cleanup: unexpected ${cleanupRes.statusCode} deleting "${secretKey}" — ${cleanupRes.payload}`);
+        }
+      }
+    });
+
     test.each(testRawSecrets)("Bulk create secret raw in path $path", async ({ path, secret }) => {
       const createSecretReqBody = {
         projectSlug: seedData1.project.slug,
