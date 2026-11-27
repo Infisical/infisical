@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
@@ -13,7 +12,6 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
-import { HIDDEN_SECRET_VALUE } from "@infisical/cipher/ui/secret-input";
 import { CopyValue } from "@infisical/cipher/ui/sensitive-editor";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import FileSaver from "file-saver";
@@ -23,29 +21,6 @@ import type { TCertificate } from "@app/hooks/api/certificates/types";
 import { saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { usePkcs12Block } from "./certificate-export";
-
-const IconAction = ({
-  label,
-  icon,
-  onClick
-}: {
-  label: string;
-  icon: "download" | "eye" | "eye-off";
-  onClick: () => void;
-}) => (
-  <Tooltip content={label}>
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      icon={icon}
-      iconOnly
-      aria-label={label}
-      onClick={onClick}
-    >
-      {label}
-    </Button>
-  </Tooltip>
-);
 
 const PemBlock = ({
   label,
@@ -57,41 +32,35 @@ const PemBlock = ({
   value: string;
   fileName: string;
   sensitive?: boolean;
-}) => {
-  const [isRevealed, setIsRevealed] = useState(false);
-  const revealed = !sensitive || isRevealed;
-  const noun = label.toLowerCase();
-  return (
-    <CodeBlock
-      label={label}
-      code={revealed ? value.trim() : HIDDEN_SECRET_VALUE}
-      copyValue={value}
-      copyLabel={`Copy ${noun}`}
-      onCopy={() => saved(`${label} copied`)}
-      format="plain"
-      maxHeight={176}
-      actions={
-        <>
-          {sensitive && (
-            <IconAction
-              label={revealed ? `Hide ${noun}` : `Reveal ${noun}`}
-              icon={revealed ? "eye-off" : "eye"}
-              onClick={() => setIsRevealed((current) => !current)}
-            />
-          )}
-          <IconAction
-            label={`Download ${fileName}`}
-            icon="download"
-            onClick={() => {
-              FileSaver.saveAs(new Blob([value], { type: "text/plain;charset=utf-8" }), fileName);
-              saved(`${fileName} downloaded`);
-            }}
-          />
-        </>
-      }
-    />
-  );
-};
+}) => (
+  <CodeBlock
+    label={label}
+    code={value.trim()}
+    copyValue={value}
+    copyLabel={`Copy ${label.toLowerCase()}`}
+    onCopy={() => saved(`${label} copied`)}
+    format="plain"
+    maxHeight={176}
+    sensitive={sensitive}
+    actions={
+      <Tooltip content={`Download ${fileName}`}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          icon="download"
+          iconOnly
+          aria-label={`Download ${fileName}`}
+          onClick={() => {
+            FileSaver.saveAs(new Blob([value], { type: "text/plain;charset=utf-8" }), fileName);
+            saved(`${fileName} downloaded`);
+          }}
+        >
+          Download {fileName}
+        </Button>
+      </Tooltip>
+    }
+  />
+);
 
 const CertificateParts = ({ cert, projectId }: { cert: TCertificate; projectId: string }) => {
   const certificates = useV4Adapter("certificates");
