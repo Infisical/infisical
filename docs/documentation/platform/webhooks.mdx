@@ -15,13 +15,38 @@ Infisical supports three webhook types: General, Slack, and Microsoft Teams. Use
 
 ## Secret key verification
 
-A secret key is a way for users to verify that a webhook request was sent by Infisical and is intended for the correct integration.
+To enable verification, select **Add Webhook**, choose **General** as the **Type**, and enter a **Secret Key**.
 
-When you provide a secret key, Infisical will sign the payload of the webhook request using the key and attach a header called `x-infisical-signature` to the request with a payload.
+Infisical signs the JSON request body with HMAC-SHA256 and sends the lowercase hexadecimal signature in the `x-infisical-signature` header. The header has the form `t=<timestamp>;<signature>`, where `t` is the body's `timestamp` in epoch milliseconds.
 
-The header will be in the format `t=<timestamp>;<signature>`. You can then generate the signature yourself by generating a SHA256 hash of the payload with the secret key that you know.
+Verify the raw request body before parsing it. The header timestamp isn't signed, so compare it with the timestamp in the verified body and check that the body timestamp is recent. This Node.js example uses a five-minute window:
 
-If the signature in the header matches the signature that you generated, then you can be sure that the request was sent by Infisical and is intended for your integration. The timestamp in the header ensures that the request isn't replayed.
+```js
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verifyInfisicalWebhook(rawBody, signatureHeader, secretKey) {
+  const match = /^t=(\d+);([0-9a-f]{64})$/.exec(signatureHeader ?? "");
+  if (!match) throw new Error("Invalid webhook signature");
+
+  const expected = createHmac("sha256", secretKey).update(rawBody).digest();
+  const received = Buffer.from(match[2], "hex");
+  if (!timingSafeEqual(expected, received)) throw new Error("Invalid webhook signature");
+
+  const payload = JSON.parse(rawBody.toString("utf8"));
+  if (
+    !Number.isSafeInteger(payload.timestamp) ||
+    payload.timestamp !== Number(match[1]) ||
+    Math.abs(Date.now() - payload.timestamp) > 5 * 60_000
+  ) {
+    throw new Error("Webhook timestamp is invalid or expired");
+  }
+  return payload;
+}
+```
+
+Pass the unmodified HTTP body as a `Buffer`, the `x-infisical-signature` header, and the configured secret key to this function.
+
+The example accepts timestamps within five minutes of your server's clock. To reject exact request replays, check for and store each accepted signature as one operation, and reject signatures already stored. Keep each signature until five minutes after its signed body timestamp.
 
 ## Event filtering
 
