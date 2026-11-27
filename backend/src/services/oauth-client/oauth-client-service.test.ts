@@ -27,6 +27,12 @@ const registeredClient = {
 
 const createService = ({ mcpEnabled }: { mcpEnabled: boolean }) => {
   const org = { id: "org-id", name: "Acme Corp", rootOrgId: null, mcpEnabled, enforceMfa: false };
+  const primary = vi.fn();
+  const orgDAL = {
+    findById: vi.fn().mockResolvedValue(org),
+    findEffectiveOrgMembership: vi.fn(),
+    primaryNode: () => primary
+  };
   const keyStore = { setItemWithExpiry: vi.fn(), getItem: vi.fn(), deleteItem: vi.fn() };
   const tokenService = {
     getUserTokenSession: vi.fn().mockResolvedValue({ id: "session-id" }),
@@ -41,14 +47,14 @@ const createService = ({ mcpEnabled }: { mcpEnabled: boolean }) => {
     orgPermissionService: { getOrgPermission: vi.fn().mockResolvedValue({}) },
     keyStore,
     tokenService,
-    orgDAL: { findById: vi.fn().mockResolvedValue(org), findEffectiveOrgMembership: vi.fn() },
+    orgDAL,
     userDAL: { findById: vi.fn().mockResolvedValue({ id: "user-id", isMfaEnabled: false }) },
     oidcConfigDAL: { findOne: vi.fn() },
     userAliasDAL: { findOne: vi.fn() },
     auditLogService: { createAuditLog: vi.fn() }
   } as never);
 
-  return { service, keyStore, tokenService };
+  return { service, keyStore, tokenService, orgDAL, primary };
 };
 
 const consent = (resource?: string) => ({
@@ -64,12 +70,14 @@ const consent = (resource?: string) => ({
 
 describe("MCP access turned off for the organization", () => {
   test("consent to the MCP server is refused and issues no code", async () => {
-    const { service, keyStore } = createService({ mcpEnabled: false });
+    const { service, keyStore, orgDAL, primary } = createService({ mcpEnabled: false });
 
     await expect(service.authorizeConsent(consent(MCP_RESOURCE))).rejects.toThrow(
       new ForbiddenRequestError({ message: MCP_OFF_MESSAGE })
     );
     expect(keyStore.setItemWithExpiry).not.toHaveBeenCalled();
+    // A replica can lag behind the admin's change, so the switch is read from the primary.
+    expect(orgDAL.findById).toHaveBeenCalledWith("org-id", primary);
   });
 
   test("consent that doesn't ask for the MCP server still works", async () => {
@@ -105,7 +113,7 @@ describe("MCP access turned off for the organization", () => {
   });
 
   test("a code issued before MCP access was turned off can't be exchanged for tokens", async () => {
-    const { service, keyStore, tokenService } = createService({ mcpEnabled: false });
+    const { service, keyStore, tokenService, orgDAL, primary } = createService({ mcpEnabled: false });
     const clientId = "https://client.example.com/oauth/metadata.json";
     const codeVerifier = "a".repeat(43);
     keyStore.getItem.mockResolvedValue(
@@ -137,5 +145,6 @@ describe("MCP access turned off for the organization", () => {
       message: MCP_OFF_MESSAGE
     });
     expect(tokenService.getUserTokenSessionById).not.toHaveBeenCalled();
+    expect(orgDAL.findById).toHaveBeenCalledWith("org-id", primary);
   });
 });

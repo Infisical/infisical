@@ -19,8 +19,6 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedErro
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { safeRequest } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -79,7 +77,7 @@ type TOauthClientServiceFactoryDep = {
     | "rotateRefreshToken"
     | "revokeSessionsByUserAgent"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership" | "primaryNode">;
   userDAL: Pick<TUserDALFactory, "findById">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
@@ -665,6 +663,14 @@ export const oauthClientServiceFactory = ({
     }
   };
 
+  // Consent, code exchange and every tool call check this, since turning MCP access off keeps existing connections.
+  // Read from the primary so a lagging replica can't keep MCP usable after an admin turns it off.
+  const assertOrgMcpAccess = async (orgId: string, buildError?: (message: string) => Error) => {
+    const org = await orgDAL.findById(orgId, orgDAL.primaryNode());
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    assertOrgAllowsMcp(org, buildError);
+  };
+
   const authorizeConsent = async (dto: TOauthConsentDTO) => {
     const client = await getAuthorizationClient(dto.clientId);
     const resource = assertValidAuthorizationRequest(client, dto);
@@ -712,7 +718,7 @@ export const oauthClientServiceFactory = ({
     // completed the matching MFA challenge, or the org trusts the MFA its IdP performed, the same waiver
     // org selection applies.
     const org = await getClientOrg(orgId);
-    if (resource) assertOrgAllowsMcp(org);
+    if (resource) await assertOrgMcpAccess(orgId);
 
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
@@ -767,13 +773,6 @@ export const oauthClientServiceFactory = ({
     if (dto.state) callbackUrl.searchParams.set("state", dto.state);
 
     return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId, scopes: grantedScopes, resource };
-  };
-
-  // Every MCP tool call checks this, because turning MCP access off keeps existing connections.
-  const assertOrgMcpAccess = async (orgId: string, buildError?: (message: string) => Error) => {
-    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-    assertOrgAllowsMcp(org, buildError);
   };
 
   const authenticateClient = async (clientId?: string, clientSecret?: string) => {
