@@ -147,7 +147,13 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
                   {initialSyncBehaviorDetails.name}
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <InfoIcon className="ml-1 inline size-3 text-label-secondary" />
+                      <button
+                        type="button"
+                        aria-label="About Initial Sync Behavior"
+                        className="ml-1 inline-flex align-middle text-label-secondary"
+                      >
+                        <InfoIcon className="size-3" />
+                      </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-xs">
                       {initialSyncBehaviorDetails.description}
