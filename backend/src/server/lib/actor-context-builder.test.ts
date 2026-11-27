@@ -46,8 +46,16 @@ class FakeBaseActorContextService implements TActorContextService<TActorContextB
     return { principal, org: this.org };
   }
 
-  async forRequest({ principal }: { principal: TPrincipal; orgId: string | undefined }) {
-    return { actor: this.context(principal), ssoRefusal: this.ssoRefusal as never };
+  async findActorOrg() {
+    return this.unscoped ? null : this.org;
+  }
+
+  async forRequest({ principal }: { principal: TPrincipal }) {
+    return {
+      actor: this.context(principal),
+      org: this.unscoped ? null : this.org,
+      ssoRefusal: this.ssoRefusal as never
+    };
   }
 
   async forPrincipal({ principal }: { principal: TPrincipal; orgId: string }) {
