@@ -4,6 +4,7 @@ import { TableName } from "@app/db/schemas";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
@@ -69,6 +70,14 @@ vi.mock("./stripe-api-key/stripe-api-key-rotation-fns", () => ({
   stripeApiKeyRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
 }));
 
+vi.mock("./gitlab-service-account-token/gitlab-service-account-token-rotation-fns", () => ({
+  gitLabServiceAccountTokenRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
+}));
+
+vi.mock("./gitlab-group-access-token/gitlab-group-access-token-rotation-fns", () => ({
+  gitLabGroupAccessTokenRotationFactory: () => ({ rotateCredentials, getSecretsPayload: () => [] })
+}));
+
 vi.mock("./unix-linux-local-account-rotation/unix-linux-local-account-rotation-fns", () => ({
   unixLinuxLocalAccountRotationFactory: () => ({
     issueCredentials: async (callback: TRotationCallback) => callback({ username: "app", password: "reconciled" })
@@ -94,7 +103,12 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
     connection: {
       id: "connection-1",
       orgId: "org-1",
-      app: type === SecretRotation.StripeApiKey ? "stripe" : "ssh"
+      app:
+        {
+          [SecretRotation.StripeApiKey]: "stripe",
+          [SecretRotation.GitLabServiceAccountToken]: "gitlab",
+          [SecretRotation.GitLabGroupAccessToken]: "gitlab"
+        }[type as string] ?? "ssh"
     },
     folder: { id: "folder-1", path: "/" },
     environment: { id: "env-1", slug: "dev", name: "Development" }
@@ -491,3 +505,133 @@ describe("rotation alert cleanup", () => {
     expect(deps.alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
   });
 });
+
+const EDITOR_AUDIT_LOG_INFO = {
+  actor: { type: ActorType.USER, metadata: { userId: "editor-1", email: "editor@example.com" } }
+};
+
+describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGroupAccessToken])(
+  "updating the rotation interval of a %s rotation",
+  (type) => {
+    const update = (
+      service: ReturnType<typeof createService>["service"],
+      payload: { rotationInterval?: number; description?: string }
+    ) =>
+      service.updateSecretRotation(
+        { type, rotationId: "rotation-1", auditLogInfo: EDITOR_AUDIT_LOG_INFO, ...payload } as never,
+        actor as never
+      );
+
+    const createGitLabService = () => {
+      const created = createService({
+        storedStatus: SecretRotationStatus.Success,
+        type
+      });
+      created.deps.secretRotationV2DAL.transaction.mockImplementation(async (callback) =>
+        callback({ ...TX, raw: vi.fn(async () => undefined) })
+      );
+      return created;
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      rotateCredentials.mockImplementation(runCallback);
+    });
+
+    test("rotates GitLab credentials right away so the new token's expiry follows the new interval", async () => {
+      const { service, deps } = createGitLabService();
+
+      await update(service, { rotationInterval: 30 });
+
+      expect(rotateCredentials).toHaveBeenCalledTimes(1);
+      expect(deps.secretRotationV2DAL.findById).toHaveBeenCalledTimes(2);
+      expect(deps.secretRotationV2DAL.findById).toHaveBeenLastCalledWith("rotation-1", expect.anything());
+      expect(deps.secretRotationV2DAL.updateById).toHaveBeenLastCalledWith(
+        "rotation-1",
+        expect.objectContaining({ isLastRotationManual: true, rotationStatus: SecretRotationStatus.Success }),
+        expect.anything()
+      );
+      expect(deps.queueService.queue).not.toHaveBeenCalled();
+    });
+
+    test("does not rotate when the interval is unchanged", async () => {
+      const { service } = createGitLabService();
+
+      await update(service, { rotationInterval: 1, description: "same interval" });
+
+      expect(rotateCredentials).not.toHaveBeenCalled();
+    });
+
+    test("reports that the interval was saved when the immediate rotation fails", async () => {
+      const { service, deps } = createGitLabService();
+      rotateCredentials.mockRejectedValue(new Error("GitLab is down"));
+
+      await expect(update(service, { rotationInterval: 30 })).rejects.toThrow(
+        "The rotation interval was updated, but rotating the credentials for the new interval failed"
+      );
+      expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalledWith(
+        "rotation-1",
+        expect.objectContaining({ rotationInterval: 30 }),
+        expect.anything()
+      );
+      expect(deps.auditLogService.createAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor: EDITOR_AUDIT_LOG_INFO.actor,
+          event: {
+            type: EventType.UPDATE_SECRET_ROTATION,
+            metadata: { rotationId: "rotation-1", rotationName: "rotation", type, rotationInterval: 30 }
+          }
+        })
+      );
+    });
+
+    const createEditOnlyGitLabService = () => {
+      const created = createGitLabService();
+      created.deps.secretsPermissionService.getSecretsPermission.mockResolvedValue({
+        permission: Permission.fromRules({
+          rules: [
+            { action: ["read", "edit"], subject: "secret-rotation" },
+            { action: "manage", subject: "secrets" }
+          ]
+        }),
+        folderGrants: FolderGrants.none()
+      });
+      return created;
+    };
+
+    test("refuses an interval change from a role that can edit but not rotate, before writing anything", async () => {
+      const { service, deps } = createEditOnlyGitLabService();
+
+      await expect(update(service, { rotationInterval: 30 })).rejects.toThrow();
+
+      expect(rotateCredentials).not.toHaveBeenCalled();
+      expect(deps.secretRotationV2DAL.updateById).not.toHaveBeenCalled();
+      expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
+    });
+
+    test("lets a role that can edit but not rotate change other fields", async () => {
+      const { service, deps } = createEditOnlyGitLabService();
+
+      await update(service, { rotationInterval: 1, description: "same interval" });
+
+      expect(rotateCredentials).not.toHaveBeenCalled();
+      expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalled();
+    });
+
+    test("refuses an update sent to the other GitLab rotation's endpoint", async () => {
+      const { service, deps } = createGitLabService();
+      const otherType =
+        type === SecretRotation.GitLabServiceAccountToken
+          ? SecretRotation.GitLabGroupAccessToken
+          : SecretRotation.GitLabServiceAccountToken;
+
+      await expect(
+        service.updateSecretRotation(
+          { type: otherType, rotationId: "rotation-1", rotationInterval: 30 } as never,
+          actor as never
+        )
+      ).rejects.toThrow("is not configured for");
+      expect(deps.secretRotationV2DAL.updateById).not.toHaveBeenCalled();
+    });
+  }
+);

@@ -8,7 +8,12 @@ import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connecti
 import { gitlabConnectionService } from "./gitlab-connection-service";
 import { TGitLabConnection } from "./gitlab-connection-types";
 
-vi.mock("@app/lib/validator", () => ({ blockLocalAndPrivateIpAddresses: vi.fn() }));
+const { safeRequestGetMock } = vi.hoisted(() => ({ safeRequestGetMock: vi.fn() }));
+
+vi.mock("@app/lib/validator", () => ({
+  blockLocalAndPrivateIpAddresses: vi.fn(),
+  safeRequest: { get: safeRequestGetMock }
+}));
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getConfig: () => ({})
@@ -105,5 +110,61 @@ describe("GitLab list retry handling", () => {
       await expect(result).resolves.toEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("GitLab group service account listing", () => {
+  const connection = {
+    method: GitLabConnectionMethod.AccessToken,
+    credentials: {
+      accessToken: "test-token",
+      accessTokenType: GitLabAccessTokenType.Personal,
+      instanceUrl: "https://gitlab.example.com"
+    }
+  } as TGitLabConnection;
+  const service = gitlabConnectionService(
+    vi.fn().mockResolvedValue(connection),
+    { updateById: vi.fn() },
+    { createCipherPairWithDataKey: vi.fn() } as never,
+    {} as never
+  );
+
+  afterEach(() => {
+    safeRequestGetMock.mockReset();
+  });
+
+  it("leaves out the service account the connection authenticates as", async () => {
+    safeRequestGetMock.mockImplementation(async (url: string) =>
+      url.endsWith("/user")
+        ? { data: { id: 13 } }
+        : {
+            data: [
+              { id: 12, username: "service_account_group_34_ci", name: "CI deployer" },
+              { id: 13, username: "service_account_group_34_infisical", name: "Infisical" }
+            ],
+            headers: { "x-next-page": "" }
+          }
+    );
+
+    const serviceAccounts = await service.listGroupServiceAccounts("connection-id", "34", {} as TActorContext);
+
+    expect(safeRequestGetMock).toHaveBeenCalledWith("https://gitlab.example.com/api/v4/user", {
+      headers: { "PRIVATE-TOKEN": "test-token" }
+    });
+    expect(serviceAccounts).toEqual([{ id: "12", username: "service_account_group_34_ci", name: "CI deployer" }]);
+  });
+
+  it("follows GitLab's next-page header instead of the page size", async () => {
+    safeRequestGetMock.mockImplementation(async (url: string, options: { params?: { page: number } }) => {
+      if (url.endsWith("/user")) return { data: { id: 99 } };
+      return options.params?.page === 1
+        ? { data: [{ id: 12, username: "ci", name: "CI" }], headers: { "x-next-page": "2" } }
+        : { data: [{ id: 14, username: "deploy", name: "Deploy" }], headers: { "x-next-page": "" } };
+    });
+
+    const serviceAccounts = await service.listGroupServiceAccounts("connection-id", "34", {} as TActorContext);
+
+    expect(serviceAccounts.map(({ id }) => id)).toEqual(["12", "14"]);
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(3);
   });
 });

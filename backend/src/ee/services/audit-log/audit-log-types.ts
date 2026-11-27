@@ -5837,7 +5837,7 @@ interface CreateSecretRotationEvent {
 
 interface UpdateSecretRotationEvent {
   type: EventType.UPDATE_SECRET_ROTATION;
-  metadata: TUpdateSecretRotationV2DTO;
+  metadata: Omit<TUpdateSecretRotationV2DTO, "auditLogInfo"> & { rotationName: string };
 }
 
 interface DeleteSecretRotationEvent {

@@ -6,7 +6,7 @@ import { logger } from "@app/lib/logger";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
-import { listGitLabGroups, listGitLabProjects } from "./gitlab-connection-fns";
+import { listGitLabGroups, listGitLabGroupServiceAccounts, listGitLabProjects } from "./gitlab-connection-fns";
 import { TGitLabConnection } from "./gitlab-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -59,8 +59,21 @@ export const gitlabConnectionService = (
     }
   };
 
+  const listGroupServiceAccounts = async (connectionId: string, groupId: string, actor: TActorContext) => {
+    const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
+
+    return listGitLabGroupServiceAccounts({
+      appConnection,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService,
+      groupId
+    });
+  };
+
   return {
     listProjects,
-    listGroups
+    listGroups,
+    listGroupServiceAccounts
   };
 };

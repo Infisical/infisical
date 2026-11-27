@@ -5,18 +5,24 @@ import { AxiosError, HttpStatusCode } from "axios";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { getConfig } from "@app/lib/config/env";
-import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError, RateLimitError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { encryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
-import { TGitLabConnection, TGitLabConnectionConfig, TGitLabGroup, TGitLabProject } from "./gitlab-connection-types";
+import {
+  TGitLabConnection,
+  TGitLabConnectionConfig,
+  TGitLabGroup,
+  TGitLabProject,
+  TGitLabRequestAuth,
+  TGitLabServiceAccount
+} from "./gitlab-connection-types";
 
 interface GitLabOAuthTokenResponse {
   access_token: string;
@@ -105,7 +111,7 @@ export const refreshGitLabToken = async (
 
   try {
     const url = await getGitLabInstanceUrl(instanceUrl);
-    const { data } = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const { data } = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
@@ -210,7 +216,7 @@ export const exchangeGitLabOAuthCode = async (
     });
     const url = await getGitLabInstanceUrl(instanceUrl);
 
-    const response = await request.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
+    const response = await safeRequest.post<GitLabOAuthTokenResponse>(`${url}/oauth/token`, payload.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json"
@@ -461,4 +467,190 @@ export const listGitLabGroups = async ({
   } catch (error: unknown) {
     return throwGitLabListError(error, "groups");
   }
+};
+
+const getGitLabConnectionAccessToken = async (
+  appConnection: TGitLabConnection,
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
+  kmsDataKeyService: TKmsDataKeyService,
+  instanceConfigService: TInstanceConfigService
+) => {
+  if (
+    appConnection.method === GitLabConnectionMethod.OAuth &&
+    appConnection.credentials.refreshToken &&
+    new Date(appConnection.credentials.expiresAt) < new Date()
+  ) {
+    return refreshGitLabToken(
+      appConnection.credentials.refreshToken,
+      appConnection.id,
+      appConnection.orgId,
+      appConnection.projectId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      instanceConfigService,
+      appConnection.credentials.instanceUrl
+    );
+  }
+
+  return appConnection.credentials.accessToken;
+};
+
+const getGitLabAuthHeaders = (method: GitLabConnectionMethod, accessToken: string): Record<string, string> =>
+  method === GitLabConnectionMethod.OAuth
+    ? { Authorization: `Bearer ${accessToken}` }
+    : { "PRIVATE-TOKEN": accessToken };
+
+/** Resolves the connection's credentials once, refreshing an expired OAuth token, for a series of requests. */
+export const getGitLabConnectionRequestAuth = async ({
+  appConnection,
+  appConnectionDAL,
+  kmsDataKeyService,
+  instanceConfigService
+}: TNavigationParams): Promise<TGitLabRequestAuth> => {
+  const accessToken = await getGitLabConnectionAccessToken(
+    appConnection,
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService
+  );
+
+  return {
+    instanceUrl: appConnection.credentials.instanceUrl,
+    headers: getGitLabAuthHeaders(appConnection.method, accessToken)
+  };
+};
+
+/** Authenticates as a token rather than the connection, for calls a token makes about itself. */
+export const getGitLabTokenRequestAuth = (instanceUrl: string | undefined, token: string): TGitLabRequestAuth => ({
+  instanceUrl,
+  headers: { "PRIVATE-TOKEN": token }
+});
+
+// Direct REST API calls (everything not on the gitbeaker client) go through here, so a change to how requests reach
+// GitLab, such as gateway support, is made in one place.
+export const gitLabRequest = async <T>(
+  auth: TGitLabRequestAuth,
+  {
+    method,
+    path,
+    data,
+    params,
+    retry = true
+  }: {
+    method: "GET" | "POST" | "DELETE";
+    path: string;
+    data?: unknown;
+    params?: Record<string, unknown>;
+    retry?: boolean;
+  }
+) => {
+  const url = `${auth.instanceUrl ? removeTrailingSlash(auth.instanceUrl) : IntegrationUrls.GITLAB_URL}/api/v4${path}`;
+  const options = {
+    headers: data === undefined ? auth.headers : { ...auth.headers, "Content-Type": "application/json" },
+    ...(params && { params }),
+    ...(!retry && { "axios-retry": { retries: 0 } })
+  };
+
+  if (method === "GET") return safeRequest.get<T>(url, options);
+  if (method === "DELETE") return safeRequest.delete<T>(url, options);
+  return safeRequest.post<T>(url, data, options);
+};
+
+export const getGitLabErrorMessage = (error: unknown) => {
+  if (!(error instanceof AxiosError)) return (error as Error)?.message || "Unknown error";
+
+  const data = error.response?.data as { message?: unknown; error?: unknown; error_description?: unknown } | undefined;
+
+  if (typeof data?.message === "string") return data.message;
+
+  // validation failures come back as { message: { field: ["reason", ...] } }
+  if (data?.message && typeof data.message === "object") {
+    return Object.entries(data.message as Record<string, unknown>)
+      .map(([field, reasons]) => `${field} ${Array.isArray(reasons) ? reasons.join(", ") : String(reasons)}`)
+      .join("; ");
+  }
+
+  if (typeof data?.error_description === "string") return data.error_description;
+  if (typeof data?.error === "string") return data.error;
+
+  return error.response?.status ? `GitLab responded with status ${error.response.status}` : error.message;
+};
+
+export const getGitLabCurrentUserId = async (auth: TGitLabRequestAuth) => {
+  const { data } = await gitLabRequest<{ id: number }>(auth, { method: "GET", path: "/user" });
+
+  return data.id.toString();
+};
+
+const GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE = 100;
+const GITLAB_SERVICE_ACCOUNTS_MAX_PAGES = 50;
+
+export const listGitLabGroupServiceAccounts = async ({
+  appConnection,
+  appConnectionDAL,
+  kmsDataKeyService,
+  instanceConfigService,
+  groupId
+}: TNavigationParams & { groupId: string }): Promise<TGitLabServiceAccount[]> => {
+  const auth = await getGitLabConnectionRequestAuth({
+    appConnection,
+    appConnectionDAL,
+    kmsDataKeyService,
+    instanceConfigService
+  });
+  const serviceAccounts: TGitLabServiceAccount[] = [];
+
+  try {
+    // a rotation can't target the connection's own identity, so it isn't offered
+    const connectionUserId = await getGitLabCurrentUserId(auth);
+
+    let page = 1;
+    for (let pagesRead = 0; pagesRead < GITLAB_SERVICE_ACCOUNTS_MAX_PAGES; pagesRead += 1) {
+      const { data, headers: responseHeaders } = await gitLabRequest<{ id: number; username: string; name: string }[]>(
+        auth,
+        {
+          method: "GET",
+          path: `/groups/${encodeURIComponent(groupId)}/service_accounts`,
+          params: { page, per_page: GITLAB_SERVICE_ACCOUNTS_PAGE_SIZE, order_by: "username", sort: "asc" }
+        }
+      );
+
+      serviceAccounts.push(
+        ...data
+          .filter((serviceAccount) => serviceAccount.id.toString() !== connectionUserId)
+          .map((serviceAccount) => ({
+            id: serviceAccount.id.toString(),
+            username: serviceAccount.username,
+            name: serviceAccount.name
+          }))
+      );
+
+      // GitLab leaves x-next-page empty on the last page
+      const nextPage = Number(responseHeaders["x-next-page"]);
+      if (!nextPage) return serviceAccounts;
+      page = nextPage;
+    }
+  } catch (error: unknown) {
+    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.TooManyRequests) {
+      throw new RateLimitError({
+        message: "GitLab rate limit reached while loading service accounts. Wait a moment and try again."
+      });
+    }
+
+    if (error instanceof AxiosError && error.response?.status === HttpStatusCode.Forbidden) {
+      throw new BadRequestError({
+        message: `The GitLab connection cannot list the service accounts of group '${groupId}'. The connection's user needs the Owner role on the group.`
+      });
+    }
+
+    throw new BadRequestError({
+      message: `Failed to list the service accounts of GitLab group '${groupId}': ${getGitLabErrorMessage(error)}`
+    });
+  }
+
+  logger.warn(
+    `listGitLabGroupServiceAccounts: stopped after ${GITLAB_SERVICE_ACCOUNTS_MAX_PAGES} pages [connectionId=${appConnection.id}] [groupId=${groupId}]`
+  );
+
+  return serviceAccounts;
 };

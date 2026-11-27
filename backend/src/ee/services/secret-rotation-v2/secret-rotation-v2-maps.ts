@@ -32,7 +32,9 @@ export const SECRET_ROTATION_NAME_MAP: Record<SecretRotation, string> = {
   [SecretRotation.CloudflareR2AccessKey]: "Cloudflare R2 Access Key",
   [SecretRotation.StripeApiKey]: "Stripe API Key",
   [SecretRotation.GcpServiceAccountKey]: "GCP Service Account Key",
-  [SecretRotation.ClickHouseCredentials]: "ClickHouse Credentials"
+  [SecretRotation.ClickHouseCredentials]: "ClickHouse Credentials",
+  [SecretRotation.GitLabServiceAccountToken]: "GitLab Service Account Token",
+  [SecretRotation.GitLabGroupAccessToken]: "GitLab Group Access Token"
 };
 
 export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnection> = {
@@ -66,7 +68,9 @@ export const SECRET_ROTATION_CONNECTION_MAP: Record<SecretRotation, AppConnectio
   [SecretRotation.CloudflareR2AccessKey]: AppConnection.Cloudflare,
   [SecretRotation.StripeApiKey]: AppConnection.Stripe,
   [SecretRotation.GcpServiceAccountKey]: AppConnection.GCP,
-  [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse
+  [SecretRotation.ClickHouseCredentials]: AppConnection.ClickHouse,
+  [SecretRotation.GitLabServiceAccountToken]: AppConnection.GitLab,
+  [SecretRotation.GitLabGroupAccessToken]: AppConnection.GitLab
 };
 
 const SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP: Partial<Record<SecretRotation, AppConnection[]>> = {
@@ -77,3 +81,12 @@ export const getSecretRotationConnectionApps = (type: SecretRotation): [AppConne
   SECRET_ROTATION_CONNECTION_MAP[type],
   ...(SECRET_ROTATION_ADDITIONAL_CONNECTION_MAP[type] ?? [])
 ];
+
+/**
+ * Rotations whose credentials get an expiry derived from the rotation interval when they are created. A new
+ * interval can't move that expiry, so changing it rotates right away and the schedule follows from there.
+ */
+export const SECRET_ROTATIONS_ROTATED_ON_INTERVAL_CHANGE = new Set<SecretRotation>([
+  SecretRotation.GitLabServiceAccountToken,
+  SecretRotation.GitLabGroupAccessToken
+]);

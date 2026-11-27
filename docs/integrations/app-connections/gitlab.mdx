@@ -48,6 +48,9 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
                     ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-top-secret-scanning.png)
                     ![GitLab New Application Form](/images/app-connections/gitlab/gitlab-create-application-bottom-secret-scanning.png)
                 </Tab>
+                <Tab title="Secret Rotation">
+                    For [GitLab Service Account Token](/documentation/platform/secret-rotation/gitlab-service-account-token) and [GitLab Group Access Token](/documentation/platform/secret-rotation/gitlab-group-access-token) rotations, your application requires the `api` scope, and the user who authorizes it needs the Owner role on the group whose tokens Infisical rotates.
+                </Tab>
             </Tabs>
 
           <Tip>
@@ -133,11 +136,14 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
 
                     ![GitLab Personal Token Form](/images/app-connections/gitlab/gitlab-personal-access-token-form-secret-scanning.png)
                 </Tab>
+                <Tab title="Secret Rotation">
+                    For [GitLab Service Account Token](/documentation/platform/secret-rotation/gitlab-service-account-token) and [GitLab Group Access Token](/documentation/platform/secret-rotation/gitlab-group-access-token) rotations, your token requires the `api` scope, and the token's user needs the Owner role on the group whose tokens Infisical rotates.
+                </Tab>
             </Tabs>
 
-            <Info>
-              Personal Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
-            </Info>
+            <Warning>
+              A [GitLab Group Access Token](/documentation/platform/secret-rotation/gitlab-group-access-token) rotation doesn't work with a project access token connection, because GitLab doesn't let a project access token create group access tokens. Use a personal access token for this rotation.
+            </Warning>
           </Step>
           <Step title="Copy Token">
             Copy the generated token immediately as it won't be shown again.
@@ -153,6 +159,10 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
 
       <Tab title="Project Access Token">
         Project access tokens provide access to a specific GitLab project, offering more granular control.
+
+        <Note>
+          GitLab doesn't let project or group access tokens create other tokens, so a connection that uses one can't run a [GitLab Service Account Token](/documentation/platform/secret-rotation/gitlab-service-account-token) or [GitLab Group Access Token](/documentation/platform/secret-rotation/gitlab-group-access-token) rotation. Use a personal access token instead.
+        </Note>
 
         <Steps>
           <Step title="Navigate to Project Settings">
@@ -197,6 +207,10 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
 
       <Tab title="Group Access Token">
         Group access tokens provide access to all projects within a GitLab group, offering group-level control.
+
+        <Note>
+          GitLab doesn't let project or group access tokens create other tokens, so a connection that uses one can't run a [GitLab Service Account Token](/documentation/platform/secret-rotation/gitlab-service-account-token) or [GitLab Group Access Token](/documentation/platform/secret-rotation/gitlab-group-access-token) rotation. Use a personal access token instead.
+        </Note>
 
         <Steps>
           <Step title="Navigate to Group Settings">
