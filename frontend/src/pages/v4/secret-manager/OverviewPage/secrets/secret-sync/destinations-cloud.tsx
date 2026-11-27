@@ -147,11 +147,8 @@ function AzureEntraIdScimDestination() {
                 options={options}
                 loading={principals.isPending && Boolean(connectionId)}
                 placeholder="Search for a SCIM service principal..."
-                emptyText={
-                  debouncedSearch
-                    ? "No matching service principals found."
-                    : "Type to search for service principals."
-                }
+                emptyText="Type to search for service principals."
+                noMatchText="No matching service principals found."
                 disabled={!connectionId}
                 invalid={Boolean(error)}
               />

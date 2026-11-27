@@ -178,7 +178,7 @@ const MethodPicker = ({
         value: method,
         label: authMethodName(method),
         disabled: configured.includes(method),
-        description: configured.includes(method) ? "Configured" : undefined
+        meta: configured.includes(method) ? "Configured" : undefined
       }))}
       onChange={(next) => onChange(next as IdentityAuthMethod)}
     />

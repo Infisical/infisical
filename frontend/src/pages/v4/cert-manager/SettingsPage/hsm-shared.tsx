@@ -102,7 +102,7 @@ export const HsmRoutePicker = ({
         ...pools.map((pool) => ({
           value: `pool:${pool.id}`,
           label: pool.name,
-          description: `${pool.healthyMemberCount} of ${pool.memberCount} gateways healthy`,
+          meta: `${pool.healthyMemberCount} of ${pool.memberCount} gateways healthy`,
           group: "Gateway pools"
         })),
         ...gateways.map((gateway) => {
@@ -111,7 +111,8 @@ export const HsmRoutePicker = ({
           return {
             value: `gateway:${gateway.id}`,
             label: gateway.name,
-            description: blocked ? "Your organization requires a gateway pool" : health,
+            description: blocked ? "Your organization requires a gateway pool" : undefined,
+            meta: blocked ? undefined : health,
             disabled: blocked,
             group: "Individual gateways"
           };

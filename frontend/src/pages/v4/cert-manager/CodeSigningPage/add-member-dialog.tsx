@@ -126,7 +126,6 @@ export const SignerAddMemberDialog = ({
                   <Select
                     label="Role"
                     options={SIGNER_ROLE_OPTIONS}
-                    descriptionLayout="stacked"
                     value={role}
                     onChange={(next) => setRole(next as SignerMemberRole)}
                   />

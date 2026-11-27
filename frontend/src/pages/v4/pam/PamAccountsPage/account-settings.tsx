@@ -324,7 +324,7 @@ export const RotationPanel = ({
       group.accounts.map((candidate) => ({
         value: candidate.id,
         label: `${candidate.name}${candidate.id === accountId ? " (this account)" : ""}`,
-        description: candidate.host,
+        meta: candidate.host,
         group: group.folderName ?? "Ungrouped"
       }))
     )
@@ -336,7 +336,7 @@ export const RotationPanel = ({
     options.push({
       value: rotation.rotationAccountId,
       label: rotation.rotationAccountName ?? rotation.rotationAccountId,
-      description: "",
+      meta: "",
       group: "Current"
     });
 
@@ -687,7 +687,7 @@ const RecordingOverride = ({
                 ...connections.map((connection) => ({
                   value: connection.id,
                   label: connection.name,
-                  description: connection.providerName
+                  meta: connection.providerName
                 }))
               ]}
               onValueChange={(next) => edit({ connectionId: next === NONE ? null : next })}

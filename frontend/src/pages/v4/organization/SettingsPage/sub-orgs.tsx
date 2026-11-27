@@ -284,7 +284,7 @@ const subOrgColumns = ({
             Joined
           </Badge>
         );
-      return canJoin ? <JoinButton subOrg={row} /> : null;
+      return canJoin ? <JoinButton subOrg={row} /> : false;
     }
   }
 ];

@@ -102,7 +102,6 @@ const usableMethods = (preset: AppConnectionPreset, redirect?: AppConnectionRedi
 export type AppConnectionFormProps = {
   id: string;
   preset: AppConnectionPreset;
-  defaultName?: string;
   /** Needed for redirect methods, which are left out without it. */
   redirect?: AppConnectionRedirect;
   onSubmit: (values: AppConnectionFormValues) => Promise<void>;
@@ -167,7 +166,6 @@ const editDefaults = (method: AppConnectionMethodPreset, values: Record<string, 
 export function AppConnectionForm({
   id,
   preset,
-  defaultName = "",
   redirect,
   onSubmit,
   onDirtyChange,
@@ -186,7 +184,7 @@ export function AppConnectionForm({
     defaultValues: {
       ...preset.values,
       app: preset.app,
-      name: defaultName,
+      name: "",
       description: "",
       method: first.value,
       credentials: first.credentials,
@@ -413,18 +411,10 @@ export function connectionCreation({
     disabledReason,
     discardTitle: "Discard connection setup?",
     discardDescription: "Your progress configuring this connection will be lost.",
-    renderForm: ({
-      query,
-      formId,
-      complete,
-      onDirtyChange,
-      onPendingChange,
-      onSubmitLabelChange
-    }) => (
+    renderForm: ({ formId, complete, onDirtyChange, onPendingChange, onSubmitLabelChange }) => (
       <AppConnectionForm
         id={formId}
         preset={preset}
-        defaultName={query}
         redirect={redirect}
         onDirtyChange={onDirtyChange}
         onPendingChange={onPendingChange}

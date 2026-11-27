@@ -137,7 +137,6 @@ export const MembersTab = ({
           size="sm"
           aria-label={`Role for ${memberLabel(member)}`}
           options={SIGNER_ROLE_OPTIONS}
-          descriptionLayout="stacked"
           menuWidth={320}
           align="end"
           value={member.role}

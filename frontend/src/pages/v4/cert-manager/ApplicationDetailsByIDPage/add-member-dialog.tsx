@@ -162,13 +162,7 @@ export const AddMemberDialog = ({
                 />
               </Field>
               <Field label="Role">
-                <Select
-                  label="Role"
-                  options={APP_ROLES}
-                  descriptionLayout="stacked"
-                  value={role}
-                  onChange={setRole}
-                />
+                <Select label="Role" options={APP_ROLES} value={role} onChange={setRole} />
               </Field>
             </Stack>
           </form>

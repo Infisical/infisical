@@ -1,10 +1,8 @@
 import { Badge } from "@infisical/cipher/ui/badge";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { SmallText } from "@infisical/cipher/ui/text";
+import { Inline } from "@infisical/cipher/ui/layout";
+import { DataList } from "@infisical/cipher/ui/list";
 
 import { POLICY_STATE_LABELS, type PolicyConstraints } from "./policy-model";
-
-import styles from "./policy-constraints.module.css";
 
 export const ConstraintList = ({
   rule,
@@ -15,24 +13,20 @@ export const ConstraintList = ({
   format?: (value: string) => string;
   mono?: boolean;
 }) => (
-  <Stack gap={8}>
-    {(["required", "allowed", "denied"] as const).map((state) => {
-      const values = rule[state];
-      if (!values?.length) return null;
-      return (
-        <Inline key={state} gap={4} align="baseline">
-          <SmallText muted className={styles.qualifier}>
-            {POLICY_STATE_LABELS[state]}
-          </SmallText>
-          <Inline gap={4} className={styles.values}>
-            {values.map((value) => (
-              <Badge key={value} tone="outline" mono={mono}>
-                {format(value)}
-              </Badge>
-            ))}
-          </Inline>
+  <DataList
+    variant="inline"
+    labelWidth="cell-min"
+    items={(["required", "allowed", "denied"] as const)
+      .filter((state) => rule[state]?.length)
+      .map((state) => [
+        POLICY_STATE_LABELS[state],
+        <Inline key={state} gap={4}>
+          {rule[state]?.map((value) => (
+            <Badge key={value} tone="outline" mono={mono}>
+              {format(value)}
+            </Badge>
+          ))}
         </Inline>
-      );
-    })}
-  </Stack>
+      ])}
+  />
 );

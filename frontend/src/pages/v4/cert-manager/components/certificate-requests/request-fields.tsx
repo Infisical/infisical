@@ -383,7 +383,8 @@ const AlgorithmSelect = ({
             value: option.value,
             label: option.label,
             disabled: Boolean(reason),
-            description: gated ? "Enterprise" : reason
+            description: gated ? undefined : reason,
+            meta: gated ? "Enterprise" : undefined
           };
         })}
         value={value || undefined}

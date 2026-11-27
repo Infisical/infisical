@@ -183,7 +183,7 @@ export const PamAccountsPage = () => {
       header: "Access",
       hideHeader: true,
       dropFirst: true,
-      render: (row) => (row.kind === "account" ? <AccessState account={row.account} /> : null)
+      render: (row) => (row.kind === "account" ? <AccessState account={row.account} /> : false)
     }
   ];
 

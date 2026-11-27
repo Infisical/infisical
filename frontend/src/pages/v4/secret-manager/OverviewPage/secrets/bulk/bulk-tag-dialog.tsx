@@ -170,7 +170,7 @@ function BulkTagDialogContent({
               options={tagOptions}
               value={tags}
               placeholder="Select or create tags..."
-              emptyText="No tags match search"
+              noMatchText="No tags match search"
               invalid={Boolean(createError)}
               onValueChange={(value) => {
                 setTags(value);

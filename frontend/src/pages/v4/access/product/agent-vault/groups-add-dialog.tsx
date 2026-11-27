@@ -119,7 +119,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
                 <Combobox
                   label="Group"
                   placeholder="Select group..."
-                  emptyText="No groups match your search"
+                  noMatchText="No groups match your search"
                   options={options}
                   value={group}
                   loading={available.isPending}
