@@ -57,7 +57,9 @@ import {
   MAX_CHANNELS,
   normalizeEmail,
   pluralize,
-  PROJECT_RECIPIENT_LABELS,
+  projectRecipientLabels,
+  recipientScopeFor,
+  type TRecipientScope,
   type TDraftChannel,
   type TFieldErrors,
   type TMemberEmails,
@@ -162,7 +164,8 @@ const EmailRecipientsField = ({
   projectId,
   projectRecipients,
   allowEmailAddresses = true,
-  groupOptions
+  groupOptions,
+  scope
 }: {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
@@ -172,7 +175,9 @@ const EmailRecipientsField = ({
   projectRecipients?: boolean;
   allowEmailAddresses?: boolean;
   groupOptions?: TRecipientGroup[];
+  scope: TRecipientScope;
 }) => {
+  const recipientLabels = projectRecipientLabels(scope);
   const groupNames = new Map(groupOptions?.map((group) => [group.id, group.name]));
   const projectValues = value
     .filter((recipient) => PROJECT_PRINCIPALS.includes(recipient.principalType))
@@ -196,8 +201,8 @@ const EmailRecipientsField = ({
   const projectOptions = (projectRecipients ? PROJECT_PRINCIPALS : projectValues).map(
     (principalType) => ({
       value: principalType,
-      label: PROJECT_RECIPIENT_LABELS[principalType],
-      group: "Project"
+      label: recipientLabels[principalType],
+      group: scope.title
     })
   );
   const grouped = projectOptions.length > 0 || Boolean(groupOptions?.length);
@@ -244,8 +249,8 @@ const EmailRecipientsField = ({
     unlistedUsers.length ? pluralize(unlistedUsers.length, "more member") : undefined,
     unlistedGroups.length ? pluralize(unlistedGroups.length, "group") : undefined
   ].filter(Boolean);
-  const scope = projectId ? "project" : "organization";
-  const pickable = groupOptions ? `${scope} members or groups` : `${scope} members`;
+  const pickableScope = projectId ? scope.noun : "organization";
+  const pickable = groupOptions ? `${pickableScope} members or groups` : `${pickableScope} members`;
 
   return (
     <Field
@@ -812,6 +817,7 @@ const ChannelCard = ({
             projectRecipients={projectRecipients}
             allowEmailAddresses={allowEmailAddresses}
             groupOptions={groupOptions}
+            scope={recipientScopeFor(resource.resourceType)}
           />
         )}
         {SLACK_CHANNEL_TYPES.includes(channelType) && <SlackMethodSwitch {...fieldProps} />}

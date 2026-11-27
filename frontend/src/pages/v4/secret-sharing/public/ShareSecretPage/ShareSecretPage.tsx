@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
 
 import { useServerConfig } from "@app/context";
 
@@ -19,9 +19,7 @@ export const ShareSecretPage = () => {
     <AuthPage variant="focused" pageTitle="Securely Share Secrets" title="Share a secret">
       <Stack gap={24}>
         {form.body}
-        <Inline gap={8} justify="end">
-          {form.submitButton}
-        </Inline>
+        {form.submitButton}
       </Stack>
     </AuthPage>
   );
