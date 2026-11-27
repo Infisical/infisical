@@ -413,7 +413,12 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
         credentials: { accessToken: "", orgName: "" },
         fields: [
           { name: "credentials.accessToken", label: "Personal access token", kind: "secret" },
-          { name: "credentials.orgName", label: "Organization name", mono: true }
+          {
+            name: "credentials.orgName",
+            label: "Organization name",
+            mono: true,
+            placeholder: "myorganization"
+          }
         ]
       },
       {
@@ -422,7 +427,12 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
         credentials: { tenantId: "", orgName: "", clientId: "", clientSecret: "" },
         fields: [
           tenantIdField,
-          { name: "credentials.orgName", label: "Organization name", mono: true },
+          {
+            name: "credentials.orgName",
+            label: "Organization name",
+            mono: true,
+            placeholder: "myorganization"
+          },
           clientIdField,
           clientSecretField,
           ...rotationFields(true)

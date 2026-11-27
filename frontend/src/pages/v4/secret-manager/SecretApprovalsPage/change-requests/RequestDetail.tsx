@@ -3,7 +3,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { DetailLayout, Inline, Stack } from "@infisical/cipher/ui/layout";
+import { DetailLayout, Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
@@ -204,14 +204,27 @@ export const RequestDetail = ({
       width: 240,
       text: (row) => row.name,
       render: (row) => (
-        <Inline gap={8} wrap={false}>
-          <span>{row.name}</span>
-          {row.userId === user.id && <Badge tone="soft">You</Badge>}
-          {!row.isRequired && <Badge tone="outline">Optional</Badge>}
+        <Inline gap={8} align="center" wrap={false}>
+          <InlineItem truncate>{row.name}</InlineItem>
+          {row.userId === user.id && (
+            <InlineItem shrink={false}>
+              <Badge tone="soft">You</Badge>
+            </InlineItem>
+          )}
+          {!row.isRequired && (
+            <InlineItem shrink={false}>
+              <Badge tone="outline">Optional</Badge>
+            </InlineItem>
+          )}
           {!row.isActive && (
-            <Badge reason="This user no longer has an active organization membership." tone="soft">
-              Deactivated
-            </Badge>
+            <InlineItem shrink={false}>
+              <Badge
+                reason="This user no longer has an active organization membership."
+                tone="soft"
+              >
+                Deactivated
+              </Badge>
+            </InlineItem>
           )}
         </Inline>
       )
