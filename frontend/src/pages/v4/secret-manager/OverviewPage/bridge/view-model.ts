@@ -7,9 +7,13 @@ import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/t
 import { SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
-import type { Resource, Secret, ValueState } from "../secrets-model";
+import { importName, type Resource, type Secret, type ValueState } from "../secrets-model";
 
 export type ScopeSecrets = { environment: string; path: string; secrets: SecretV3RawSanitized[] };
+export type ImportedSecrets = {
+  environment: string;
+  groups: { importId?: string; secrets: SecretV3RawSanitized[] }[];
+};
 
 export const valueKey = (
   environment: string,
@@ -86,7 +90,8 @@ export const toSecretResource = (
   path: string,
   secret: SecretV3RawSanitized,
   values: LoadedValues,
-  rotationNames: Record<string, string>
+  rotationNames: Record<string, string>,
+  readFrom?: Secret["readFrom"]
 ): Secret => {
   const override = values[valueKey(environment, path, secret.key, true)];
   return {
@@ -96,7 +101,7 @@ export const toSecretResource = (
     environment,
     path,
     name: secret.key,
-    value: valueOf(secret, environment, path, values),
+    value: valueOf(secret, readFrom?.environment ?? environment, readFrom?.path ?? path, values),
     comment: secret.comment ?? "",
     tags: (secret.tags ?? []).map((tag) => tag.slug),
     metadata: (secret.secretMetadata ?? []).map((entry) => ({
@@ -113,7 +118,8 @@ export const toSecretResource = (
     reminder: reminderOf(secret),
     skipMultilineEncoding: secret.skipMultilineEncoding ?? undefined,
     createdAt: secret.createdAt,
-    updatedAt: secret.updatedAt
+    updatedAt: secret.updatedAt,
+    readFrom
   };
 };
 
@@ -123,6 +129,7 @@ export const buildResources = ({
   overview,
   folderTree,
   scopes,
+  imported,
   values
 }: {
   projectId: string;
@@ -130,6 +137,7 @@ export const buildResources = ({
   overview?: DashboardProjectSecretsOverview;
   folderTree?: TProjectEnvironmentsFolders;
   scopes: ScopeSecrets[];
+  imported: ImportedSecrets[];
   values: LoadedValues;
 }): Resource[] => {
   const resources: Resource[] = [];
@@ -153,17 +161,18 @@ export const buildResources = ({
 
   (overview?.imports ?? [])
     .filter((entry) => !entry.isReserved)
-    .forEach((entry) =>
+    .forEach((entry) => {
+      const source = {
+        project: entry.importEnv.projectId ?? projectId,
+        environment: entry.importEnv.slug,
+        path: entry.importPath
+      };
       push({
         ...at(entry.environment ?? ""),
         kind: "import",
         id: entry.id,
-        name: `${entry.importEnv.slug}:${entry.importPath}`,
-        source: {
-          project: entry.importEnv.projectId ?? projectId,
-          environment: entry.importEnv.slug,
-          path: entry.importPath
-        },
+        name: importName(source, projectId),
+        source,
         sourceProjectName: entry.sourceProjectName,
         revoked: Boolean(entry.isAccessRevoked),
         replicated: Boolean(entry.isReplication),
@@ -173,8 +182,26 @@ export const buildResources = ({
         lastReplicated: entry.lastReplicated,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt
-      })
-    );
+      });
+      if (source.project === projectId) return;
+      const readFrom = { environment: entry.environment ?? "", path };
+      imported
+        .find((scope) => scope.environment === readFrom.environment)
+        ?.groups.find((group) => group.importId === entry.id)
+        ?.secrets.forEach((secret) =>
+          push(
+            toSecretResource(
+              source.project,
+              source.environment,
+              source.path,
+              secret,
+              values,
+              rotationNames,
+              readFrom
+            )
+          )
+        );
+    });
   (overview?.folders ?? []).forEach((entry) =>
     push({
       ...at(entry.environment),

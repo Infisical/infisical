@@ -36,8 +36,8 @@ const ValueLoaderContext = createContext<ValueLoader>({
 export const useValueLoader = () => useContext(ValueLoaderContext);
 
 const toRequest = (secret: Secret, isOverride?: boolean): ValueRequest => ({
-  environment: secret.environment,
-  path: secret.path,
+  environment: secret.readFrom?.environment ?? secret.environment,
+  path: secret.readFrom?.path ?? secret.path,
   key: secret.name,
   version: secret.version,
   isOverride

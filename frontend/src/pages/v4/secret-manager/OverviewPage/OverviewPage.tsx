@@ -106,10 +106,11 @@ import { nameLabel, useProjectName } from "../../shell/resource-name";
 import { withoutDefaults } from "../search-defaults";
 import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges, toUnsavedPendingChanges } from "./bridge/commit";
-import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
+import { BreadthContext, useImportedSecrets, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
 import { buildResources, valueKey } from "./bridge/view-model";
 import {
+  importName,
   readableValue,
   type Resource,
   type ResourceApplyOptions,
@@ -457,7 +458,17 @@ export const OverviewPage = () => {
     const [{ name }] = entries;
     const slugs = importSites.data
       ? (importSites.data.imports ?? [])
-          .filter((entry) => `${entry.importEnv.slug}:${entry.importPath}` === name)
+          .filter(
+            (entry) =>
+              importName(
+                {
+                  project: entry.importEnv.projectId ?? projectId,
+                  environment: entry.importEnv.slug,
+                  path: entry.importPath
+                },
+                projectId
+              ) === name
+          )
           .map((entry) => entry.environment ?? "")
       : entries.map((entry) => entry.environment);
     return projectEnvironments.filter((environment) => slugs.includes(environment.value));
@@ -500,6 +511,17 @@ export const OverviewPage = () => {
       ) === index
   );
   const breadth = useScopeSecrets(projectId, breadthScopes);
+  const imported = useImportedSecrets(
+    projectId,
+    [
+      ...new Set(
+        (overview.data?.imports ?? [])
+          .filter((entry) => entry.importEnv.projectId && entry.importEnv.projectId !== projectId)
+          .map((entry) => entry.environment ?? "")
+      )
+    ],
+    path
+  );
   const resourcesRef = useRef<Resource[]>([]);
   const resources = replaceEqualDeep(
     resourcesRef.current,
@@ -509,6 +531,7 @@ export const OverviewPage = () => {
       overview: overview.data,
       folderTree,
       scopes: breadth.scopes,
+      imported: imported.scopes,
       values: valueStore.values
     })
   );
@@ -3043,6 +3066,7 @@ export const OverviewPage = () => {
             }}
           />
           {breadth.fetchers}
+          {imported.fetchers}
           <SecretsActivationNudge
             projectId={projectId}
             open={activationNudge.open}

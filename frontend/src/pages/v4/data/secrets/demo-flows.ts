@@ -455,6 +455,7 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
       error: null
     };
   },
+  useImportedSecretsAt: () => ({ data: [], isPending: false, error: null }),
   useFetchSecretsAt: () => {
     const store = useStore();
     return ({ projectId, environment, secretPath = "/" }) =>

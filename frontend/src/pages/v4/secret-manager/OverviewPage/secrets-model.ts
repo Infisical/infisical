@@ -47,6 +47,7 @@ export type Secret = ResourceBase & {
   reminder?: SecretReminder;
   skipMultilineEncoding?: boolean;
   versions?: SecretVersion[];
+  readFrom?: { environment: string; path: string };
 };
 export type Resource =
   | Secret
@@ -147,6 +148,10 @@ export const scopeMatches = (resource: Scope, scope: Scope) =>
   resource.project === scope.project &&
   resource.environment === scope.environment &&
   resource.path === scope.path;
+export const importName = (source: Scope, project: string) =>
+  source.project === project
+    ? `${source.environment}:${source.path}`
+    : `${source.project}/${source.environment}:${source.path}`;
 export const resourceKey = (resource: Pick<Resource, "kind" | "name">) =>
   `${resource.kind}:${resource.name}`;
 export const selectionKey = (resource: Pick<Resource, "kind" | "name" | "environment">) =>

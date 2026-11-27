@@ -22,6 +22,7 @@ import {
 
 import { useOrgId } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
+import { importName, type Scope } from "../../secrets-model";
 import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
@@ -86,6 +87,19 @@ export function CreateImportFlow({
     .filter((entry) => entry.environmentSlug === grant.environment)
     .map((entry) => ({ value: entry.secretPath, label: entry.secretPath }));
 
+  const alreadyImports = (source: Scope, replicated: boolean) =>
+    resources.some(
+      (resource) =>
+        resource.kind === "import" &&
+        resource.project === scope.project &&
+        resource.environment === destination &&
+        resource.path === scope.path &&
+        resource.source.project === source.project &&
+        resource.source.environment === source.environment &&
+        resource.source.path === source.path &&
+        Boolean(resource.replicated) === replicated
+    );
+
   const submitFromGrant = () => {
     const next = {
       project: grant.project ? undefined : "Required",
@@ -94,6 +108,14 @@ export function CreateImportFlow({
     };
     setGrantErrors(next);
     if (!grant.project || !grant.environment || !grant.path) return;
+    const source = { project: grant.project, environment: grant.environment, path: grant.path };
+    if (alreadyImports(source, false)) {
+      onError({
+        title: "Import was not created",
+        description: `This folder already imports ${grant.path} from that project.`
+      });
+      return;
+    }
     onCreate(
       [
         {
@@ -101,8 +123,8 @@ export function CreateImportFlow({
           project: scope.project,
           environment: destination,
           path: scope.path,
-          name: `${grant.environment}:${grant.path}`,
-          source: { project: grant.project, environment: grant.environment, path: grant.path },
+          name: importName(source, scope.project),
+          source,
           revoked: false,
           replicated: false
         }
@@ -146,18 +168,7 @@ export function CreateImportFlow({
       });
       return;
     }
-    if (
-      resources.some(
-        (resource) =>
-          resource.kind === "import" &&
-          resource.project === scope.project &&
-          resource.environment === destination &&
-          resource.path === scope.path &&
-          resource.source.environment === environment &&
-          resource.source.path === sourcePath &&
-          Boolean(resource.replicated) === replication
-      )
-    ) {
+    if (alreadyImports(source, replication)) {
       onError({
         title: "Import was not created",
         description: `This folder already imports ${sourcePath} from ${environmentLabel(environment)}.`
@@ -171,7 +182,7 @@ export function CreateImportFlow({
           project: scope.project,
           environment: destination,
           path: scope.path,
-          name: `${environment}:${sourcePath}`,
+          name: importName(source, scope.project),
           source,
           revoked: false,
           replicated: replication
