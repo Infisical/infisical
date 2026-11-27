@@ -122,6 +122,30 @@ func TestDynamicSecret_Create(t *testing.T) {
 		require.Empty(t, names(t, proj, "/"))
 	})
 
+	t.Run("should refuse and create nothing when a Snowflake statement starts with PUT", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The statements are checked while the inputs are validated, before any connection to
+			Snowflake, so the account below is never contacted and no fake is needed.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		member := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+		inputs := map[string]any{
+			"orgId": "example-org", "accountId": "example-account", "username": "svc", "password": "unused",
+			"creationStatement":   "PUT file://data.csv @~",
+			"revocationStatement": `DROP USER "{{username}}"`,
+		}
+
+		// Action
+		res, _ := createDynamicSecret(t, member.API, proj, provider{"type": "snowflake", "inputs": inputs})
+
+		// Assert
+		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
+		require.Contains(t, apierr.Message(res.Body), "PUT and GET statements are not supported")
+		require.Empty(t, names(t, proj, "/"))
+	})
+
 	t.Run("should refuse naming the setting and create nothing when AWS IAM temporary credentials use IRSA on an instance without it", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `The harness leaves KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN at its default, off,
