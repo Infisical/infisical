@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { eventOutbox } from "e2e-test/fakes/event-outbox-queue";
-
 import {
   AccessScope,
   OrgMembershipRole,
@@ -12,9 +10,11 @@ import {
   ResourceType,
   TableName
 } from "@app/db/schemas";
-import { EventOutboxStatus } from "@app/services/event-outbox/event-outbox-types";
+import { EventOutboxStatus } from "@app/domains/platform/events/ce/module";
 import { ORG_ACCESS_RECONCILE_CONSUMER } from "@app/services/org/org-access-reconcile-consumer";
 import { orgDALFactory } from "@app/services/org/org-dal";
+
+import { eventOutbox } from "e2e-test/fakes/events-module";
 
 import { createIsolatedOrgAndProject, createSubOrgAndProject } from "../../testUtils/fixtures";
 import {

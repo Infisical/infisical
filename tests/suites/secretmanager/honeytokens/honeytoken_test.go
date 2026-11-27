@@ -131,3 +131,62 @@ func TestHoneyToken_Revoke(t *testing.T) {
 		require.Len(t, e.honeyUsers(t), 1)
 	})
 }
+
+func TestHoneyToken_Delete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should remove a revoked honey token", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		e := setup(t)
+		tokenID := e.newHoneyToken(t)
+		require.Equal(t, http.StatusOK, e.revoke(t, tokenID).StatusCode())
+
+		// Action
+		res := e.delete(t, e.tn.Admin, tokenID)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, tokenID, res.JSON200.HoneyToken.Id)
+		get, err := e.tn.Admin.API.GetHoneyTokenWithResponse(t.Context(), tokenID)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, get.StatusCode())
+	})
+
+	t.Run("should refuse to delete a honey token that is not revoked and keep its key", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		e := setup(t)
+		tokenID := e.newHoneyToken(t)
+		planted := e.planted(t, accessKeyIDKey)
+
+		// Action
+		res := e.delete(t, e.tn.Admin, tokenID)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Contains(t, apierr.Body(res.Body), "must be revoked before it can be deleted")
+		require.Equal(t, "active", e.status(t, tokenID))
+		require.Equal(t, planted, e.planted(t, accessKeyIDKey))
+		require.Len(t, e.honeyUsers(t), 1)
+	})
+
+	t.Run("should refuse a project member without the revoke permission and keep the token", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		e := setup(t)
+		tokenID := e.newHoneyToken(t)
+		require.Equal(t, http.StatusOK, e.revoke(t, tokenID).StatusCode())
+		member := e.proj.NewUser(t)
+
+		// Action
+		res := e.delete(t, member, tokenID)
+
+		// Assert
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t, "revoked", e.status(t, tokenID))
+	})
+}

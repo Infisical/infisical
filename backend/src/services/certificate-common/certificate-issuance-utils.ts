@@ -364,7 +364,7 @@ export const generateSelfSignedCertificate = async ({
 }): Promise<TSelfSignedCertificateResult> => {
   const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequest, policy?.subject);
   const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-    { subjectAlternativeNames: certificateRequest.altNames },
+    { commonName: certificateRequest.commonName, subjectAlternativeNames: certificateRequest.altNames },
     policy?.sans
   );
 

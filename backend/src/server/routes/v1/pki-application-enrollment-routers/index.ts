@@ -2,6 +2,7 @@ import { registerPkiApplicationAcmeEnrollmentRouter } from "./acme-enrollment-ro
 import { registerPkiApplicationApiEnrollmentRouter } from "./api-enrollment-router";
 import { registerPkiApplicationEnrollmentStateRouter } from "./enrollment-state-router";
 import { registerPkiApplicationEstEnrollmentRouter } from "./est-enrollment-router";
+import { registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter } from "./microsoft-autoenrollment-enrollment-router";
 import { registerPkiApplicationScepEnrollmentRouter } from "./scep-enrollment-router";
 
 export const registerPkiApplicationEnrollmentRoutes = async (server: FastifyZodProvider) => {
@@ -10,4 +11,5 @@ export const registerPkiApplicationEnrollmentRoutes = async (server: FastifyZodP
   await registerPkiApplicationEstEnrollmentRouter(server);
   await registerPkiApplicationAcmeEnrollmentRouter(server);
   await registerPkiApplicationScepEnrollmentRouter(server);
+  await registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter(server);
 };

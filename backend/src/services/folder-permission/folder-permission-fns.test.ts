@@ -1,16 +1,15 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole, TemporaryPermissionMode } from "@app/db/schemas";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
+import { Grant, Permission, RuleSet } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { conditionsMatcher } from "@app/lib/casl";
+  ProjectPermissionSub,
+  StandardProjectRoles
+} from "@app/domains/platform/projects/ce/module";
+import { FolderGrant, FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 
@@ -18,7 +17,6 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import {
   assertFullAccessIsPermanent,
   assertManageFolderSubtree,
-  assertRecursiveFolderIsRoot,
   computeTemporaryFields,
   resolveFolder
 } from "./folder-permission-fns";
@@ -104,23 +102,6 @@ describe("resolveFolder", () => {
   });
 });
 
-describe("assertRecursiveFolderIsRoot", () => {
-  test("allows the root folder", () => {
-    expect(() =>
-      assertRecursiveFolderIsRoot({ id: "folder-id", path: "/", environmentSlug: "dev", envId: "env-id" })
-    ).not.toThrow();
-  });
-
-  test.each(["/a", "/a/b"])("rejects %s, naming the path and environment", (path) => {
-    const folder = { id: "folder-id", path, environmentSlug: "dev", envId: "env-id" };
-
-    expect(() => assertRecursiveFolderIsRoot(folder)).toThrow(BadRequestError);
-    expect(() => assertRecursiveFolderIsRoot(folder)).toThrow(
-      `Folder access on '${path}' in environment with slug 'dev'`
-    );
-  });
-});
-
 describe("assertManageFolderSubtree", () => {
   const folder = (path: string) => ({ id: "folder-id", path, environmentSlug: "dev", envId: "env-id" });
 
@@ -135,26 +116,30 @@ describe("assertManageFolderSubtree", () => {
     ])
   });
 
-  const folderGrant = (
-    role: SecretFolderRole,
-    secretPath: string,
-    appliesToSubfolders = false
-  ): TProjectFolderScopedPrivilege => ({
-    id: "privilege-id",
-    folderId: "granted-folder-id",
-    role,
-    environmentSlug: "dev",
-    secretPath,
-    appliesToSubfolders
-  });
+  const folderGrant = (role: SecretFolderRole, secretPath: string, appliesToSubfolders = false) =>
+    FolderGrant.restore({
+      id: `grant-${secretPath}`,
+      name: "",
+      actorId: null,
+      folderId: "granted-folder-id",
+      role,
+      environmentSlug: "dev",
+      secretPath,
+      appliesToSubfolders,
+      isTemporary: false,
+      temporaryAccessStartTime: null,
+      temporaryAccessEndTime: null
+    });
 
-  const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges?: TProjectFolderScopedPrivilege[]) =>
-    createMongoAbility<ProjectPermissionSet>(
-      buildProjectPermissionRules(roles, ProjectType.SecretManager, privileges) as RawRuleOf<
-        MongoAbility<ProjectPermissionSet>
-      >[],
-      { conditionsMatcher }
-    );
+  const projectRoles = StandardProjectRoles.generic(ProjectType.SecretManager);
+  const abilityFor = (roles: { role: string; permissions?: unknown }[], grants: FolderGrant[] = []) =>
+    Permission.fromRules<ProjectPermissionSet>({
+      rules: RuleSet.merge(
+        roles.map(({ role, permissions }) =>
+          projectRoles.rulesFor(Grant.restore({ slug: role, packedRules: permissions }))
+        )
+      ).then(FolderGrants.inForce(grants).rules())
+    });
 
   test("allows a project admin", () => {
     const caller = abilityFor([{ role: ProjectMembershipRole.Admin, permissions: [] }]);
@@ -217,6 +202,92 @@ describe("assertManageFolderSubtree", () => {
 
     expect(() => assertManageFolderSubtree(caller, folder("/"))).toThrow(ForbiddenRequestError);
     expect(() => assertManageFolderSubtree(caller, folder("/c"))).not.toThrow();
+  });
+
+  test("allows a caller whose manage access comes from a recursive full-access grant on a nested folder, inside its subtree only", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [folderGrant(SecretFolderRole.FullAccess, "/a", true)]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/b"))).toThrow(ForbiddenRequestError);
+  });
+
+  test("rejects a subtree where a lower-tier recursive grant below takes manage access away", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [folderGrant(SecretFolderRole.FullAccess, "/a", true), folderGrant(SecretFolderRole.Read, "/a/b", true)]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b/c"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a/c"))).not.toThrow();
+  });
+
+  test("allows a caller whose recursive full access sits below a lower-tier recursive grant, inside its subtree only", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [folderGrant(SecretFolderRole.Read, "/", true), folderGrant(SecretFolderRole.FullAccess, "/a", true)]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b/c"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/b"))).toThrow(ForbiddenRequestError);
+  });
+
+  test("lets the deepest recursive grant above the folder decide when grants alternate down the tree", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [
+        folderGrant(SecretFolderRole.FullAccess, "/", true),
+        folderGrant(SecretFolderRole.Read, "/a", true),
+        folderGrant(SecretFolderRole.FullAccess, "/a/b", true)
+      ]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b/c"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/a/c"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/c"))).not.toThrow();
+  });
+
+  test("rejects a subtree where a lower-tier grant on one folder sits inside a recursive full-access grant below a lower-tier one", () => {
+    const caller = abilityFor(
+      [{ role: ProjectMembershipRole.Member, permissions: [] }],
+      [
+        folderGrant(SecretFolderRole.Read, "/", true),
+        folderGrant(SecretFolderRole.FullAccess, "/a", true),
+        folderGrant(SecretFolderRole.Read, "/a/b")
+      ]
+    );
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).toThrow(ForbiddenRequestError);
+    expect(() => assertManageFolderSubtree(caller, folder("/a/c"))).not.toThrow();
+  });
+
+  test("allows a recursive full-access grant over a role that forbids managing access there", () => {
+    const forbidManageAccessRole = {
+      role: ProjectMembershipRole.Custom,
+      permissions: packRules([
+        {
+          action: ProjectPermissionSecretFolderActions.ManageAccess,
+          subject: ProjectPermissionSub.SecretFolders,
+          inverted: true
+        }
+      ])
+    };
+    const caller = abilityFor([forbidManageAccessRole], [folderGrant(SecretFolderRole.FullAccess, "/a", true)]);
+
+    expect(() => assertManageFolderSubtree(caller, folder("/a/b"))).not.toThrow();
+    expect(() => assertManageFolderSubtree(caller, folder("/b"))).toThrow(ForbiddenRequestError);
   });
 
   test("names the folder and environment in the error", () => {

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -10,7 +12,6 @@ import {
   SanitizedLdapConnectionSchema,
   UpdateLdapConnectionSchema
 } from "@app/services/app-connection/ldap";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -67,9 +68,47 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
       const machines = await server.services.appConnection.ldap.listMachines(
         connectionId,
         { search, limit },
-        req.permission
+        req.actor
       );
       return { machines };
     }
+  });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/groups`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listLdapDirectoryGroups",
+      tags: [ApiDocsTags.AppConnections],
+      description:
+        "Search the Active Directory security groups an LDAP connection can read, for example to find the SIDs that a Microsoft Autoenrollment profile's allowedGroupSids takes. Requires permission to connect the LDAP connection.",
+      params: z.object({
+        connectionId: z.string().uuid().describe("The ID of the LDAP Connection to search groups in.")
+      }),
+      querystring: z.object({
+        search: z
+          .string()
+          .trim()
+          .max(64)
+          .optional()
+          .describe("Text the group name contains. Up to 50 groups are returned.")
+      }),
+      response: {
+        200: z.object({
+          groups: z
+            .object({ sid: z.string(), name: z.string() })
+            .array()
+            .describe("Active Directory security groups, with their security identifier (SID) and name."),
+          isTruncated: z.boolean().describe("Whether more groups match than were returned.")
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.appConnection.ldap.listGroups(req.params.connectionId, { search: req.query.search }, req.actor)
   });
 };

@@ -144,11 +144,6 @@ seed-dev-saml:
 	docker compose -f docker-compose.dev.yml exec -T backend npx tsx ./src/db/seed-saml.ts
 
 
-# Golang commands
-go-generate:
-	cd backend-go && \
-	goa gen github.com/infisical/api/internal/server/design -o ./internal/server/
-
 validate-upgrade-impact:
 	cd upgrade-impact && \
 	npm run type:check && \

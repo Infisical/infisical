@@ -79,6 +79,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
+  useBulkActOnSecretApprovalRequests,
   useGetSecretApprovalPolicies,
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
@@ -90,14 +91,18 @@ import {
   secretApprovalRequestKeys
 } from "@app/hooks/api/secretApprovalRequest/queries";
 import {
+  BulkChangeRequestAction,
   SecretApprovalRequestOrderBy,
   TBulkChangeRequestResult,
   TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
-import { ApprovalStatus } from "@app/hooks/api/types";
 import { formatReservedPaths, parsePathFromReplicatedPath } from "@app/lib/fn/string";
 
 import { BulkReviewChangeRequestsSheet } from "./components/BulkReviewChangeRequestsSheet";
+import {
+  doesChangeRequestNeedUserReview,
+  isChangeRequestMergeable
+} from "./components/changeRequestReviewState";
 import {
   generateCommitText,
   SecretApprovalRequestChanges
@@ -137,6 +142,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   const [failedRequestErrors, setFailedRequestErrors] = useState<Record<string, string>>({});
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
   const [isSelectingAllMatching, setIsSelectingAllMatching] = useState(false);
+  const [isMergingSelection, setIsMergingSelection] = useState(false);
   const [matchingSelection, setMatchingSelection] = useState<{
     filtersKey: string;
     totalCount: number;
@@ -189,6 +195,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
   });
 
   const { data: secretApprovalRequestCount } = useGetSecretApprovalRequestCount({ projectId });
+  const { mutateAsync: bulkAct } = useBulkActOnSecretApprovalRequests();
   const { user: userSession } = useUser();
   const search = useSearch({
     from: ROUTE_PATHS.SecretManager.ApprovalPage.id
@@ -344,6 +351,37 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
           .map(({ id, errorMessage }) => [id, errorMessage ?? "This request could not be updated"])
       )
     );
+  };
+
+  const canMergeSelection =
+    selectedCount > 0 &&
+    selectedRequestList.every(
+      (request) => request.status === "open" && isChangeRequestMergeable(request)
+    );
+
+  const mergeSelection = async () => {
+    setIsMergingSelection(true);
+    try {
+      const results = await bulkAct({
+        projectId,
+        action: BulkChangeRequestAction.Merge,
+        requestIds: [...selectedRequestList]
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .map(({ id }) => id)
+      });
+      handleBulkComplete(results);
+      const failedCount = results.filter(({ isSuccess }) => !isSuccess).length;
+      createNotification({
+        type: failedCount ? "warning" : "success",
+        text: failedCount
+          ? `Merged ${results.length - failedCount} of ${results.length} change requests. The rest stay selected.`
+          : `Merged ${results.length} change request${results.length === 1 ? "" : "s"}`
+      });
+    } catch {
+      clearSelection();
+    } finally {
+      setIsMergingSelection(false);
+    }
   };
 
   const isRequestListEmpty = !isApprovalRequestLoading && secretApprovalRequests?.length === 0;
@@ -616,27 +654,22 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                     id: reqId,
                     commits,
                     createdAt,
-                    reviewers,
                     status,
                     committerUser,
                     committerUserId,
                     committerIdentity,
                     hasMerged,
                     updatedAt,
-                    policy,
                     environment,
                     secretPath,
                     isReplicated
                   } = secretApproval;
 
-                  const isMergable =
-                    reviewers.filter(
-                      ({ status: reviewStatus }) => reviewStatus === ApprovalStatus.APPROVED
-                    ).length >= policy.approvals;
-
-                  const requiresUserReview =
-                    policy.approvers.find((approver) => approver.userId === userSession.id) &&
-                    !reviewers.find(({ userId }) => userId === userSession.id);
+                  const isMergable = isChangeRequestMergeable(secretApproval);
+                  const requiresUserReview = doesChangeRequestNeedUserReview(
+                    secretApproval,
+                    userSession.id
+                  );
 
                   const environmentDisplayName = environmentNamesBySlug[environment] ?? environment;
                   const secretPathDisplay = isReplicated
@@ -830,14 +863,26 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
           </Button>
         )}
         <Button
-          variant="project"
+          variant={canMergeSelection ? "outline" : "project"}
           size="xs"
-          isDisabled={isSelectingAllMatching}
+          isDisabled={isSelectingAllMatching || isMergingSelection}
           onClick={() => setIsBulkReviewOpen(true)}
         >
           <ListChecksIcon />
           Review
         </Button>
+        {canMergeSelection && (
+          <Button
+            variant="project"
+            size="xs"
+            isDisabled={isSelectingAllMatching}
+            isPending={isMergingSelection}
+            onClick={mergeSelection}
+          >
+            <GitMergeIcon />
+            Merge
+          </Button>
+        )}
       </SelectedActionBar>
       <BulkReviewChangeRequestsSheet
         isOpen={isBulkReviewOpen}

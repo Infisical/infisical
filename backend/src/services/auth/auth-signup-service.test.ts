@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BREACHED_PASSWORD_ERROR_NAME } from "@app/lib/validator/breached-password";
 import { breachedRangeResponse } from "@app/lib/validator/breached-password.test-utils";
 
 import { authSignupServiceFactory } from "./auth-signup-service";
 import { CompleteAccountType } from "./auth-signup-type";
-import { AuthTokenType } from "./auth-type";
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 

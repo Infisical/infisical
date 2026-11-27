@@ -226,6 +226,7 @@ export type TPamAccountListItem = {
   requiresApproval: boolean;
   supportsCredentialReveal: boolean;
   requireReason: boolean;
+  maxAccessDurationSeconds: number | null;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
   pendingRequestId: string | null;

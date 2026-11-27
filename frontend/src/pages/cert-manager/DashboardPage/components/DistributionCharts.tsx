@@ -16,7 +16,10 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import type { TDashboardDistribution, TDashboardStats } from "@app/hooks/api/certificates";
-import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
+import {
+  certKeyAlgorithmToNameMap,
+  getEnrollmentTypeName
+} from "@app/hooks/api/certificates/constants";
 
 import {
   CHART_COLORS_HEX,
@@ -85,7 +88,7 @@ const DonutChart = ({
         (certKeyAlgorithmToNameMap as Record<string, string>)[label] ?? label.replace(/_/g, " ")
       );
     }
-    if (chartKey === "enrollmentMethod" && label !== "Other") return label.toUpperCase();
+    if (chartKey === "enrollmentMethod" && label !== "Other") return getEnrollmentTypeName(label);
     return label;
   };
 

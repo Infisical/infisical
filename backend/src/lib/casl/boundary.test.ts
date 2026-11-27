@@ -1,6 +1,6 @@
 import { createMongoAbility } from "@casl/ability";
 
-import { PermissionConditionOperators } from ".";
+import { PermissionConditionOperators } from "./";
 import { validatePermissionBoundary } from "./boundary";
 
 describe("Validate Permission Boundary Function", () => {

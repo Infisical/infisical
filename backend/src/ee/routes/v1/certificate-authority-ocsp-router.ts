@@ -97,9 +97,12 @@ export const registerCaOcspRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: ocspLimit },
     schema: {
       hide: true,
+      operationId: "postOcspRequest",
+      consumes: [OCSP_REQUEST_CONTENT_TYPE],
       params: z.object({
         caId: z.string().uuid()
       }),
+      body: z.instanceof(Buffer).optional(),
       response: {
         200: z.instanceof(Buffer)
       }
@@ -115,6 +118,7 @@ export const registerCaOcspRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: ocspLimit },
     schema: {
       hide: true,
+      operationId: "getOcspRequest",
       params: z.object({
         caId: z.string().uuid(),
         "*": z.string().trim().min(1).max(OCSP_MAX_REQUEST_BYTES)

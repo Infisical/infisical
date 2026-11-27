@@ -3,6 +3,7 @@ import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
+import { isSignerRenewalDue } from "./signer-auto-renewal-fns";
 import { TSignerDALFactory } from "./signer-dal";
 import { SignerAutoRenewalOutcome, SignerStatus } from "./signer-enums";
 import { TSignerServiceFactory } from "./signer-service";
@@ -15,8 +16,6 @@ type TSignerAutoRenewalQueueFactoryDep = {
 };
 
 export type TSignerAutoRenewalQueueFactory = ReturnType<typeof signerAutoRenewalQueueFactory>;
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export const signerAutoRenewalQueueFactory = ({
   queueService,
@@ -37,12 +36,7 @@ export const signerAutoRenewalQueueFactory = ({
     let due = 0;
 
     for (const signer of candidates) {
-      const renewBeforeDays = signer.certificateRenewBeforeDays ?? 0;
-      const isDue =
-        renewBeforeDays >= 1 &&
-        (!signer.certificateNotAfter ||
-          new Date(signer.certificateNotAfter).getTime() - now <= renewBeforeDays * MS_PER_DAY);
-      if (!isDue) continue;
+      if (!isSignerRenewalDue(signer, now)) continue;
 
       due += 1;
       try {

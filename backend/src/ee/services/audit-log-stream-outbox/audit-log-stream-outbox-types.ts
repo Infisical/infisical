@@ -1,6 +1,5 @@
-import { TAuditLogs } from "@app/db/schemas";
-
 import { LogProvider } from "../audit-log-stream/audit-log-stream-enums";
+import { TAuditLogStreamEvent } from "../audit-log-stream/audit-log-stream-types";
 
 export enum AuditLogStreamOutboxStatus {
   Pending = "pending",
@@ -14,7 +13,7 @@ export type TAuditLogStreamOutboxRow = {
   streamId: string;
   orgId: string;
   auditLogId: string;
-  payload: TAuditLogs;
+  payload: TAuditLogStreamEvent;
   status: AuditLogStreamOutboxStatus;
   attempts: number;
   nextRetryAt: Date;

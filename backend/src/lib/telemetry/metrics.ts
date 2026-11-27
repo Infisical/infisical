@@ -648,11 +648,12 @@ export enum SsoProvider {
 
 export enum SsoConfigAction {
   Create = "create",
-  Update = "update"
+  Update = "update",
+  Delete = "delete"
 }
 
 export const ssoConfigChangeCounter = infisicalCoreMeter.createCounter("infisical.sso.config.change.count", {
-  description: "SSO configuration changes (create/update) by provider. Detects unexpected SSO reconfiguration.",
+  description: "SSO configuration changes (create/update/delete) by provider. Detects unexpected SSO reconfiguration.",
   unit: "{change}"
 });
 
@@ -940,7 +941,7 @@ export const recordObjectStorageUploadMetric = (params: {
 
 // -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
 // Outbox health, not what consumers do with events. The main canary is the oldest-pending-age gauge
-// in event-outbox-queue.ts, fed by the relay tick.
+// registered by the events module (domains/platform/events), fed by the relay tick.
 
 export const eventOutboxLagHistogram = infisicalCoreMeter.createHistogram("infisical.event_outbox.lag", {
   description:
@@ -969,23 +970,13 @@ export const recordEventOutboxExhaustedMetric = (params: { consumer: string; cou
     eventOutboxExhaustedCounter.add(params.count, { "event_outbox.consumer": params.consumer });
   });
 
-export enum EventOutboxRejectReason {
-  InvalidEvent = "invalid_event",
-  DataTooLarge = "data_too_large",
-  DataRejected = "data_rejected"
-}
-
 export const eventOutboxRejectedCounter = infisicalCoreMeter.createCounter("infisical.event_outbox.rejected.count", {
   description:
     "Events the outbox refused because the emit site built a bad one, by event type and reason. The emit throws, so the business write the event belongs to fails with it. Alarm on any occurrence: it is a bug at the emit site.",
   unit: "{event}"
 });
 
-export const recordEventOutboxRejectedMetric = (params: {
-  eventType: string;
-  reason: EventOutboxRejectReason;
-  consumer?: string;
-}) =>
+export const recordEventOutboxRejectedMetric = (params: { eventType: string; reason: string; consumer?: string }) =>
   safely(() => {
     if (!isTelemetryEnabled()) return;
     eventOutboxRejectedCounter.add(1, {

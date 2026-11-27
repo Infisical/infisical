@@ -1,9 +1,10 @@
 import { ForbiddenError } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { CertificateIssuanceOperation } from "./certificate-constants";
 import { recordCertificateIssuanceFailure, tagErrorWithCertificateRequest } from "./certificate-issuance-audit-fns";
@@ -121,16 +122,17 @@ describe("recordCertificateIssuanceFailure", () => {
     expect(call.event.metadata.error).toHaveLength(1000);
   });
 
-  it.each([new ForbiddenError(undefined as never), new ForbiddenRequestError({ message: "denied" })])(
-    "skips permission denials",
-    async (error) => {
-      const { deps, record } = setup();
+  it.each([
+    new ForbiddenError(undefined as never),
+    new ForbiddenRequestError({ message: "denied" }),
+    new PermissionDeniedError({ message: "denied" })
+  ])("skips permission denials", async (error) => {
+    const { deps, record } = setup();
 
-      await record(error);
+    await record(error);
 
-      expect(deps.auditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
-    }
-  );
+    expect(deps.auditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
+  });
 
   it("never throws when recording fails", async () => {
     const { deps, record } = setup();

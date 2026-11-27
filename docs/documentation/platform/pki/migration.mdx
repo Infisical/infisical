@@ -75,13 +75,13 @@ If you have CAs, policies, or profiles spread across multiple existing projects,
 
 <Steps>
   <Step title="Designate the active project">
-    Open **Certificate Manager**. If no project is active yet, Infisical asks an organization admin to choose one. Select the project you intend to consolidate into, then select **Set as active**. To change the active project later, go to **Certificate Manager** > **Settings**, select the **Projects** tab, open the project's actions menu, and select **Set as active**.
+    Open **Certificate Manager**. If no project is active yet, Infisical asks an organization admin to choose one. Select the project you intend to consolidate into, then select **Set as active**. To change the active project later, go to **Certificate Manager** > **Product Settings**, open the project's actions menu in the projects table, and select **Set as active**.
 
     All members and integrations across the organization will subsequently resolve to this project. Designating an active project also unlocks Applications. Until one is selected (in organizations with multiple Certificate Management projects), Applications can't be created or administered.
   </Step>
 
   <Step title="Export entities from legacy projects">
-    In the **Projects** tab, locate a legacy project, open its actions menu, and select **Export to active project**.
+    In the same projects table under **Certificate Manager** > **Product Settings**, locate a legacy project, open its actions menu, and select **Export to active project**.
 
     The export copies the following resources into the active project:
 
@@ -120,7 +120,7 @@ Once you've consolidated your projects (or if you only have one), go to your **a
     1. Go to the Application's **Settings** tab
     2. Find the **Certificate Profiles** section
     3. Attach the profiles this Application needs
-    4. Configure [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP) for each profile
+    4. Configure [enrollment methods](/documentation/platform/pki/applications/enrollment-methods/overview) (API, ACME, EST, SCEP, Microsoft Autoenrollment) for each profile
 
     One profile can serve multiple Applications with different enrollment methods.
   </Step>
@@ -195,7 +195,7 @@ Once you've consolidated your projects (or if you only have one), go to your **a
     A profile defines what a certificate looks like: one CA, one policy, one set of constraints. A service often needs multiple certificate types. Keeping profiles at the product level lets admins define them once and let multiple Applications consume them, each with their own enrollment methods and access control.
   </Accordion>
   <Accordion title="Why don't I see Applications in my legacy project?">
-    Applications live on your organization's active Certificate Management project. Designate one in the **Projects** tab of **Certificate Manager** > **Settings** and Applications will appear there. Legacy projects remain fully accessible for everything else.
+    Applications live on your organization's active Certificate Management project. Designate one under **Certificate Manager** > **Product Settings** and Applications will appear there. Legacy projects remain fully accessible for everything else.
   </Accordion>
 </AccordionGroup>
 

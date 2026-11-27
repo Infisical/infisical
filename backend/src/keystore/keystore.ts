@@ -131,11 +131,6 @@ export const KeyStorePrefixes = {
   AlertChannelTestCooldown: (orgId: string, actorId: string, channelType: string) =>
     `alert-channel-test-cooldown:${orgId}:${actorId}:${channelType}` as const,
 
-  ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
-    `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
-  ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
-    `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
-
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
@@ -151,6 +146,16 @@ export const KeyStorePrefixes = {
   ProjectFolderAccessRosterVersion: (projectId: string) => `project-folder-access-roster-version:${projectId}` as const,
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
+  MicrosoftAutoenrollmentReplay: (servicePrincipalName: string, replayKey: string) =>
+    `microsoft-autoenrollment-replay:${servicePrincipalName}:${replayKey}` as const,
+  MicrosoftAutoenrollmentServerChannelBindings: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsRefreshLock: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-refresh-lock:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLearnFailed: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-learn-failed:${instanceEndpoint}` as const,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailure: (instanceEndpoint: string) =>
+    `microsoft-autoenrollment-server-channel-bindings-last-failure:${instanceEndpoint}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,
   MfaSession: (mfaSessionId: string) => `mfa-session:${mfaSessionId}` as const,
@@ -297,8 +302,6 @@ export const KeyStoreTtls = {
   IdentityRevocationVerdictJitterInSeconds: 120, // +/- 2 minutes
   IdentityRevocationVersionInSeconds: 604800, // 7 days
   IdentityTrustedIpsInSeconds: 300, // 5 minutes
-  ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
-  ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   ProjectFolderAccessMarkerTtlSeconds: 20,
   ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
   ProjectFolderAccessRosterVersionTtlSeconds: 600, // 10 minutes, must outlive the marker
@@ -345,6 +348,11 @@ export const KeyStoreTtls = {
   TelemetryAuditLogsViewedInSeconds: 3600, // 1 hour
   SecretEtagInSeconds: 900, // 15 minutes
   PkiAcmeNonceInSeconds: 300, // 5 minutes
+  MicrosoftAutoenrollmentReplayInSeconds: 600, // 10 minutes
+  MicrosoftAutoenrollmentServerChannelBindingsInSeconds: 86400,
+  MicrosoftAutoenrollmentServerChannelBindingsRefreshLockInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLearnFailedInSeconds: 300,
+  MicrosoftAutoenrollmentServerChannelBindingsLastFailureInSeconds: 86400,
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle

@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -10,7 +11,6 @@ import {
   UpdatePaloAltoNetworksConnectionSchema
 } from "@app/services/app-connection/palo-alto-networks";
 import { PanOsObjectNameSchema } from "@app/services/app-connection/palo-alto-networks/palo-alto-networks-connection-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -43,10 +43,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
-      server.services.appConnection.paloAltoNetworks.listTemplates(
-        { connectionId: req.params.connectionId },
-        req.permission
-      )
+      server.services.appConnection.paloAltoNetworks.listTemplates({ connectionId: req.params.connectionId }, req.actor)
   });
 
   server.route({
@@ -80,7 +77,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     handler: async (req) => {
       const sslTlsServiceProfiles = await server.services.appConnection.paloAltoNetworks.listSslTlsServiceProfiles(
         { connectionId: req.params.connectionId, template: req.query.template },
-        req.permission
+        req.actor
       );
       return { sslTlsServiceProfiles };
     }
@@ -117,7 +114,7 @@ export const registerPaloAltoNetworksConnectionRouter = async (server: FastifyZo
     handler: async (req) => {
       const certificates = await server.services.appConnection.paloAltoNetworks.listCertificates(
         { connectionId: req.params.connectionId, template: req.query.template },
-        req.permission
+        req.actor
       );
       return { certificates };
     }

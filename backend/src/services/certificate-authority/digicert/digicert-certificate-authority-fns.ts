@@ -3,12 +3,12 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -68,7 +68,10 @@ type TDigiCertCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById" | "findOne">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "transaction" | "updateById" | "findOneLiveFirst"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -144,7 +147,7 @@ export const DigiCertCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateDigiCertCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
 
@@ -232,7 +235,7 @@ export const DigiCertCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration?: TUpdateDigiCertCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     if (configuration) {
@@ -933,7 +936,7 @@ export const DigiCertCertificateAuthorityFns = ({
       throw new BadRequestError({ message: `CA is not a DigiCert certificate authority [caId=${caId}]` });
     }
 
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`

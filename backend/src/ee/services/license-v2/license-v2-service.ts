@@ -1,5 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import {
@@ -13,15 +11,19 @@ import {
   TSubscriptionResponse,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import {
+  OrgPermissionBillingActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService,
+  TOrganizationsService
+} from "@app/domains/platform/organizations/ce/module";
+import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLicenseV2BreakdownDALFactory, TScopeOrgRow, TScopeProjectRow } from "./license-v2-breakdown-dal";
 import {
   BillingV2BreakdownDimension,
@@ -60,8 +62,9 @@ import {
 type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  orgPermissionService: TOrgPermissionService;
+  organizationsService: TOrganizationsService;
+  projectsService: TProjectsService;
   certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
   licenseService: TLicenseService;
@@ -406,11 +409,12 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
-  permissionService,
+  orgPermissionService,
   licenseService,
   usageMeteringService,
   licenseBilling,
-  organizationsProjectsService,
+  organizationsService,
+  projectsService,
   certManagerService,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
@@ -489,33 +493,24 @@ export const licenseV2ServiceFactory = ({
     actor: TGetBillingV2OverviewDTO["actor"],
     isInstanceAdmin?: boolean
   ) => {
-    if (orgId !== actor.orgId && canReadAcrossOrgs(isInstanceAdmin)) {
+    if (orgId !== actor.org.id && canReadAcrossOrgs(isInstanceAdmin)) {
       return;
     }
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
+    permission.assert({ action: OrgPermissionBillingActions.Read, subject: OrgPermissionSubjects.Billing });
   };
 
   const ensureManageBilling = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
+    permission.assert({ action: OrgPermissionBillingActions.ManageBilling, subject: OrgPermissionSubjects.Billing });
   };
 
   // Fold the subscription items and the entitlement features sourced from a product into a single
@@ -1052,7 +1047,7 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    const rootOrgId = isInstanceScope ? null : await organizationsProjectsService.resolveRootOrgId(orgId);
+    const rootOrgId = isInstanceScope ? null : await organizationsService.resolveRootOrgId(orgId);
     const scopeOrgId = rootOrgId ?? undefined;
     const orgs = isInstanceScope
       ? await breakdownDAL.findAllOrgNames()
@@ -1098,8 +1093,8 @@ export const licenseV2ServiceFactory = ({
     switch (dimensionKey) {
       case BillingV2BreakdownDimension.Identities: {
         const [counts, rows] = await Promise.all([
-          organizationsProjectsService.countBillableOrgActors(rootOrgId),
-          organizationsProjectsService.getBillableIdentityOwnershipBreakdown(rootOrgId)
+          organizationsService.countBillableOrgActors(rootOrgId),
+          organizationsService.getBillableIdentityOwnershipBreakdown(rootOrgId)
         ]);
         return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
       }
@@ -1108,8 +1103,8 @@ export const licenseV2ServiceFactory = ({
         const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
         const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
-          organizationsProjectsService.countProjectIdentitiesByKind(projectType, scopeOrgId),
-          organizationsProjectsService.getProjectIdentityBreakdown(projectType, scopeOrgId)
+          projectsService.countProjectIdentitiesByKind(projectType, scopeOrgId),
+          projectsService.getProjectIdentityBreakdown(projectType, scopeOrgId)
         ]);
         return {
           breakdown: await buildIdentityBreakdown(
@@ -1121,7 +1116,7 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.UserIdentities: {
-        const { users } = await organizationsProjectsService.countBillableOrgActors(rootOrgId);
+        const { users } = await organizationsService.countBillableOrgActors(rootOrgId);
         return {
           breakdown: {
             dimensionKey,

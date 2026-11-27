@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -9,7 +10,6 @@ import {
   TTerraformCloudOrganization,
   UpdateTerraformCloudConnectionSchema
 } from "@app/services/app-connection/terraform-cloud";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -62,7 +62,7 @@ export const registerTerraformCloudConnectionRouter = async (server: FastifyZodP
       const { connectionId } = req.params;
 
       const organizations: TTerraformCloudOrganization[] =
-        await server.services.appConnection.terraformCloud.listOrganizations(connectionId, req.permission);
+        await server.services.appConnection.terraformCloud.listOrganizations(connectionId, req.actor);
 
       return organizations;
     }

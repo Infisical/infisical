@@ -4,11 +4,11 @@ import { z } from "zod";
 import { CertificateTemplatesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CaRenewalType,
   CaStatus,
@@ -95,11 +95,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ca = await server.services.internalCertificateAuthority.createCa({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         isInternal: false,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 
@@ -146,10 +143,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const ca = await server.services.internalCertificateAuthority.getCaById({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -232,11 +226,8 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const ca = await server.services.internalCertificateAuthority.updateCaById({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.actor,
         isInternal: false,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 
@@ -284,10 +275,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { ca, keyDetails } = await server.services.internalCertificateAuthority.deleteCaById({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -334,10 +322,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { ca, csr } = await server.services.internalCertificateAuthority.getCaCsr({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -389,10 +374,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       const { certificate, certificateChain, serialNumber, ca } =
         await server.services.internalCertificateAuthority.renewCaCert({
           caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -445,10 +427,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { caCerts, ca } = await server.services.internalCertificateAuthority.getCaCerts({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -494,10 +473,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       const { certificate, certificateChain, serialNumber, ca } =
         await server.services.internalCertificateAuthority.getCaCert({
           caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.actor
         });
 
       await server.services.auditLog.createAuditLog({
@@ -557,10 +533,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       const { certificate, certificateChain, issuingCaCertificate, serialNumber, ca } =
         await server.services.internalCertificateAuthority.signIntermediate({
           caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -615,10 +588,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { ca } = await server.services.internalCertificateAuthority.importCertToCa({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -695,10 +665,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber, ca } =
         await server.services.internalCertificateAuthority.issueCertFromCa({
           caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -717,7 +684,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.IssueCert,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           caId: ca.id,
@@ -791,10 +758,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
         await server.services.internalCertificateAuthority.signCertFromCa({
           isInternal: false,
           caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.body
         });
 
@@ -813,7 +777,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignCert,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           caId: ca.id,
@@ -856,10 +820,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
       const { certificateTemplates, ca } = await server.services.internalCertificateAuthority.getCaCertificateTemplates(
         {
           caId: req.params.caId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.actor
         }
       );
 
@@ -911,10 +872,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { ca, crls } = await server.services.certificateAuthorityCrl.getCaCrls({
         caId: req.params.caId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

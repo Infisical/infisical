@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
-import { runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
-  IEventConsumer,
+  runEventsSerially,
   TEvent,
+  TEventConsumer,
   TEventConsumerResult
-} from "@app/services/event-outbox/event-outbox-types";
+} from "@app/domains/platform/events/ce/module";
+import { AlertDispatchOutcome, recordAlertDispatchOutcomeMetric } from "@app/lib/telemetry/metrics";
 
 import { TAlertDALFactory } from "./alert-dal";
 import { TAlertEngine } from "./alert-engine";
@@ -38,7 +38,7 @@ export const alertEventConsumerFactory = ({
   alertDAL,
   alertEngine,
   alertProviderRegistry
-}: TAlertEventConsumerDep): IEventConsumer<TAlertEventPayload> => {
+}: TAlertEventConsumerDep): TEventConsumer<TAlertEventPayload> => {
   const subscribesTo = (eventType: string): boolean => alertProviderRegistry.eventTriggeredKeys().has(eventType);
 
   // subscribesTo only sees the event type, so a valid key on the wrong resourceType slips through. Fail

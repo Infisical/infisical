@@ -18,6 +18,7 @@ import {
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { groupBy, sanitizeSqlLikeString, unique } from "@app/lib/fn";
 import {
@@ -32,7 +33,6 @@ import {
 import { applyScimComparison, generateKnexQueryFromScim, TScimAttributeResolver } from "@app/lib/knex/scim";
 import { OrderByDirection } from "@app/lib/types";
 
-import { ActorType } from "../auth/auth-type";
 import { OrgAuthMethod, TOrgWithSubOrgs } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;

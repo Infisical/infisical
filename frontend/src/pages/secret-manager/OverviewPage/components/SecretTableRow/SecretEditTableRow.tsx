@@ -132,6 +132,7 @@ import {
   TABLE_ROW_ACTION_BAR_VISIBILITY_CLASS_NAME,
   TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import { getUnsavedDraftKey, useUnsavedEdit } from "../UnsavedEditsBar";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
 import { SecretLastEditedTime } from "./SecretLastEditedTime";
@@ -1083,6 +1084,17 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const isReferencedElsewhere = Boolean(
+    importedBy?.some(({ folders }) =>
+      folders?.some(({ secrets }) =>
+        secrets?.some(
+          ({ referencedSecretKey, referencedSecretEnv }) =>
+            referencedSecretKey === secretName && referencedSecretEnv === environment
+        )
+      )
+    )
+  );
+
   const handleFormSubmit = async ({
     value,
     key,
@@ -1100,20 +1112,7 @@ export const SecretEditTableRow = ({
 
     // If the value edit requires confirmation (importedBy references), defer everything
     // (including rename) to handleEditSecret so the rename isn't lost on re-render.
-    if (
-      isValueDirty &&
-      (value || value === "") &&
-      !isCreatable &&
-      importedBy &&
-      importedBy.some(({ folders }) =>
-        folders?.some(({ secrets }) =>
-          secrets?.some(
-            ({ referencedSecretKey, referencedSecretEnv }) =>
-              referencedSecretKey === secretName && referencedSecretEnv === environment
-          )
-        )
-      )
-    ) {
+    if (isValueDirty && (value || value === "") && !isCreatable && isReferencedElsewhere) {
       handlePopUpOpen("editSecret", {
         secretValue: value,
         newKey: isKeyDirty ? key : undefined,
@@ -1176,6 +1175,44 @@ export const SecretEditTableRow = ({
   const submitForm = handleSubmit(handleFormSubmit);
   const isDirtyState = Boolean(
     isDirty && (dirtyFields.key || dirtyFields.value) && !isImportedSecret && !isBatchMode
+  );
+
+  const { isCommitting: isCommittingEdits } = useUnsavedEdit(
+    getUnsavedDraftKey(environment, secretPath, secretName),
+    isDirtyState && !isSubmitting,
+    {
+      getChanges: () => {
+        const value = getValues("value");
+        if (
+          value === null ||
+          value === undefined ||
+          (secretValueHidden && value === HIDDEN_SECRET_VALUE)
+        )
+          return [];
+        return [
+          {
+            environment,
+            environmentName,
+            secretPath,
+            secretKey: secretName,
+            secretValue: value,
+            originalValue: sharedValueData?.value ?? (defaultValue || null),
+            secretValueHidden,
+            isCreate: Boolean(isCreatable),
+            isReferenced: !isCreatable && isReferencedElsewhere,
+            secretComment: comment,
+            tagIds: tags?.map((tag) => tag.id)
+          }
+        ];
+      },
+      settle: ([{ secretValue: committedValue }]) => {
+        const currentValue = getValues("value");
+        reset({ value: secretValueHidden ? defaultValue || null : committedValue });
+        if (currentValue !== committedValue) setValue("value", currentValue, { shouldDirty: true });
+      },
+      discard: handleFormReset,
+      restore: ([draft]) => setValue("value", draft.secretValue, { shouldDirty: true })
+    }
   );
 
   useEffect(() => {
@@ -1276,7 +1313,7 @@ export const SecretEditTableRow = ({
 
   const handleEditShortcut = useSecretInputActionShortcuts({
     isActive: isBatchMode ? isPendingBatchChange || isDirty : isDirtyState,
-    isDisabled: isSubmitting || isSavingPendingChange,
+    isDisabled: isSubmitting || isSavingPendingChange || isCommittingEdits,
     isSaveDisabled: isCreatable || isPendingCreate ? !canCreate : !canEditSecretValue,
     onSave: isBatchMode ? savePendingRow : submitForm,
     onUndo: handleFormReset
@@ -1886,8 +1923,8 @@ export const SecretEditTableRow = ({
                 "absolute z-20 px-0.5 py-0.5",
                 isSingleEnvView ? "top-1 right-1" : "top-[0.25px] -right-1.5"
               )}
-              isSaveDisabled={isSubmitting || !isAllowed}
-              isUndoDisabled={isSubmitting}
+              isSaveDisabled={isSubmitting || isCommittingEdits || !isAllowed}
+              isUndoDisabled={isSubmitting || isCommittingEdits}
               onSave={submitForm}
               onUndo={handleFormReset}
             />

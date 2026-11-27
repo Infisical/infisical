@@ -15,7 +15,6 @@ const ROOT_CA_DN = "O=Acme, CN=Corp Root CA";
 const ISSUING_CA_DN = "O=Acme, CN=Corp Issuing CA";
 const LEGACY_ROOT_DN = "CN=Legacy Root CA G2, O=Acme";
 
-const KEY_MISMATCH_MESSAGE = "This certificate's key doesn't match this CA. Have the old CA sign the CSR from this CA.";
 const SUBJECT_MISMATCH_MESSAGE =
   "This certificate's subject doesn't match this CA. Have the old CA sign the CSR from this CA.";
 const KEY_IDENTIFIER_MISMATCH_MESSAGE =
@@ -279,11 +278,6 @@ describe("CA cross-signed certificates", async () => {
 
     expect((await importCopy(rootCaId, { certificate: "not a certificate" })).statusCode).toBe(400);
     expect((await importCopy(rootCaId, { certificate: `${copy}\n${copy}` })).statusCode).toBe(400);
-  });
-
-  test("rejects a certificate for another key", async () => {
-    const otherKeys = await generateKeys();
-    await expectRejected({ certificate: await signCopy({ publicKey: otherKeys.publicKey }) }, KEY_MISMATCH_MESSAGE);
   });
 
   test("rejects a certificate with another subject", async () => {

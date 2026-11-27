@@ -13,6 +13,7 @@ export {
   useGetOrgProductStats,
   useSearchOrganizationGroups,
   useUpdateOrg,
+  useUpdateOrgSsoSettings,
   useUpgradePrivilegeSystem
 } from "./queries";
 export type { TOrgProductStats } from "./types";

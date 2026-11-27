@@ -1,31 +1,34 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
-import RE2 from "re2";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import {
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionCertificatePolicyActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
-  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY
+  MAX_CUSTOM_EXTENSION_RULES_PER_POLICY,
+  MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS
 } from "../certificate-common/certificate-constants";
 import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
   describeReservedExtensionOid,
+  findMicrosoftAutoenrollmentRuleProblems,
   isReservedExtensionOid,
   resolveCustomExtensions,
   TCustomExtensionRule,
@@ -33,9 +36,19 @@ import {
 } from "../certificate-common/certificate-extension-fns";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
+  describeDeniedSan,
+  describeDisallowedSan,
+  describeCommonNameSanRuleWithoutCommonName,
+  describeMissingRequiredSan,
+  describeUnsupportedCommonNameDefaultSans,
+  describeValueNotAllowed,
   isDomainComponentRule,
   isWildcardPattern,
   matchesNormalizedPattern,
+  matchesSanRuleValue,
+  normalizeUriForComparison,
+  parsePolicyTtlMs,
+  RequestReference,
   validateDomainComponentsAgainstRule
 } from "./certificate-policy-fns";
 import {
@@ -50,12 +63,14 @@ import {
 
 type TCertificatePolicyServiceFactoryDep = {
   certificatePolicyDAL: TCertificatePolicyDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
 };
 
 export const certificatePolicyServiceFactory = ({
   certificatePolicyDAL,
-  permissionService
+  projectPermissionService,
+  applicationPermissionService
 }: TCertificatePolicyServiceFactoryDep) => {
   const consolidateAttributeArray = <T extends { type: string }>(attributes: T[]): T[] => {
     const consolidated = new Map<string, T>();
@@ -72,30 +87,6 @@ export const certificatePolicyServiceFactory = ({
     });
 
     return Array.from(consolidated.values());
-  };
-
-  const parseTTL = (ttl: string): number => {
-    const regex = new RE2("^(\\d+)([dmyh])$");
-    const match = regex.exec(ttl);
-    if (!match) {
-      throw new Error(`Invalid TTL format: ${ttl}`);
-    }
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    switch (unit) {
-      case "h":
-        return value * 60 * 60 * 1000;
-      case "d":
-        return value * 24 * 60 * 60 * 1000;
-      case "m":
-        return value * 30 * 24 * 60 * 60 * 1000;
-      case "y":
-        return value * 365 * 24 * 60 * 60 * 1000;
-      default:
-        throw new Error(`Unsupported TTL unit: ${unit}`);
-    }
   };
 
   const validateSubjectAttributePolicy = (subjectAttributes: TSubjectRule[]) => {
@@ -157,6 +148,16 @@ export const certificatePolicyServiceFactory = ({
             });
           }
         }
+      }
+
+      const deniedValues = new Set(san.denied);
+      const conflicting = (san.required ?? []).filter((value) => deniedValues.has(value));
+      if (conflicting.length > 0) {
+        throw new BadRequestError({
+          message: `SAN rule for type '${san.type}' both requires and denies ${conflicting
+            .map((value) => (value === RequestReference.CommonName ? `"Same as common name" (${value})` : value))
+            .join(", ")}, so no request could ever satisfy it.`
+        });
       }
     }
   };
@@ -315,14 +316,6 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
-  const normalizeUriForComparison = (value: string): string => {
-    const match = new RE2("^([a-zA-Z][a-zA-Z0-9+.-]*://[^/?#]*)([/?#].*)?$").exec(value);
-    if (!match) {
-      return value;
-    }
-    return `${match[1].toLowerCase()}${match[2] ?? ""}`;
-  };
-
   const validateValueAgainstConstraints = (
     value: string,
     allowedValues: string[],
@@ -343,15 +336,9 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    if (hasWildcards) {
-      return {
-        isValid: false,
-        error: `${fieldName} value '${value}' does not match allowed patterns: ${allowedValues.join(", ")}`
-      };
-    }
     return {
       isValid: false,
-      error: `${fieldName} value '${value}' is not in allowed values list`
+      error: describeValueNotAllowed({ fieldName, value, allowedValues, hasPatterns: hasWildcards })
     };
   };
 
@@ -476,22 +463,21 @@ export const certificatePolicyServiceFactory = ({
         const requestSans = requestSansByType.get(sanPolicy.type) || [];
 
         const isUriSan = sanPolicy.type === CertSubjectAlternativeNameType.URI;
+        const matchesRuleValue = (sanValue: string, ruleValue: string) =>
+          matchesSanRuleValue({
+            sanType: sanPolicy.type,
+            sanValue,
+            ruleValue,
+            commonName: request.commonName,
+            matchesPattern: (value, pattern) =>
+              validateValueAgainstConstraints(value, [pattern], `${sanPolicy.type} SAN`, isUriSan).isValid
+          });
 
         // Check REQUIRED values - at least one SAN must match each required pattern
         if (!options?.skipRequired && sanPolicy.required && sanPolicy.required.length > 0) {
           for (const requiredValue of sanPolicy.required) {
-            const hasMatchingRequiredSan = requestSans.some((sanValue) => {
-              const validation = validateValueAgainstConstraints(
-                sanValue,
-                [requiredValue],
-                `${sanPolicy.type} SAN`,
-                isUriSan
-              );
-              return validation.isValid;
-            });
-
-            if (!hasMatchingRequiredSan) {
-              errors.push(`Required ${sanPolicy.type} SAN matching pattern '${requiredValue}' not found in request`);
+            if (!requestSans.some((sanValue) => matchesRuleValue(sanValue, requiredValue))) {
+              errors.push(describeMissingRequiredSan(sanPolicy.type, requiredValue, request.commonName));
             }
           }
         }
@@ -499,44 +485,19 @@ export const certificatePolicyServiceFactory = ({
         // Check DENIED values - no SAN should match denied patterns
         if (sanPolicy.denied && sanPolicy.denied.length > 0) {
           for (const sanValue of requestSans) {
-            const validation = validateValueAgainstConstraints(
-              sanValue,
-              sanPolicy.denied,
-              `${sanPolicy.type} SAN`,
-              isUriSan
-            );
-            if (validation.isValid) {
-              errors.push(`${sanPolicy.type} SAN matching denied pattern '${sanValue}' found in request`);
+            const deniedValue = sanPolicy.denied.find((ruleValue) => matchesRuleValue(sanValue, ruleValue));
+            if (deniedValue) {
+              errors.push(describeDeniedSan(sanPolicy.type, sanValue, deniedValue));
             }
           }
         }
 
         // Check ALLOWED values - if present, all SANs must match at least one allowed pattern
         if (sanPolicy.allowed && sanPolicy.allowed.length > 0 && requestSans.length > 0) {
+          const permittedValues = [...(sanPolicy.required ?? []), ...sanPolicy.allowed];
           for (const sanValue of requestSans) {
-            let satisfiesRequired = false;
-            if (sanPolicy.required && sanPolicy.required.length > 0) {
-              satisfiesRequired = sanPolicy.required.some((requiredValue) => {
-                const validation = validateValueAgainstConstraints(
-                  sanValue,
-                  [requiredValue],
-                  `${sanPolicy.type} SAN`,
-                  isUriSan
-                );
-                return validation.isValid;
-              });
-            }
-
-            if (!satisfiesRequired) {
-              const validation = validateValueAgainstConstraints(
-                sanValue,
-                sanPolicy.allowed,
-                `${sanPolicy.type} SAN`,
-                isUriSan
-              );
-              if (!validation.isValid && validation.error) {
-                errors.push(validation.error);
-              }
+            if (!permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))) {
+              errors.push(describeDisallowedSan(sanPolicy.type, sanValue, sanPolicy.allowed, request.commonName));
             }
           }
         }
@@ -648,11 +609,11 @@ export const certificatePolicyServiceFactory = ({
 
     // Validate TTL against template validity constraints
     if (request.validity?.ttl && template.validity) {
-      const requestDurationMs = parseTTL(request.validity.ttl);
+      const requestDurationMs = parsePolicyTtlMs(request.validity.ttl);
 
       // Check maximum duration using max field
       if (template.validity.max) {
-        const maxDurationMs = parseTTL(template.validity.max);
+        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
 
         if (requestDurationMs > maxDurationMs) {
           errors.push("Requested validity period exceeds maximum allowed duration");
@@ -666,7 +627,7 @@ export const certificatePolicyServiceFactory = ({
 
       if (notAfter && notBefore && notAfter instanceof Date && notBefore instanceof Date) {
         const requestDuration = notAfter.getTime() - notBefore.getTime();
-        const maxDurationMs = parseTTL(template.validity.max);
+        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
 
         if (requestDuration > maxDurationMs) {
           errors.push(
@@ -714,7 +675,8 @@ export const certificatePolicyServiceFactory = ({
       declarations: options?.profileCustomExtensions,
       rules: template.customExtensions,
       requestExtensions: request.customExtensions,
-      skipRequired: options?.skipRequired
+      skipRequired: options?.skipRequired,
+      issuerAddedExtensions: options?.issuerAddedExtensions
     });
     errors.push(...customExtensionErrors);
 
@@ -728,34 +690,26 @@ export const certificatePolicyServiceFactory = ({
 
   const createPolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     data: Omit<TCertificatePolicyInsert, "projectId">;
   }): Promise<TCertificatePolicy> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Create,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Create,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: data.name
-      })
-    );
+      }
+    });
 
     if (!data) {
       throw new Error("Template data is required");
@@ -773,6 +727,14 @@ export const certificatePolicyServiceFactory = ({
 
     if (consolidatedData.sans) {
       validateSanPolicy(consolidatedData.sans);
+    }
+
+    const commonNameSanRuleError = describeCommonNameSanRuleWithoutCommonName({
+      subject: consolidatedData.subject ?? undefined,
+      sans: consolidatedData.sans ?? undefined
+    });
+    if (commonNameSanRuleError) {
+      throw new BadRequestError({ message: commonNameSanRuleError });
     }
 
     if (consolidatedData.keyUsages) {
@@ -806,16 +768,10 @@ export const certificatePolicyServiceFactory = ({
 
   const updatePolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     policyId: string;
     data: TCertificatePolicyUpdate;
   }): Promise<TCertificatePolicy> => {
@@ -824,21 +780,19 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: existingTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Edit,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Edit,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: existingTemplate.name
-      })
-    );
+      }
+    });
 
     const consolidatedData = {
       ...data,
@@ -862,10 +816,15 @@ export const certificatePolicyServiceFactory = ({
       validateExtendedKeyUsagePolicy(consolidatedData.extendedKeyUsages);
     }
 
+    const isChangingNames = consolidatedData.subject !== undefined || consolidatedData.sans !== undefined;
+    const boundProfiles =
+      consolidatedData.customExtensions || isChangingNames
+        ? await certificatePolicyDAL.getProfilesUsingPolicy(policyId)
+        : [];
+
     if (consolidatedData.customExtensions) {
       validateCustomExtensionPolicy(consolidatedData.customExtensions);
 
-      const boundProfiles = await certificatePolicyDAL.getProfilesUsingPolicy(policyId);
       for (const boundProfile of boundProfiles) {
         const declarations = boundProfile.defaults?.customExtensions;
         if (declarations?.length) {
@@ -883,6 +842,29 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
+    if (isChangingNames) {
+      const updatedPolicy: Pick<TCertificatePolicy, "subject" | "sans"> = {
+        subject:
+          (consolidatedData.subject === undefined ? existingTemplate.subject : consolidatedData.subject) ?? undefined,
+        sans: (consolidatedData.sans === undefined ? existingTemplate.sans : consolidatedData.sans) ?? undefined
+      };
+      const commonNameSanRuleError = describeCommonNameSanRuleWithoutCommonName(updatedPolicy);
+      if (commonNameSanRuleError) {
+        throw new BadRequestError({ message: commonNameSanRuleError });
+      }
+      for (const boundProfile of boundProfiles) {
+        const error = describeUnsupportedCommonNameDefaultSans(
+          updatedPolicy,
+          boundProfile.defaults?.subjectAltNames ?? []
+        );
+        if (error) {
+          throw new BadRequestError({
+            message: `Certificate profile '${boundProfile.slug}' uses this policy and would no longer be valid. ${error}`
+          });
+        }
+      }
+    }
+
     const updateData = { ...consolidatedData };
     if (data.name && typeof data.name === "string") {
       const newSlug = generateTemplateSlug(data.name);
@@ -892,7 +874,35 @@ export const certificatePolicyServiceFactory = ({
       }
     }
 
-    const updatedTemplate = await certificatePolicyDAL.updateById(policyId, updateData);
+    const windowsRuleProblems = consolidatedData.customExtensions
+      ? findMicrosoftAutoenrollmentRuleProblems(consolidatedData.customExtensions)
+      : [];
+    const updatedTemplate = await certificatePolicyDAL.transaction(async (tx) => {
+      if (windowsRuleProblems.length || consolidatedData.algorithms !== undefined) {
+        await certificatePolicyDAL.lockById(policyId, tx);
+        const windowsProfiles = await certificatePolicyDAL.findMicrosoftAutoenrollmentProfiles(policyId, tx);
+        const [windowsProfile] = windowsProfiles;
+        if (windowsProfile && windowsRuleProblems.length) {
+          throw new BadRequestError({
+            message: `Certificate profile '${windowsProfile.profileName}' uses this policy with Microsoft Autoenrollment in Application '${windowsProfile.applicationName}', which adds custom extensions ${MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS.join(" and ")} to every certificate. ${windowsRuleProblems.join(" ")} You can also turn off Microsoft Autoenrollment for that profile.`
+          });
+        }
+        const updatedPolicy = { ...existingTemplate, ...updateData } as TCertificatePolicy;
+        for (const { profileName, profileDefaults, applicationName, caKeyAlgorithm, caKeySource } of windowsProfiles) {
+          const keyProblem = findTemplatePolicyProblem(
+            { slug: profileName, defaults: profileDefaults },
+            { keyAlgorithm: caKeyAlgorithm, keySource: caKeySource },
+            (request) => validateRequestAgainstPolicy(updatedPolicy, request, { skipRequired: true }).isValid
+          );
+          if (keyProblem) {
+            throw new BadRequestError({
+              message: `Certificate profile '${profileName}' uses this policy with Microsoft Autoenrollment in Application '${applicationName}'. ${keyProblem}`
+            });
+          }
+        }
+      }
+      return certificatePolicyDAL.updateById(policyId, updateData, tx);
+    });
     if (!updatedTemplate) {
       throw new NotFoundError({ message: "Failed to update certificate policy" });
     }
@@ -901,17 +911,11 @@ export const certificatePolicyServiceFactory = ({
 
   const getPolicyById = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId,
     applicationId,
     internal = false
   }: {
-    actor?: ActorType;
-    actorId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    actorOrgId?: string;
+    actor?: TActorContext;
     policyId: string;
     applicationId?: string;
     internal?: boolean;
@@ -922,41 +926,35 @@ export const certificatePolicyServiceFactory = ({
     }
 
     if (!internal) {
-      if (!actor || !actorId || !actorOrgId) {
+      if (!actor) {
         throw new BadRequestError({ message: "Actor is required" });
       }
 
-      if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-        const { permission } = await permissionService.getResourcePermission({
+      if (applicationId && (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)) {
+        const permission = await applicationPermissionService.getApplicationPermission({
           actor,
-          actorId,
           projectId: template.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: applicationId,
-          actorAuthMethod: actorAuthMethod || null,
-          actorOrgId
+          applicationId
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionApplicationActions.Read,
-          ResourcePermissionSub.Application
-        );
+        permission.assert({
+          action: ApplicationPermissionActions.Read,
+          subject: ApplicationPermissionSub.Application
+        });
       } else {
-        const { permission } = await permissionService.getProjectPermission({
+        const permission = await projectPermissionService.getProjectPermission({
           actor,
-          actorId,
           projectId: template.projectId,
-          actorAuthMethod: actorAuthMethod || null,
-          actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
+          type: ProjectType.CertificateManager
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificatePolicyActions.Read,
-          subject(ProjectPermissionSub.CertificatePolicies, {
+        permission.assert({
+          action: ProjectPermissionCertificatePolicyActions.Read,
+          subject: ProjectPermissionSub.CertificatePolicies,
+          fields: {
             name: template.name
-          })
-        );
+          }
+        });
       }
     }
 
@@ -965,26 +963,17 @@ export const certificatePolicyServiceFactory = ({
 
   const getPolicyBySlug = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     slug
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     slug: string;
   }): Promise<TCertificatePolicy> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const template = await certificatePolicyDAL.findByNameAndProjectId(slug, projectId);
@@ -992,29 +981,24 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Read,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Read,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: template.name
-      })
-    );
+      }
+    });
     return template;
   };
 
   const listPolicies = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     offset = 0,
     limit = 20,
     search
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     offset?: number;
     limit?: number;
@@ -1023,22 +1007,19 @@ export const certificatePolicyServiceFactory = ({
     policies: TCertificatePolicy[];
     totalCount: number;
   }> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Read,
-      ProjectPermissionSub.CertificatePolicies
-    );
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Read,
+      subject: ProjectPermissionSub.CertificatePolicies
+    });
 
     const processedRules = getProcessedPermissionRules(
-      permission,
+      permission.toAbility(),
       ProjectPermissionCertificatePolicyActions.Read,
       ProjectPermissionSub.CertificatePolicies
     );
@@ -1054,15 +1035,9 @@ export const certificatePolicyServiceFactory = ({
 
   const deletePolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     policyId: string;
   }): Promise<TCertificatePolicy> => {
     const template = await certificatePolicyDAL.findById(policyId);
@@ -1070,21 +1045,19 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: template.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Delete,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Delete,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: template.name
-      })
-    );
+      }
+    });
 
     const isInUse = await certificatePolicyDAL.isPolicyInUse(policyId);
     if (isInUse) {

@@ -32,7 +32,8 @@ export enum AcmeDnsProvider {
   AzureDNS = "azure-dns",
   PowerDns = "powerdns",
   GcpCloudDns = "gcp-cloud-dns",
-  UltraDNS = "ultradns"
+  UltraDNS = "ultradns",
+  Rfc2136 = "rfc2136"
 }
 
 export enum CaRenewalStatus {

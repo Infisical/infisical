@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TAttachTokenAuthDTO = {
   identityId: string;
@@ -7,7 +7,7 @@ export type TAttachTokenAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateTokenAuthDTO = {
   identityId: string;
@@ -16,42 +16,42 @@ export type TUpdateTokenAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTokenAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeTokenAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateTokenAuthTokenDTO = {
   identityId: string;
   name?: string;
   organizationSlug?: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTokenAuthTokensDTO = {
   identityId: string;
   offset: number;
   limit: number;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTokenAuthTokenByIdDTO = {
   tokenId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateTokenAuthTokenDTO = {
   tokenId: string;
   name?: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeTokenAuthTokenDTO = {
   tokenId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

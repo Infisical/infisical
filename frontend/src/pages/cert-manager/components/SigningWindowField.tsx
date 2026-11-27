@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { parseDurationMs } from "@app/helpers/datetime";
+import { capDurationOptions, parseDurationMs } from "@app/helpers/datetime";
 
 const DURATION_PRESETS = [
   { value: "15m", label: "15 minutes" },
@@ -34,13 +34,10 @@ const getSigningWindowOptions = (maxWindowDuration?: string | null) => {
   const maxMs = parseDurationMs(maxWindowDuration);
   if (maxMs === null || !maxWindowDuration) return [NO_LIMIT_OPTION, ...DURATION_PRESETS];
 
-  const withinPolicy = DURATION_PRESETS.filter((option) => {
-    const optionMs = parseDurationMs(option.value);
-    return optionMs !== null && optionMs <= maxMs;
+  return capDurationOptions(DURATION_PRESETS, maxMs, {
+    value: maxWindowDuration,
+    label: maxWindowDuration
   });
-
-  if (withinPolicy.some((option) => parseDurationMs(option.value) === maxMs)) return withinPolicy;
-  return [...withinPolicy, { value: maxWindowDuration, label: maxWindowDuration }];
 };
 
 export const getDefaultSigningWindow = (maxWindowDuration?: string | null) =>

@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -15,7 +16,6 @@ import {
 } from "@app/lib/gateway-v2/adcs-rpc";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { executeAdcsGatewayOperation, resolveAdcsCaName } from "@app/services/app-connection/adcs";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -142,7 +142,10 @@ type TADCSCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findOneLiveFirst" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -177,7 +180,7 @@ export const ADCSCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateADCSCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, caName } = configuration;
     const appConnection = await appConnectionDAL.findById(appConnectionId);
@@ -259,7 +262,7 @@ export const ADCSCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration?: TUpdateADCSCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
@@ -696,7 +699,7 @@ export const ADCSCertificateAuthorityFns = ({
 
     assertAdcsRevocationReasonSupported(reason);
 
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate not found for revocation [caId=${caId}] [serialNumber=${serialNumber}]`

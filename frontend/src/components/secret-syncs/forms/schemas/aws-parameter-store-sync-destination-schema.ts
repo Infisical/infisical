@@ -1,9 +1,12 @@
 import { z } from "zod";
 
-import { BaseSecretSyncSchema } from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
+import {
+  BaseSecretSyncSchema,
+  refinePreserveFolderStructure
+} from "@app/components/secret-syncs/forms/schemas/base-secret-sync-schema";
 import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
-export const AwsParameterStoreSyncDestinationSchema = BaseSecretSyncSchema(
+const AwsParameterStoreSyncBaseSchema = BaseSecretSyncSchema(
   z.object({
     keyId: z
       .string()
@@ -31,11 +34,17 @@ export const AwsParameterStoreSyncDestinationSchema = BaseSecretSyncSchema(
       .array()
       .max(50)
       .optional(),
-    syncSecretMetadataAsTags: z.boolean().optional()
+    syncSecretMetadataAsTags: z.boolean().optional(),
+    preserveFolderStructure: z.boolean().optional()
   })
-).merge(
+);
+
+export const AwsParameterStoreSyncDestinationSchema = AwsParameterStoreSyncBaseSchema.merge(
   z.object({
     destination: z.literal(SecretSync.AWSParameterStore),
+    syncOptions: AwsParameterStoreSyncBaseSchema.shape.syncOptions.superRefine(
+      refinePreserveFolderStructure
+    ),
     destinationConfig: z.object({
       path: z
         .string()

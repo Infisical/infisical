@@ -13,7 +13,8 @@ export const PamFoldersSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  emailApproversOnRequest: z.boolean().default(true)
 });
 
 export type TPamFolders = z.infer<typeof PamFoldersSchema>;

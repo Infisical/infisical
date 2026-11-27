@@ -3,20 +3,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ActionProjectType } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -54,10 +56,16 @@ describe("CertificateRequestService", () => {
     getCertPrivateKey: vi.fn() as any
   };
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
-    getProjectPermission: vi.fn() as any,
-    getResourcePermission: vi.fn() as any
-  };
+  const mockProjectPermissionService = { getProjectPermission: vi.fn() };
+  const mockCertManagerDomain = { getApplicationPermission: vi.fn() };
+
+  const ACTOR = {
+    principal: { type: ActorType.USER, id: "550e8400-e29b-41d4-a716-446655440001", authMethod: AuthMethod.EMAIL },
+    org: { id: "550e8400-e29b-41d4-a716-446655440002" }
+  } as unknown as TActorContext;
+
+  const asPermission = ({ permission }: { permission: { rules: unknown[] } }) =>
+    Permission.fromRules({ rules: permission.rules as never });
 
   const mockQueueService = {
     stopJobById: vi.fn(),
@@ -78,7 +86,8 @@ describe("CertificateRequestService", () => {
       certificateDAL: mockCertificateDAL,
       pkiApplicationDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never,
       certificateService: mockCertificateService,
-      permissionService: mockPermissionService,
+      projectPermissionService: mockProjectPermissionService as never,
+      applicationPermissionService: mockCertManagerDomain as never,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },
       queueService: mockQueueService as any,
       userDAL: mockUserDAL as any,
@@ -96,10 +105,7 @@ describe("CertificateRequestService", () => {
 
   describe("createCertificateRequest", () => {
     const mockCreateData = {
-      actor: ActorType.USER,
-      actorId: "550e8400-e29b-41d4-a716-446655440001",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
+      actor: ACTOR,
       projectId: "550e8400-e29b-41d4-a716-446655440003",
       profileId: "550e8400-e29b-41d4-a716-446655440004",
       commonName: "test.example.com",
@@ -123,18 +129,15 @@ describe("CertificateRequestService", () => {
         commonName: "test.example.com"
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.create as any).mockResolvedValue(mockCreatedRequest);
 
       const result = await service.createCertificateRequest(mockCreateData);
 
-      expect(mockPermissionService.getProjectPermission).toHaveBeenCalledWith({
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
+      expect(mockProjectPermissionService.getProjectPermission).toHaveBeenCalledWith({
+        actor: ACTOR,
         projectId: "550e8400-e29b-41d4-a716-446655440003",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
       expect(mockCertificateRequestDAL.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -150,23 +153,30 @@ describe("CertificateRequestService", () => {
       expect(result).toEqual(mockCreatedRequest);
     });
 
-    it("should throw ForbiddenError when user lacks permission", async () => {
-      const mockPermission = {
-        permission: ForbiddenError.from(createMongoAbility([]))
-      };
+    it("should throw PermissionDeniedError when user lacks permission", async () => {
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(Permission.none());
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      await expect(service.createCertificateRequest(mockCreateData)).rejects.toThrow(PermissionDeniedError);
+    });
 
-      await expect(service.createCertificateRequest(mockCreateData)).rejects.toThrow();
+    it("leaves enrollment and internal callers to the service that authorized them", async () => {
+      (mockCertificateRequestDAL.create as any).mockResolvedValue({ id: "550e8400-e29b-41d4-a716-446655440005" });
+      const { actor: _actor, ...requestData } = mockCreateData;
+
+      await service.createCertificateRequest({
+        ...requestData,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: requestData.profileId, orgId: "org-1" }
+      });
+      await service.createCertificateRequest({ ...requestData, internal: true });
+
+      expect(mockProjectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(mockCertificateRequestDAL.create).toHaveBeenCalledTimes(2);
     });
   });
 
   describe("getCertificateRequest", () => {
     const mockGetData = {
-      actor: ActorType.USER,
-      actorId: "550e8400-e29b-41d4-a716-446655440001",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
+      actor: ACTOR,
       projectId: "550e8400-e29b-41d4-a716-446655440003",
       certificateRequestId: "550e8400-e29b-41d4-a716-446655440005"
     };
@@ -186,18 +196,15 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.PENDING
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
 
       const result = await service.getCertificateRequest(mockGetData);
 
-      expect(mockPermissionService.getProjectPermission).toHaveBeenCalledWith({
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
+      expect(mockProjectPermissionService.getProjectPermission).toHaveBeenCalledWith({
+        actor: ACTOR,
         projectId: "550e8400-e29b-41d4-a716-446655440003",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
       expect(mockCertificateRequestDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440005");
       expect(result).toEqual(mockRequest);
@@ -213,7 +220,7 @@ describe("CertificateRequestService", () => {
         ])
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(null);
 
       await expect(service.getCertificateRequest(mockGetData)).rejects.toThrow(NotFoundError);
@@ -234,7 +241,7 @@ describe("CertificateRequestService", () => {
         status: CertificateRequestStatus.PENDING
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
 
       await expect(service.getCertificateRequest(mockGetData)).rejects.toThrow(NotFoundError);
@@ -243,10 +250,7 @@ describe("CertificateRequestService", () => {
 
   describe("getCertificateFromRequest", () => {
     const mockGetData = {
-      actor: ActorType.USER,
-      actorId: "550e8400-e29b-41d4-a716-446655440001",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
+      actor: ACTOR,
       projectId: "550e8400-e29b-41d4-a716-446655440003",
       certificateRequestId: "550e8400-e29b-41d4-a716-446655440005"
     };
@@ -285,7 +289,7 @@ describe("CertificateRequestService", () => {
         certPrivateKey: "-----BEGIN PRIVATE KEY-----\nMOCK_KEY_PEM\n-----END PRIVATE KEY-----"
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithCert);
       (mockCertificateService.getCertBody as any).mockResolvedValue(mockCertBody);
       (mockCertificateService.getCertPrivateKey as any).mockResolvedValue(mockPrivateKey);
@@ -297,17 +301,11 @@ describe("CertificateRequestService", () => {
       );
       expect(mockCertificateService.getCertBody).toHaveBeenCalledWith({
         id: "550e8400-e29b-41d4-a716-446655440006",
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
+        actor: ACTOR
       });
       expect(mockCertificateService.getCertPrivateKey).toHaveBeenCalledWith({
         id: "550e8400-e29b-41d4-a716-446655440006",
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
+        actor: ACTOR
       });
       expect(certificateRequest).toEqual({
         status: CertificateRequestStatus.ISSUED,
@@ -356,7 +354,7 @@ describe("CertificateRequestService", () => {
         updatedAt: new Date()
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithDeletedCert);
 
       const { certificateRequest } = await service.getCertificateFromRequest(mockGetData);
@@ -390,7 +388,7 @@ describe("CertificateRequestService", () => {
         updatedAt: new Date()
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithoutCert);
 
       const { certificateRequest, projectId } = await service.getCertificateFromRequest(mockGetData);
@@ -447,7 +445,7 @@ describe("CertificateRequestService", () => {
         certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----"
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithCert);
       (mockCertificateService.getCertBody as any).mockResolvedValue(mockCertBody);
 
@@ -458,10 +456,7 @@ describe("CertificateRequestService", () => {
       );
       expect(mockCertificateService.getCertBody).toHaveBeenCalledWith({
         id: "550e8400-e29b-41d4-a716-446655440008",
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
+        actor: ACTOR
       });
       expect(mockCertificateService.getCertPrivateKey).not.toHaveBeenCalled();
       expect(certificateRequest).toEqual({
@@ -519,7 +514,7 @@ describe("CertificateRequestService", () => {
         certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----"
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithCert);
       (mockCertificateService.getCertBody as any).mockResolvedValue(mockCertBody);
       (mockCertificateService.getCertPrivateKey as any).mockRejectedValue(new Error("Private key not found"));
@@ -531,17 +526,11 @@ describe("CertificateRequestService", () => {
       );
       expect(mockCertificateService.getCertBody).toHaveBeenCalledWith({
         id: "550e8400-e29b-41d4-a716-446655440009",
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
+        actor: ACTOR
       });
       expect(mockCertificateService.getCertPrivateKey).toHaveBeenCalledWith({
         id: "550e8400-e29b-41d4-a716-446655440009",
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
+        actor: ACTOR
       });
       expect(certificateRequest).toEqual({
         status: CertificateRequestStatus.ISSUED,
@@ -586,7 +575,7 @@ describe("CertificateRequestService", () => {
         updatedAt: new Date()
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockFailedRequest);
 
       const { certificateRequest, projectId } = await service.getCertificateFromRequest(mockGetData);
@@ -626,7 +615,7 @@ describe("CertificateRequestService", () => {
         ])
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(null);
 
       await expect(service.getCertificateFromRequest(mockGetData)).rejects.toThrow(NotFoundError);
@@ -870,10 +859,7 @@ describe("CertificateRequestService", () => {
     const applicationId = "550e8400-e29b-41d4-a716-446655440200";
 
     const cancelInput = {
-      actor: ActorType.USER,
-      actorId: "550e8400-e29b-41d4-a716-446655440001",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
+      actor: ACTOR,
       certificateRequestId: requestId
     };
 
@@ -913,7 +899,9 @@ describe("CertificateRequestService", () => {
       };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRow);
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(
+        asPermission(projectPermissionWithEdit)
+      );
       (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(updatedRow);
       (mockUserDAL.findById as any).mockResolvedValue({
         firstName: "Carlos",
@@ -962,7 +950,9 @@ describe("CertificateRequestService", () => {
 
       const cancelValidationRow = async (externalCaType: CaType) => {
         (mockCertificateRequestDAL.findById as any).mockResolvedValue(validationRow);
-        (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+        (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(
+          asPermission(projectPermissionWithEdit)
+        );
         (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue({
           ...validationRow,
           status: CertificateRequestStatus.FAILED
@@ -1015,7 +1005,9 @@ describe("CertificateRequestService", () => {
       };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValueOnce(pendingRow).mockResolvedValueOnce(refreshedRow);
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(
+        asPermission(projectPermissionWithEdit)
+      );
       (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(null);
       (mockUserDAL.findById as any).mockResolvedValue({ username: "carlos" });
 
@@ -1047,7 +1039,9 @@ describe("CertificateRequestService", () => {
       };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(terminalRow);
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithEdit);
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(
+        asPermission(projectPermissionWithEdit)
+      );
 
       const result = await service.cancelCertificateRequest(cancelInput);
 
@@ -1069,7 +1063,7 @@ describe("CertificateRequestService", () => {
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(null);
 
       await expect(service.cancelCertificateRequest(cancelInput)).rejects.toThrow(NotFoundError);
-      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(mockProjectPermissionService.getProjectPermission).not.toHaveBeenCalled();
     });
 
     it("falls back to App-scoped Edit when the project role lacks cert Edit", async () => {
@@ -1085,22 +1079,24 @@ describe("CertificateRequestService", () => {
       const updatedRow = { ...pendingRow, status: CertificateRequestStatus.FAILED, pendingMessage: null };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRow);
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithoutEdit);
-      (mockPermissionService.getResourcePermission as any).mockResolvedValue({
-        permission: { can: vi.fn().mockReturnValue(true) }
-      });
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(
+        asPermission(projectPermissionWithoutEdit)
+      );
+      (mockCertManagerDomain.getApplicationPermission as any).mockResolvedValue(
+        Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })
+      );
       (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(updatedRow);
       (mockUserDAL.findById as any).mockResolvedValue({ username: "carlos" });
 
       const result = await service.cancelCertificateRequest(cancelInput);
 
-      expect(mockPermissionService.getResourcePermission).toHaveBeenCalledWith(
-        expect.objectContaining({ resourceId: applicationId })
+      expect(mockCertManagerDomain.getApplicationPermission).toHaveBeenCalledWith(
+        expect.objectContaining({ applicationId })
       );
       expect(result.cancelled).toBe(true);
     });
 
-    it("throws ForbiddenError when neither project nor App permission allow Edit", async () => {
+    it("throws PermissionDeniedError when neither project nor App permission allow Edit", async () => {
       const pendingRow = {
         id: requestId,
         status: CertificateRequestStatus.PENDING,
@@ -1112,12 +1108,12 @@ describe("CertificateRequestService", () => {
       };
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRow);
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(projectPermissionWithoutEdit);
-      (mockPermissionService.getResourcePermission as any).mockResolvedValue({
-        permission: { can: vi.fn().mockReturnValue(false) }
-      });
+      (mockProjectPermissionService.getProjectPermission as any).mockResolvedValue(
+        asPermission(projectPermissionWithoutEdit)
+      );
+      (mockCertManagerDomain.getApplicationPermission as any).mockResolvedValue(Permission.fromRules({ rules: [] }));
 
-      await expect(service.cancelCertificateRequest(cancelInput)).rejects.toThrow(ForbiddenError);
+      await expect(service.cancelCertificateRequest(cancelInput)).rejects.toThrow(PermissionDeniedError);
       expect(mockCertificateRequestDAL.transitionFromPending).not.toHaveBeenCalled();
     });
   });

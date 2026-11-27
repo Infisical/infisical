@@ -400,7 +400,14 @@ export const InitialStep = ({ isAdmin }: Props) => {
                       ))}
                     </div>
                   )}
-                  {organizationLoginOptions.length > 0 && (
+                  {organizationLoginOptions.length > 0 && socialLoginOptions.length === 0 && (
+                    <div className="flex w-full flex-col gap-2">
+                      {organizationLoginOptions.map((option) => (
+                        <Fragment key={option.id}>{option.render(false, true)}</Fragment>
+                      ))}
+                    </div>
+                  )}
+                  {organizationLoginOptions.length > 0 && socialLoginOptions.length > 0 && (
                     <div className="w-full">
                       <AnimatedCollapse isOpen={!areSsoOptionsVisible}>
                         <Button

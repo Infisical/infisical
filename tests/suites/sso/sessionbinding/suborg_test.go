@@ -31,7 +31,7 @@ func TestSessionBinding_SubOrganization(t *testing.T) {
 		status, body = readOrg(t, alice, sub.ID)
 
 		// Assert
-		requireForeignSession(t, status, body)
+		requireForeignSessionRefused(t, status, body)
 	})
 
 	t.Run("should refuse a sub-org admin when the root org allows bypass, only a root org role bypasses", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestSessionBinding_SubOrganization(t *testing.T) {
 		status, body := readOrg(t, alice, sub.ID)
 
 		// Assert
-		requireForeignSession(t, status, body)
+		requireForeignSessionRefused(t, status, body)
 	})
 
 	t.Run("should refuse a sub-org project read on the next request once the root org admin role is revoked", func(t *testing.T) {
@@ -77,6 +77,6 @@ func TestSessionBinding_SubOrganization(t *testing.T) {
 		status, body = readProject(t, alice, projectID)
 
 		// Assert
-		requireForeignSession(t, status, body)
+		requireForeignSessionRefused(t, status, body)
 	})
 }

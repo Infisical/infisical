@@ -1,10 +1,10 @@
 import { z } from "zod";
 
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit, smtpRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -12,7 +12,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     url: "/email/password-setup",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => (req.auth.actor === ActorType.USER ? req.auth.userId : req.realIp)
+        keyGenerator: (req) => (req.auth.actorType === ActorType.USER ? req.auth.userId : req.realIp)
       })
     },
     schema: {
@@ -25,7 +25,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.password.sendPasswordSetupEmail(req.permission);
+      await server.services.password.sendPasswordSetupEmail(req.actor);
 
       return {
         message: "A password setup link has been sent"
@@ -53,7 +53,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req, res) => {
-      await server.services.password.setupPassword(req.body, req.permission);
+      await server.services.password.setupPassword(req.body, req.actor);
 
       const appCfg = getConfig();
       void res.cookie("jid", "", {

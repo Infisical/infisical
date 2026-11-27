@@ -16,13 +16,13 @@ import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -82,7 +82,10 @@ type TAwsAcmPublicCaCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "create" | "findById" | "findOneLiveFirst" | "transaction" | "updateById"
+  >;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsDataKeyService: TKmsDataKeyService;
@@ -154,7 +157,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     appConnectionId: string;
     dnsAppConnectionId?: string;
     projectId: string;
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
@@ -200,7 +203,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAwsAcmPublicCaCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const { appConnectionId, dnsAppConnectionId, hostedZoneId, region } = configuration;
 
@@ -288,7 +291,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAwsAcmPublicCaCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     if (configuration) {
@@ -783,7 +786,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     const { appConnectionId } = acmCa.configuration;
 
     // ACM revokes by ARN, not serial number. Look up the ARN from the cert's externalMetadata.
-    const cert = await certificateDAL.findOne({ caId, serialNumber });
+    const cert = await certificateDAL.findOneLiveFirst({ caId, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: `Certificate with serial number '${serialNumber}' not found under CA '${caId}'`

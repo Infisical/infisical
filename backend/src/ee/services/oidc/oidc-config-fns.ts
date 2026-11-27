@@ -1,3 +1,7 @@
+import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
+
+import { OIDC_CONFIG_AUDIT_URL_FIELDS } from "./oidc-config-types";
+
 type TResolveOidcGroupMembershipChangesDTO<TGroup extends { id: string; name: string }> = {
   // The raw "groups" claim from the OIDC IdP. Casing is preserved by the caller (it is recorded in
   // audit logs); matching below is case-insensitive.
@@ -45,3 +49,17 @@ export const resolveOidcGroupMembershipChanges = <TGroup extends { id: string; n
 
   return { groupsToAddUserTo, groupsToRemoveUserFrom };
 };
+
+type TOidcConfigAuditUrlField = (typeof OIDC_CONFIG_AUDIT_URL_FIELDS)[number];
+
+export const sanitizeOidcConfigAuditUrls = <T extends Partial<Record<TOidcConfigAuditUrlField, string | null>>>(
+  fields: T
+): T => ({
+  ...fields,
+  ...Object.fromEntries(
+    OIDC_CONFIG_AUDIT_URL_FIELDS.filter((field) => fields[field]).map((field) => [
+      field,
+      sanitizeUrlForLog(fields[field] as string)
+    ])
+  )
+});

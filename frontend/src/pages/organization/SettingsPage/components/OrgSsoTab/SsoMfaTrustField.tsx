@@ -18,7 +18,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { useUpdateOrg } from "@app/hooks/api";
+import { useUpdateOrgSsoSettings } from "@app/hooks/api";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -26,7 +26,7 @@ export const SsoMfaTrustField = () => {
   const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
-  const { mutateAsync } = useUpdateOrg();
+  const { mutateAsync } = useUpdateOrgSsoSettings();
   const isTrustOn = currentOrg?.ssoMfaTrust === SsoMfaTrust.Signal;
 
   const handleToggle = async (value: boolean) => {
@@ -37,7 +37,6 @@ export const SsoMfaTrustField = () => {
     }
 
     await mutateAsync({
-      orgId: currentOrg.id,
       ssoMfaTrust: value ? SsoMfaTrust.Signal : SsoMfaTrust.None
     });
 

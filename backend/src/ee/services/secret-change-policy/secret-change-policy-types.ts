@@ -2,8 +2,8 @@ import { Knex } from "knex";
 
 import { TProjectEnvironments, TSecretApprovalPolicies } from "@app/db/schemas";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
@@ -15,6 +15,8 @@ import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approv
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -34,9 +36,10 @@ export type TCreateSapDTO = {
   name: string;
   enforcementLevel: EnforcementLevel;
   allowedSelfApprovals: boolean;
+  enforceOnSecretImports: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateSapDTO = {
   secretPolicyId: string;
@@ -50,24 +53,39 @@ export type TUpdateSapDTO = {
   name?: string;
   enforcementLevel?: EnforcementLevel;
   allowedSelfApprovals?: boolean;
+  enforceOnSecretImports?: boolean;
   bypassForMachineIdentities?: boolean;
   environments?: string[];
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteSapDTO = {
   secretPolicyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TListSapDTO = TProjectPermission;
+export type TListSapDTO = { projectId: string } & TActorInput;
 
-export type TGetSapByIdDTO = Omit<TProjectPermission, "projectId"> & { sapId: string };
+export type TGetSapByIdDTO = TActorInput & { sapId: string };
 
 export type TGetBoardSapDTO = {
   projectId: string;
   environment: string;
   secretPath: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
+
+export type TListSecretChangePolicyImportsDTO = {
+  sapId: string;
+  isReplication?: boolean;
+} & TActorInput;
+
+export type TSecretChangePolicyImport = {
+  id: string;
+  environment: { slug: string; name: string };
+  secretPath: string;
+  sourceEnvironment: { slug: string; name: string };
+  sourceSecretPath: string;
+  isReplication: boolean;
+};
 
 export type TSecretChangePolicyEnvironment = Pick<TProjectEnvironments, "id" | "name" | "slug">;
 
@@ -76,6 +94,7 @@ export type TSecretChangePolicyBypasser = { type: BypasserType; id: string; user
 
 export type TSecretChangePolicy = TSecretApprovalPolicies & {
   projectId: string;
+  enforceOnSecretImports: boolean;
   environments: TSecretChangePolicyEnvironment[];
   environment: TSecretChangePolicyEnvironment;
   approvers: TSecretChangePolicyApprover[];
@@ -103,6 +122,7 @@ export type TSecretChangePolicyMethods = {
     tx?: Knex
   ) => Promise<Map<string, TSecretChangePolicy>>;
   getSecretApprovalPolicyOfFolder: (dto: TGetBoardSapDTO) => Promise<TSecretChangePolicy | undefined>;
+  listSecretApprovalPolicyImports: (dto: TListSecretChangePolicyImportsDTO) => Promise<TSecretChangePolicyImport[]>;
 };
 
 export type TSecretChangePolicyServiceFactoryDep = {
@@ -122,6 +142,8 @@ export type TSecretChangePolicyServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findSameProjectImportsByEnvIds">;
+  folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
 };

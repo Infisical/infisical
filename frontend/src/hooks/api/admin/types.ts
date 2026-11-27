@@ -14,7 +14,8 @@ export enum LoginMethod {
 }
 
 export enum SuperAdminErrorCode {
-  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT"
+  AuthMethodLockout = "SUPER_ADMIN_AUTH_METHOD_LOCKOUT",
+  InvalidSetupToken = "SUPER_ADMIN_INVALID_SETUP_TOKEN"
 }
 
 export type TPasswordPolicyRequirement = {
@@ -88,6 +89,7 @@ export type TServerConfig = {
   envOverrides?: Record<string, string>;
   isPublicSecretSharingDisabled?: boolean;
   isClickhouseAuditLogEnabled?: boolean;
+  isInstanceSetupTokenRequired?: boolean;
   // populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion?: string | null;
   // Super admin-only fields (omitted for non-super-admin callers)
@@ -123,6 +125,7 @@ export type TCreateAdminUserDTO = {
   firstName: string;
   lastName?: string;
   organizationName?: string;
+  setupToken?: string;
 };
 
 export type AdminGetOrganizationsFilters = {

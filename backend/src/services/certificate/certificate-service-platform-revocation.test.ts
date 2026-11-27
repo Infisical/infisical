@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { rebuildCaCrlAfterChange } from "@app/services/certificate-authority/certificate-authority-fns";
 
 import { certificateServiceFactory } from "./certificate-service";
@@ -56,9 +57,11 @@ const buildService = (
   const certificateDAL = {
     findById: vi.fn().mockResolvedValue(certificate ?? undefined),
     findByIdForUpdate: vi.fn().mockResolvedValue(certificate ?? undefined),
-    update: vi.fn().mockResolvedValue([{ id: "cert-1" }]),
+    update: vi.fn().mockImplementation(async (filter: object) => ("$in" in filter ? [] : [{ id: "cert-1" }])),
     transaction: vi.fn().mockImplementation(async (run: (trx: unknown) => Promise<unknown>) => run({})),
-    primaryNode: vi.fn().mockReturnValue({})
+    primaryNode: vi.fn().mockReturnValue({}),
+    lockSerialNumber: vi.fn().mockResolvedValue(undefined),
+    findSameCertificateRecords: vi.fn().mockResolvedValue([])
   };
   const internalCertificateAuthorityDAL = { update: vi.fn().mockResolvedValue([]) };
 
@@ -136,6 +139,54 @@ describe("certificateService.revokeCertAsPlatform", () => {
     expect(result.outcome).toBe(PlatformRevocationOutcome.Revoked);
     expect(certificateDAL.update).toHaveBeenCalled();
     expect(licenseService.getPlan).not.toHaveBeenCalled();
+  });
+
+  it("revokes the active certificate re-imported from the deleted one Intune matched", async () => {
+    const reimportedCertificate = { ...activeCertificate, id: "cert-2" };
+    const { service, certificateDAL } = buildService({
+      ...activeCertificate,
+      deletedAt: new Date("2026-10-01T00:00:00.000Z")
+    });
+    certificateDAL.findSameCertificateRecords.mockResolvedValue([reimportedCertificate]);
+    certificateDAL.findByIdForUpdate.mockResolvedValue(reimportedCertificate);
+
+    const result = await service.revokeCertAsPlatform({
+      certificateId: "cert-1",
+      revocationReason: CrlReason.UNSPECIFIED
+    });
+
+    expect(result).toMatchObject({ outcome: PlatformRevocationOutcome.Revoked, cert: { id: "cert-2" } });
+    expect(certificateDAL.findSameCertificateRecords).toHaveBeenCalledWith(
+      {
+        serialNumbers: ["0a1b", "a1b", "a1b".padStart(40, "0")],
+        caId: "ca-1",
+        fingerprintSha256: undefined
+      },
+      {}
+    );
+    expect(certificateDAL.update).toHaveBeenCalledWith(
+      { id: "cert-2" },
+      expect.objectContaining({ status: CertStatus.REVOKED }),
+      expect.anything()
+    );
+  });
+
+  it("reports the deleted certificate Intune matched as already revoked once its re-import is revoked", async () => {
+    const { service, certificateDAL } = buildService({
+      ...activeCertificate,
+      deletedAt: new Date("2026-10-01T00:00:00.000Z")
+    });
+    certificateDAL.findSameCertificateRecords.mockResolvedValue([
+      { ...activeCertificate, id: "cert-2", status: CertStatus.REVOKED }
+    ]);
+
+    const result = await service.revokeCertAsPlatform({
+      certificateId: "cert-1",
+      revocationReason: CrlReason.UNSPECIFIED
+    });
+
+    expect(result).toEqual({ outcome: PlatformRevocationOutcome.AlreadyRevoked });
+    expect(certificateDAL.update).not.toHaveBeenCalled();
   });
 
   it("reports an already revoked certificate without writing to it", async () => {
@@ -227,10 +278,10 @@ describe("certificateService.revokeCert", () => {
     service.revokeCert({
       id: "cert-1",
       revocationReason: CrlReason.KEY_COMPROMISE,
-      actor: ActorType.USER,
-      actorId: "user-1",
-      actorAuthMethod: null,
-      actorOrgId: "org-1"
+      actor: {
+        principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+        org: { id: "org-1" }
+      } as unknown as TActorContext
     });
 
   it("rebuilds the CRL right after the revocation commits, before later steps can fail", async () => {

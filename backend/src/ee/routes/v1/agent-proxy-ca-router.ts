@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 export const registerAgentProxyCaRouter = async (server: FastifyZodProvider) => {
@@ -24,7 +24,7 @@ export const registerAgentProxyCaRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      return server.services.agentProxyCa.getRootCa(req.permission);
+      return server.services.agentProxyCa.getRootCa(req.actor);
     }
   });
 
@@ -47,10 +47,10 @@ export const registerAgentProxyCaRouter = async (server: FastifyZodProvider) => 
       }
     },
     handler: async (req) => {
-      const intermediateCa = await server.services.agentProxyCa.signIntermediate(req.permission, req.body.publicKey);
+      const intermediateCa = await server.services.agentProxyCa.signIntermediate(req.actor, req.body.publicKey);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.SIGN_AGENT_PROXY_INTERMEDIATE_CA,
           metadata: {

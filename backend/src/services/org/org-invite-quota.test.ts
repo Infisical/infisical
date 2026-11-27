@@ -112,19 +112,6 @@ describe("orgInviteQuota.admit", () => {
     expect(keyStore.incrementByIfUnderLimitWithFixedExpiry).not.toHaveBeenCalled();
   });
 
-  test("does not cap a paid org while its plan is served from the fallback", async () => {
-    // Setup
-    licenseService.fallbackOrgs.add(ORG_ID);
-    licenseService.lastKnown.set(ORG_ID, { plan: { ...testFeatures(), slug: "pro" }, fetchedAt: Date.now() });
-    const { admit } = quota();
-
-    // Action
-    await admit(ORG_ID, FREE_ORG_DAILY_INVITE_LIMIT + 1);
-
-    // Assert
-    expect(keyStore.incrementByIfUnderLimitWithFixedExpiry).not.toHaveBeenCalled();
-  });
-
   test("does not cap a self-hosted instance", async () => {
     // Setup
     appConfig.isCloud = false;

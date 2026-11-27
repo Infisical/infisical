@@ -4,10 +4,10 @@ import { PkiCertificateInstallationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedPkiInstallationSchema = PkiCertificateInstallationsSchema.omit({ encryptedCredentials: true }).extend({
   hasKeystorePassword: z.boolean().describe("Whether a keystore password is saved for this installation")
@@ -56,10 +56,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -124,10 +121,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.getInstallation({
         installationId: req.params.installationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -182,10 +176,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
         installationId: req.params.installationId,
         name: req.body.name,
         keystorePassword: req.body.keystorePassword,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -230,10 +221,7 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const installation = await server.services.pkiInstallation.deleteInstallation({
         installationId: req.params.installationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
