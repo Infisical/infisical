@@ -17,7 +17,7 @@ import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta } from "@infisical/cipher/ui/text";
-import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -180,13 +180,13 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
       width: 144,
       render: (bundle) =>
         bundle.servicesRequiringSetup.length > 0 ? (
-          <Tooltip
-            content={`Your personal values are missing for ${nameList(bundle.servicesRequiringSetup.map((service) => service.name))}.`}
+          <Badge
+            reason={`Your personal values are missing for ${nameList(bundle.servicesRequiringSetup.map((service) => service.name))}.`}
+            tone="warn"
+            icon="alert"
           >
-            <Badge tone="warn" icon="alert" tabIndex={0}>
-              Requires setup
-            </Badge>
-          </Tooltip>
+            Requires setup
+          </Badge>
         ) : (
           false
         )

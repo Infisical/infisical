@@ -277,14 +277,12 @@ export const AccessRequests = ({
               statusText
             )}
             {expiringSoon && (
-              <Tooltip content={`Expires ${stamp(expiresAt)}`}>
-                <Badge
-                  tabIndex={0}
-                  tone={expiresAt.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? "bad" : "warn"}
-                >
-                  {formatDistance(expiresAt, new Date())}
-                </Badge>
-              </Tooltip>
+              <Badge
+                reason={`Expires ${stamp(expiresAt)}`}
+                tone={expiresAt.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? "bad" : "warn"}
+              >
+                {formatDistance(expiresAt, new Date())}
+              </Badge>
             )}
           </Inline>
         );

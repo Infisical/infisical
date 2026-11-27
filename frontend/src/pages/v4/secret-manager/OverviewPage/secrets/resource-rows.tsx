@@ -134,12 +134,10 @@ function InfoHint({ text }: { text: string }) {
 function RotationStatus({ rotation }: { rotation: Of<"rotation"> }) {
   if (rotation.status === "failed")
     return (
-      <Tooltip content={`Failure reason: ${rotation.statusDetails ?? "unknown"}`}>
-        <Badge tone="bad">
-          <Icon icon={XIcon} />
-          Rotation failed
-        </Badge>
-      </Tooltip>
+      <Badge reason={`Failure reason: ${rotation.statusDetails ?? "unknown"}`} tone="bad">
+        <Icon icon={XIcon} />
+        Rotation failed
+      </Badge>
     );
   if (!rotation.autoRotation)
     return (
@@ -174,28 +172,23 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         <>
           <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
-            <Tooltip
-              content={
-                item.statusDetails ?? "The provider returned an error while revoking leases."
-              }
+            <Badge
+              reason={item.statusDetails ?? "The provider returned an error while revoking leases."}
+              tone={item.status === "deleting" ? "warn" : "bad"}
             >
-              <Badge tone={item.status === "deleting" ? "warn" : "bad"}>
-                <Icon icon={TriangleAlertIcon} />
-                {item.status === "deleting" ? "Revoking" : "Deletion failed"}
-              </Badge>
-            </Tooltip>
+              <Icon icon={TriangleAlertIcon} />
+              {item.status === "deleting" ? "Revoking" : "Deletion failed"}
+            </Badge>
           )}
         </>
       );
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "dynamic" && entry.status) && (
-        <Tooltip content="One or more dynamic secrets have issues.">
-          <Badge tone="bad">
-            <Icon icon={XIcon} />
-            Deletion failed
-          </Badge>
-        </Tooltip>
+        <Badge reason="One or more dynamic secrets have issues." tone="bad">
+          <Icon icon={XIcon} />
+          Deletion failed
+        </Badge>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"dynamic">;
@@ -287,12 +280,10 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "rotation" && entry.status === "failed") && (
-        <Tooltip content="One or more secrets failed to rotate.">
-          <Badge tone="bad">
-            <Icon icon={XIcon} />
-            Rotation failed
-          </Badge>
-        </Tooltip>
+        <Badge reason="One or more secrets failed to rotate." tone="bad">
+          <Icon icon={XIcon} />
+          Rotation failed
+        </Badge>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"rotation">;

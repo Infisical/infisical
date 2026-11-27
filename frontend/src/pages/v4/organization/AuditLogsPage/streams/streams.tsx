@@ -72,17 +72,16 @@ const Products = ({ stream }: { stream: TAuditLogStream }) => {
         </Tooltip>
       )}
       {pamSessionActivity && (
-        <Tooltip
-          content={
+        <Badge
+          reason={
             pamSessionActivity.includeOutput
               ? "Commands, queries and requests from PAM sessions, including their output."
               : "Commands, queries and requests from PAM sessions, without their output."
           }
+          tone="outline"
         >
-          <Badge tone="outline" tabIndex={0}>
-            PAM Sessions
-          </Badge>
-        </Tooltip>
+          PAM Sessions
+        </Badge>
       )}
     </Inline>
   );

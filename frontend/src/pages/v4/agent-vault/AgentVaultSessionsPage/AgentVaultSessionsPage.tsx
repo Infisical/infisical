@@ -245,12 +245,10 @@ const AccessBadge = ({
     );
   if (item.kind === "bundle")
     return (
-      <Tooltip content={`${item.bundle.name} (deleted)`}>
-        <Badge tone="soft" tabIndex={0} style={{ minWidth: 0 }}>
-          <Icon name="package" className="shrink-0" />
-          <span className="truncate">{item.bundle.name}</span>
-        </Badge>
-      </Tooltip>
+      <Badge reason={`${item.bundle.name} (deleted)`} tone="soft" style={{ minWidth: 0 }}>
+        <Icon name="package" className="shrink-0" />
+        <span className="truncate">{item.bundle.name}</span>
+      </Badge>
     );
   if (item.kind === "service")
     return (

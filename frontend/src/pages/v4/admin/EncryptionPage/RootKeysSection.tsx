@@ -9,7 +9,6 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
 import { StatusText } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import {
   RootKeyEncryptionStrategy,
@@ -55,13 +54,13 @@ const KeyStatus = ({ row, rootKey }: { row: KeyRow; rootKey: TEncryptionRootKey 
     );
   if (rootKey.expiring?.label === row.label)
     return (
-      <Tooltip
-        content={`Removed automatically on ${new Date(rootKey.expiring.expiresAt).toLocaleString()}`}
+      <StatusText
+        reason={`Removed automatically on ${new Date(rootKey.expiring.expiresAt).toLocaleString()}`}
+        tone="warn"
+        icon="clock"
       >
-        <StatusText tone="warn" icon="clock" tabIndex={0}>
-          {`Expires ${new Date(rootKey.expiring.expiresAt).toLocaleDateString()}`}
-        </StatusText>
-      </Tooltip>
+        {`Expires ${new Date(rootKey.expiring.expiresAt).toLocaleDateString()}`}
+      </StatusText>
     );
   return (
     <StatusText tone="neutral" icon="clock">

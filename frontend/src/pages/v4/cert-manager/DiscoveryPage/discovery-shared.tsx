@@ -155,11 +155,9 @@ export const DiscoveryStatusBadge = ({
       );
     case PkiDiscoveryScanStatus.Completed:
       return showWarnings && discovery.lastScanMessage ? (
-        <Tooltip content={discovery.lastScanMessage}>
-          <Badge tone="warn" dot>
-            Warning
-          </Badge>
-        </Tooltip>
+        <Badge reason={discovery.lastScanMessage} tone="warn" dot>
+          Warning
+        </Badge>
       ) : (
         <Badge tone="ok" dot>
           Active

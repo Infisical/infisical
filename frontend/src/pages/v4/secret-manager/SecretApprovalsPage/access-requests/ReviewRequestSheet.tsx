@@ -29,7 +29,6 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Heading, Meta, StatusText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import ms from "ms";
 import picomatch from "picomatch";
 
@@ -544,11 +543,9 @@ export const ReviewRequestSheet = ({
             <Inline key={id} gap={4} align="center" wrap={false}>
               <span>{name}</span>
               {mark && (
-                <Tooltip content={mark.reason}>
-                  <Badge tone="soft" tabIndex={0}>
-                    {mark.label}
-                  </Badge>
-                </Tooltip>
+                <Badge reason={mark.reason} tone="soft">
+                  {mark.label}
+                </Badge>
               )}
             </Inline>
           );

@@ -120,8 +120,8 @@ const legacyEventLabel: Record<PkiAlertEventTypeV2, string> = {
   [PkiAlertEventTypeV2.REVOCATION]: "Certificate revocation"
 };
 
-const LastRun = ({ ok, at }: { ok: boolean; at: string }) => (
-  <Badge tone={ok ? "ok" : "bad"} dot>
+const LastRun = ({ ok, at, error }: { ok: boolean; at: string; error?: string | null }) => (
+  <Badge tone={ok ? "ok" : "bad"} dot reason={ok ? undefined : error || undefined}>
     {`${ok ? "Sent" : "Failed"} ${ago(at)}`}
   </Badge>
 );
@@ -1026,7 +1026,11 @@ const LegacyAlertsCard = ({
       width: 176,
       render: (alert) =>
         alert.lastRun ? (
-          <LastRun ok={alert.lastRun.status === "success"} at={alert.lastRun.timestamp} />
+          <LastRun
+            ok={alert.lastRun.status === "success"}
+            at={alert.lastRun.timestamp}
+            error={alert.lastRun.error}
+          />
         ) : (
           <Text muted>Never</Text>
         )
