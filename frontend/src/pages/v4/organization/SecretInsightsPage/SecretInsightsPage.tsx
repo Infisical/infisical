@@ -68,7 +68,7 @@ const InsightsCards = ({
 
   return (
     <Stack gap={16}>
-      <SummaryCards summary={summary.data} />
+      {!summary.error && <SummaryCards summary={summary.data} />}
       {loadable(projects, 320, (data) => (
         <ProjectsInsightsCard
           data={data}
