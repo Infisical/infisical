@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ListHighlight } from "@infisical/cipher/lib/list-highlight";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import {
@@ -18,9 +19,9 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Field } from "@infisical/cipher/ui/field";
-import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiSelectFooterAction } from "@infisical/cipher/ui/multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "@infisical/cipher/ui/popover";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
@@ -278,21 +279,23 @@ export function EnvironmentPicker({
               </CommandGroup>
             </CommandList>
             <CommandSeparator alwaysRender />
-            <CommandGroup forceMount>
-              <CommandItem
-                forceMount
-                value="__add__"
-                keywords={[]}
+            <div className={styles.envFooter}>
+              <MultiSelectFooterAction
+                icon="plus"
                 disabled={!canCreate}
-                onSelect={() => {
+                onKeyDown={(event) => {
+                  // cmdk selects its highlighted item on Enter at the root, which would swallow the button's activation.
+                  if (event.key === "Enter") event.stopPropagation();
+                }}
+                onClick={() => {
                   changeOpen(false);
                   guard("environment", () => setAdding(true));
                 }}
               >
-                <Icon name="plus" />
                 Add environment
-              </CommandItem>
-            </CommandGroup>
+              </MultiSelectFooterAction>
+              <ListHighlight />
+            </div>
             <p className={styles.envHint}>
               {canCreate
                 ? "Use the checkboxes to select multiple environments."
