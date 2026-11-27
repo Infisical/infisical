@@ -33,6 +33,7 @@ import {
 
 import { useOrgId } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { AWS_REGIONS, GCP_REGIONS, KMS_PROVIDERS } from "./kms-providers";
 
@@ -101,7 +102,13 @@ const FormSheet = ({
   <SheetSections
     header={
       <SheetHeader>
-        <SheetTitle>{titleOf(provider, mode)}</SheetTitle>
+        <SheetTitle>
+          <ProviderLabel
+            provider={{ name: KMS_PROVIDERS[provider].title, image: KMS_PROVIDERS[provider].icon }}
+          >
+            {titleOf(provider, mode)}
+          </ProviderLabel>
+        </SheetTitle>
       </SheetHeader>
     }
     footer={

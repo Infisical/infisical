@@ -14,6 +14,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { NameLine } from "@infisical/cipher/ui/name-line";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -47,11 +48,13 @@ import {
 
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import {
   buildNextChannel,
   CHANNEL_ICONS,
+  CHANNEL_LOGOS,
   ENTERPRISE_CHANNEL_TYPES,
   KEEP_PLACEHOLDER,
   MAX_CHANNELS,
@@ -80,6 +83,25 @@ const CERTIFICATE_CHANNEL_UPGRADE: TUpgradeGateRequest = {
   intent: CertificateEnterpriseAlertingUpgradeIntent,
   paywallKey: "cert-manager.application-alert-channels"
 };
+
+const ChannelGlyph = ({
+  channelType,
+  size
+}: {
+  channelType: AlertChannelType;
+  size: "sm" | "md";
+}) => {
+  const logo = CHANNEL_LOGOS[channelType];
+  if (logo) return <ProviderIcon icon={logo} alt="" size={size} />;
+  const glyph = CHANNEL_ICONS[channelType];
+  return typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />;
+};
+
+export const ChannelTypeLabel = ({ channelType }: { channelType: AlertChannelType }) => (
+  <NameLine media={<ChannelGlyph channelType={channelType} size="md" />}>
+    {ALERT_CHANNEL_TYPE_LABELS[channelType]}
+  </NameLine>
+);
 
 export const AddChannelMenu = ({
   channelCount,
@@ -126,13 +148,12 @@ export const AddChannelMenu = ({
         <DropdownMenuContent align="end">
           {ADD_MENU_CHANNEL_TYPES.map((channelType) => {
             const isLocked = !hasEnterprise && ENTERPRISE_CHANNEL_TYPES.includes(channelType);
-            const glyph = CHANNEL_ICONS[channelType];
             return (
               <DropdownMenuItem
                 key={channelType}
                 onSelect={() => (isLocked ? openUpgradeGate(upgrade) : addChannel(channelType))}
               >
-                {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
+                <ChannelGlyph channelType={channelType} size="sm" />
                 {ALERT_CHANNEL_TYPE_LABELS[channelType]}
                 {isLocked && <Badge tone="soft">Enterprise</Badge>}
               </DropdownMenuItem>
@@ -738,7 +759,6 @@ const ChannelCard = ({
   const { channelType } = channel;
   const label = ALERT_CHANNEL_TYPE_LABELS[channelType];
   const isExisting = Boolean(channel.id);
-  const glyph = CHANNEL_ICONS[channelType];
   const fieldProps = { channel, error, onChange };
 
   const onTest = async () => {
@@ -779,12 +799,7 @@ const ChannelCard = ({
 
   return (
     <Card
-      title={
-        <Inline gap={8} align="center" wrap={false}>
-          {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
-          {label}
-        </Inline>
-      }
+      title={<ChannelTypeLabel channelType={channelType} />}
       action={
         <Inline gap={8} align="center" wrap={false}>
           <Button type="button" variant="outline" loading={testChannel.isPending} onClick={onTest}>

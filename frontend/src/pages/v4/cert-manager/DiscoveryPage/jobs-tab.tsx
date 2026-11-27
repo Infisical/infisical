@@ -11,7 +11,6 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 
 import { CertificateDiscoveryUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { ProjectPermissionPkiDiscoveryActions } from "@app/context/ProjectPermissionContext/types";
-import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
 import {
   PkiDiscoveryType,
   type TPkiDiscovery,
@@ -30,7 +29,7 @@ import {
   BadgeList,
   DeleteDiscoveryDialog,
   DiscoveryStatusBadge,
-  DiscoveryTypeIcon,
+  DiscoveryTypeLabel,
   isScanInFlight,
   parsePorts,
   timestamp,
@@ -121,12 +120,7 @@ export const JobsTab = ({ orgId, projectId }: { orgId: string; projectId: string
       id: "type",
       header: "Type",
       width: 160,
-      render: (discovery) => (
-        <Inline gap={8} align="center" wrap={false}>
-          <DiscoveryTypeIcon type={discovery.discoveryType} />
-          <span>{PKI_DISCOVERY_TYPE_MAP[discovery.discoveryType]?.name}</span>
-        </Inline>
-      )
+      render: (discovery) => <DiscoveryTypeLabel type={discovery.discoveryType} size="sm" />
     },
     {
       id: "target",

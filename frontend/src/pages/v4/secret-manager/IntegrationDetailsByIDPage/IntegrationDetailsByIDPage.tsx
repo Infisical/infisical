@@ -31,7 +31,7 @@ import type { Actor, AuditLog } from "@app/hooks/api/auditLogs/types";
 import type { TOctopusDeployVariableSetScopeValues } from "@app/hooks/api/integrationAuth/types";
 import { OctopusDeployScope } from "@app/hooks/api/integrationAuth/types";
 import type { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
-import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { Dash } from "../../access/org/detail-parts";
 import { useProjectPermission } from "../../access/permissions";
@@ -322,13 +322,7 @@ const IntegrationDetails = ({
         copyLabel="Copy integration ID to clipboard"
       />
     ],
-    [
-      "Platform",
-      <Inline key="platform" gap={8} align="center" wrap={false}>
-        {option && <ProviderIcon icon={option.image} alt="" size="sm" />}
-        {name}
-      </Inline>
-    ],
+    ["Platform", <ProviderLabel key="platform" provider={{ name, image: option?.image }} />],
     ["Status", <SyncStatus key="status" integration={integration} size="md" />],
     [
       "Latest successful sync",
@@ -404,7 +398,10 @@ const IntegrationDetails = ({
               items={[
                 ["Source environment", integration.environment.name],
                 ["Source path", <code key="path">{integration.secretPath}</code>],
-                ["Destination platform", name],
+                [
+                  "Destination platform",
+                  <ProviderLabel key="platform" provider={{ name, image: option?.image }} />
+                ],
                 ...destinationFacts(integration)
               ]}
             />

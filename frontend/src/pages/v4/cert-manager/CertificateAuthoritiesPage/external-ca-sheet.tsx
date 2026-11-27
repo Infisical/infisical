@@ -42,6 +42,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
 import { ConnectionField } from "./install/forms";
@@ -1201,7 +1202,11 @@ const useSaveExternalCa = (
 const sheetTitle = (draft: Draft | undefined, editing: boolean) => {
   const provider = draft && PROVIDERS.find((entry) => entry.type === draft.type);
   if (!provider) return "Connect external CA";
-  return `${editing ? "Edit" : "Create"} ${provider.name} CA`;
+  return (
+    <ProviderLabel provider={provider}>
+      {editing ? "Edit" : "Create"} {provider.name} CA
+    </ProviderLabel>
+  );
 };
 
 const useFetchedCa = (open: boolean, ca?: TUnifiedCertificateAuthority) =>

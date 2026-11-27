@@ -43,6 +43,7 @@ import type { TCreateSecretScanningDataSourceDTO } from "@app/hooks/api/secretSc
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 import { slugSchema } from "@app/lib/schemas";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useDebounced } from "../../access/org/use-debounced";
 import { useProjectPermission } from "../../access/permissions";
@@ -669,7 +670,10 @@ export const AddDataSourceSheet = ({
               <DataList
                 variant="props"
                 items={[
-                  ["Platform", platform],
+                  [
+                    "Platform",
+                    <ProviderLabel key="platform" kind="secret-scanning" value={draft.type} />
+                  ],
                   ["Connection", draft.connection?.name ?? "-"],
                   ...(draft.type === SecretScanningDataSource.Bitbucket
                     ? ([["Workspace", draft.workspaceSlug]] as const)

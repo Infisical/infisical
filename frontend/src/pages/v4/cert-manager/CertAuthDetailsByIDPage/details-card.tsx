@@ -29,7 +29,7 @@ const hsmItems = (config: Configuration) => [
 ];
 
 const kmsItems = (config: Configuration) => [
-  ["AWS connection", config.appConnectionName ?? config.appConnectionId ?? "None"] as const,
+  ["Connection", config.appConnectionName ?? config.appConnectionId ?? "None"] as const,
   ...(config.externalKeyId
     ? [
         ["Region", config.region ?? "None"] as const,

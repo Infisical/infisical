@@ -15,6 +15,9 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
+
 import { useProjectScope } from "../../../access/project/scope";
 import { useV4Adapter } from "../../../data/adapters";
 
@@ -130,7 +133,11 @@ export const AwsSetupDialog = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>AWS setup</DialogTitle>
+          <DialogTitle>
+            <ProviderLabel kind="app-connection" value={AppConnection.AWS}>
+              AWS setup
+            </ProviderLabel>
+          </DialogTitle>
           <DialogDescription>
             {unsaved
               ? "Saving with session logs on checks that Infisical can write to the bucket, so attach the IAM policy first. The CORS rule lets your browser read records back."

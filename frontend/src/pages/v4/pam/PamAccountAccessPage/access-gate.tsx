@@ -16,7 +16,7 @@ export const AccessCard = ({
   footer,
   children
 }: {
-  title: string;
+  title: ReactNode;
   footer?: ReactNode;
   children?: ReactNode;
 }) => (
@@ -48,7 +48,7 @@ export const AccessFailed = ({ message, onRetry }: { message: string; onRetry: (
   </AccessCard>
 );
 
-export const AccessPending = ({ title, label }: { title: string; label: string }) => (
+export const AccessPending = ({ title, label }: { title: ReactNode; label: string }) => (
   <AccessCard title={title}>
     <Spinner size="base" label={label} />
   </AccessCard>
