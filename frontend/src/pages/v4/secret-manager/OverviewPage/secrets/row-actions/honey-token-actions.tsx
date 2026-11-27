@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -9,7 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogMedia,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -111,6 +113,17 @@ function EditHoneyTokenSheet({
   });
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const saved = useRef(false);
+  const closing = useRef(false);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty:
+      draft.name !== token.name ||
+      draft.description !== token.description ||
+      draft.secretsMapping.accessKeyId !== (token.mappedKeys[0] ?? DEFAULT_MAPPING.accessKeyId) ||
+      draft.secretsMapping.secretAccessKey !==
+        (token.mappedKeys[1] ?? DEFAULT_MAPPING.secretAccessKey),
+    onDiscard: () => onOpenChange(false)
+  });
   const validate = (index: number) => {
     const parsed = honeyTokenSchema.safeParse({ ...draft, environment: token.environment });
     const issues: Record<string, string> = {};
@@ -145,38 +158,51 @@ function EditHoneyTokenSheet({
       />
     );
   return (
-    <MultiStep
-      variant="sheet"
-      layout="aside"
-      open={open}
-      onOpenChange={onOpenChange}
-      step={step}
-      onStepChange={(next) => {
-        setErrors({});
-        setStep(next);
-      }}
-      media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
-      title="Edit AWS honey token"
-      badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
-      completeLabel="Update honey token"
-      onComplete={() =>
-        onSave({
-          name: draft.name.trim(),
-          description: draft.description.trim(),
-          mappedKeys: [
-            draft.secretsMapping.accessKeyId.trim(),
-            draft.secretsMapping.secretAccessKey.trim()
-          ]
-        })
-      }
-      steps={EDIT_STEPS.map((entry, index) => ({
-        title: entry.name,
-        heading: entry.title,
-        validate: () => validate(index),
-        disabledReason: index === EDIT_STEPS.length - 1 ? block : undefined,
-        content: fields(entry.key)
-      }))}
-    />
+    <>
+      <MultiStep
+        variant="sheet"
+        layout="aside"
+        open={open}
+        onCancel={() => {
+          closing.current = true;
+        }}
+        onOpenChange={(next) => {
+          closing.current = false;
+          if (next) return;
+          if (saved.current) onOpenChange(false);
+          else requestDiscard();
+        }}
+        step={step}
+        onStepChange={(next) => {
+          if (closing.current) return;
+          setErrors({});
+          setStep(next);
+        }}
+        media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
+        title="Edit AWS honey token"
+        badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
+        completeLabel="Update honey token"
+        onComplete={() => {
+          saved.current = true;
+          onSave({
+            name: draft.name.trim(),
+            description: draft.description.trim(),
+            mappedKeys: [
+              draft.secretsMapping.accessKeyId.trim(),
+              draft.secretsMapping.secretAccessKey.trim()
+            ]
+          });
+        }}
+        steps={EDIT_STEPS.map((entry, index) => ({
+          title: entry.name,
+          heading: entry.title,
+          validate: () => validate(index),
+          disabledReason: index === EDIT_STEPS.length - 1 ? block : undefined,
+          content: fields(entry.key)
+        }))}
+      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 }
 
