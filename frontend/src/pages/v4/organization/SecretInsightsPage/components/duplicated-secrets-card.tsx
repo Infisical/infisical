@@ -61,6 +61,7 @@ const columns: DataTableColumn<Entry>[] = [
     id: "environment",
     header: "Environment",
     width: 160,
+    stack: "meta",
     text: (entry) => entry.environment.name,
     render: (entry) => entry.environment.name
   },
@@ -112,6 +113,7 @@ const DuplicateGroups = ({ groups }: { groups: TOrgDuplicatedSecretGroup[] }) =>
                 label={`Secrets sharing value group ${groupIndex + 1}`}
                 rows={rows}
                 columns={columns}
+                stackBelow={640}
                 getRowId={(entry) => entry.id}
                 rowLabel={(entry) => entry.key}
                 rowActions={{
