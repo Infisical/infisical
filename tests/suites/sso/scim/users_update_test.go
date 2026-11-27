@@ -177,8 +177,7 @@ func TestScimUser_Patch(t *testing.T) {
 		s := setup(t)
 		user := s.provision(t, s.person())
 		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
-			IsActive:       new(false),
+			IsActive: new(false),
 		})
 		require.NoError(t, err)
 		requireOK(t, reply{res.StatusCode(), res.Body}, "deactivating SAML")

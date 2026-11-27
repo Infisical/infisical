@@ -176,8 +176,7 @@ func TestScimSSOConfigChange(t *testing.T) {
 
 		// Action
 		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
-			Issuer:         new(s.saml.Issuer + "-rotated"),
+			Issuer: new(s.saml.Issuer + "-rotated"),
 		})
 
 		// Assert
@@ -193,8 +192,7 @@ func TestScimSSOConfigChange(t *testing.T) {
 		// Setup
 		s := setup(t)
 		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
-			Issuer:         new(s.saml.Issuer + "-rotated"),
+			Issuer: new(s.saml.Issuer + "-rotated"),
 		})
 		require.NoError(t, err)
 		requireOK(t, reply{res.StatusCode(), res.Body}, "editing the SAML config")
@@ -232,8 +230,7 @@ func TestScimSSOConfigChange(t *testing.T) {
 		p := s.person()
 		user := s.provision(t, p)
 		res, err := s.tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.tn.OrgID.String(),
-			IsActive:       new(false),
+			IsActive: new(false),
 		})
 		require.NoError(t, err)
 		requireOK(t, reply{res.StatusCode(), res.Body}, "deactivating the SAML config")

@@ -15,6 +15,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { extractSamlAuthnContextClassRefs } from "@app/ee/services/saml-config/saml-assertion-fns";
+import { buildSamlAcsUrl, getSamlSpEntityId } from "@app/ee/services/saml-config/saml-config-fns";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
@@ -92,11 +93,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               throw new BadRequestError({ message: "Failed to authenticate with SAML SSO" });
 
             const samlConfig: TSAMLConfig = {
-              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
+              callbackUrl: buildSamlAcsUrl(ssoConfig.id),
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
               idpCert: ssoConfig.cert,
-              audience: appCfg.SITE_URL || ""
+              audience: getSamlSpEntityId()
             };
             if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
               samlConfig.wantAuthnResponseSigned = false;
@@ -418,6 +419,14 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       throw new BadRequestError({ message: "Unexpected auth result" });
     }
   });
+};
+
+export const registerSamlConfigRouter = async (
+  server: FastifyZodProvider,
+  { isLegacyPath = false }: { isLegacyPath?: boolean } = {}
+) => {
+  const describeRoute = (description: string) =>
+    isLegacyPath ? `Deprecated: use /api/v1/sso/saml/config instead. ${description}` : description;
 
   server.route({
     method: "GET",
@@ -429,16 +438,13 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],
-      operationId: "getSamlConfig",
-      description: "Get SAML config",
+      ...(isLegacyPath ? {} : { operationId: "getSamlConfig" }),
+      description: describeRoute("Get SAML config"),
       security: [
         {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
-        organizationId: z.string().trim().describe(SamlSso.GET_CONFIG.organizationId)
-      }),
       response: {
         200: z.object({
           id: z.string(),
@@ -453,7 +459,9 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           enableGroupSync: z.boolean().optional(),
           mfaSignalAttribute: z.string().nullable().optional(),
           mfaAuthnContexts: z.string().array().nullable().optional(),
-          mfaAttributeValues: z.string().array().nullable().optional()
+          mfaAttributeValues: z.string().array().nullable().optional(),
+          acsUrl: z.string().describe(SamlSso.CONFIG.acsUrl),
+          spEntityId: z.string().describe(SamlSso.CONFIG.spEntityId)
         })
       }
     },
@@ -463,7 +471,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
-        orgId: req.query.organizationId,
+        orgId: req.permission.orgId,
         type: "org"
       });
       return saml;
@@ -480,15 +488,14 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],
-      operationId: "createSamlConfig",
-      description: "Create SAML config",
+      ...(isLegacyPath ? {} : { operationId: "createSamlConfig" }),
+      description: describeRoute("Create SAML config"),
       security: [
         {
           bearerAuth: []
         }
       ],
       body: z.object({
-        organizationId: z.string().trim().describe(SamlSso.CREATE_CONFIG.organizationId),
         authProvider: z.nativeEnum(SamlProviders).describe(SamlSso.CREATE_CONFIG.authProvider),
         isActive: z.boolean().describe(SamlSso.CREATE_CONFIG.isActive),
         entryPoint: z.string().trim().describe(SamlSso.CREATE_CONFIG.entryPoint),
@@ -531,7 +538,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         actorId: permission.id,
         actorAuthMethod: permission.authMethod,
         actorOrgId: permission.orgId,
-        orgId: req.body.organizationId
+        orgId: permission.orgId
       });
 
       void server.services.telemetry
@@ -561,8 +568,8 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SamlSso],
-      operationId: "updateSamlConfig",
-      description: "Update SAML config",
+      ...(isLegacyPath ? {} : { operationId: "updateSamlConfig" }),
+      description: describeRoute("Update SAML config"),
       security: [
         {
           bearerAuth: []
@@ -580,8 +587,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
           mfaAuthnContexts: SamlMfaValuesSchema.describe(SamlSso.UPDATE_CONFIG.mfaAuthnContexts),
           mfaAttributeValues: SamlMfaValuesSchema.describe(SamlSso.UPDATE_CONFIG.mfaAttributeValues)
         })
-        .partial()
-        .merge(z.object({ organizationId: z.string().trim().describe(SamlSso.UPDATE_CONFIG.organizationId) })),
+        .partial(),
       response: {
         200: SanitizedSamlConfigSchema
       }
@@ -614,7 +620,7 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
         actorId: permission.id,
         actorAuthMethod: permission.authMethod,
         actorOrgId: permission.orgId,
-        orgId: req.body.organizationId
+        orgId: permission.orgId
       });
 
       void server.services.telemetry
@@ -633,4 +639,40 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
       return samlCfg;
     }
   });
+
+  if (!isLegacyPath) {
+    server.route({
+      method: "DELETE",
+      url: "/config",
+      config: {
+        rateLimit: writeLimit
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      schema: {
+        hide: false,
+        tags: [ApiDocsTags.SamlSso],
+        operationId: "deleteSamlConfig",
+        description: "Delete SAML config",
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        response: {
+          200: SanitizedSamlConfigSchema
+        }
+      },
+      handler: async (req) => {
+        const samlCfg = await server.services.saml.deleteSamlCfg({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          orgId: req.permission.orgId
+        });
+
+        return samlCfg;
+      }
+    });
+  }
 };

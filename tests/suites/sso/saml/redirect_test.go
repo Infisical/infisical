@@ -122,8 +122,7 @@ func TestSAMLRedirect(t *testing.T) {
 		// Setup
 		s := setup(t, sso.Okta)
 		updated, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.Tenant.OrgID.String(),
-			IsActive:       new(false),
+			IsActive: new(false),
 		})
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, updated.StatusCode(), "deactivating: %s", apierr.Body(updated.Body))

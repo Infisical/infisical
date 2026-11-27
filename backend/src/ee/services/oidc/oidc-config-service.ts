@@ -25,7 +25,10 @@ import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { executeIfDefined, isPatchValueChanged } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -734,7 +737,6 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
-    const hasChanged = (next: unknown, current: unknown) => next !== undefined && next !== (current ?? null);
     const normalizeDomains = (domains?: string | null) =>
       normalizeAllowedEmailDomains(domains ?? "")
         .split(", ")
@@ -744,20 +746,21 @@ export const oidcConfigServiceFactory = ({
       cipherTextBlob ? decryptor({ cipherTextBlob }).toString() : "";
 
     // Any change to OIDC config should not lock users out, if auth/scim is enforced prior to it
-    const isConnectionChanged =
-      hasChanged(configurationType, existingCfg.configurationType) ||
-      hasChanged(discoveryURL, existingCfg.discoveryURL) ||
-      hasChanged(issuer, existingCfg.issuer) ||
-      hasChanged(authorizationEndpoint, existingCfg.authorizationEndpoint) ||
-      hasChanged(tokenEndpoint, existingCfg.tokenEndpoint) ||
-      hasChanged(userinfoEndpoint, existingCfg.userinfoEndpoint) ||
-      hasChanged(jwksUri, existingCfg.jwksUri) ||
-      hasChanged(jwtSignatureAlgorithm, existingCfg.jwtSignatureAlgorithm) ||
-      (allowedEmailDomains !== undefined &&
-        normalizeDomains(allowedEmailDomains) !== normalizeDomains(existingCfg.allowedEmailDomains)) ||
-      (clientId !== undefined && clientId !== decrypt(existingCfg.encryptedOidcClientId)) ||
-      (clientSecret !== undefined && clientSecret !== decrypt(existingCfg.encryptedOidcClientSecret)) ||
-      hasChanged(isActive, existingCfg.isActive);
+    const oidcConnectionConfigs: [unknown, unknown][] = [
+      [configurationType, existingCfg.configurationType],
+      [discoveryURL, existingCfg.discoveryURL],
+      [issuer, existingCfg.issuer],
+      [authorizationEndpoint, existingCfg.authorizationEndpoint],
+      [tokenEndpoint, existingCfg.tokenEndpoint],
+      [userinfoEndpoint, existingCfg.userinfoEndpoint],
+      [jwksUri, existingCfg.jwksUri],
+      [jwtSignatureAlgorithm, existingCfg.jwtSignatureAlgorithm],
+      [isActive, existingCfg.isActive],
+      [executeIfDefined(normalizeDomains, allowedEmailDomains), normalizeDomains(existingCfg.allowedEmailDomains)],
+      [clientId, decrypt(existingCfg.encryptedOidcClientId)],
+      [clientSecret, decrypt(existingCfg.encryptedOidcClientSecret)]
+    ];
+    const isConnectionChanged = oidcConnectionConfigs.some(([next, current]) => isPatchValueChanged(next, current));
 
     const shouldDisableEnforcement = isConnectionChanged && Boolean(org.authEnforced || org.scimEnabled);
 
@@ -843,13 +846,6 @@ export const oidcConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
-    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
-    if (existingCfg) {
-      throw new ConflictError({
-        message: `An OIDC configuration already exists for organization with ID '${org.id}'.`
-      });
-    }
-
     await assertOrgHasVerifiedEmailDomain({ orgId: org.id, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
@@ -877,24 +873,33 @@ export const oidcConfigServiceFactory = ({
       orgId: org.id
     });
 
-    const oidcCfg = await oidcConfigDAL.create({
-      issuer,
-      isActive,
-      configurationType,
-      discoveryURL,
-      authorizationEndpoint,
-      allowedEmailDomains,
-      jwksUri,
-      tokenEndpoint,
-      userinfoEndpoint,
-      orgId: org.id,
-      manageGroupMemberships,
-      jwtSignatureAlgorithm,
-      mfaClaimName,
-      mfaAmrValues,
-      encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
-      encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
-    });
+    const oidcCfg = await oidcConfigDAL
+      .create({
+        issuer,
+        isActive,
+        configurationType,
+        discoveryURL,
+        authorizationEndpoint,
+        allowedEmailDomains,
+        jwksUri,
+        tokenEndpoint,
+        userinfoEndpoint,
+        orgId: org.id,
+        manageGroupMemberships,
+        jwtSignatureAlgorithm,
+        mfaClaimName,
+        mfaAmrValues,
+        encryptedOidcClientId: encryptor({ plainText: Buffer.from(clientId) }).cipherTextBlob,
+        encryptedOidcClientSecret: encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob
+      })
+      .catch((err: unknown) => {
+        if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
+          throw new ConflictError({
+            message: `An OIDC configuration already exists for organization with ID '${org.id}'.`
+          });
+        }
+        throw err;
+      });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 

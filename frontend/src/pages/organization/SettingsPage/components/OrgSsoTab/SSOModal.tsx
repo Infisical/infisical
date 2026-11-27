@@ -44,7 +44,12 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
-import { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "@app/hooks/api";
+import {
+  useCreateSSOConfig,
+  useDeleteSSOConfig,
+  useGetSSOConfig,
+  useUpdateSSOConfig
+} from "@app/hooks/api";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -203,6 +208,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
 
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateSSOConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateSSOConfig();
+  const { mutateAsync: deleteMutateAsync } = useDeleteSSOConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle();
   const [authnContextTagError, setAuthnContextTagError] = useState<string | null>(null);
   const [attributeValueTagError, setAttributeValueTagError] = useState<string | null>(null);
@@ -232,20 +238,13 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     }
   }, [data]);
 
-  const handleSamlSoftDelete = async () => {
+  const handleSamlDelete = async () => {
     if (!currentOrg) {
       return;
     }
-    await updateMutateAsync({
-      organizationId: currentOrg.id,
-      isActive: false,
-      entryPoint: "",
-      issuer: "",
-      cert: "",
-      mfaSignalAttribute: null,
-      mfaAuthnContexts: null,
-      mfaAttributeValues: null
-    });
+    await deleteMutateAsync({ organizationId: currentOrg.id });
+    reset();
+    handlePopUpClose("addSSO");
 
     createNotification({
       text: "Successfully deleted SAML SSO configuration.",
@@ -385,13 +384,10 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
                   title={`Add Infisical to ${providerName}`}
                   description={`Copy these values into the SAML app you create in ${providerName}.`}
                 >
-                  <CodeBlock
-                    label={withHint(labels.acsUrl, labels.acsHint)}
-                    value={`${window.origin}/api/v1/sso/saml2/${data.id}`}
-                  />
+                  <CodeBlock label={withHint(labels.acsUrl, labels.acsHint)} value={data.acsUrl} />
                   <CodeBlock
                     label={withHint(labels.entityId, labels.entityHint)}
-                    value={window.origin}
+                    value={data.spEntityId}
                   />
                 </FormSection>
               )}
@@ -595,7 +591,7 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleSamlSoftDelete}>
+            <AlertDialogAction variant="danger" onClick={handleSamlDelete}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

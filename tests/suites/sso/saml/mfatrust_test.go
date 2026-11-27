@@ -254,7 +254,6 @@ func readOrg(t *testing.T, tn *harness.Tenant, token string) int {
 
 func updateConfig(t *testing.T, s *sso.SAML, body api.UpdateSamlConfigJSONRequestBody) {
 	t.Helper()
-	body.OrganizationId = s.Tenant.OrgID.String()
 	res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the SAML config: %s", apierr.Body(res.Body))

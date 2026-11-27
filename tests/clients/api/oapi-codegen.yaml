@@ -109,6 +109,7 @@ output-options:
     - getSamlConfig
     - createSamlConfig
     - updateSamlConfig
+    - deleteSamlConfig
     - redirectSamlByOrgSlug
     - redirectSamlByDomain
     - redirectSamlByConfigId

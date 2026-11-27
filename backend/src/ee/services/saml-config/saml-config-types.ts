@@ -38,6 +38,8 @@ export type TUpdateSamlCfgDTO = Partial<{
 }> &
   TOrgPermission;
 
+export type TDeleteSamlCfgDTO = TOrgPermission;
+
 export type TGetSamlCfgDTO =
   | {
       type: "org";
@@ -77,7 +79,8 @@ export type TSamlLoginDTO = {
 
 export type TSamlConfigServiceFactory = {
   createSamlCfg: (arg: TCreateSamlCfgDTO) => Promise<TSamlConfigs>;
-  updateSamlCfg: (arg: TUpdateSamlCfgDTO) => Promise<TSamlConfigs>;
+  updateSamlCfg: (arg: TUpdateSamlCfgDTO) => Promise<TSamlConfigs & { ssoEnforcementDisabled: boolean }>;
+  deleteSamlCfg: (arg: TDeleteSamlCfgDTO) => Promise<TSamlConfigs>;
   getSaml: (arg: TGetSamlCfgDTO) => Promise<{
     id: string;
     organization: string;
@@ -92,6 +95,8 @@ export type TSamlConfigServiceFactory = {
     mfaSignalAttribute?: string | null;
     mfaAuthnContexts?: string[] | null;
     mfaAttributeValues?: string[] | null;
+    acsUrl: string;
+    spEntityId: string;
   }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<TProviderAuthResult & { userId: string; orgId: string; orgName: string }>;
   consumeSamlAssertion: (arg: { samlConfigId: string; parsedAssertion: unknown }) => Promise<void>;
