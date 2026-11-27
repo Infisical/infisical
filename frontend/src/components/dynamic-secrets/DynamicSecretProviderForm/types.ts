@@ -6,6 +6,7 @@ import type {
   DynamicSecretProviders,
   TCreateDynamicSecretDTO,
   TDynamicSecret,
+  TDynamicSecretOidcFederation,
   TDynamicSecretProvider,
   TUpdateDynamicSecretDTO
 } from "@app/hooks/api/dynamicSecret/types";
@@ -129,7 +130,10 @@ export type TCreateDynamicSecretProviderDTO<TProvider extends DynamicSecretProvi
   provider: TDynamicSecretProviderOf<TProvider>;
 };
 
-export type TDynamicSecretWithInputs = TDynamicSecret & { inputs: unknown };
+export type TDynamicSecretWithInputs = TDynamicSecret & {
+  inputs: unknown;
+  oidcFederation?: TDynamicSecretOidcFederation | null;
+};
 
 export type TCreateDynamicSecretProviderFormContext = {
   projectSlug: string;

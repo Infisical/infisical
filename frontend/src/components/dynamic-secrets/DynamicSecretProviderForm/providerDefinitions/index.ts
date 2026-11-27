@@ -7,6 +7,7 @@ export { identityAccessDynamicSecretProviders } from "./identityAccess";
 export { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./identityAccessContract";
 export { ldapDynamicSecretProvider } from "./ldap";
 export { managedStoresDynamicSecretProviders } from "./managedStores";
+export { namespaceDynamicSecretProvider } from "./namespace";
 export { oauth2DynamicSecretProvider } from "./oauth2";
 export { openRouterDynamicSecretProvider } from "./openRouter";
 export { relationalWarehouseDynamicSecretProviders } from "./relationalWarehouse";

@@ -2549,7 +2549,8 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     projectDAL,
-    instanceConfigService
+    instanceConfigService,
+    oidcIssuerService
   });
 
   const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({

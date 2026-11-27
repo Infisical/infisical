@@ -1806,7 +1806,12 @@ export const DYNAMIC_SECRETS = {
     projectSlug: "The slug of the project to create dynamic secret in.",
     environmentSlug: "The slug of the environment to list folders from.",
     path: "The path to list folders from.",
-    name: "The name of the dynamic secret."
+    name: "The name of the dynamic secret.",
+    oidcFederation:
+      "What to register in the provider's OIDC trust relationship. Only set for a Namespace dynamic secret. The issuer is null when SITE_URL is not set.",
+    oidcFederationIssuerUrl: "The issuer URL of the organization's OIDC issuer, or null when SITE_URL is not set.",
+    oidcFederationSubject: "The subject of the OIDC token Infisical presents, in the form dynamic-secret:<id>.",
+    oidcFederationAudience: "The audience of the OIDC token Infisical presents."
   },
   CREATE: {
     projectSlug: "The slug of the project to create dynamic secret in.",

@@ -291,6 +291,18 @@ const DYNAMIC_SECRET_PROVIDER_RUNTIME_METADATA = {
         { key: "BRANCH_NAME", label: "Branch Name", isOptional: true }
       ])
     )
+  },
+  [DynamicSecretProviders.Namespace]: {
+    presentation: { providerFamily: "Namespace" },
+    leaseCapabilities: {
+      provisioner: "default",
+      output: oneTimeFields([
+        { key: "CLIENT_CERTIFICATE", label: "Client Certificate" },
+        { key: "PRIVATE_KEY", label: "Private Key" },
+        { key: "EXPIRES_AT", label: "Expires At" }
+      ]),
+      supportsRenewal: false
+    }
   }
 } as const satisfies Record<DynamicSecretProviders, TDynamicSecretProviderRuntimeMetadata>;
 

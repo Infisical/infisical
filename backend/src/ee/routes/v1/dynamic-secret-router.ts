@@ -332,7 +332,15 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
       response: {
         200: z.object({
           dynamicSecret: SanitizedDynamicSecretSchema.extend({
-            inputs: z.unknown()
+            inputs: z.unknown(),
+            oidcFederation: z
+              .object({
+                issuerUrl: z.string().nullable().describe(DYNAMIC_SECRETS.GET_BY_NAME.oidcFederationIssuerUrl),
+                subject: z.string().describe(DYNAMIC_SECRETS.GET_BY_NAME.oidcFederationSubject),
+                audience: z.string().describe(DYNAMIC_SECRETS.GET_BY_NAME.oidcFederationAudience)
+              })
+              .nullable()
+              .describe(DYNAMIC_SECRETS.GET_BY_NAME.oidcFederation)
           })
         })
       }

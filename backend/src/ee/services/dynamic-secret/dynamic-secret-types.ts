@@ -109,9 +109,14 @@ export type TDynamicSecretServiceFactory = {
   deleteByName: (
     arg: TDeleteDynamicSecretDTO
   ) => Promise<TDynamicSecrets & { projectId: string; environment: string; secretPath: string }>;
-  getDetails: (
-    arg: TDetailsDynamicSecretDTO
-  ) => Promise<TDynamicSecretWithMetadata & { projectId: string; environment: string; secretPath: string }>;
+  getDetails: (arg: TDetailsDynamicSecretDTO) => Promise<
+    TDynamicSecretWithMetadata & {
+      projectId: string;
+      environment: string;
+      secretPath: string;
+      oidcFederation: { issuerUrl: string | null; subject: string; audience: string } | null;
+    }
+  >;
   listDynamicSecretsByEnv: (arg: TListDynamicSecretsDTO) => Promise<{
     dynamicSecrets: Array<TDynamicSecretWithMetadata>;
     environment: string;
