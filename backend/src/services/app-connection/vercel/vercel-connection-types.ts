@@ -60,6 +60,10 @@ export type VercelApp = {
   previewBranches?: string[];
 };
 
+export type VercelProject = Pick<VercelApp, "id" | "name"> & {
+  accountId: string;
+};
+
 export type VercelOrgWithApps = VercelTeam & {
   apps: VercelApp[];
 };

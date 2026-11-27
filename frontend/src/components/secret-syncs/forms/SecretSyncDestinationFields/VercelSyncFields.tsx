@@ -69,13 +69,20 @@ export const VercelSyncFields = () => {
     scope === VercelSyncScope.Team &&
     Boolean(targetEnvironments?.includes(VercelEnvironmentType.Development));
 
-  const { data: teams, isLoading: isTeamsLoading } = useVercelConnectionListOrganizations(
-    connectionId,
-    debouncedProjectSearch,
-    {
-      enabled: Boolean(connectionId)
-    }
-  );
+  const {
+    data: teams,
+    isLoading: isTeamsLoading,
+    error: teamsError
+  } = useVercelConnectionListOrganizations(connectionId, debouncedProjectSearch, {
+    enabled: Boolean(connectionId)
+  });
+
+  const projectsError = teamsError
+    ? {
+        message:
+          "Unable to load Vercel teams and projects. Check the connection's API token or try again later."
+      }
+    : undefined;
 
   const allApps = useMemo(
     () =>
@@ -198,9 +205,11 @@ export const VercelSyncFields = () => {
                 <FieldContent>
                   <Combobox
                     aria-labelledby="secret-sync-vercel-team-id-label"
-                    aria-describedby={error ? "secret-sync-vercel-team-id-error" : undefined}
+                    aria-describedby={
+                      error || projectsError ? "secret-sync-vercel-team-id-error" : undefined
+                    }
                     id="secret-sync-vercel-team-id"
-                    isError={Boolean(error)}
+                    isError={Boolean(error || projectsError)}
                     value={value || null}
                     onValueChange={(id) => {
                       if (!id) {
@@ -214,6 +223,7 @@ export const VercelSyncFields = () => {
                       setValue("destinationConfig.teamName", option.name);
                     }}
                     options={(teams ?? []).map((team) => team.id)}
+                    emptyMessage={projectsError?.message}
                     placeholder="Select a team..."
                     getOptionLabel={(id) =>
                       teams?.find((team) => team.id === id)?.name ?? (teamName || id)
@@ -225,7 +235,10 @@ export const VercelSyncFields = () => {
                     ]}
                     modal
                   />
-                  <FieldError id="secret-sync-vercel-team-id-error" errors={[error]} />
+                  <FieldError
+                    id="secret-sync-vercel-team-id-error"
+                    errors={[error, projectsError]}
+                  />
                 </FieldContent>
               </Field>
             )}
@@ -281,21 +294,27 @@ export const VercelSyncFields = () => {
                   <Combobox
                     aria-labelledby="secret-sync-vercel-target-projects-label"
                     aria-describedby={
-                      error ? "secret-sync-vercel-target-projects-error" : undefined
+                      error || projectsError
+                        ? "secret-sync-vercel-target-projects-error"
+                        : undefined
                     }
                     id="secret-sync-vercel-target-projects"
-                    isError={Boolean(error)}
+                    isError={Boolean(error || projectsError)}
                     multiple
                     value={availableApps.filter((app) => (value || []).includes(app.id))}
                     onValueChange={(options) => onChange(options.map((option) => option.id))}
                     options={availableApps}
+                    emptyMessage={projectsError?.message}
                     placeholder="Select target projects..."
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
                     getOptionKeywords={(option) => [option.id]}
                     modal
                   />
-                  <FieldError id="secret-sync-vercel-target-projects-error" errors={[error]} />
+                  <FieldError
+                    id="secret-sync-vercel-target-projects-error"
+                    errors={[error, projectsError]}
+                  />
                 </FieldContent>
               </Field>
             )}
@@ -357,10 +376,13 @@ export const VercelSyncFields = () => {
                 <FieldContent>
                   <Combobox
                     aria-labelledby="secret-sync-vercel-app-label"
-                    aria-describedby={error ? "secret-sync-vercel-app-error" : undefined}
+                    aria-describedby={
+                      error || projectsError ? "secret-sync-vercel-app-error" : undefined
+                    }
                     id="secret-sync-vercel-app"
-                    isError={Boolean(error)}
+                    isError={Boolean(error || projectsError)}
                     emptyMessage={(inputValue) => {
+                      if (projectsError) return projectsError.message;
                       return inputValue
                         ? "No projects found matching your search."
                         : "No projects found.";
@@ -401,7 +423,7 @@ export const VercelSyncFields = () => {
                     }
                     modal
                   />
-                  <FieldError id="secret-sync-vercel-app-error" errors={[error]} />
+                  <FieldError id="secret-sync-vercel-app-error" errors={[error, projectsError]} />
                 </FieldContent>
               </Field>
             )}
