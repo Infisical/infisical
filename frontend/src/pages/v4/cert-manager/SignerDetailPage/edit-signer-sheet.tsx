@@ -40,6 +40,7 @@ import {
   usesExistingCertificate,
   useSignerCaOptions
 } from "../CodeSigningPage/signer-shared";
+import { stepAside } from "../components/step-aside";
 
 const nameSchema = slugSchema({ min: 1, max: 64, field: "Name" });
 
@@ -319,7 +320,8 @@ const EditSheet = ({
     summary: name || undefined,
     description: isNameOnly
       ? "This signer is being revoked, so only its name and description can change."
-      : "Changing these doesn't affect the certificate.",
+      : undefined,
+    aside: stepAside("Changing the name or description doesn't affect the certificate."),
     validate: () => {
       const parsed = nameSchema.safeParse(name);
       setNameError(parsed.success ? undefined : parsed.error.issues[0]?.message);
@@ -343,7 +345,7 @@ const EditSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title={`Edit ${signer.name}`}
         badges={
           <>
@@ -393,6 +395,9 @@ const EditSheet = ({
                 {
                   title: "Signing key",
                   description: keyNote,
+                  aside: stepAside(
+                    "Changing the key source or algorithm reissues the certificate with a new key. Some CAs require a key held in an HSM."
+                  ),
                   validate: () => {
                     const next = keyErrors(cert, lookup, minRsaKeyBits, keepAlgorithm);
                     setErrors(next);

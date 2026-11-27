@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import {
   AlertDialog,
@@ -9,7 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogMedia,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Badge, type BadgeTone } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -18,6 +20,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Inline } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { SecretValue } from "@infisical/cipher/ui/sensitive-editor";
 import {
   Sheet,
@@ -56,8 +59,8 @@ import {
   HoneyTokenMappingFields,
   honeyTokenSchema
 } from "../flows/create-honey-token-flow";
+import { ProviderLogo } from "../flows/provider-logo";
 import { environmentLabel, Gate } from "../flows/shared";
-import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
 import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
 
@@ -110,6 +113,17 @@ function EditHoneyTokenSheet({
   });
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const saved = useRef(false);
+  const closing = useRef(false);
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty:
+      draft.name !== token.name ||
+      draft.description !== token.description ||
+      draft.secretsMapping.accessKeyId !== (token.mappedKeys[0] ?? DEFAULT_MAPPING.accessKeyId) ||
+      draft.secretsMapping.secretAccessKey !==
+        (token.mappedKeys[1] ?? DEFAULT_MAPPING.secretAccessKey),
+    onDiscard: () => onOpenChange(false)
+  });
   const validate = (index: number) => {
     const parsed = honeyTokenSchema.safeParse({ ...draft, environment: token.environment });
     const issues: Record<string, string> = {};
@@ -122,98 +136,73 @@ function EditHoneyTokenSheet({
     setErrors(issues);
     return Object.keys(issues).length === 0;
   };
-  const last = step === EDIT_STEPS.length - 1;
-  const next = () => {
-    if (!validate(step)) return;
-    if (!last) {
-      setStep(step + 1);
-      return;
-    }
-    onSave({
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      mappedKeys: [
-        draft.secretsMapping.accessKeyId.trim(),
-        draft.secretsMapping.secretAccessKey.trim()
-      ]
-    });
-  };
-  const back = () => {
-    if (step === 0) {
-      onOpenChange(false);
-      return;
-    }
-    setErrors({});
-    setStep(step - 1);
-  };
-  const current = EDIT_STEPS[step];
-  return (
-    <WizardSheet
-      open={open}
-      onRequestClose={() => onOpenChange(false)}
-      media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
-      title="Edit AWS honey token"
-      badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
-      steps={EDIT_STEPS.map((entry) => ({ title: entry.name }))}
-      current={step}
-      onStepClick={(index) => {
-        if (index > step && !validate(step)) return;
-        setErrors({});
-        setStep(index);
-      }}
-      heading={current.title}
-      footer={
-        <Inline justify="between">
-          <SmallText muted>{`Step ${step + 1} of ${EDIT_STEPS.length}`}</SmallText>
-          <Inline gap={12}>
-            <Button type="button" variant="outline" onClick={back}>
-              Back
-            </Button>
-            <Gate reason={last ? block : undefined}>
-              <Button
-                type="button"
-                variant={last ? "primary" : "outline"}
-                disabled={last && Boolean(block)}
-                onClick={next}
-              >
-                {last ? "Update honey token" : "Next"}
-              </Button>
-            </Gate>
-          </Inline>
-        </Inline>
-      }
-    >
-      <form
-        noValidate
-        className={styles.form}
-        onSubmit={(event) => {
-          event.preventDefault();
-          next();
+  const fields = (key: (typeof EDIT_STEPS)[number]["key"]) =>
+    key === "mapping" ? (
+      <HoneyTokenMappingFields
+        mapping={draft.secretsMapping}
+        errors={errors}
+        onChange={(secretsMapping) => {
+          setDraft((value) => ({ ...value, secretsMapping }));
+          setErrors({});
         }}
-      >
-        {current.key === "mapping" && (
-          <HoneyTokenMappingFields
-            mapping={draft.secretsMapping}
-            errors={errors}
-            onChange={(secretsMapping) => {
-              setDraft((value) => ({ ...value, secretsMapping }));
-              setErrors({});
-            }}
-          />
-        )}
-        {current.key === "details" && (
-          <HoneyTokenDetailsFields
-            name={draft.name}
-            description={draft.description}
-            errors={errors}
-            onChange={(value) => {
-              setDraft((currentDraft) => ({ ...currentDraft, ...value }));
-              if (value.name !== undefined) setErrors({});
-            }}
-          />
-        )}
-      </form>
-    </WizardSheet>
+      />
+    ) : (
+      <HoneyTokenDetailsFields
+        name={draft.name}
+        description={draft.description}
+        errors={errors}
+        onChange={(value) => {
+          setDraft((currentDraft) => ({ ...currentDraft, ...value }));
+          if (value.name !== undefined) setErrors({});
+        }}
+      />
+    );
+  return (
+    <>
+      <MultiStep
+        variant="sheet"
+        layout="aside"
+        open={open}
+        onCancel={() => {
+          closing.current = true;
+        }}
+        onOpenChange={(next) => {
+          closing.current = false;
+          if (next) return;
+          if (saved.current) onOpenChange(false);
+          else requestDiscard();
+        }}
+        step={step}
+        onStepChange={(next) => {
+          if (closing.current) return;
+          setErrors({});
+          setStep(next);
+        }}
+        media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
+        title="Edit AWS honey token"
+        badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
+        completeLabel="Update honey token"
+        onComplete={() => {
+          saved.current = true;
+          onSave({
+            name: draft.name.trim(),
+            description: draft.description.trim(),
+            mappedKeys: [
+              draft.secretsMapping.accessKeyId.trim(),
+              draft.secretsMapping.secretAccessKey.trim()
+            ]
+          });
+        }}
+        steps={EDIT_STEPS.map((entry, index) => ({
+          title: entry.name,
+          heading: entry.title,
+          validate: () => validate(index),
+          disabledReason: index === EDIT_STEPS.length - 1 ? block : undefined,
+          content: fields(entry.key)
+        }))}
+      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
+    </>
   );
 }
 
