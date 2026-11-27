@@ -101,6 +101,7 @@ import { dismissToast, errorMessage, toast, warned } from "../../access/toast";
 import { copyText } from "../../clipboard";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
+import type { ScopeState } from "../../data/secrets/contract";
 import { v4Path } from "../../links";
 import { nameLabel, useProjectName } from "../../shell/resource-name";
 import { withoutDefaults } from "../search-defaults";
@@ -487,6 +488,12 @@ export const OverviewPage = () => {
     syncOpen ||
     breadthHolders > 0
   );
+  const overviewHolds = (scope: { environment: string; path: string }) =>
+    include("secret") &&
+    !debounced &&
+    !tags.length &&
+    scope.path === path &&
+    visibleEnvironments.some((entry) => entry.value === scope.environment);
   const breadthScopes = [
     ...(overview.data?.imports ?? [])
       .filter((entry) => !entry.importEnv.projectId || entry.importEnv.projectId === projectId)
@@ -501,10 +508,7 @@ export const OverviewPage = () => {
       : [])
   ].filter(
     (scope, index, all) =>
-      !(
-        scope.path === path &&
-        visibleEnvironments.some((entry) => entry.value === scope.environment)
-      ) &&
+      !overviewHolds(scope) &&
       all.findIndex(
         (entry) => entry.environment === scope.environment && entry.path === scope.path
       ) === index
@@ -1308,7 +1312,7 @@ export const OverviewPage = () => {
         (resource): resource is Secret =>
           resource.kind === "secret" && scopeMatches(resource, entry.source)
       );
-    const imported = foreignImports[entry.environment] ?? [];
+    const imported = foreignImports[entry.environment]?.groups ?? [];
     const group =
       imported.find((candidate) => candidate.importId === entry.id) ??
       imported.find(
@@ -1360,6 +1364,13 @@ export const OverviewPage = () => {
           }
         : resource;
     });
+  };
+
+  const sourceState = (entry: Of<"import">): ScopeState => {
+    if (entry.source.project !== projectId)
+      return foreignImports[entry.environment]?.status ?? "loading";
+    if (overviewHolds(entry.source)) return "loaded";
+    return breadth.state(entry.source);
   };
 
   const insert = (
@@ -2589,6 +2600,7 @@ export const OverviewPage = () => {
                                     entries={entries as Of<"import">[]}
                                     ctx={ctx}
                                     sourceSecrets={sourceSecrets}
+                                    sourceState={sourceState}
                                     projectId={project}
                                     sites={sitesOf(entries as Of<"import">[])}
                                     revealAll={single ? revealAll : showValues}

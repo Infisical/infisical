@@ -48,6 +48,10 @@ export type ImportedSecretGroup = {
   }[];
 };
 
+export type ScopeState = "loading" | "loaded" | "failed";
+
+export type ImportedSecretsAt = { status: ScopeState; groups: ImportedSecretGroup[] };
+
 export type SecretsAdapter = SecretsFlowsAdapter &
   SecretsChangeRequestsAdapter &
   SecretsUpgradeAdapter &
@@ -73,7 +77,7 @@ export type SecretsAdapter = SecretsFlowsAdapter &
       projectId: string;
       environments: string[];
       path: string;
-    }) => Record<string, ImportedSecretGroup[]>;
+    }) => Record<string, ImportedSecretsAt>;
     useSecretKeyCheck: () => (dto: TGetSecretKeyExistsDTO) => Promise<string[]>;
     useSecretReferenceTree: (
       dto: TGetSecretReferenceTreeDTO
