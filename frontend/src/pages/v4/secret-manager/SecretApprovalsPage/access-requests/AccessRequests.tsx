@@ -5,9 +5,9 @@ import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { StatusText } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { formatDistance } from "date-fns";
@@ -49,9 +49,6 @@ const CLOSED_STATES: { label: string; value: ClosedState }[] = [
 ];
 
 type Sort = { columnId: string; direction: "asc" | "desc" };
-
-const requesterBadges = (userId: string) => (request: TAccessApprovalRequest) =>
-  request.requestedByUserId === userId && <Badge tone="soft">You</Badge>;
 
 export const AccessRequests = ({
   orgId,
@@ -226,8 +223,20 @@ export const AccessRequests = ({
       sortable: true,
       width: 180,
       text: (request) => personName(requesterOf(request)),
-      render: (request) => personName(requesterOf(request)) || <Meta>-</Meta>,
-      badges: requesterBadges(user.id)
+      render: (request) => {
+        const name = personName(requesterOf(request));
+        if (!name) return null;
+        return (
+          <Inline gap={8} align="center" wrap={false}>
+            <InlineItem truncate>{name}</InlineItem>
+            {request.requestedByUserId === user.id && (
+              <InlineItem shrink={false}>
+                <Badge tone="soft">You</Badge>
+              </InlineItem>
+            )}
+          </Inline>
+        );
+      }
     },
     {
       id: "requested",
@@ -272,14 +281,12 @@ export const AccessRequests = ({
               statusText
             )}
             {expiringSoon && (
-              <Tooltip content={`Expires ${stamp(expiresAt)}`}>
-                <Badge
-                  tabIndex={0}
-                  tone={expiresAt.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? "bad" : "warn"}
-                >
-                  {formatDistance(expiresAt, new Date())}
-                </Badge>
-              </Tooltip>
+              <Badge
+                reason={`Expires ${stamp(expiresAt)}`}
+                tone={expiresAt.getTime() - Date.now() < 24 * 60 * 60 * 1000 ? "bad" : "warn"}
+              >
+                {formatDistance(expiresAt, new Date())}
+              </Badge>
             )}
           </Inline>
         );

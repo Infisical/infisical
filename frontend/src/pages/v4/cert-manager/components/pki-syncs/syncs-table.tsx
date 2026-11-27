@@ -18,6 +18,7 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 
 import { RESTRICTED, type Sort } from "../../../access/ui";
 import { ProviderIcon } from "../../../components/provider-icon";
+import { providerMedia } from "../../../components/provider-label";
 import { usePageSize } from "../../../components/use-page-size";
 import { orgHref, useGo } from "../../../links";
 import { copySyncId, destinationNameOf, usePkiSyncOption, usePkiSyncPermissions } from "./shared";
@@ -283,7 +284,8 @@ export const PkiSyncsTable = ({
             type: "multi-select",
             options: presentDestinations.map((destination) => ({
               value: destination,
-              label: destinationNameOf(destination)
+              label: destinationNameOf(destination),
+              media: providerMedia("pki-sync", destination)
             }))
           }
         ]}

@@ -50,7 +50,7 @@ const SlackEditor = ({
   title,
   lead,
   pending,
-  onPendingChange,
+  setPending,
   onClose,
   initial,
   integrations
@@ -71,7 +71,7 @@ const SlackEditor = ({
     setSubmitted(true);
     if (!draft.integrationId) return;
     const joined = (notification: Notification) => notification.channels.filter(Boolean).join(", ");
-    onPendingChange(true);
+    setPending(true);
     try {
       await updateConfig.mutateAsync({
         projectId,
@@ -87,7 +87,7 @@ const SlackEditor = ({
       saved("Slack integration saved");
       onClose();
     } finally {
-      onPendingChange(false);
+      setPending(false);
     }
   };
 

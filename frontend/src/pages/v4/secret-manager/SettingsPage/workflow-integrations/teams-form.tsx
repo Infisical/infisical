@@ -43,7 +43,7 @@ const TeamsEditor = ({
   title,
   lead,
   pending,
-  onPendingChange,
+  setPending,
   onClose,
   initial,
   integrations
@@ -81,7 +81,7 @@ const TeamsEditor = ({
       teamId: notification.teamId,
       channelIds: notification.channelIds
     });
-    onPendingChange(true);
+    setPending(true);
     try {
       await updateConfig.mutateAsync({
         projectId,
@@ -99,7 +99,7 @@ const TeamsEditor = ({
       saved("Microsoft Teams integration saved");
       onClose();
     } finally {
-      onPendingChange(false);
+      setPending(false);
     }
   };
 

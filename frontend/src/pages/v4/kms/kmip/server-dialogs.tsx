@@ -24,9 +24,11 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Select } from "@infisical/cipher/ui/select";
 
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
+import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { TKmipServer, TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
 import { failed, saved } from "../../access/toast";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { HOSTNAMES_HINT, hostnamesError, keyAlgorithmOptions } from "./shared";
 
@@ -123,7 +125,11 @@ export const RevokeKmipServerDialog = ({
 
 const methodOptions = [
   { value: "token", label: "Token auth" },
-  { value: "aws", label: "AWS auth" }
+  {
+    value: "aws",
+    label: "AWS auth",
+    media: providerMedia("identity-auth", IdentityAuthMethod.AWS_AUTH)
+  }
 ];
 
 export const AuthMethodDialog = ({

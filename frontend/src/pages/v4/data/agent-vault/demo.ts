@@ -1097,7 +1097,12 @@ export const agentVaultDemo: AgentVaultAdapter = {
       (actor) => !taken.has(actor.id) && (!term || memberName(actor).toLowerCase().includes(term))
     );
     const { rows, totalCount } = slice(matched, limit);
-    return { data: { actors: rows as never, totalCount }, isPending: false, error: null };
+    return {
+      data: { actors: rows as never, totalCount },
+      isPending: false,
+      isFetching: false,
+      error: null
+    };
   },
   useAddMembers: (projectId) =>
     fixtureMutation(

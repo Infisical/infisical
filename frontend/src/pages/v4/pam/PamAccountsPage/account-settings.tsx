@@ -14,7 +14,6 @@ import { Select } from "@infisical/cipher/ui/select";
 import { SettingsCard, useAutosave } from "@infisical/cipher/ui/settings-card";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { StatusText, Text } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format, formatDistanceToNow } from "date-fns";
 
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -29,6 +28,7 @@ import {
   type TPamAccountRotation,
   type TPamAccountTypeMetadata
 } from "@app/hooks/api/pam";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useOrgId } from "../../access/permissions";
 import { errorMessage, failed, saved, toast } from "../../access/toast";
@@ -168,11 +168,13 @@ const DependencyStatus = ({ dependency }: { dependency: TPamAccountDependency })
     );
   if (dependency.rotationStatus === PamRotationStatus.Failed)
     return (
-      <Tooltip content={dependency.lastRotationMessage ?? "The last rotation failed"}>
-        <StatusText tone="bad" icon="alert" tabIndex={0}>
-          Failed
-        </StatusText>
-      </Tooltip>
+      <StatusText
+        reason={dependency.lastRotationMessage ?? "The last rotation failed"}
+        tone="bad"
+        icon="alert"
+      >
+        Failed
+      </StatusText>
     );
   return <StatusText icon="clock">Never</StatusText>;
 };
@@ -687,7 +689,8 @@ const RecordingOverride = ({
                 ...connections.map((connection) => ({
                   value: connection.id,
                   label: connection.name,
-                  meta: connection.providerName
+                  meta: connection.providerName,
+                  media: providerMedia("app-connection", connection.app)
                 }))
               ]}
               onValueChange={(next) => edit({ connectionId: next === NONE ? null : next })}

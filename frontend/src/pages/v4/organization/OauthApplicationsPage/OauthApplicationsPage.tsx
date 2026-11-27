@@ -40,6 +40,7 @@ import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { OauthClientSecretDialog, type TOauthClientSecretData } from "./OauthClientSecretDialog";
 import { OauthClientSheet } from "./OauthClientSheet";
 
@@ -281,6 +282,7 @@ const OauthClientsList = ({
 };
 
 export const OauthApplicationsPage = () => {
+  const scope = useOrgPageScope();
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/oauth-applications" });
   const { organization } = useV4Session();
   const { permission, isPending: isPermissionPending } = useOrgPermission();
@@ -298,6 +300,7 @@ export const OauthApplicationsPage = () => {
     <TooltipProvider>
       <Stack gap={24}>
         <PageHeader
+          scope={scope}
           title="OAuth applications"
           description="Let external platforms access Infisical on behalf of your members."
           actions={

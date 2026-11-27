@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline } from "@infisical/cipher/ui/layout";
+import { NameLine } from "@infisical/cipher/ui/name-line";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { format } from "date-fns";
@@ -48,6 +49,7 @@ import {
 import { useProjectPermission } from "../../access/permissions";
 import { failed } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 
 export const RESCAN_POLL_INTERVAL_MS = 3000;
@@ -155,11 +157,9 @@ export const DiscoveryStatusBadge = ({
       );
     case PkiDiscoveryScanStatus.Completed:
       return showWarnings && discovery.lastScanMessage ? (
-        <Tooltip content={discovery.lastScanMessage}>
-          <Badge tone="warn" dot>
-            Warning
-          </Badge>
-        </Tooltip>
+        <Badge reason={discovery.lastScanMessage} tone="warn" dot>
+          Warning
+        </Badge>
       ) : (
         <Badge tone="ok" dot>
           Active
@@ -218,6 +218,25 @@ export const DiscoveryTypeIcon = ({ type }: { type: PkiDiscoveryType }) => {
   const { name, image } = PKI_DISCOVERY_TYPE_MAP[type];
   return image ? <ProviderIcon icon={image} alt={name} size="sm" /> : <Icon name="globe" />;
 };
+
+export const DiscoveryTypeLabel = ({
+  type,
+  size,
+  children
+}: {
+  type: PkiDiscoveryType;
+  size?: "sm" | "md";
+  children?: ReactNode;
+}) =>
+  PKI_DISCOVERY_TYPE_MAP[type].image ? (
+    <ProviderLabel kind="pki-discovery" value={type} size={size}>
+      {children}
+    </ProviderLabel>
+  ) : (
+    <NameLine media={<Icon name="globe" size={size === "sm" ? 14 : 16} />}>
+      {children ?? PKI_DISCOVERY_TYPE_MAP[type].name}
+    </NameLine>
+  );
 
 export const BadgeList = ({
   items,

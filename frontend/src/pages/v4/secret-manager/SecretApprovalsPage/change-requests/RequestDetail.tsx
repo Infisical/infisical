@@ -3,7 +3,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Card } from "@infisical/cipher/ui/card";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
-import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
+import { DetailLayout, Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { DataList } from "@infisical/cipher/ui/list";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
@@ -42,20 +42,6 @@ type ReviewerRow = {
   isActive: boolean;
   review?: ChangeRequest["reviewers"][number];
 };
-
-const reviewerBadges = (userId: string) => (row: ReviewerRow) => (
-  <>
-    {row.userId === userId && <Badge tone="soft">You</Badge>}
-    {!row.isRequired && <Badge tone="outline">Optional</Badge>}
-    {!row.isActive && (
-      <Tooltip content="This user no longer has an active organization membership.">
-        <Badge tone="soft" tabIndex={0} data-row-interactive>
-          Deactivated
-        </Badge>
-      </Tooltip>
-    )}
-  </>
-);
 
 export const RequestDetail = ({
   projectId,
@@ -217,7 +203,31 @@ export const RequestDetail = ({
       header: "Reviewer",
       width: 240,
       text: (row) => row.name,
-      badges: reviewerBadges(user.id)
+      render: (row) => (
+        <Inline gap={8} align="center" wrap={false}>
+          <InlineItem truncate>{row.name}</InlineItem>
+          {row.userId === user.id && (
+            <InlineItem shrink={false}>
+              <Badge tone="soft">You</Badge>
+            </InlineItem>
+          )}
+          {!row.isRequired && (
+            <InlineItem shrink={false}>
+              <Badge tone="outline">Optional</Badge>
+            </InlineItem>
+          )}
+          {!row.isActive && (
+            <InlineItem shrink={false}>
+              <Badge
+                reason="This user no longer has an active organization membership."
+                tone="soft"
+              >
+                Deactivated
+              </Badge>
+            </InlineItem>
+          )}
+        </Inline>
+      )
     },
     {
       id: "review",
@@ -277,9 +287,9 @@ export const RequestDetail = ({
           <>
             {status}
             {request.bypassReason && (
-              <Tooltip content="Merged without the required approvals.">
-                <Badge tone="warn">Bypassed</Badge>
-              </Tooltip>
+              <Badge reason="Merged without the required approvals." tone="warn">
+                Bypassed
+              </Badge>
             )}
           </>
         }

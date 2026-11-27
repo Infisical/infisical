@@ -79,7 +79,6 @@ const FolderCell = ({ session, orgId }: { session: TPamSession; orgId: string })
     session.folderId ?? "",
     Boolean(session.folderId)
   );
-  if (!session.folderName) return <Meta>-</Meta>;
   if (session.folderId && can(PamResourcePermissionActions.ReadFolder))
     return (
       <CellLink
@@ -238,23 +237,25 @@ export const PamSessionsPage = () => {
       id: "folder",
       header: "Folder",
       width: 192,
-      render: (row) => <FolderCell session={row} orgId={orgId} />
+      render: (row) => (row.folderName ? <FolderCell session={row} orgId={orgId} /> : null)
     },
     {
       id: "started",
       header: "Started",
       width: 184,
-      render: (row) => (
-        <Meta mono={false}>
-          {row.startedAt ? format(new Date(row.startedAt), "MMM d, yyyy h:mm a") : "-"}
-        </Meta>
-      )
+      render: (row) =>
+        row.startedAt ? (
+          <Meta mono={false}>{format(new Date(row.startedAt), "MMM d, yyyy h:mm a")}</Meta>
+        ) : null
     },
     {
       id: "duration",
       header: "Duration",
       width: 112,
-      render: (row) => <Meta>{formatDuration(row, now) ?? "-"}</Meta>
+      render: (row) => {
+        const duration = formatDuration(row, now);
+        return duration ? <Meta>{duration}</Meta> : null;
+      }
     },
     {
       id: "status",

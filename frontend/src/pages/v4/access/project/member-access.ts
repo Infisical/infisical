@@ -70,6 +70,7 @@ export const useMemberRoleAccess = (projectId: string, email?: string) => {
   return {
     roles: all,
     rolesPending: roles.isPending,
+    refetchRoles: roles.refetch,
     assignable,
     optionsFor: (slug: string) => withCurrent(assignable, all, slug),
     canEdit:

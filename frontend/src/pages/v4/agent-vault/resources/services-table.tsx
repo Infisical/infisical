@@ -40,7 +40,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { targetOf } from "./agent-vault-utils";
 import { OAuthStatusBadge } from "./service-oauth";
-import { DateCell, Dash, ServiceIcon } from "./shared";
+import { DateCell, ServiceIcon } from "./shared";
 
 import css from "./resources.module.css";
 
@@ -226,7 +226,7 @@ export const ServicesTable = ({
             width: 200,
             render: (service: TListedService) => {
               const bundles = service.accessBundles ?? [];
-              if (!bundles.length) return <Dash />;
+              if (!bundles.length) return null;
               return (
                 <Overflow
                   shown={bundles.slice(0, BUNDLES_SHOWN).map((bundle) => (

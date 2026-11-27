@@ -62,6 +62,7 @@ import { copyText } from "../../clipboard";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -441,6 +442,7 @@ const GroupMembersSection = ({
 };
 
 export const OrgGroupDetail = () => {
+  const scope = useOrgPageScope();
   const { groupId } = useParams({ from: "/v4/organizations/$orgId/groups/$groupId" });
   const access = useV4Adapter("access");
   const orgId = useOrgId();
@@ -474,6 +476,7 @@ export const OrgGroupDetail = () => {
     <div className={css.detailPage}>
       <Stack gap={24}>
         <PageHeader
+          scope={scope}
           breadcrumb={[
             {
               label: "Organization groups",

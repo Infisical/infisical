@@ -46,6 +46,7 @@ import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo } from "../../links";
 import { productOf } from "../../shell/navigation";
+import { useOrgPageScope } from "../../shell/page-scope";
 
 const TEMPLATE_PRODUCTS = [ProjectType.SecretManager, ProjectType.KMS];
 
@@ -421,10 +422,11 @@ const ProjectTemplates = () => {
 };
 
 export const ProductSettingsTab = () => {
+  const scope = useOrgPageScope();
   const { permission } = useOrgPermission();
   return (
     <Stack gap={24}>
-      <PageHeader title="Product settings" />
+      <PageHeader scope={scope} title="Product settings" />
       {permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates) && (
         <ProjectTemplates />
       )}

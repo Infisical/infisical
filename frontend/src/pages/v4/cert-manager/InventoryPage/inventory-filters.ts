@@ -65,7 +65,7 @@ export const filterValueToMetadata = (value: string): InventoryMetadata =>
 export const inventoryFields = (
   authorities: TUnifiedCertificateAuthority[],
   profiles: { value: string; label: string }[],
-  applications?: { value: string; label: string }[]
+  applications?: Pick<FilterBarField & { type: "multi-select" }, "options" | "onSearch" | "loading">
 ): FilterBarField[] => [
   {
     key: "status",
@@ -129,8 +129,7 @@ export const inventoryFields = (
           key: "applicationId",
           label: "Application",
           type: "multi-select",
-          searchable: true,
-          options: applications
+          ...applications
         } satisfies FilterBarField
       ]
     : []),

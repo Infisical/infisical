@@ -42,6 +42,7 @@ import {
 import { useDebounced } from "../../access/org/use-debounced";
 import { errorMessage, failed, saved } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 import { useRotationConfirmation } from "../../integrations/app-connection-extras";
@@ -188,6 +189,7 @@ const LdapConnectionField = ({
         options={(connections.data ?? []).map((connection) => ({
           value: connection.id,
           label: connection.name,
+          media: providerMedia("app-connection", AppConnection.LDAP),
           meta: connection.projectId ? undefined : "Organization"
         }))}
         value={value}
@@ -219,10 +221,6 @@ const AllowedGroupsField = ({
   const known = [...value, ...(groups.data?.groups ?? [])].filter(
     (group, index, all) => all.findIndex((entry) => entry.sid === group.sid) === index
   );
-  let note = "";
-  if (!connectionId) note = " Select an LDAP connection first.";
-  else if (groups.data?.isTruncated)
-    note = ` Showing the first ${MAX_GROUP_RESULTS} groups. Type to narrow the search.`;
   const searchError =
     connectionId && groups.error
       ? errorMessage(groups.error) || "Could not search Active Directory."
@@ -233,14 +231,20 @@ const AllowedGroupsField = ({
       label="AD groups"
       name="allowedGroups"
       optional
-      description={`Only computers in one of these groups can enroll. Leave empty to allow every computer in the domain.${note}`}
+      description="Only computers in one of these groups can enroll. Leave empty to allow every computer in the domain."
       error={shownError}
     >
       <MultiSelect
         label="AD groups"
         placeholder="Search groups by name"
         searchPlaceholder="Search groups by name"
-        disabled={!connectionId}
+        emptyText={connectionId ? "No groups found" : "Select an LDAP connection first"}
+        noMatchText={connectionId ? "No matching groups" : "Select an LDAP connection first"}
+        footer={
+          groups.data?.isTruncated
+            ? `Showing the first ${MAX_GROUP_RESULTS} groups. Type to narrow the search.`
+            : undefined
+        }
         invalid={Boolean(shownError)}
         options={known.map((group) => ({
           value: group.sid,

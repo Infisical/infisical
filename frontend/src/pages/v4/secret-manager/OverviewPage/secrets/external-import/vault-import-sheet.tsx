@@ -8,11 +8,13 @@ import {
   createVaultImportSelection,
   vaultImportSelectionReducer
 } from "@app/components/external-migrations/vaultImportSelection";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 import {
   ExternalMigrationImportStatus,
   type TImportVaultSecretsResponse
 } from "@app/hooks/api/migration/types";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { readableFailure, toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
@@ -119,8 +121,13 @@ export function VaultImportSheet({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open
-        title="Import from HashiCorp Vault"
+        title={
+          <ProviderLabel kind="app-connection" value={AppConnection.HCVault}>
+            Import from HashiCorp Vault
+          </ProviderLabel>
+        }
         description={`Secrets go to ${environment.label} at ${path}.`}
         onOpenChange={(next) => {
           if (next || completed.current) return;

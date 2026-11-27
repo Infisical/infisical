@@ -6,6 +6,7 @@ import {
   ALERT_CHANNEL_TYPE_LABELS,
   AlertChannelType,
   AlertPrincipalType,
+  AlertResourceType,
   AlertRunStatus,
   CertificateAlertResourceType,
   CertificateApplicationAlertEventType,
@@ -512,6 +513,12 @@ export const CHANNEL_ICONS: Record<AlertChannelType, IconName | typeof MailIcon>
   [AlertChannelType.PagerDuty]: "alert"
 };
 
+export const CHANNEL_LOGOS: Partial<Record<AlertChannelType, string>> = {
+  [AlertChannelType.SlackApp]: "Slack.svg",
+  [AlertChannelType.Slack]: "Slack.svg",
+  [AlertChannelType.PagerDuty]: "PagerDuty.svg"
+};
+
 export const buildNextChannel = (
   existing: { name: string }[],
   channelType: AlertChannelType
@@ -554,10 +561,19 @@ export const WEBHOOK_AUTH_COPY: Record<WebhookAuthType, { label: string; descrip
 
 export const KEEP_PLACEHOLDER = "Leave blank to keep the saved value";
 
-export const PROJECT_RECIPIENT_LABELS: Record<string, string> = {
-  [AlertPrincipalType.ProjectMembers]: "All project members",
-  [AlertPrincipalType.ProjectAdmins]: "Project admins"
-};
+export type TRecipientScope = { noun: string; title: string };
+
+const PROJECT_SCOPE: TRecipientScope = { noun: "project", title: "Project" };
+
+export const recipientScopeFor = (resourceType: string): TRecipientScope =>
+  resourceType === AlertResourceType.SecretScanning
+    ? { noun: "Secret Scanning", title: "Secret Scanning" }
+    : PROJECT_SCOPE;
+
+export const projectRecipientLabels = (scope = PROJECT_SCOPE): Record<string, string> => ({
+  [AlertPrincipalType.ProjectMembers]: `All ${scope.noun} members`,
+  [AlertPrincipalType.ProjectAdmins]: `${scope.title} admins`
+});
 
 export const describeChannel = (channel: TChannelForm, members: TMemberEmails): string => {
   switch (channel.channelType) {
@@ -565,9 +581,10 @@ export const describeChannel = (channel: TChannelForm, members: TMemberEmails): 
       const groupCount = channel.recipients.filter(
         (recipient) => recipient.principalType === AlertPrincipalType.Group
       ).length;
+      const labels = projectRecipientLabels();
       return [
         ...channel.recipients.flatMap(({ principalType }) =>
-          PROJECT_RECIPIENT_LABELS[principalType] ? [PROJECT_RECIPIENT_LABELS[principalType]] : []
+          labels[principalType] ? [labels[principalType]] : []
         ),
         ...toRecipientEmails(channel.recipients, members),
         ...(groupCount ? [pluralize(groupCount, "group")] : [])

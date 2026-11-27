@@ -353,6 +353,7 @@ const CreateSheet = ({
                           <Muted>{signerMemberRoleLabels[SignerMemberRole.Administrator]}</Muted>
                         ) : (
                           <Select
+                            descriptionLayout="stacked"
                             size="sm"
                             aria-label={`Role for ${member.label}`}
                             options={SIGNER_ROLE_OPTIONS}

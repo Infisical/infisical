@@ -14,7 +14,7 @@ import {
 } from "@infisical/cipher/ui/dropdown-menu";
 import { DurationInput } from "@infisical/cipher/ui/duration-input";
 import { Field } from "@infisical/cipher/ui/field";
-import { Stack } from "@infisical/cipher/ui/layout";
+import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { GlobPatternHelp, SecretPathInput } from "@infisical/cipher/ui/secret-path-input";
 import {
   Sheet,
@@ -25,7 +25,6 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Textarea } from "@infisical/cipher/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import ms from "ms";
 
@@ -569,23 +568,28 @@ export const RequestAccessSheet = ({
                             />
                           }
                         >
-                          <ToggleGroup
-                            type="multiple"
-                            aria-label={`${config.label} permissions`}
-                            spacing={2}
-                            value={resource.actions}
-                            onValueChange={(actions: string[]) =>
-                              setResourceActions(index, actions)
-                            }
-                          >
+                          <Inline gap={16} role="group" aria-label={`${config.label} permissions`}>
                             {config.actions.map((action) => (
                               <Tooltip key={action.value} content={action.description}>
-                                <ToggleGroupItem value={action.value}>
-                                  {action.label}
-                                </ToggleGroupItem>
+                                <span>
+                                  <Checkbox
+                                    label={action.label}
+                                    checked={resource.actions.includes(action.value)}
+                                    onChange={(checked) =>
+                                      setResourceActions(
+                                        index,
+                                        checked
+                                          ? [...resource.actions, action.value]
+                                          : resource.actions.filter(
+                                              (value) => value !== action.value
+                                            )
+                                      )
+                                    }
+                                  />
+                                </span>
                               </Tooltip>
                             ))}
-                          </ToggleGroup>
+                          </Inline>
                         </Card>
                       );
                     })}
