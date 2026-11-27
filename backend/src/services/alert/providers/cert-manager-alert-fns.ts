@@ -66,8 +66,6 @@ export const filterIdsSchema = (field: string, noun: string) =>
 
 export const formatIds = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
 
-export const toIdSet = (ids: string[] = []) => new Set(ids.map((id) => id.toLowerCase()));
-
 const DAILY_SCAN_DEDUP_MARGIN_HOURS = 4;
 
 const dayMultipleDedupWindowHours = (days: number): number => days * 24 - DAILY_SCAN_DEDUP_MARGIN_HOURS;

@@ -876,7 +876,108 @@ infisical bootstrap \
 infisical cert-manager
 ```
 
-Manage certificates with the Infisical Agent. [infisical cert-manager agent](#cert-manager-agent) runs the agent in certificate management mode.
+Issue, find, renew, and revoke certificates in your [Certificate Management applications](/documentation/platform/pki/applications/overview). To have the Infisical Agent issue and renew the certificates on a machine, use [infisical cert-manager agent](#cert-manager-agent).
+
+### Issue a certificate
+
+Before you start:
+
+- Log in with [infisical login](#login) to the organization that has the application, or have an access token for a machine identity in it. See [Authentication](#authentication).
+- To issue certificates, or to download their private keys, you need the Admin or Operator [role in the application](/documentation/platform/pki/applications/overview#application-roles). An Auditor can list certificates and download a certificate and its chain, but not its key.
+- The profile you issue from needs [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) in the application.
+
+Every `certificates` command acts in one application, which you pass with `--application` by name or ID. Find the application and its [certificate profiles](/documentation/platform/pki/settings/profiles) with API enrollment, then issue the certificate in that application:
+
+```bash
+# List your applications
+infisical cert-manager applications get
+
+# List the profiles with API enrollment in payments-api
+infisical cert-manager applications get payments-api
+
+# Issue a certificate, and write it, its private key, and its chain to files
+infisical cert-manager certificates issue --application payments-api --certificate-profile web --common-name app.example.com --output-certificate-file cert.pem --output-private-key-file key.pem --output-chain-file chain.pem
+```
+
+### Authentication
+
+The commands run as your logged-in user, or as a machine identity if you pass its access token with `--token` or set `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN` or `INFISICAL_TOKEN`. The commands act only in the applications the user or machine identity can access, and its role in each application decides which commands it can run there. The commands don't accept service tokens. If `INFISICAL_TOKEN` holds a service token, they use your login instead.
+
+### Private keys
+
+By default, Infisical generates the private key when it issues or renews a certificate. To keep the key on your machine, pass `--csr` with a certificate signing request (CSR), and Infisical issues the certificate for the key in the CSR.
+
+The CLI prints a private key only if you pass `--include-private-key`. To save the key, pass `--output-private-key-file`, and the CLI writes the key with mode `0600`. If a file passed to `--output-certificate-file`, `--output-private-key-file`, or `--output-chain-file` already exists, the command fails before it sends anything, unless you pass `--force`. With `--force`, a replaced certificate or chain file keeps its mode and, on Linux and macOS, its owner and group, so run the command as a user allowed to set them, such as root. If it can't set them, it replaces no file and prints the command that downloads the certificate again. A replaced private key belongs to the user running the command, with mode `0600`.
+
+### Approvals and pending certificates
+
+If an [approval policy](/documentation/platform/pki/applications/approvals) covers the profile, or the CA takes time to issue the certificate, [certificates issue](#cert-manager-certificates-issue) and [certificates renew](#cert-manager-certificates-renew) wait up to `--timeout` (5 minutes by default) for the certificate, then write the files:
+
+- If the certificate isn't issued by then, the command writes nothing, prints the certificate request's ID, and fails with `certificate_request_pending`
+- With `--no-wait`, the command doesn't wait. If Infisical issues the certificate right away, the command writes the files as usual. Otherwise it writes nothing, prints the certificate request's ID, and returns
+
+In a script, read `status` from the `-o json` output of a command that succeeds: `issued` means the certificate is ready, written to any files you passed and included in the output, and a pending status means you pick the certificate up later with its `certificateRequestId`. A timeout prints no result: the command exits 1 and writes the error to stderr, with the code `certificate_request_pending` and the pickup command in `next`.
+
+A request in `pending_validation` is waiting on the CA. Usually the CA wants you to prove that you control the request's domains, such as with a DNS record or an email it sends, though some CAs report a request they're still processing this way. Check the request with the CA and complete any validation it asks for. Infisical keeps checking with the CA, and a user with project-level permission to edit certificates can check right away with **Trigger Validation** in the application's **Certificate Requests** tab, where the CA supports it.
+
+Once Infisical issues the certificate, pick it up with [infisical cert-manager certificates requests get](#cert-manager-certificates-requests-get). Pass the same file flags as before, and `--remove-roots-from-chain` if you passed it:
+
+```bash
+# A certificate whose private key Infisical generated
+infisical cert-manager certificates requests get <request-id> --application payments-api --output-certificate-file cert.pem --output-private-key-file key.pem --output-chain-file chain.pem --wait
+
+# A certificate issued from your CSR: Infisical has no key, so use the key you made the CSR with
+infisical cert-manager certificates requests get <request-id> --application payments-api --output-certificate-file cert.pem --output-chain-file chain.pem --wait
+```
+
+A revocation that needs approval also waits up to `--timeout`. See [infisical cert-manager certificates revoke](#cert-manager-certificates-revoke) for what its timeout means.
+
+### Output for scripts
+
+Pass `-o json` or `-o yaml` to print the result in that format instead of a table. A list is an array, and a single item is an object. A field with no value is `null`, and times are in RFC 3339 format in UTC. The table below lists each command's fields and says when a field appears only in some cases. `privateKey` appears only when you pass `--include-private-key`.
+
+| Command | Fields |
+| --- | --- |
+| [`applications get`](#cert-manager-applications-get) | `applicationId`, `applicationName`, `description` |
+| [`applications get <name-or-id>`](#cert-manager-applications-get) | `applicationId`, `applicationName`, `description`, and `profiles`, each with `profileId`, `profileName`, and `description` |
+| [`certificates issue`](#cert-manager-certificates-issue) and [`certificates renew`](#cert-manager-certificates-renew) | `status`, `certificateRequestId`, `certificateId`, `serialNumber`, `commonName`, `notBefore`, `notAfter`, `certificate`, `certificateChain`, `message`, and `privateKey` (`renew` adds `renewedFromCertificateId`, and the certificate's fields are `null` while the request is pending) |
+| [`certificates get`](#cert-manager-certificates-get) | `certificateId`, `commonName`, `serialNumber`, `status`, `profileName`, `notBefore`, `notAfter`, `keyAlgorithm`, `hasPrivateKey` |
+| [`certificates get <certificate-id>`](#cert-manager-certificates-get) | The list's fields, and `applicationId`, `applicationName`, `profileId`, `subjectAlternativeNames` (each with `type` and `value`), `organization`, `organizationalUnit`, `country`, `state`, `locality`, `domainComponents`, `signatureAlgorithm`, `keyUsages`, `extendedKeyUsages`, `isCA`, `pathLength`, `caName`, `revokedAt`, `revocationReason`, `renewedFromCertificateId`, `renewedByCertificateId`, `metadata` (each with `key` and `value`), `createdAt`, `certificate`, `certificateChain`, and `privateKey` |
+| [`certificates requests get`](#cert-manager-certificates-requests-get) | `certificateRequestId`, `status`, `commonName`, `profileName`, `certificateId`, `createdAt` |
+| [`certificates requests get <request-id>`](#cert-manager-certificates-requests-get) | `certificateRequestId`, `applicationId`, `applicationName`, `status`, `profileName`, `commonName`, `certificateId`, `message`, `createdAt`, `updatedAt`, and once the request is issued, `serialNumber`, `notBefore`, `notAfter`, `certificate`, `certificateChain`, and `privateKey` |
+| [`certificates revoke`](#cert-manager-certificates-revoke) | `certificateId`, `serialNumber`, `status` (`revoked` or `pending_approval`), `revocationReason`, `revokedAt`, `approvalRequestId`, and `crlWarning` (set when Infisical revoked the certificate at once but couldn't regenerate the certificate revocation list; it stays null after an approved revocation, even if regeneration failed) |
+
+### Errors in scripts
+
+Every failure exits with status `1`. For the errors in the table below, the command prints what went wrong and, when there is one, the command to run next. With `-o json` or `-o yaml`, it prints these errors to standard error in that format instead, and `next` can be an empty array. Other failures, such as an unreachable Infisical or a file that can't be written, print plain text even with `-o json` or `-o yaml`:
+
+```json
+{"error": {"code": "application_not_found", "message": "Application \"paymnts-api\" doesn't exist, or you can't access it.", "next": ["infisical cert-manager applications get"]}}
+```
+
+`code` is one of the following:
+
+| Code | Meaning |
+| --- | --- |
+| `auth_required` | You aren't logged in, or the token is invalid or expired |
+| `permission_denied` | Your role in the application doesn't allow the action |
+| `application_not_found` | The application doesn't exist, or you can't access it |
+| `profile_not_found` | The profile isn't attached to the application (the message lists the profiles you can use) |
+| `profile_not_api_enabled` | The profile is attached to the application without API enrollment, so the CLI can't issue from it |
+| `profile_required` | `certificates issue` ran without `--certificate-profile`, and the application doesn't have exactly one profile with API enrollment |
+| `certificate_not_found` | The certificate doesn't exist, or it belongs to another application, so nothing was changed |
+| `certificate_request_not_found` | The certificate request doesn't exist, or it belongs to another application |
+| `certificate_request_pending` | The certificate request isn't issued yet, so nothing was written |
+| `certificate_request_rejected` | The certificate request was rejected or failed (the message has the reason) |
+| `certificate_revocation_pending` | The CLI couldn't confirm the revocation before `--timeout`: the request is still waiting for approval, or it was approved and the certificate isn't revoked yet. The message says which. Check the certificate's status before you revoke it again |
+| `certificate_revocation_rejected` | The revocation's approval request was rejected, expired, or cancelled, or too few of its approvers can still approve it. The approval request didn't revoke the certificate |
+| `private_key_unavailable` | You asked for the private key of a certificate whose key isn't in Infisical, such as one issued from a CSR, so nothing was written |
+| `certificate_unavailable` | The certificate request was issued, but its certificate was deleted from Infisical, so nothing was written |
+| `invalid_argument` | The certificate ID or request ID isn't a valid ID |
+| `invalid_flag_value` | A flag is missing or has a value the command can't use, such as a `--status` that isn't in the list or a `--output-certificate-file` that already exists |
+| `service_token_not_supported` | `--token` holds a service token |
+| `confirmation_required` | `certificates revoke` ran without a terminal and without `--yes` |
+| `confirmation_declined` | What you typed at the revocation question didn't match, or you cancelled the question |
 
 ## `cert-manager agent`
 
@@ -908,6 +1009,333 @@ Start it with debug logging
 ```bash
 infisical cert-manager agent --config=/etc/infisical/agent-config.yaml --verbose
 ```
+
+## `cert-manager applications`
+
+```text
+infisical cert-manager applications
+```
+
+Find the Certificate Management applications you can access, and the certificate profiles with API enrollment in each one.
+
+## `cert-manager applications get`
+
+```text
+infisical cert-manager applications get [name-or-id] [flags]
+```
+
+List the name, ID, and description of each application you can access, or show one application with its profiles that have API enrollment. Pass the application's name or ID to `--application`, and a profile's name to `--certificate-profile`.
+
+The CLI can only issue from a profile that has [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api), so the command leaves out the application's other profiles. If the profile you need is missing, ask an admin of the application to configure API enrollment for it. Listing a profile doesn't mean you can issue from it: that needs the Admin or Operator [role in the application](/documentation/platform/pki/applications/overview#application-roles).
+
+### Arguments
+
+- `name-or-id` (optional): The name or ID of the application to show. Without it, the command lists your applications.
+
+### Flags
+
+- `--output <string>` (`-o`): Print the applications as `json` or `yaml` instead of a table.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+
+### Examples
+
+List your applications
+
+```bash
+infisical cert-manager applications get
+```
+
+Show an application and its profiles with API enrollment
+
+```bash
+infisical cert-manager applications get payments-api
+```
+
+## `cert-manager certificates`
+
+```text
+infisical cert-manager certificates
+```
+
+Issue, find, renew, and revoke certificates in an application. Every `certificates` command needs `--application` with the application's name or ID. The commands don't read the application from an environment variable or from `.infisical.yaml`.
+
+## `cert-manager certificates get`
+
+```text
+infisical cert-manager certificates get [certificate-id] [flags]
+```
+
+List the ID, common name, status, profile, and expiry of each certificate in the application, or show one certificate. The `--certificate-profile`, `--status`, and `--expires-within` flags filter the list, so they don't work with a certificate ID.
+
+With a certificate ID, the command shows the certificate and prints its PEM. To save the certificate instead, pass the file flags.
+
+### Arguments
+
+- `certificate-id` (optional): The ID of the certificate to show. Without it, the command lists the application's certificates.
+
+### Flags
+
+- `--application <string>` (required): The name or ID of the application. Find it with [infisical cert-manager applications get](#cert-manager-applications-get).
+- `--output-certificate-file <string>`: Write the certificate to this file. Needs a certificate ID.
+- `--certificate-profile <string>`: List only the certificates issued from this profile, by name.
+- `--output-chain-file <string>`: Write the certificate chain to this file. Needs a certificate ID.
+- `--expires-within <string>`: List only the certificates that expire within this time, such as `30d` or `12h`.
+- `--force`: Overwrite files that already exist. A replaced certificate or chain keeps its mode, owner, and group.
+- `--include-private-key`: Print the private key, and include it as `privateKey` in `-o json` or `-o yaml` output. Needs a certificate ID.
+- `--output-private-key-file <string>`: Write the private key to this file, with mode `0600`. Needs a certificate ID.
+- `--output <string>` (`-o`): Print the certificates as `json` or `yaml` instead of a table.
+- `--status <string>`: List only the certificates with this status: `active`, `expired`, `revoked`, or `renewed`.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+
+### Examples
+
+List an application's certificates
+
+```bash
+infisical cert-manager certificates get --application payments-api
+```
+
+List the active certificates from a profile that expire within 30 days
+
+```bash
+infisical cert-manager certificates get --application payments-api --certificate-profile web --status active --expires-within 30d
+```
+
+Download a certificate, its private key, and its chain
+
+```bash
+infisical cert-manager certificates get <certificate-id> --application payments-api --output-certificate-file cert.pem --output-private-key-file key.pem --output-chain-file chain.pem
+```
+
+## `cert-manager certificates issue`
+
+```text
+infisical cert-manager certificates issue [flags]
+```
+
+Issue a certificate from one of the application's profiles. If you leave out a flag, the certificate gets the profile's default for that field.
+
+Without `--certificate-profile`, the command uses the application's only profile with API enrollment. If the application has none or several, the command fails with `profile_required`.
+
+Without the file flags, the command prints the certificate's PEM after the table.
+
+### Flags
+
+- `--application <string>` (required): The name or ID of the application to issue in. Find it with [infisical cert-manager applications get](#cert-manager-applications-get).
+- `--output-certificate-file <string>`: Write the certificate to this file.
+- `--certificate-profile <string>`: The name of the profile to issue from. Defaults to the application's only profile with API enrollment.
+- `--output-chain-file <string>`: Write the certificate chain to this file.
+- `--common-name <string>`: The subject's common name (CN), such as `app.example.com`.
+- `--country <string>`: The subject's country (C), as a two-letter code such as `US`.
+- `--critical-extension <stringArray>`: The OID of a custom extension to mark critical. Pass the flag once for each extension.
+- `--csr <string>`: The path to a PEM certificate signing request. Infisical issues the certificate for the key in the CSR and returns no private key. Can't be combined with the subject, subject alternative name, key, usage, and extension flags, `--output-private-key-file`, or `--include-private-key`, because the CSR already holds the subject, names, and key.
+- `--custom-extension <stringArray>`: A [custom extension](/documentation/platform/pki/settings/profiles#custom-extensions), as `<oid>=<value>`, with the value as text that Infisical encodes. Pass the flag once for each extension.
+- `--domain-component <stringArray>`: A domain component (DC) of the subject. Pass the flag once for each component.
+- `--extended-key-usage <stringArray>`: An extended key usage: `client_auth`, `server_auth`, `code_signing`, `email_protection`, `ocsp_signing`, `smart_card_logon`, `time_stamping`, or `any_purpose`. Pass the flag once for each usage.
+- `--force`: Overwrite files that already exist. A replaced certificate or chain keeps its mode, owner, and group.
+- `--include-private-key`: Print the private key, and include it as `privateKey` in `-o json` or `-o yaml` output.
+- `--is-ca`: Issue a CA certificate, if the profile's [certificate policy](/documentation/platform/pki/settings/policies) allows it.
+- `--key-algorithm <string>`: The key algorithm, such as `RSA_2048` or `EC_prime256v1`.
+- `--output-private-key-file <string>`: Write the private key to this file, with mode `0600`.
+- `--key-usage <stringArray>`: A key usage: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, or `decipher_only`. Pass the flag once for each usage.
+- `--locality <string>`: The subject's locality (L).
+- `--metadata <stringArray>`: A key and value to store on the certificate, as `key=value`. Pass the flag once for each key.
+- `--no-wait`: Don't wait for an approval or a pending certificate. A certificate issued right away is written to any files you passed and returned as usual; a pending one returns its certificate request's ID for a later pickup.
+- `--not-after <string>`: The end of the certificate's validity, in RFC 3339 format such as `2027-01-02T15:04:05Z`. Can't be combined with `--ttl`.
+- `--not-before <string>`: The start of the certificate's validity, in RFC 3339 format such as `2026-01-02T15:04:05Z`. Can't be combined with `--ttl`.
+- `--organization <string>`: The subject's organization (O).
+- `--organizational-unit <string>`: The subject's organizational unit (OU).
+- `--output <string>` (`-o`): Print the certificate as `json` or `yaml` instead of a table.
+- `--path-length <int>`: The path length constraint of a CA certificate, from 0 to 255. Needs `--is-ca`.
+- `--remove-roots-from-chain`: Leave the root CA certificates out of the chain.
+- `--signature-algorithm <string>`: The signature algorithm, such as `RSA-SHA256` or `ECDSA-SHA256`.
+- `--state <string>`: The subject's state or province (ST).
+- `--subject-alternative-name <stringArray>`: A subject alternative name (SAN): a DNS name, an IP address, an email address, or a URI. The CLI detects the type from the value. Pass the flag once for each name.
+- `--timeout <duration>` (default `5m`): How long to wait for an approval or a pending certificate, such as `10m` or `1h`.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+- `--ttl <string>`: How long the certificate is valid, such as `90d` or `12h`. Can't be combined with `--not-before` or `--not-after`.
+
+### Examples
+
+Issue a certificate with a private key from Infisical
+
+```bash
+infisical cert-manager certificates issue --application payments-api --certificate-profile web --common-name app.example.com --subject-alternative-name app.example.com --output-certificate-file cert.pem --output-private-key-file key.pem --output-chain-file chain.pem
+```
+
+Issue a certificate for the key in your own CSR
+
+```bash
+infisical cert-manager certificates issue --application payments-api --certificate-profile web --csr request.csr --output-certificate-file cert.pem --output-chain-file chain.pem
+```
+
+Print the result as JSON without waiting for an approval
+
+```bash
+infisical cert-manager certificates issue --application payments-api --common-name app.example.com --no-wait -o json
+```
+
+## `cert-manager certificates renew`
+
+```text
+infisical cert-manager certificates renew <certificate-id> [flags]
+```
+
+Renew a certificate. Which certificates you can renew, and what to do with the old one afterward, is in [Certificate renewal](/documentation/platform/pki/applications/certificate-renewal).
+
+Without `--csr`, Infisical generates a new private key, so save it with `--output-private-key-file` along with `--output-certificate-file`. The fields you don't pass a flag for carry over as described in [How a renewal is built](/documentation/platform/pki/applications/certificate-renewal#how-a-renewal-is-built). With `--csr`, the renewed certificate is for the key in the CSR, and its subject and subject alternative names come from the CSR.
+
+### Arguments
+
+- `certificate-id` (required): The ID of the certificate to renew. Find it with [infisical cert-manager certificates get](#cert-manager-certificates-get).
+
+### Flags
+
+- `--application <string>` (required): The name or ID of the application the certificate belongs to.
+- `--output-certificate-file <string>`: Write the renewed certificate to this file. Without `--csr`, also pass `--output-private-key-file` or `--include-private-key`: the renewed certificate has a new private key.
+- `--output-chain-file <string>`: Write the certificate chain to this file.
+- `--common-name <string>`: A new common name (CN) for the subject.
+- `--country <string>`: A new country (C) for the subject, as a two-letter code such as `US`.
+- `--critical-extension <stringArray>`: The OID of a custom extension to mark critical. Pass the flag once for each extension.
+- `--csr <string>`: The path to a PEM certificate signing request. The renewed certificate is for the key in the CSR, and its subject and subject alternative names come from the CSR. Infisical returns no private key. Can't be combined with the subject, subject alternative name, key, and usage flags, `--output-private-key-file`, or `--include-private-key`. `--custom-extension` and `--critical-extension` still apply.
+- `--custom-extension <stringArray>`: A [custom extension](/documentation/platform/pki/settings/profiles#custom-extensions), as `<oid>=<value>`, with the value as text that Infisical encodes. Pass the flag once for each extension.
+- `--domain-component <stringArray>`: A domain component (DC) of the subject. Pass the flag once for each component.
+- `--extended-key-usage <stringArray>`: An extended key usage: `client_auth`, `server_auth`, `code_signing`, `email_protection`, `ocsp_signing`, `smart_card_logon`, `time_stamping`, or `any_purpose`. Pass the flag once for each usage.
+- `--force`: Overwrite files that already exist. A replaced certificate or chain keeps its mode, owner, and group.
+- `--include-private-key`: Print the new private key, and include it as `privateKey` in `-o json` or `-o yaml` output.
+- `--is-ca`: Make the renewed certificate a CA certificate, if the profile's certificate policy allows it.
+- `--key-algorithm <string>`: The key algorithm of the new key, such as `RSA_2048` or `EC_prime256v1`.
+- `--output-private-key-file <string>`: Write the new private key to this file, with mode `0600`.
+- `--key-usage <stringArray>`: A key usage: `digital_signature`, `key_encipherment`, `non_repudiation`, `data_encipherment`, `key_agreement`, `key_cert_sign`, `crl_sign`, `encipher_only`, or `decipher_only`. Pass the flag once for each usage.
+- `--locality <string>`: A new locality (L) for the subject.
+- `--no-wait`: Don't wait for an approval or a pending certificate. A certificate issued right away is written to any files you passed and returned as usual; a pending one returns its certificate request's ID for a later pickup.
+- `--organization <string>`: A new organization (O) for the subject.
+- `--organizational-unit <string>`: A new organizational unit (OU) for the subject.
+- `--output <string>` (`-o`): Print the renewed certificate as `json` or `yaml` instead of a table.
+- `--path-length <int>`: The path length constraint of a CA certificate, from 0 to 255. Needs `--is-ca`, unless the certificate you renew is already a CA certificate.
+- `--remove-roots-from-chain`: Leave the root CA certificates out of the chain.
+- `--signature-algorithm <string>`: The signature algorithm, such as `RSA-SHA256` or `ECDSA-SHA256`.
+- `--state <string>`: A new state or province (ST) for the subject.
+- `--subject-alternative-name <stringArray>`: A subject alternative name (SAN): a DNS name, an IP address, an email address, or a URI. The CLI detects the type from the value. Pass the flag once for each name.
+- `--timeout <duration>` (default `5m`): How long to wait for an approval or a pending certificate, such as `10m` or `1h`.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+- `--ttl <string>`: How long the renewed certificate is valid, such as `90d` or `12h`.
+
+### Examples
+
+Renew a certificate with a new key and overwrite the files
+
+```bash
+infisical cert-manager certificates renew <certificate-id> --application payments-api --output-certificate-file cert.pem --output-private-key-file key.pem --output-chain-file chain.pem --force
+```
+
+Renew a certificate for 30 days with another SAN
+
+```bash
+infisical cert-manager certificates renew <certificate-id> --application payments-api --ttl 30d --subject-alternative-name new.example.com -o json
+```
+
+Renew a certificate for the key in your own CSR
+
+```bash
+infisical cert-manager certificates renew <certificate-id> --application payments-api --csr request.csr --output-certificate-file cert.pem --force
+```
+
+## `cert-manager certificates requests`
+
+```text
+infisical cert-manager certificates requests
+```
+
+List the application's certificate requests, and pick up the certificate of a request that was waiting for approval or for the CA.
+
+## `cert-manager certificates requests get`
+
+```text
+infisical cert-manager certificates requests get [request-id] [flags]
+```
+
+List the application's certificate requests, newest first, or show one request. If the request is issued, the command writes or prints its certificate the same way as [infisical cert-manager certificates get](#cert-manager-certificates-get).
+
+If the request is still pending, the command writes nothing and fails with `certificate_request_pending`. Pass `--wait` to wait for the certificate instead. If the request was rejected or failed, the command fails with `certificate_request_rejected`.
+
+### Arguments
+
+- `request-id` (optional): The ID of the certificate request to show, which [certificates issue](#cert-manager-certificates-issue) and [certificates renew](#cert-manager-certificates-renew) print. Without it, the command lists the application's requests.
+
+### Flags
+
+- `--application <string>` (required): The name or ID of the application the request belongs to.
+- `--output-certificate-file <string>`: Write the certificate to this file. Needs a request ID.
+- `--output-chain-file <string>`: Write the certificate chain to this file. Needs a request ID.
+- `--force`: Overwrite files that already exist. A replaced certificate or chain keeps its mode, owner, and group.
+- `--include-private-key`: Print the private key, and include it as `privateKey` in `-o json` or `-o yaml` output. Needs a request ID.
+- `--output-private-key-file <string>`: Write the private key to this file, with mode `0600`. Needs a request ID.
+- `--output <string>` (`-o`): Print the requests as `json` or `yaml` instead of a table.
+- `--remove-roots-from-chain`: Leave the root CA certificates out of the chain. Needs a request ID. Pass it again when you pick up a request you issued or renewed with it.
+- `--status <string>`: List only the requests with this status: `pending_approval`, `pending`, `pending_validation`, `issued`, `failed`, or `rejected`. `pending` also matches `pending_approval` and `pending_validation`.
+- `--timeout <duration>` (default `5m`): How long `--wait` waits, such as `10m` or `1h`.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+- `--wait`: If the request is pending, wait up to `--timeout` for Infisical to issue or reject it.
+
+### Examples
+
+List the requests waiting for approval
+
+```bash
+infisical cert-manager certificates requests get --application payments-api --status pending_approval
+```
+
+Wait for a request and write its certificate and Infisical-generated key to files (for a CSR, leave out --output-private-key-file)
+
+```bash
+infisical cert-manager certificates requests get <request-id> --application payments-api --output-certificate-file cert.pem --output-private-key-file key.pem --output-chain-file chain.pem --wait --timeout 10m
+```
+
+## `cert-manager certificates revoke`
+
+```text
+infisical cert-manager certificates revoke <certificate-id> [flags]
+```
+
+Revoke a certificate. The command asks you to type the certificate's common name, or its ID if it has no common name, before it revokes anything, unless you pass `--yes`.
+
+If a [revocation policy](/documentation/platform/pki/applications/approvals#revocation) covers the certificate's profile, the revocation needs approval, and the certificate isn't revoked until the request is approved:
+
+- By default, the command waits up to `--timeout` until the certificate reads revoked. If it can't confirm that by then, because no one has decided or because the approved revocation hasn't taken effect yet, it fails with `certificate_revocation_pending`. Check the certificate's status with [infisical cert-manager certificates get](#cert-manager-certificates-get) before you revoke it again
+- With `--no-wait`, the command prints the approval request's ID (`approvalRequestId`) right away. Find the request under **Approval Requests** in Certificate Manager by the certificate's common name, or by its serial number if it has none. The list shows only pending requests at first: to find one that was already approved or rejected, open the filter beside the search box and clear **Pending**. Then check whether the certificate is revoked with [infisical cert-manager certificates get](#cert-manager-certificates-get): `infisical cert-manager certificates get <certificate-id> --application <name-or-id>`
+- If the request is rejected, expires, or is cancelled, or too few of its approvers can still approve it, the command fails with `certificate_revocation_rejected`
+
+If no revocation policy covers the profile, Infisical revokes the certificate right away. If Infisical revokes the certificate but can't regenerate the certificate revocation list, the command prints a warning, and `crlWarning` holds it in `-o json` or `-o yaml` output. After an approved revocation, the CLI can't see that warning, so `crlWarning` stays null. For the roles that can revoke and approve, see [Certificate approval policies](/documentation/platform/pki/applications/approvals#revocation).
+
+### Arguments
+
+- `certificate-id` (required): The ID of the certificate to revoke. Find it with [infisical cert-manager certificates get](#cert-manager-certificates-get).
+
+### Flags
+
+- `--application <string>` (required): The name or ID of the application the certificate belongs to.
+- `--no-wait`: If the revocation needs approval, print the approval request's ID right away instead of waiting for the decision.
+- `--output <string>` (`-o`): Print the revocation as `json` or `yaml` instead of a message.
+- `--reason <string>` (required): The reason for the revocation: `key_compromise`, `superseded`, `cessation_of_operation`, `affiliation_changed`, `ca_compromise`, `certificate_hold`, `privilege_withdrawn`, `a_a_compromise`, or `unspecified`.
+- `--timeout <duration>` (default `5m`): How long to wait for the revocation to be approved and for the certificate to read revoked, such as `10m` or `1h`.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+- `--yes` (`-y`): Revoke without asking for confirmation. Required when there's no terminal to ask in, such as in a script or an agent.
+
+### Examples
+
+Revoke a certificate
+
+```bash
+infisical cert-manager certificates revoke <certificate-id> --application payments-api --reason key_compromise
+```
+
+Revoke a certificate in a script
+
+```bash
+infisical cert-manager certificates revoke <certificate-id> --application payments-api --reason superseded --yes
+```
+
 
 ## `gateway`
 

@@ -103,3 +103,6 @@ export const diff = <T>(
   );
   return root.filter((a) => !bKeys[identity(a)]);
 };
+
+// Lowercases IDs so UUIDs compare regardless of the case they were sent in.
+export const toIdSet = (ids: string[] = []) => new Set(ids.map((id) => id.toLowerCase()));

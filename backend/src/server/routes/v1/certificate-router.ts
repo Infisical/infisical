@@ -482,6 +482,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional(),
           metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
           customExtensions: z.array(resolvedCustomExtensionSchema).nullable().optional(),
+          applicationId: z.string().nullable().describe(CERTIFICATES.GET_REQUEST.applicationId),
+          applicationName: z.string().nullable().describe(CERTIFICATES.GET_REQUEST.applicationName),
+          profileName: z.string().nullable().describe(CERTIFICATES.GET_REQUEST.profileName),
           createdAt: z.date(),
           updatedAt: z.date()
         })
@@ -852,7 +855,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           .min(1)
           .max(100)
           .optional()
-          .describe(PROJECTS.SEARCH_CERTIFICATES.applicationIds),
+          .describe(CERTIFICATES.SEARCH.applicationIds),
         enrollmentTypes: z
           .array(z.nativeEnum(EnrollmentType))
           .min(1)
@@ -936,7 +939,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         metadataFilter: metadata,
         sortBy,
         sortOrder,
-        excludeFriendlyNameFromSearch: true
+        excludeFriendlyNameFromSearch: true,
+        // applicationIds is capped at 100 above, so checking the caller's role in each of them is bounded.
+        authorizeByApplicationRoles: true
       });
     }
   });

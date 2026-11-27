@@ -5,6 +5,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { toIdSet } from "@app/lib/fn";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import {
   CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
@@ -40,8 +41,7 @@ import {
   filterIdsSchema,
   formatIds,
   getScopeWideAlertWebhookSource,
-  resolveCertManagerProjectId,
-  toIdSet
+  resolveCertManagerProjectId
 } from "./cert-manager-alert-fns";
 import { TAlertCertificate, TCertManagerCertificateAlertDALFactory } from "./cert-manager-certificate-alert-dal";
 

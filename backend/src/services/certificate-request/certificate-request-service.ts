@@ -367,6 +367,11 @@ export const certificateRequestServiceFactory = ({
       isCA: boolean;
       pathLength?: number;
     } | null;
+    const ownership = {
+      applicationId: certificateRequest.applicationId ?? null,
+      applicationName: await $resolveApplicationName(certificateRequest.applicationId),
+      profileName: certificateRequest.profileName
+    };
 
     // If no certificate is attached, return basic info
     if (!certificateRequest.certificate || certificateRequest.certificate.deletedAt) {
@@ -390,6 +395,7 @@ export const certificateRequestServiceFactory = ({
           basicConstraints: parsedBasicConstraints,
           customExtensions: parsedCustomExtensions,
           metadata: requestMetadata,
+          ...ownership,
           createdAt: certificateRequest.createdAt,
           updatedAt: certificateRequest.updatedAt
         },
@@ -469,12 +475,11 @@ export const certificateRequestServiceFactory = ({
         basicConstraints: parsedBasicConstraints,
         customExtensions: parsedCustomExtensions,
         metadata: requestMetadata,
+        ...ownership,
         createdAt: certificateRequest.createdAt,
         updatedAt: certificateRequest.updatedAt
       },
-      projectId: certificateRequest.projectId,
-      applicationId: certificateRequest.applicationId ?? null,
-      applicationName: await $resolveApplicationName(certificateRequest.applicationId)
+      projectId: certificateRequest.projectId
     };
   };
 

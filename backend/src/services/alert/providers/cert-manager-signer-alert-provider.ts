@@ -4,6 +4,7 @@ import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { toIdSet } from "@app/lib/fn";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { CERT_MANAGER_SIGNER_RESOURCE_TYPE, SignerAlertEvent } from "@app/services/signer/signer-alert-events";
 import { PkiAlertScope } from "@app/services/telemetry/telemetry-types";
@@ -32,8 +33,7 @@ import {
   formatIds,
   getScopeWideAlertWebhookSource,
   resolveCertManagerProjectId,
-  splitAltNames,
-  toIdSet
+  splitAltNames
 } from "./cert-manager-alert-fns";
 import { TCertManagerSignerAlertDALFactory, TSignerAlertCertificate } from "./cert-manager-signer-alert-dal";
 

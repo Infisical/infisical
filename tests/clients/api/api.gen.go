@@ -56835,6 +56835,246 @@ func (e ImportCertificate500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for SearchCertificatesJSONBodyEnrollmentTypes.
+const (
+	SearchCertificatesJSONBodyEnrollmentTypesAcme                    SearchCertificatesJSONBodyEnrollmentTypes = "acme"
+	SearchCertificatesJSONBodyEnrollmentTypesApi                     SearchCertificatesJSONBodyEnrollmentTypes = "api"
+	SearchCertificatesJSONBodyEnrollmentTypesEst                     SearchCertificatesJSONBodyEnrollmentTypes = "est"
+	SearchCertificatesJSONBodyEnrollmentTypesMicrosoftAutoenrollment SearchCertificatesJSONBodyEnrollmentTypes = "microsoft-autoenrollment"
+	SearchCertificatesJSONBodyEnrollmentTypesScep                    SearchCertificatesJSONBodyEnrollmentTypes = "scep"
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificatesJSONBodyEnrollmentTypes enum.
+func (e SearchCertificatesJSONBodyEnrollmentTypes) Valid() bool {
+	switch e {
+	case SearchCertificatesJSONBodyEnrollmentTypesAcme:
+		return true
+	case SearchCertificatesJSONBodyEnrollmentTypesApi:
+		return true
+	case SearchCertificatesJSONBodyEnrollmentTypesEst:
+		return true
+	case SearchCertificatesJSONBodyEnrollmentTypesMicrosoftAutoenrollment:
+		return true
+	case SearchCertificatesJSONBodyEnrollmentTypesScep:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificatesJSONBodySortBy.
+const (
+	SearchCertificatesJSONBodySortByCommonName   SearchCertificatesJSONBodySortBy = "commonName"
+	SearchCertificatesJSONBodySortByCreatedAt    SearchCertificatesJSONBodySortBy = "createdAt"
+	SearchCertificatesJSONBodySortByKeyAlgorithm SearchCertificatesJSONBodySortBy = "keyAlgorithm"
+	SearchCertificatesJSONBodySortByNotAfter     SearchCertificatesJSONBodySortBy = "notAfter"
+	SearchCertificatesJSONBodySortByNotBefore    SearchCertificatesJSONBodySortBy = "notBefore"
+	SearchCertificatesJSONBodySortByStatus       SearchCertificatesJSONBodySortBy = "status"
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificatesJSONBodySortBy enum.
+func (e SearchCertificatesJSONBodySortBy) Valid() bool {
+	switch e {
+	case SearchCertificatesJSONBodySortByCommonName:
+		return true
+	case SearchCertificatesJSONBodySortByCreatedAt:
+		return true
+	case SearchCertificatesJSONBodySortByKeyAlgorithm:
+		return true
+	case SearchCertificatesJSONBodySortByNotAfter:
+		return true
+	case SearchCertificatesJSONBodySortByNotBefore:
+		return true
+	case SearchCertificatesJSONBodySortByStatus:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificatesJSONBodySortOrder.
+const (
+	SearchCertificatesJSONBodySortOrderAsc  SearchCertificatesJSONBodySortOrder = "asc"
+	SearchCertificatesJSONBodySortOrderDesc SearchCertificatesJSONBodySortOrder = "desc"
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificatesJSONBodySortOrder enum.
+func (e SearchCertificatesJSONBodySortOrder) Valid() bool {
+	switch e {
+	case SearchCertificatesJSONBodySortOrderAsc:
+		return true
+	case SearchCertificatesJSONBodySortOrderDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificatesJSONBodySource.
+const (
+	SearchCertificatesJSONBodySourceDiscovered SearchCertificatesJSONBodySource = "discovered"
+	SearchCertificatesJSONBodySourceImported   SearchCertificatesJSONBodySource = "imported"
+	SearchCertificatesJSONBodySourceIssued     SearchCertificatesJSONBodySource = "issued"
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificatesJSONBodySource enum.
+func (e SearchCertificatesJSONBodySource) Valid() bool {
+	switch e {
+	case SearchCertificatesJSONBodySourceDiscovered:
+		return true
+	case SearchCertificatesJSONBodySourceImported:
+		return true
+	case SearchCertificatesJSONBodySourceIssued:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificatesJSONBodyStatus.
+const (
+	SearchCertificatesJSONBodyStatusActive  SearchCertificatesJSONBodyStatus = "active"
+	SearchCertificatesJSONBodyStatusDeleted SearchCertificatesJSONBodyStatus = "deleted"
+	SearchCertificatesJSONBodyStatusExpired SearchCertificatesJSONBodyStatus = "expired"
+	SearchCertificatesJSONBodyStatusRenewed SearchCertificatesJSONBodyStatus = "renewed"
+	SearchCertificatesJSONBodyStatusRevoked SearchCertificatesJSONBodyStatus = "revoked"
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificatesJSONBodyStatus enum.
+func (e SearchCertificatesJSONBodyStatus) Valid() bool {
+	switch e {
+	case SearchCertificatesJSONBodyStatusActive:
+		return true
+	case SearchCertificatesJSONBodyStatusDeleted:
+		return true
+	case SearchCertificatesJSONBodyStatusExpired:
+		return true
+	case SearchCertificatesJSONBodyStatusRenewed:
+		return true
+	case SearchCertificatesJSONBodyStatusRevoked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates200JSONResponseBodyCertificatesStatus.
+const (
+	SearchCertificates200JSONResponseBodyCertificatesStatusActive  SearchCertificates200JSONResponseBodyCertificatesStatus = "active"
+	SearchCertificates200JSONResponseBodyCertificatesStatusDeleted SearchCertificates200JSONResponseBodyCertificatesStatus = "deleted"
+	SearchCertificates200JSONResponseBodyCertificatesStatusExpired SearchCertificates200JSONResponseBodyCertificatesStatus = "expired"
+	SearchCertificates200JSONResponseBodyCertificatesStatusRenewed SearchCertificates200JSONResponseBodyCertificatesStatus = "renewed"
+	SearchCertificates200JSONResponseBodyCertificatesStatusRevoked SearchCertificates200JSONResponseBodyCertificatesStatus = "revoked"
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates200JSONResponseBodyCertificatesStatus enum.
+func (e SearchCertificates200JSONResponseBodyCertificatesStatus) Valid() bool {
+	switch e {
+	case SearchCertificates200JSONResponseBodyCertificatesStatusActive:
+		return true
+	case SearchCertificates200JSONResponseBodyCertificatesStatusDeleted:
+		return true
+	case SearchCertificates200JSONResponseBodyCertificatesStatusExpired:
+		return true
+	case SearchCertificates200JSONResponseBodyCertificatesStatusRenewed:
+		return true
+	case SearchCertificates200JSONResponseBodyCertificatesStatusRevoked:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates400JSONResponseBodyStatusCode.
+const (
+	SearchCertificates400JSONResponseBodyStatusCodeN400 SearchCertificates400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates400JSONResponseBodyStatusCode enum.
+func (e SearchCertificates400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SearchCertificates400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates401JSONResponseBodyStatusCode.
+const (
+	SearchCertificates401JSONResponseBodyStatusCodeN401 SearchCertificates401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates401JSONResponseBodyStatusCode enum.
+func (e SearchCertificates401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SearchCertificates401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates403JSONResponseBodyStatusCode.
+const (
+	SearchCertificates403JSONResponseBodyStatusCodeN403 SearchCertificates403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates403JSONResponseBodyStatusCode enum.
+func (e SearchCertificates403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SearchCertificates403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates404JSONResponseBodyStatusCode.
+const (
+	SearchCertificates404JSONResponseBodyStatusCodeN404 SearchCertificates404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates404JSONResponseBodyStatusCode enum.
+func (e SearchCertificates404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SearchCertificates404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates422JSONResponseBodyStatusCode.
+const (
+	SearchCertificates422JSONResponseBodyStatusCodeN422 SearchCertificates422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates422JSONResponseBodyStatusCode enum.
+func (e SearchCertificates422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SearchCertificates422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SearchCertificates500JSONResponseBodyStatusCode.
+const (
+	SearchCertificates500JSONResponseBodyStatusCodeN500 SearchCertificates500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SearchCertificates500JSONResponseBodyStatusCode enum.
+func (e SearchCertificates500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SearchCertificates500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteCertificate400JSONResponseBodyStatusCode.
 const (
 	DeleteCertificate400JSONResponseBodyStatusCodeN400 DeleteCertificate400JSONResponseBodyStatusCode = 400
@@ -86364,6 +86604,114 @@ func (e GetHoneyTokenLimits500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken400JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken400JSONResponseBodyStatusCodeN400 DeleteHoneyToken400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken400JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken401JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken401JSONResponseBodyStatusCodeN401 DeleteHoneyToken401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken401JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken403JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken403JSONResponseBodyStatusCodeN403 DeleteHoneyToken403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken403JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken404JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken404JSONResponseBodyStatusCodeN404 DeleteHoneyToken404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken404JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken422JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken422JSONResponseBodyStatusCodeN422 DeleteHoneyToken422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken422JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken500JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken500JSONResponseBodyStatusCodeN500 DeleteHoneyToken500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken500JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
 const (
 	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
@@ -108977,44 +109325,6 @@ const (
 	DeleteIdentityFolderAccess400JSONResponseBodyStatusCodeN400 DeleteIdentityFolderAccess400JSONResponseBodyStatusCode = 400
 )
 
-// Defines values for DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
-const (
-	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
-	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
-func (e DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
-	switch e {
-	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
-		return true
-	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken400JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken400JSONResponseBodyStatusCodeN400 DeleteHoneyToken400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken400JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken401JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken401JSONResponseBodyStatusCodeN401 DeleteHoneyToken401JSONResponseBodyStatusCode = 401
-)
-
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess400JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109028,21 +109338,6 @@ func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess401JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess401JSONResponseBodyStatusCodeN401 DeleteIdentityFolderAccess401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken401JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken403JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken403JSONResponseBodyStatusCodeN403 DeleteHoneyToken403JSONResponseBodyStatusCode = 403
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess401JSONResponseBodyStatusCode enum.
@@ -109060,21 +109355,6 @@ const (
 	DeleteIdentityFolderAccess403JSONResponseBodyStatusCodeN403 DeleteIdentityFolderAccess403JSONResponseBodyStatusCode = 403
 )
 
-// Valid indicates whether the value is a known member of the DeleteHoneyToken403JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken404JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken404JSONResponseBodyStatusCodeN404 DeleteHoneyToken404JSONResponseBodyStatusCode = 404
-)
-
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess403JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109088,21 +109368,6 @@ func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess404JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess404JSONResponseBodyStatusCodeN404 DeleteIdentityFolderAccess404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken404JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken422JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken422JSONResponseBodyStatusCodeN422 DeleteHoneyToken422JSONResponseBodyStatusCode = 422
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess404JSONResponseBodyStatusCode enum.
@@ -109120,21 +109385,6 @@ const (
 	DeleteIdentityFolderAccess422JSONResponseBodyStatusCodeN422 DeleteIdentityFolderAccess422JSONResponseBodyStatusCode = 422
 )
 
-// Valid indicates whether the value is a known member of the DeleteHoneyToken422JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken500JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken500JSONResponseBodyStatusCodeN500 DeleteHoneyToken500JSONResponseBodyStatusCode = 500
-)
-
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess422JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -109149,19 +109399,6 @@ func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 const (
 	DeleteIdentityFolderAccess500JSONResponseBodyStatusCodeN500 DeleteIdentityFolderAccess500JSONResponseBodyStatusCode = 500
 )
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken500JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess500JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess500JSONResponseBodyStatusCode) Valid() bool {
@@ -174529,6 +174766,117 @@ type ImportCertificate422JSONResponseBodyStatusCode float32
 // ImportCertificate500JSONResponseBodyStatusCode defines parameters for ImportCertificate.
 type ImportCertificate500JSONResponseBodyStatusCode float32
 
+// SearchCertificatesJSONBody defines parameters for SearchCertificates.
+type SearchCertificatesJSONBody struct {
+	// ApplicationIds Limit the search to certificates in these applications (up to 100). Get an application's ID from Get application by name, or find it with List applications. If the caller can read certificates in every listed application, those application roles authorize the search and no project-level conditions apply. Otherwise the search needs project-level permission to read certificates, and that permission's conditions limit the results. Leave it out to search the whole project, which always needs project-level permission to read certificates.
+	ApplicationIds *[]openapi_types.UUID `json:"applicationIds,omitempty"`
+
+	// CaIds Filter by certificate authority IDs.
+	CaIds *[]openapi_types.UUID `json:"caIds,omitempty"`
+
+	// CommonName The common name of the certificate to filter by.
+	CommonName *string `json:"commonName,omitempty"`
+
+	// CreatedAtFrom Filter certificates created on or after this date.
+	CreatedAtFrom *time.Time `json:"createdAtFrom,omitempty"`
+
+	// CreatedAtTo Filter certificates created on or before this date.
+	CreatedAtTo *time.Time `json:"createdAtTo,omitempty"`
+
+	// EnrollmentTypes Filter by enrollment types (e.g. 'api', 'est', 'acme', 'scep').
+	EnrollmentTypes *[]SearchCertificatesJSONBodyEnrollmentTypes `json:"enrollmentTypes,omitempty"`
+
+	// ExtendedKeyUsage Filter by extended key usage. Only certificates containing this EKU will be returned (e.g. 'codeSigning', 'serverAuth').
+	ExtendedKeyUsage *string `json:"extendedKeyUsage,omitempty"`
+
+	// KeyAlgorithm List of key algorithms to filter by, for example ['RSA_2048', 'EC_prime256v1'].
+	KeyAlgorithm *[]string `json:"keyAlgorithm,omitempty"`
+
+	// KeySizes Filter by key sizes in bits (e.g. [2048, 4096]).
+	KeySizes *[]int `json:"keySizes,omitempty"`
+
+	// Limit The number of certificates to return.
+	Limit *int `json:"limit,omitempty"`
+
+	// Metadata Filter by metadata key-value pairs. Each entry should have a key (required) and optionally a value to match against.
+	Metadata *[]struct {
+		Key   string  `json:"key"`
+		Value *string `json:"value,omitempty"`
+	} `json:"metadata,omitempty"`
+
+	// NotAfterFrom Filter certificates expiring on or after this date.
+	NotAfterFrom *time.Time `json:"notAfterFrom,omitempty"`
+
+	// NotAfterTo Filter certificates expiring on or before this date.
+	NotAfterTo *time.Time `json:"notAfterTo,omitempty"`
+
+	// NotBeforeFrom Filter certificates issued on or after this date.
+	NotBeforeFrom *time.Time `json:"notBeforeFrom,omitempty"`
+
+	// NotBeforeTo Filter certificates issued on or before this date.
+	NotBeforeTo *time.Time `json:"notBeforeTo,omitempty"`
+
+	// Offset The offset to start from. If you enter 10, it will start from the 10th certificate.
+	Offset *int `json:"offset,omitempty"`
+
+	// ProfileIds Filter by certificate profile IDs.
+	ProfileIds *[]openapi_types.UUID `json:"profileIds,omitempty"`
+
+	// Search Search by common name, SAN, serial number, or certificate ID.
+	Search *string `json:"search,omitempty"`
+
+	// SignatureAlgorithm Filter by signature algorithm (e.g. 'RSA-SHA256', 'ECDSA-SHA256').
+	SignatureAlgorithm *string `json:"signatureAlgorithm,omitempty"`
+
+	// SortBy Field to sort by: 'notAfter', 'notBefore', 'createdAt', 'commonName', 'keyAlgorithm' or 'status'. Sorting by status orders the statuses returned in the response alphabetically: active, deleted, expired, renewed, revoked in ascending order.
+	SortBy *SearchCertificatesJSONBodySortBy `json:"sortBy,omitempty"`
+
+	// SortOrder Sort direction: 'asc' or 'desc'.
+	SortOrder *SearchCertificatesJSONBodySortOrder `json:"sortOrder,omitempty"`
+
+	// Source List of certificate sources to filter by, for example ['issued']. Allowed values: issued, discovered, imported.
+	Source *[]SearchCertificatesJSONBodySource `json:"source,omitempty"`
+
+	// Status List of statuses to filter by, for example ['active', 'expired']. Allowed values: active, renewed, expired, revoked, deleted. Returns exactly the certificates whose status in the response is one of these values. If you leave it out, every certificate except deleted ones is returned.
+	Status *[]SearchCertificatesJSONBodyStatus `json:"status,omitempty"`
+}
+
+// SearchCertificatesJSONBodyEnrollmentTypes defines parameters for SearchCertificates.
+type SearchCertificatesJSONBodyEnrollmentTypes string
+
+// SearchCertificatesJSONBodySortBy defines parameters for SearchCertificates.
+type SearchCertificatesJSONBodySortBy string
+
+// SearchCertificatesJSONBodySortOrder defines parameters for SearchCertificates.
+type SearchCertificatesJSONBodySortOrder string
+
+// SearchCertificatesJSONBodySource defines parameters for SearchCertificates.
+type SearchCertificatesJSONBodySource string
+
+// SearchCertificatesJSONBodyStatus defines parameters for SearchCertificates.
+type SearchCertificatesJSONBodyStatus string
+
+// SearchCertificates200JSONResponseBodyCertificatesStatus defines parameters for SearchCertificates.
+type SearchCertificates200JSONResponseBodyCertificatesStatus string
+
+// SearchCertificates400JSONResponseBodyStatusCode defines parameters for SearchCertificates.
+type SearchCertificates400JSONResponseBodyStatusCode float32
+
+// SearchCertificates401JSONResponseBodyStatusCode defines parameters for SearchCertificates.
+type SearchCertificates401JSONResponseBodyStatusCode float32
+
+// SearchCertificates403JSONResponseBodyStatusCode defines parameters for SearchCertificates.
+type SearchCertificates403JSONResponseBodyStatusCode float32
+
+// SearchCertificates404JSONResponseBodyStatusCode defines parameters for SearchCertificates.
+type SearchCertificates404JSONResponseBodyStatusCode float32
+
+// SearchCertificates422JSONResponseBodyStatusCode defines parameters for SearchCertificates.
+type SearchCertificates422JSONResponseBodyStatusCode float32
+
+// SearchCertificates500JSONResponseBodyStatusCode defines parameters for SearchCertificates.
+type SearchCertificates500JSONResponseBodyStatusCode float32
+
 // DeleteCertificate400JSONResponseBodyStatusCode defines parameters for DeleteCertificate.
 type DeleteCertificate400JSONResponseBodyStatusCode float32
 
@@ -188699,6 +189047,27 @@ type GetHoneyTokenLimits422JSONResponseBodyStatusCode float32
 // GetHoneyTokenLimits500JSONResponseBodyStatusCode defines parameters for GetHoneyTokenLimits.
 type GetHoneyTokenLimits500JSONResponseBodyStatusCode float32
 
+// DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
+
+// DeleteHoneyToken400JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken400JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken401JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken401JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken403JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken403JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken404JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken404JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken422JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken422JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken500JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken500JSONResponseBodyStatusCode float32
+
 // GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for GetHoneyToken.
 type GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
@@ -196307,38 +196676,20 @@ type DeleteIdentityFolderAccessJSONBody struct {
 // DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission string
 
-// DeleteHoneyToken400JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken400JSONResponseBodyStatusCode float32
-
 // DeleteIdentityFolderAccess400JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess400JSONResponseBodyStatusCode float32
-
-// DeleteHoneyToken401JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken401JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess401JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess401JSONResponseBodyStatusCode float32
 
-// DeleteHoneyToken403JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken403JSONResponseBodyStatusCode float32
-
 // DeleteIdentityFolderAccess403JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess403JSONResponseBodyStatusCode float32
-
-// DeleteHoneyToken404JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken404JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess404JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess404JSONResponseBodyStatusCode float32
 
-// DeleteHoneyToken422JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken422JSONResponseBodyStatusCode float32
-
 // DeleteIdentityFolderAccess422JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess422JSONResponseBodyStatusCode float32
-
-// DeleteHoneyToken500JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken500JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess500JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess500JSONResponseBodyStatusCode float32
@@ -198421,6 +198772,9 @@ type CreateAwsParameterStoreSecretSyncJSONBody struct {
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 		KeySchema *string `json:"keySchema,omitempty"`
 
+		// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -198673,6 +199027,9 @@ type UpdateAwsParameterStoreSecretSyncJSONBody struct {
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 		KeySchema *string `json:"keySchema,omitempty"`
 
+		// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -198924,6 +199281,9 @@ type CreateAwsSecretsManagerSecretSyncJSONBody struct {
 
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 		KeySchema *string `json:"keySchema,omitempty"`
+
+		// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -199310,6 +199670,9 @@ type UpdateAwsSecretsManagerSecretSyncJSONBody struct {
 
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 		KeySchema *string `json:"keySchema,omitempty"`
+
+		// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -202193,6 +202556,9 @@ type UpdateSamlConfigJSONBody struct {
 	// Issuer The SAML provider issuer URL or entity ID.
 	Issuer *string `json:"issuer,omitempty"`
 
+	// MfaAttributeValues Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey.
+	MfaAttributeValues *[]string `json:"mfaAttributeValues,omitempty"`
+
 	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
 	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
 
@@ -202243,6 +202609,9 @@ type CreateSamlConfigJSONBody struct {
 
 	// Issuer The SAML provider issuer URL or entity ID.
 	Issuer string `json:"issuer"`
+
+	// MfaAttributeValues Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey.
+	MfaAttributeValues *[]string `json:"mfaAttributeValues,omitempty"`
 
 	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
 	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
@@ -209603,6 +209972,9 @@ type SearchCertificateRequestsJSONRequestBody SearchCertificateRequestsJSONBody
 
 // ImportCertificateJSONRequestBody defines body for ImportCertificate for application/json ContentType.
 type ImportCertificateJSONRequestBody ImportCertificateJSONBody
+
+// SearchCertificatesJSONRequestBody defines body for SearchCertificates for application/json ContentType.
+type SearchCertificatesJSONRequestBody SearchCertificatesJSONBody
 
 // UpdateCertificateRenewalConfigJSONRequestBody defines body for UpdateCertificateRenewalConfig for application/json ContentType.
 type UpdateCertificateRenewalConfigJSONRequestBody UpdateCertificateRenewalConfigJSONBody
@@ -254019,6 +254391,18 @@ type ClientInterface interface {
 	// Import certificate.
 	ImportCertificate(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SearchCertificatesWithBody performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Search and filter certificates.
+	SearchCertificatesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SearchCertificates performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Search and filter certificates.
+	SearchCertificates(ctx context.Context, body SearchCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteCertificate performs a DELETE /api/v1/cert-manager/certificates/{id} (the `DeleteCertificate` operationId) request.
 	//
 	// Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it.
@@ -255265,6 +255649,9 @@ type ClientInterface interface {
 
 	// GetHoneyTokenLimits performs a GET /api/v1/honey-tokens/limits (the `GetHoneyTokenLimits` operationId) request.
 	GetHoneyTokenLimits(ctx context.Context, params *GetHoneyTokenLimitsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetHoneyToken performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
 	GetHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -256713,9 +257100,6 @@ type ClientInterface interface {
 	//
 	// Create project identity membership.
 	CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-	DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteIdentityFolderAccessWithBody performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
@@ -266281,6 +266665,38 @@ func (c *Client) ImportCertificate(ctx context.Context, body ImportCertificateJS
 	return c.Client.Do(req)
 }
 
+// SearchCertificatesWithBody performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request,
+// with any type of body and a specified content type.
+//
+// Search and filter certificates.
+func (c *Client) SearchCertificatesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchCertificatesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SearchCertificates performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Search and filter certificates.
+func (c *Client) SearchCertificates(ctx context.Context, body SearchCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSearchCertificatesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // DeleteCertificate performs a DELETE /api/v1/cert-manager/certificates/{id} (the `DeleteCertificate` operationId) request.
 //
 // Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it.
@@ -270078,6 +270494,19 @@ func (c *Client) TriggerAwsHoneyToken(ctx context.Context, reqEditors ...Request
 // GetHoneyTokenLimits performs a GET /api/v1/honey-tokens/limits (the `GetHoneyTokenLimits` operationId) request.
 func (c *Client) GetHoneyTokenLimits(ctx context.Context, params *GetHoneyTokenLimitsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetHoneyTokenLimitsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+func (c *Client) DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteHoneyTokenRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -274451,19 +274880,6 @@ func (c *Client) CreateProjectIdentityMembership(ctx context.Context, projectId 
 // Revoke a machine identity's access to a folder.
 func (c *Client) DeleteIdentityFolderAccessWithBody(ctx context.Context, projectId string, identityId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteIdentityFolderAccessRequestWithBody(c.Server, projectId, identityId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-func (c *Client) DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteHoneyTokenRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -295559,6 +295975,46 @@ func NewImportCertificateRequestWithBody(server string, contentType string, body
 	return req, nil
 }
 
+// NewSearchCertificatesRequest calls the generic SearchCertificates builder with application/json body
+func NewSearchCertificatesRequest(server string, body SearchCertificatesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSearchCertificatesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewSearchCertificatesRequestWithBody constructs an http.Request for the SearchCertificates method, with any body, and a specified content type
+func NewSearchCertificatesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificates/search")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewDeleteCertificateRequest constructs an http.Request for the DeleteCertificate method
 func NewDeleteCertificateRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -303663,6 +304119,40 @@ func NewGetHoneyTokenLimitsRequest(server string, params *GetHoneyTokenLimitsPar
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteHoneyTokenRequest constructs an http.Request for the DeleteHoneyToken method
+func NewDeleteHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/honey-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -313579,40 +314069,6 @@ func NewCreateProjectIdentityMembershipRequestWithBody(server string, projectId 
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteHoneyTokenRequest constructs an http.Request for the DeleteHoneyToken method
-func NewDeleteHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/honey-tokens/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -331786,6 +332242,20 @@ type ClientWithResponsesInterface interface {
 	// Import certificate.
 	ImportCertificateWithResponse(ctx context.Context, body ImportCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*ImportCertificateResponse, error)
 
+	// SearchCertificatesWithBodyWithResponse performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Search and filter certificates.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SearchCertificatesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchCertificatesResponse, error)
+
+	// SearchCertificatesWithResponse performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Search and filter certificates.
+	SearchCertificatesWithResponse(ctx context.Context, body SearchCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchCertificatesResponse, error)
+
 	// DeleteCertificateWithResponse performs a DELETE /api/v1/cert-manager/certificates/{id} (the `DeleteCertificate` operationId) request.
 	//
 	// Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it.
@@ -333408,6 +333878,11 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetHoneyTokenLimitsWithResponse(ctx context.Context, params *GetHoneyTokenLimitsParams, reqEditors ...RequestEditorFn) (*GetHoneyTokenLimitsResponse, error)
+
+	// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error)
 
 	// GetHoneyTokenWithResponse performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
 	//
@@ -335282,11 +335757,6 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create project identity membership.
 	CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
-
-	// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error)
 
 	// DeleteIdentityFolderAccessWithBodyWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
@@ -398293,6 +398763,11 @@ type GetCertificateRequestResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
+		// ApplicationId The ID of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.
+		ApplicationId *string `json:"applicationId"`
+
+		// ApplicationName The name of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.
+		ApplicationName  *string `json:"applicationName"`
 		BasicConstraints *struct {
 			IsCA       bool     `json:"isCA"`
 			PathLength *float32 `json:"pathLength,omitempty"`
@@ -398316,14 +398791,17 @@ type GetCertificateRequestResponse struct {
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		} `json:"metadata,omitempty"`
-		Organization       *string                                        `json:"organization,omitempty"`
-		OrganizationalUnit *string                                        `json:"organizationalUnit,omitempty"`
-		PendingMessage     *string                                        `json:"pendingMessage,omitempty"`
-		PrivateKey         *string                                        `json:"privateKey"`
-		SerialNumber       *string                                        `json:"serialNumber"`
-		State              *string                                        `json:"state,omitempty"`
-		Status             GetCertificateRequest200JSONResponseBodyStatus `json:"status"`
-		UpdatedAt          time.Time                                      `json:"updatedAt"`
+		Organization       *string `json:"organization,omitempty"`
+		OrganizationalUnit *string `json:"organizationalUnit,omitempty"`
+		PendingMessage     *string `json:"pendingMessage,omitempty"`
+		PrivateKey         *string `json:"privateKey"`
+
+		// ProfileName The name of the certificate profile the request was made with. Null when the request used no profile, or the profile has since been deleted.
+		ProfileName  *string                                        `json:"profileName"`
+		SerialNumber *string                                        `json:"serialNumber"`
+		State        *string                                        `json:"state,omitempty"`
+		Status       GetCertificateRequest200JSONResponseBodyStatus `json:"status"`
+		UpdatedAt    time.Time                                      `json:"updatedAt"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -398373,6 +398851,11 @@ type GetCertificateRequestResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetCertificateRequestResponse) GetJSON200() *struct {
+	// ApplicationId The ID of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.
+	ApplicationId *string `json:"applicationId"`
+
+	// ApplicationName The name of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.
+	ApplicationName  *string `json:"applicationName"`
 	BasicConstraints *struct {
 		IsCA       bool     `json:"isCA"`
 		PathLength *float32 `json:"pathLength,omitempty"`
@@ -398396,14 +398879,17 @@ func (r GetCertificateRequestResponse) GetJSON200() *struct {
 		Key   string `json:"key"`
 		Value string `json:"value"`
 	} `json:"metadata,omitempty"`
-	Organization       *string                                        `json:"organization,omitempty"`
-	OrganizationalUnit *string                                        `json:"organizationalUnit,omitempty"`
-	PendingMessage     *string                                        `json:"pendingMessage,omitempty"`
-	PrivateKey         *string                                        `json:"privateKey"`
-	SerialNumber       *string                                        `json:"serialNumber"`
-	State              *string                                        `json:"state,omitempty"`
-	Status             GetCertificateRequest200JSONResponseBodyStatus `json:"status"`
-	UpdatedAt          time.Time                                      `json:"updatedAt"`
+	Organization       *string `json:"organization,omitempty"`
+	OrganizationalUnit *string `json:"organizationalUnit,omitempty"`
+	PendingMessage     *string `json:"pendingMessage,omitempty"`
+	PrivateKey         *string `json:"privateKey"`
+
+	// ProfileName The name of the certificate profile the request was made with. Null when the request used no profile, or the profile has since been deleted.
+	ProfileName  *string                                        `json:"profileName"`
+	SerialNumber *string                                        `json:"serialNumber"`
+	State        *string                                        `json:"state,omitempty"`
+	Status       GetCertificateRequest200JSONResponseBodyStatus `json:"status"`
+	UpdatedAt    time.Time                                      `json:"updatedAt"`
 } {
 	return r.JSON200
 }
@@ -398978,6 +399464,281 @@ func (r ImportCertificateResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ImportCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SearchCertificatesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Certificates []struct {
+			AltNames              *string             `json:"altNames,omitempty"`
+			ApplicationId         *openapi_types.UUID `json:"applicationId,omitempty"`
+			ApplicationName       *string             `json:"applicationName,omitempty"`
+			CaCertId              *openapi_types.UUID `json:"caCertId,omitempty"`
+			CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+			CaName                *string             `json:"caName,omitempty"`
+			CanRenewFromCsr       bool                `json:"canRenewFromCsr"`
+			CertificateTemplateId *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
+			CommonName            string              `json:"commonName"`
+			CreatedAt             time.Time           `json:"createdAt"`
+			CustomExtensions      interface{}         `json:"customExtensions,omitempty"`
+			DeletedAt             *time.Time          `json:"deletedAt,omitempty"`
+			DeletedByActorId      *openapi_types.UUID `json:"deletedByActorId,omitempty"`
+			DeletedByActorType    *string             `json:"deletedByActorType,omitempty"`
+			DiscoveryMetadata     interface{}         `json:"discoveryMetadata,omitempty"`
+			EnrollmentType        *string             `json:"enrollmentType,omitempty"`
+			ExtendedKeyUsages     *[]string           `json:"extendedKeyUsages,omitempty"`
+			ExternalMetadata      interface{}         `json:"externalMetadata,omitempty"`
+			FingerprintSha1       *string             `json:"fingerprintSha1,omitempty"`
+			FingerprintSha256     *string             `json:"fingerprintSha256,omitempty"`
+			HasPrivateKey         bool                `json:"hasPrivateKey"`
+			HsmConnectorId        *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+			HsmKeyId              *string             `json:"hsmKeyId,omitempty"`
+			HsmKeyLabel           *string             `json:"hsmKeyLabel,omitempty"`
+			HsmPublicKeySpki      interface{}         `json:"hsmPublicKeySpki,omitempty"`
+			Id                    openapi_types.UUID  `json:"id"`
+			IsCA                  *bool               `json:"isCA,omitempty"`
+
+			// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+			IsRenewedByClient        *bool               `json:"isRenewedByClient,omitempty"`
+			KeyAlgorithm             *string             `json:"keyAlgorithm,omitempty"`
+			KeySource                *string             `json:"keySource,omitempty"`
+			KeyUsages                *[]string           `json:"keyUsages,omitempty"`
+			NotAfter                 time.Time           `json:"notAfter"`
+			NotBefore                time.Time           `json:"notBefore"`
+			OrderId                  *openapi_types.UUID `json:"orderId,omitempty"`
+			PathLength               *float32            `json:"pathLength,omitempty"`
+			PkiSubscriberId          *openapi_types.UUID `json:"pkiSubscriberId,omitempty"`
+			ProfileId                *openapi_types.UUID `json:"profileId,omitempty"`
+			ProfileName              *string             `json:"profileName,omitempty"`
+			ProjectId                string              `json:"projectId"`
+			RenewBeforeDays          *float32            `json:"renewBeforeDays,omitempty"`
+			RenewalError             *string             `json:"renewalError,omitempty"`
+			RenewedByCertificateId   *openapi_types.UUID `json:"renewedByCertificateId,omitempty"`
+			RenewedFromCertificateId *openapi_types.UUID `json:"renewedFromCertificateId,omitempty"`
+			RevocationReason         *float32            `json:"revocationReason,omitempty"`
+			RevokedAt                *time.Time          `json:"revokedAt,omitempty"`
+			SerialNumber             string              `json:"serialNumber"`
+			SignatureAlgorithm       *string             `json:"signatureAlgorithm,omitempty"`
+			Source                   *string             `json:"source,omitempty"`
+
+			// Status The certificate's current state, worked out once when the search starts, so every certificate in the response is evaluated at the same moment. 'deleted' if the certificate was deleted, otherwise 'revoked' if it was revoked, 'expired' if its validity period has ended, 'renewed' if a newer certificate has replaced it, and 'active' otherwise. Getting a certificate by ID returns its stored status instead, which stays 'active' after the certificate expires or is renewed.
+			Status                    SearchCertificates200JSONResponseBodyCertificatesStatus `json:"status"`
+			SubjectCountry            *string                                                 `json:"subjectCountry,omitempty"`
+			SubjectDomainComponents   *string                                                 `json:"subjectDomainComponents,omitempty"`
+			SubjectLocality           *string                                                 `json:"subjectLocality,omitempty"`
+			SubjectOrganization       *string                                                 `json:"subjectOrganization,omitempty"`
+			SubjectOrganizationalUnit *string                                                 `json:"subjectOrganizationalUnit,omitempty"`
+			SubjectState              *string                                                 `json:"subjectState,omitempty"`
+			UpdatedAt                 time.Time                                               `json:"updatedAt"`
+		} `json:"certificates"`
+		TotalCount float32 `json:"totalCount"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode SearchCertificates400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode SearchCertificates401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode SearchCertificates403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode SearchCertificates404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode SearchCertificates422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode SearchCertificates500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SearchCertificatesResponse) GetJSON200() *struct {
+	Certificates []struct {
+		AltNames              *string             `json:"altNames,omitempty"`
+		ApplicationId         *openapi_types.UUID `json:"applicationId,omitempty"`
+		ApplicationName       *string             `json:"applicationName,omitempty"`
+		CaCertId              *openapi_types.UUID `json:"caCertId,omitempty"`
+		CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+		CaName                *string             `json:"caName,omitempty"`
+		CanRenewFromCsr       bool                `json:"canRenewFromCsr"`
+		CertificateTemplateId *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
+		CommonName            string              `json:"commonName"`
+		CreatedAt             time.Time           `json:"createdAt"`
+		CustomExtensions      interface{}         `json:"customExtensions,omitempty"`
+		DeletedAt             *time.Time          `json:"deletedAt,omitempty"`
+		DeletedByActorId      *openapi_types.UUID `json:"deletedByActorId,omitempty"`
+		DeletedByActorType    *string             `json:"deletedByActorType,omitempty"`
+		DiscoveryMetadata     interface{}         `json:"discoveryMetadata,omitempty"`
+		EnrollmentType        *string             `json:"enrollmentType,omitempty"`
+		ExtendedKeyUsages     *[]string           `json:"extendedKeyUsages,omitempty"`
+		ExternalMetadata      interface{}         `json:"externalMetadata,omitempty"`
+		FingerprintSha1       *string             `json:"fingerprintSha1,omitempty"`
+		FingerprintSha256     *string             `json:"fingerprintSha256,omitempty"`
+		HasPrivateKey         bool                `json:"hasPrivateKey"`
+		HsmConnectorId        *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+		HsmKeyId              *string             `json:"hsmKeyId,omitempty"`
+		HsmKeyLabel           *string             `json:"hsmKeyLabel,omitempty"`
+		HsmPublicKeySpki      interface{}         `json:"hsmPublicKeySpki,omitempty"`
+		Id                    openapi_types.UUID  `json:"id"`
+		IsCA                  *bool               `json:"isCA,omitempty"`
+
+		// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+		IsRenewedByClient        *bool               `json:"isRenewedByClient,omitempty"`
+		KeyAlgorithm             *string             `json:"keyAlgorithm,omitempty"`
+		KeySource                *string             `json:"keySource,omitempty"`
+		KeyUsages                *[]string           `json:"keyUsages,omitempty"`
+		NotAfter                 time.Time           `json:"notAfter"`
+		NotBefore                time.Time           `json:"notBefore"`
+		OrderId                  *openapi_types.UUID `json:"orderId,omitempty"`
+		PathLength               *float32            `json:"pathLength,omitempty"`
+		PkiSubscriberId          *openapi_types.UUID `json:"pkiSubscriberId,omitempty"`
+		ProfileId                *openapi_types.UUID `json:"profileId,omitempty"`
+		ProfileName              *string             `json:"profileName,omitempty"`
+		ProjectId                string              `json:"projectId"`
+		RenewBeforeDays          *float32            `json:"renewBeforeDays,omitempty"`
+		RenewalError             *string             `json:"renewalError,omitempty"`
+		RenewedByCertificateId   *openapi_types.UUID `json:"renewedByCertificateId,omitempty"`
+		RenewedFromCertificateId *openapi_types.UUID `json:"renewedFromCertificateId,omitempty"`
+		RevocationReason         *float32            `json:"revocationReason,omitempty"`
+		RevokedAt                *time.Time          `json:"revokedAt,omitempty"`
+		SerialNumber             string              `json:"serialNumber"`
+		SignatureAlgorithm       *string             `json:"signatureAlgorithm,omitempty"`
+		Source                   *string             `json:"source,omitempty"`
+
+		// Status The certificate's current state, worked out once when the search starts, so every certificate in the response is evaluated at the same moment. 'deleted' if the certificate was deleted, otherwise 'revoked' if it was revoked, 'expired' if its validity period has ended, 'renewed' if a newer certificate has replaced it, and 'active' otherwise. Getting a certificate by ID returns its stored status instead, which stays 'active' after the certificate expires or is renewed.
+		Status                    SearchCertificates200JSONResponseBodyCertificatesStatus `json:"status"`
+		SubjectCountry            *string                                                 `json:"subjectCountry,omitempty"`
+		SubjectDomainComponents   *string                                                 `json:"subjectDomainComponents,omitempty"`
+		SubjectLocality           *string                                                 `json:"subjectLocality,omitempty"`
+		SubjectOrganization       *string                                                 `json:"subjectOrganization,omitempty"`
+		SubjectOrganizationalUnit *string                                                 `json:"subjectOrganizationalUnit,omitempty"`
+		SubjectState              *string                                                 `json:"subjectState,omitempty"`
+		UpdatedAt                 time.Time                                               `json:"updatedAt"`
+	} `json:"certificates"`
+	TotalCount float32 `json:"totalCount"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SearchCertificatesResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode SearchCertificates400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SearchCertificatesResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode SearchCertificates401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SearchCertificatesResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode SearchCertificates403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SearchCertificatesResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode SearchCertificates404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SearchCertificatesResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode SearchCertificates422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SearchCertificatesResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode SearchCertificates500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SearchCertificatesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SearchCertificatesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SearchCertificatesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchCertificatesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -433676,6 +434437,187 @@ func (r GetHoneyTokenLimitsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetHoneyTokenLimitsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteHoneyTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
+			CreatedAt      time.Time          `json:"createdAt"`
+			Description    *string            `json:"description,omitempty"`
+			Id             openapi_types.UUID `json:"id"`
+			Name           string             `json:"name"`
+			ProjectId      string             `json:"projectId"`
+			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+			Status         *string            `json:"status,omitempty"`
+			Type           string             `json:"type"`
+			UpdatedAt      time.Time          `json:"updatedAt"`
+		} `json:"honeyToken"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON200() *struct {
+	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
+		CreatedAt      time.Time          `json:"createdAt"`
+		Description    *string            `json:"description,omitempty"`
+		Id             openapi_types.UUID `json:"id"`
+		Name           string             `json:"name"`
+		ProjectId      string             `json:"projectId"`
+		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+		Status         *string            `json:"status,omitempty"`
+		Type           string             `json:"type"`
+		UpdatedAt      time.Time          `json:"updatedAt"`
+	} `json:"honeyToken"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteHoneyTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteHoneyTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteHoneyTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteHoneyTokenResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -471281,74 +472223,6 @@ func (r CreateProjectIdentityMembershipResponse) ContentType() string {
 	return ""
 }
 
-type DeleteHoneyTokenResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		HoneyToken struct {
-			// Config Settings that depend on the honey token's type.
-			Config struct {
-				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
-				ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
-			} `json:"config"`
-			CreatedAt      time.Time          `json:"createdAt"`
-			Description    *string            `json:"description,omitempty"`
-			Id             openapi_types.UUID `json:"id"`
-			Name           string             `json:"name"`
-			ProjectId      string             `json:"projectId"`
-			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
-			Status         *string            `json:"status,omitempty"`
-			Type           string             `json:"type"`
-			UpdatedAt      time.Time          `json:"updatedAt"`
-		} `json:"honeyToken"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
 type DeleteIdentityFolderAccessResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -471419,28 +472293,6 @@ type DeleteIdentityFolderAccessResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON200() *struct {
-	HoneyToken struct {
-		// Config Settings that depend on the honey token's type.
-		Config struct {
-			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
-			ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
-		} `json:"config"`
-		CreatedAt      time.Time          `json:"createdAt"`
-		Description    *string            `json:"description,omitempty"`
-		Id             openapi_types.UUID `json:"id"`
-		Name           string             `json:"name"`
-		ProjectId      string             `json:"projectId"`
-		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
-		Status         *string            `json:"status,omitempty"`
-		Type           string             `json:"type"`
-		UpdatedAt      time.Time          `json:"updatedAt"`
-	} `json:"honeyToken"`
-} {
-	return r.JSON200
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 	FolderAccess struct {
 		CreatedAt                time.Time                                                           `json:"createdAt"`
@@ -471464,17 +472316,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 	Details    interface{}                                             `json:"details,omitempty"`
 	Error      string                                                  `json:"error"`
@@ -471486,16 +472327,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -471503,17 +472334,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	StatusCode DeleteIdentityFolderAccess401JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
@@ -471528,16 +472348,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON403() *struct {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -471545,16 +472355,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	StatusCode DeleteIdentityFolderAccess404JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
@@ -471568,16 +472368,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON422() *struct {
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -471588,21 +472378,8 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 }
 
 // GetBody returns the raw response body bytes
-func (r DeleteHoneyTokenResponse) GetBody() []byte {
-	return r.Body
-}
-
-// GetBody returns the raw response body bytes
 func (r DeleteIdentityFolderAccessResponse) GetBody() []byte {
 	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteHoneyTokenResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
 }
 
 // Status returns HTTPResponse.Status
@@ -471614,27 +472391,11 @@ func (r DeleteIdentityFolderAccessResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteHoneyTokenResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// StatusCode returns HTTPResponse.StatusCode
 func (r DeleteIdentityFolderAccessResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteHoneyTokenResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
@@ -483719,6 +484480,9 @@ type ListAwsParameterStoreSecretSyncsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -483840,6 +484604,9 @@ func (r ListAwsParameterStoreSecretSyncsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -484014,6 +484781,9 @@ type CreateAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -484135,6 +484905,9 @@ func (r CreateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -484406,6 +485179,15 @@ type CheckAwsParameterStoreSecretSyncRecursiveConflictsResponse struct {
 			Key   string   `json:"key"`
 			Paths []string `json:"paths"`
 		} `json:"conflicts"`
+
+		// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+		Folders []struct {
+			// Path The folder's path.
+			Path string `json:"path"`
+
+			// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+			SecretCount float32 `json:"secretCount"`
+		} `json:"folders"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -484459,6 +485241,15 @@ func (r CheckAwsParameterStoreSecretSyncRecursiveConflictsResponse) GetJSON200()
 		Key   string   `json:"key"`
 		Paths []string `json:"paths"`
 	} `json:"conflicts"`
+
+	// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+	Folders []struct {
+		// Path The folder's path.
+		Path string `json:"path"`
+
+		// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+		SecretCount float32 `json:"secretCount"`
+	} `json:"folders"`
 } {
 	return r.JSON200
 }
@@ -484619,6 +485410,9 @@ type GetAwsParameterStoreSecretSyncByNameResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -484740,6 +485534,9 @@ func (r GetAwsParameterStoreSecretSyncByNameResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -484914,6 +485711,9 @@ type DeleteAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -485035,6 +485835,9 @@ func (r DeleteAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -485209,6 +486012,9 @@ type GetAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -485330,6 +486136,9 @@ func (r GetAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -485504,6 +486313,9 @@ type UpdateAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -485625,6 +486437,9 @@ func (r UpdateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -485799,6 +486614,9 @@ type ImportAwsParameterStoreSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -485920,6 +486738,9 @@ func (r ImportAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -486094,6 +486915,9 @@ type RemoveAwsParameterStoreSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -486215,6 +487039,9 @@ func (r RemoveAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -486389,6 +487216,9 @@ type SyncAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -486510,6 +487340,9 @@ func (r SyncAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -486678,6 +487511,9 @@ type ListAwsSecretsManagerSecretSyncsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -486793,6 +487629,9 @@ func (r ListAwsSecretsManagerSecretSyncsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -486961,6 +487800,9 @@ type CreateAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -487076,6 +487918,9 @@ func (r CreateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -487347,6 +488192,15 @@ type CheckAwsSecretsManagerSecretSyncRecursiveConflictsResponse struct {
 			Key   string   `json:"key"`
 			Paths []string `json:"paths"`
 		} `json:"conflicts"`
+
+		// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+		Folders []struct {
+			// Path The folder's path.
+			Path string `json:"path"`
+
+			// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+			SecretCount float32 `json:"secretCount"`
+		} `json:"folders"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -487400,6 +488254,15 @@ func (r CheckAwsSecretsManagerSecretSyncRecursiveConflictsResponse) GetJSON200()
 		Key   string   `json:"key"`
 		Paths []string `json:"paths"`
 	} `json:"conflicts"`
+
+	// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+	Folders []struct {
+		// Path The folder's path.
+		Path string `json:"path"`
+
+		// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+		SecretCount float32 `json:"secretCount"`
+	} `json:"folders"`
 } {
 	return r.JSON200
 }
@@ -487554,6 +488417,9 @@ type GetAwsSecretsManagerSecretSyncByNameResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -487669,6 +488535,9 @@ func (r GetAwsSecretsManagerSecretSyncByNameResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -487837,6 +488706,9 @@ type DeleteAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -487952,6 +488824,9 @@ func (r DeleteAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -488120,6 +488995,9 @@ type GetAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -488235,6 +489113,9 @@ func (r GetAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -488403,6 +489284,9 @@ type UpdateAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -488518,6 +489402,9 @@ func (r UpdateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -488686,6 +489573,9 @@ type ImportAwsSecretsManagerSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -488801,6 +489691,9 @@ func (r ImportAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -488969,6 +489862,9 @@ type RemoveAwsSecretsManagerSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -489084,6 +489980,9 @@ func (r RemoveAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -489252,6 +490151,9 @@ type SyncAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -489367,6 +490269,9 @@ func (r SyncAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -490433,6 +491338,15 @@ type CheckGitHubSecretSyncRecursiveConflictsResponse struct {
 			Key   string   `json:"key"`
 			Paths []string `json:"paths"`
 		} `json:"conflicts"`
+
+		// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+		Folders []struct {
+			// Path The folder's path.
+			Path string `json:"path"`
+
+			// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+			SecretCount float32 `json:"secretCount"`
+		} `json:"folders"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -490486,6 +491400,15 @@ func (r CheckGitHubSecretSyncRecursiveConflictsResponse) GetJSON200() *struct {
 		Key   string   `json:"key"`
 		Paths []string `json:"paths"`
 	} `json:"conflicts"`
+
+	// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+	Folders []struct {
+		// Path The folder's path.
+		Path string `json:"path"`
+
+		// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+		SecretCount float32 `json:"secretCount"`
+	} `json:"folders"`
 } {
 	return r.JSON200
 }
@@ -497509,6 +498432,7 @@ type GetSamlConfigResponse struct {
 		IsActive           bool       `json:"isActive"`
 		Issuer             string     `json:"issuer"`
 		LastUsed           *time.Time `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string  `json:"mfaAttributeValues,omitempty"`
 		MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
 		MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
 		OrgId              string     `json:"orgId"`
@@ -497570,6 +498494,7 @@ func (r GetSamlConfigResponse) GetJSON200() *struct {
 	IsActive           bool       `json:"isActive"`
 	Issuer             string     `json:"issuer"`
 	LastUsed           *time.Time `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string  `json:"mfaAttributeValues,omitempty"`
 	MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
 	MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
 	OrgId              string     `json:"orgId"`
@@ -497679,6 +498604,7 @@ type UpdateSamlConfigResponse struct {
 		Id                 openapi_types.UUID `json:"id"`
 		IsActive           bool               `json:"isActive"`
 		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
 		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
 		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
 		OrgId              openapi_types.UUID `json:"orgId"`
@@ -497737,6 +498663,7 @@ func (r UpdateSamlConfigResponse) GetJSON200() *struct {
 	Id                 openapi_types.UUID `json:"id"`
 	IsActive           bool               `json:"isActive"`
 	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
 	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
 	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
 	OrgId              openapi_types.UUID `json:"orgId"`
@@ -497846,6 +498773,7 @@ type CreateSamlConfigResponse struct {
 		Id                 openapi_types.UUID `json:"id"`
 		IsActive           bool               `json:"isActive"`
 		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
 		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
 		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
 		OrgId              openapi_types.UUID `json:"orgId"`
@@ -497904,6 +498832,7 @@ func (r CreateSamlConfigResponse) GetJSON200() *struct {
 	Id                 openapi_types.UUID `json:"id"`
 	IsActive           bool               `json:"isActive"`
 	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
 	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
 	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
 	OrgId              openapi_types.UUID `json:"orgId"`
@@ -535925,6 +536854,32 @@ func (c *ClientWithResponses) ImportCertificateWithResponse(ctx context.Context,
 	return ParseImportCertificateResponse(rsp)
 }
 
+// SearchCertificatesWithBodyWithResponse performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request,
+// with any type of body and a specified content type.
+//
+// Search and filter certificates.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SearchCertificatesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchCertificatesResponse, error) {
+	rsp, err := c.SearchCertificatesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchCertificatesResponse(rsp)
+}
+
+// SearchCertificatesWithResponse performs a POST /api/v1/cert-manager/certificates/search (the `SearchCertificates` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Search and filter certificates.
+func (c *ClientWithResponses) SearchCertificatesWithResponse(ctx context.Context, body SearchCertificatesJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchCertificatesResponse, error) {
+	rsp, err := c.SearchCertificates(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSearchCertificatesResponse(rsp)
+}
+
 // DeleteCertificateWithResponse performs a DELETE /api/v1/cert-manager/certificates/{id} (the `DeleteCertificate` operationId) request.
 //
 // Delete a certificate and its private key. Its details stay in the inventory with a deleted status. Deleting a certificate does not revoke it.
@@ -539082,6 +540037,17 @@ func (c *ClientWithResponses) GetHoneyTokenLimitsWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGetHoneyTokenLimitsResponse(rsp)
+}
+
+// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error) {
+	rsp, err := c.DeleteHoneyToken(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteHoneyTokenResponse(rsp)
 }
 
 // GetHoneyTokenWithResponse performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
@@ -542719,17 +543685,6 @@ func (c *ClientWithResponses) DeleteIdentityFolderAccessWithBodyWithResponse(ctx
 		return nil, err
 	}
 	return ParseDeleteIdentityFolderAccessResponse(rsp)
-}
-
-// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error) {
-	rsp, err := c.DeleteHoneyToken(ctx, id, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteHoneyTokenResponse(rsp)
 }
 
 // DeleteIdentityFolderAccessWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request.
@@ -586781,6 +587736,11 @@ func ParseGetCertificateRequestResponse(rsp *http.Response) (*GetCertificateRequ
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
+			// ApplicationId The ID of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.
+			ApplicationId *string `json:"applicationId"`
+
+			// ApplicationName The name of the application the certificate was requested in. Null when the request was made outside an application, or the application has since been deleted.
+			ApplicationName  *string `json:"applicationName"`
 			BasicConstraints *struct {
 				IsCA       bool     `json:"isCA"`
 				PathLength *float32 `json:"pathLength,omitempty"`
@@ -586804,14 +587764,17 @@ func ParseGetCertificateRequestResponse(rsp *http.Response) (*GetCertificateRequ
 				Key   string `json:"key"`
 				Value string `json:"value"`
 			} `json:"metadata,omitempty"`
-			Organization       *string                                        `json:"organization,omitempty"`
-			OrganizationalUnit *string                                        `json:"organizationalUnit,omitempty"`
-			PendingMessage     *string                                        `json:"pendingMessage,omitempty"`
-			PrivateKey         *string                                        `json:"privateKey"`
-			SerialNumber       *string                                        `json:"serialNumber"`
-			State              *string                                        `json:"state,omitempty"`
-			Status             GetCertificateRequest200JSONResponseBodyStatus `json:"status"`
-			UpdatedAt          time.Time                                      `json:"updatedAt"`
+			Organization       *string `json:"organization,omitempty"`
+			OrganizationalUnit *string `json:"organizationalUnit,omitempty"`
+			PendingMessage     *string `json:"pendingMessage,omitempty"`
+			PrivateKey         *string `json:"privateKey"`
+
+			// ProfileName The name of the certificate profile the request was made with. Null when the request used no profile, or the profile has since been deleted.
+			ProfileName  *string                                        `json:"profileName"`
+			SerialNumber *string                                        `json:"serialNumber"`
+			State        *string                                        `json:"state,omitempty"`
+			Status       GetCertificateRequest200JSONResponseBodyStatus `json:"status"`
+			UpdatedAt    time.Time                                      `json:"updatedAt"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -587208,6 +588171,170 @@ func ParseImportCertificateResponse(rsp *http.Response) (*ImportCertificateRespo
 			Message    string                                         `json:"message"`
 			ReqId      string                                         `json:"reqId"`
 			StatusCode ImportCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSearchCertificatesResponse parses an HTTP response from a SearchCertificatesWithResponse call
+func ParseSearchCertificatesResponse(rsp *http.Response) (*SearchCertificatesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SearchCertificatesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Certificates []struct {
+				AltNames              *string             `json:"altNames,omitempty"`
+				ApplicationId         *openapi_types.UUID `json:"applicationId,omitempty"`
+				ApplicationName       *string             `json:"applicationName,omitempty"`
+				CaCertId              *openapi_types.UUID `json:"caCertId,omitempty"`
+				CaId                  *openapi_types.UUID `json:"caId,omitempty"`
+				CaName                *string             `json:"caName,omitempty"`
+				CanRenewFromCsr       bool                `json:"canRenewFromCsr"`
+				CertificateTemplateId *openapi_types.UUID `json:"certificateTemplateId,omitempty"`
+				CommonName            string              `json:"commonName"`
+				CreatedAt             time.Time           `json:"createdAt"`
+				CustomExtensions      interface{}         `json:"customExtensions,omitempty"`
+				DeletedAt             *time.Time          `json:"deletedAt,omitempty"`
+				DeletedByActorId      *openapi_types.UUID `json:"deletedByActorId,omitempty"`
+				DeletedByActorType    *string             `json:"deletedByActorType,omitempty"`
+				DiscoveryMetadata     interface{}         `json:"discoveryMetadata,omitempty"`
+				EnrollmentType        *string             `json:"enrollmentType,omitempty"`
+				ExtendedKeyUsages     *[]string           `json:"extendedKeyUsages,omitempty"`
+				ExternalMetadata      interface{}         `json:"externalMetadata,omitempty"`
+				FingerprintSha1       *string             `json:"fingerprintSha1,omitempty"`
+				FingerprintSha256     *string             `json:"fingerprintSha256,omitempty"`
+				HasPrivateKey         bool                `json:"hasPrivateKey"`
+				HsmConnectorId        *openapi_types.UUID `json:"hsmConnectorId,omitempty"`
+				HsmKeyId              *string             `json:"hsmKeyId,omitempty"`
+				HsmKeyLabel           *string             `json:"hsmKeyLabel,omitempty"`
+				HsmPublicKeySpki      interface{}         `json:"hsmPublicKeySpki,omitempty"`
+				Id                    openapi_types.UUID  `json:"id"`
+				IsCA                  *bool               `json:"isCA,omitempty"`
+
+				// IsRenewedByClient Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.
+				IsRenewedByClient        *bool               `json:"isRenewedByClient,omitempty"`
+				KeyAlgorithm             *string             `json:"keyAlgorithm,omitempty"`
+				KeySource                *string             `json:"keySource,omitempty"`
+				KeyUsages                *[]string           `json:"keyUsages,omitempty"`
+				NotAfter                 time.Time           `json:"notAfter"`
+				NotBefore                time.Time           `json:"notBefore"`
+				OrderId                  *openapi_types.UUID `json:"orderId,omitempty"`
+				PathLength               *float32            `json:"pathLength,omitempty"`
+				PkiSubscriberId          *openapi_types.UUID `json:"pkiSubscriberId,omitempty"`
+				ProfileId                *openapi_types.UUID `json:"profileId,omitempty"`
+				ProfileName              *string             `json:"profileName,omitempty"`
+				ProjectId                string              `json:"projectId"`
+				RenewBeforeDays          *float32            `json:"renewBeforeDays,omitempty"`
+				RenewalError             *string             `json:"renewalError,omitempty"`
+				RenewedByCertificateId   *openapi_types.UUID `json:"renewedByCertificateId,omitempty"`
+				RenewedFromCertificateId *openapi_types.UUID `json:"renewedFromCertificateId,omitempty"`
+				RevocationReason         *float32            `json:"revocationReason,omitempty"`
+				RevokedAt                *time.Time          `json:"revokedAt,omitempty"`
+				SerialNumber             string              `json:"serialNumber"`
+				SignatureAlgorithm       *string             `json:"signatureAlgorithm,omitempty"`
+				Source                   *string             `json:"source,omitempty"`
+
+				// Status The certificate's current state, worked out once when the search starts, so every certificate in the response is evaluated at the same moment. 'deleted' if the certificate was deleted, otherwise 'revoked' if it was revoked, 'expired' if its validity period has ended, 'renewed' if a newer certificate has replaced it, and 'active' otherwise. Getting a certificate by ID returns its stored status instead, which stays 'active' after the certificate expires or is renewed.
+				Status                    SearchCertificates200JSONResponseBodyCertificatesStatus `json:"status"`
+				SubjectCountry            *string                                                 `json:"subjectCountry,omitempty"`
+				SubjectDomainComponents   *string                                                 `json:"subjectDomainComponents,omitempty"`
+				SubjectLocality           *string                                                 `json:"subjectLocality,omitempty"`
+				SubjectOrganization       *string                                                 `json:"subjectOrganization,omitempty"`
+				SubjectOrganizationalUnit *string                                                 `json:"subjectOrganizationalUnit,omitempty"`
+				SubjectState              *string                                                 `json:"subjectState,omitempty"`
+				UpdatedAt                 time.Time                                               `json:"updatedAt"`
+			} `json:"certificates"`
+			TotalCount float32 `json:"totalCount"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode SearchCertificates400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode SearchCertificates401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode SearchCertificates403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode SearchCertificates404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode SearchCertificates422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode SearchCertificates500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -609374,6 +610501,123 @@ func ParseGetHoneyTokenLimitsResponse(rsp *http.Response) (*GetHoneyTokenLimitsR
 			Message    string                                           `json:"message"`
 			ReqId      string                                           `json:"reqId"`
 			StatusCode GetHoneyTokenLimits500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteHoneyTokenResponse parses an HTTP response from a DeleteHoneyTokenWithResponse call
+func ParseDeleteHoneyTokenResponse(rsp *http.Response) (*DeleteHoneyTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteHoneyTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
+				CreatedAt      time.Time          `json:"createdAt"`
+				Description    *string            `json:"description,omitempty"`
+				Id             openapi_types.UUID `json:"id"`
+				Name           string             `json:"name"`
+				ProjectId      string             `json:"projectId"`
+				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+				Status         *string            `json:"status,omitempty"`
+				Type           string             `json:"type"`
+				UpdatedAt      time.Time          `json:"updatedAt"`
+			} `json:"honeyToken"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -633774,123 +635018,6 @@ func ParseCreateProjectIdentityMembershipResponse(rsp *http.Response) (*CreatePr
 	return response, nil
 }
 
-// ParseDeleteHoneyTokenResponse parses an HTTP response from a DeleteHoneyTokenWithResponse call
-func ParseDeleteHoneyTokenResponse(rsp *http.Response) (*DeleteHoneyTokenResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteHoneyTokenResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			HoneyToken struct {
-				// Config Settings that depend on the honey token's type.
-				Config struct {
-					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
-					ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
-				} `json:"config"`
-				CreatedAt      time.Time          `json:"createdAt"`
-				Description    *string            `json:"description,omitempty"`
-				Id             openapi_types.UUID `json:"id"`
-				Name           string             `json:"name"`
-				ProjectId      string             `json:"projectId"`
-				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
-				Status         *string            `json:"status,omitempty"`
-				Type           string             `json:"type"`
-				UpdatedAt      time.Time          `json:"updatedAt"`
-			} `json:"honeyToken"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseDeleteIdentityFolderAccessResponse parses an HTTP response from a DeleteIdentityFolderAccessWithResponse call
 func ParseDeleteIdentityFolderAccessResponse(rsp *http.Response) (*DeleteIdentityFolderAccessResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -641772,6 +642899,9 @@ func ParseListAwsParameterStoreSecretSyncsResponse(rsp *http.Response) (*ListAws
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -641945,6 +643075,9 @@ func ParseCreateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Create
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -642167,6 +643300,15 @@ func ParseCheckAwsParameterStoreSecretSyncRecursiveConflictsResponse(rsp *http.R
 				Key   string   `json:"key"`
 				Paths []string `json:"paths"`
 			} `json:"conflicts"`
+
+			// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+			Folders []struct {
+				// Path The folder's path.
+				Path string `json:"path"`
+
+				// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+				SecretCount float32 `json:"secretCount"`
+			} `json:"folders"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -642327,6 +643469,9 @@ func ParseGetAwsParameterStoreSecretSyncByNameResponse(rsp *http.Response) (*Get
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -642502,6 +643647,9 @@ func ParseDeleteAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Delete
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -642675,6 +643823,9 @@ func ParseGetAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*GetAwsPar
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -642850,6 +644001,9 @@ func ParseUpdateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Update
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -643023,6 +644177,9 @@ func ParseImportAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -643198,6 +644355,9 @@ func ParseRemoveAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -643372,6 +644532,9 @@ func ParseSyncAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*SyncAwsP
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -643540,6 +644703,9 @@ func ParseListAwsSecretsManagerSecretSyncsResponse(rsp *http.Response) (*ListAws
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -643707,6 +644873,9 @@ func ParseCreateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Create
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -643929,6 +645098,15 @@ func ParseCheckAwsSecretsManagerSecretSyncRecursiveConflictsResponse(rsp *http.R
 				Key   string   `json:"key"`
 				Paths []string `json:"paths"`
 			} `json:"conflicts"`
+
+			// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+			Folders []struct {
+				// Path The folder's path.
+				Path string `json:"path"`
+
+				// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+				SecretCount float32 `json:"secretCount"`
+			} `json:"folders"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -644083,6 +645261,9 @@ func ParseGetAwsSecretsManagerSecretSyncByNameResponse(rsp *http.Response) (*Get
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -644252,6 +645433,9 @@ func ParseDeleteAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Delete
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -644419,6 +645603,9 @@ func ParseGetAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*GetAwsSec
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -644588,6 +645775,9 @@ func ParseUpdateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Update
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -644755,6 +645945,9 @@ func ParseImportAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -644924,6 +646117,9 @@ func ParseRemoveAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -645091,6 +646287,9 @@ func ParseSyncAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*SyncAwsS
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -645790,6 +646989,15 @@ func ParseCheckGitHubSecretSyncRecursiveConflictsResponse(rsp *http.Response) (*
 				Key   string   `json:"key"`
 				Paths []string `json:"paths"`
 			} `json:"conflicts"`
+
+			// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+			Folders []struct {
+				// Path The folder's path.
+				Path string `json:"path"`
+
+				// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+				SecretCount float32 `json:"secretCount"`
+			} `json:"folders"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -650178,6 +651386,7 @@ func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, err
 			IsActive           bool       `json:"isActive"`
 			Issuer             string     `json:"issuer"`
 			LastUsed           *time.Time `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string  `json:"mfaAttributeValues,omitempty"`
 			MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
 			MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
 			OrgId              string     `json:"orgId"`
@@ -650288,6 +651497,7 @@ func ParseUpdateSamlConfigResponse(rsp *http.Response) (*UpdateSamlConfigRespons
 			Id                 openapi_types.UUID `json:"id"`
 			IsActive           bool               `json:"isActive"`
 			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
 			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
 			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
 			OrgId              openapi_types.UUID `json:"orgId"`
@@ -650398,6 +651608,7 @@ func ParseCreateSamlConfigResponse(rsp *http.Response) (*CreateSamlConfigRespons
 			Id                 openapi_types.UUID `json:"id"`
 			IsActive           bool               `json:"isActive"`
 			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
 			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
 			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
 			OrgId              openapi_types.UUID `json:"orgId"`
