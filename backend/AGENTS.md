@@ -1150,6 +1150,23 @@ only at some later merge, so read with `FINAL` when an exact count matters.
 rules for code elsewhere: a secret read route calls `recordRead` / `recordBulkRead` with `void` (it never
 throws and must not slow the read), and the table is pruned by dropping partitions, never with `DELETE`.
 
+### Secret Read Limits
+
+Read [`src/server/plugins/AGENTS.md`](src/server/plugins/AGENTS.md) before changing `secrets-org-budget.ts` or
+`secret-read-concurrency-limit.ts`, or adding a route that returns secret values. Rules for code elsewhere:
+
+- A route that lists secret values runs the secret load inside `server.secretReadSlot(req, reply)`, passed to the
+  service as `secretReadSlot`, so permission checks and 304s are never counted. It also takes
+  `server.secretsOrgBudget(req, reply)`, calls `check()` inside the slot before `readSlot(work, opts)`, and
+  `charge(countReturnedSecrets({ secrets, imports }))` after the service returns. Never charge before the read: the
+  cost is unknown until the secrets load.
+- A route that returns one secret by name passes `secretImportSearchSlot(orgBudget, readSlot)` as `secretReadSlot`,
+  so only the import search of `getSecretByName` is checked and charged.
+- A service in the slot calls `reportSize(secretCount)` as soon as the count is known and before decryption, or a
+  large read is admitted at the default weight. A `catch` around it must rethrow `ServerBusyError`, or a refusal
+  turns into a cache miss and a full reload.
+- Never label the secret read metrics with the organization; the warning log carries the `orgId`.
+
 ### Free Text in Audit Events
 
 A name, reason, comment or justification can carry ANSI escapes, bidi overrides or zero-width
@@ -1255,6 +1272,8 @@ Key plugins in `src/server/plugins/`:
 - `audit-log.ts` — request audit logging to queue
 - `api-metrics.ts` — OpenTelemetry metrics collection
 - `inject-rate-limits.ts` — per-route rate limiting
+- `secrets-org-budget.ts`: decorates `server.secretsOrgBudget(req, reply)`, the per-root-org budget for reading secrets; see `src/server/plugins/AGENTS.md`
+- `secret-read-concurrency-limit.ts`: decorates `server.secretReadSlot(req, reply)`, which counts the secrets list requests hold in memory on the instance, held until the wrapped work finishes even if the client disconnects, and in enforce mode refuses a request the instance has no room for with a 503 and `Retry-After: 1`; see `src/server/plugins/AGENTS.md`
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving
 - `swagger.ts` — Swagger/OpenAPI UI

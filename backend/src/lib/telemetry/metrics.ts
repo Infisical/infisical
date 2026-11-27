@@ -565,6 +565,138 @@ export const rateLimitExceededCounter = infisicalCoreMeter.createCounter("infisi
   unit: "{request}"
 });
 
+export enum SecretRateLimitBucket {
+  OrgBudget = "org_budget",
+  ReadBudget = "read_budget",
+  ReadBudgetOrgShare = "read_budget_org_share"
+}
+
+export enum SecretRateLimitOutcome {
+  Refused = "refused",
+  WouldRefuse = "would_refuse"
+}
+
+const planSlugAttribute = (planSlug?: string | null) => planSlug || "none";
+
+export const secretRateLimitExceededCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret.rate_limit.exceeded.count",
+  {
+    description:
+      "Secret requests a rate limit bucket refused, or would have refused while the bucket only observes, by bucket, plan and outcome.",
+    unit: "{request}"
+  }
+);
+
+export const recordSecretRateLimitExceededMetric = (params: {
+  bucket: SecretRateLimitBucket;
+  outcome: SecretRateLimitOutcome;
+  planSlug?: string | null;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretRateLimitExceededCounter.add(1, {
+    "rate_limit.bucket": params.bucket,
+    outcome: params.outcome,
+    "plan.slug": planSlugAttribute(params.planSlug)
+  });
+};
+
+export const secretOrgBudgetUsageHistogram = infisicalCoreMeter.createHistogram("infisical.secret.org_budget.usage", {
+  description:
+    "Credits an organization has spent from its secret read budget in the current window, recorded after each read that costs credits, by plan.",
+  unit: "{credit}"
+});
+
+export const recordSecretOrgBudgetUsageMetric = (params: { usedCredits: number; planSlug?: string | null }) => {
+  if (!isTelemetryEnabled()) return;
+  secretOrgBudgetUsageHistogram.record(params.usedCredits, { "plan.slug": planSlugAttribute(params.planSlug) });
+};
+
+export const secretOrgBudgetExceededHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.secret.org_budget.exceeded",
+  {
+    description:
+      "Credits by which the read that spent the last of an organization's secret read budget went past it, recorded once per organization per window, by plan. 0 when the read landed exactly on the budget.",
+    unit: "{credit}"
+  }
+);
+
+export const recordSecretOrgBudgetExceededMetric = (params: { exceededCredits: number; planSlug?: string | null }) => {
+  if (!isTelemetryEnabled()) return;
+  secretOrgBudgetExceededHistogram.record(params.exceededCredits, {
+    "plan.slug": planSlugAttribute(params.planSlug)
+  });
+};
+
+export const registerSecretReadBudgetGauges = (budget: {
+  getCapacity: () => number;
+  getUsed: () => number;
+  takePeakUsed: () => number;
+}) => {
+  const meter = resolveCoreMeter();
+  const gauges = [
+    {
+      name: "infisical.secret.read_budget.capacity",
+      description:
+        "Secrets this instance lets list requests hold in memory at once, computed at boot from the container memory limit, or from the host memory when the container has none.",
+      read: budget.getCapacity
+    },
+    {
+      name: "infisical.secret.read_budget.used",
+      description:
+        "Secrets held by list requests running on this instance. Above the capacity when a request turned out larger than its estimate, or while the limit only observes and refuses nothing.",
+      read: budget.getUsed
+    },
+    {
+      name: "infisical.secret.read_budget.peak_used",
+      description:
+        "Most secrets held by list requests on this instance at any moment since the previous export, so a burst that fills the budget between exports still shows.",
+      read: budget.takePeakUsed
+    }
+  ];
+
+  gauges.forEach(({ name, description, read }) => {
+    meter.createObservableGauge(name, { description, unit: "{secret}" }).addCallback((observableResult) => {
+      if (!isTelemetryEnabled()) return;
+      observableResult.observe(read());
+    });
+  });
+};
+
+export enum SecretReadEstimateSource {
+  LastKnown = "last_known",
+  Default = "default"
+}
+
+const SECRET_COUNT_BUCKET_BOUNDARIES = [0, 10, 50, 100, 250, 500, 1000, 2500, 5000, 10_000, 25_000, 50_000, 100_000];
+
+export const secretReadSizeHistogram = infisicalCoreMeter.createHistogram("infisical.secret.read.size", {
+  description:
+    "Secrets a list request held in memory, recorded once per request from its last known count, by where its admission estimate came from.",
+  unit: "{secret}",
+  advice: { explicitBucketBoundaries: SECRET_COUNT_BUCKET_BOUNDARIES }
+});
+
+export const secretReadEstimateErrorHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.secret.read.estimate.error",
+  {
+    description:
+      "Secrets a list request held beyond the estimate it was admitted on, 0 when the estimate covered it, by where the estimate came from.",
+    unit: "{secret}",
+    advice: { explicitBucketBoundaries: SECRET_COUNT_BUCKET_BOUNDARIES }
+  }
+);
+
+export const recordSecretReadSizeMetric = (params: {
+  secretCount: number;
+  estimate: number;
+  estimateSource: SecretReadEstimateSource;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  const attributes = { "estimate.source": params.estimateSource };
+  secretReadSizeHistogram.record(params.secretCount, attributes);
+  secretReadEstimateErrorHistogram.record(Math.max(0, params.secretCount - params.estimate), attributes);
+};
+
 // -- Authentication latency (InfisicalCore meter) ---------------------------------------------------
 export const authAttemptDurationHistogram = infisicalCoreMeter.createHistogram("infisical.auth.attempt.duration", {
   description:
@@ -1151,9 +1283,18 @@ export type TOcspStatusLabel = "successful" | "malformed_request" | "internal_er
 
 export type TOcspCertStatusLabel = "good" | "revoked" | "unknown" | "none";
 
+export type TOcspShedReasonLabel =
+  | "none"
+  | "total_in_flight"
+  | "ca_queue_full"
+  | "ca_wait_timeout"
+  | "global_queue_full"
+  | "global_wait_timeout"
+  | "rate_limited";
+
 export const ocspResponseCounter = infisicalCoreMeter.createCounter("infisical.ocsp.response.count", {
   description:
-    "OCSP responses by response status, certificate status and cache outcome. cert_status is 'none' when the response carries no certificate status, which is every status other than successful. A rising try_later means the signing budget is saturated.",
+    "OCSP responses by response status, certificate status and cache outcome. cert_status is 'none' when the response carries no certificate status, which is every status other than successful. A rising try_later means the signing budget is saturated; shed_reason names the cap that refused it (total_in_flight, ca_queue_full, ca_wait_timeout, global_queue_full, global_wait_timeout, rate_limited) and is 'none' for every other status.",
   unit: "{response}"
 });
 
@@ -1166,13 +1307,15 @@ export const recordOcspResponseMetric = (params: {
   status: TOcspStatusLabel;
   certStatus: TOcspCertStatusLabel;
   cache: "hit" | "miss" | "skipped" | "coalesced";
+  shedReason?: TOcspShedReasonLabel;
 }) => {
   safely(() => {
     if (!isTelemetryEnabled()) return;
     ocspResponseCounter.add(1, {
       "ocsp.status": params.status,
       "ocsp.cert_status": params.certStatus,
-      "ocsp.cache": params.cache
+      "ocsp.cache": params.cache,
+      "ocsp.shed_reason": params.shedReason ?? "none"
     });
   });
 };

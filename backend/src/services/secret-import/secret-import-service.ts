@@ -34,7 +34,12 @@ import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { SecretImportModifiedEventV1 } from "./secret-import-events";
-import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
+import {
+  countImportedSecrets,
+  fnSecretsFromImports,
+  fnSecretsV2FromImports,
+  getImportedSecretsSizeKey
+} from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
@@ -818,7 +823,8 @@ export const secretImportServiceFactory = ({
     path: secretPath,
     environment,
     projectId,
-    actor
+    actor,
+    secretReadSlot
   }: TGetSecretsFromImportDTO) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     permission.assert({
@@ -844,14 +850,31 @@ export const secretImportServiceFactory = ({
       })
     );
 
-    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
+    const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+      const importedSecrets = await fnSecretsFromImports({
+        allowedImports,
+        folderDAL,
+        secretDAL,
+        secretImportDAL,
+        onSecretsLoaded: reportSize
+      });
+      reportSize(countImportedSecrets(importedSecrets));
+      return importedSecrets;
+    };
+
+    return secretReadSlot
+      ? secretReadSlot(loadSecrets, {
+          sizeKey: getImportedSecretsSizeKey("imports", { projectId, environment, secretPath })
+        })
+      : loadSecrets();
   };
 
   const getRawSecretsFromImports = async ({
     path: secretPath,
     environment,
     projectId,
-    actor
+    actor,
+    secretReadSlot
   }: TGetSecretsFromImportDTO) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     permission.assert({
@@ -872,34 +895,40 @@ export const secretImportServiceFactory = ({
     ).filter((imp) => !imp.isAccessRevoked);
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const sizeKey = getImportedSecretsSizeKey("imports-raw", { projectId, environment, secretPath });
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const importedSecrets = await fnSecretsV2FromImports({
-        secretImports,
-        folderDAL,
-        viewSecretValue: true,
-        secretDAL: secretV2BridgeDAL,
-        secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
-        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-          SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }),
-        projectId,
-        projectFolderGrantDAL,
-        actorOrgId: actor.org.id,
-        orgDAL,
-        kmsDataKeyService
-      });
+      const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+        const importedSecrets = await fnSecretsV2FromImports({
+          secretImports,
+          folderDAL,
+          viewSecretValue: true,
+          secretDAL: secretV2BridgeDAL,
+          secretImportDAL,
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+          importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
+          hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+            SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            }),
+          projectId,
+          projectFolderGrantDAL,
+          actorOrgId: actor.org.id,
+          orgDAL,
+          kmsDataKeyService,
+          onSecretsLoaded: reportSize
+        });
+        reportSize(countImportedSecrets(importedSecrets));
+        return importedSecrets;
+      };
 
-      return importedSecrets;
+      return secretReadSlot ? secretReadSlot(loadSecrets, { sizeKey }) : loadSecrets();
     }
 
     if (!botKey)
@@ -914,21 +943,27 @@ export const secretImportServiceFactory = ({
         secretPath: el.importPath
       })
     );
-    const importedSecrets = await fnSecretsFromImports({
-      allowedImports,
-      folderDAL,
-      secretDAL,
-      secretImportDAL
-    });
-    return importedSecrets.map((el) => ({
-      ...el,
-      secrets: el.secrets.map((encryptedSecret) =>
-        decryptSecretRaw(
-          { ...encryptedSecret, workspace: projectId, environment, secretPath, secretValueHidden: false },
-          botKey
+    const loadLegacySecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+      const importedSecrets = await fnSecretsFromImports({
+        allowedImports,
+        folderDAL,
+        secretDAL,
+        secretImportDAL,
+        onSecretsLoaded: reportSize
+      });
+      reportSize(countImportedSecrets(importedSecrets));
+      return importedSecrets.map((el) => ({
+        ...el,
+        secrets: el.secrets.map((encryptedSecret) =>
+          decryptSecretRaw(
+            { ...encryptedSecret, workspace: projectId, environment, secretPath, secretValueHidden: false },
+            botKey
+          )
         )
-      )
-    }));
+      }));
+    };
+
+    return secretReadSlot ? secretReadSlot(loadLegacySecrets, { sizeKey }) : loadLegacySecrets();
   };
 
   const getImportsMultiEnv = async ({

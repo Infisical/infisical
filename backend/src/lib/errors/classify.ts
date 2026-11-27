@@ -27,6 +27,7 @@ import {
   PolicyViolationError,
   RateLimitError,
   ScimRequestError,
+  ServerBusyError,
   UnauthorizedError
 } from "./index";
 
@@ -81,7 +82,8 @@ export const classifyError = (err: unknown): ErrorType => {
     err instanceof PermissionBoundaryError
   )
     return "permission";
-  if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
+  if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError || err instanceof ServerBusyError)
+    return "rate_limit";
   if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";
   // StateConflictError only gets here outside HTTP: the HTTP error handler maps it to ConflictError first.
   if (

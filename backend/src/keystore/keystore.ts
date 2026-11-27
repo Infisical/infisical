@@ -201,6 +201,7 @@ export const KeyStorePrefixes = {
   }) =>
     `${SECRET_MANAGER_CACHE_PREFIX}:${arg.projectId}:secrets_v2-dal:v${arg.version}:get-secrets-service-layer-zstd:${arg.actorId}-${arg.permissionFingerprint}-${arg.permissionHash}-${arg.requestParamsHash}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
+  SecretsOrgBudget: (rootOrgId: string) => `secrets-org-budget:${rootOrgId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
@@ -411,6 +412,7 @@ export type TKeyStoreFactory = {
     limit: number,
     expiryInSeconds: number
   ) => Promise<number>;
+  incrementByWithFixedExpiry: (key: string, value: number, expiryInSeconds: number) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
   decrementIfExists: (key: string) => Promise<number | null>;
   claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
@@ -615,6 +617,14 @@ export const keyStoreFactory = (
     return total
   `;
 
+  const INCREMENT_BY_WITH_FIXED_EXPIRY_SCRIPT = `
+    local total = redis.call("INCRBY", KEYS[1], ARGV[1])
+    if redis.call("TTL", KEYS[1]) == -1 then
+      redis.call("EXPIRE", KEYS[1], ARGV[2])
+    end
+    return total
+  `;
+
   // Atomic release: DECR but never below 0, and never leave a no-TTL key behind. If
   // the counter is missing or already ≤ 1, DEL so the next admit creates a fresh
   // key with a fresh TTL. Does NOT touch EXPIRE — the slot is being released.
@@ -664,6 +674,11 @@ export const keyStoreFactory = (
       limit,
       expiryInSeconds
     );
+    return Number(result);
+  };
+
+  const incrementByWithFixedExpiry = async (key: string, value: number, expiryInSeconds: number): Promise<number> => {
+    const result = await primaryRedis.eval(INCREMENT_BY_WITH_FIXED_EXPIRY_SCRIPT, 1, key, value, expiryInSeconds);
     return Number(result);
   };
 
@@ -998,6 +1013,7 @@ export const keyStoreFactory = (
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
     incrementByIfUnderLimitWithFixedExpiry,
+    incrementByWithFixedExpiry,
     decrementByOrDelete,
     decrementIfExists,
     deleteItemIfValue,

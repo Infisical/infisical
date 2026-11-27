@@ -26,6 +26,7 @@ import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-chan
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { canonicalizeSecretPath, groupBy, pick } from "@app/lib/fn";
@@ -51,7 +52,11 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
+import {
+  countImportedSecrets,
+  fnSecretsFromImports,
+  getImportedSecretsSizeKey
+} from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -139,6 +144,17 @@ type TSecretServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
 };
+
+const getLegacySecretsSizeKey = (
+  kind: "legacy-secrets" | "legacy-secrets-raw",
+  {
+    projectId,
+    environment,
+    path,
+    recursive,
+    includeImports
+  }: Pick<TGetSecretsDTO, "projectId" | "environment" | "path" | "recursive" | "includeImports">
+) => `${projectId}:${generateCacheKeyFromData({ kind, environment, path, recursive, includeImports })}`;
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 export const secretServiceFactory = ({
@@ -589,15 +605,18 @@ export const secretServiceFactory = ({
     };
   };
 
-  const getSecrets = async ({
-    path,
-    environment,
-    projectId,
-    actor,
-    includeImports,
-    recursive,
-    abortSignal
-  }: TGetSecretsDTO) => {
+  const loadLegacySecrets = async (
+    {
+      path,
+      environment,
+      projectId,
+      actor,
+      includeImports,
+      recursive,
+      abortSignal
+    }: Omit<TGetSecretsDTO, "secretReadSlot">,
+    reportSize: (secretCount: number) => void = () => {}
+  ) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     let paths: { folderId: string; path: string }[] = [];
@@ -649,6 +668,7 @@ export const secretServiceFactory = ({
       paths.map((p) => p.folderId),
       actor.principal.id
     );
+    reportSize(secrets.length);
 
     if (includeImports) {
       throwIfClientDisconnected(abortSignal);
@@ -668,8 +688,10 @@ export const secretServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        abortSignal
+        abortSignal,
+        onSecretsLoaded: (importedSecretCount) => reportSize(secrets.length + importedSecretCount)
       });
+      reportSize(secrets.length + countImportedSecrets(importedSecrets));
 
       return {
         secrets: secrets.map((secret) => ({
@@ -692,6 +714,13 @@ export const secretServiceFactory = ({
     };
   };
 
+  const getSecrets = async ({ secretReadSlot, ...dto }: TGetSecretsDTO) =>
+    secretReadSlot
+      ? secretReadSlot((reportSize) => loadLegacySecrets(dto, reportSize), {
+          sizeKey: getLegacySecretsSizeKey("legacy-secrets", dto)
+        })
+      : loadLegacySecrets(dto);
+
   const getSecretByName = async ({
     actor,
     projectId,
@@ -700,7 +729,8 @@ export const secretServiceFactory = ({
     type,
     secretName,
     version,
-    includeImports
+    includeImports,
+    secretReadSlot
   }: TGetASecretDTO) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     SecretReadAccess.assert(permission, ProjectPermissionSecretActions.ReadValue, {
@@ -763,12 +793,22 @@ export const secretServiceFactory = ({
             })
       );
 
-      const importedSecrets = await fnSecretsFromImports({
-        allowedImports,
-        secretDAL,
-        folderDAL,
-        secretImportDAL
-      });
+      const loadImportedSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+        const loadedImports = await fnSecretsFromImports({
+          allowedImports,
+          secretDAL,
+          folderDAL,
+          secretImportDAL,
+          onSecretsLoaded: reportSize
+        });
+        reportSize(countImportedSecrets(loadedImports));
+        return loadedImports;
+      };
+      const importedSecrets = await (secretReadSlot
+        ? secretReadSlot(loadImportedSecrets, {
+            sizeKey: getImportedSecretsSizeKey("secret-by-name", { projectId, environment, secretPath: path })
+          })
+        : loadImportedSecrets());
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           if (secretBlindIndex === importedSecrets[i].secrets[j].secretBlindIndex) {
@@ -1328,6 +1368,7 @@ export const secretServiceFactory = ({
     ifNoneMatch,
     abortSignal,
     onSecretReferenced,
+    secretReadSlot,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
@@ -1335,6 +1376,7 @@ export const secretServiceFactory = ({
       const result = await secretV2BridgeService.getSecrets({
         abortSignal,
         onSecretReferenced,
+        secretReadSlot,
         projectId,
         expandSecretReferences,
         personalOverridesBehavior,
@@ -1352,7 +1394,7 @@ export const secretServiceFactory = ({
         ...paramsV2
       });
 
-      if (result.notModified) {
+      if ("notModified" in result && result.notModified) {
         return {
           notModified: true,
           etag: result.etag,
@@ -1381,7 +1423,7 @@ export const secretServiceFactory = ({
       });
     }
 
-    const { secrets, imports } = await getSecrets({
+    const legacyDto = {
       projectId,
       environment,
       actor,
@@ -1389,117 +1431,126 @@ export const secretServiceFactory = ({
       includeImports,
       recursive,
       abortSignal
-    });
+    };
 
-    throwIfClientDisconnected(abortSignal);
+    const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+      const { secrets, imports } = await loadLegacySecrets(legacyDto, reportSize);
 
-    const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
-    const filteredSecrets = tagSlugs.length
-      ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
-      : decryptedSecrets;
-    const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
-      const decryptedImportSecrets = importedSecrets.map((sec) =>
-        decryptSecretRaw(
-          {
-            ...sec,
-            environment: el.environment,
-            workspace: projectId,
-            secretPath: el.secretPath,
-            secretValueHidden: false
+      throwIfClientDisconnected(abortSignal);
+
+      const decryptedSecrets = secrets.map((el) => decryptSecretRaw({ ...el, secretValueHidden: false }, botKey));
+      const filteredSecrets = tagSlugs.length
+        ? decryptedSecrets.filter((secret) => Boolean(secret.tags?.find((el) => tagSlugs.includes(el.slug))))
+        : decryptedSecrets;
+      const processedImports = (imports || [])?.map(({ secrets: importedSecrets, ...el }) => {
+        const decryptedImportSecrets = importedSecrets.map((sec) =>
+          decryptSecretRaw(
+            {
+              ...sec,
+              environment: el.environment,
+              workspace: projectId,
+              secretPath: el.secretPath,
+              secretValueHidden: false
+            },
+            botKey
+          )
+        );
+
+        // secret-override to handle duplicate keys from different import levels
+        // this prioritizes secret values from direct imports
+        const importedKeys = new Set<string>();
+        const importedEntries = decryptedImportSecrets.reduce(
+          (
+            accum: {
+              secretValueHidden: boolean;
+              secretKey: string;
+              secretPath: string;
+              workspace: string;
+              environment: string;
+              secretValue: string;
+              secretComment: string;
+              version: number;
+              type: string;
+              _id: string;
+              id: string;
+              user: string | null | undefined;
+              skipMultilineEncoding: boolean | null | undefined;
+            }[],
+            sec
+          ) => {
+            if (!importedKeys.has(sec.secretKey)) {
+              importedKeys.add(sec.secretKey);
+              return [...accum, sec];
+            }
+            return accum;
           },
-          botKey
-        )
-      );
+          []
+        );
 
-      // secret-override to handle duplicate keys from different import levels
-      // this prioritizes secret values from direct imports
-      const importedKeys = new Set<string>();
-      const importedEntries = decryptedImportSecrets.reduce(
-        (
-          accum: {
-            secretValueHidden: boolean;
-            secretKey: string;
-            secretPath: string;
-            workspace: string;
-            environment: string;
-            secretValue: string;
-            secretComment: string;
-            version: number;
-            type: string;
-            _id: string;
-            id: string;
-            user: string | null | undefined;
-            skipMultilineEncoding: boolean | null | undefined;
-          }[],
-          sec
-        ) => {
-          if (!importedKeys.has(sec.secretKey)) {
-            importedKeys.add(sec.secretKey);
-            return [...accum, sec];
-          }
-          return accum;
-        },
-        []
-      );
+        return {
+          ...el,
+          secrets: importedEntries
+        };
+      });
+
+      const expandSecret = interpolateSecrets({
+        folderDAL,
+        projectId,
+        secretDAL,
+        secretEncKey: botKey,
+        abortSignal
+      });
+
+      if (expandSecretReferences) {
+        throwIfClientDisconnected(abortSignal);
+        const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
+        await Promise.allSettled(
+          Object.keys(secretsGroupByPath).map((groupedPath) =>
+            Promise.allSettled(
+              secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
+                if (decryptedSecret.secretValueHidden) return;
+                const expandedSecretValue = await expandSecret({
+                  value: decryptedSecret.secretValue,
+                  secretPath: groupedPath,
+                  environment,
+                  skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+                });
+                // eslint-disable-next-line no-param-reassign
+                secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
+              })
+            )
+          )
+        );
+        await Promise.allSettled(
+          processedImports.map((processedImport) =>
+            Promise.allSettled(
+              processedImport.secrets.map(async (decryptedSecret, index) => {
+                if (decryptedSecret.secretValueHidden) return;
+                const expandedSecretValue = await expandSecret({
+                  value: decryptedSecret.secretValue,
+                  secretPath: path,
+                  environment,
+                  skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
+                });
+                // eslint-disable-next-line no-param-reassign
+                processedImport.secrets[index].secretValue = expandedSecretValue || "";
+              })
+            )
+          )
+        );
+        throwIfClientDisconnected(abortSignal);
+      }
 
       return {
-        ...el,
-        secrets: importedEntries
+        secrets: filteredSecrets,
+        imports: processedImports
       };
-    });
-
-    const expandSecret = interpolateSecrets({
-      folderDAL,
-      projectId,
-      secretDAL,
-      secretEncKey: botKey,
-      abortSignal
-    });
-
-    if (expandSecretReferences) {
-      throwIfClientDisconnected(abortSignal);
-      const secretsGroupByPath = groupBy(filteredSecrets, (i) => i.secretPath);
-      await Promise.allSettled(
-        Object.keys(secretsGroupByPath).map((groupedPath) =>
-          Promise.allSettled(
-            secretsGroupByPath[groupedPath].map(async (decryptedSecret, index) => {
-              if (decryptedSecret.secretValueHidden) return;
-              const expandedSecretValue = await expandSecret({
-                value: decryptedSecret.secretValue,
-                secretPath: groupedPath,
-                environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
-              });
-              // eslint-disable-next-line no-param-reassign
-              secretsGroupByPath[groupedPath][index].secretValue = expandedSecretValue || "";
-            })
-          )
-        )
-      );
-      await Promise.allSettled(
-        processedImports.map((processedImport) =>
-          Promise.allSettled(
-            processedImport.secrets.map(async (decryptedSecret, index) => {
-              if (decryptedSecret.secretValueHidden) return;
-              const expandedSecretValue = await expandSecret({
-                value: decryptedSecret.secretValue,
-                secretPath: path,
-                environment,
-                skipMultilineEncoding: decryptedSecret.skipMultilineEncoding
-              });
-              // eslint-disable-next-line no-param-reassign
-              processedImport.secrets[index].secretValue = expandedSecretValue || "";
-            })
-          )
-        )
-      );
-      throwIfClientDisconnected(abortSignal);
-    }
-
-    return {
-      secrets: filteredSecrets,
-      imports: processedImports
     };
+
+    const legacySecrets = await (secretReadSlot
+      ? secretReadSlot(loadSecrets, { sizeKey: getLegacySecretsSizeKey("legacy-secrets-raw", legacyDto) })
+      : loadSecrets());
+    return { secrets: legacySecrets.secrets, imports: legacySecrets.imports };
   };
 
   const getSecretByIdRaw = async ({ secretId, viewSecretValue, actor }: TGetASecretByIdRawDTO) => {
@@ -1524,12 +1575,14 @@ export const secretServiceFactory = ({
     secretName,
     includeImports,
     version,
-    onSecretReferenced
+    onSecretReferenced,
+    secretReadSlot
   }: TGetASecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const secret = await secretV2BridgeService.getSecretByName({
         onSecretReferenced,
+        secretReadSlot,
         environment,
         projectId,
         includeImports,
@@ -1554,7 +1607,8 @@ export const secretServiceFactory = ({
       secretName,
       type,
       includeImports,
-      version
+      version,
+      secretReadSlot
     });
 
     if (!botKey)

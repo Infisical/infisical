@@ -6,6 +6,7 @@ import { DEFAULT_RATE_LIMITS } from "@app/server/config/rateLimiter";
 
 export const injectRateLimits = fp(async (server) => {
   server.decorateRequest("rateLimits");
+  server.decorateRequest("rateLimitPlanSlug", null);
   server.addHook("onRequest", async (req) => {
     if (!req.auth?.orgId) {
       req.rateLimits = DEFAULT_RATE_LIMITS;
@@ -13,9 +14,10 @@ export const injectRateLimits = fp(async (server) => {
     }
 
     const { orgId } = req.auth;
-    const { rateLimits } = await requestMemoize(requestMemoKeys.licensePlan(orgId), () =>
+    const { rateLimits, slug } = await requestMemoize(requestMemoKeys.licensePlan(orgId), () =>
       server.services.licenseService.getPlan(orgId)
     );
+    req.rateLimitPlanSlug = slug;
 
     // the null coalescing handles plans cached before a limit was added to them
     req.rateLimits = {

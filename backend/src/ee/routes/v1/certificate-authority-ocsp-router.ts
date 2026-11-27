@@ -9,7 +9,7 @@ import {
 import { buildOcspErrorResponse } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-fns";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { recordOcspResponseMetric, TOcspStatusLabel } from "@app/lib/telemetry/metrics";
+import { recordOcspResponseMetric, TOcspShedReasonLabel, TOcspStatusLabel } from "@app/lib/telemetry/metrics";
 import { ocspLimit } from "@app/server/config/rateLimiter";
 
 const decodeGetRequest = (encoded: string): Buffer => {
@@ -44,10 +44,12 @@ export const registerCaOcspRouter = async (server: FastifyZodProvider) => {
 
     let status = OcspResponseStatus.InternalError;
     let statusLabel: TOcspStatusLabel = "internal_error";
+    let shedReason: TOcspShedReasonLabel | undefined;
 
     if (isRateLimited) {
       status = OcspResponseStatus.TryLater;
       statusLabel = "try_later";
+      shedReason = "rate_limited";
     } else if (isClientError) {
       status = OcspResponseStatus.MalformedRequest;
       statusLabel = "malformed_request";
@@ -55,7 +57,7 @@ export const registerCaOcspRouter = async (server: FastifyZodProvider) => {
       logger.error(error, "OCSP request failed before the handler ran");
     }
 
-    recordOcspResponseMetric({ status: statusLabel, certStatus: "none", cache: "skipped" });
+    recordOcspResponseMetric({ status: statusLabel, certStatus: "none", cache: "skipped", shedReason });
     void res.header("Content-Type", OCSP_RESPONSE_CONTENT_TYPE);
     void res.status(200).send(Buffer.from(buildOcspErrorResponse(status)));
   };

@@ -624,6 +624,8 @@ import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
+import { secretReadConcurrencyLimit } from "../plugins/secret-read-concurrency-limit";
+import { secretsOrgBudget } from "../plugins/secrets-org-budget";
 import { registerV1Routes } from "./v1";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
@@ -5397,6 +5399,8 @@ export const registerRoutes = async (
   await server.register(injectActorContext);
   await server.register(injectPamProjectId);
   await server.register(injectRateLimits);
+  await server.register(secretsOrgBudget, { keyStore });
+  await server.register(secretReadConcurrencyLimit);
   await server.register(injectAuditLogInfo);
   await server.register(injectPermissionDeniedAuditLog);
 

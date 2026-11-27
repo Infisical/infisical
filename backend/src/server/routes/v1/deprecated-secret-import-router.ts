@@ -7,6 +7,7 @@ import { AuthMode } from "@app/lib/auth/actor-types";
 import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
@@ -447,12 +448,19 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const importedSecrets = await server.services.secretImport.getSecretsFromImports({
         actor: req.actor,
         ...req.query,
-        projectId: req.query.workspaceId
+        projectId: req.query.workspaceId,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
       return { secrets: importedSecrets };
     }
   });
@@ -496,12 +504,19 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actor: req.actor,
         ...req.query,
-        projectId: req.query.workspaceId
+        projectId: req.query.workspaceId,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
       return { secrets: importedSecrets };
     }
   });

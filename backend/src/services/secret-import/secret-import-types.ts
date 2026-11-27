@@ -1,3 +1,4 @@
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { TActorInput } from "@app/lib/types";
 
 export type TCreateSecretImportDTO = {
@@ -50,6 +51,7 @@ export type TGetSecretImportByIdDTO = {
 export type TGetSecretsFromImportDTO = {
   environment: string;
   path: string;
+  secretReadSlot?: TConcurrencySlot;
   projectId: string;
 } & TActorInput;
 

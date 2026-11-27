@@ -12,6 +12,7 @@ import {
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
@@ -129,6 +130,7 @@ export type TGetSecretsDTO = {
   limit?: number;
   offset?: number;
   abortSignal?: AbortSignal;
+  secretReadSlot?: TConcurrencySlot;
   projectId: string;
 } & TActorInput;
 
@@ -139,6 +141,7 @@ export type TGetASecretDTO = {
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
+  secretReadSlot?: TConcurrencySlot;
   projectId: string;
 } & TActorInput;
 
@@ -259,6 +262,7 @@ export type TGetSecretsRawDTO = {
   abortSignal?: AbortSignal;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
   projectId: string;
 } & TActorInput;
 
@@ -283,6 +287,7 @@ export type TGetASecretRawDTO = {
   projectId: string;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
 } & TActorInput;
 
 export type TGetASecretByIdRawDTO = {

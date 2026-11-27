@@ -2,6 +2,7 @@ import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -136,6 +137,15 @@ export const processReservedImports = async <
     return imports;
   }
 };
+
+export const countImportedSecrets = (imports: { secrets: unknown[] }[]) =>
+  imports.reduce((count, { secrets }) => count + secrets.length, 0);
+
+export const getImportedSecretsSizeKey = (
+  kind: "imports" | "imports-raw" | "secret-by-name",
+  { projectId, environment, secretPath }: { projectId: string; environment: string; secretPath: string }
+) => `${projectId}:${generateCacheKeyFromData({ kind, environment, secretPath })}`;
+
 export const fnSecretsFromImports = async ({
   allowedImports: possibleCyclicImports,
   folderDAL,
@@ -143,7 +153,8 @@ export const fnSecretsFromImports = async ({
   secretImportDAL,
   depth = 0,
   cyclicDetector = new Set(),
-  abortSignal
+  abortSignal,
+  onSecretsLoaded
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -154,6 +165,7 @@ export const fnSecretsFromImports = async ({
   depth?: number;
   cyclicDetector?: Set<string>;
   abortSignal?: AbortSignal;
+  onSecretsLoaded?: (loadedSecretCount: number) => void;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
@@ -195,6 +207,7 @@ export const fnSecretsFromImports = async ({
       sort: [["id", "asc"]]
     }
   );
+  onSecretsLoaded?.(importedSecrets.length);
 
   const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
@@ -213,7 +226,8 @@ export const fnSecretsFromImports = async ({
       secretDAL,
       depth: depth + 1,
       cyclicDetector,
-      abortSignal
+      abortSignal,
+      onSecretsLoaded: (deeperSecretCount) => onSecretsLoaded?.(importedSecrets.length + deeperSecretCount)
     });
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);
@@ -263,7 +277,8 @@ export const fnSecretsV2FromImports = async ({
   kmsDataKeyService,
   actorOrgId,
   orgDAL,
-  abortSignal
+  abortSignal,
+  onSecretsLoaded
 }: {
   secretImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string; projectId?: string };
@@ -290,8 +305,11 @@ export const fnSecretsV2FromImports = async ({
   kmsDataKeyService: TKmsDataKeyService;
   actorOrgId: string;
   abortSignal?: AbortSignal;
+  // Called with the running total of rows loaded, after each import level loads and before it is decrypted
+  onSecretsLoaded?: (loadedSecretCount: number) => void;
 }) => {
   const cyclicDetector = new Set();
+  let loadedSecretCount = 0;
   // Cache decryptors per source project to avoid redundant KMS calls across loop iterations
   const projectDecryptors = new Map<string, (value?: Buffer | null) => string>();
   const getProjectDecryptor = async (sourceProjectId: string) => {
@@ -392,6 +410,9 @@ export const fnSecretsV2FromImports = async ({
         }
       );
     }
+
+    loadedSecretCount += importedSecrets.length;
+    onSecretsLoaded?.(loadedSecretCount);
 
     const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 

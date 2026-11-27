@@ -15,6 +15,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
+import { countReturnedSecrets, secretImportSearchSlot } from "@app/server/plugins/secrets-org-budget";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import {
@@ -324,6 +325,8 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
 
       if (!workspaceId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const result = await server.services.secret.getSecretsRaw({
         secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
         personalOverridesBehavior: PersonalOverridesBehavior.IncludeAll,
@@ -338,10 +341,16 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
         recursive: req.query.recursive,
         tagSlugs: req.query.tagSlugs,
         ifNoneMatch: req.headers["if-none-match"],
-        abortSignal: getClientDisconnectSignal(reply)
+        abortSignal: getClientDisconnectSignal(reply),
+        // The service takes the slot only after its ETag check, so a 304 is never refused for a spent budget.
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
 
       const { secrets, imports, etag, notModified } = result;
+      orgBudget.charge(countReturnedSecrets({ secrets, imports }));
 
       // Recorded before the 304 return: a client polling with an ETag is still using the secrets it holds.
       if (req.query.viewSecretValue) {
@@ -497,7 +506,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { workspaceSlug } = req.query;
       let { secretPath, environment, workspaceId } = req.query;
       if (req.auth.actorType === ActorType.SERVICE) {
@@ -524,6 +533,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       }
 
       const secret = await server.services.secret.getSecretByNameRaw({
+        secretReadSlot: secretImportSearchSlot(server.secretsOrgBudget(req, reply), server.secretReadSlot(req, reply)),
         actor: req.actor,
         expandSecretReferences: req.query.expandSecretReferences,
         environment,
@@ -1082,15 +1092,19 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      await orgBudget.check();
       const { secrets, imports } = await server.services.secret.getSecrets({
         actor: req.actor,
         environment: req.query.environment,
         projectId: req.query.workspaceId,
         path: req.query.secretPath,
         includeImports: req.query.include_imports,
-        recursive: req.query.recursive
+        recursive: req.query.recursive,
+        secretReadSlot: server.secretReadSlot(req, reply)
       });
+      orgBudget.charge(countReturnedSecrets({ secrets, imports }));
 
       await server.services.auditLog.createAuditLog({
         projectId: req.query.workspaceId,
@@ -1176,8 +1190,9 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const secret = await server.services.secret.getSecretByName({
+        secretReadSlot: secretImportSearchSlot(server.secretsOrgBudget(req, reply), server.secretReadSlot(req, reply)),
         actor: req.actor,
         environment: req.query.environment,
         projectId: req.query.workspaceId,

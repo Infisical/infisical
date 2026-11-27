@@ -8,6 +8,7 @@ import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -500,11 +501,18 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
       AuthMode.IDENTITY_ACCESS_TOKEN,
       AuthMode.OAUTH
     ]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actor: req.actor,
-        ...req.query
+        ...req.query,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
       return { secrets: importedSecrets };
     }
   });

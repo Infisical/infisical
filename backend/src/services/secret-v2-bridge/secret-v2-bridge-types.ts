@@ -7,6 +7,7 @@ import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -74,6 +75,7 @@ export type TGetSecretsDTO = {
   abortSignal?: AbortSignal;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
   projectId: string;
 } & TActorInput;
 
@@ -95,6 +97,7 @@ export type TGetASecretDTO = {
   viewSecretValue: boolean;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
 } & TActorInput;
 
 export type TCreateSecretDTO = { projectId: string } & TActorInput & {
