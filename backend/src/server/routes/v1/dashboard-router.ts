@@ -15,6 +15,7 @@ import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { countReturnedSecrets, secretImportSearchSlot } from "@app/server/plugins/secrets-org-budget";
 import {
   booleanSchema,
   SanitizedDynamicSecretSchema,
@@ -2030,10 +2031,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { secretPath, projectId, environment, secretKey, isOverride } = req.query;
 
       const secret = await server.services.secret.getSecretByNameRaw({
+        secretReadSlot: secretImportSearchSlot(server.secretsOrgBudget(req, reply), server.secretReadSlot(req, reply)),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -2113,14 +2115,21 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
+    handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        ...req.query
+        ...req.query,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
 
       await server.services.auditLog.createAuditLog({
         projectId: req.query.projectId,

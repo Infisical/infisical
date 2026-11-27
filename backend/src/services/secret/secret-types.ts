@@ -135,6 +135,7 @@ export type TGetASecretDTO = {
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
+  secretReadSlot?: TConcurrencySlot;
 } & TProjectPermission;
 
 export type TGetASecretByIdDTO = {
@@ -273,6 +274,7 @@ export type TGetASecretRawDTO = {
   projectId: string;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetASecretByIdRawDTO = {

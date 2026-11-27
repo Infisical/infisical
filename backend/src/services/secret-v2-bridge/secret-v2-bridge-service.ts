@@ -66,7 +66,11 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
+import {
+  countImportedSecrets,
+  fnSecretsV2FromImports,
+  getImportedSecretsSizeKey
+} from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import {
   describeSecretValidationFailures,
@@ -1997,7 +2001,8 @@ export const secretV2BridgeServiceFactory = ({
     includeImports,
     expandSecretReferences: shouldExpandSecretReferences,
     expandPersonalOverrides,
-    onSecretReferenced
+    onSecretReferenced,
+    secretReadSlot
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -2125,32 +2130,43 @@ export const secretV2BridgeServiceFactory = ({
 
     // currently filters out the secrets that the user doesn't have access to read value on
     if (!secret && includeImports) {
-      const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
-      const importedSecrets = await fnSecretsV2FromImports({
-        secretImports,
-        viewSecretValue,
-        secretDAL,
-        folderDAL,
-        secretImportDAL,
-        userId: secretType === SecretType.Personal ? actorId : undefined,
-        personalOverridesBehavior: secretType === SecretType.Personal ? PersonalOverridesBehavior.Priority : undefined,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        expandSecretReferences: shouldExpandSecretReferences && viewSecretValue ? expandSecretReferences : undefined,
-        importAccessScopeByFolderId: new Map([[folderId, { environment, secretPath: path }]]),
-        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
-          return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          });
-        },
-        projectId,
-        projectFolderGrantDAL,
-        actorOrgId,
-        orgDAL,
-        kmsDataKeyService
-      });
+      const loadImportedSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+        const secretImports = await secretImportDAL.find({ folderId, isReplication: false });
+        const loadedImports = await fnSecretsV2FromImports({
+          secretImports,
+          viewSecretValue,
+          secretDAL,
+          folderDAL,
+          secretImportDAL,
+          userId: secretType === SecretType.Personal ? actorId : undefined,
+          personalOverridesBehavior:
+            secretType === SecretType.Personal ? PersonalOverridesBehavior.Priority : undefined,
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+          expandSecretReferences: shouldExpandSecretReferences && viewSecretValue ? expandSecretReferences : undefined,
+          importAccessScopeByFolderId: new Map([[folderId, { environment, secretPath: path }]]),
+          hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
+            return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            });
+          },
+          projectId,
+          projectFolderGrantDAL,
+          actorOrgId,
+          orgDAL,
+          kmsDataKeyService,
+          onSecretsLoaded: reportSize
+        });
+        reportSize(countImportedSecrets(loadedImports));
+        return loadedImports;
+      };
+      const importedSecrets = await (secretReadSlot
+        ? secretReadSlot(loadImportedSecrets, {
+            sizeKey: getImportedSecretsSizeKey("secret-by-name", { projectId, environment, secretPath: path })
+          })
+        : loadImportedSecrets());
 
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {

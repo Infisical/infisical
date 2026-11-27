@@ -2,6 +2,7 @@ import RE2 from "re2";
 
 import { SecretType, TSecretImports, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { throwIfAnySettledClientClosed, throwIfClientDisconnected } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 
@@ -136,6 +137,15 @@ export const processReservedImports = async <
     return imports;
   }
 };
+
+export const countImportedSecrets = (imports: { secrets: unknown[] }[]) =>
+  imports.reduce((count, { secrets }) => count + secrets.length, 0);
+
+export const getImportedSecretsSizeKey = (
+  kind: "imports" | "imports-raw" | "secret-by-name",
+  { projectId, environment, secretPath }: { projectId: string; environment: string; secretPath: string }
+) => `${projectId}:${generateCacheKeyFromData({ kind, environment, secretPath })}`;
+
 export const fnSecretsFromImports = async ({
   allowedImports: possibleCyclicImports,
   folderDAL,

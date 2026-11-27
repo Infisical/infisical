@@ -97,6 +97,7 @@ export type TGetASecretDTO = {
   viewSecretValue: boolean;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
+  secretReadSlot?: TConcurrencySlot;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCreateSecretDTO = TProjectPermission & {

@@ -2,6 +2,7 @@ import ratelimiter from "@fastify/rate-limit";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
@@ -11,7 +12,12 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { DEFAULT_RATE_LIMITS, secretsLimit } from "@app/server/config/rateLimiter";
 
-import { countReturnedSecrets, secretsOrgBudget, secretsOrgBudgetCost } from "./secrets-org-budget";
+import {
+  countReturnedSecrets,
+  secretImportSearchSlot,
+  secretsOrgBudget,
+  secretsOrgBudgetCost
+} from "./secrets-org-budget";
 
 const BUDGET = 3;
 
@@ -142,6 +148,86 @@ describe("secrets org budget cost", () => {
   test("counts the secrets of every import along with the folder's own", () => {
     expect(countReturnedSecrets({ secrets: [1, 2], imports: [{ secrets: [3] }, { secrets: [4, 5, 6] }] })).toBe(6);
     expect(countReturnedSecrets({ secrets: [1, 2] })).toBe(2);
+  });
+});
+
+describe("secret import search slot", () => {
+  const setup = () => {
+    const events: string[] = [];
+    const charge = vi.fn();
+    const forwarded: number[] = [];
+    const orgBudget = {
+      check: vi.fn(async () => {
+        events.push("check");
+      }),
+      charge
+    };
+    const readSlot: TConcurrencySlot = (work) => {
+      events.push("slot");
+      return work((secretCount) => forwarded.push(secretCount));
+    };
+    return { slot: secretImportSearchSlot(orgBudget, readSlot), orgBudget, charge, events, forwarded };
+  };
+
+  test("checks the budget before it takes the read slot, and charges the secrets the search loaded", async () => {
+    const { slot, charge, events, forwarded } = setup();
+
+    const result = await slot(async (reportSize) => {
+      reportSize(250);
+      return "found";
+    });
+
+    expect(result).toBe("found");
+    expect(events).toEqual(["check", "slot"]);
+    expect(forwarded).toEqual([250]);
+    expect(charge).toHaveBeenCalledExactlyOnceWith(250);
+  });
+
+  test("runs nothing and charges nothing when the budget is spent", async () => {
+    const { slot, orgBudget, charge, events } = setup();
+    orgBudget.check.mockRejectedValueOnce(new RateLimitError({ message: "spent" }));
+    const work = vi.fn();
+
+    await expect(slot(work)).rejects.toThrow(RateLimitError);
+    expect(work).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+    expect(charge).not.toHaveBeenCalled();
+  });
+
+  test("charges the largest size reported, since the rows loaded outnumber the ones the caller may see", async () => {
+    const { slot, charge } = setup();
+
+    await slot(async (reportSize) => {
+      reportSize(400);
+      reportSize(120);
+    });
+
+    expect(charge).toHaveBeenCalledExactlyOnceWith(400);
+  });
+
+  test("charges a search that loaded the imports and then failed to find the secret", async () => {
+    const { slot, charge } = setup();
+
+    await expect(
+      slot(async (reportSize) => {
+        reportSize(300);
+        throw new Error("not found");
+      })
+    ).rejects.toThrow("not found");
+    expect(charge).toHaveBeenCalledExactlyOnceWith(300);
+  });
+
+  test("passes the size key on to the read slot", async () => {
+    const sizeKeys: (string | undefined)[] = [];
+    const readSlot: TConcurrencySlot = (work, opts) => {
+      sizeKeys.push(opts?.sizeKey);
+      return work(() => {});
+    };
+    const slot = secretImportSearchSlot({ check: async () => {}, charge: vi.fn() }, readSlot);
+
+    await slot(async () => {}, { sizeKey: "project:key" });
+
+    expect(sizeKeys).toEqual(["project:key"]);
   });
 });
 

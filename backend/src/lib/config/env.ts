@@ -356,7 +356,7 @@ const envSchema = z
       .min(1)
       .default(1000)
       .describe(
-        "Credits an organization may spend on reading secrets per minute. A read costs one credit per 100 secrets it returns, rounded up"
+        "Credits an organization may spend on reading secrets per minute. A read costs one credit per 100 secrets it returns, rounded up; a read of a single secret that has to search the folder's imports costs one credit per 100 imported secrets it loads"
       ),
     DB_ROOT_CERT: zpStr(z.string().describe("Postgres database base64-encoded CA cert").optional()),
     DB_HOST: zpStr(z.string().describe("Postgres database host").optional()),

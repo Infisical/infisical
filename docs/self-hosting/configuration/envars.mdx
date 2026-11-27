@@ -230,6 +230,8 @@ Example values:
   - `enforce`: A request that arrives when the instance has no room for it fails with a `503` response. Retry the request a few seconds later
 
   A request doesn't count toward the limit if Infisical answers it with a `304` response.
+
+  A request for a single secret counts toward the limit only if the secret isn't in the folder itself. In that case, Infisical loads every secret that the folder [imports](/documentation/platform/secret-reference#secret-imports) to look for the secret.
 </ParamField>
 
 <ParamField query="SECRET_READ_HEAP_BASELINE_BYTES" type="int" default="536870912" optional>

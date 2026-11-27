@@ -58,7 +58,11 @@ import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TSecretBlindIndexDALFactory } from "../secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
-import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
+import {
+  countImportedSecrets,
+  fnSecretsFromImports,
+  getImportedSecretsSizeKey
+} from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -778,7 +782,8 @@ export const secretServiceFactory = ({
     type,
     secretName,
     version,
-    includeImports
+    includeImports,
+    secretReadSlot
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -848,12 +853,22 @@ export const secretServiceFactory = ({
             })
       );
 
-      const importedSecrets = await fnSecretsFromImports({
-        allowedImports,
-        secretDAL,
-        folderDAL,
-        secretImportDAL
-      });
+      const loadImportedSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+        const loadedImports = await fnSecretsFromImports({
+          allowedImports,
+          secretDAL,
+          folderDAL,
+          secretImportDAL,
+          onSecretsLoaded: reportSize
+        });
+        reportSize(countImportedSecrets(loadedImports));
+        return loadedImports;
+      };
+      const importedSecrets = await (secretReadSlot
+        ? secretReadSlot(loadImportedSecrets, {
+            sizeKey: getImportedSecretsSizeKey("secret-by-name", { projectId, environment, secretPath: path })
+          })
+        : loadImportedSecrets());
       for (let i = importedSecrets.length - 1; i >= 0; i -= 1) {
         for (let j = 0; j < importedSecrets[i].secrets.length; j += 1) {
           if (secretBlindIndex === importedSecrets[i].secrets[j].secretBlindIndex) {
@@ -1698,12 +1713,14 @@ export const secretServiceFactory = ({
     secretName,
     includeImports,
     version,
-    onSecretReferenced
+    onSecretReferenced,
+    secretReadSlot
   }: TGetASecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const secret = await secretV2BridgeService.getSecretByName({
         onSecretReferenced,
+        secretReadSlot,
         environment,
         projectId,
         includeImports,
@@ -1734,7 +1751,8 @@ export const secretServiceFactory = ({
       secretName,
       type,
       includeImports,
-      version
+      version,
+      secretReadSlot
     });
 
     if (!botKey)

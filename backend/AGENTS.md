@@ -1109,9 +1109,16 @@ next one that is refused. Do not move the charge ahead of the read or skip it fo
 `SECRET_READ_ORG_BUDGET_MODE` is `off` by default; set `observe` to count and record `would_refuse` while refusing nothing,
 or `enforce` to refuse with a 429 and `Retry-After`. It runs only where the rate limiter is registered (cloud production). A key store
 failure allows the read. The v3 and v4 routes that list secrets are charged, and so are the secret import routes that
-list imported secrets (`/secret-imports/secrets`), which pass their result as
-`countReturnedSecrets({ secrets: [], imports })`. Routes that return a single secret are left out on purpose, since they
-cannot return a large number of secrets, and so are the dashboard routes.
+list imported secrets (`/secret-imports/secrets` and the dashboard's `/secret-imports`), which pass their result as
+`countReturnedSecrets({ secrets: [], imports })`.
+
+A route that returns a single secret by name passes `secretImportSearchSlot(orgBudget, readSlot)` as `secretReadSlot`.
+`getSecretByName` takes it only when the secret is not in the folder and it has to load every imported secret to look
+for it, so a secret found in its own folder is never checked or charged. The helper charges the imported secrets the
+search loaded, not the one secret returned, and charges inside the slot whatever the outcome, because the search that
+loads the most is the one for a name that does not exist, which ends in a 404. The paginated dashboard routes
+(`secrets-details`, `secrets-overview`, `secrets-deep-search`) and `GET /secrets/id/:secretId` are left out, since none
+of them can load a large number of secrets.
 
 A read at or over budget records `infisical.secret.rate_limit.exceeded.count` (`recordSecretRateLimitExceededMetric`,
 bucket `org_budget`, outcome `refused` or `would_refuse`), and every charge records the window's running total in
@@ -1164,7 +1171,9 @@ service takes no slot. A route that does neither is outside the budget. The slot
   are expanded) and again whenever it changes, before the expensive work that follows (decryption, reference expansion).
   `fnSecretsV2FromImports` and the legacy `fnSecretsFromImports` take an `onSecretsLoaded` callback that runs after
   each import level's rows load and before they are decrypted; pass `reportSize` through it, as
-  `getRawSecretsFromImports` in `secret-import-service.ts` does.
+  `getRawSecretsFromImports` in `secret-import-service.ts` does. The import search of `getSecretByName` runs in the
+  slot the same way, with a `sizeKey` from `getImportedSecretsSizeKey` that leaves out the secret name: every name
+  searches the same imports, and a key per name would give a caller the default estimate again for each new name.
   A report that grows the read past the room other reads leave refuses it there, a 503 in enforce mode and
   `would_refuse` in observe mode, and the size is remembered so the next attempt is refused at admission. Admission
   runs on an estimate, so without this check a cold burst is admitted at the default weight and lands far past the

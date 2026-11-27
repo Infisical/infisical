@@ -20,7 +20,6 @@ import {
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
-import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -40,7 +39,12 @@ import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretImportDALFactory } from "./secret-import-dal";
 import { SecretImportModifiedEventV1 } from "./secret-import-events";
-import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
+import {
+  countImportedSecrets,
+  fnSecretsFromImports,
+  fnSecretsV2FromImports,
+  getImportedSecretsSizeKey
+} from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
   TDeleteSecretImportDTO,
@@ -76,14 +80,6 @@ const ERR_NON_REPLICATION_IMPORT_UNDER_POLICY = (policyName: string) =>
   });
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
-
-const countImportedSecrets = (imports: { secrets: unknown[] }[]) =>
-  imports.reduce((count, { secrets }) => count + secrets.length, 0);
-
-const getImportedSecretsSizeKey = (
-  kind: "imports" | "imports-raw",
-  { projectId, environment, secretPath }: { projectId: string; environment: string; secretPath: string }
-) => `${projectId}:${generateCacheKeyFromData({ kind, environment, secretPath })}`;
 
 export const secretImportServiceFactory = ({
   secretImportDAL,
