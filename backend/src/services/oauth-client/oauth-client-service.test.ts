@@ -1,5 +1,5 @@
-import { ForbiddenRequestError } from "@app/lib/errors";
 import { AuthMethod } from "@app/lib/auth/actor-types";
+import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { computePkceChallenge } from "./oauth-client-fns";
 import { oauthClientServiceFactory } from "./oauth-client-service";
