@@ -5,6 +5,7 @@ import { z } from "zod";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
+import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { DynamicSecretPlanetScaleSchema, TDynamicProviderFns, TDynamicProviderValidateMetadata } from "./models";
 import { generateUsername } from "./templateUtils";
@@ -13,6 +14,8 @@ const PLANETSCALE_API_BASE_URL = "https://api.planetscale.com/v1";
 const REQUEST_TIMEOUT_MS = 30_000;
 const PLANETSCALE_NAME_INVALID_CHARS = new RE2("[^a-z0-9-]+", "g");
 const PLANETSCALE_NAME_EDGE_DASHES = new RE2("^-+|-+$", "g");
+const PLANETSCALE_NAME_MAX_LENGTH = 63;
+const PLANETSCALE_NAME_SUFFIX_LENGTH = 6;
 
 type TPlanetScaleInputs = z.infer<typeof DynamicSecretPlanetScaleSchema>;
 type TPlanetScalePassword = { id: string; username: string; plain_text: string; access_host_url: string };
@@ -102,12 +105,22 @@ export const PlanetScaleProvider = (): TDynamicProviderFns => {
     dynamicSecret
   }: Parameters<TDynamicProviderFns["create"]>[0]) => {
     const providerInputs = await $parseInputs(inputs);
-    // PlanetScale names only allow lowercase alphanumerics and dashes, not at either end
+    // PlanetScale names must be unique on the branch and at most 63 lowercase alphanumerics and dashes, with no
+    // dash at either end, so the template is normalized and always gets a random suffix
     const name = await generateUsername(
       usernameTemplate,
       { decryptedDynamicSecretInputs: inputs, dynamicSecret, identity },
-      (username) =>
-        PLANETSCALE_NAME_EDGE_DASHES.replace(PLANETSCALE_NAME_INVALID_CHARS.replace(username.toLowerCase(), "-"), "")
+      (username) => {
+        const base = PLANETSCALE_NAME_EDGE_DASHES.replace(
+          PLANETSCALE_NAME_INVALID_CHARS.replace(username.toLowerCase(), "-").slice(
+            0,
+            PLANETSCALE_NAME_MAX_LENGTH - PLANETSCALE_NAME_SUFFIX_LENGTH - 1
+          ),
+          ""
+        );
+        const suffix = alphaNumericNanoId(PLANETSCALE_NAME_SUFFIX_LENGTH).toLowerCase();
+        return base ? `${base}-${suffix}` : suffix;
+      }
     );
 
     try {

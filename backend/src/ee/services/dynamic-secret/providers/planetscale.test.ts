@@ -56,7 +56,7 @@ describe("PlanetScaleProvider", () => {
     const [url, body, config] = mockedPost.mock.calls[0];
     expect(url).toBe(`${BRANCH_URL}/passwords`);
     expect(body).toMatchObject({ role: "reader", ttl: 3600 });
-    expect(body.name).toMatch(/^[a-z0-9]{32}$/);
+    expect(body.name).toMatch(/^[a-z0-9]{32}-[a-z0-9]{6}$/);
     expect(config).toMatchObject({
       headers: { Authorization: "token-id:pscale_tkn_secret" },
       "axios-retry": { retries: 0 }
@@ -75,7 +75,18 @@ describe("PlanetScaleProvider", () => {
       usernameTemplate: "_{{dynamicSecret.name}}_For_{{identity.name}}_"
     });
 
-    expect(mockedPost.mock.calls[0][1]).toMatchObject({ name: "planetscale-prod-for-tester" });
+    expect(mockedPost.mock.calls[0][1].name).toMatch(/^planetscale-prod-for-tester-[a-z0-9]{6}$/);
+  });
+
+  test("create shortens a long name to PlanetScale's 63 characters and keeps the unique suffix", async () => {
+    mockedPost.mockResolvedValueOnce({ data: { id: "pw-1" } } as AxiosResponse);
+
+    await PlanetScaleProvider().create({
+      ...createArgs(Date.now() + 60_000),
+      usernameTemplate: "{{randomUsername}}{{randomUsername}}"
+    });
+
+    expect(mockedPost.mock.calls[0][1].name).toMatch(/^[a-z0-9]{56}-[a-z0-9]{6}$/);
   });
 
   test("create names a missing or inaccessible branch instead of PlanetScale's bare not found", async () => {
