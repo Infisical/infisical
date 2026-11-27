@@ -1034,7 +1034,9 @@ If a [revocation policy](/documentation/platform/pki/applications/approvals#revo
 - With `--no-wait`, the command prints the approval request's ID (`approvalRequestId`) right away. Find the request under **Approval Requests** in Certificate Manager by the certificate's common name, or by its serial number if it has none. The list shows only pending requests at first: to find one that was already approved or rejected, open the filter beside the search box and clear **Pending**. Then check whether the certificate is revoked with [infisical cert-manager certificates get](/cli/reference#cert-manager-certificates-get): `infisical cert-manager certificates get <certificate-id> --application <name-or-id>`
 - If the request is rejected, expires, or is cancelled, or too few of its approvers can still approve it, the command fails with `certificate_revocation_rejected`
 
-If no revocation policy covers the profile, Infisical revokes the certificate right away. If Infisical revokes the certificate but can't regenerate the certificate revocation list, the command prints a warning, and `crlWarning` holds it in `-o json` or `-o yaml` output. After an approved revocation, the CLI can't see that warning, so `crlWarning` stays null. For the roles that can revoke and approve, see [Certificate approval policies](/documentation/platform/pki/applications/approvals#revocation).
+If no revocation policy covers the profile, Infisical revokes the certificate right away. If Infisical revokes the certificate but can't regenerate the certificate revocation list, the command prints a warning, and `crlWarning` holds it in `-o json` or `-o yaml` output. After an approved revocation, the CLI can't see that warning, so `crlWarning` stays null.
+
+Without a revocation policy, only Application Admins can revoke a certificate. With one, Application Admins and Operators can request a revocation, and the policy's approvers need the Admin or Operator role.
 
 </CLICommand>
 
