@@ -230,6 +230,9 @@ import {
   TDynamicSecrets,
   TDynamicSecretsInsert,
   TDynamicSecretsUpdate,
+  TDynamicSecretUserCredentials,
+  TDynamicSecretUserCredentialsInsert,
+  TDynamicSecretUserCredentialsUpdate,
   TExternalCertificateAuthorities,
   TExternalCertificateAuthoritiesInsert,
   TExternalCertificateAuthoritiesUpdate,
@@ -1444,6 +1447,11 @@ declare module "knex/types/tables" {
       TDynamicSecretLeases,
       TDynamicSecretLeasesInsert,
       TDynamicSecretLeasesUpdate
+    >;
+    [TableName.DynamicSecretUserCredential]: KnexOriginal.CompositeTableType<
+      TDynamicSecretUserCredentials,
+      TDynamicSecretUserCredentialsInsert,
+      TDynamicSecretUserCredentialsUpdate
     >;
     [TableName.EmailDomains]: KnexOriginal.CompositeTableType<TEmailDomains, TEmailDomainsInsert, TEmailDomainsUpdate>;
     [TableName.SamlConfig]: KnexOriginal.CompositeTableType<TSamlConfigs, TSamlConfigsInsert, TSamlConfigsUpdate>;

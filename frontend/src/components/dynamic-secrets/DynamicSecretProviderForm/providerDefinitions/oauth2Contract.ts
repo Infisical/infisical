@@ -95,7 +95,7 @@ const extraParamsSchema = z
   });
 
 const oauth2BaseInputs = {
-  grantType: z.literal(OAuth2GrantType.ClientCredentials),
+  grantType: z.nativeEnum(OAuth2GrantType),
   tokenUrl: urlSchema("Token URL"),
   revocationUrl: urlSchema("Revocation URL"),
   clientId: z.string().trim().min(1, "Client ID is required").max(1024),
@@ -174,7 +174,7 @@ export const getOAuth2EditDefaultValues = (
     defaultTTL: context.dynamicSecret.defaultTTL,
     maxTTL: context.dynamicSecret.maxTTL,
     inputs: {
-      grantType: OAuth2GrantType.ClientCredentials,
+      grantType: inputs.grantType ?? OAuth2GrantType.ClientCredentials,
       tokenUrl: inputs.tokenUrl ?? "",
       revocationUrl: inputs.revocationUrl ?? "",
       clientId: inputs.clientId ?? "",
@@ -191,7 +191,7 @@ export const getOAuth2EditDefaultValues = (
 const buildInputs = (inputs: TOAuth2EditFormValues["inputs"]) => {
   const clientSecret = inputs.clientAuth.clientSecret?.trim();
   return {
-    grantType: OAuth2GrantType.ClientCredentials,
+    grantType: inputs.grantType,
     tokenUrl: inputs.tokenUrl.trim(),
     revocationUrl: inputs.revocationUrl.trim(),
     clientId: inputs.clientId.trim(),

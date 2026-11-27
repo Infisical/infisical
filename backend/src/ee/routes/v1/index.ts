@@ -15,7 +15,9 @@ import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
 import { registerDynamicSecretLeaseRouter } from "./dynamic-secret-lease-router";
 import { registerKubernetesDynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/kubernetes-lease-router";
+import { registerOAuth2DynamicSecretLeaseRouter } from "./dynamic-secret-lease-routers/oauth2-lease-router";
 import { registerDynamicSecretRouter } from "./dynamic-secret-router";
+import { registerDynamicSecretUserCredentialRouter } from "./dynamic-secret-user-credential-router";
 import { registerEmailDomainRouter } from "./email-domain-router";
 import { registerExternalKmsRouter } from "./external-kms-router";
 import { EXTERNAL_KMS_REGISTER_ROUTER_MAP } from "./external-kms-routers";
@@ -95,6 +97,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await dynamicSecretRouter.register(registerDynamicSecretRouter);
       await dynamicSecretRouter.register(registerDynamicSecretLeaseRouter, { prefix: "/leases" });
       await dynamicSecretRouter.register(registerKubernetesDynamicSecretLeaseRouter, { prefix: "/leases/kubernetes" });
+      await dynamicSecretRouter.register(registerOAuth2DynamicSecretLeaseRouter, { prefix: "/leases/oauth2" });
+      await dynamicSecretRouter.register(registerDynamicSecretUserCredentialRouter);
     },
     { prefix: "/dynamic-secrets" }
   );

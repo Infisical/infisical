@@ -11,6 +11,7 @@ export type TDynamicSecretLease = {
   dynamicSecretId: string;
   status?: DynamicSecretLeaseStatus;
   statusDetails?: string;
+  config?: TDynamicSecretLeaseConfig | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -23,8 +24,13 @@ export type TDynamicSecretSshLeaseConfig = {
   principals?: string[];
 };
 
+export type TDynamicSecretOAuth2LeaseConfig = {
+  externalUserId?: string;
+};
+
 export type TDynamicSecretLeaseConfig = TDynamicSecretKubernetesLeaseConfig &
-  TDynamicSecretSshLeaseConfig;
+  TDynamicSecretSshLeaseConfig &
+  TDynamicSecretOAuth2LeaseConfig;
 
 export type TCreateDynamicSecretLeaseDTO = {
   dynamicSecretName: string;

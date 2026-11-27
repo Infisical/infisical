@@ -21,6 +21,7 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 
 import { TDynamicSecretLeaseDALFactory } from "../dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretLeaseQueueServiceFactory } from "../dynamic-secret-lease/dynamic-secret-lease-queue";
+import { TDynamicSecretUserCredentialDALFactory } from "../dynamic-secret-user-credential/dynamic-secret-user-credential-dal";
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -35,6 +36,7 @@ import { redactStoredInputs, restoreOmittedSecretFields } from "./providers/reda
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "find" | "countLeasesForDynamicSecret">;
+  dynamicSecretUserCredentialDAL: Pick<TDynamicSecretUserCredentialDALFactory, "findOne">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: Pick<
     TDynamicSecretLeaseQueueServiceFactory,
@@ -85,6 +87,7 @@ const getUpdatedFieldPaths = (
 export const dynamicSecretServiceFactory = ({
   dynamicSecretDAL,
   dynamicSecretLeaseDAL,
+  dynamicSecretUserCredentialDAL,
   licenseService,
   folderDAL,
   dynamicSecretProviders,
@@ -372,12 +375,16 @@ export const dynamicSecretServiceFactory = ({
       }
     }
     const activeLeaseCount = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
+    const hasUserCredentials =
+      dynamicSecretCfg.type === DynamicSecretProviders.OAuth2 &&
+      Boolean(await dynamicSecretUserCredentialDAL.findOne({ dynamicSecretId: dynamicSecretCfg.id }));
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
       projectId,
       previousInputs: decryptedStoredInput,
       defaultTTL,
       maxTTL,
-      hasActiveLeases: activeLeaseCount > 0
+      hasActiveLeases: activeLeaseCount > 0,
+      hasUserCredentials
     });
 
     const updatedFields = getUpdatedFieldPaths(

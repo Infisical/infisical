@@ -162,6 +162,7 @@ export enum TableName {
   TrustedIps = "trusted_ips",
   DynamicSecret = "dynamic_secrets",
   DynamicSecretLease = "dynamic_secret_leases",
+  DynamicSecretUserCredential = "dynamic_secret_user_credentials",
   SecretV2 = "secrets_v2",
   SecretReferenceV2 = "secret_references_v2",
   SecretReadActivity = "secret_read_activity",

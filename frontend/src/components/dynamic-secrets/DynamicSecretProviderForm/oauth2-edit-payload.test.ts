@@ -87,3 +87,24 @@ describe("OAuth 2.0 edit payload", () => {
     assert.equal(defaults.inputs.clientAuth.method, OAuth2ClientAuthMethod.ClientSecretPost);
   });
 });
+
+describe("OAuth 2.0 authorization code grant", () => {
+  const userModeContext: TEditDynamicSecretProviderFormContext = {
+    ...editContext,
+    dynamicSecret: {
+      ...editContext.dynamicSecret,
+      inputs: { ...storedInputs, grantType: OAuth2GrantType.AuthorizationCode }
+    }
+  };
+
+  it("loads and keeps the stored grant type on edit", () => {
+    const values = getOAuth2EditDefaultValues(userModeContext);
+    assert.equal(values.inputs.grantType, OAuth2GrantType.AuthorizationCode);
+
+    const payload = getOAuth2EditPayload(values, userModeContext);
+    assert.equal(
+      (payload.data.inputs as { grantType: string }).grantType,
+      OAuth2GrantType.AuthorizationCode
+    );
+  });
+});

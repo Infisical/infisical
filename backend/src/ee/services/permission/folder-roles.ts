@@ -82,7 +82,8 @@ const applyFolderManageRules = (can: TProjectCan, recursive: boolean) => {
       ProjectPermissionDynamicSecretActions.ReadRootCredential,
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       ProjectPermissionDynamicSecretActions.EditRootCredential,
-      ProjectPermissionDynamicSecretActions.DeleteRootCredential
+      ProjectPermissionDynamicSecretActions.DeleteRootCredential,
+      ProjectPermissionDynamicSecretActions.ManageUserCredentials
     ],
     ProjectPermissionSub.DynamicSecrets
   );
@@ -175,7 +176,8 @@ const buildFolderScopedDenyRules = () => {
       ProjectPermissionDynamicSecretActions.CreateRootCredential,
       ProjectPermissionDynamicSecretActions.EditRootCredential,
       ProjectPermissionDynamicSecretActions.DeleteRootCredential,
-      ProjectPermissionDynamicSecretActions.Lease
+      ProjectPermissionDynamicSecretActions.Lease,
+      ProjectPermissionDynamicSecretActions.ManageUserCredentials
     ],
     ProjectPermissionSub.DynamicSecrets
   );

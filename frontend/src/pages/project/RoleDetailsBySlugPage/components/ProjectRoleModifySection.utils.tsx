@@ -158,7 +158,8 @@ const DynamicSecretPolicyActionSchema = z.object({
   [ProjectPermissionDynamicSecretActions.EditRootCredential]: z.boolean().optional(),
   [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: z.boolean().optional(),
   [ProjectPermissionDynamicSecretActions.CreateRootCredential]: z.boolean().optional(),
-  [ProjectPermissionDynamicSecretActions.Lease]: z.boolean().optional()
+  [ProjectPermissionDynamicSecretActions.Lease]: z.boolean().optional(),
+  [ProjectPermissionDynamicSecretActions.ManageUserCredentials]: z.boolean().optional()
 });
 
 const SecretSyncPolicyActionSchema = z.object({
@@ -1236,6 +1237,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             ProjectPermissionDynamicSecretActions.CreateRootCredential
           );
           const canLease = action.includes(ProjectPermissionDynamicSecretActions.Lease);
+          const canManageUserCredentials = action.includes(
+            ProjectPermissionDynamicSecretActions.ManageUserCredentials
+          );
 
           // from above statement we are sure it won't be undefined
           formVal[subject]!.push({
@@ -1245,7 +1249,8 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
             [ProjectPermissionDynamicSecretActions.DeleteRootCredential]: canDelete,
             conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
             inverted,
-            [ProjectPermissionDynamicSecretActions.Lease]: canLease
+            [ProjectPermissionDynamicSecretActions.Lease]: canLease,
+            [ProjectPermissionDynamicSecretActions.ManageUserCredentials]: canManageUserCredentials
           });
           return;
         }
@@ -2202,6 +2207,12 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Manage Leases",
         value: ProjectPermissionDynamicSecretActions.Lease,
         description: "Create and revoke dynamic secret leases"
+      },
+      {
+        label: "Manage User Tokens",
+        value: ProjectPermissionDynamicSecretActions.ManageUserCredentials,
+        description:
+          "Store, view, and delete the OAuth 2.0 tokens kept for your application's users"
       }
     ]
   },

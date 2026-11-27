@@ -1,8 +1,12 @@
-import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
 import { Button, Field, FieldError, FieldLabel, IconButton, Input } from "@app/components/v3";
-import { DynamicSecretProviders, OAuth2ClientAuthMethod } from "@app/hooks/api/dynamicSecret/types";
+import {
+  DynamicSecretProviders,
+  OAuth2ClientAuthMethod,
+  OAuth2GrantType
+} from "@app/hooks/api/dynamicSecret/types";
 
 import { DynamicSecretProviderFields } from "../DynamicSecretProviderFields";
 import { DynamicSecretProviderGroup } from "../DynamicSecretProviderGroup";
@@ -24,8 +28,24 @@ import {
   TOAuth2EditFormValues
 } from "./oauth2Contract";
 
-const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) =>
+const getConnectionFields = (
+  mode: TDynamicSecretProviderRendererProps["mode"],
+  grantType: OAuth2GrantType
+) =>
   [
+    {
+      name: "inputs.grantType",
+      type: "select",
+      label: "Grant Type",
+      description:
+        grantType === OAuth2GrantType.AuthorizationCode
+          ? "Each lease returns an access token for one of your application's users. Your application stores each user's tokens in Infisical after the user authorizes it, and Infisical refreshes them."
+          : "Each lease requests a new access token for the client itself.",
+      options: [
+        { label: "Client Credentials", value: OAuth2GrantType.ClientCredentials },
+        { label: "Authorization Code (User Tokens)", value: OAuth2GrantType.AuthorizationCode }
+      ]
+    },
     {
       name: "inputs.tokenUrl",
       type: "text",
@@ -39,7 +59,9 @@ const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) 
       label: "Revocation URL",
       placeholder: "https://auth.example.com/oauth2/revoke",
       description:
-        "The RFC 7009 endpoint Infisical calls to revoke each lease's access token when the lease ends."
+        grantType === OAuth2GrantType.AuthorizationCode
+          ? "The RFC 7009 endpoint Infisical calls to revoke a user's refresh token when their stored tokens are deleted."
+          : "The RFC 7009 endpoint Infisical calls to revoke each lease's access token when the lease ends."
     },
     {
       name: "inputs.clientAuth.method",
@@ -82,18 +104,24 @@ const getConnectionFields = (mode: TDynamicSecretProviderRendererProps["mode"]) 
       label: "Scope",
       placeholder: "read:orders write:orders",
       isOptional: true,
-      description: "Space-separated scopes. Leave blank to use the client's default scopes."
+      description:
+        grantType === OAuth2GrantType.AuthorizationCode
+          ? "Space-separated scopes to request when refreshing a user's access token. Leave blank to keep the scopes the user granted."
+          : "Space-separated scopes. Leave blank to use the client's default scopes."
     }
   ] satisfies readonly TDynamicSecretProviderField<TOAuth2EditFormValues>[];
 
 const OAuth2Fields = ({ mode }: TDynamicSecretProviderRendererProps) => {
   const { control } = useFormContext<TOAuth2EditFormValues>();
   const extraParams = useFieldArray({ control, name: "inputs.extraParams" });
+  const grantType = useWatch({ control, name: "inputs.grantType" });
 
   return (
     <>
       <DynamicSecretProviderGroup id="oauth2-configuration" presentation="panel">
-        <DynamicSecretProviderFields<TOAuth2EditFormValues> fields={getConnectionFields(mode)} />
+        <DynamicSecretProviderFields<TOAuth2EditFormValues>
+          fields={getConnectionFields(mode, grantType)}
+        />
       </DynamicSecretProviderGroup>
 
       <DynamicSecretProviderGroup
@@ -101,7 +129,11 @@ const OAuth2Fields = ({ mode }: TDynamicSecretProviderRendererProps) => {
         presentation="panel"
         surface
         title="Extra Parameters"
-        description="Additional form parameters sent with the token request, such as audience or resource."
+        description={
+          grantType === OAuth2GrantType.AuthorizationCode
+            ? "Additional form parameters sent with each refresh request, such as audience or resource."
+            : "Additional form parameters sent with the token request, such as audience or resource."
+        }
       >
         <div className="flex flex-col gap-3">
           {extraParams.fields.map(({ id }, index) => (

@@ -88,6 +88,8 @@ export const KeyStorePrefixes = {
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
+  DynamicSecretUserCredentialRefreshLock: (userCredentialId: string) =>
+    `dynamic-secret-user-credential-refresh-mutex-${userCredentialId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   OidcIssuerKeyRotationLock: (orgId: string) => `oidc-issuer-key-rotation-mutex-${orgId}` as const,
   OidcIssuerJwks: (orgId: string) => `oidc-issuer-jwks:${orgId}` as const,
