@@ -1,22 +1,22 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-import { PackRule, unpackRules } from "@casl/ability/extra";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import {
   AccessScope,
-  ActionProjectType,
-  OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
-  ResourceType,
   TableName,
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -26,7 +26,29 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionMemberActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  TProjectsService,
+  ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionPkiSubscriberActions,
+  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionSecretActions,
+  ProjectPermission,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -36,35 +58,11 @@ import {
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import {
-  OrgPermissionActions,
-  OrgPermissionAdminConsoleAction,
-  OrgPermissionMemberActions,
-  OrgPermissionProjectActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionAuditLogsActions,
-  ProjectPermissionCertificateActions,
-  ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionPkiSubscriberActions,
-  ProjectPermissionPkiTemplateActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
-import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
 } from "@app/ee/services/project-template/project-template-types";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
@@ -76,13 +74,12 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { OrgServiceActor, TActorInput } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";
@@ -157,7 +154,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  projectsService: TProjectsService;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -199,7 +196,10 @@ type TProjectServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -240,10 +240,13 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
-  organizationsProjectsService,
+  projectsService,
   projectQueue,
   secretValueTrackingService,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
+  secretsPermissionService,
+  applicationPermissionService,
   orgDAL,
   userDAL,
   folderDAL,
@@ -301,9 +304,6 @@ export const projectServiceFactory = ({
    * */
   const createProject = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     projectName: workspaceName,
     projectDescription: workspaceDescription,
     slug: projectSlug,
@@ -323,19 +323,12 @@ export const projectServiceFactory = ({
       throw new BadRequestError({ message: "Agent Vault projects don't use project templates" });
     }
 
-    const organization = await orgDAL.findOne({ id: actorOrgId });
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: organization.id,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const organization = await orgDAL.findOne({ id: actor.org.id });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId: organization.id });
 
     if (
-      permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
-      permission.cannot(OrgPermissionProjectActions.Create, OrgPermissionSubjects.Project)
+      permission.cannot({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Workspace }) &&
+      permission.cannot({ action: OrgPermissionProjectActions.Create, subject: OrgPermissionSubjects.Project })
     ) {
       throw new ForbiddenRequestError({ message: "You don't have permission to create a project" });
     }
@@ -349,7 +342,7 @@ export const projectServiceFactory = ({
       // Counted under the lock on this transaction, so concurrent creates and restores can't pass the limit
       // together, and an import creating many projects in one transaction counts the ones it already made.
       if (plan.isLimited(PlanLimit.Projects) && type === ProjectType.SecretManager) {
-        const currentProjectCount = await organizationsProjectsService
+        const currentProjectCount = await projectsService
           .within(sealKnexTransaction(tx))
           .lockAndCountWorkspaces(organization.id);
         if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
@@ -373,7 +366,7 @@ export const projectServiceFactory = ({
       }
 
       if (kmsKeyId) {
-        if (permission.cannot(OrgPermissionActions.Read, OrgPermissionSubjects.Kms)) {
+        if (permission.cannot({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms })) {
           throw new ForbiddenRequestError({ message: "You don't have permission to use this KMS key" });
         }
 
@@ -400,12 +393,7 @@ export const projectServiceFactory = ({
           projectTemplate = null;
           break;
         default:
-          projectTemplate = await projectTemplateService.findProjectTemplateByName(template, {
-            id: actorId,
-            orgId: organization.id,
-            type: actor,
-            authMethod: actorAuthMethod
-          });
+          projectTemplate = await projectTemplateService.findProjectTemplateByName(template, actor);
       }
 
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
@@ -481,7 +469,7 @@ export const projectServiceFactory = ({
           });
 
           // If template has an admin, include the creator in template users, otherwise exclude them
-          const usersToProcess = templateHasAdmin ? users : users.filter((u) => u.id !== actorId);
+          const usersToProcess = templateHasAdmin ? users : users.filter((u) => u.id !== actor.principal.id);
           const userIds = usersToProcess.map((u) => u.id);
 
           if (userIds.length) {
@@ -497,7 +485,7 @@ export const projectServiceFactory = ({
             const userIdToOrgMembership = new Map(orgMemberships.map((m) => [m.actorUserId, m]));
             const usersToAdd = usersToProcess.filter((u) => userIdToOrgMembership.has(u.id));
 
-            if (templateHasAdmin && usersToAdd.some((u) => u.id === actorId)) {
+            if (templateHasAdmin && usersToAdd.some((u) => u.id === actor.principal.id)) {
               creatorAddedViaTemplate = true;
             }
 
@@ -745,9 +733,9 @@ export const projectServiceFactory = ({
 
       // If the project is being created by a user, add the user to the project as an admin
       // Skip this if the creator was already added via template with their configured roles
-      if (actor === ActorType.USER && !creatorAddedViaTemplate) {
+      if (actor.principal.type === ActorType.USER && !creatorAddedViaTemplate) {
         // Find public key of user
-        const user = await userDAL.findUserEncKeyByUserId(actorId, tx);
+        const user = await userDAL.findUserEncKeyByUserId(actor.principal.id, tx);
 
         if (!user) {
           throw new Error("User not found");
@@ -770,23 +758,23 @@ export const projectServiceFactory = ({
       }
 
       // If the project is being created by an identity, add the identity to the project as an admin
-      else if (actor === ActorType.IDENTITY) {
+      else if (actor.principal.type === ActorType.IDENTITY) {
         const identityOrgMembership = await orgDAL.findEffectiveOrgMembership({
           actorType: ActorType.IDENTITY,
-          actorId,
+          actorId: actor.principal.id,
           orgId: project.orgId,
           tx
         });
 
         if (!identityOrgMembership) {
           throw new NotFoundError({
-            message: `Failed to find identity with id '${actorId}'`
+            message: `Failed to find identity with id '${actor.principal.id}'`
           });
         }
 
         const identityProjectMembership = await membershipIdentityDAL.create(
           {
-            actorIdentityId: actorId,
+            actorIdentityId: actor.principal.id,
             scopeProjectId: project.id,
             scope: AccessScope.Project,
             scopeOrgId: project.orgId
@@ -834,25 +822,11 @@ export const projectServiceFactory = ({
     return results;
   };
 
-  const deleteProject = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    filter,
-    hardDelete = false
-  }: TDeleteProjectDTO) => {
+  const deleteProject = async ({ actor, filter, hardDelete = false }: TDeleteProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId: project.id });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Project });
 
     if (project.hasDeleteProtection) {
       throw new ForbiddenRequestError({
@@ -930,8 +904,8 @@ export const projectServiceFactory = ({
       const softDeletedProject = await projectDAL.softDeleteById(project.id, {
         deleteAfter: hasGracePeriod ? new Date(now.getTime() + SOFT_DELETE_GRACE_MS) : now,
         softDeletedAt: now,
-        deletedByActorType: actor,
-        deletedByActorId: actorId,
+        deletedByActorType: actor.principal.type,
+        deletedByActorId: actor.principal.id,
         slug: hasGracePeriod ? project.slug : `del-${alphaNumericNanoId(20)}`
       });
 
@@ -951,24 +925,12 @@ export const projectServiceFactory = ({
   };
 
   // A deleted project can't be resolved through project permissions, so org admins manage it.
-  const $checkCanManageDeletedProjects = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: Omit<TProjectPermission, "projectId">) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
+  const $checkCanManageDeletedProjects = async ({ actor }: TActorInput) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionAdminConsoleAction.AccessAllProjects,
+      subject: OrgPermissionSubjects.AdminConsole
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.AccessAllProjects,
-      OrgPermissionSubjects.AdminConsole
-    );
   };
 
   const $findDeletedProject = async (projectId: string, orgId: string) => {
@@ -981,12 +943,12 @@ export const projectServiceFactory = ({
 
   const listDeletedProjects = async ({ type, ...dto }: TListDeletedProjectsDTO) => {
     await $checkCanManageDeletedProjects(dto);
-    return projectDAL.findDeletedProjects(dto.actorOrgId, type);
+    return projectDAL.findDeletedProjects(dto.actor.org.id, type);
   };
 
-  const restoreProject = async ({ projectId, ...dto }: TProjectPermission) => {
+  const restoreProject = async ({ projectId, ...dto }: { projectId: string } & TActorInput) => {
     await $checkCanManageDeletedProjects(dto);
-    const project = await $findDeletedProject(projectId, dto.actorOrgId);
+    const project = await $findDeletedProject(projectId, dto.actor.org.id);
 
     if (new Date(project.deleteAfter).getTime() <= Date.now()) {
       throw new BadRequestError({
@@ -1009,7 +971,7 @@ export const projectServiceFactory = ({
     try {
       // Re-read under the lock: an overlapping restore may have just finished, and this one failing later
       // would cancel the revocations it queued.
-      await $findDeletedProject(projectId, dto.actorOrgId);
+      await $findDeletedProject(projectId, dto.actor.org.id);
 
       // Revoking a lease that expired while the project was deleted fails because the project can't be
       // resolved, and its retries may have run out, so queue those revocations again. They're queued
@@ -1062,7 +1024,7 @@ export const projectServiceFactory = ({
 
         const restored = await projectDAL.transaction(async (tx) => {
           if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
-            const currentProjectCount = await organizationsProjectsService
+            const currentProjectCount = await projectsService
               .within(sealKnexTransaction(tx))
               .lockAndCountWorkspaces(project.orgId);
             if (plan.exceeds(PlanLimit.Projects, currentProjectCount)) {
@@ -1100,9 +1062,9 @@ export const projectServiceFactory = ({
     }
   };
 
-  const permanentlyDeleteProject = async ({ projectId, ...dto }: TProjectPermission) => {
+  const permanentlyDeleteProject = async ({ projectId, ...dto }: { projectId: string } & TActorInput) => {
     await $checkCanManageDeletedProjects(dto);
-    const project = await $findDeletedProject(projectId, dto.actorOrgId);
+    const project = await $findDeletedProject(projectId, dto.actor.org.id);
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {
@@ -1128,20 +1090,11 @@ export const projectServiceFactory = ({
     }
   };
 
-  const getProjects = async ({
-    actorId,
-    actor,
-    includeRoles,
-    actorAuthMethod,
-    actorOrgId,
-    type,
-    limit,
-    offset
-  }: TListProjectsDTO) => {
+  const getProjects = async ({ actor, includeRoles, type, limit, offset }: TListProjectsDTO) => {
     const { projects: actorProjects, totalCount } = await projectDAL.findActorProjects({
-      actorType: actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
-      actorId,
-      orgIds: [actorOrgId],
+      actorType: actor.principal.type === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+      actorId: actor.principal.id,
+      orgIds: [actor.org.id],
       projectType: type,
       limit,
       offset
@@ -1169,17 +1122,10 @@ export const projectServiceFactory = ({
     }));
 
     if (includeRoles) {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor });
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+      permission.assert({ action: OrgPermissionMemberActions.Create, subject: OrgPermissionSubjects.Member });
       const customRoles = await roleDAL.find({
         $in: {
           projectId: workspaces.map((workspace) => workspace.id)
@@ -1206,10 +1152,7 @@ export const projectServiceFactory = ({
     return { projects: workspaces, totalCount };
   };
 
-  const getAccessibleProjectsWithSubOrgs = async ({
-    actorId,
-    actorOrgId
-  }: Pick<TListProjectsDTO, "actorId" | "actorOrgId">) => {
+  const getAccessibleProjectsWithSubOrgs = async ({ actorId, actorOrgId }: { actorId: string; actorOrgId: string }) => {
     const organizations = await orgDAL.listOrganizationsWithSubOrgs({ actorId });
     const currentOrganization = organizations.find((organization) => organization.id === actorOrgId);
     const organizationIds = [actorOrgId];
@@ -1228,36 +1171,22 @@ export const projectServiceFactory = ({
     return projects.map(({ id, orgId, name, slug, type }) => ({ id, orgId, name, slug, type }));
   };
 
-  const getAProject = async ({ actorId, actorOrgId, actorAuthMethod, filter, actor }: TGetProjectDTO) => {
+  const getAProject = async ({ filter, actor }: TGetProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
 
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    await secretsPermissionService.getProjectPermissionWithFolderGrants({ actor, projectId: project.id });
 
     const deletedEnvironments = await projectDAL.findProjectDeletedEnvironments(project.id);
 
     return { ...project, deletedEnvironments };
   };
 
-  const updateProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, update, filter }: TUpdateProjectDTO) => {
+  const updateProject = async ({ actor, update, filter }: TUpdateProjectDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const appCfg = getConfig();
 
-    const { permission, hasRole } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId: project.id });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
     // PAM owns one implicit project per org, so its name, slug and delete protection are not the caller's to
     // change. Create and delete are already guarded; this route was not.
@@ -1267,23 +1196,20 @@ export const projectServiceFactory = ({
       });
     }
 
-    if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
+    if (update.secretDetectionIgnoreValues && !permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "Only admins can update secret detection ignore values"
       });
     }
 
-    if (project.type === ProjectType.CertificateManager && !hasRole(ProjectMembershipRole.Admin)) {
+    if (project.type === ProjectType.CertificateManager && !permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "Only admins can update Certificate Manager project settings"
       });
     }
 
     if (update.auditLogsRetentionDays !== undefined) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAuditLogsActions.Edit,
-        ProjectPermissionSub.AuditLogs
-      );
+      permission.assert({ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs });
 
       if (appCfg.isCloud) {
         throw new BadRequestError({
@@ -1347,20 +1273,10 @@ export const projectServiceFactory = ({
   const toggleAutoCapitalization = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     autoCapitalization
   }: TToggleProjectAutoCapitalizationDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
     const updatedProject = await projectDAL.updateById(projectId, {
       autoCapitalization,
@@ -1373,51 +1289,27 @@ export const projectServiceFactory = ({
   const toggleDeleteProtection = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     hasDeleteProtection
   }: TToggleProjectDeleteProtectionDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
     const updatedProject = await projectDAL.updateById(projectId, { hasDeleteProtection });
 
     return updatedProject;
   };
 
-  const updateVersionLimit = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    pitVersionLimit,
-    workspaceSlug
-  }: TUpdateProjectVersionLimitDTO) => {
-    const project = await projectDAL.findProjectBySlug(workspaceSlug, actorOrgId);
+  const updateVersionLimit = async ({ actor, pitVersionLimit, workspaceSlug }: TUpdateProjectVersionLimitDTO) => {
+    const project = await projectDAL.findProjectBySlug(workspaceSlug, actor.org.id);
     if (!project) {
       throw new NotFoundError({
         message: `Project with slug '${workspaceSlug}' not found`
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId: project.id });
 
-    if (!hasRole(ProjectMembershipRole.Admin))
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin }))
       throw new ForbiddenRequestError({
         message: "Insufficient privileges, only admins are allowed to take this action"
       });
@@ -1425,14 +1317,7 @@ export const projectServiceFactory = ({
     return projectDAL.updateById(project.id, { pitVersionLimit });
   };
 
-  const updateAuditLogsRetention = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    auditLogsRetentionDays,
-    filter
-  }: TUpdateAuditLogsRetentionDTO) => {
+  const updateAuditLogsRetention = async ({ actor, auditLogsRetentionDays, filter }: TUpdateAuditLogsRetentionDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
@@ -1442,18 +1327,8 @@ export const projectServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAuditLogsActions.Edit,
-      ProjectPermissionSub.AuditLogs
-    );
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs });
 
     const plan = await licenseService.getPlan(project.orgId);
     if (!plan.has(PlanFeature.AuditLogs) || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
@@ -1465,48 +1340,20 @@ export const projectServiceFactory = ({
     return projectDAL.updateById(project.id, { auditLogsRetentionDays });
   };
 
-  const updateName = async ({
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    name
-  }: TUpdateProjectNameDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+  const updateName = async ({ projectId, actor, name }: TUpdateProjectNameDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
     const updatedProject = await projectDAL.updateById(projectId, { name });
     return updatedProject;
   };
 
-  const upgradeProject = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    userPrivateKey
-  }: TUpgradeProjectDTO) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+  const upgradeProject = async ({ projectId, actor, userPrivateKey }: TUpgradeProjectDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Project);
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Project });
 
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "User must be admin"
       });
@@ -1517,7 +1364,7 @@ export const projectServiceFactory = ({
 
     await projectQueue.upgradeProject({
       projectId,
-      startedByUserId: actorId,
+      startedByUserId: actor.principal.id,
       encryptedPrivateKey: {
         encryptedKey: encryptedPrivateKey.ciphertext,
         encryptedKeyIv: encryptedPrivateKey.iv,
@@ -1530,52 +1377,29 @@ export const projectServiceFactory = ({
   const extractProjectIdFromSlug = async ({
     projectSlug,
     projectId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: {
     projectSlug?: string;
     projectId?: string;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actor: ActorType;
-    actorOrgId: string;
-  }) => {
+  } & TActorInput) => {
     if (projectId) return projectId;
     if (!projectSlug) throw new BadRequestError({ message: "You must provide projectSlug or workspaceId" });
     const project = await getAProject({
       filter: {
         type: ProjectFilterType.SLUG,
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         slug: projectSlug
       },
-      actorId,
-      actorAuthMethod,
-      actor,
-      actorOrgId
+      actor
     });
 
     if (!project) throw new NotFoundError({ message: `No project found with slug ${projectSlug}` });
     return project.id;
   };
 
-  const getProjectUpgradeStatus = async ({
-    projectId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    actorId
-  }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+  const getProjectUpgradeStatus = async ({ projectId, actor }: { projectId: string } & TActorInput) => {
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({ actor, projectId });
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     const project = await projectDAL.findProjectById(projectId);
 
@@ -1597,28 +1421,22 @@ export const projectServiceFactory = ({
     commonName,
     limit = 25,
     offset = 0,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     filter,
     actor
   }: TListProjectCasDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities
+    });
 
     const cas = await certificateAuthorityDAL.findWithAssociatedCa(
       {
@@ -1670,9 +1488,6 @@ export const projectServiceFactory = ({
     sortByCurrentStatus,
     statusAt,
     excludeFriendlyNameFromSearch,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     filter,
     actor
   }: TListProjectCertsDTO) => {
@@ -1681,38 +1496,35 @@ export const projectServiceFactory = ({
 
     const scopedToSingleApplication = Boolean(applicationId);
     let allowedByResource = false;
-    let projectPermission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"] | null =
-      null;
+    let projectPermission: ProjectPermission | null = null;
 
     if (scopedToSingleApplication) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+      const resourcePermission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId!,
-        actorAuthMethod,
-        actorOrgId
+        applicationId: applicationId!
       });
-      if (resourcePermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)) {
+      if (
+        resourcePermission.can({
+          action: ApplicationCertificatePermissionActions.Read,
+          subject: ApplicationPermissionSub.Certificates
+        })
+      ) {
         allowedByResource = true;
       }
     }
 
     if (!allowedByResource) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
       projectPermission = permission;
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Read,
-        ProjectPermissionSub.Certificates
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates
+      });
     }
 
     const regularFilters = {
@@ -1747,7 +1559,7 @@ export const projectServiceFactory = ({
       allowedByResource || !projectPermission
         ? undefined
         : getProcessedPermissionRules(
-            projectPermission,
+            projectPermission.toAbility(),
             ProjectPermissionCertificateActions.Read,
             ProjectPermissionSub.Certificates
           );
@@ -1808,23 +1620,17 @@ export const projectServiceFactory = ({
     };
   };
 
-  const getDashboardStats = async ({ filter, actorId, actorOrgId, actorAuthMethod, actor }: TGetDashboardStatsDTO) => {
+  const getDashboardStats = async ({ filter, actor }: TGetDashboardStatsDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    permission.assert({ action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates });
 
     return withCache({
       keyStore,
@@ -1834,30 +1640,17 @@ export const projectServiceFactory = ({
     });
   };
 
-  const getActivityTrend = async ({
-    filter,
-    range = "30d",
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor
-  }: TGetActivityTrendDTO) => {
+  const getActivityTrend = async ({ filter, range = "30d", actor }: TGetActivityTrendDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    permission.assert({ action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates });
 
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
@@ -1870,30 +1663,17 @@ export const projectServiceFactory = ({
     });
   };
 
-  const getPqcTrend = async ({
-    filter,
-    range = "30d",
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor
-  }: TGetActivityTrendDTO) => {
+  const getPqcTrend = async ({ filter, range = "30d", actor }: TGetActivityTrendDTO) => {
     const project = await projectDAL.findProjectByFilter(filter);
     const projectId = project.id;
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    permission.assert({ action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates });
 
     const rangeDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "6m": 180 };
     const daysBack = rangeDaysMap[range];
@@ -1909,23 +1689,14 @@ export const projectServiceFactory = ({
   /**
    * Return list of (PKI) alerts configured for project
    */
-  const listProjectAlerts = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TListProjectAlertsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+  const listProjectAlerts = async ({ projectId, actor }: TListProjectAlertsDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.PkiAlerts });
 
     const alerts = await pkiAlertDAL.find({ projectId });
 
@@ -1937,23 +1708,14 @@ export const projectServiceFactory = ({
   /**
    * Return list of PKI collections for project
    */
-  const listProjectPkiCollections = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TListProjectAlertsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+  const listProjectPkiCollections = async ({ projectId, actor }: TListProjectAlertsDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiCollections);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.PkiCollections });
 
     const pkiCollections = await pkiCollectionDAL.find({ projectId });
 
@@ -1965,20 +1727,11 @@ export const projectServiceFactory = ({
   /**
    * Return list of PKI subscribers for project
    */
-  const listProjectPkiSubscribers = async ({
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor,
-    projectId
-  }: TListProjectPkiSubscribersDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+  const listProjectPkiSubscribers = async ({ actor, projectId }: TListProjectPkiSubscribersDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const allowedSubscribers = [];
@@ -1987,12 +1740,13 @@ export const projectServiceFactory = ({
     const subscribers = await pkiSubscriberDAL.find({ projectId });
 
     for (const subscriber of subscribers) {
-      const canRead = permission.can(
-        ProjectPermissionPkiSubscriberActions.Read,
-        subject(ProjectPermissionSub.PkiSubscribers, {
+      const canRead = permission.can({
+        action: ProjectPermissionPkiSubscriberActions.Read,
+        subject: ProjectPermissionSub.PkiSubscribers,
+        fields: {
           name: subscriber.name
-        })
-      );
+        }
+      });
       if (canRead) {
         allowedSubscribers.push(subscriber);
       }
@@ -2004,52 +1758,30 @@ export const projectServiceFactory = ({
   /**
    * Return list of certificate templates for project
    */
-  const listProjectCertificateTemplates = async ({
-    projectId,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    actor
-  }: TListProjectCertificateTemplatesDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+  const listProjectCertificateTemplates = async ({ projectId, actor }: TListProjectCertificateTemplatesDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const certificateTemplates = await certificateTemplateDAL.getCertTemplatesByProjectId(projectId);
 
     return {
       certificateTemplates: certificateTemplates.filter((el) =>
-        permission.can(
-          ProjectPermissionPkiTemplateActions.Read,
-          subject(ProjectPermissionSub.CertificateTemplates, { name: el.name })
-        )
+        permission.can({
+          action: ProjectPermissionPkiTemplateActions.Read,
+          subject: ProjectPermissionSub.CertificateTemplates,
+          fields: { name: el.name }
+        })
       )
     };
   };
 
-  const updateProjectKmsKey = async ({
-    projectId,
-    kms,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TUpdateProjectKmsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+  const updateProjectKmsKey = async ({ projectId, kms, actor }: TUpdateProjectKmsDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Kms });
 
     const secretManagerKmsKey = await kmsDataKeyService.updateProjectSecretManagerKmsKey({
       projectId,
@@ -2061,25 +1793,12 @@ export const projectServiceFactory = ({
     };
   };
 
-  const getProjectKmsBackup = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TProjectPermission) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+  const getProjectKmsBackup = async ({ projectId, actor }: { projectId: string } & TActorInput) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Kms });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
@@ -2090,26 +1809,12 @@ export const projectServiceFactory = ({
     return kmsBackup;
   };
 
-  const loadProjectKmsBackup = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    backup
-  }: TLoadProjectKmsBackupDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+  const loadProjectKmsBackup = async ({ projectId, actor, backup }: TLoadProjectKmsBackupDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Kms });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.ExternalKms)) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."
@@ -2120,15 +1825,8 @@ export const projectServiceFactory = ({
     return kmsBackup;
   };
 
-  const getProjectKmsKeys = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId }: TGetProjectKmsKey) => {
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+  const getProjectKmsKeys = async ({ projectId, actor }: TGetProjectKmsKey) => {
+    await projectPermissionService.getProjectPermission({ actor, projectId });
 
     const kmsKeyId = await kmsDataKeyService.getProjectSecretManagerKmsKeyId(projectId);
     const kmsKey = await kmsKeyService.getKmsById(kmsKeyId);
@@ -2137,23 +1835,13 @@ export const projectServiceFactory = ({
   };
 
   const getProjectWorkflowIntegrationConfig = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     integration
   }: TGetProjectWorkflowIntegrationConfig) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Settings);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Settings });
 
     if (integration === WorkflowIntegration.SLACK) {
       const config = await projectSlackConfigDAL.findOne({
@@ -2197,10 +1885,7 @@ export const projectServiceFactory = ({
   };
 
   const updateProjectWorkflowIntegration = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     integration,
     integrationId,
@@ -2225,16 +1910,9 @@ export const projectServiceFactory = ({
     }
 
     if (integration === WorkflowIntegration.SLACK) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+      permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
       const sanitizedAccessRequestChannels = validateSlackChannelsField.parse(accessRequestChannels);
       const sanitizedSecretRequestChannels = validateSlackChannelsField.parse(secretRequestChannels);
@@ -2248,7 +1926,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      if (slackIntegration.orgId !== actorOrgId) {
+      if (slackIntegration.orgId !== actor.org.id) {
         throw new ForbiddenRequestError({
           message: "Selected slack integration is not in the same organization"
         });
@@ -2309,16 +1987,9 @@ export const projectServiceFactory = ({
       } as const;
     }
     if (integration === WorkflowIntegration.MICROSOFT_TEAMS) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
+      permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Settings });
 
       if (isAccessRequestNotificationEnabled && !accessRequestChannels) {
         throw new BadRequestError({
@@ -2353,7 +2024,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      if (microsoftTeamsIntegration.orgId !== actorOrgId) {
+      if (microsoftTeamsIntegration.orgId !== actor.org.id) {
         throw new ForbiddenRequestError({
           message: "Selected Microsoft Teams integration is not in the same organization"
         });
@@ -2418,24 +2089,14 @@ export const projectServiceFactory = ({
   };
 
   const deleteProjectWorkflowIntegration = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     integrationId,
     integration
   }: TDeleteProjectWorkflowIntegration) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Settings);
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Settings });
 
     if (integration === WorkflowIntegration.SLACK) {
       const [deletedIntegration] = await projectSlackConfigDAL.delete({
@@ -2463,7 +2124,7 @@ export const projectServiceFactory = ({
   const searchProjects = async ({
     name,
     offset,
-    permission,
+    actor,
     limit,
     type,
     orderBy,
@@ -2471,14 +2132,7 @@ export const projectServiceFactory = ({
     projectIds
   }: TSearchProjectsDTO) => {
     // check user belong to org
-    await permissionService.getOrgPermission({
-      actor: permission.type,
-      actorId: permission.id,
-      orgId: permission.orgId,
-      actorAuthMethod: permission.authMethod,
-      scope: OrganizationActionScope.Any,
-      actorOrgId: permission.orgId
-    });
+    await orgPermissionService.getOrgPermission({ actor });
 
     return projectDAL.searchProjects({
       limit,
@@ -2486,15 +2140,15 @@ export const projectServiceFactory = ({
       name,
       type,
       projectIds,
-      orgId: permission.orgId,
-      actor: permission.type,
-      actorId: permission.id,
+      orgId: actor.org.id,
+      actor: actor.principal.type,
+      actorId: actor.principal.id,
       sortBy: orderBy,
       sortDir: orderDirection
     });
   };
 
-  const requestProjectAccess = async ({ permission, comment, projectId }: TProjectAccessRequestDTO) => {
+  const requestProjectAccess = async ({ actor, comment, projectId }: TProjectAccessRequestDTO) => {
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
     );
@@ -2504,31 +2158,12 @@ export const projectServiceFactory = ({
       });
     }
     // check user belong to org and has permission to request project access
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actor: permission.type,
-      actorId: permission.id,
-      orgId: project.orgId,
-      actorAuthMethod: permission.authMethod,
-      actorOrgId: permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionProjectActions.RequestAccess,
-      OrgPermissionSubjects.Project
-    );
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor, orgId: project.orgId });
+    orgPermission.assert({ action: OrgPermissionProjectActions.RequestAccess, subject: OrgPermissionSubjects.Project });
 
-    const projectMember = await permissionService
-      .getProjectPermission({
-        actor: permission.type,
-        actorId: permission.id,
-        projectId,
-        actionProjectType: ActionProjectType.Any,
-        actorAuthMethod: permission.authMethod,
-        actorOrgId: permission.orgId
-      })
-      .catch(() => {
-        return null;
-      });
+    const projectMember = await projectPermissionService.getProjectPermission({ actor, projectId }).catch(() => {
+      return null;
+    });
     if (projectMember) throw new BadRequestError({ message: "User already has access to the project" });
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
@@ -2537,25 +2172,19 @@ export const projectServiceFactory = ({
       .filter((member) => member.roles.some((role) => role.role === ProjectMembershipRole.Admin))
       .map((el) => el.user.email!);
     if (filteredProjectMembers.length === 0) {
-      const customRolesWithMemberCreate = await roleDAL.find({ projectId });
-      const customRoleSlugsCanCreate = customRolesWithMemberCreate
-        .filter((role) => {
-          try {
-            const permissions = (
-              typeof role.permissions === "string"
-                ? (JSON.parse(role.permissions) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[])
-                : role.permissions
-            ) as PackRule<RawRuleOf<MongoAbility<ProjectPermissionSet>>>[];
-
-            const ability = createMongoAbility<MongoAbility<ProjectPermissionSet>>(
-              unpackRules<RawRuleOf<MongoAbility<ProjectPermissionSet>>>(permissions)
-            );
-            return ability.can(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
-          } catch {
-            return false;
-          }
+      const customRoles = await roleDAL.find({ projectId });
+      const customRolePermissions = await projectPermissionService
+        .getProjectPermissionByRoles({
+          projectId,
+          roles: customRoles.map((role) => role.slug),
+          ignoreUnresolvedRoles: true
         })
-        .map((role) => role.slug);
+        .catch(() => []);
+      const customRoleSlugsCanCreate = customRolePermissions
+        .filter(({ permission }) =>
+          permission.can({ action: ProjectPermissionMemberActions.Create, subject: ProjectPermissionSub.Member })
+        )
+        .map(({ role }) => role.slug);
 
       if (customRoleSlugsCanCreate.length > 0) {
         const usersWithCustomCreateMemberRole = projectMembers
@@ -2578,9 +2207,9 @@ export const projectServiceFactory = ({
       });
     }
 
-    const org = await orgDAL.findOne({ id: permission.orgId });
-    const userDetails = await requestMemoize(requestMemoKeys.userFindById(permission.id), () =>
-      userDAL.findById(permission.id)
+    const org = await orgDAL.findOne({ id: actor.org.id });
+    const userDetails = await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+      userDAL.findById(actor.principal.id)
     );
     const appCfg = getConfig();
 
@@ -2605,7 +2234,7 @@ export const projectServiceFactory = ({
 
     await projectAccessRequestDAL.upsertPendingRequest({
       projectId,
-      requesterUserId: permission.id,
+      requesterUserId: actor.principal.id,
       comment: comment || null
     });
 

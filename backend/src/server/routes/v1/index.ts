@@ -235,9 +235,9 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(
         async (applicationsRouter) => {
           applicationsRouter.addHook("preHandler", async (req) => {
-            if (!req.permission?.orgId) return;
+            if (!req.actor?.orgId) return;
             const activeProjectId = await applicationsRouter.services.certManagerProjectResolver.getActiveProjectId(
-              req.permission.orgId
+              req.actor.orgId
             );
             if (!activeProjectId) {
               throw new BadRequestError({

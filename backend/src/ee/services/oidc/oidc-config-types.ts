@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 
 export const OIDC_CONFIG_AUDIT_FIELDS = [
@@ -56,7 +56,7 @@ export type TGetOidcCfgDTO =
   | ({
       type: "external";
       organizationId: string;
-    } & TGenericPermission)
+    } & TActorInput)
   | {
       type: "internal";
       organizationId: string;
@@ -79,7 +79,7 @@ export type TCreateOidcCfgDTO = {
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
   mfaClaimName?: string;
   mfaAmrValues?: string[] | null;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TUpdateOidcCfgDTO = Partial<{
   issuer: string;
@@ -99,8 +99,8 @@ export type TUpdateOidcCfgDTO = Partial<{
   mfaClaimName: string;
   mfaAmrValues: string[] | null;
 }> &
-  TGenericPermission;
+  TActorInput;
 
 export type TDeleteOidcCfgDTO = {
   organizationId: string;
-} & TGenericPermission;
+} & TActorInput;

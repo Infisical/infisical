@@ -8,12 +8,12 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { MembershipRoleSchema, RolesUpdateBodySchema } from "./schemas";
@@ -54,8 +54,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {
           offset: req.query.offset,
           limit: req.query.limit,
@@ -88,8 +88,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {
           offset: req.query.offset,
           limit: req.query.limit,
@@ -141,8 +141,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { identityId: req.params.identityId }
       });
       return { identityMembership };
@@ -186,8 +186,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
         throw new BadRequestError({ message: "You must provide either role or roles field" });
       }
       const { membership } = await server.services.membershipIdentity.createMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {
           identityId: req.params.identityId,
           roles: roles || [{ role, isTemporary: false }]
@@ -208,9 +208,9 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerMemberAdded,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           memberType: "identity",
           role: (roles || [{ role }]).map((r) => r.role).join(",")
@@ -235,8 +235,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipIdentity.updateMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { identityId: req.params.identityId },
         data: { roles: req.body.roles }
       });
@@ -255,9 +255,9 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerMemberUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           memberType: "identity",
           role: req.body.roles.map((r) => r.role).join(",")
@@ -280,8 +280,8 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { membership } = await server.services.membershipIdentity.deleteMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { identityId: req.params.identityId }
       });
       await server.services.auditLog.createAuditLog({
@@ -295,9 +295,9 @@ export const registerCertManagerAccessIdentitiesRouter = async (server: FastifyZ
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerMemberRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           memberType: "identity"
         }

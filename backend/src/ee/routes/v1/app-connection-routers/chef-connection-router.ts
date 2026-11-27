@@ -5,11 +5,11 @@ import {
   SanitizedChefConnectionSchema,
   UpdateChefConnectionSchema
 } from "@app/ee/services/app-connections/chef";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { registerAppConnectionEndpoints } from "@app/server/routes/v1/app-connection-routers/app-connection-endpoints";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerChefConnectionRouter = async (server: FastifyZodProvider) => {
   registerAppConnectionEndpoints({
@@ -41,7 +41,7 @@ export const registerChefConnectionRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const dataBags = await server.services.appConnection.chef.listDataBags(connectionId, req.permission);
+      const dataBags = await server.services.appConnection.chef.listDataBags(connectionId, req.actor);
 
       return dataBags;
     }
@@ -75,7 +75,7 @@ export const registerChefConnectionRouter = async (server: FastifyZodProvider) =
       const dataBagItems = await server.services.appConnection.chef.listDataBagItems(
         connectionId,
         dataBagName,
-        req.permission
+        req.actor
       );
 
       return dataBagItems;

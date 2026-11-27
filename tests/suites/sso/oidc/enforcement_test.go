@@ -61,7 +61,7 @@ func TestOIDCEnforcement(t *testing.T) {
 
 		// Assert
 		require.NoError(t, err)
-		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
 		require.Contains(t, string(res.Body), "Organization authentication is enforced")
 	})
 

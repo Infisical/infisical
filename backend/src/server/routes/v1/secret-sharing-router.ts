@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
@@ -18,7 +19,6 @@ import {
 } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -65,10 +65,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { secrets, totalCount } = await req.server.services.secretSharing.getSharedSecrets({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         type: SecretSharingType.Share,
         ...req.query
       });
@@ -112,16 +109,16 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const sharedSecret = await req.server.services.secretSharing.getSharedSecretById(
         req.params.id,
-        req.permission?.orgId,
-        req.permission?.id,
-        req.permission?.type
+        req.actor?.orgId,
+        req.actor?.id,
+        req.actor?.type
       );
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SharedSecretLinkOpened,
-          distinctId: req.permission?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
-          anonymous: !req.permission?.id,
+          distinctId: req.actor?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
+          anonymous: !req.actor?.id,
           organizationId: sharedSecret.orgId ?? undefined,
           properties: {
             accessType: sharedSecret.accessType as SecretSharingAccessType,
@@ -165,9 +162,9 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       const sharedSecret = await req.server.services.secretSharing.accessSharedSecret({
         sharedSecretId: req.params.id,
         password: req.body.password,
-        orgId: req.permission?.orgId,
-        actorId: req.permission?.id,
-        actor: req.permission?.type
+        orgId: req.actor?.orgId,
+        actorId: req.actor?.id,
+        actor: req.actor?.type
       });
 
       if (sharedSecret.orgId) {
@@ -187,13 +184,13 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SharedSecretViewed,
-        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
+        distinctId: req.actor?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
         // Suppress person-record creation for unauthenticated viewers — the
         // `anonymous-<share hash>` distinctId is synthesised per share and has
         // no continuity with any real user or identity, so creating a
         // PostHog person for it inflates the person count without adding
         // any analytical value.
-        anonymous: !req.permission?.id,
+        anonymous: !req.actor?.id,
         organizationId: sharedSecret.orgId ?? undefined,
         properties: {
           accessType: sharedSecret.accessType as SecretSharingAccessType
@@ -369,17 +366,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { authorizedEmails, ...restBody } = req.body;
       const sharedSecret = await req.server.services.secretSharing.createSharedSecret({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ...restBody,
         emails: authorizedEmails
       });
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.CREATE_SHARED_SECRET,
@@ -398,7 +392,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretShared,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           accessType: req.body.accessType,
           expiresAt: sharedSecret.expiresAt.toISOString(),
@@ -432,17 +426,14 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { id } = req.params;
       const deletedSharedSecret = await req.server.services.secretSharing.deleteSharedSecretById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         sharedSecretId: id,
         type: SecretSharingType.Share
       });
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.DELETE_SHARED_SECRET,
@@ -547,11 +538,11 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       }
 
       await req.server.services.secretSharing.uploadBrandingAsset(
-        req.permission.orgId,
+        req.actor.orgId,
         assetType,
         buffer,
         contentType.mime,
-        req.permission
+        req.actor
       );
 
       return { message: `Successfully uploaded ${assetType}` };
@@ -580,7 +571,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { assetType } = req.params;
 
-      await req.server.services.secretSharing.deleteBrandingAsset(req.permission.orgId, assetType, req.permission);
+      await req.server.services.secretSharing.deleteBrandingAsset(req.actor.orgId, assetType, req.actor);
 
       return { message: `Successfully deleted ${assetType}` };
     }
@@ -618,15 +609,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
         if (!orgId) {
           throw new NotFoundError({ message: "Shared secret not found" });
         }
-      } else if (req.permission?.orgId) {
-        orgId = req.permission.orgId;
+      } else if (req.actor?.orgId) {
+        orgId = req.actor.orgId;
       } else {
         throw new BadRequestError({ message: "Either authentication or a sharedSecretId query parameter is required" });
       }
 
       const config = await req.server.services.secretSharing.getOrgBrandConfig(
         orgId,
-        req.query.sharedSecretId ? undefined : req.permission
+        req.query.sharedSecretId ? undefined : req.actor
       );
 
       return {
@@ -655,11 +646,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
     handler: async (req, res) => {
       const { assetType } = req.params;
 
-      const asset = await req.server.services.secretSharing.getBrandingAsset(
-        req.permission.orgId,
-        assetType,
-        req.permission
-      );
+      const asset = await req.server.services.secretSharing.getBrandingAsset(req.actor.orgId, assetType, req.actor);
 
       if (!asset) {
         throw new NotFoundError({ message: `No ${assetType} configured for this organization` });

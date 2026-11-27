@@ -1,19 +1,27 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { RequestState } from "../secret-change-request/secret-change-request-types";
 import { TSecretChangePolicyRow } from "./secret-change-policy-dal";
 import { toSecretChangePolicy } from "./secret-change-policy-fns";
@@ -63,14 +71,8 @@ const buildRow = (overrides: Partial<TSecretChangePolicyRow> = {}): TSecretChang
 });
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "actor-1",
-  actorOrgId: ORG_ID,
-  actorAuthMethod: null
-} as unknown as Pick<
-  Parameters<ReturnType<typeof secretChangePolicyServiceFactory>["createSecretApprovalPolicy"]>[0],
-  "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"
->;
+  actor: { principal: { type: ActorType.USER, id: "actor-1" }, org: { id: ORG_ID } } as unknown as TActorContext
+};
 
 type TMembership = { effectiveUserIds: string[]; effectiveGroupIds: string[] };
 type TExistingPolicy = { id: string; environments: { id: string }[] };
@@ -155,7 +157,12 @@ const buildService = ({
         Promise.resolve(users.filter((user) => $in.username.includes(user.username)))
       )
     },
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Permission.fromRules({ rules: permission.rules }),
+        folderGrants: FolderGrants.none()
+      })
+    },
     licenseService
   };
 
@@ -210,7 +217,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
     await expect(
       create(service, { delegatedApproval: { type: DelegatedApprovalPolicyType.ServiceNow, connectionId: "conn-1" } })
     ).rejects.toThrow("Only secret access policies can be handled by a delegated approval system");
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretsPermissionService.getSecretsPermission).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
@@ -235,7 +242,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
   test("rejects an actor without create permission on secret approvals", async () => {
     const { service, deps } = buildService({ permission: denyAll });
 
-    await expect(create(service)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(create(service)).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
@@ -479,7 +486,7 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
   test("rejects an actor without edit permission on secret approvals", async () => {
     const { service, deps } = buildService({ permission: denyAll });
 
-    await expect(update(service)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(update(service)).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
@@ -732,7 +739,7 @@ describe("secretChangePolicy deleteSecretApprovalPolicy", () => {
   test("rejects an actor without delete permission on secret approvals", async () => {
     const { service, deps } = buildService({ permission: denyAll });
 
-    await expect(remove(service)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(remove(service)).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(deps.approvalRequestDAL.update).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.deleteById).not.toHaveBeenCalled();
   });
@@ -791,13 +798,13 @@ describe("secretChangePolicy getSecretApprovalPolicyById", () => {
       policyId: "policy-1",
       organizationId: ORG_ID
     });
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretsPermissionService.getSecretsPermission).not.toHaveBeenCalled();
   });
 
   test("rejects an actor without read permission on secret approvals", async () => {
     const { service } = buildService({ permission: denyAll });
 
-    await expect(getById(service)).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(getById(service)).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   test("returns the policy in the legacy shape", async () => {
@@ -805,7 +812,7 @@ describe("secretChangePolicy getSecretApprovalPolicyById", () => {
     const { service, deps } = buildService({ permission: allowRead, rows: [row] });
 
     await expect(getById(service)).resolves.toEqual(toSecretChangePolicy(row));
-    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
+    expect(deps.secretsPermissionService.getSecretsPermission).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: PROJECT_ID })
     );
   });
@@ -816,7 +823,7 @@ describe("secretChangePolicy getSecretApprovalPolicyByProjectId", () => {
     const { service } = buildService({ permission: denyAll });
 
     await expect(service.getSecretApprovalPolicyByProjectId({ ...ctx, projectId: PROJECT_ID })).rejects.toBeInstanceOf(
-      ForbiddenError
+      PermissionDeniedError
     );
   });
 

@@ -6,8 +6,8 @@ import { Knex } from "knex";
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { normalizeEmail } from "@app/lib/validator";
-import { AuthTokenType } from "@app/services/auth/auth-type";
 import { EmailDispatchPurpose } from "@app/services/auth/email-dispatch-guard";
 
 import { TTestSmtpService } from "../../mocks/smtp";

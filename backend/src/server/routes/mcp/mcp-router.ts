@@ -3,10 +3,10 @@ import { FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { mcpLimit, publicJwksLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { getMcpOauthUrls, MCP_ENDPOINT_PATH } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthScope } from "@app/services/oauth-client/oauth-scope";
 

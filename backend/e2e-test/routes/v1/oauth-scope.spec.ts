@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 
 // Mints a delegated OAuth access token for the seed user (an org admin) with the given scopes. It

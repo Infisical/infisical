@@ -11,12 +11,12 @@ import {
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { FilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS, PROJECTS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { isUuidV4 } from "@app/lib/validator";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -79,7 +79,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       let groupId = req.params.groupIdOrName;
       if (!isUuidV4(req.params.groupIdOrName)) {
-        const groupDetails = await server.services.convertor.getGroupIdFromName(groupId, req.permission.orgId);
+        const groupDetails = await server.services.convertor.getGroupIdFromName(groupId, req.actor.orgId);
         groupId = groupDetails.groupId;
       }
 
@@ -89,14 +89,14 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
           ? [{ role: req.body.role, isTemporary: false }]
           : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
       const { membership: groupMembership, group } = await server.services.membershipGroup.createMembership({
-        permission: req.permission,
+        actor: req.actor,
         data: {
           groupId,
           roles
         },
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         }
       });
@@ -126,7 +126,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         .sendPostHogEvents({
           event: PostHogEventTypes.GroupAddedToProject,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { groupId, projectId: req.params.projectId }
         })
         .catch(() => {});
@@ -189,7 +189,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const { membership: groupMembership, group } = await server.services.membershipGroup.updateMembership({
-        permission: req.permission,
+        actor: req.actor,
         selector: {
           groupId: req.params.groupId
         },
@@ -198,7 +198,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
         },
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         }
       });
@@ -259,13 +259,13 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const { membership: groupMembership, group } = await server.services.membershipGroup.deleteMembership({
-        permission: req.permission,
+        actor: req.actor,
         selector: {
           groupId: req.params.groupId
         },
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         }
       });
@@ -349,11 +349,11 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const { memberships: groupMemberships } = await server.services.membershipGroup.listMemberships({
-        permission: req.permission,
+        actor: req.actor,
         data: {},
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         }
       });
@@ -413,13 +413,13 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const { membership: groupMembership } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
+        actor: req.actor,
         selector: {
           groupId: req.params.groupId
         },
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         }
       });
@@ -482,10 +482,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       const { users, totalCount } = await server.services.groupProject.listProjectGroupUsers({
         id: req.params.groupId,
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query
       });
 

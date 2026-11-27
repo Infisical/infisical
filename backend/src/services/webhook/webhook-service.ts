@@ -1,9 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType, TWebhooksInsert } from "@app/db/schemas";
+import { TWebhooksInsert } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -30,7 +34,7 @@ type TWebhookServiceFactoryDep = {
   webhookDAL: TWebhookDALFactory;
   projectEnvDAL: TProjectEnvDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
 };
 
@@ -39,7 +43,7 @@ export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
 export const webhookServiceFactory = ({
   webhookDAL,
   projectEnvDAL,
-  permissionService,
+  projectPermissionService,
   projectDAL,
   kmsDataKeyService
 }: TWebhookServiceFactoryDep) => {
@@ -57,9 +61,6 @@ export const webhookServiceFactory = ({
 
   const createWebhook = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     webhookUrl,
     environment,
@@ -68,15 +69,8 @@ export const webhookServiceFactory = ({
     type,
     eventsFilter
   }: TCreateWebhookDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Webhooks);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.Webhooks });
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new NotFoundError({
@@ -108,27 +102,12 @@ export const webhookServiceFactory = ({
     return { ...withEventsFilter(webhook), projectId, environment: env };
   };
 
-  const updateWebhook = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    id,
-    isDisabled,
-    eventsFilter
-  }: TUpdateWebhookDTO) => {
+  const updateWebhook = async ({ actor, id, isDisabled, eventsFilter }: TUpdateWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: webhook.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Webhooks);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId: webhook.projectId });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Webhooks });
 
     const filteredEvents = eventsFilter?.map((e) => e.eventName);
 
@@ -141,36 +120,22 @@ export const webhookServiceFactory = ({
     return withEventsFilter({ ...webhook, ...updatedWebhook });
   };
 
-  const deleteWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteWebhookDTO) => {
+  const deleteWebhook = async ({ id, actor }: TDeleteWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: webhook.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Webhooks);
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId: webhook.projectId });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Webhooks });
 
     const deletedWebhook = await webhookDAL.deleteById(id);
     return withEventsFilter({ ...webhook, ...deletedWebhook });
   };
 
-  const testWebhook = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TTestWebhookDTO) => {
+  const testWebhook = async ({ id, actor }: TTestWebhookDTO) => {
     const webhook = await webhookDAL.findById(id);
     if (!webhook) throw new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: webhook.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId: webhook.projectId });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(webhook.projectId), () =>
       projectDAL.findById(webhook.projectId)
@@ -180,7 +145,7 @@ export const webhookServiceFactory = ({
       projectId: project.id
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Webhooks });
     let webhookError: string | undefined;
     try {
       const payload = getWebhookPayload({
@@ -217,24 +182,9 @@ export const webhookServiceFactory = ({
     return withEventsFilter({ ...webhook, ...updatedWebhook });
   };
 
-  const listWebhooks = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    secretPath,
-    environment
-  }: TListWebhookDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+  const listWebhooks = async ({ actor, projectId, secretPath, environment }: TListWebhookDTO) => {
+    const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Webhooks });
 
     const webhooks = await webhookDAL.findAllWebhooks(projectId, environment, secretPath);
     const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -251,7 +201,7 @@ export const webhookServiceFactory = ({
     });
   };
 
-  const getWebhookById = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TGetWebhookByIdDTO) => {
+  const getWebhookById = async ({ id, actor }: TGetWebhookByIdDTO) => {
     // Unauthorized callers get the same 404 as a missing webhook so the endpoint can't be used to enumerate webhook IDs.
     const notFound = new NotFoundError({ message: `Webhook with ID '${id}' not found` });
 
@@ -261,17 +211,14 @@ export const webhookServiceFactory = ({
     }
 
     try {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: webhook.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Webhooks);
+      const permission = await projectPermissionService.getProjectPermission({ actor, projectId: webhook.projectId });
+      permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Webhooks });
     } catch (error) {
-      if (error instanceof ForbiddenError || error instanceof ForbiddenRequestError) {
+      if (
+        error instanceof ForbiddenError ||
+        error instanceof ForbiddenRequestError ||
+        error instanceof PermissionDeniedError
+      ) {
         throw notFound;
       }
       throw error;

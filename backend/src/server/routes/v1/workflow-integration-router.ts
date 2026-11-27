@@ -1,7 +1,7 @@
 import { WorkflowIntegrationsSchema } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const sanitizedWorkflowIntegrationSchema = WorkflowIntegrationsSchema.pick({
   id: true,
@@ -32,10 +32,7 @@ export const registerWorkflowIntegrationRouter = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const workflowIntegrations = await server.services.workflowIntegration.getIntegrationsByOrg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       return workflowIntegrations;

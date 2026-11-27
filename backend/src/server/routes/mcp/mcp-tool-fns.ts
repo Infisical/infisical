@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   BadRequestError,
@@ -33,6 +34,9 @@ const $toToolInput = <T extends z.ZodTypeAny>(schema: T) => {
 };
 
 const $getToolErrorMessage = (error: unknown, toolName: string, actorId: string) => {
+  if (error instanceof PermissionDeniedError && error.denial) {
+    return `You are not allowed to ${error.denial.action} on ${error.denial.subject}`;
+  }
   if (error instanceof ForbiddenError) return `You are not allowed to ${error.action} on ${error.subjectType}`;
   if (
     error instanceof BadRequestError ||
@@ -56,12 +60,7 @@ export const createMcpToolContext = (
   mcpServer: McpServer,
   scopes: string[]
 ) => {
-  const actor = {
-    actor: req.permission.type,
-    actorId: req.permission.id,
-    actorOrgId: req.permission.orgId,
-    actorAuthMethod: req.permission.authMethod
-  };
+  const actor = { actor: req.actor };
   const auditLogInfo = { ...req.auditLogInfo, userAgentType: UserAgentType.REMOTE_MCP };
 
   // Analytics must never turn a tool call that already succeeded into an error.
@@ -69,7 +68,7 @@ export const createMcpToolContext = (
     try {
       await server.services.telemetry.sendPostHogEvents(event);
     } catch (error) {
-      logger.error(error, `Failed to send MCP analytics event [event=${event.event}] [actorId=${req.permission.id}]`);
+      logger.error(error, `Failed to send MCP analytics event [event=${event.event}] [actorId=${req.actor.id}]`);
     }
   };
 
@@ -88,12 +87,8 @@ export const createMcpToolContext = (
 
         // The same check consent ran, repeated because a connection outlives it: it refuses a user who has left the org
         // or no longer meets its SSO enforcement. Not every tool reaches a permission check of its own (list-projects).
-        await server.services.permission.getOrgPermission({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          orgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+        await server.services.orgPermissionService.getOrgPermission({
+          actor: req.actor,
           scope: OrganizationActionScope.ParentOrganization
         });
 
@@ -108,14 +103,14 @@ export const createMcpToolContext = (
         if (denial) {
           void server.services.auditLog.recordPermissionDenied({
             ...auditLogInfo,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: (args as { projectId?: string }).projectId,
             metadata: { ...denial, route: `MCP tool ${name}`, method: req.method }
           });
         }
 
         return {
-          content: [{ type: "text" as const, text: $getToolErrorMessage(error, name, req.permission.id) }],
+          content: [{ type: "text" as const, text: $getToolErrorMessage(error, name, req.actor.id) }],
           isError: true
         };
       }

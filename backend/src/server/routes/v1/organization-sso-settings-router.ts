@@ -2,9 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORG_SSO_SETTINGS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, SsoMfaTrust } from "@app/services/auth/auth-type";
+import { SsoMfaTrust } from "@app/services/auth/auth-type";
 
 const SsoSettingsResponseSchema = z.object({
   ssoSettings: z.object({
@@ -39,7 +40,7 @@ export const registerOrgSsoSettingsRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const ssoSettings = await server.services.org.getOrgSsoSettings(req.permission);
+      const ssoSettings = await server.services.org.getOrgSsoSettings(req.actor);
       return { ssoSettings };
     }
   });
@@ -78,13 +79,13 @@ export const registerOrgSsoSettingsRouter = async (server: FastifyZodProvider) =
     },
     handler: async (req) => {
       const ssoSettings = await server.services.org.updateOrgSsoSettings({
-        actor: req.permission,
+        actor: req.actor,
         data: req.body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_ORG_SSO_SETTINGS,
           metadata: req.body

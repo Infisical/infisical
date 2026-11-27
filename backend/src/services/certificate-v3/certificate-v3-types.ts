@@ -1,7 +1,8 @@
 import { Knex } from "knex";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
@@ -13,6 +14,7 @@ import {
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
+import { TCertificateIssuanceCaller } from "../certificate-common/certificate-permission-fns";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export type TIssueCertificateFromProfileDTO = {
@@ -48,7 +50,7 @@ export type TIssueCertificateFromProfileDTO = {
   removeRootsFromChain?: boolean;
   applicationId?: string;
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSignCertificateFromProfileDTO = {
   profileId: string;
@@ -74,7 +76,7 @@ export type TSignCertificateFromProfileDTO = {
   additionalExtensions?: TIssuerAddedExtension[];
   onCertificateRequestPersisted?: (certificateRequest: { id: string; createdAt: Date }, tx: Knex) => Promise<void>;
   renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
-} & Omit<TProjectPermission, "projectId">;
+} & TCertificateIssuanceCaller;
 
 export type TOrderCertificateFromProfileDTO = {
   profileId: string;
@@ -110,7 +112,7 @@ export type TOrderCertificateFromProfileDTO = {
   removeRootsFromChain?: boolean;
   applicationId?: string;
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCertificateIssuanceResponse = {
   status: CertificateRequestStatus;
@@ -194,16 +196,23 @@ export type TRenewCertificateDTO = {
     reissue?: boolean;
   };
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
+
+// The renewal queue renews on nobody's behalf and skips authz; every other caller passes its actor.
+export type TRenewCertificateInput = Omit<TRenewCertificateDTO, "certificateRequestId" | "actor"> &
+  (
+    | { internal: true; actor?: undefined; organizationId?: string }
+    | { internal?: false; actor: TActorContext; organizationId?: undefined }
+  );
 
 export type TUpdateRenewalConfigDTO = {
   certificateId: string;
   renewBeforeDays: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDisableRenewalConfigDTO = {
   certificateId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRenewalConfigResponse = {
   applicationId?: string | null;
@@ -223,7 +232,7 @@ export type TDisableRenewalResponse = {
 export type TUpdateCertificateDTO = {
   certificateId: string;
   metadata?: Array<{ key: string; value: string }>;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TAltNameEntry = {
   type: CertSubjectAlternativeNameType;

@@ -1,10 +1,8 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { HONEY_TOKEN_RESOURCE_TYPE, HONEY_TOKEN_TRIGGERED_EVENT } from "./honey-token-events";
@@ -313,14 +311,17 @@ describe("honey token delete", () => {
       folderDAL: {
         findSecretPathByFolderIds: async () => [{ path: "/app", environmentSlug: "prod" }]
       },
-      permissionService: {
-        getProjectPermission: async () => ({
-          permission: createMongoAbility([
-            {
-              action: [ProjectPermissionHoneyTokenActions.Read, ProjectPermissionHoneyTokenActions.Revoke],
-              subject: ProjectPermissionSub.HoneyTokens
-            }
-          ])
+      secretsPermissionService: {
+        getSecretsPermission: async () => ({
+          permission: Permission.fromRules({
+            rules: [
+              {
+                action: [ProjectPermissionHoneyTokenActions.Read, ProjectPermissionHoneyTokenActions.Revoke],
+                subject: ProjectPermissionSub.HoneyTokens
+              }
+            ] as never
+          }),
+          folderGrants: FolderGrants.none()
         })
       },
       alertService: {
@@ -333,10 +334,8 @@ describe("honey token delete", () => {
 
     const deleteHoneyToken = () =>
       service.deleteHoneyToken({ honeyTokenId: HONEY_TOKEN.id }, {
-        type: "user",
-        id: "user-1",
-        orgId: "org-1",
-        authMethod: null
+        principal: { type: "user", id: "user-1" },
+        org: { id: "org-1" }
       } as never);
 
     return { deleteHoneyToken, deletedIn, reapedIn, tx };

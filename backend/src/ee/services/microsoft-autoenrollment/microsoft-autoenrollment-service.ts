@@ -7,6 +7,7 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { isSignerCertIssuedByCa } from "@app/ee/services/pki-scep/pki-scep-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { classifyError } from "@app/lib/errors/classify";
@@ -26,7 +27,6 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { findDirectoryComputerBySid } from "@app/services/app-connection/ldap/ldap-directory-fns";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
@@ -719,10 +719,7 @@ export const microsoftAutoenrollmentServiceFactory = ({
 
     const persisted: { requestNumber?: string } = {};
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT,
-      actorId: profile.id,
-      actorAuthMethod: null,
-      actorOrgId: context.orgId,
+      enrollment: { type: ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT, id: profile.id, orgId: context.orgId },
       profileId: profile.id,
       applicationId,
       csr: x509.PemConverter.encode(asNonSharedBuffer(Buffer.from(csr.rawData)), "CERTIFICATE REQUEST"),

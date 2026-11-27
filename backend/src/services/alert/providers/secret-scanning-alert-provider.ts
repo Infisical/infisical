@@ -1,12 +1,11 @@
-import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import {
   SecretScanningDataSource,
   SecretScanningScanTrigger,
@@ -85,12 +84,12 @@ const parsePayload = <T extends z.ZodTypeAny>(schema: T, eventType: string, payl
 
 export type TSecretScanningAlertProviderDep = {
   secretScanningAlertDAL: TSecretScanningAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
 };
 
 export const secretScanningAlertProviderFactory = ({
   secretScanningAlertDAL,
-  permissionService
+  projectPermissionService
 }: TSecretScanningAlertProviderDep): IEventAlertProvider<TSecretScanningAlertTarget> => {
   const $projectUrl = (orgId: string, projectId?: string | null) =>
     `${getConfig().SITE_URL}/organizations/${orgId}/projects/secret-scanning/${projectId}`;
@@ -209,25 +208,22 @@ export const secretScanningAlertProviderFactory = ({
   const assertPermission = async ({ action, projectId, resourceId, actor }: TAlertPermissionInput): Promise<void> => {
     await assertResourceInScope({ projectId, resourceId });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.actor,
-      actorId: actor.actorId,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
       projectId: projectId as string,
-      actorAuthMethod: actor.actorAuthMethod,
-      actorOrgId: actor.actorOrgId,
-      actionProjectType: ActionProjectType.SecretScanning
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Read,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Read,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (action !== AlertPermissionAction.Read) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretScanningDataSourceActions.Edit,
-        ProjectPermissionSub.SecretScanningDataSources
-      );
+      permission.assert({
+        action: ProjectPermissionSecretScanningDataSourceActions.Edit,
+        subject: ProjectPermissionSub.SecretScanningDataSources
+      });
     }
   };
 

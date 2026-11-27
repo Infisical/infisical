@@ -84,8 +84,8 @@ export const userGroupMembershipDALFactory = (db: TDbClient) => {
    * through a group membership, i.e. they belong to a group that is itself
    * a member of the project.
    *
-   * Note: this intentionally does NOT filter on `isPending`. The permission engine
-   * (`permission-dal.getPermission`) grants project access purely by group membership
+   * Note: this intentionally does NOT filter on `isPending`. Access Control's grant store
+   * (`GrantStore.findActorGrants`) grants project access purely by group membership
    * without considering `isPending`, and the flag is no longer cleared for accepted
    * users (the un-pend transition was removed with the signup-flow simplification).
    * Filtering it here would diverge from what actually grants access.

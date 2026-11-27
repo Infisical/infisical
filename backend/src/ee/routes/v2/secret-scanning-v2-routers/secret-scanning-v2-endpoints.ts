@@ -18,13 +18,13 @@ import {
   TSecretScanningDataSourceInput
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { ApiDocsTags, SecretScanningDataSources } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { startsWithVowel } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes, TSecretScanningResourcesAddedEvent } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretScanningEndpoints = <
@@ -76,7 +76,7 @@ export const registerSecretScanningEndpoints = <
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretScanningResourcesAdded,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: { type, resourceCount, source }
       })
       .catch(() => {});
@@ -91,7 +91,7 @@ export const registerSecretScanningEndpoints = <
     try {
       const { resources, dataSourceName } = await server.services.secretScanningV2.addAllSecretScanningResources(
         { type, dataSourceId: dataSource.id },
-        req.permission
+        req.actor
       );
 
       if (!resources.length) return;
@@ -148,7 +148,7 @@ export const registerSecretScanningEndpoints = <
 
       const dataSources = (await server.services.secretScanningV2.listSecretScanningDataSourcesByProjectId(
         { projectId, type },
-        req.permission
+        req.actor
       )) as T[];
 
       await server.services.auditLog.createAuditLog({
@@ -192,7 +192,7 @@ export const registerSecretScanningEndpoints = <
 
       const dataSource = (await server.services.secretScanningV2.findSecretScanningDataSourceById(
         { dataSourceId, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -248,7 +248,7 @@ export const registerSecretScanningEndpoints = <
 
       const dataSource = (await server.services.secretScanningV2.findSecretScanningDataSourceByName(
         { sourceName, projectId, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -290,7 +290,7 @@ export const registerSecretScanningEndpoints = <
       const projectId = req.internalSecretScanningProjectId;
       const dataSource = (await server.services.secretScanningV2.createSecretScanningDataSource(
         { ...req.body, projectId, type },
-        req.permission
+        req.actor
       )) as T;
 
       // Channel configs can hold webhook URLs and secrets, so the log records only where each alert is sent.
@@ -318,7 +318,7 @@ export const registerSecretScanningEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretScanningDataSourceCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             dataSourceId: dataSource.id,
             projectId: dataSource.projectId,
@@ -359,7 +359,7 @@ export const registerSecretScanningEndpoints = <
       const { dataSource: updatedDataSource, isDiscoveryNewlyEnabled } =
         await server.services.secretScanningV2.updateSecretScanningDataSource(
           { ...req.body, dataSourceId, type },
-          req.permission
+          req.actor
         );
       const dataSource = updatedDataSource as T;
 
@@ -406,7 +406,7 @@ export const registerSecretScanningEndpoints = <
 
       const dataSource = (await server.services.secretScanningV2.deleteSecretScanningDataSource(
         { type, dataSourceId },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -449,7 +449,7 @@ export const registerSecretScanningEndpoints = <
 
       const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -493,7 +493,7 @@ export const registerSecretScanningEndpoints = <
 
       const dataSource = (await server.services.secretScanningV2.triggerSecretScanningDataSourceScan(
         { type, dataSourceId, resourceId },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -537,7 +537,7 @@ export const registerSecretScanningEndpoints = <
 
       const { resources, projectId } = await server.services.secretScanningV2.listSecretScanningResourcesByDataSourceId(
         { dataSourceId, type },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -590,7 +590,7 @@ export const registerSecretScanningEndpoints = <
 
       const { resources, projectId, dataSourceName } = await server.services.secretScanningV2.addSecretScanningResource(
         { type, dataSourceId, resourceName: req.body.resourceName },
-        req.permission
+        req.actor
       );
 
       sendResourcesAddedTelemetry(req, resources.length, "manual");
@@ -637,7 +637,7 @@ export const registerSecretScanningEndpoints = <
       const { dataSourceId } = req.params;
 
       const { resources, projectId, dataSourceName } =
-        await server.services.secretScanningV2.addAllSecretScanningResources({ type, dataSourceId }, req.permission);
+        await server.services.secretScanningV2.addAllSecretScanningResources({ type, dataSourceId }, req.actor);
 
       sendResourcesAddedTelemetry(req, resources.length, "all");
 
@@ -685,7 +685,7 @@ export const registerSecretScanningEndpoints = <
       const { resource, projectId, dataSourceName } =
         await server.services.secretScanningV2.removeSecretScanningResource(
           { type, dataSourceId, resourceId },
-          req.permission
+          req.actor
         );
 
       await server.services.auditLog.createAuditLog({
@@ -731,7 +731,7 @@ export const registerSecretScanningEndpoints = <
 
       const { scans, projectId } = await server.services.secretScanningV2.listSecretScanningScansByDataSourceId(
         { dataSourceId, type },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -807,7 +807,7 @@ export const registerSecretScanningEndpoints = <
       const { resources, totalCount, projectId } =
         await server.services.secretScanningV2.listSecretScanningResourcesWithDetailsByDataSourceId(
           { dataSourceId, type, ...req.query },
-          req.permission
+          req.actor
         );
 
       await server.services.auditLog.createAuditLog({
@@ -859,7 +859,7 @@ export const registerSecretScanningEndpoints = <
 
       const { resources } = await server.services.secretScanningV2.listSecretScanningAvailableResourcesByDataSourceId(
         { dataSourceId, type },
-        req.permission
+        req.actor
       );
 
       return { resources };
@@ -895,7 +895,7 @@ export const registerSecretScanningEndpoints = <
       const { scans, projectId } =
         await server.services.secretScanningV2.listSecretScanningScansWithDetailsByDataSourceId(
           { dataSourceId, type },
-          req.permission
+          req.actor
         );
 
       await server.services.auditLog.createAuditLog({

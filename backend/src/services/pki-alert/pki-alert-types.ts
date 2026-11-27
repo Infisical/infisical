@@ -1,15 +1,16 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreateAlertDTO = {
   name: string;
   pkiCollectionId: string;
   alertBeforeDays: number;
   emails: string[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetAlertByIdDTO = {
   alertId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateAlertDTO = {
   alertId: string;
@@ -17,8 +18,8 @@ export type TUpdateAlertDTO = {
   pkiCollectionId?: string;
   alertBeforeDays?: number;
   emails?: string[];
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteAlertDTO = {
   alertId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

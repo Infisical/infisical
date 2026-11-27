@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TInventoryViewFilters = {
   status?: string;
@@ -19,7 +19,7 @@ export type TInventoryViewFilters = {
 export type TListInventoryViewsDTO = {
   projectId: string;
   applicationId?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateInventoryViewDTO = {
   projectId: string;
@@ -28,7 +28,7 @@ export type TCreateInventoryViewDTO = {
   filters: TInventoryViewFilters;
   columns?: string[];
   isShared?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateInventoryViewDTO = {
   viewId: string;
@@ -37,9 +37,9 @@ export type TUpdateInventoryViewDTO = {
   filters?: TInventoryViewFilters;
   columns?: string[];
   isShared?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteInventoryViewDTO = {
   viewId: string;
   projectId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepOperation } from "@app/ee/services/pki-scep/pki-scep-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const MAX_SCEP_MESSAGE_SIZE = 64 * 1024; // 64KB
 
@@ -141,10 +141,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
 
       const result = await server.services.pkiScep.generateDynamicChallenge({
         profileId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       void server.services.auditLog.createAuditLog({
@@ -185,10 +182,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pkiScep.generateDynamicChallenge({
         profileId,
         applicationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       void server.services.auditLog.createAuditLog({

@@ -1,7 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { SecretScanningDataSource } from "./secret-scanning-v2-enums";
 import { secretScanningV2ServiceFactory } from "./secret-scanning-v2-service";
@@ -17,12 +17,8 @@ vi.mock("./secret-scanning-v2-factory", () => ({
 }));
 
 const actor = {
-  type: ActorType.USER,
-  id: "user-1",
-  authMethod: AuthMethod.EMAIL,
-  orgId: "org-1",
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
+  principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
 };
 
 const credentials = { webhookId: "hook-1", webhookSecret: "secret" };
@@ -38,10 +34,8 @@ const buildService = (
   };
   const overrides: Record<string, unknown> = {
     licenseService: { getPlan: vi.fn(async () => ({ has: () => true })) },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility(permissionRules)
-      }))
+    projectPermissionService: {
+      getProjectPermission: vi.fn(async () => Permission.fromRules({ rules: permissionRules as never }))
     },
     secretScanningV2DAL: {
       dataSources: {
@@ -192,7 +186,7 @@ describe("createSecretScanningDataSource default alerts", () => {
         eventType: "secret-scanning.data-source.scan-failed",
         name: "Secret scanning failed",
         channels: [emailToAdmins],
-        actorId: "user-1"
+        actor
       })
     ]);
     expect(alertService.applyPreparedAlert).toHaveBeenCalledTimes(1);

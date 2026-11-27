@@ -1,4 +1,5 @@
 import { LoginMethod, LoginPolicy } from "@app/domains/platform/instance-config-core/ce/module";
+import { AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
 
 import {
   assertOAuthLoginMethodEnabled,
@@ -13,7 +14,7 @@ import {
   RECOVERY_CODE_MFA_ASSURANCE,
   resolveMfaChallenge
 } from "./auth-fns";
-import { AuthMethod, MfaMethod, SsoMfaTrust } from "./auth-type";
+import { SsoMfaTrust } from "./auth-type";
 
 const loginPolicy = (enabledLoginMethods: LoginMethod[] | null) => LoginPolicy.restore({ enabledLoginMethods });
 

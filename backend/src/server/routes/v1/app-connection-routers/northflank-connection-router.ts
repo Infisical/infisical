@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedNorthflankConnectionSchema,
   UpdateNorthflankConnectionSchema
 } from "@app/services/app-connection/northflank";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -47,7 +47,7 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const projects = await server.services.appConnection.northflank.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.northflank.listProjects(connectionId, req.actor);
       return { projects };
     }
   });
@@ -81,7 +81,7 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
       const secretGroups = await server.services.appConnection.northflank.listSecretGroups(
         connectionId,
         projectId,
-        req.permission
+        req.actor
       );
       return { secretGroups };
     }

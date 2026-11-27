@@ -4,12 +4,12 @@ import { MicrosoftAutoenrollmentParamsSchema } from "@app/ee/routes/microsoft-au
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { MAX_KEYTAB_BYTES } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-fns";
 import { ApiDocsTags, MICROSOFT_AUTOENROLLMENT } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { isValidSid } from "@app/lib/windows-sid/windows-sid-fns";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { MicrosoftAutoenrollmentStateSchema } from "@app/server/routes/v1/pki-application-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -78,12 +78,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.setMicrosoftAutoenrollmentEnrollment({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        actorRootOrgId: req.permission.rootOrgId,
-        actorParentOrgId: req.permission.parentOrgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId,
@@ -125,9 +120,9 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnrollmentMethodConfigured,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           enrollmentMethod: EnrollmentType.MICROSOFT_AUTOENROLLMENT
         }
@@ -152,10 +147,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.clearMicrosoftAutoenrollmentEnrollment({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
@@ -176,9 +168,9 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.EnrollmentMethodRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           enrollmentMethod: EnrollmentType.MICROSOFT_AUTOENROLLMENT
         }
@@ -210,10 +202,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationEnrollment.reenrollMicrosoftAutoenrollmentComputers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
@@ -254,10 +243,7 @@ export const registerPkiApplicationMicrosoftAutoenrollmentEnrollmentRouter = asy
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
       server.services.pkiApplicationEnrollment.getMicrosoftAutoenrollmentServicePrincipal({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
