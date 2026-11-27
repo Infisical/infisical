@@ -24,12 +24,14 @@ import { AdminSignUpFormData, createAdminSignUpSchema } from "../adminSignUpSche
 
 type AdminSignUpFormProps = {
   defaultValues?: AdminSignUpFormData;
+  setupTokenError?: string;
   onContinue: (values: AdminSignUpFormData) => void;
   passwordError?: string;
 };
 
 export const AdminSignUpForm = ({
   defaultValues,
+  setupTokenError,
   onContinue,
   passwordError
 }: AdminSignUpFormProps) => {
@@ -42,7 +44,9 @@ export const AdminSignUpForm = ({
     setError,
     watch
   } = useForm<AdminSignUpFormData>({
-    resolver: zodResolver(createAdminSignUpSchema(config.passwordPolicy)),
+    resolver: zodResolver(
+      createAdminSignUpSchema(config.passwordPolicy, Boolean(config.isInstanceSetupTokenRequired))
+    ),
     mode: "onChange",
     reValidateMode: "onChange",
     defaultValues: defaultValues ?? {
@@ -50,7 +54,8 @@ export const AdminSignUpForm = ({
       lastName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      setupToken: ""
     }
   });
 
@@ -61,7 +66,15 @@ export const AdminSignUpForm = ({
   const password = watch("password");
   const confirmPassword = watch("confirmPassword");
 
+  useEffect(() => {
+    if (setupTokenError) {
+      setError("setupToken", { type: "server", message: setupTokenError }, { shouldFocus: true });
+    }
+  }, [setupTokenError, setError]);
+
   const showDangerState = submitCount > 0;
+  const showSetupTokenError =
+    Boolean(errors.setupToken) && (showDangerState || errors.setupToken?.type === "server");
   const isPasswordValidated = doesPasswordMeetPolicy(password, config.passwordPolicy);
   const doPasswordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const canSubmit = isPasswordValidated && !isSubmitting;
@@ -175,6 +188,23 @@ export const AdminSignUpForm = ({
             ) : null}
           </Field>
         </AnimatedCollapse>
+        {config.isInstanceSetupTokenRequired && (
+          <Field data-invalid={showSetupTokenError}>
+            <FieldLabel className="sr-only" htmlFor="admin-signup-setup-token">
+              Setup token
+            </FieldLabel>
+            <Input
+              variant="outlined"
+              {...register("setupToken")}
+              id="admin-signup-setup-token"
+              type="password"
+              placeholder="Setup token"
+              autoComplete="off"
+              isError={showSetupTokenError}
+            />
+            <FieldError>{showSetupTokenError ? errors.setupToken?.message : undefined}</FieldError>
+          </Field>
+        )}
       </FieldGroup>
       <Button
         type="submit"

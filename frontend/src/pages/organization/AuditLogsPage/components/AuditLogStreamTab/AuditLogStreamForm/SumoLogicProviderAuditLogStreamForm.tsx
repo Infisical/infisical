@@ -18,6 +18,7 @@ import { TSumoLogicProviderLogStream } from "@app/hooks/api/auditLogStreams/type
 
 import { AuditLogStreamFormFooter } from "./AuditLogStreamFormFooter";
 import { auditLogStreamFiltersSchema, ProductsField } from "./AuditLogStreamProductsField";
+import { PamSessionActivityField } from "./PamSessionActivityField";
 
 type Props = {
   auditLogStream?: TSumoLogicProviderLogStream;
@@ -124,6 +125,7 @@ export const SumoLogicProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }
           )}
         />
         <ProductsField />
+        <PamSessionActivityField />
         <AuditLogStreamFormFooter submitLabel={isUpdate ? "Update" : "Create Log Stream"} />
       </form>
     </FormProvider>

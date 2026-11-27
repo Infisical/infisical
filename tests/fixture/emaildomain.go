@@ -24,8 +24,7 @@ func VerifiedEmailDomain(tt *testing.T, tn *harness.Tenant) {
 	require.Equalf(tt, http.StatusOK, created.StatusCode(), "creating email domain: %s", apierr.Body(created.Body))
 	record := created.JSON200.EmailDomain
 
-	fakenet.SetTXT(tt, FakenetAdmin(tt, tn), record.VerificationRecordName,
-		"infisical-domain-verification="+record.VerificationCode)
+	fakenet.SetTXT(tt, FakenetAdmin(tt, tn), record.VerificationRecord.Name, record.VerificationRecord.Value)
 
 	verified, err := tn.Admin.API.VerifyEmailDomainWithResponse(ctx, record.Id)
 	require.NoError(tt, err)

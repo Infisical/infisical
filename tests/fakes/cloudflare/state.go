@@ -1,5 +1,5 @@
-// Package cloudflare fakes the Cloudflare v4 API: the account a token belongs to and
-// the DNS records of its zones.
+// Package cloudflare fakes the Cloudflare v4 API: the account a token belongs to, the
+// DNS records of its zones, and their custom certificates.
 package cloudflare
 
 import (
@@ -18,6 +18,9 @@ type Account struct {
 	// Zones maps a zone id to its DNS records. A record written to a zone that is not
 	// here is refused, the way Cloudflare refuses an unknown zone identifier.
 	Zones map[string][]DNSRecord `json:"zones"`
+
+	// CustomCertificates maps a zone id to the custom certificates uploaded to it.
+	CustomCertificates map[string][]CustomCertificate `json:"customCertificates"`
 
 	mu     sync.Mutex
 	mux    *http.ServeMux
@@ -44,15 +47,17 @@ func (a *Account) Snapshot() ([]byte, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return json.Marshal(struct {
-		ID    string                 `json:"id"`
-		Zones map[string][]DNSRecord `json:"zones"`
-	}{a.ID, a.Zones})
+		ID                 string                         `json:"id"`
+		Zones              map[string][]DNSRecord         `json:"zones"`
+		CustomCertificates map[string][]CustomCertificate `json:"customCertificates"`
+	}{a.ID, a.Zones, a.CustomCertificates})
 }
 
 func (a *Account) Seed(raw []byte) error {
 	var in struct {
-		ID    string                 `json:"id"`
-		Zones map[string][]DNSRecord `json:"zones"`
+		ID                 string                         `json:"id"`
+		Zones              map[string][]DNSRecord         `json:"zones"`
+		CustomCertificates map[string][]CustomCertificate `json:"customCertificates"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -64,6 +69,9 @@ func (a *Account) Seed(raw []byte) error {
 	}
 	for zone, records := range in.Zones {
 		a.Zones[zone] = append(a.Zones[zone], records...)
+	}
+	for zone, certs := range in.CustomCertificates {
+		a.CustomCertificates[zone] = append(a.CustomCertificates[zone], certs...)
 	}
 	return nil
 }

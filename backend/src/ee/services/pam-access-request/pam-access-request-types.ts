@@ -1,17 +1,17 @@
+import { ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import {
   TAutoApprovalConfig,
   TAutoApprovalInputValue
 } from "@app/services/approval-policy/auto-approval/auto-approval-types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { PamAccessType, PamNotificationEvent } from "../pam/pam-enums";
-import { TActorContext } from "../pam/pam-permission";
 
 export type TGetApprovalConfigurationDTO = {
   folderId: string;
   projectId: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TPamNotificationConfigInput = {
   workflowIntegrationId: string;
@@ -30,13 +30,14 @@ export type TSetApprovalConfigurationDTO = {
   breakGlassUsers?: { type: ApproverType; id: string }[];
   // undefined leaves the stored rules unchanged
   autoApproval?: TAutoApprovalConfig;
-} & TActorContext;
+  emailApproversOnRequest?: boolean;
+} & TActorInput;
 
 export type TBreakGlassAccessRequestDTO = {
   requestId: string;
   projectId: string;
   bypassReason: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TCreateAccessRequestDTO = {
   breakGlass?: boolean;
@@ -47,7 +48,7 @@ export type TCreateAccessRequestDTO = {
   duration: string;
   accessType?: PamAccessType;
   autoApprovalInputs?: TAutoApprovalInputValue[];
-} & TActorContext;
+} & TActorInput;
 
 export type TListAccessRequestsDTO = {
   projectId: string;
@@ -55,28 +56,28 @@ export type TListAccessRequestsDTO = {
   status?: string;
   offset?: number;
   limit?: number;
-} & TActorContext;
+} & TActorInput;
 
 export type TListPendingMyApprovalDTO = {
   projectId: string;
   folderId?: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TGetAccessRequestCountDTO = {
   projectId: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TReviewAccessRequestDTO = {
   requestId: string;
   projectId: string;
   status: ApprovalRequestApprovalDecision;
   comment?: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TRevokeAccessRequestDTO = {
   requestId: string;
   projectId: string;
-} & TActorContext;
+} & TActorInput;
 
 // Requests and grants key their actor by user OR machine identity, never both
 export type TAccessRequestActor = {
@@ -103,4 +104,4 @@ export type TGetAccountApproversDTO = {
   accountId: string;
   projectId: string;
   accessType?: PamAccessType;
-} & TActorContext;
+} & TActorInput;

@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { OrgServiceActor, TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import type {
   AgentVaultSessionLogChunkCreateSchema,
   AgentVaultSessionLogSettingsUpdateSchema
 } from "./agent-vault-session-log-schemas";
 
-export type TAgentVaultSessionLogScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultSessionLogScoped = { projectId: string; ctx: TActorContext };
 
 export type TAgentVaultSessionScoped = TAgentVaultSessionLogScoped & { sessionId: string };
 
@@ -27,6 +27,5 @@ export type TTailSessionLogsDTO = TAgentVaultSessionScoped & {
   cursor?: string;
 };
 
-export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped & {
-  actor: OrgServiceActor;
-} & z.infer<typeof AgentVaultSessionLogSettingsUpdateSchema>;
+export type TUpdateSessionLogSettingsDTO = TAgentVaultSessionLogScoped &
+  z.infer<typeof AgentVaultSessionLogSettingsUpdateSchema>;

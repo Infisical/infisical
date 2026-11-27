@@ -1,3 +1,5 @@
+import { FolderAccessChangeSource } from "@app/lib/analytics";
+
 export type TFolderAccessSectionActor =
   | {
       type: "user";
@@ -13,3 +15,8 @@ export type TFolderAccessSectionActor =
       id: string;
       name: string;
     };
+
+export const folderAccessChangeSourceOf = (
+  actor: TFolderAccessSectionActor
+): FolderAccessChangeSource =>
+  actor.type === "user" ? "access_control_member" : "access_control_identity";

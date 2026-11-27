@@ -85,7 +85,7 @@ func GroupUserIDs(tt *testing.T, client *api.ClientWithResponses, groupID uuid.U
 	tt.Helper()
 
 	filter := api.ListGroupUsersParamsFilterExistingMembers
-	res, err := client.ListGroupUsersWithResponse(tt.Context(), groupID.String(), &api.ListGroupUsersParams{Filter: &filter})
+	res, err := client.ListGroupUsersWithResponse(tt.Context(), groupID, &api.ListGroupUsersParams{Filter: &filter})
 	require.NoError(tt, err)
 	require.NotNilf(tt, res.JSON200, "listing the users of group %s returned %d: %s", groupID, res.StatusCode(), apierr.Body(res.Body))
 	out := []uuid.UUID{}

@@ -208,3 +208,10 @@ func (e env) revoke(t *testing.T, tokenID uuid.UUID) *api.RevokeHoneyTokenRespon
 	require.NoError(t, err, "revoking a honey token")
 	return res
 }
+
+func (e env) delete(t *testing.T, actor *harness.Principal, tokenID uuid.UUID) *api.DeleteHoneyTokenResponse {
+	t.Helper()
+	res, err := actor.API.DeleteHoneyTokenWithResponse(t.Context(), tokenID)
+	require.NoError(t, err, "deleting a honey token")
+	return res
+}

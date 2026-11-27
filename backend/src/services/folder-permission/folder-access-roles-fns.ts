@@ -1,10 +1,12 @@
-import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
-
 import { ProjectMembershipRole, ProjectType, TAdditionalPrivileges } from "@app/db/schemas";
-import { FOLDER_SCOPED_DENY_RULES } from "@app/ee/services/permission/folder-roles";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { conditionsMatcher } from "@app/lib/casl";
+import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
+import {
+  ProjectAccess,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  StandardProjectRoles
+} from "@app/domains/platform/projects/ce/module";
+import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import {
   TCachedFolderAccess,
@@ -72,19 +74,18 @@ export const collectDistinctRoles = (entries: { roles: TProjectMemberRoleRow[] }
 // the verdict depends only on the role. Handlebars conditions are therefore never interpolated and
 // a templated condition compares literally, which does not match.
 export const roleGrantsFolderAccess = (role: TDistinctProjectRole, folder: TFolderLocation) => {
-  const rules = buildProjectPermissionRules(
-    [
-      role.isCustom
-        ? { role: ProjectMembershipRole.Custom, permissions: role.permissions }
-        : { role: role.slug, permissions: [] }
-    ],
-    ProjectType.SecretManager
-  ) as RawRuleOf<MongoAbility>[];
-  const ability = createMongoAbility(rules, { conditionsMatcher });
-  // subject() tags the object it receives with the subject type and refuses to retag it, so each probe
-  // gets its own copy of the folder fields
+  const grant = role.isCustom
+    ? Grant.restore({ slug: ProjectMembershipRole.Custom, packedRules: role.permissions })
+    : Grant.restore({ slug: role.slug });
+  const permission = Permission.fromRules<ProjectPermissionSet>({
+    rules: ProjectAccess.rulesOf([grant], StandardProjectRoles.generic(ProjectType.SecretManager))
+  });
   return FOLDER_ACCESS_PROBES.some(({ action, subject: sub }) =>
-    ability.can(action, subject(sub, { environment: folder.environmentSlug, secretPath: folder.path }))
+    permission.can({
+      action: action as ProjectPermissionSet[0],
+      subject: sub,
+      fields: { environment: folder.environmentSlug, secretPath: folder.path }
+    })
   );
 };
 
@@ -128,6 +129,31 @@ export const reviveFolderAccess = <TActor extends TProjectMemberActor>(
 const isRoleActiveAt = (role: { isTemporary: boolean; temporaryAccessEndTime?: Date | null }, now: Date) =>
   !role.isTemporary || Boolean(role.temporaryAccessEndTime && now < role.temporaryAccessEndTime);
 
+// A folder inherits an actor's access from the nearest folder above it that holds an active grant applying to
+// subfolders, the same grant buildFolderScopedPrivilegeRules lets decide the folder. An expired grant decides
+// nothing, so it is skipped before the nearest one is picked.
+export const pickInheritedGrants = ({
+  grants,
+  ancestorFolderIds,
+  actorIdOf,
+  now
+}: {
+  grants: TAdditionalPrivileges[];
+  // nearest ancestor first
+  ancestorFolderIds: string[];
+  actorIdOf: (grant: TAdditionalPrivileges) => string;
+  now: Date;
+}) => {
+  const distanceOf = (grant: TAdditionalPrivileges) => ancestorFolderIds.indexOf(grant.folderId ?? "");
+  const inheritedGrantByActorId = new Map<string, TAdditionalPrivileges>();
+  grants.forEach((grant) => {
+    if (!grant.role || !grant.appliesToSubfolders || distanceOf(grant) === -1 || !isRoleActiveAt(grant, now)) return;
+    const nearest = inheritedGrantByActorId.get(actorIdOf(grant));
+    if (!nearest || distanceOf(grant) < distanceOf(nearest)) inheritedGrantByActorId.set(actorIdOf(grant), grant);
+  });
+  return inheritedGrantByActorId;
+};
+
 const isBuiltInAdmin = (role: TFolderAccessRole) => role.id === null && role.slug === ProjectMembershipRole.Admin;
 
 const uniqueByKey = (roles: TCachedProjectMemberRole[]) => {
@@ -165,8 +191,8 @@ export const splitFolderAccess = <TActor extends TProjectMemberActor>({
 
     const grantingRoles = activeRoles.filter((role) => granting.has(folderAccessRoleKey(role)));
     const grant = grantByActorId.get(actorIdOf(actor)) ?? null;
-    const rootGrant = inheritedGrantByActorId.get(actorIdOf(actor));
-    const inheritedGrant = rootGrant && isRoleActiveAt(rootGrant, now) ? rootGrant : null;
+    const ancestorGrant = inheritedGrantByActorId.get(actorIdOf(actor));
+    const inheritedGrant = ancestorGrant && isRoleActiveAt(ancestorGrant, now) ? ancestorGrant : null;
     // an admin is kept out of withoutAccess even if no probe matched: that list is what the grant
     // picker offers, and a folder grant could only remove privileges from an admin
     if (isProjectAdmin || grantingRoles.length || grant || inheritedGrant) {

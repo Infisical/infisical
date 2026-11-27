@@ -1,31 +1,31 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TCertificates, ProjectType } from "@app/db/schemas";
+import {
+  TCertManagerService,
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, PROTOCOL_ENROLLMENT_ACTORS } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
@@ -34,18 +34,34 @@ import { CaType } from "@app/services/certificate-authority/certificate-authorit
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   assertCaSupportsCustomExtensions,
+  caSignsCsrAsSent,
   caUsesExternalIssuanceQueue
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { certificateNotFoundError } from "@app/services/certificate-common/certificate-errors";
 import {
   recordCertificateIssuanceFailure,
   tagErrorWithCertificateRequest
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { describePolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import {
+  certificateProfileNotFoundError,
+  enrollmentTypeMismatchError,
+  profileHasNoCaError,
+  selfSignedProfileCannotSignCsrError
+} from "@app/services/certificate-profile/certificate-profile-errors";
+import {
+  ENROLLMENT_TYPE_NAME_MAP,
+  EnrollmentType,
+  ISSUER_NAMED_ENROLLMENT_TYPES,
+  IssuerType,
+  RENEWAL_LINKED_ENROLLMENT_TYPES
+} from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
@@ -53,7 +69,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -69,10 +85,11 @@ import {
   CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
-  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE
+  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
+  POLICY_KEY_ALGORITHM_TO_REQUEST,
+  POLICY_SIGNATURE_ALGORITHM_TO_REQUEST
 } from "../certificate-common/certificate-constants";
 import {
-  buildSubjectOverrideForCsr,
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
@@ -87,7 +104,9 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  flatActorOfCaller,
+  TCertificateIssuanceCaller
 } from "../certificate-common/certificate-permission-fns";
 import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
@@ -125,13 +144,23 @@ import {
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
 import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
-import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyIssuerNameOverride,
+  applyProfileDefaults,
+  buildIssuanceSubject,
+  formatIssuerAltNames,
+  getFixedDefaultSubjectAltNames,
+  resolveEffectiveTtl,
+  toCommonNameDefaults
+} from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
   TIssueCertificateFromProfileDTO,
   TOrderCertificateFromProfileDTO,
   TSignCertificateFromProfileDTO,
-  TUpdateCertificateDTO
+  TUpdateCertificateDTO,
+  TRenewCertificateInput
 } from "./certificate-v3-types";
 
 type TCertificateV3ServiceFactoryDep = {
@@ -164,7 +193,8 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "findPkiSyncIdsByCertificateId"
@@ -211,53 +241,48 @@ export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3Servic
 
 const validateProfileAndPermissions = async ({
   profileId,
-  actor,
-  actorId,
-  actorAuthMethod,
-  actorOrgId,
+  caller,
   certificateProfileDAL,
   acmeAccountDAL,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   requiredEnrollmentType,
-  isInternal = false,
   applicationId
 }: {
   profileId: string;
-  actor?: ActorType;
-  actorId?: string;
-  actorAuthMethod?: ActorAuthMethod;
-  actorOrgId?: string;
+  caller: TCertificateIssuanceCaller;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   requiredEnrollmentType: EnrollmentType;
-  isInternal?: boolean;
   applicationId?: string;
 }) => {
   const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
   if (!profile) {
-    throw new NotFoundError({ message: "Certificate profile not found" });
+    throw certificateProfileNotFoundError(profileId);
   }
 
-  if (!applicationId && profile.enrollmentType !== requiredEnrollmentType) {
-    throw new ForbiddenRequestError({
-      message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
-    });
-  }
-
-  if (isInternal) {
+  // The enrollment type is checked after authorization so the error does not reveal a profile's
+  // configuration to a caller who cannot use it.
+  const assertEnrollmentType = () => {
+    if (!applicationId && profile.enrollmentType !== requiredEnrollmentType) {
+      throw enrollmentTypeMismatchError(profile.enrollmentType, requiredEnrollmentType);
+    }
     return profile;
-  }
+  };
 
-  if (!actor || !actorId || !actorOrgId) {
-    throw new BadRequestError({ message: "Actor is required" });
-  }
+  if (caller.enrollment) {
+    // EST, SCEP and MS autoenrollment already matched the client to the profile.
+    if (PROTOCOL_ENROLLMENT_ACTORS.has(caller.enrollment.type)) {
+      return assertEnrollmentType();
+    }
 
-  if (
-    (actor === ActorType.ACME_ACCOUNT && requiredEnrollmentType === EnrollmentType.ACME) ||
-    (actor === ActorType.EST_ACCOUNT && requiredEnrollmentType === EnrollmentType.EST)
-  ) {
-    const account = await acmeAccountDAL.findById(actorId);
+    if (requiredEnrollmentType !== EnrollmentType.ACME) {
+      throw new BadRequestError({ message: "Invalid actor provided" });
+    }
+
+    const account = await acmeAccountDAL.findById(caller.enrollment.id);
     if (!account) {
       throw new NotFoundError({ message: "ACME account not found" });
     }
@@ -266,59 +291,50 @@ const validateProfileAndPermissions = async ({
         message: "ACME account is not associated with this profile"
       });
     }
-    return profile;
+    return assertEnrollmentType();
   }
 
-  if (actor === ActorType.SCEP_ACCOUNT && requiredEnrollmentType === EnrollmentType.SCEP) {
-    if (actorId !== profile.id) {
-      throw new ForbiddenRequestError({
-        message: "SCEP profile mismatch"
-      });
-    }
-    return profile;
+  const { type: principalType } = caller.actor.principal;
+  if (
+    (principalType === ActorType.USER || principalType === ActorType.IDENTITY) &&
+    profile.project?.orgId !== caller.actor.org.id
+  ) {
+    throw certificateProfileNotFoundError(profileId);
   }
 
-  if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-    const { permission } = await permissionService.getResourcePermission({
-      actor,
-      actorId,
+  if (applicationId) {
+    const permission = await applicationPermissionService.getApplicationPermission({
+      actor: caller.actor,
       projectId: profile.projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: applicationId,
-      actorAuthMethod: actorAuthMethod || null,
-      actorOrgId
+      applicationId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.IssueCert,
-      ProjectPermissionSub.CertificateProfiles
-    );
-    return profile;
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.IssueCert,
+      subject: ProjectPermissionSub.CertificateProfiles
+    });
+    return assertEnrollmentType();
   }
 
-  const { permission } = await permissionService.getProjectPermission({
-    actor,
-    actorId,
+  const permission = await projectPermissionService.getProjectPermission({
+    actor: caller.actor,
     projectId: profile.projectId,
-    actorAuthMethod: actorAuthMethod || null,
-    actorOrgId,
-    actionProjectType: ActionProjectType.CertificateManager
+    type: ProjectType.CertificateManager
   });
 
-  ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionCertificateProfileActions.IssueCert,
-    subject(ProjectPermissionSub.CertificateProfiles, {
-      slug: profile.slug
-    })
-  );
+  permission.assert({
+    action: ProjectPermissionCertificateProfileActions.IssueCert,
+    subject: ProjectPermissionSub.CertificateProfiles,
+    fields: { slug: profile.slug }
+  });
 
-  return profile;
+  return assertEnrollmentType();
 };
 
-// Builds the certificate permission subject from a persisted certificate record so the private-key
+// Builds the certificate permission fields from a persisted certificate record so the private-key
 // read permission is evaluated against the same fields the certificate read paths use. Includes every
 // field the certificate permission conditions support, so attribute-scoped grants match consistently.
-const buildCertificateReadPrivateKeySubject = (
+const buildCertificateReadPrivateKeyFields = (
   certRecord: {
     commonName?: string | null;
     altNames?: string | null;
@@ -327,15 +343,14 @@ const buildCertificateReadPrivateKeySubject = (
     status?: string | null;
   },
   metadata?: { key: string; value: string }[]
-) =>
-  subject(ProjectPermissionSub.Certificates, {
-    commonName: certRecord.commonName ?? undefined,
-    altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
-    serialNumber: certRecord.serialNumber ?? undefined,
-    friendlyName: certRecord.friendlyName ?? undefined,
-    status: certRecord.status ?? undefined,
-    metadata
-  });
+) => ({
+  commonName: certRecord.commonName ?? undefined,
+  altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
+  serialNumber: certRecord.serialNumber ?? undefined,
+  friendlyName: certRecord.friendlyName ?? undefined,
+  status: certRecord.status ?? undefined,
+  metadata
+});
 
 export const certificateV3ServiceFactory = ({
   certificateDAL,
@@ -347,7 +362,8 @@ export const certificateV3ServiceFactory = ({
   certificatePolicyService,
   internalCaService,
   caKeySourceService,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -436,12 +452,7 @@ export const certificateV3ServiceFactory = ({
       scepConfigId?: string | null;
     },
     explicit: string | undefined,
-    actorContext?: {
-      actor?: ActorType;
-      actorId?: string;
-      actorAuthMethod?: ActorAuthMethod;
-      actorOrgId?: string;
-    },
+    caller?: TCertificateIssuanceCaller,
     requiredEnrollmentType?: EnrollmentType
   ): Promise<string | undefined> => {
     const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
@@ -469,38 +480,29 @@ export const certificateV3ServiceFactory = ({
           case EnrollmentType.SCEP:
             junctionConfigId = junction.scepConfigId;
             break;
+          case EnrollmentType.MICROSOFT_AUTOENROLLMENT:
+            junctionConfigId = junction.microsoftAutoenrollmentConfigId;
+            break;
           default:
             junctionConfigId = null;
         }
         if (!junctionConfigId) {
           throw new BadRequestError({
-            message: `${requiredEnrollmentType.toUpperCase()} enrollment is not configured for this profile on the Application.`
+            message: `${ENROLLMENT_TYPE_NAME_MAP[requiredEnrollmentType]} enrollment is not configured for this profile on the Application.`
           });
         }
       }
 
-      if (
-        actorContext?.actor &&
-        actorContext.actor !== ActorType.ACME_ACCOUNT &&
-        actorContext.actor !== ActorType.ACME_PROFILE &&
-        actorContext.actor !== ActorType.EST_ACCOUNT &&
-        actorContext.actor !== ActorType.SCEP_ACCOUNT &&
-        actorContext.actorId &&
-        actorContext.actorOrgId
-      ) {
-        const { permission } = await permissionService.getResourcePermission({
-          actor: actorContext.actor,
-          actorId: actorContext.actorId,
+      if (caller?.actor) {
+        const permission = await applicationPermissionService.getApplicationPermission({
+          actor: caller.actor,
           projectId: profile.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: explicit,
-          actorAuthMethod: actorContext.actorAuthMethod ?? null,
-          actorOrgId: actorContext.actorOrgId
+          applicationId: explicit
         });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionCertificateActions.Create,
-          ResourcePermissionSub.Certificates
-        );
+        permission.assert({
+          action: ApplicationCertificatePermissionActions.Create,
+          subject: ApplicationPermissionSub.Certificates
+        });
       }
 
       return explicit;
@@ -548,6 +550,8 @@ export const certificateV3ServiceFactory = ({
       return { requesterName: "EST Client", requesterEmail: "" };
     } else if (actor === ActorType.SCEP_ACCOUNT) {
       return { requesterName: "SCEP Client", requesterEmail: "" };
+    } else if (actor === ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT) {
+      return { requesterName: "Microsoft Autoenrollment", requesterEmail: "" };
     } else if (actor === ActorType.PLATFORM) {
       return { requesterName: "Automatic Renewal", requesterEmail: "" };
     }
@@ -620,31 +624,27 @@ export const certificateV3ServiceFactory = ({
     profileId,
     certificateRequest,
     metadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    actor: actorContext,
     removeRootsFromChain,
     applicationId: explicitApplicationId
   }: TIssueCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    const caller = { actor: actorContext };
+    const { actor, actorId, actorOrgId } = flatActorOfCaller(caller);
     const profile = await validateProfileAndPermissions({
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      caller,
       certificateProfileDAL,
       acmeAccountDAL,
-      permissionService,
+      projectPermissionService,
+      applicationPermissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
 
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
       explicitApplicationId,
-      { actor, actorId, actorAuthMethod, actorOrgId },
+      caller,
       EnrollmentType.API
     );
     const applicationName = await $resolveApplicationName(applicationId);
@@ -654,7 +654,17 @@ export const certificateV3ServiceFactory = ({
       { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
     );
 
-    const certificateRequestWithDefaults = applyProfileDefaults(certificateRequest, profile.defaults);
+    const profileDefaultedRequest = applyProfileDefaults(certificateRequest, profile.defaults);
+    const certificateRequestWithDefaults = {
+      ...profileDefaultedRequest,
+      altNames: applyCommonNameDefaultSan({
+        defaults: profile.defaults,
+        enrollmentType: EnrollmentType.API,
+        commonName: profileDefaultedRequest.commonName,
+        subjectAlternativeNames: profileDefaultedRequest.altNames,
+        requestedSubjectAlternativeNames: certificateRequest.altNames ?? []
+      }).subjectAlternativeNames
+    };
 
     const quotaUsage = await validateCertificateRequestLicense({
       request: certificateRequestWithDefaults,
@@ -673,16 +683,9 @@ export const certificateV3ServiceFactory = ({
       });
 
       const policy = await certificatePolicyService.getPolicyById({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         policyId: profile.certificatePolicyId,
         internal: true
       });
-      if (!policy) {
-        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-      }
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         profile.certificatePolicyId,
@@ -692,7 +695,7 @@ export const certificateV3ServiceFactory = ({
 
       if (!validationResult.isValid) {
         throw new BadRequestError({
-          message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+          message: describePolicyViolations(validationResult.errors)
         });
       }
 
@@ -827,7 +830,7 @@ export const certificateV3ServiceFactory = ({
 
     if (certificateRequest.commonName && Array.isArray(certificateRequest.commonName)) {
       throw new BadRequestError({
-        message: "Common Name must be a single value, not an array"
+        message: "commonName must be a single string, not an array"
       });
     }
 
@@ -837,16 +840,9 @@ export const certificateV3ServiceFactory = ({
     });
 
     const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       policyId: profile.certificatePolicyId,
       internal: true
     });
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
@@ -854,34 +850,39 @@ export const certificateV3ServiceFactory = ({
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
-    if (!validationResult.isValid) {
-      throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
-      });
-    }
-
-    const { resolvedCustomExtensions } = validationResult;
-
     const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
       | CertSignatureAlgorithm
       | undefined;
     const effectiveKeyAlgorithm = certificateRequestWithDefaults.keyAlgorithm as CertKeyAlgorithm | undefined;
 
+    // The policy validator only checks an algorithm the request sets, so a missing one is added here to report every
+    // violation in one response.
+    const policyViolations = [...validationResult.errors];
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
+      policyViolations.push(
+        `The certificate policy restricts key algorithms, so the request must set one. Add keyAlgorithm to the request, or set a default key algorithm on the certificate profile. Allowed key algorithms: ${policy.algorithms.keyAlgorithm.map((algorithm) => POLICY_KEY_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}`
+      );
+    }
+    if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
+      policyViolations.push(
+        `The certificate policy restricts signature algorithms, so the request must set one. Add signatureAlgorithm to the request, or set a default signature algorithm on the certificate profile. Allowed signature algorithms: ${policy.algorithms.signature.map((algorithm) => POLICY_SIGNATURE_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}`
+      );
+    }
+
+    if (policyViolations.length > 0) {
       throw new BadRequestError({
-        message: "Key algorithm is required by this policy but not provided in request"
+        message: describePolicyViolations(policyViolations)
       });
     }
 
-    if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
-      throw new BadRequestError({
-        message: "Signature algorithm is required by this policy but not provided in request"
-      });
-    }
+    const { resolvedCustomExtensions } = validationResult;
 
     const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
-      { subjectAlternativeNames: certificateRequestWithDefaults.altNames },
+      {
+        commonName: certificateRequestWithDefaults.commonName,
+        subjectAlternativeNames: certificateRequestWithDefaults.altNames
+      },
       policy?.sans
     );
 
@@ -931,10 +932,6 @@ export const certificateV3ServiceFactory = ({
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
           internal: true,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
           projectId: profile.projectId,
           tx,
           profileId: profile.id,
@@ -1016,35 +1013,29 @@ export const certificateV3ServiceFactory = ({
         certificateRequest.commonName ||
         "Self-signed Certificate";
 
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
+      const permission = await projectPermissionService.getProjectPermission({
+        actor: actorContext,
         projectId: profile.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
       let canReadPrivateKey: boolean;
       if (applicationId) {
-        const { permission: resourcePermission } = await permissionService.getResourcePermission({
-          actor,
-          actorId,
+        const resourcePermission = await applicationPermissionService.getApplicationPermission({
+          actor: actorContext,
           projectId: profile.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: applicationId,
-          actorAuthMethod,
-          actorOrgId
+          applicationId
         });
-        canReadPrivateKey = resourcePermission.can(
-          ResourcePermissionCertificateActions.ReadPrivateKey,
-          ResourcePermissionSub.Certificates
-        );
+        canReadPrivateKey = resourcePermission.can({
+          action: ApplicationCertificatePermissionActions.ReadPrivateKey,
+          subject: ApplicationPermissionSub.Certificates
+        });
       } else {
-        canReadPrivateKey = permission.can(
-          ProjectPermissionCertificateActions.ReadPrivateKey,
-          buildCertificateReadPrivateKeySubject(certificateData, metadata)
-        );
+        canReadPrivateKey = permission.can({
+          action: ProjectPermissionCertificateActions.ReadPrivateKey,
+          subject: ProjectPermissionSub.Certificates,
+          fields: buildCertificateReadPrivateKeyFields(certificateData, metadata)
+        });
       }
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
@@ -1093,13 +1084,10 @@ export const certificateV3ServiceFactory = ({
     }
 
     if (!profile.caId) {
-      throw new NotFoundError({ message: "Certificate Authority ID not found" });
+      throw profileHasNoCaError(profile.slug);
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -1155,10 +1143,6 @@ export const certificateV3ServiceFactory = ({
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
         internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         projectId: profile.projectId,
         tx,
         caId: ca.id,
@@ -1257,35 +1241,29 @@ export const certificateV3ServiceFactory = ({
     }
 
     // Check if user has permission to read private key
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
+    const permission = await projectPermissionService.getProjectPermission({
+      actor: actorContext,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     let canReadPrivateKey: boolean;
     if (applicationId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
+      const resourcePermission = await applicationPermissionService.getApplicationPermission({
+        actor: actorContext,
         projectId: profile.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
-      canReadPrivateKey = resourcePermission.can(
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        ResourcePermissionSub.Certificates
-      );
+      canReadPrivateKey = resourcePermission.can({
+        action: ApplicationCertificatePermissionActions.ReadPrivateKey,
+        subject: ApplicationPermissionSub.Certificates
+      });
     } else {
-      canReadPrivateKey = permission.can(
-        ProjectPermissionCertificateActions.ReadPrivateKey,
-        buildCertificateReadPrivateKeySubject(cert, metadata)
-      );
+      canReadPrivateKey = permission.can({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: buildCertificateReadPrivateKeyFields(cert, metadata)
+      });
     }
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
@@ -1335,75 +1313,85 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const $signCertificateFromProfile = async ({
-    profileId,
-    csr,
-    validity,
-    notBefore,
-    notAfter,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    enrollmentType,
-    metadata,
-    removeRootsFromChain,
-    basicConstraints,
-    applicationId: explicitApplicationId,
-    acmeOrderId
-  }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
-    const profile = await validateProfileAndPermissions({
+  const $signCertificateFromProfile = async (
+    dto: TSignCertificateFromProfileDTO
+  ): Promise<TCertificateIssuanceResponse> => {
+    const {
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      certificateProfileDAL,
-      acmeAccountDAL,
-      permissionService,
-      requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
-      applicationId: explicitApplicationId
-    });
-    const applicationId = await $resolveApplicationIdForProfile(
-      profile,
-      explicitApplicationId,
-      { actor, actorId, actorAuthMethod, actorOrgId },
-      enrollmentType
-    );
-    const applicationName = await $resolveApplicationName(applicationId);
-
-    if (!profile.caId) {
+      csr,
+      validity,
+      notBefore,
+      notAfter,
+      enrollmentType,
+      metadata,
+      removeRootsFromChain,
+      basicConstraints,
+      applicationId: explicitApplicationId,
+      acmeOrderId,
+      issuerNameOverride,
+      additionalExtensions,
+      originalCertificateId,
+      onCertificateRequestPersisted,
+      renewalCommonNameSanTypes
+    } = dto;
+    const { actor, actorId, actorOrgId } = flatActorOfCaller(dto);
+    if (issuerNameOverride && !ISSUER_NAMED_ENROLLMENT_TYPES.has(enrollmentType)) {
       throw new BadRequestError({
-        message: "Self-signed certificates are not supported for CSR signing"
+        message: `${ENROLLMENT_TYPE_NAME_MAP[enrollmentType]} enrollment cannot replace the names in the certificate request.`
       });
     }
 
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
+    const profile = await validateProfileAndPermissions({
+      profileId,
+      caller: dto,
+      certificateProfileDAL,
+      acmeAccountDAL,
+      projectPermissionService,
+      applicationPermissionService,
+      requiredEnrollmentType: enrollmentType,
+      applicationId: explicitApplicationId
+    });
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, dto, enrollmentType);
+    const applicationName = await $resolveApplicationName(applicationId);
+
+    if (!profile.caId) {
+      throw selfSignedProfileCannotSignCsrError(profile.slug);
     }
+
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
 
     assertCaInProfileProject(ca, profile);
 
     validateCaSupport(ca, "CSR signing");
 
     const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       policyId: profile.certificatePolicyId,
       internal: true
     });
 
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
-
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
-    const certificateRequest = applyProfileDefaults(csrCertificateRequest, profile.defaults);
+    const additionalExtensionOids = (additionalExtensions ?? []).map((extension) => extension.oid);
+    const requestedCertificate: TCertificateRequest = {
+      ...applyIssuerNameOverride(csrCertificateRequest, issuerNameOverride, profile.defaults),
+      ...(csrCertificateRequest.customExtensions && {
+        customExtensions: csrCertificateRequest.customExtensions.filter(
+          (extension) => !additionalExtensionOids.includes(extension.oid)
+        )
+      })
+    };
+    const certificateRequest = applyProfileDefaults(requestedCertificate, profile.defaults);
     const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+    const {
+      subjectAlternativeNames: subjectAlternativeNamesWithCommonName,
+      altNameEntries: altNameEntriesWithCommonName
+    } = applyCommonNameDefaultSan({
+      defaults: renewalCommonNameSanTypes ? toCommonNameDefaults(renewalCommonNameSanTypes) : profile.defaults,
+      enrollmentType,
+      commonName: certificateRequest.commonName,
+      csrCommonName: csrCertificateRequest.commonName,
+      subjectAlternativeNames: certificateRequest.subjectAlternativeNames
+    });
+    mappedCertificateRequest.subjectAlternativeNames = subjectAlternativeNamesWithCommonName;
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: csrSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
@@ -1459,12 +1447,20 @@ export const certificateV3ServiceFactory = ({
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       mappedCertificateRequest,
-      { profileCustomExtensions: profile.defaults?.customExtensions }
+      {
+        profileCustomExtensions: profile.defaults?.customExtensions,
+        issuerAddedExtensions: additionalExtensions?.map((extension) => ({
+          oid: extension.oid,
+          critical: extension.critical,
+          value: extension.value.toString("base64"),
+          issuerAdded: true
+        }))
+      }
     );
 
     if (!validationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+        message: describePolicyViolations(validationResult.errors)
       });
     }
 
@@ -1481,6 +1477,10 @@ export const certificateV3ServiceFactory = ({
           "CA certificate issuance is not allowed by this policy. The policy's CA:true basicConstraints must be set to 'allowed' or 'required'."
       });
     }
+
+    const renewedFromCertificateId = RENEWAL_LINKED_ENROLLMENT_TYPES.has(enrollmentType)
+      ? originalCertificateId
+      : undefined;
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
@@ -1535,6 +1535,7 @@ export const certificateV3ServiceFactory = ({
                   status: CertificateRequestStatus.PENDING_APPROVAL,
                   basicConstraints: resolvedBasicConstraints ? JSON.stringify(resolvedBasicConstraints) : null,
                   customExtensions: resolvedCustomExtensions ? JSON.stringify(resolvedCustomExtensions) : null,
+                  renewedFromCertificateId: renewedFromCertificateId ?? null,
                   createdAt: certRequestCreatedAt
                 } as Parameters<typeof certificateRequestDAL.create>[0] & { createdAt: Date },
                 tx
@@ -1549,6 +1550,8 @@ export const certificateV3ServiceFactory = ({
                   tx
                 });
               }
+
+              await onCertificateRequestPersisted?.(certRequest, tx);
 
               return certRequest;
             },
@@ -1621,15 +1624,7 @@ export const certificateV3ServiceFactory = ({
       flowDefaultTtl: ""
     });
 
-    const subjectOverride = buildSubjectOverrideForCsr(csr, {
-      commonName: certificateRequest.commonName,
-      organization: certificateRequest.organization,
-      organizationalUnit: certificateRequest.organizationalUnit,
-      country: certificateRequest.country,
-      state: certificateRequest.state,
-      locality: certificateRequest.locality,
-      domainComponents: certificateRequest.domainComponents
-    });
+    const subjectOverride = buildIssuanceSubject(csr, certificateRequest, issuerNameOverride);
 
     // Record intent before the irreversible act. Signing is an external side effect that no database
     // rollback can undo, so the only way to stay accountable for it is to have a row on disk that
@@ -1638,10 +1633,6 @@ export const certificateV3ServiceFactory = ({
     // nothing references.
     const pendingRequest = await certificateRequestService.createCertificateRequest({
       internal: true,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,
@@ -1690,7 +1681,8 @@ export const certificateV3ServiceFactory = ({
         basicConstraints: caBasicConstraints,
         pathLength: effectiveBasicConstraints?.pathLength,
         ttl: effectiveTtl,
-        altNames: undefined,
+        altNames: formatIssuerAltNames(issuerNameOverride),
+        altNameEntries: altNameEntriesWithCommonName,
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
         keyUsages: certificateRequest.keyUsages
@@ -1710,7 +1702,12 @@ export const certificateV3ServiceFactory = ({
             new Date(newCert.notAfter)
           );
 
-          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
+          const updateData: {
+            profileId: string;
+            renewBeforeDays?: number;
+            applicationId?: string;
+            renewedFromCertificateId?: string;
+          } = {
             profileId
           };
           if (finalRenewBeforeDays !== undefined) {
@@ -1719,7 +1716,13 @@ export const certificateV3ServiceFactory = ({
           if (applicationId) {
             updateData.applicationId = applicationId;
           }
+          if (renewedFromCertificateId) {
+            updateData.renewedFromCertificateId = renewedFromCertificateId;
+          }
           await certificateDAL.updateById(newCert.id, updateData, tx);
+          if (renewedFromCertificateId) {
+            await linkRenewedCertificate(certificateDAL, renewedFromCertificateId, newCert.id, tx);
+          }
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
           // Returns null when the request is no longer attachable, meaning it left a pending status
@@ -1738,6 +1741,7 @@ export const certificateV3ServiceFactory = ({
             },
             tx
           );
+          await onCertificateRequestPersisted?.(pendingRequest, tx);
 
           await $emitIssuanceAlert(
             {
@@ -1832,29 +1836,25 @@ export const certificateV3ServiceFactory = ({
     profileId,
     certificateOrder,
     metadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    actor: actorContext,
     applicationId: explicitApplicationId
   }: TOrderCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    const caller = { actor: actorContext };
+    const { actor, actorId, actorOrgId } = flatActorOfCaller(caller);
     const profile = await validateProfileAndPermissions({
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      caller,
       certificateProfileDAL,
       acmeAccountDAL,
-      permissionService,
+      projectPermissionService,
+      applicationPermissionService,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
       explicitApplicationId,
-      { actor, actorId, actorAuthMethod, actorOrgId },
+      caller,
       EnrollmentType.API
     );
     const applicationName = await $resolveApplicationName(applicationId);
@@ -1883,7 +1883,9 @@ export const certificateV3ServiceFactory = ({
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
-        subjectAlternativeNames: certificateOrder.altNames,
+        subjectAlternativeNames: certificateOrder.altNames?.length
+          ? certificateOrder.altNames
+          : getFixedDefaultSubjectAltNames(profile.defaults),
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
         signatureAlgorithm: certificateOrder.signatureAlgorithm,
@@ -1904,6 +1906,17 @@ export const certificateV3ServiceFactory = ({
     }
 
     const preflightCa = profile.caId ? await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId) : undefined;
+    certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+      defaults: profile.defaults,
+      enrollmentType: EnrollmentType.API,
+      commonName: certificateRequest.commonName,
+      subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+      requestedSubjectAlternativeNames: certificateOrder.csr
+        ? certificateRequest.subjectAlternativeNames
+        : (certificateOrder.altNames ?? []),
+      isCsrSignedAsSent:
+        Boolean(certificateOrder.csr) && caSignsCsrAsSent(preflightCa?.externalCa?.type as CaType | undefined)
+    }).subjectAlternativeNames;
     if (preflightCa) {
       assertCaInProfileProject(preflightCa, profile);
     }
@@ -1956,7 +1969,7 @@ export const certificateV3ServiceFactory = ({
 
     if (!validationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate order validation failed: ${validationResult.errors.join(", ")}`
+        message: describePolicyViolations(validationResult.errors)
       });
     }
 
@@ -1978,7 +1991,7 @@ export const certificateV3ServiceFactory = ({
       validateAcmIssuanceInputs({
         csr: certificateOrder.csr,
         keyAlgorithm: certificateOrder.keyAlgorithm,
-        altNames: certificateOrder.altNames,
+        altNames: certificateRequest.subjectAlternativeNames,
         ttl: orderEffectiveTtl,
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,
@@ -1987,6 +2000,20 @@ export const certificateV3ServiceFactory = ({
         country: certificateRequest.country,
         state: certificateRequest.state,
         locality: certificateRequest.locality
+      });
+    }
+
+    if (preflightCa?.externalCa?.type === CaType.GODADDY) {
+      // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
+      // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
+      // extra SANs past the guard and on to GoDaddy.
+      const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
+      validateGoDaddyIssuanceInputs({
+        keyAlgorithm: certificateOrder.csr
+          ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
+          : certificateOrder.keyAlgorithm,
+        altNames: csrDerived?.subjectAlternativeNames ?? certificateRequest.subjectAlternativeNames,
+        commonName: csrDerived?.commonName ?? certificateRequest.commonName
       });
     }
 
@@ -2126,14 +2153,11 @@ export const certificateV3ServiceFactory = ({
 
     if (!profile.caId) {
       throw new BadRequestError({
-        message: "Self-signed certificates are not supported for certificate ordering"
+        message: `Certificate profile '${profile.slug}' issues self-signed certificates, which cannot be ordered. Use a profile with an external certificate authority.`
       });
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -2141,7 +2165,8 @@ export const certificateV3ServiceFactory = ({
 
     if (caType === CaType.INTERNAL) {
       throw new BadRequestError({
-        message: "Certificate ordering is not supported for the specified CA type"
+        message:
+          "Certificate ordering is only for external certificate authorities, and this profile uses an internal one. Issue the certificate instead."
       });
     }
 
@@ -2152,7 +2177,7 @@ export const certificateV3ServiceFactory = ({
         validateAcmIssuanceInputs({
           csr: certificateOrder.csr,
           keyAlgorithm: certificateOrder.keyAlgorithm,
-          altNames: certificateOrder.altNames,
+          altNames: certificateRequest.subjectAlternativeNames,
           ttl: orderEffectiveTtl,
           notBefore: certificateOrder.notBefore,
           notAfter: certificateOrder.notAfter,
@@ -2164,28 +2189,10 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
-      if (caType === CaType.GODADDY) {
-        // When a CSR is supplied, validate what it actually contains (key algorithm + SANs + CN)
-        // rather than the declared request fields, so a BYO CSR can't smuggle a non-RSA key or
-        // extra SANs past the guard and on to GoDaddy.
-        const csrDerived = certificateOrder.csr ? extractCertificateRequestFromCSR(certificateOrder.csr) : undefined;
-        validateGoDaddyIssuanceInputs({
-          keyAlgorithm: certificateOrder.csr
-            ? extractAlgorithmsFromCSR(certificateOrder.csr).keyAlgorithm
-            : certificateOrder.keyAlgorithm,
-          altNames: csrDerived?.subjectAlternativeNames ?? certificateOrder.altNames,
-          commonName: csrDerived?.commonName ?? certificateOrder.commonName
-        });
-      }
-
       const orderId = randomUUID();
 
       const certRequest = await certificateRequestService.createCertificateRequest({
         internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         projectId: profile.projectId,
         caId: ca.id,
         profileId: profile.id,
@@ -2257,30 +2264,27 @@ export const certificateV3ServiceFactory = ({
     }
 
     throw new BadRequestError({
-      message: "Certificate ordering is not supported for the specified CA type"
+      message: `Certificate ordering is not supported for certificate authority type '${caType}'. Use a profile with an external certificate authority.`
     });
   };
 
-  const updateCertificate = async ({
-    certificateId,
-    metadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TUpdateCertificateDTO) => {
+  const updateCertificate = async ({ certificateId, metadata, actor }: TUpdateCertificateDTO) => {
     const certificate = await certificateDAL.findById(certificateId);
     if (!certificate) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificate.projectId,
+      actorOrgId: actor.org.id,
+      notFoundError: () => certificateNotFoundError({ id: certificateId })
+    });
 
     const { projectPermission } = await assertCanEditCertificate({
       certificate,
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      permissionService,
+      projectPermissionService,
+      applicationPermissionService,
       resourceMetadataDAL
     });
 
@@ -2302,14 +2306,14 @@ export const certificateV3ServiceFactory = ({
       await certificateDAL.transaction(async (tx) => {
         const lockedCertificate = await certificateDAL.findByIdForShare(certificateId, tx);
         if (!lockedCertificate) {
-          throw new NotFoundError({ message: "Certificate not found" });
+          throw certificateNotFoundError({ id: certificateId });
         }
         assertCertificateNotDeleted(lockedCertificate);
         await resourceMetadataDAL.delete({ certificateId }, tx);
         await insertMetadataForCertificate(resourceMetadataDAL, {
           metadata,
           certificateId,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           tx
         });
       });
@@ -2339,7 +2343,8 @@ export const certificateV3ServiceFactory = ({
     certificateProfileDAL,
     certificatePolicyService,
     internalCaService,
-    permissionService,
+    projectPermissionService,
+    applicationPermissionService,
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
@@ -2371,7 +2376,7 @@ export const certificateV3ServiceFactory = ({
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
-        actorOrgId: dto.actorOrgId,
+        actorOrgId: flatActorOfCaller(dto).actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {
@@ -2391,14 +2396,14 @@ export const certificateV3ServiceFactory = ({
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
-        actorOrgId: dto.actorOrgId,
+        actorOrgId: flatActorOfCaller(dto).actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {
           operation: dto.issuanceOperation ?? CertificateIssuanceOperation.SIGN,
           enrollmentType: dto.enrollmentType,
           originalCertificateId: dto.originalCertificateId,
-          commonName: $commonNameFromCsr(dto.csr),
+          commonName: dto.issuerNameOverride?.commonName ?? $commonNameFromCsr(dto.csr),
           applicationId: dto.applicationId
         }
       });
@@ -2412,7 +2417,7 @@ export const certificateV3ServiceFactory = ({
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
-        actorOrgId: dto.actorOrgId,
+        actorOrgId: flatActorOfCaller(dto).actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {
@@ -2426,7 +2431,7 @@ export const certificateV3ServiceFactory = ({
     }
   };
 
-  const renewCertificate = async (dto: Parameters<typeof renewalService.renewCertificate>[0]) => {
+  const renewCertificate = async (dto: TRenewCertificateInput) => {
     try {
       return await renewalService.renewCertificate(dto);
     } catch (error) {
@@ -2436,7 +2441,7 @@ export const certificateV3ServiceFactory = ({
       if (certificate) {
         await $recordIssuanceFailure({
           auditLogInfo: dto.auditLogInfo,
-          actorOrgId: dto.actorOrgId,
+          actorOrgId: dto.actor?.org.id ?? "",
           projectId: certificate.projectId,
           profileId: certificate.profileId,
           error,

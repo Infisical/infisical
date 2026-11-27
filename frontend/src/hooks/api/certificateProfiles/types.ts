@@ -9,7 +9,8 @@ export enum EnrollmentType {
   API = "api",
   EST = "est",
   ACME = "acme",
-  SCEP = "scep"
+  SCEP = "scep",
+  MICROSOFT_AUTOENROLLMENT = "microsoft-autoenrollment"
 }
 
 export enum IssuerType {

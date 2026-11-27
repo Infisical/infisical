@@ -9,8 +9,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
 	"testing"
@@ -111,16 +111,7 @@ func issue(t *testing.T, c *acmeClient, o Order, csr []byte, opts ...wait.Option
 	var finalized orderBody
 	c.Finalize(t, o.Finalize, csr).Decode(t, http.StatusOK, &finalized)
 	valid := waitOrder(t, c, o.URL, "valid", opts...)
-	return leaf(t, c.Certificate(t, valid.Certificate))
-}
-
-func leaf(t *testing.T, chain string) *x509.Certificate {
-	t.Helper()
-	block, _ := pem.Decode([]byte(chain))
-	require.NotNil(t, block, "the certificate chain holds no PEM block")
-	cert, err := x509.ParseCertificate(block.Bytes)
-	require.NoError(t, err)
-	return cert
+	return pki.ParseLeaf(t, c.Certificate(t, valid.Certificate))
 }
 
 // siteName names hosts under one test's site by label.
@@ -148,6 +139,7 @@ type csrSpec struct {
 	hash       crypto.Hash
 	commonName string
 	dnsNames   []string
+	ips        []net.IP
 	emptySANs  bool
 }
 
@@ -196,6 +188,7 @@ func buildCSR(t *testing.T, s csrSpec) []byte {
 	tmpl := &x509.CertificateRequest{
 		Subject:            pkix.Name{CommonName: s.commonName},
 		DNSNames:           s.dnsNames,
+		IPAddresses:        s.ips,
 		SignatureAlgorithm: signatureAlgorithm(t, key, s.hash),
 	}
 	if s.emptySANs {

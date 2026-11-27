@@ -28,11 +28,15 @@ export const AwsPcaCertificateAuthoritySchema = BaseCertificateAuthoritySchema.e
 export const CreateAwsPcaCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
   CaType.AWS_PCA
 ).extend({
-  configuration: AwsPcaCertificateAuthorityConfigurationSchema
+  configuration: AwsPcaCertificateAuthorityConfigurationSchema.describe(
+    CertificateAuthorities.CONFIGURATION(CaType.AWS_PCA)
+  )
 });
 
 export const UpdateAwsPcaCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
   CaType.AWS_PCA
 ).extend({
-  configuration: AwsPcaCertificateAuthorityConfigurationSchema.optional()
+  configuration: AwsPcaCertificateAuthorityConfigurationSchema.optional().describe(
+    CertificateAuthorities.UPDATE_CONFIGURATION(CaType.AWS_PCA)
+  )
 });

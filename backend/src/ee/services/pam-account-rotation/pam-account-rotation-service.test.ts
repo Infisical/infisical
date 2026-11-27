@@ -82,7 +82,8 @@ const buildService = (
       reconcileRotationScheduleForAccount: vi.fn(),
       transaction: vi.fn()
     },
-    permissionService: { getProjectPermission: vi.fn(), getResourcePermission: vi.fn() },
+    projectPermissionService: { getProjectPermission: vi.fn() },
+    pamPermissionService: { getPamPermission: vi.fn() },
     membershipDAL: { findResourceMembershipsForActor: vi.fn() },
     membershipRoleDAL: { find: vi.fn() },
     kmsDataKeyService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },

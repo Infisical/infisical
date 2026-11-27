@@ -57,7 +57,10 @@ import { useDeleteUserFromWorkspace, useGetWorkspaceUserDetails } from "@app/hoo
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { AdditionalPrivilegesRemovedSection } from "@app/pages/project/components/AdditionalPrivilegesRemovedSection";
-import { FolderAccessSection } from "@app/pages/project/components/FolderAccessSection";
+import {
+  FolderAccessSection,
+  hasActiveProjectAdminRole
+} from "@app/pages/project/components/FolderAccessSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { MemberPermissionAuditSheet } from "./components/MemberPermissionAuditSheet";
@@ -299,10 +302,11 @@ export const Page = () => {
               )}
               {isSecretManager &&
                 !hasFolderRbacPlan &&
+                !hasActiveProjectAdminRole(membershipDetails.roles) &&
                 !currentProject.isLegacyAdditionalPrivilegesEnabled && (
                   <AdditionalPrivilegesRemovedSection />
                 )}
-              {isSecretManager && (
+              {isSecretManager && !hasActiveProjectAdminRole(membershipDetails.roles) && (
                 <FolderAccessSection
                   actor={{
                     type: "user",

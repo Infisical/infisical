@@ -8,7 +8,7 @@ import { awsElasticLoadBalancerPkiSyncFactory } from "@app/services/pki-sync/aws
 import { createAcmClient } from "./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-client";
 import { AwsPcaCertificateAuthorityFns } from "./aws-pca/aws-pca-certificate-authority-fns";
 import { CaStatus } from "./certificate-authority-enums";
-import { route53GetHostedZone } from "./dns-providers/route53";
+import { buildRoute53Client } from "./dns-providers/route53";
 
 const sts = vi.hoisted(() => ({
   externalIds: [] as (string | undefined)[],
@@ -127,7 +127,7 @@ const buildClients: Record<
       const fns = AwsPcaCertificateAuthorityFns({
         appConnectionDAL,
         appConnectionService: {
-          validateAppConnectionUsageById: async () => {}
+          validateAppConnectionUsageById: async () => connection
         },
         kmsDataKeyService,
         instanceConfigService
@@ -164,7 +164,7 @@ const buildClients: Record<
   "Route 53": {
     clientsBuilt: 1,
     buildClient: async () => {
-      await route53GetHostedZone(connection, "zone-1", instanceConfigService);
+      await buildRoute53Client(connection, instanceConfigService);
     }
   },
   "AWS Certificate Manager sync": {

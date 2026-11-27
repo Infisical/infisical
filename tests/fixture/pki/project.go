@@ -5,6 +5,7 @@ package pki
 import (
 	"testing"
 
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
@@ -30,4 +31,11 @@ func CertManager(tt *testing.T, tn *harness.Tenant) *Project {
 	projectID, err := uuid.Parse(*res.JSON200.ActiveProjectId)
 	require.NoError(tt, err)
 	return &Project{ID: projectID, tn: tn}
+}
+
+// Grant makes a user or machine identity a Product Member, who can act only inside the
+// applications and signers they are assigned to.
+func (p *Project) Grant(tt *testing.T, pr *harness.Principal) {
+	tt.Helper()
+	fixture.ExistingProject(p.tn, p.ID.String()).Grant(tt, pr, "member")
 }

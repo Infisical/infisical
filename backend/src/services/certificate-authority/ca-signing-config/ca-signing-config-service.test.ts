@@ -1,15 +1,16 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanFeatures } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { InternalCaType } from "../certificate-authority-enums";
 import { CaSigningConfigType } from "./ca-signing-config-enums";
@@ -19,21 +20,11 @@ const CA_PROJECT_ID = "ca-project";
 const ACTOR_ORG_ID = "org-1";
 const CONNECTION_ID = "conn-1";
 
-const permissionActor = {
-  type: ActorType.USER,
-  id: "user-1",
-  authMethod: AuthMethod.EMAIL,
-  orgId: ACTOR_ORG_ID,
-  rootOrgId: ACTOR_ORG_ID,
-  parentOrgId: ACTOR_ORG_ID
-};
-
 const actorFields = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ACTOR_ORG_ID,
-  permissionActor
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ACTOR_ORG_ID, rootOrgId: ACTOR_ORG_ID, parentOrgId: ACTOR_ORG_ID }
+  } as unknown as TActorContext
 };
 
 const DESTINATION: Record<string, Record<string, unknown>> = {
@@ -56,7 +47,8 @@ const EXTERNAL_TYPES = [CaSigningConfigType.Venafi, CaSigningConfigType.AzureAdC
 const buildService = ({
   existing = null as null | { id: string; type: string },
   validatorThrows = false,
-  plan = { pkiEnterpriseCaIntegrations: true }
+  plan = { pkiEnterpriseCaIntegrations: true },
+  caProjectOrgId = ACTOR_ORG_ID
 } = {}) => {
   const caSigningConfigDAL = {
     create: vi.fn(async (data: Record<string, unknown>) => ({ id: "cfg-new", ...data })),
@@ -92,15 +84,20 @@ const buildService = ({
       findOne: vi.fn(async () => ({ id: "internal-ca-1", type: InternalCaType.INTERMEDIATE })),
       updateById: vi.fn()
     },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([
-          {
-            action: ProjectPermissionCertificateAuthorityActions.Edit,
-            subject: ProjectPermissionSub.CertificateAuthorities
-          }
-        ])
-      }))
+    projectDAL: {
+      findById: vi.fn(async () => ({ id: CA_PROJECT_ID, orgId: caProjectOrgId }))
+    },
+    projectPermissionService: {
+      getProjectPermission: vi.fn(async () =>
+        Permission.fromRules({
+          rules: [
+            {
+              action: ProjectPermissionCertificateAuthorityActions.Edit,
+              subject: ProjectPermissionSub.CertificateAuthorities
+            }
+          ]
+        })
+      )
     },
     licenseService,
     appConnectionService,
@@ -112,8 +109,32 @@ const buildService = ({
   };
 
   const service = caSigningConfigServiceFactory(deps as unknown as Parameters<typeof caSigningConfigServiceFactory>[0]);
-  return { service, caSigningConfigDAL, appConnectionService, licenseService };
+  return {
+    service,
+    caSigningConfigDAL,
+    appConnectionService,
+    licenseService,
+    projectPermissionService: deps.projectPermissionService
+  };
 };
+
+describe("CA in another organization", () => {
+  test("answers like a missing CA before checking permissions", async () => {
+    const { service, projectPermissionService, caSigningConfigDAL } = buildService({ caProjectOrgId: "org-2" });
+
+    await expect(
+      service.createSigningConfig({
+        caId: "ca-1",
+        type: CaSigningConfigType.Venafi,
+        appConnectionId: CONNECTION_ID,
+        destinationConfig: DESTINATION[CaSigningConfigType.Venafi] as never,
+        ...actorFields
+      })
+    ).rejects.toThrow("Certificate authority with ID 'ca-1' not found.");
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(caSigningConfigDAL.create).not.toHaveBeenCalled();
+  });
+});
 
 describe("createSigningConfig connection checks", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -133,7 +154,7 @@ describe("createSigningConfig connection checks", () => {
     expect(appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
       EXPECTED_APP[type],
       { connectionId: CONNECTION_ID, projectId: CA_PROJECT_ID },
-      permissionActor
+      actorFields.actor
     );
     expect(caSigningConfigDAL.create).toHaveBeenCalledWith(
       expect.objectContaining({ type, appConnectionId: CONNECTION_ID, destinationConfig: DESTINATION[type] }),
@@ -230,7 +251,7 @@ describe("updateSigningConfig connection checks", () => {
     expect(appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
       EXPECTED_APP[type],
       { connectionId: CONNECTION_ID, projectId: CA_PROJECT_ID },
-      permissionActor
+      actorFields.actor
     );
     expect(caSigningConfigDAL.updateById).toHaveBeenCalledWith(
       "cfg-1",

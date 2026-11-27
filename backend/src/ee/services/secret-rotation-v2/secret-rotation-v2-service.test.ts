@@ -1,11 +1,12 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TableName } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
@@ -116,12 +117,8 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
 const TX = { name: "rotation-transaction" };
 
 const actor = {
-  type: ActorType.USER,
-  id: "user-1",
-  orgId: "org-1",
-  authMethod: AuthMethod.EMAIL,
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
+  principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
 };
 
 // storedStatus is the rotation row in the database; the object passed to rotateGeneratedCredentials is what the
@@ -151,9 +148,10 @@ const createService = ({
       }))
     },
     licenseService: new FakeLicenseService().setPlan("org-1", { secretRotation: true }),
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }),
+        folderGrants: FolderGrants.none()
       }))
     },
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) },
@@ -589,11 +587,14 @@ describe.each([SecretRotation.GitLabServiceAccountToken, SecretRotation.GitLabGr
 
     const createEditOnlyGitLabService = () => {
       const created = createGitLabService();
-      created.deps.permissionService.getProjectPermission.mockResolvedValue({
-        permission: createMongoAbility([
-          { action: ["read", "edit"], subject: "secret-rotation" },
-          { action: "manage", subject: "secrets" }
-        ])
+      created.deps.secretsPermissionService.getSecretsPermission.mockResolvedValue({
+        permission: Permission.fromRules({
+          rules: [
+            { action: ["read", "edit"], subject: "secret-rotation" },
+            { action: "manage", subject: "secrets" }
+          ]
+        }),
+        folderGrants: FolderGrants.none()
       });
       return created;
     };

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError } from "@app/lib/errors";
+import { TActorInput } from "@app/lib/types";
 
 import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
@@ -274,11 +275,8 @@ const buildService = (opts?: {
 };
 
 const actor = {
-  actor: "user" as never,
-  actorId: "user-1",
-  actorAuthMethod: null as never,
-  actorOrgId: "org-1"
-};
+  actor: { principal: { type: "user", id: "user-1", authMethod: null }, org: { id: "org-1" } }
+} as unknown as TActorInput;
 
 const emailChannel: TAlertChannelInput = {
   name: "email-ch",
@@ -697,6 +695,53 @@ describe("alert service", () => {
 
       await expect(service.applyPreparedAlert(second, tx)).rejects.toThrow("changed while you were saving");
       expect([...channels.values()][0].recipients).toEqual([expect.objectContaining({ principalId: "user-2" })]);
+    });
+  });
+
+  describe("an alert chosen for a resource that is still being created", () => {
+    const newResourceAlert = {
+      resourceType: RESOURCE_TYPE,
+      resourceId: "new-resource",
+      projectId: "proj-1",
+      eventType: "test.resource.opened",
+      name: "New resource alert",
+      channels: [emailChannel, webhookChannel],
+      ...actor
+    };
+    const tx = {} as never;
+
+    test("is written only when applied, as the actor who chose it", async () => {
+      const { service, alerts, channels } = buildService();
+      const prepared = await service.prepareAlertForNewResource(newResourceAlert);
+      expect(alerts.size).toBe(0);
+
+      await service.applyPreparedAlert(prepared, tx);
+      expect([...alerts.values()]).toEqual([
+        expect.objectContaining({
+          resourceId: "new-resource",
+          projectId: "proj-1",
+          createdByActorId: "user-1",
+          enabled: true
+        })
+      ]);
+      expect([...channels.values()].map((c) => c.name)).toEqual(["email-ch", "webhook-ch"]);
+    });
+
+    test("leaves the resource checks to the caller, since the resource doesn't exist yet", async () => {
+      const { service, permissionCalls } = buildService({ resourceScopeThrows: true });
+      await service.prepareAlertForNewResource(newResourceAlert);
+      expect(permissionCalls).toHaveLength(0);
+    });
+
+    test("still checks its channels", async () => {
+      const { service, gatedChannelTypeCalls, recipientProjectIds } = buildService();
+      await expect(service.prepareAlertForNewResource({ ...newResourceAlert, channels: [] })).rejects.toThrow(
+        "At least one channel is required"
+      );
+
+      await service.prepareAlertForNewResource(newResourceAlert);
+      expect(gatedChannelTypeCalls.at(-1)).toEqual([AlertChannelType.EMAIL, AlertChannelType.WEBHOOK]);
+      expect(recipientProjectIds).toEqual(["proj-1", "proj-1"]);
     });
   });
 

@@ -31,7 +31,8 @@ export const SamlConfigsSchema = z.object({
   encryptedSamlCertificate: zodBuffer,
   enableGroupSync: z.boolean().default(false),
   mfaSignalAttribute: z.string().nullable().optional(),
-  mfaAuthnContexts: z.string().array().nullable().optional()
+  mfaAuthnContexts: z.string().array().nullable().optional(),
+  mfaAttributeValues: z.string().array().nullable().optional()
 });
 
 export type TSamlConfigs = z.infer<typeof SamlConfigsSchema>;

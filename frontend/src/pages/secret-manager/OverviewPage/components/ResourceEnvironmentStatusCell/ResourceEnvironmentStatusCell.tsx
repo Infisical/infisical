@@ -6,17 +6,22 @@ import {
   GitBranchIcon,
   ImportIcon,
   LucideIcon,
-  MinusIcon
+  MinusIcon,
+  PencilLineIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { TableCell, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+
+import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 
 export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "no-access";
 
 type Props = {
   status: EnvironmentStatus;
   hasOverride?: boolean;
+  pendingAction?: PendingAction.Create | PendingAction.Update;
   children?: ReactNode;
   className?: string;
   onClick?: MouseEventHandler<HTMLTableCellElement>;
@@ -25,6 +30,7 @@ type Props = {
 export const ResourceEnvironmentStatusCell = ({
   status,
   hasOverride,
+  pendingAction,
   children,
   className,
   onClick
@@ -72,6 +78,8 @@ export const ResourceEnvironmentStatusCell = ({
         status === "missing" && "text-danger",
         status === "no-access" && "text-accent",
         status === "imported" && "text-import",
+        pendingActionRowClass(pendingAction),
+        pendingActionBorderClass(pendingAction),
         className
       )}
       onClick={onClick}
@@ -93,6 +101,16 @@ export const ResourceEnvironmentStatusCell = ({
           </TooltipTrigger>
           <TooltipContent>{tooltipContent}</TooltipContent>
         </Tooltip>
+        {pendingAction && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PencilLineIcon className="mr-auto size-3.5 shrink-0 text-project" />
+            </TooltipTrigger>
+            <TooltipContent>
+              {pendingAction === PendingAction.Create ? "Unsaved new value" : "Unsaved change"}
+            </TooltipContent>
+          </Tooltip>
+        )}
         {children}
       </div>
     </TableCell>

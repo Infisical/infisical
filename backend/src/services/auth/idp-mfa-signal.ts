@@ -22,8 +22,10 @@ const DEFAULT_SAML_MFA_AUTHN_CONTEXTS = [
   "http://schemas.microsoft.com/claims/multipleauthn"
 ];
 
-// The RFC 8176 value, plus the URI Entra ID uses in its authnmethodsreferences claim.
-const SAML_MFA_ATTRIBUTE_VALUES = ["mfa", "http://schemas.microsoft.com/claims/multipleauthn"];
+// The RFC 8176 value, plus the URI Entra ID uses in its authnmethodsreferences claim. Possession values such as
+// Okta's swk (a passkey) are absent because a passkey can also be the only factor; an org whose IdP only issues
+// them after another factor adds them to `mfaAttributeValues`.
+const DEFAULT_SAML_MFA_ATTRIBUTE_VALUES = ["mfa", "http://schemas.microsoft.com/claims/multipleauthn"];
 
 // The assertion is signed, but a misbehaving IdP could still send an absurd number of values.
 const MAX_SIGNAL_VALUES = 50;
@@ -41,6 +43,7 @@ type TSamlMfaSignalConfig = {
   authProvider?: string | null;
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
+  mfaAttributeValues?: string[] | null;
 };
 
 type TOidcMfaSignalConfig = {
@@ -101,7 +104,8 @@ export const matchIdpMfaSignal = (input: TIdpMfaSignalInput): TIdpMfaSignal => {
     DEFAULT_MFA_CLAIM_NAME;
   const attributeKey = findKey(attributes, attributeName);
   const receivedAttributeValues = attributeKey ? toStringList(attributes[attributeKey]) : [];
-  matchingValues(receivedAttributeValues, SAML_MFA_ATTRIBUTE_VALUES).forEach((value) => {
+  const acceptedAttributeValues = [...DEFAULT_SAML_MFA_ATTRIBUTE_VALUES, ...(input.config?.mfaAttributeValues ?? [])];
+  matchingValues(receivedAttributeValues, acceptedAttributeValues).forEach((value) => {
     evidence.push(`${attributeKey}=${value}`);
   });
 

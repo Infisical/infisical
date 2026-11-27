@@ -1,8 +1,8 @@
 import { TDelegatedApprovalRequests } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
-import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
 

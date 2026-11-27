@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -12,7 +13,6 @@ import {
   TGitLabServiceAccount,
   UpdateGitLabConnectionSchema
 } from "@app/services/app-connection/gitlab";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -57,7 +57,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
       const projects: TGitLabProject[] = await server.services.appConnection.gitlab.listProjects(
         connectionId,
-        req.permission,
+        req.actor,
         search,
         limit
       );
@@ -99,7 +99,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
 
       const groups: TGitLabGroup[] = await server.services.appConnection.gitlab.listGroups(
         connectionId,
-        req.permission,
+        req.actor,
         search,
         limit
       );
@@ -140,7 +140,7 @@ export const registerGitLabConnectionRouter = async (server: FastifyZodProvider)
       const { connectionId, groupId } = req.params;
 
       const serviceAccounts: TGitLabServiceAccount[] =
-        await server.services.appConnection.gitlab.listGroupServiceAccounts(connectionId, groupId, req.permission);
+        await server.services.appConnection.gitlab.listGroupServiceAccounts(connectionId, groupId, req.actor);
 
       return serviceAccounts;
     }

@@ -1,19 +1,23 @@
-import { ForbiddenError } from "@casl/ability";
 import dns from "node:dns/promises";
 
-import { OrganizationActionScope } from "@app/db/schemas";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionEmailDomainActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isValidEmailDomain } from "@app/lib/validator";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
+import { getEmailDomainVerificationRecordValue, toEmailDomainResponse } from "./email-domain-fns";
 import {
   EmailDomainStatus,
+  EmailDomainVerificationError,
   TCreateEmailDomainDTO,
   TDeleteEmailDomainDTO,
   TListEmailDomainsDTO,
@@ -25,7 +29,8 @@ type TEmailDomainServiceFactoryDep = {
     TEmailDomainDALFactory,
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   licenseService: TLicenseService;
 };
 
@@ -33,33 +38,16 @@ export type TEmailDomainServiceFactory = ReturnType<typeof emailDomainServiceFac
 
 const VERIFICATION_CODE_EXPIRY_DAYS = 7;
 const DNS_RECORD_PREFIX = "_infisical-verification";
-const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
 export const emailDomainServiceFactory = ({
   emailDomainDAL,
-  permissionService,
+  orgPermissionService,
+  orgDAL,
   licenseService
 }: TEmailDomainServiceFactoryDep) => {
-  const createEmailDomain = async ({
-    domain,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    orgId
-  }: TCreateEmailDomainDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.Create,
-      OrgPermissionSubjects.EmailDomains
-    );
+  const createEmailDomain = async ({ domain, actor, orgId }: TCreateEmailDomainDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionEmailDomainActions.Create, subject: OrgPermissionSubjects.EmailDomains });
 
     const plan = await licenseService.getPlan(orgId);
     const canEmailDomainVerification =
@@ -119,47 +107,43 @@ export const emailDomainServiceFactory = ({
       throw new BadRequestError({ message: emailDomain.error });
     }
 
-    return emailDomain.data;
+    return toEmailDomainResponse(emailDomain.data);
   };
 
-  const verifyEmailDomain = async ({
-    emailDomainId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    orgId
-  }: TVerifyEmailDomainDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
+  const verifyEmailDomain = async ({ emailDomainId, actor, orgId }: TVerifyEmailDomainDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({
+      action: OrgPermissionEmailDomainActions.VerifyDomain,
+      subject: OrgPermissionSubjects.EmailDomains
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.VerifyDomain,
-      OrgPermissionSubjects.EmailDomains
-    );
 
     const plan = await licenseService.getPlan(orgId);
     const canEmailDomainVerification =
       plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.PlanRestricted,
         message: "Failed to verify email domain due to plan restriction. Upgrade plan to use email domain verification."
       });
     }
 
-    const emailDomainRecord = await emailDomainDAL.findOne({
-      id: emailDomainId,
-      orgId,
-      status: EmailDomainStatus.Pending
-    });
+    const emailDomainRecord = await emailDomainDAL.findOne({ id: emailDomainId, orgId });
     if (!emailDomainRecord) {
       throw new NotFoundError({
         message: "Email domain not found."
+      });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Verified) {
+      throw new ConflictError({
+        message: `Email domain '${emailDomainRecord.domain}' is already verified.`
+      });
+    }
+
+    if (emailDomainRecord.status === EmailDomainStatus.Expired) {
+      throw new BadRequestError({
+        name: EmailDomainVerificationError.VerificationExpired,
+        message: "Verification code has expired. Please create a new domain verification request."
       });
     }
 
@@ -167,6 +151,7 @@ export const emailDomainServiceFactory = ({
     if (new Date(emailDomainRecord.codeExpiresAt) < new Date()) {
       await emailDomainDAL.updateById(emailDomainId, { status: EmailDomainStatus.Expired });
       throw new BadRequestError({
+        name: EmailDomainVerificationError.VerificationExpired,
         message: "Verification code has expired. Please create a new domain verification request."
       });
     }
@@ -178,17 +163,19 @@ export const emailDomainServiceFactory = ({
     } catch (err) {
       logger.error(err, "Failed to resolve DNS records for the domain");
       throw new BadRequestError({
+        name: EmailDomainVerificationError.DnsLookupFailed,
         message:
           "Failed to resolve DNS records for the domain. Please verify the DNS TXT record exists and try again. DNS changes may take time to propagate."
       });
     }
 
     const flatRecords = dnsRecords.map((record) => record.join(""));
-    const expectedValue = `${DNS_TXT_VALUE_PREFIX}=${emailDomainRecord.verificationCode}`;
+    const expectedValue = getEmailDomainVerificationRecordValue(emailDomainRecord.verificationCode);
     const isVerified = flatRecords.some((record) => record === expectedValue);
 
     if (!isVerified) {
       throw new BadRequestError({
+        name: EmailDomainVerificationError.DnsRecordMismatch,
         message: `DNS TXT record not found or value does not match. Expected a TXT record at ${emailDomainRecord.verificationRecordName} with value: ${expectedValue}`
       });
     }
@@ -217,50 +204,26 @@ export const emailDomainServiceFactory = ({
     });
 
     if (updatedEmailDomain.error) {
-      throw new BadRequestError({ message: updatedEmailDomain.error });
+      throw new BadRequestError({
+        name: EmailDomainVerificationError.AlreadyVerified,
+        message: updatedEmailDomain.error
+      });
     }
 
-    return { emailDomain: updatedEmailDomain.data };
+    return { emailDomain: toEmailDomainResponse(updatedEmailDomain.data) };
   };
 
-  const listEmailDomains = async ({ actor, actorId, actorAuthMethod, actorOrgId, orgId }: TListEmailDomainsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.Read,
-      OrgPermissionSubjects.EmailDomains
-    );
+  const listEmailDomains = async ({ actor, orgId }: TListEmailDomainsDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionEmailDomainActions.Read, subject: OrgPermissionSubjects.EmailDomains });
 
     const emailDomains = await emailDomainDAL.find({ orgId });
-    return emailDomains;
+    return emailDomains.map(toEmailDomainResponse);
   };
 
-  const deleteEmailDomain = async ({
-    emailDomainId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    orgId
-  }: TDeleteEmailDomainDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.Delete,
-      OrgPermissionSubjects.EmailDomains
-    );
+  const deleteEmailDomain = async ({ emailDomainId, actor, orgId }: TDeleteEmailDomainDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionEmailDomainActions.Delete, subject: OrgPermissionSubjects.EmailDomains });
 
     const emailDomainRecord = await emailDomainDAL.findOne({ id: emailDomainId, orgId });
     if (!emailDomainRecord) {
@@ -269,8 +232,21 @@ export const emailDomainServiceFactory = ({
       });
     }
 
+    if (emailDomainRecord.status === EmailDomainStatus.Verified) {
+      const org = await orgDAL.findById(orgId);
+      if (org?.authEnforced) {
+        const verifiedDomains = await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified });
+        // With SSO enforced, members can only sign in with an email on a verified domain
+        if (verifiedDomains.length <= 1) {
+          throw new BadRequestError({
+            message: `Email domain '${emailDomainRecord.domain}' is the organization's only verified domain and SSO enforcement is on. Turn off SSO enforcement before deleting it.`
+          });
+        }
+      }
+    }
+
     await emailDomainDAL.deleteById(emailDomainId);
-    return emailDomainRecord;
+    return toEmailDomainResponse(emailDomainRecord);
   };
 
   return {

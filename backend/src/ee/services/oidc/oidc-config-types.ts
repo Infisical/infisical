@@ -1,5 +1,30 @@
-import { TGenericPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
+
+export const OIDC_CONFIG_AUDIT_FIELDS = [
+  "configurationType",
+  "discoveryURL",
+  "issuer",
+  "authorizationEndpoint",
+  "jwksUri",
+  "tokenEndpoint",
+  "userinfoEndpoint",
+  "allowedEmailDomains",
+  "isActive",
+  "manageGroupMemberships",
+  "jwtSignatureAlgorithm",
+  "mfaClaimName",
+  "mfaAmrValues"
+] as const;
+
+export const OIDC_CONFIG_AUDIT_URL_FIELDS = [
+  "discoveryURL",
+  "issuer",
+  "authorizationEndpoint",
+  "jwksUri",
+  "tokenEndpoint",
+  "userinfoEndpoint"
+] as const;
 
 export enum OIDCConfigurationType {
   CUSTOM = "custom",
@@ -31,7 +56,7 @@ export type TGetOidcCfgDTO =
   | ({
       type: "external";
       organizationId: string;
-    } & TGenericPermission)
+    } & TActorInput)
   | {
       type: "internal";
       organizationId: string;
@@ -54,7 +79,7 @@ export type TCreateOidcCfgDTO = {
   jwtSignatureAlgorithm: OIDCJWTSignatureAlgorithm;
   mfaClaimName?: string;
   mfaAmrValues?: string[] | null;
-} & TGenericPermission;
+} & TActorInput;
 
 export type TUpdateOidcCfgDTO = Partial<{
   issuer: string;
@@ -74,4 +99,8 @@ export type TUpdateOidcCfgDTO = Partial<{
   mfaClaimName: string;
   mfaAmrValues: string[] | null;
 }> &
-  TGenericPermission;
+  TActorInput;
+
+export type TDeleteOidcCfgDTO = {
+  organizationId: string;
+} & TActorInput;

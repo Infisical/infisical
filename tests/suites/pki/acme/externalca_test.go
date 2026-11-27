@@ -9,6 +9,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/acmeca"
+	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fakes/cloudflare"
 	"github.com/Infisical/infisical/tests/fakes/dnsmadeeasy"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -21,27 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// openUpstream is a fake upstream ACME CA of the tenant's own.
-func openUpstream(t *testing.T, tn *harness.Tenant) *acmeca.ControlPlane {
-	t.Helper()
-	scope := id.Nonce()
-	admin := fixture.FakenetAdmin(t, tn)
-	fakenet.Track(t, admin, acmeca.Service.Host(), scope)
-	return acmeca.Open(t, admin, scope)
-}
-
-// cloudflareCA is an Infisical ACME CA ordering from an upstream CA and answering its
-// DNS-01 challenges in a Cloudflare zone.
-func cloudflareCA(t *testing.T, tn *harness.Tenant, proj *pki.Project) (pki.CA, *acmeca.ControlPlane, *cloudflare.ControlPlane) {
-	t.Helper()
-	conn := fixture.NewAppConnection(t, tn, fixture.CloudflareAPITokenAppConnection)
-	zone := id.Nonce()
-	dns := cloudflare.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-	dns.Seed(t, cloudflare.WithZone(zone))
-	up := openUpstream(t, tn)
-	return pki.NewAcmeCA(t, proj, conn, api.CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderCloudflare, zone, up.DirectoryURL()), up, dns
-}
-
 // dnsMadeEasyCA is the same through a DNS Made Easy zone named zoneName.
 func dnsMadeEasyCA(t *testing.T, tn *harness.Tenant, proj *pki.Project, zoneName string) (pki.CA, *acmeca.ControlPlane, *dnsmadeeasy.ControlPlane) {
 	t.Helper()
@@ -49,8 +29,20 @@ func dnsMadeEasyCA(t *testing.T, tn *harness.Tenant, proj *pki.Project, zoneName
 	const zone = "1001"
 	dns := dnsmadeeasy.Open(t, conn.FakenetAdmin(t), conn.Nonce())
 	dns.Seed(t, dnsmadeeasy.WithZone(zone, zoneName))
-	up := openUpstream(t, tn)
+	up := pki.OpenUpstreamCA(t, tn)
 	return pki.NewAcmeCA(t, proj, conn, api.CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderDnsMadeEasy, zone, up.DirectoryURL()), up, dns
+}
+
+// route53CA is the same through a Route 53 hosted zone for zoneName, reached over an
+// AWS connection.
+func route53CA(t *testing.T, tn *harness.Tenant, proj *pki.Project, zoneName string) (pki.CA, *acmeca.ControlPlane, *aws.ControlPlane) {
+	t.Helper()
+	conn := fixture.NewAppConnection(t, tn, fixture.AWSAccessKeyAppConnection)
+	zone := "Z" + id.Short()
+	acct := aws.Open(t, conn.FakenetAdmin(t), conn.Nonce())
+	acct.Seed(t, aws.SeedHostedZone(zone, zoneName))
+	up := pki.OpenUpstreamCA(t, tn)
+	return pki.NewAcmeCA(t, proj, conn, api.CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRoute53, zone, up.DirectoryURL()), up, acct
 }
 
 // upstreamIssuance is how long an order waits for a certificate from the upstream CA.
@@ -115,7 +107,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			// Setup
 			tn := h.NewTenant(t)
 			proj := pki.CertManager(t, tn)
-			ca, up, dns := cloudflareCA(t, tn, proj)
+			ca, up, dns := pki.NewCloudflareAcmeCA(t, proj)
 			p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
 			site := siteName{newSite(t, tn)}
 			name := site.Name("www")
@@ -128,7 +120,9 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			require.Equal(t, []string{name}, cert.DNSNames)
 			dns.ExpectEvent[cloudflare.DNSRecordCreated](t, func(e cloudflare.DNSRecordCreated) bool { return e.Name == "_acme-challenge."+name })
 			dns.ExpectEvent[cloudflare.DNSRecordDeleted](t, func(e cloudflare.DNSRecordDeleted) bool { return e.Name == "_acme-challenge."+name })
-			require.Len(t, up.State(t).Issued, 1)
+			issued := up.State(t).Issued
+			require.Len(t, issued, 1)
+			require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
 		})
 
 		t.Run("should issue from the upstream CA after answering DNS-01 in DNS Made Easy "+subject.name, func(t *testing.T) {
@@ -153,15 +147,42 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			require.Equal(t, []string{name}, cert.DNSNames)
 			dns.ExpectEvent[dnsmadeeasy.RecordCreated](t, func(e dnsmadeeasy.RecordCreated) bool { return e.Type == "TXT" && e.Name == "_acme-challenge" })
 			dns.ExpectEvent[dnsmadeeasy.RecordDeleted](t, func(e dnsmadeeasy.RecordDeleted) bool { return e.Type == "TXT" && e.Name == "_acme-challenge" })
-			require.Len(t, up.State(t).Issued, 1)
+			issued := up.State(t).Issued
+			require.Len(t, issued, 1)
+			require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
 		})
 	}
+
+	t.Run("should issue from the upstream CA after answering DNS-01 in Route 53", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		site := siteName{newSite(t, tn)}
+		ca, up, acct := route53CA(t, tn, proj, site.Domain())
+		p := newAcmeProfileFrom(t, tn, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)), api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
+		name := site.Name("www")
+		c, o := readyOrder(t, p, site, name)
+
+		// Action
+		cert := issue(t, c, o, newCSR(t, name, name), upstreamIssuance)
+
+		// Assert
+		require.Equal(t, []string{name}, cert.DNSNames)
+		record := "_acme-challenge." + name + "."
+		acct.Route53.ExpectEvent[aws.RecordChanged](t, func(e aws.RecordChanged) bool { return e.Name == record && e.Type == "TXT" && e.Action == "UPSERT" })
+		acct.Route53.ExpectEvent[aws.RecordChanged](t, func(e aws.RecordChanged) bool { return e.Name == record && e.Type == "TXT" && e.Action == "DELETE" })
+		issued := up.State(t).Issued
+		require.Len(t, issued, 1)
+		require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
+	})
 
 	t.Run("should refuse a CSR whose names the policy does not allow, before ordering upstream", func(t *testing.T) {
 		t.Parallel()
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
-		ca, up, _ := cloudflareCA(t, tn, proj)
+		ca, up, _ := pki.NewCloudflareAcmeCA(t, proj)
 		withCertificateKey(t, proj)
 
 		rows := []struct {
@@ -169,13 +190,14 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			cn        string
 			sans      []string
 			emptySANs bool
+			allowed   string
 			detail    string
 		}{
-			{"when the common name is not allowed and there are no SANs", "www", nil, true, "Invalid CSR: common_name value '%s' is not in allowed values list"},
-			{"when the common name is not allowed beside an allowed SAN", "www", []string{"san"}, false, "Invalid CSR: common_name value '%s' is not in allowed values list"},
-			{"when the only SAN is not allowed", "", []string{"www"}, false, "Invalid CSR: dns_name SAN value '%s' is not in allowed values list"},
-			{"when one SAN is not allowed beside an allowed one", "", []string{"san", "www"}, false, "Invalid CSR: dns_name SAN value '%s' is not in allowed values list"},
-			{"when the common name is allowed and one SAN is not", "cn", []string{"san", "www"}, false, "Invalid CSR: dns_name SAN value '%s' is not in allowed values list"},
+			{"when the common name is not allowed and there are no SANs", "www", nil, true, "cn", "Invalid CSR: common_name value '%s' is not in the allowed values: '%s'."},
+			{"when the common name is not allowed beside an allowed SAN", "www", []string{"san"}, false, "cn", "Invalid CSR: common_name value '%s' is not in the allowed values: '%s'."},
+			{"when the only SAN is not allowed", "", []string{"www"}, false, "san", "Invalid CSR: dns_name SAN value '%s' is not in the allowed values: '%s'."},
+			{"when one SAN is not allowed beside an allowed one", "", []string{"san", "www"}, false, "san", "Invalid CSR: dns_name SAN value '%s' is not in the allowed values: '%s'."},
+			{"when the common name is allowed and one SAN is not", "cn", []string{"san", "www"}, false, "san", "Invalid CSR: dns_name SAN value '%s' is not in the allowed values: '%s'."},
 		}
 		for _, row := range rows {
 			t.Run(row.name, func(t *testing.T) {
@@ -195,8 +217,8 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 				res := c.Finalize(t, o.Finalize, buildCSR(t, want))
 
 				// Assert
-				requireProblem(t, res, http.StatusBadRequest, "badCSR", fmt.Sprintf(row.detail, site.Name("www")))
-				require.Empty(t, up.State(t).Issued)
+				requireProblem(t, res, http.StatusBadRequest, "badCSR", fmt.Sprintf(row.detail, site.Name("www"), site.Name(row.allowed)))
+				require.Empty(t, up.State(t).Orders)
 			})
 		}
 	})
@@ -205,7 +227,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 		t.Parallel()
 		tn := h.NewTenant(t)
 		proj := pki.CertManager(t, tn)
-		ca, up, _ := cloudflareCA(t, tn, proj)
+		ca, up, _ := pki.NewCloudflareAcmeCA(t, proj)
 		withCertificateKey(t, proj)
 
 		rows := []struct {
@@ -213,17 +235,17 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			hash                                  crypto.Hash
 			detail                                string
 		}{
-			{"RSA-4096", "SHA512-RSA", "RSA-2048", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_2048' is not allowed by this policy"},
-			{"RSA-4096", "SHA512-RSA", "RSA-3072", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_3072' is not allowed by this policy"},
-			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P256", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by this policy"},
-			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P384", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by this policy"},
-			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P521", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by this policy"},
-			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA384, "Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by this policy"},
-			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by this policy"},
-			{"ECDSA-P256", "SHA512-RSA", "ECDSA-P256", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by this policy"},
-			{"ECDSA-P384", "SHA512-RSA", "ECDSA-P384", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by this policy"},
-			{"ECDSA-P521", "SHA512-RSA", "ECDSA-P521", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by this policy"},
-			{"RSA-2048", "SHA512-RSA", "RSA-4096", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by this policy, Key algorithm 'RSA_4096' is not allowed by this policy"},
+			{"RSA-4096", "SHA512-RSA", "RSA-2048", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_2048' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "SHA512-RSA", "RSA-3072", crypto.SHA512, "Invalid CSR: Key algorithm 'RSA_3072' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P256", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_prime256v1' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P384", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp384r1' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-4096", "ECDSA-SHA512", "ECDSA-P521", crypto.SHA512, "Invalid CSR: Key algorithm 'EC_secp521r1' is not allowed by the policy. Allowed key algorithms: RSA_4096."},
+			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA384, "Invalid CSR: Signature algorithm 'RSA-SHA384' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"RSA-2048", "SHA512-RSA", "RSA-2048", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"ECDSA-P256", "SHA512-RSA", "ECDSA-P256", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"ECDSA-P384", "SHA512-RSA", "ECDSA-P384", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"ECDSA-P521", "SHA512-RSA", "ECDSA-P521", crypto.SHA256, "Invalid CSR: Signature algorithm 'ECDSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512."},
+			{"RSA-2048", "SHA512-RSA", "RSA-4096", crypto.SHA256, "Invalid CSR: Signature algorithm 'RSA-SHA256' is not allowed by the policy. Allowed signature algorithms: RSA-SHA512; Key algorithm 'RSA_4096' is not allowed by the policy. Allowed key algorithms: RSA_2048."},
 		}
 		for _, row := range rows {
 			t.Run(row.keyType+" "+row.hash.String()+" against "+row.allowedKey+" "+row.allowedSignature, func(t *testing.T) {
@@ -242,7 +264,7 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 
 				// Assert
 				requireProblem(t, res, http.StatusBadRequest, "badCSR", row.detail)
-				require.Empty(t, up.State(t).Issued)
+				require.Empty(t, up.State(t).Orders)
 			})
 		}
 	})

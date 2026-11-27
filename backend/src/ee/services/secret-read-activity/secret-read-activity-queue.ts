@@ -1,11 +1,11 @@
 import { SecretType, TableName } from "@app/db/schemas";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { chunkArray, groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";

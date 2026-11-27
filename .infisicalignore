@@ -96,6 +96,9 @@ backend/src/ee/services/dynamic-secret/providers/sql-database.test.ts:generic-pa
 backend/src/ee/services/agent-vault/agent-vault-service-type-fns.test.ts:private-key:351
 frontend/src/components/agent-vault/service-sheet/serviceRequest.test.ts:private-key:691
 frontend/src/components/agent-vault/service-sheet/serviceSchema.test.ts:private-key:576
+tests/fakes/f5bigip/fake_test.go:generic-password:47
+tests/fakes/netscaler/fake_test.go:generic-password:45
+tests/fakes/oauth/gcp_instance.go:private-key:20
 backend/src/domains/platform/kms-core/ce/models/instance-encryption-key.test.ts:generic-api-key:4
 backend/src/domains/platform/kms-core/ce/models/instance-encryption-key.test.ts:generic-api-key:144
 backend/src/domains/platform/kms-core/ce/services/wire-format.test.ts:generic-api-key:178
@@ -107,3 +110,8 @@ backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:g
 backend/src/domains/platform/kms-core/ce/testing/fixtures/kms-wire-format.json:generic-api-key:212
 backend/src/domains/platform/kms-core/ce/services/root-key/root-key-loader.test.ts:generic-api-key:23
 backend/src/domains/platform/kms-core/ce/testing/root-key-fixture.ts:generic-api-key:12
+backend/src/services/pki-application/pki-application-enrollment-service.test.ts:generic-api-key:302
+backend/src/services/pki-application/pki-application-enrollment-service.test.ts:generic-api-key:307
+backend/src/services/pki-application/pki-application-enrollment-service.test.ts:generic-api-key:560
+backend/src/services/pki-application/pki-application-enrollment-service.test.ts:generic-api-key:1044
+backend/src/services/certificate-profile/certificate-profile-service.test.ts:generic-api-key:658

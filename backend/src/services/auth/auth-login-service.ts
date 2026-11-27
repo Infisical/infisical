@@ -1,22 +1,21 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  OrganizationActionScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TUsers,
-  UserDeviceSchema
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
 import {
   LoginMethod,
   SignUpRefusal,
   TInstanceConfigService
 } from "@app/domains/platform/instance-config-core/ce/module";
+import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TSsoSessionService
+} from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -38,7 +37,7 @@ import {
   recordAuthAttemptMetric,
   recordLegacyRootKeyUsageMetric
 } from "@app/lib/telemetry/metrics";
-import { sanitizeEmail, validateEmail } from "@app/lib/validator";
+import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
@@ -77,15 +76,7 @@ import {
   TProcessProviderCallbackDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import {
-  ActorType,
-  AuthMethod,
-  AuthModeMfaJwtTokenPayload,
-  AuthTokenType,
-  MfaMethod,
-  ProviderAuthResult,
-  TProviderAuthCallback
-} from "./auth-type";
+import { AuthModeMfaJwtTokenPayload, ProviderAuthResult, TProviderAuthCallback } from "./auth-type";
 import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
@@ -102,7 +93,9 @@ type TAuthLoginServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
+  orgPermissionService: TOrgPermissionService;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
     "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
@@ -124,7 +117,9 @@ export const authLoginServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  permissionService,
+  actorContextService,
+  ssoSessionService,
+  orgPermissionService,
   mfaLockoutService,
   userService
 }: TAuthLoginServiceFactoryDep) => {
@@ -211,8 +206,7 @@ export const authLoginServiceFactory = ({
     authMethod: AuthMethod;
     organizationId?: string;
     issuingRootOrgId?: string;
-    // The method the login page opens on; an email code is sent up front only for that.
-    initialMfaMethod: MfaMethod;
+    initialMfaMethod: MfaMethod; // The method the login page opens on.
     allowedMfaMethods: MfaMethod[];
     idpMfaOrgId?: string;
   }) => {
@@ -227,7 +221,6 @@ export const authLoginServiceFactory = ({
         issuingRootOrgId,
         email,
         allowedMfaMethods,
-        requiredMfaMethod: initialMfaMethod,
         idpMfaOrgId
       },
       appCfg.AUTH_SECRET,
@@ -869,6 +862,8 @@ export const authLoginServiceFactory = ({
     const aliasType = authMethodToAliasType(authMethod);
     const sanitizedEmail = sanitizeEmail(email);
     validateEmail(sanitizedEmail);
+    // A disposable address never creates or renames an account, and verifies only an account already on it.
+    const isDisposableAddress = isDisposableEmail(sanitizedEmail);
 
     // Step 1: Look up user by provider alias (stable, immutable ID)
     let user: TUsers | undefined;
@@ -939,6 +934,12 @@ export const authLoginServiceFactory = ({
           name: "Oauth 2 login"
         });
       }
+
+      if (isDisposableAddress)
+        throw new BadRequestError({
+          message: `Email address '${sanitizedEmail}' is from a disposable email provider. Sign in with an account that uses a different email address.`,
+          name: "Oauth 2 login"
+        });
 
       user = await userDAL.transaction(async (tx) => {
         const newUser = await userDAL.create(
@@ -1055,7 +1056,7 @@ export const authLoginServiceFactory = ({
       // letting the stale-alias guard below decline promotion and fall through to the email-
       // verification flow (no session). With existingAlias set, isTrustedForAccount requires the
       // alias to be non-stale AND already verified or provider-verified in this login.
-      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount) {
+      if (existingAlias && user.email !== sanitizedEmail && isTrustedForAccount && !isDisposableAddress) {
         const conflictingUser = await userDAL.findOne({ username: sanitizedEmail });
         if (conflictingUser && conflictingUser.id !== user.id) {
           throw new BadRequestError({
@@ -1118,7 +1119,9 @@ export const authLoginServiceFactory = ({
     // an unverified alias: an attacker can plant an unverified alias (email-fallback backfill) for the
     // victim's email under their own externalId, and inheriting the flag on a later login would mint a
     // session as the victim. An already-verified alias stays trusted via existingAlias.isEmailVerified.
-    const isAliasVerified = isEmailVerifiedByProvider;
+    const isAliasVerified =
+      isEmailVerifiedByProvider &&
+      (!isDisposableAddress || sanitizeEmail(user.email || user.username) === sanitizedEmail);
     // Self-healing backfill: create alias for existing users found by email fallback
     if (isNewAlias) {
       try {
@@ -1308,46 +1311,57 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService
-      .getOrgPermission({
-        actor: ActorType.USER,
-        actorId: user.id,
-        orgId: rootOrg.id,
-        actorAuthMethod: userAuthMethod,
-        actorOrgId: rootOrg.id,
-        scope: OrganizationActionScope.Any
-      })
-      .catch(async (error: unknown) => {
-        // getOrgPermission enforces SSO, so it is what refuses a session another org's IdP issued.
-        if (error instanceof ForbiddenRequestError && error.name === FOREIGN_SSO_SESSION_ERROR_NAME) {
-          await auditLogService.createAuditLog({
-            orgId: organizationId,
-            ipAddress,
-            userAgent,
-            userAgentType: getUserAgentType(userAgent),
-            actor: {
-              type: ActorType.USER,
-              metadata: {
-                email: user.email,
-                userId: user.id,
-                username: user.username,
-                authMethod: userAuthMethod as string
-              }
-            },
-            event: {
-              type: EventType.SELECT_ORGANIZATION_REFUSED,
-              metadata: {
-                organizationId,
-                organizationName: selectedOrg.name
-              }
+    // No request context for the org being selected yet, so build one for the root org.
+    const rootOrgActor = await actorContextService.forPrincipal({
+      principal: {
+        type: ActorType.USER,
+        id: user.id,
+        username: user.username,
+        email: user.email ?? null,
+        authMethod: userAuthMethod,
+        isSuperAdmin: false,
+        sessionRootOrgId: issuingRootOrgId
+      },
+      orgId: rootOrg.id
+    });
+
+    const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(rootOrgActor);
+    if (ssoRefusal) {
+      const isForeignSession = ssoRefusal.name === FOREIGN_SSO_SESSION_ERROR_NAME;
+      if (isForeignSession) {
+        await auditLogService.createAuditLog({
+          orgId: organizationId,
+          ipAddress,
+          userAgent,
+          userAgentType: getUserAgentType(userAgent),
+          actor: {
+            type: ActorType.USER,
+            metadata: {
+              email: user.email,
+              userId: user.id,
+              username: user.username,
+              authMethod: userAuthMethod as string
             }
-          });
-        }
-        throw error;
+          },
+          event: {
+            type: EventType.SELECT_ORGANIZATION_REFUSED,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name
+            }
+          }
+        });
+      }
+      throw new ForbiddenRequestError({
+        message: ssoRefusal.message,
+        ...(isForeignSession ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
       });
+    }
+
+    const permission = await orgPermissionService.getOrgPermission({ actor: rootOrgActor });
     const canBypassSso =
       rootOrg.bypassOrgAuthEnabled &&
-      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      permission.can({ action: OrgPermissionSsoActions.BypassSsoEnforcement, subject: OrgPermissionSubjects.Sso });
 
     if (rootOrg.googleSsoAuthEnforced && userAuthMethod !== AuthMethod.GOOGLE) {
       if (!canBypassSso) {

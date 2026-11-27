@@ -1,22 +1,23 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { ProjectType } from "@app/db/schemas";
+import {
+  TApplicationPermissionService,
+  TCertManagerService,
+  ApplicationEnrollmentPermissionActions,
+  ApplicationPermissionSub
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionApplicationEnrollmentActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,7 +26,6 @@ import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -33,9 +33,15 @@ import {
   assertCaInProfileProject,
   getCaCertChain
 } from "@app/services/certificate-authority/certificate-authority-fns";
-import { assertCaSupportsCustomExtensions } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  assertCaSupportsCustomExtensions,
+  caSignsCsrAsSent
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CertificateIssuanceOperation,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -43,6 +49,7 @@ import {
 import { recordCertificateIssuanceFailure } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { describePolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -53,7 +60,14 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  getCommonNameCopySubjectAltNames,
+  getSubjectAltNameTypes,
+  resolveEffectiveTtl,
+  toCommonNameDefaults
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -95,7 +109,7 @@ type TPkiScepServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction" | "primaryNode">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findOneLiveFirst" | "transaction" | "primaryNode">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
@@ -112,7 +126,8 @@ type TPkiScepServiceFactoryDep = {
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
   certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog" | "createCollapsedAuditLog">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy" | "createRequestFromPolicy">;
@@ -149,7 +164,8 @@ export const pkiScepServiceFactory = ({
   certificateRequestService,
   certificateIssuanceQueue,
   auditLogService,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   approvalPolicyService,
@@ -675,7 +691,7 @@ export const pkiScepServiceFactory = ({
 
     const storedSignerCert =
       isValidSigner && signerCertObj
-        ? await certificateDAL.findOne(
+        ? await certificateDAL.findOneLiveFirst(
             { serialNumber: signerCertObj.serialNumber, caId: profile.caId! },
             certificateDAL.primaryNode()
           )
@@ -705,6 +721,7 @@ export const pkiScepServiceFactory = ({
     }
 
     const csrSanExt = csrObj.getExtension("2.5.29.17");
+    const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
     const signerSanExt = signerCertObj ? signerCertObj.getExtension("2.5.29.17") : null;
 
     const renewalAuth: TScepRenewalAuthResult = signerCertObj
@@ -718,6 +735,12 @@ export const pkiScepServiceFactory = ({
           csrSubjectName: csrObj.subjectName,
           signerCertSubjectName: signerCertObj.subjectName,
           csrSubjectAltNames: csrSanExt,
+          csrCommonNameCopySubjectAltNames: getCommonNameCopySubjectAltNames({
+            issuedSubjectAltNames: signerSanExt,
+            enrollmentType: EnrollmentType.SCEP,
+            csr: csrPem,
+            isCsrSignedAsSent: caSignsCsrAsSent(caType)
+          }),
           signerCertSubjectAltNames: signerSanExt
         })
       : { authorized: false, reason: ScepRenewalDenyReason.InvalidSigner };
@@ -779,8 +802,6 @@ export const pkiScepServiceFactory = ({
       });
     }
 
-    const csrPem = derToPem(Buffer.from(parsed.csr), "CERTIFICATE REQUEST");
-
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const result = await issueOrQueueCertificate({
       profile,
@@ -790,6 +811,7 @@ export const pkiScepServiceFactory = ({
       csrPem,
       applicationId,
       isRenewal: true,
+      renewalCommonNameSanTypes: renewalAuth.isCsrSanMatch ? [] : getSubjectAltNameTypes(signerSanExt),
       clientIp
     });
 
@@ -911,7 +933,8 @@ export const pkiScepServiceFactory = ({
     parsed,
     csrPem,
     ttl,
-    applicationId
+    applicationId,
+    renewalCommonNameSanTypes
   }: {
     profile: TScepContext["profile"];
     project: TScepContext["project"];
@@ -920,19 +943,18 @@ export const pkiScepServiceFactory = ({
     csrPem: string;
     ttl: string;
     applicationId?: string;
+    renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
       const result = await certificateV3Service.signCertificateFromProfile({
-        actor: ActorType.SCEP_ACCOUNT,
-        actorId: profile.id,
-        actorAuthMethod: null,
-        actorOrgId: project.orgId,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: profile.id, orgId: project.orgId },
         profileId: profile.id,
         csr: csrPem,
         validity: { ttl },
         enrollmentType: EnrollmentType.SCEP,
-        applicationId
+        applicationId,
+        renewalCommonNameSanTypes
       });
 
       if (result.status === CertificateRequestStatus.PENDING_APPROVAL) {
@@ -971,6 +993,21 @@ export const pkiScepServiceFactory = ({
       profile.defaults
     );
 
+    const approvalPolicy = await matchCertificateRequestApprovalPolicy(
+      { approvalPolicyService, approvalPolicyDAL },
+      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
+    );
+
+    const { subjectAlternativeNames } = applyCommonNameDefaultSan({
+      defaults: renewalCommonNameSanTypes ? toCommonNameDefaults(renewalCommonNameSanTypes) : profile.defaults,
+      enrollmentType: EnrollmentType.SCEP,
+      commonName: approvalPolicy ? certRequestWithDefaults.commonName : certRequest.commonName,
+      subjectAlternativeNames: certRequest.subjectAlternativeNames,
+      isCsrSignedAsSent: caSignsCsrAsSent(caType)
+    });
+    certRequest.subjectAlternativeNames = subjectAlternativeNames;
+    certRequestWithDefaults.subjectAlternativeNames = subjectAlternativeNames;
+
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
       certRequestWithDefaults,
@@ -978,7 +1015,7 @@ export const pkiScepServiceFactory = ({
     );
     if (!validationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+        message: describePolicyViolations(validationResult.errors)
       });
     }
     assertCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
@@ -992,21 +1029,13 @@ export const pkiScepServiceFactory = ({
       quotaDeps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
-    const approvalPolicy = await matchCertificateRequestApprovalPolicy(
-      { approvalPolicyService, approvalPolicyDAL },
-      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
-    );
-
     const createScepCertificateRequest = (
       status: CertificateRequestStatus,
       recordedRequest: typeof certRequest,
       tx?: Knex
     ) =>
       certificateRequestService.createCertificateRequest({
-        actor: ActorType.SCEP_ACCOUNT,
-        actorId: profile.id,
-        actorAuthMethod: null,
-        actorOrgId: project.orgId,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: profile.id, orgId: project.orgId },
         projectId: profile.projectId,
         caId: profile.caId!,
         profileId: profile.id,
@@ -1283,14 +1312,7 @@ export const pkiScepServiceFactory = ({
     }
   };
 
-  const generateDynamicChallenge = async ({
-    profileId,
-    applicationId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGenerateDynamicChallengeDTO) => {
+  const generateDynamicChallenge = async ({ profileId, applicationId, actor }: TGenerateDynamicChallengeDTO) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "SCEP profile not found" });
@@ -1309,33 +1331,27 @@ export const pkiScepServiceFactory = ({
       }
       resolvedScepConfigId = junction.scepConfigId ?? null;
 
-      const { permission } = await permissionService.getResourcePermission({
+      const permission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId: profile.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionApplicationEnrollmentActions.GenerateScepChallenge,
-        ResourcePermissionSub.ApplicationEnrollment
-      );
+      permission.assert({
+        action: ApplicationEnrollmentPermissionActions.GenerateScepChallenge,
+        subject: ApplicationPermissionSub.ApplicationEnrollment
+      });
     } else {
       resolvedScepConfigId = profile.scepConfigId ?? null;
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId: profile.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.Edit,
-        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.Edit,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: { slug: profile.slug }
+      });
     }
 
     if (!resolvedScepConfigId) {

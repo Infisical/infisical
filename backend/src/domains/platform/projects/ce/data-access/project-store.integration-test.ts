@@ -1,0 +1,108 @@
+import { randomUUID } from "node:crypto";
+
+import { ProjectType, TableName } from "@app/db/schemas";
+import { poolStoreConnection } from "@app/domains/lib/data-access";
+import { setupIntegration } from "@app/domains/lib/testing/integration";
+
+import { buildProjectsModule } from "../testing/projects-module";
+import { ProjectStore } from "./project-store";
+
+describe("ProjectsService workspaces for License", () => {
+  const h = setupIntegration();
+
+  const build = () => ({ projects: buildProjectsModule(h.db).projectsService });
+
+  const orgTree = async () => {
+    const root = await h.factories.organization();
+    const sub = await h.factories.organization({ rootOrgId: root.id, parentOrgId: root.id });
+    return { root, sub };
+  };
+
+  test("should count live workspaces across the org tree, leaving out products that take no workspace slot", async () => {
+    // Setup
+    const { root, sub } = await orgTree();
+    await h.factories.project({ orgId: root.id, type: ProjectType.SecretManager });
+    await h.factories.project({ orgId: sub.id, type: ProjectType.KMS });
+    await h.factories.project({ orgId: root.id, type: ProjectType.SecretManager, deleteAfter: new Date() });
+    await Promise.all(
+      [ProjectType.CertificateManager, ProjectType.SecretScanning, ProjectType.PAM, ProjectType.AgentVault].map(
+        (type) => h.factories.project({ orgId: root.id, type })
+      )
+    );
+    const { projects } = build();
+
+    // Action
+    const used = await projects.countWorkspaces(root.id);
+
+    // Assert
+    expect(used).toBe(2);
+  });
+});
+
+describe("ProjectStore.findById", () => {
+  const h = setupIntegration();
+
+  const store = () => new ProjectStore(poolStoreConnection(h.db));
+
+  test("should read the project facts a permission check needs", async () => {
+    // Setup
+    const org = await h.factories.organization();
+    const { project } = await h.factories.project({
+      orgId: org.id,
+      type: ProjectType.KMS,
+      enforceEncryptedSecretManagerSecretMetadata: true
+    });
+
+    // Action
+    const found = await store().findById(project.id);
+
+    // Assert
+    expect(found?.toJSON()).toEqual({
+      id: project.id,
+      name: project.name,
+      slug: project.slug,
+      orgId: org.id,
+      type: ProjectType.KMS,
+      enforceEncryptedSecretManagerSecretMetadata: true
+    });
+  });
+
+  test("should find nothing for a project that does not exist", async () => {
+    // Action
+    const found = await store().findById(randomUUID());
+
+    // Assert
+    expect(found).toBeNull();
+  });
+});
+
+describe("ProjectStore.findVersion", () => {
+  const h = setupIntegration();
+
+  const store = () => new ProjectStore(poolStoreConnection(h.db));
+
+  test("should change when the project is updated or scheduled for deletion, and read missing once it is gone", async () => {
+    // Setup
+    const org = await h.factories.organization();
+    const { project } = await h.factories.project({ orgId: org.id });
+    const initial = await store().findVersion(project.id);
+
+    // Action
+    await h
+      .db(TableName.Project)
+      .where({ id: project.id })
+      .update({ enforceEncryptedSecretManagerSecretMetadata: true });
+    const afterUpdate = await store().findVersion(project.id);
+    await h
+      .db(TableName.Project)
+      .where({ id: project.id })
+      .update({ deleteAfter: new Date(Date.now() + 60_000) });
+    const afterScheduling = await store().findVersion(project.id);
+    await h.db(TableName.Project).where({ id: project.id }).delete();
+    const afterDeletion = await store().findVersion(project.id);
+
+    // Assert
+    expect(new Set([initial, afterUpdate, afterScheduling]).size).toBe(3);
+    expect(afterDeletion).toBe("missing");
+  });
+});

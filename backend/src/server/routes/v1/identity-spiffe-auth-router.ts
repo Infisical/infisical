@@ -3,11 +3,11 @@ import { z } from "zod";
 import { IdentitySpiffeAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SPIFFE_AUTH } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { SpiffeTrustBundleProfile } from "@app/services/identity-spiffe-auth/identity-spiffe-auth-types";
 import {
   validateSpiffeAllowedAudiencesField,
@@ -220,10 +220,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.attachSpiffeAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -283,10 +280,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.updateSpiffeAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -344,10 +338,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.getSpiffeAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -394,10 +385,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.refreshSpiffeBundle({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -443,10 +431,7 @@ export const registerIdentitySpiffeAuthRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const identitySpiffeAuth = await server.services.identitySpiffeAuth.revokeSpiffeAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

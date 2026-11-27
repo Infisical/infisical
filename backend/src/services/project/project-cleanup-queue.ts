@@ -1,16 +1,15 @@
 import { AccessScope } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { resolveCoreMeter } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
-import { ActorType } from "../auth/auth-type";
 import { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
@@ -66,7 +65,6 @@ type TProjectCleanupQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  licenseService: TLicenseService;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;
@@ -81,8 +79,7 @@ export const projectCleanupQueueFactory = ({
   keyStore,
   auditLogService,
   queueService,
-  cronJob,
-  licenseService
+  cronJob
 }: TProjectCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -226,7 +223,6 @@ export const projectCleanupQueueFactory = ({
       }
 
       await releaseCaKeys();
-      await licenseService.refreshWorkspacesUsed(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

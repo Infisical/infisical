@@ -1,6 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import { honeyTokenAwsConfigServiceFactory } from "../honey-token/aws/honey-token-aws-config-service";
@@ -11,7 +9,6 @@ import {
   HONEY_TOKEN_PROVIDER_MAP
 } from "../honey-token/honey-token-provider-fns";
 import { THoneyTokenTestConnectionResponseByType } from "../honey-token/honey-token-provider-types";
-import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "../permission/org-permission";
 import {
   THoneyTokenConfigServiceFactoryDep,
   THoneyTokenConfigServiceTypeInput,
@@ -40,23 +37,13 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
   const honeyTokenConfigProviderByType = getHoneyTokenConfigProvidersByType(deps);
 
   const upsertConfig = async <T extends HoneyTokenType>({
-    orgPermission,
+    actor,
     type,
     connectionId,
     config
   }: THoneyTokenConfigServiceUpsertInput<T>) => {
-    const { permission } = await deps.permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionHoneyTokenActions.Setup,
-      OrgPermissionSubjects.HoneyTokens
-    );
+    const permission = await deps.orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionHoneyTokenActions.Setup, subject: OrgPermissionSubjects.HoneyTokens });
 
     const providerType = assertSupportedHoneyTokenType(type);
     const providerDefinition = getHoneyTokenProviderDefinition(providerType);
@@ -68,8 +55,8 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
 
     const appConnection = await deps.appConnectionService.validateAppConnectionUsageById(
       providerDefinition.connectionApp,
-      { connectionId, projectId: orgPermission.orgId },
-      orgPermission
+      { connectionId, projectId: actor.org.id },
+      actor
     );
 
     if (appConnection.projectId) {
@@ -79,54 +66,34 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     }
 
     assertHoneyTokenConnectionType(providerType, appConnection.app);
-    return provider.upsertConfig({ orgId: orgPermission.orgId, connectionId, config });
+    return provider.upsertConfig({ orgId: actor.org.id, connectionId, config });
   };
 
   const testConnection = async <T extends HoneyTokenType>({
-    orgPermission,
+    actor,
     type
   }: THoneyTokenConfigServiceTypeInput<T>): Promise<THoneyTokenTestConnectionResponseByType[T]> => {
-    const { permission } = await deps.permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionHoneyTokenActions.Setup,
-      OrgPermissionSubjects.HoneyTokens
-    );
+    const permission = await deps.orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionHoneyTokenActions.Setup, subject: OrgPermissionSubjects.HoneyTokens });
 
     const providerType = assertSupportedHoneyTokenType(type);
     const provider = honeyTokenConfigProviderByType[providerType];
     if (!provider) {
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
-    return provider.testConnection({ orgId: orgPermission.orgId });
+    return provider.testConnection({ orgId: actor.org.id });
   };
 
-  const getConfig = async <T extends HoneyTokenType>({ orgPermission, type }: THoneyTokenConfigServiceTypeInput<T>) => {
-    const { permission } = await deps.permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionHoneyTokenActions.Setup,
-      OrgPermissionSubjects.HoneyTokens
-    );
+  const getConfig = async <T extends HoneyTokenType>({ actor, type }: THoneyTokenConfigServiceTypeInput<T>) => {
+    const permission = await deps.orgPermissionService.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionHoneyTokenActions.Setup, subject: OrgPermissionSubjects.HoneyTokens });
 
     const providerType = assertSupportedHoneyTokenType(type);
     const provider = honeyTokenConfigProviderByType[providerType];
     if (!provider) {
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
-    return provider.getConfig({ orgId: orgPermission.orgId });
+    return provider.getConfig({ orgId: actor.org.id });
   };
 
   return {

@@ -130,6 +130,7 @@ export interface TCertificateRequest {
 
 export interface TPolicyValidationOptions {
   skipRequired?: boolean;
+  issuerAddedExtensions?: TResolvedCustomExtension[];
   profileCustomExtensions?: TProfileCustomExtension[] | null;
 }
 
@@ -138,4 +139,5 @@ export interface TPolicyValidationResult {
   errors: string[];
   warnings: string[];
   resolvedCustomExtensions?: TResolvedCustomExtension[];
+  ttlExceedsMax?: boolean;
 }

@@ -1,25 +1,28 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { OrganizationActionScope, OrgMembershipStatus, TOauthClients, TOrganizations } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
   OrgPermissionActions,
   OrgPermissionSsoActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TSsoSessionService
+} from "@app/domains/platform/organizations/ce/module";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { getMinExpiresIn } from "@app/lib/fn";
+import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { OrgServiceActor } from "@app/lib/types";
+import { safeRequest } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { getUserAllowedMfaMethods, isIdpMfaTrusted, isMfaRequired } from "@app/services/auth/auth-fns";
-import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -29,18 +32,23 @@ import { TOauthClientDALFactory } from "./oauth-client-dal";
 import {
   assertValidOauthClientGrantConfig,
   computePkceChallenge,
+  getMcpOauthUrls,
   getOauthClientSessionUserAgent,
   hasClientAuthorityChanged,
   hasWithdrawnTokenExchangeTrust,
+  isClientMetadataDocumentUrl,
   isRegisteredRedirectUri,
+  OauthClientMetadataDocumentSchema,
   PKCE_CODE_VERIFIER_REGEX
 } from "./oauth-client-fns";
 import {
   DEFAULT_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+  DEFAULT_OAUTH_GRANT_TYPES,
   OauthAuthorizationCodePayloadSchema,
   OauthDelegationMode,
   OauthGrantType,
   OauthTokenType,
+  PUBLIC_OAUTH_CLIENT_ACCESS_TOKEN_TTL_SECONDS,
   TCreateOauthClientDTO,
   TOauthAuthorizeInfoDTO,
   TOauthConsentDTO,
@@ -48,17 +56,20 @@ import {
   TOauthTokenExchangeDTO,
   TUpdateOauthClientDTO
 } from "./oauth-client-types";
-import { getOauthScopeDescriptions, parseOauthScopeString } from "./oauth-scope";
+import { getOauthScopeDescriptions, OAUTH_SCOPE_DEFINITIONS, OauthScope, parseOauthScopeString } from "./oauth-scope";
 import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
 import { verifySubjectToken } from "./oauth-token-exchange-fns";
 
 type TOauthClientServiceFactoryDep = {
   oauthClientDAL: TOauthClientDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
+  orgPermissionService: TOrgPermissionService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   tokenService: Pick<
     TAuthTokenServiceFactory,
     | "getUserTokenSession"
+    | "createUserTokenSession"
     | "getUserTokenSessionById"
     | "validateRefreshToken"
     | "validateRefreshTokenAccess"
@@ -79,7 +90,22 @@ const sanitizeOauthClient = (client: TOauthClients) => {
   return rest;
 };
 
-const getGrantTypes = (client: TOauthClients) => client.grantTypes as OauthGrantType[];
+const getGrantTypes = (client: Pick<TOauthClients, "grantTypes">) => client.grantTypes as OauthGrantType[];
+
+// What the authorization code and refresh grants need from a client: an application an admin registered here, or a
+// public client described by its metadata document. A public client belongs to no org; the user grants it the one
+// they are signed in to.
+type TAuthorizationClient = Pick<
+  TOauthClients,
+  "clientId" | "name" | "description" | "redirectUris" | "requirePkce" | "grantTypes" | "accessTokenTTL"
+> & { orgId: string | null };
+
+// A public client has no secret: PKCE proves it started the flow it finishes, and only it holds its refresh token.
+const PUBLIC_CLIENT_GRANT_CONFIG = {
+  requirePkce: true,
+  grantTypes: [...DEFAULT_OAUTH_GRANT_TYPES],
+  accessTokenTTL: PUBLIC_OAUTH_CLIENT_ACCESS_TOKEN_TTL_SECONDS
+};
 
 const expiresInToSeconds = (expiresIn: string | number) =>
   typeof expiresIn === "number" ? expiresIn : Math.floor(ms(expiresIn) / 1000);
@@ -103,6 +129,7 @@ type TOauthTokenClaims = {
   issuingRootOrgId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  resource?: string;
 } & ({ scopes: string[]; delegation?: never } | { delegation: OauthDelegationMode.Full; scopes?: never });
 
 type TGrantConfigInput = {
@@ -142,7 +169,8 @@ const signOauthToken = (
       // Exactly one delegation marker per token: `scopes` narrows the ability to what the user
       // consented to, `delegation` carries it unnarrowed. Neither claim means zero permissions, so
       // dropping one by mistake fails closed. See OauthDelegationMode.
-      ...(claims.delegation ? { delegation: claims.delegation } : { scopes: claims.scopes })
+      ...(claims.delegation ? { delegation: claims.delegation } : { scopes: claims.scopes }),
+      ...(claims.resource ? { aud: claims.resource } : {})
     },
     appCfg.AUTH_SECRET,
     { expiresIn }
@@ -151,7 +179,9 @@ const signOauthToken = (
 
 export const oauthClientServiceFactory = ({
   oauthClientDAL,
-  permissionService,
+  actorContextService,
+  ssoSessionService,
+  orgPermissionService,
   keyStore,
   tokenService,
   orgDAL,
@@ -160,33 +190,52 @@ export const oauthClientServiceFactory = ({
   userAliasDAL,
   auditLogService
 }: TOauthClientServiceFactoryDep) => {
-  const checkOauthClientPermission = async (actor: OrgServiceActor, action: OrgPermissionActions) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
+  // The request carries no context for the client's org, so build one for the user there.
+  const $userContextInOrg = ({
+    userId,
+    user,
+    authMethod,
+    sessionRootOrgId,
+    orgId
+  }: {
+    userId: string;
+    user?: { username: string; email?: string | null };
+    authMethod: AuthMethod;
+    sessionRootOrgId?: string;
+    orgId: string;
+  }) =>
+    actorContextService.forPrincipal({
+      principal: {
+        type: ActorType.USER,
+        id: userId,
+        username: user?.username ?? "",
+        email: user?.email ?? null,
+        authMethod,
+        isSuperAdmin: false,
+        sessionRootOrgId
+      },
+      orgId
+    });
+
+  const checkOauthClientPermission = async (actor: TActorContext, action: OrgPermissionActions) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
+    permission.assert({ action, subject: OrgPermissionSubjects.OauthClients });
   };
 
   // Token exchange turns externally-issued tokens into Infisical user tokens, so establishing that trust
   // (or handing out a credential for it) changes the org's federation posture, not just an application.
   // `action` goes in the error because it's not obvious why an OAuth change wants SSO permission.
-  const checkSsoConfigPermission = async (actor: OrgServiceActor, action: string) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
+  const checkSsoConfigPermission = async (actor: TActorContext, action: string) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    if (permission.cannot(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso)) {
+    if (permission.cannot({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso })) {
       throw new ForbiddenRequestError({
         message: `You do not have permission to ${action}. Applications using the '${OauthGrantType.TokenExchange}' grant turn tokens from your organization's identity provider into Infisical user tokens, so managing them also requires permission to edit the organization's SSO configuration.`
       });
@@ -212,7 +261,8 @@ export const oauthClientServiceFactory = ({
 
     if (org.rootOrgId && org.rootOrgId !== org.id) {
       throw new BadRequestError({
-        message: "OAuth applications are managed on the parent organization, not on a sub-organization."
+        message:
+          "OAuth applications are managed and authorized on the parent organization, not on a sub-organization. Switch to the parent organization and try again."
       });
     }
 
@@ -254,7 +304,7 @@ export const oauthClientServiceFactory = ({
     ssoPermissionAction
   }: {
     dto: TGrantConfigInput;
-    actor: OrgServiceActor;
+    actor: TActorContext;
     client?: TOauthClients;
     ssoPermissionAction: string;
   }) => {
@@ -291,7 +341,7 @@ export const oauthClientServiceFactory = ({
     });
 
     if (establishesTokenExchangeTrust) {
-      await getActiveOidcConfigOrThrow(actor.orgId, (message) => new BadRequestError({ message }));
+      await getActiveOidcConfigOrThrow(actor.org.id, (message) => new BadRequestError({ message }));
     }
 
     return {
@@ -305,7 +355,7 @@ export const oauthClientServiceFactory = ({
     };
   };
 
-  const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
+  const createOauthClient = async (dto: TCreateOauthClientDTO, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Create);
 
     assertAccessTokenTtlWithinInstanceLimit(dto.accessTokenTTL);
@@ -323,7 +373,7 @@ export const oauthClientServiceFactory = ({
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
 
     const client = await oauthClientDAL.create({
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       name: dto.name,
       description: dto.description,
       clientId,
@@ -340,28 +390,28 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(client), clientSecret };
   };
 
-  const listOauthClients = async (actor: OrgServiceActor) => {
+  const listOauthClients = async (actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
-    const clients = await oauthClientDAL.find({ orgId: actor.orgId });
+    const clients = await oauthClientDAL.find({ orgId: actor.org.id });
 
     return clients.map(sanitizeOauthClient);
   };
 
-  const getOauthClientById = async (clientDbId: string, actor: OrgServiceActor) => {
+  const getOauthClientById = async (clientDbId: string, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
-    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(clientDbId, actor.org.id);
 
     return sanitizeOauthClient(client);
   };
 
-  const updateOauthClient = async (dto: TUpdateOauthClientDTO, actor: OrgServiceActor) => {
+  const updateOauthClient = async (dto: TUpdateOauthClientDTO, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
     assertAccessTokenTtlWithinInstanceLimit(dto.accessTokenTTL);
 
-    const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(dto.clientDbId, actor.org.id);
 
     const {
       grantTypes,
@@ -419,10 +469,10 @@ export const oauthClientServiceFactory = ({
     return sanitizeOauthClient(updatedClient);
   };
 
-  const deleteOauthClient = async (clientDbId: string, actor: OrgServiceActor) => {
+  const deleteOauthClient = async (clientDbId: string, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Delete);
 
-    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(clientDbId, actor.org.id);
 
     const deletedClient = await oauthClientDAL.transaction(async (tx) => {
       const deleted = await oauthClientDAL.deleteById(client.id, tx);
@@ -434,10 +484,10 @@ export const oauthClientServiceFactory = ({
     return sanitizeOauthClient(deletedClient);
   };
 
-  const rotateOauthClientSecret = async (clientDbId: string, actor: OrgServiceActor) => {
+  const rotateOauthClientSecret = async (clientDbId: string, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
-    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(clientDbId, actor.org.id);
 
     const usesTokenExchange = getGrantTypes(client).includes(OauthGrantType.TokenExchange);
 
@@ -470,7 +520,7 @@ export const oauthClientServiceFactory = ({
   };
 
   const assertGrantEnabled = (
-    client: TOauthClients,
+    client: Pick<TOauthClients, "grantTypes">,
     grantType: OauthGrantType,
     buildError: (message: string) => Error
   ) => {
@@ -479,63 +529,166 @@ export const oauthClientServiceFactory = ({
     }
   };
 
-  const getAuthorizeInfo = async ({ clientId, redirectUri, scope }: TOauthAuthorizeInfoDTO) => {
+  // Fetched on every authorization request rather than cached: the user is in the flow, so a client that changed its
+  // metadata takes effect at once, and the token endpoint never needs the document.
+  const getMetadataDocumentClient = async (clientId: string): Promise<TAuthorizationClient> => {
+    const { hostname } = new URL(clientId);
+
+    let document: unknown;
+    try {
+      // Anyone can name this URL, without signing in. A proxy would resolve the host again and undo the address check.
+      ({ data: document } = await safeRequest.get<unknown>(clientId, {
+        requirePublicAddress: true,
+        forceDirectEgress: true,
+        timeout: 10_000,
+        maxContentLength: 64 * 1024,
+        headers: { Accept: "application/json" }
+      }));
+    } catch (error) {
+      logger.warn(error, `Failed to fetch OAuth client metadata document [hostname=${hostname}]`);
+      throw new BadRequestError({
+        message: `Could not load this application's details from '${hostname}'. Try connecting again, and contact the application's developer if it keeps failing.`
+      });
+    }
+
+    const parsed = OauthClientMetadataDocumentSchema.safeParse(document);
+    if (!parsed.success || parsed.data.client_id !== clientId) {
+      throw new BadRequestError({
+        message: `The application details at '${hostname}' are not a valid OAuth client metadata document for this application, so it cannot be authorized.`
+      });
+    }
+
+    return {
+      ...PUBLIC_CLIENT_GRANT_CONFIG,
+      clientId,
+      name: parsed.data.client_name,
+      description: null,
+      redirectUris: parsed.data.redirect_uris,
+      orgId: null
+    };
+  };
+
+  const getAuthorizationClient = async (clientId: string): Promise<TAuthorizationClient> => {
+    if (isClientMetadataDocumentUrl(clientId)) return getMetadataDocumentClient(clientId);
+
     const client = await oauthClientDAL.findOne({ clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
+    return client;
+  };
 
+  // Validates the request a user is about to consent to, and returns the resource (RFC 8707) to bind the token to.
+  const assertValidAuthorizationRequest = (
+    client: TAuthorizationClient,
+    { redirectUri, resource }: { redirectUri: string; resource?: string }
+  ) => {
     assertGrantEnabled(client, OauthGrantType.AuthorizationCode, (message) => new BadRequestError({ message }));
 
     if (!isRegisteredRedirectUri(client.redirectUris, redirectUri)) {
       throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
     }
 
-    // Surface unknown scopes up front so the consent screen can refuse rather than letting the
-    // user approve a request that authorizeConsent will reject anyway.
+    if (resource === undefined) {
+      // No admin reviewed a public client, so the MCP server is the only thing it can be granted.
+      if (!client.orgId) {
+        throw new BadRequestError({
+          message: `This application can only be given access to the Infisical MCP server, and its request does not name it. The application must send 'resource=${getMcpOauthUrls().mcpResource}'.`
+        });
+      }
+      return undefined;
+    }
+
+    const { mcpResource } = getMcpOauthUrls();
+    if (removeTrailingSlash(resource) !== mcpResource) {
+      throw new BadRequestError({
+        message: `Unsupported resource '${resource}'. The only resource tokens can be issued for is '${mcpResource}'.`
+      });
+    }
+
+    return mcpResource;
+  };
+
+  // Rejects any scope we don't recognize (RFC 6749 invalid_scope) rather than silently dropping it and issuing a token
+  // narrower than the client expects.
+  const parseRequestedScopes = (scope: string | undefined, boundResource: string | undefined) => {
     const { granted, invalid } = parseOauthScopeString(scope);
     if (invalid.length) {
       throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalid.join(", ")}` });
     }
 
+    const mcpOnlyScopes = granted.filter((grantedScope) => OAUTH_SCOPE_DEFINITIONS[grantedScope].mcpOnly);
+    if (!boundResource && mcpOnlyScopes.length) {
+      throw new BadRequestError({
+        message: `The ${mcpOnlyScopes.join(", ")} scope(s) can only be granted to clients of the Infisical MCP server.`
+      });
+    }
+
+    return granted;
+  };
+
+  const getAuthorizeInfo = async ({ clientId, redirectUri, scope, resource }: TOauthAuthorizeInfoDTO) => {
+    const client = await getAuthorizationClient(clientId);
+    const boundResource = assertValidAuthorizationRequest(client, { redirectUri, resource });
+
+    // Surface scope problems up front so the consent screen can refuse rather than letting the
+    // user approve a request that authorizeConsent will reject anyway.
+    const granted = parseRequestedScopes(scope, boundResource);
+
     return {
       clientName: client.name,
       clientDescription: client.description,
-      orgId: client.orgId,
+      // The consent screen names where a public client's details came from, since nobody in the org vetted them.
+      publicClientHost: client.orgId ? null : new URL(client.clientId).hostname,
       requirePkce: client.requirePkce,
       requestedScopes: getOauthScopeDescriptions(granted)
     };
   };
 
-  const authorizeConsent = async (dto: TOauthConsentDTO) => {
-    const client = await oauthClientDAL.findOne({ clientId: dto.clientId });
-    if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
-
-    assertGrantEnabled(client, OauthGrantType.AuthorizationCode, (message) => new BadRequestError({ message }));
-
-    if (!isRegisteredRedirectUri(client.redirectUris, dto.redirectUri)) {
-      throw new BadRequestError({ message: "Redirect URI is not registered for this OAuth client" });
+  const assertSsoSessionAllowed = async (actor: TActorContext) => {
+    const refusal = await ssoSessionService.findSsoSessionRefusal(actor);
+    if (refusal) {
+      throw new ForbiddenRequestError({
+        message: refusal.message,
+        ...(refusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
+      });
     }
+  };
+
+  const authorizeConsent = async (dto: TOauthConsentDTO) => {
+    const client = await getAuthorizationClient(dto.clientId);
+    const resource = assertValidAuthorizationRequest(client, dto);
+    const orgId = client.orgId ?? dto.orgId;
 
     if (client.requirePkce && !dto.codeChallenge) {
       throw new BadRequestError({ message: "This OAuth client requires PKCE (code_challenge is missing)" });
     }
 
-    // Reject the request if it asks for any scope we don't recognize (RFC 6749 invalid_scope),
-    // rather than silently dropping it and issuing a token narrower than the client expects.
-    const { granted: grantedScopes, invalid: invalidScopes } = parseOauthScopeString(dto.scope);
-    if (invalidScopes.length) {
-      throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalidScopes.join(", ")}` });
+    const grantedScopes = parseRequestedScopes(dto.scope, resource);
+    // Checked here, where the token's scopes are decided, and not in parseRequestedScopes: the authorize redirect calls
+    // getAuthorizeInfo without the scope, leaving it to the consent page.
+    if (resource && !grantedScopes.length) {
+      throw new BadRequestError({
+        message: `The Infisical MCP server needs at least one scope. Request ${OauthScope.SecretsDescribe}, ${OauthScope.SecretsRead} or ${OauthScope.SecretsWrite}.`
+      });
     }
 
+    const user = await userDAL.findById(dto.userId);
+    const consentActor = await $userContextInOrg({
+      userId: dto.userId,
+      user,
+      authMethod: dto.authMethod,
+      sessionRootOrgId: dto.issuingRootOrgId,
+      orgId
+    });
+
+    // A session the client org's sign-in policy refuses (enforced SSO, or another org's IdP) can't consent for it.
+    await assertSsoSessionAllowed(consentActor);
+
     // Called only for its side effects: it throws if the consenting user is not a member of the
-    // client's org or fails org SSO enforcement. This blocks issuing a delegation code to a user
+    // client's org. This blocks issuing a delegation code to a user
     // who has no standing in the org the client belongs to. The returned ability is intentionally
     // unused here; scope narrowing happens later when the delegated token builds its permission.
-    await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: dto.userId,
-      orgId: client.orgId,
-      actorAuthMethod: dto.authMethod,
-      actorOrgId: client.orgId,
+    await orgPermissionService.getOrgPermission({
+      actor: consentActor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
@@ -546,9 +699,8 @@ export const oauthClientServiceFactory = ({
     // for this user in the client's organization and reject the request unless the session actually
     // completed the matching MFA challenge, or the org trusts the MFA its IdP performed, the same waiver
     // org selection applies.
-    const org = await getClientOrg(client.orgId);
+    const org = await getClientOrg(orgId);
 
-    const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
     const allowedMfaMethods = getUserAllowedMfaMethods(org, user);
@@ -563,11 +715,17 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    const tokenSession = await tokenService.getUserTokenSession({
+    // Each consent to a public client gets its own session. Sessions are otherwise shared per user, IP and client, so a
+    // second connection (another org, another config) would rotate the first one's refresh token, and its next refresh
+    // would look like token reuse and end both.
+    const sessionDetails = {
       userId: dto.userId,
       ip: dto.ip,
       userAgent: getOauthClientSessionUserAgent(client.clientId)
-    });
+    };
+    const tokenSession = client.orgId
+      ? await tokenService.getUserTokenSession(sessionDetails)
+      : await tokenService.createUserTokenSession(sessionDetails);
     if (!tokenSession) throw new BadRequestError({ message: "Failed to create user token session" });
 
     const code = crypto.randomBytes(32).toString("hex");
@@ -576,7 +734,7 @@ export const oauthClientServiceFactory = ({
       KeyStoreTtls.OauthAuthorizationCodeInSeconds,
       JSON.stringify({
         clientId: client.clientId,
-        orgId: client.orgId,
+        orgId,
         userId: dto.userId,
         authMethod: dto.authMethod,
         issuingRootOrgId: dto.issuingRootOrgId,
@@ -586,7 +744,8 @@ export const oauthClientServiceFactory = ({
         redirectUri: dto.redirectUri,
         codeChallenge: dto.codeChallenge,
         codeChallengeMethod: dto.codeChallengeMethod,
-        scopes: grantedScopes
+        scopes: grantedScopes,
+        resource
       })
     );
 
@@ -594,7 +753,7 @@ export const oauthClientServiceFactory = ({
     callbackUrl.searchParams.set("code", code);
     if (dto.state) callbackUrl.searchParams.set("state", dto.state);
 
-    return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId: client.orgId };
+    return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId, scopes: grantedScopes, resource };
   };
 
   const authenticateClient = async (clientId?: string, clientSecret?: string) => {
@@ -724,12 +883,15 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: user.id,
-      orgId: client.orgId,
-      actorAuthMethod: AuthMethod.OIDC,
-      actorOrgId: client.orgId,
+    const exchangeActor = await $userContextInOrg({
+      userId: user.id,
+      user,
+      authMethod: AuthMethod.OIDC,
+      orgId: client.orgId
+    });
+    await assertSsoSessionAllowed(exchangeActor);
+    await orgPermissionService.getOrgPermission({
+      actor: exchangeActor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
@@ -816,16 +978,24 @@ export const oauthClientServiceFactory = ({
   };
 
   const exchangeToken = async (dto: TOauthTokenExchangeDTO) => {
-    const client = await authenticateClient(dto.clientId, dto.clientSecret);
-    assertGrantEnabled(
-      client,
-      dto.grantType,
-      (message) => new OauthTokenError({ code: OauthTokenErrorCode.UnauthorizedClient, message })
-    );
+    const assertClientGrant = (client: Pick<TOauthClients, "grantTypes">) =>
+      assertGrantEnabled(
+        client,
+        dto.grantType,
+        (message) => new OauthTokenError({ code: OauthTokenErrorCode.UnauthorizedClient, message })
+      );
 
     if (dto.grantType === OauthGrantType.TokenExchange) {
+      const client = await authenticateClient(dto.clientId, dto.clientSecret);
+      assertClientGrant(client);
       return exchangeSubjectToken(client, dto);
     }
+
+    const client =
+      dto.clientId && !dto.clientSecret && isClientMetadataDocumentUrl(dto.clientId)
+        ? { ...PUBLIC_CLIENT_GRANT_CONFIG, clientId: dto.clientId }
+        : await authenticateClient(dto.clientId, dto.clientSecret);
+    assertClientGrant(client);
 
     if (dto.grantType === OauthGrantType.AuthorizationCode) {
       const codeKey = KeyStorePrefixes.OauthAuthorizationCode(dto.code);
@@ -876,7 +1046,8 @@ export const oauthClientServiceFactory = ({
         issuingRootOrgId: codePayload.issuingRootOrgId,
         isMfaVerified: codePayload.isMfaVerified,
         mfaMethod: codePayload.mfaMethod,
-        scopes: grantedScopes
+        scopes: grantedScopes,
+        resource: codePayload.resource
       };
 
       const accessToken = signOauthToken(
@@ -943,7 +1114,8 @@ export const oauthClientServiceFactory = ({
       issuingRootOrgId: decodedToken.issuingRootOrgId,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod,
-      scopes: grantedScopes
+      scopes: grantedScopes,
+      resource: oauthDecodedToken.aud
     };
 
     // A grace hit returns no refresh_token, so the client keeps the one it holds (RFC 6749 section 6). Echoing

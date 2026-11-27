@@ -7,11 +7,11 @@ export const injectPamProjectId: FastifyPluginAsync = fp(async (server) => {
   server.decorateRequest("internalPamProjectId", "");
 
   server.addHook("preValidation", async (req) => {
-    if (!req.permission?.orgId) return;
+    if (!req.actor?.orgId) return;
 
     const routePath = req.routeOptions.url ?? "";
     if (!routePath.startsWith(PAM_PREFIX)) return;
 
-    req.internalPamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
+    req.internalPamProjectId = await server.services.pamProjectResolver.resolve(req.actor.orgId);
   });
 });

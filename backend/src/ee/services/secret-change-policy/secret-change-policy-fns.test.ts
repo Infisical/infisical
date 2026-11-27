@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TSecretChangePolicyRow } from "./secret-change-policy-dal";
@@ -56,6 +56,15 @@ describe("readSecretChangePolicyConstraints", () => {
     expect(readSecretChangePolicyConstraints(null)).toEqual({});
     expect(readSecretChangePolicyConstraints({ version: 1, constraints: { allowedSelfApprovals: "yes" } })).toEqual({});
   });
+
+  test("keeps a readable field when a sibling field is malformed", () => {
+    expect(
+      readSecretChangePolicyConstraints({
+        version: 1,
+        constraints: { allowedSelfApprovals: "yes", enforceOnSecretImports: true }
+      })
+    ).toEqual({ enforceOnSecretImports: true });
+  });
 });
 
 describe("toSecretChangePolicy", () => {
@@ -74,6 +83,7 @@ describe("toSecretChangePolicy", () => {
       secretPath: "/app",
       approvals: 2,
       allowedSelfApprovals: false,
+      enforceOnSecretImports: false,
       envId: ENV_DEV.id,
       environment: ENV_DEV,
       environments: [ENV_DEV, ENV_PROD],
@@ -102,6 +112,14 @@ describe("toSecretChangePolicy", () => {
     expect(toSecretChangePolicy(buildRow({ constraints: { version: 1, constraints: {} } })).allowedSelfApprovals).toBe(
       true
     );
+  });
+
+  test("reads the import replication flag and defaults it to off", () => {
+    expect(
+      toSecretChangePolicy(buildRow({ constraints: { version: 1, constraints: { enforceOnSecretImports: true } } }))
+        .enforceOnSecretImports
+    ).toBe(true);
+    expect(toSecretChangePolicy(buildRow({ constraints: "corrupt" })).enforceOnSecretImports).toBe(false);
   });
 
   test("treats a missing machine identity bypass flag as disabled", () => {

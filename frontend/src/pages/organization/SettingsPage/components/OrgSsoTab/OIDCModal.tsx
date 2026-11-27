@@ -5,6 +5,7 @@ import { EyeIcon, EyeOffIcon, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,10 +44,14 @@ import {
   TabsTrigger,
   TagsInput
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { OrgPermissionSsoActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetOIDCConfig } from "@app/hooks/api";
-import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
+import {
+  useCreateOIDCConfig,
+  useDeleteOIDCConfig,
+  useUpdateOIDCConfig
+} from "@app/hooks/api/oidcConfig/mutations";
 import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -142,13 +147,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateOIDCConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateOIDCConfig();
+  const { mutateAsync: deleteMutateAsync } = useDeleteOIDCConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
   const [isClientSecretRevealed, setIsClientSecretRevealed] = useState(false);
   const [amrValueTagError, setAmrValueTagError] = useState<string | null>(null);
 
   const { data } = useGetOIDCConfig(currentOrg?.id ?? "");
 
-  const { control, handleSubmit, reset, setValue, setError, watch } = useForm<OIDCFormData>({
+  const { control, handleSubmit, reset, setError, watch } = useForm<OIDCFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       configurationType: ConfigurationType.DISCOVERY_URL,
@@ -159,23 +165,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const configurationTypeValue = watch("configurationType");
 
-  const handleOidcSoftDelete = async () => {
+  const handleOidcDelete = async () => {
     if (!currentOrg) return;
-    await updateMutateAsync({
-      issuer: "",
-      discoveryURL: "",
-      authorizationEndpoint: "",
-      allowedEmailDomains: "",
-      jwksUri: "",
-      tokenEndpoint: "",
-      userinfoEndpoint: "",
-      clientId: "",
-      clientSecret: "",
-      mfaClaimName: "amr",
-      mfaAmrValues: null,
-      isActive: false,
-      organizationId: currentOrg.id
-    });
+    await deleteMutateAsync({ organizationId: currentOrg.id });
+    reset();
+    handlePopUpClose("addOIDC");
 
     createNotification({
       text: "Successfully deleted OIDC configuration.",
@@ -183,27 +177,35 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     });
   };
 
-  // The stored secret never returns to the form; a blank field on update keeps it.
+  // The stored secret never returns to the form; a blank field on update keeps it. reset() rather than
+  // setValue() makes these the form's defaults, so discarding edits restores the saved config.
   useEffect(() => {
     if (data) {
-      setValue("issuer", data.issuer);
-      setValue("authorizationEndpoint", data.authorizationEndpoint);
-      setValue("jwksUri", data.jwksUri);
-      setValue("tokenEndpoint", data.tokenEndpoint);
-      setValue("userinfoEndpoint", data.userinfoEndpoint);
-      setValue("discoveryURL", data.discoveryURL);
-      setValue("clientId", data.clientId);
-      setValue("clientSecret", "");
-      setValue("allowedEmailDomains", data.allowedEmailDomains ?? "");
-      setValue("configurationType", data.configurationType);
-      setValue("jwtSignatureAlgorithm", data.jwtSignatureAlgorithm);
-      setValue("mfaClaimName", data.mfaClaimName || "amr");
-      setValue("mfaAmrValues", data.mfaAmrValues ?? []);
+      reset({
+        issuer: data.issuer,
+        authorizationEndpoint: data.authorizationEndpoint,
+        jwksUri: data.jwksUri,
+        tokenEndpoint: data.tokenEndpoint,
+        userinfoEndpoint: data.userinfoEndpoint,
+        discoveryURL: data.discoveryURL,
+        clientId: data.clientId,
+        clientSecret: "",
+        allowedEmailDomains: data.allowedEmailDomains ?? "",
+        configurationType: data.configurationType,
+        jwtSignatureAlgorithm: data.jwtSignatureAlgorithm,
+        mfaClaimName: data.mfaClaimName || "amr",
+        mfaAmrValues: data.mfaAmrValues ?? []
+      });
     }
   }, [data]);
 
   const isExistingConfig = Boolean(data?.isActive);
   const hasStoredSecret = Boolean(data?.clientSecret);
+
+  const discardEdits = () => {
+    reset();
+    setAmrValueTagError(null);
+  };
 
   const onOIDCModalSubmit = async ({
     issuer,
@@ -271,6 +273,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     }
 
     handlePopUpClose("addOIDC");
+    setAmrValueTagError(null);
 
     createNotification({
       text: `Successfully ${data?.isActive ? "updated" : "added"} OIDC SSO configuration`,
@@ -311,7 +314,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
         open={popUp?.addOIDC?.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("addOIDC", isOpen);
-          reset();
+          discardEdits();
           setIsClientSecretRevealed(false);
         }}
       >
@@ -561,14 +564,30 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 <Button type="submit" variant="org" isPending={isPending}>
                   {isExistingConfig ? "Update Configuration" : "Configure OIDC"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => handlePopUpClose("addOIDC")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    handlePopUpClose("addOIDC");
+                    discardEdits();
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
               {!hideDelete && (
-                <Button type="button" variant="danger" onClick={() => setIsDeletePopupOpen.on()}>
-                  Delete
-                </Button>
+                <OrgPermissionCan I={OrgPermissionSsoActions.Delete} a={OrgPermissionSubjects.Sso}>
+                  {(isAllowed) => (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      isDisabled={!isAllowed}
+                      onClick={() => setIsDeletePopupOpen.on()}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </OrgPermissionCan>
               )}
             </SheetFooter>
           </form>
@@ -583,13 +602,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
             </AlertDialogMedia>
             <AlertDialogTitle>Delete OIDC Configuration?</AlertDialogTitle>
             <AlertDialogDescription>
-              This clears the OIDC connection. Members will no longer be able to sign in via OIDC
-              until it&apos;s reconfigured.
+              This removes the OIDC configuration and turns off SSO enforcement and SCIM for the
+              organization. Members can&apos;t sign in through OIDC until it&apos;s configured
+              again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleOidcSoftDelete}>
+            <AlertDialogAction variant="danger" onClick={handleOidcDelete}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -38,6 +38,8 @@ export enum TableName {
   PkiScepEnrollmentConfig = "pki_scep_enrollment_configs",
   PkiScepTransaction = "pki_scep_transactions",
   PkiScepDynamicChallenge = "pki_scep_dynamic_challenges",
+  PkiMicrosoftAutoenrollmentConfig = "pki_microsoft_autoenrollment_configs",
+  PkiMicrosoftAutoenrollmentRequest = "pki_microsoft_autoenrollment_requests",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiAlertsV2 = "pki_alerts_v2",
@@ -516,17 +518,6 @@ const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
 
 export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
   projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
-
-export enum ActionProjectType {
-  SecretManager = ProjectType.SecretManager,
-  CertificateManager = ProjectType.CertificateManager,
-  KMS = ProjectType.KMS,
-  SecretScanning = ProjectType.SecretScanning,
-  PAM = ProjectType.PAM,
-  AgentVault = ProjectType.AgentVault,
-  // project operations that happen on all types
-  Any = "any"
-}
 
 export enum OrganizationActionScope {
   ChildOrganization = "child-organization-only",

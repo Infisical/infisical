@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/samlidp"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/sso"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
@@ -24,6 +25,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
 
 		// Action
@@ -53,6 +55,23 @@ func TestSAMLConfig_Create(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, string(res.Body), "due to plan restriction")
+		requireNoConfig(t, tn)
+	})
+
+	t.Run("should reject creation when the organization has no verified email domain", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.NotNil(t, res.JSON400)
+		require.Equal(t, "SSO_EMAIL_DOMAIN_NOT_VERIFIED", res.JSON400.Error)
 		requireNoConfig(t, tn)
 	})
 
@@ -92,6 +111,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
 		body.EnableGroupSync = new(true)
 
@@ -130,6 +150,7 @@ func TestSAMLConfig_Read(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
 		sso.CreateSAMLConfig(t, tn, body)
 		identity := tn.NewMachineIdentity(t, harness.OrgRole("admin"))

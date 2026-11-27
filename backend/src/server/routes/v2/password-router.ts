@@ -1,12 +1,12 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { PasswordPolicySchema } from "@app/lib/validator/password-policy";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { validatePasswordResetAuthorization } from "@app/services/auth/auth-fns";
 import { ResetPasswordV2Type } from "@app/services/auth/auth-password-type";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerPasswordRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -52,7 +52,7 @@ export const registerPasswordRouter = async (server: FastifyZodProvider) => {
 
       await server.services.password.resetPasswordV2({
         type: ResetPasswordV2Type.LoggedInReset,
-        userId: req.permission.id,
+        userId: req.actor.id,
         newPassword: req.body.newPassword,
         oldPassword: req.body.oldPassword
       });

@@ -14,6 +14,14 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  KEY_USAGE_OPTIONS,
+  POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES,
+  SAN_TYPE_OPTIONS,
+  SUBJECT_ATTRIBUTE_TYPE_OPTIONS
+} from "@app/services/certificate-common/certificate-constants";
+import { RequestReference } from "@app/services/certificate-policy/certificate-policy-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { MAX_PREVENT_DUPLICATE_SECRET_VALUE_VERSIONS } from "@app/services/secret-validation-rule/secret-validation-rule-constants";
@@ -93,6 +101,8 @@ export enum ApiDocsTags {
   OidcSso = "OIDC SSO",
   SamlSso = "SAML SSO",
   LdapSso = "LDAP SSO",
+  EmailDomains = "Email Domains",
+  SsoSettings = "SSO Settings",
   Scim = "SCIM",
   Events = "Event Subscriptions",
   GatewaysV3 = "Gateways",
@@ -1552,7 +1562,7 @@ export const RAW_SECRETS = {
     environment: "The slug of the environment to list secrets from.",
     secretPath: "The secret path to list secrets from.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
-    includeImports: "Weather to include imported secrets or not.",
+    includeImports: "Whether or not to include imported secrets.",
     tagSlugs: "The comma separated tag slugs to filter secrets.",
     metadataFilter:
       "Unencrypted secret metadata key-value pairs used to filter secrets. Only metadata with unencrypted values is supported. When querying for multiple metadata pairs, the query is treated as an AND operation. Secret metadata format is key=value1,value=value2|key=value3,value=value4.",
@@ -1583,11 +1593,11 @@ export const RAW_SECRETS = {
     version: "The version of the secret to get.",
     type: "The type of the secret to get.",
     viewSecretValue: "Whether or not to retrieve the secret value.",
-    includeImports: "Weather to include imported secrets or not."
+    includeImports: "Whether or not to include imported secrets."
   },
   UPDATE: {
     secretName: "The name of the secret to update.",
-    secretComment: "Update comment to the secret.",
+    secretComment: "The new comment for the secret.",
     environment: "The slug of the environment where the secret is located.",
     mode: "Defines how the system should handle missing secrets during an update.",
     secretPath: "The default path for secrets to update or upsert, if not provided in the secret details.",
@@ -1677,10 +1687,23 @@ export const SECRET_IMPORTS = {
     secretImportId: "The ID of the secret import to delete.",
     environment: "The slug of the environment where the secret import is located.",
     path: "The path of the secret import to delete."
+  },
+  RESPONSE: {
+    importEnv: {
+      id: "The ID of the environment the secret import reads secrets from.",
+      name: "The name of the environment the secret import reads secrets from.",
+      slug: "The slug of the environment the secret import reads secrets from.",
+      projectId:
+        "The ID of the project the secret import reads secrets from. It differs from the ID of the project the import is in when the import reads from another project."
+    }
   }
 } as const;
 
 export const DASHBOARD = {
+  IMPORTED_SECRETS: {
+    importId:
+      "The ID of the secret import these secrets come through. Several imports of the same source that read it directly share one entry, with the first import's ID."
+  },
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
     tags: "The tags attached to the secret, including each tag's ID and slug."
@@ -2030,7 +2053,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
+      "Whether the folder access also applies to every folder below this one. Where folder access that applies to subfolders overlaps, the one on the deepest folder decides, and folder access granted on a folder without this setting decides that folder. Setting it requires permission to manage access on this folder and all of its subfolders. Defaults to false."
   },
   UPDATE: {
     projectId: "The ID of the project the folder is in.",
@@ -2046,7 +2069,7 @@ export const FOLDER_ACCESS = {
     temporaryRange: "How long the access lasts from its start time. Eg: 30m, 4h, 1d.",
     temporaryAccessStartTime: "ISO time the temporary access starts.",
     isPermissionRecursive:
-      "Whether the folder access also applies to every folder below this one. Only allowed on the root folder '/'. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
+      "Whether the folder access also applies to every folder below this one. Omit it to leave the current setting unchanged. Changing an access that applies to subfolders, or making it apply to them, requires permission to manage access on this folder and all of its subfolders."
   },
   DELETE: {
     projectId: "The ID of the project the folder is in.",
@@ -2065,7 +2088,7 @@ export const FOLDER_ACCESS = {
     limit: "The number of users to return, counting both lists together.",
     search: "The text string that user names and email addresses will be filtered by.",
     users:
-      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.",
+      "The users whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.",
     usersWithoutAccess:
       "The users of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount: "The number of users of the project that match the search, with and without access together."
@@ -2079,7 +2102,7 @@ export const FOLDER_ACCESS = {
     limit: "The number of machine identities to return, counting both lists together.",
     search: "The text string that machine identity names will be filtered by.",
     identities:
-      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is active folder access on the root folder '/' that applies to every folder below it; it is null on the root folder itself.",
+      "The machine identities whose project roles or folder access give them access on the folder. membership.roles lists only the roles that grant that access, so it is empty when the access comes from folder access alone. folderRBACAccess is the folder access granted on this folder, and inheritedFolderRBACAccess is the active folder access that applies to subfolders on the nearest folder above this one; it is null when no folder above has one, and always on the root folder.",
     identitiesWithoutAccess:
       "The machine identities of the project with no access on the folder. membership.roles lists all of their active project roles, and folderRBACAccess and inheritedFolderRBACAccess are always null.",
     totalCount:
@@ -2309,6 +2332,15 @@ export const AUDIT_LOG_STREAMS = {
   },
   GET_BY_ID: {
     id: "The ID of the audit log stream to get details."
+  },
+  FILTERS: {
+    products:
+      "The products whose audit logs the stream receives. Leave empty to receive audit logs from every product.",
+    pamSessionActivity: {
+      desc: "Also send the commands, queries and requests run in PAM sessions (Windows sessions are not included). Leave unset to send audit logs only.",
+      includeOutput:
+        "Also send command output, query results and request and response bodies, which can contain sensitive data."
+    }
   }
 };
 
@@ -2503,11 +2535,62 @@ export const CERTIFICATE_AUTHORITIES = {
 };
 
 export const CERTIFICATES = {
+  CREATE: {
+    description:
+      "Issue a certificate through a certificate profile. Send attributes to have Infisical generate the key pair, or a csr to have the profile's certificate authority sign your own key. The request must satisfy the profile's certificate policy, or it is refused with a 400 that lists every violation. When an approval policy requires approval for the request, the response has status pending_approval and no certificate. An external certificate authority can also answer with status pending and no certificate while it issues. In both cases, fetch the certificate request by the returned certificateRequestId to get the certificate once it is issued, or the reason it failed; that needs permission to read certificates. Some inputs depend on the profile's certificate authority: an AWS Certificate Manager profile can't sign a csr, and only an internal certificate authority or a self-signed profile applies domainComponents.",
+    profileId:
+      "The ID of the certificate profile to issue through. The profile decides the certificate authority, the certificate policy and the defaults applied to missing attributes.",
+    applicationId:
+      "The ID of the application to issue through, when the profile is attached to applications. Required for a profile that is only attached to applications.",
+    csr: "A PEM-encoded PKCS#10 certificate signing request. Its subject, key and extensions are used, so attributes may only set ttl, notBefore, notAfter and basicConstraints alongside it, and can't carry customExtensions. An external certificate authority takes basic constraints from the csr, or from the profile's defaults when the csr has none, and ignores attributes.basicConstraints. A csr whose key usage includes keyCertSign is treated as a request for a CA certificate, even without basic constraints. Of the external certificate authorities, only AWS Private CA can issue a CA certificate.",
+    attributes: "The certificate fields to request. Anything omitted falls back to the profile's defaults.",
+    removeRootsFromChain:
+      "Whether to leave the root certificate out of the returned certificate chain. Defaults to false.",
+    metadata: "Key-value pairs to attach to the issued certificate.",
+    metadataKey: "The metadata key, 1 to 255 characters.",
+    metadataValue: "The metadata value, up to 1020 characters. Defaults to an empty string."
+  },
+  ATTRIBUTES: {
+    commonName: "The subject common name (CN), up to 255 characters, such as app.example.com.",
+    organization: "The subject organization (O), up to 255 characters.",
+    organizationalUnit: "The subject organizational unit (OU), up to 255 characters.",
+    country: "The subject country (C), up to 255 characters, usually a two-letter ISO 3166 code such as US.",
+    state: "The subject state or province (ST), up to 255 characters.",
+    locality: "The subject locality (L), up to 255 characters.",
+    domainComponents:
+      "The subject domain components (DC), most specific first, such as ['app', 'example', 'com']. Up to 50 components and 255 characters in total, none containing a comma. Only an internal certificate authority or a self-signed profile applies them.",
+    keyUsages: "Key usages for the certificate, one of the listed values each. Up to 20.",
+    extendedKeyUsages: "Extended key usages for the certificate, one of the listed values each. Up to 20.",
+    altNames: `Subject alternative names, up to 100. Each has a type (${SAN_TYPE_OPTIONS.join(", ")}) and a value of that type, such as { type: 'dns_name', value: 'app.example.com' }.`,
+    altNameType: "The SAN type.",
+    altNameValue:
+      "The SAN value, up to 255 characters, in the format of its type: a host name, an IP address, an email address, a URI, or a user principal name.",
+    signatureAlgorithm: "The signature algorithm, one of the listed values, such as RSA-SHA256 or ECDSA-SHA384.",
+    keyAlgorithm: "The key algorithm, one of the listed values, such as RSA_2048 or EC_prime256v1.",
+    ttl: "How long the certificate is valid, as a number followed by h (hours), d (days) or y (years), such as 24h, 90d or 1y. Must end within 100 years and fit the policy's maximum validity.",
+    notBefore:
+      "When the certificate becomes valid, as an ISO 8601 date and time such as 2026-01-01T00:00:00Z. Can't be combined with ttl.",
+    notAfter:
+      "When the certificate expires, as an ISO 8601 date and time such as 2027-01-01T00:00:00Z. Must be after notBefore. Can't be combined with ttl.",
+    basicConstraints:
+      "Basic constraints. Set isCA to true to issue a CA certificate, which the policy must allow, and pathLength (0 to 255) to limit how many CAs may follow it.",
+    isCA: "Whether the certificate is a CA certificate.",
+    pathLength: "The maximum number of CA certificates that may follow this one in a chain, from 0 to 255.",
+    customExtensions:
+      "Custom X.509 extensions, one per OID. Each has a dotted-decimal oid such as 1.3.6.1.4.1.311.20.2, an optional value and an optional critical flag.",
+    customExtensionOid: "The extension's OID in dotted-decimal form, such as 1.3.6.1.4.1.311.20.2.",
+    customExtensionValue: "The extension's value, as text.",
+    customExtensionCritical: "Whether to mark the extension critical."
+  },
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    enrollmentType:
+      "How the certificate was enrolled (for example 'api', 'acme', 'est', 'scep' or 'microsoft-autoenrollment'), falling back to its profile's enrollment method when no request is recorded. Null for imported or discovered certificates without a CA.",
+    isRenewedByClient:
+      "Whether the client that requested this certificate renews it (it was requested through ACME, EST, SCEP or Microsoft Autoenrollment), so it can't be renewed from Infisical. False for certificates enrolled through the API and for imported certificates.",
     canRenewFromCsr:
       "Whether Infisical can renew this certificate on its existing key pair from a CSR it holds, without its private key: a CSR the request that produced it carried or one supplied at import, a certificate enrolled through the API, and a profile whose certificate authority issues from a CSR. When true, renewing with renewalKeySource 'reuse' renews from that CSR, and auto-renewal can be turned on.",
     externalMetadata:
@@ -2558,10 +2641,13 @@ export const CERTIFICATES = {
       "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
   },
   REVOKE: {
+    description:
+      "Revoke a certificate through the certificate authority that issued it. When a revocation approval policy covers the certificate's profile, an approval request is created instead and the response has status pending_approval.",
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
-    revocationReason: "The reason for revoking the certificate.",
+    revocationReason:
+      "The reason for revoking the certificate, one of the listed CRL reason codes, such as KEY_COMPROMISE or SUPERSEDED.",
     revokedAt: "The date and time when the certificate was revoked.",
     serialNumberRes: "The serial number of the certificate.",
     status:
@@ -2616,10 +2702,54 @@ const domainComponentRule = (rule: string) =>
 
 const DOMAIN_COMPONENT_DENIED_RULE = `Domain component sequences that are rejected, each comma-joined most specific first. A sequence is rejected wherever it appears in the chain, so "example,com" rejects DC=example,DC=com and DC=host,DC=example,DC=com alike.`;
 
+const sanRuleValues = (rule: string, reference: string) =>
+  `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. ${RequestReference.CommonName} matches an IP address by value. Any other value containing "{{" is refused.`;
+
 export const CERTIFICATE_POLICIES = {
+  CREATE_DESCRIPTION:
+    "Create a certificate policy. A policy sets the rules every certificate issued through a profile that uses it must meet. Omit a rule to leave that part unconstrained, except basicConstraints: a policy without it denies CA certificates.",
+  UPDATE_DESCRIPTION:
+    "Update a certificate policy. Send only the fields to change; a rule you send replaces the existing one, and null removes it. The change applies to certificates issued or renewed afterwards.",
+  id: "The ID of the certificate policy.",
+  name: "The name of the certificate policy. A slug of 1 to 255 lowercase letters, numbers and hyphens. If another policy in the organization already has the name, a random suffix is added rather than refusing the request, so use the name and ID in the response.",
+  updateName:
+    "The new name of the certificate policy, 1 to 255 characters. It is converted to a slug, cut to 255 characters if converting made it longer, and if another policy in the organization already has it, a random suffix is added rather than refusing the request, so use the name in the response.",
+  description: "A description of the certificate policy, up to 255 characters.",
+  subject: `Rules for subject attributes, one per attribute type. Each rule has a type (${SUBJECT_ATTRIBUTE_TYPE_OPTIONS.join(", ")}) and at least one of allowed, required or denied. A request attribute with no rule is refused. Omit to allow any subject; send an empty array to allow no subject attributes.`,
+  subjectType: "The subject attribute the rule applies to.",
+  subjectAllowed: "Values this attribute may take, with * as a wildcard, such as *.example.com.",
+  subjectRequired:
+    "Values the request must supply for this attribute, with * as a wildcard. Setting any makes the attribute mandatory.",
+  subjectDenied: "Values this attribute must not take, with * as a wildcard. A denied match wins over an allowed one.",
+  sans: "Rules for subject alternative names, one per SAN type. A SAN of a type with no rule is refused. Omit to allow any SAN; send an empty array to allow none.",
+  sanType: "The SAN type the rule applies to.",
+  keyUsages: `Key usage rules: allowed, required and denied lists of key usages (${KEY_USAGE_OPTIONS.join(", ")}). A usage can't be both denied and allowed or required. Omit to allow any key usage.`,
+  extendedKeyUsages:
+    "Extended key usage rules: allowed, required and denied lists of extended key usages, one of the listed values each. A usage can't be both denied and allowed or required. Omit to allow any extended key usage.",
+  usageAllowed: "Usages a request may include. A request usage not listed here or in required is refused.",
+  usageRequired: "Usages every request must include.",
+  usageDenied: "Usages a request must not include.",
+  algorithms: "The signature and key algorithms certificates may use. Omit to allow any algorithm.",
+  signatureAlgorithms: `Allowed signature algorithms, at least one: ${POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES.join(", ")}.`,
+  keyAlgorithms: `Allowed key algorithms, at least one: ${POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES.join(", ")}.`,
+  validity: "Validity limits for certificates issued under the policy.",
+  validityMax:
+    "The longest validity a certificate may request, as a number followed by h (hours), d (days), m (months, 30 days each) or y (years), such as 24h, 90d or 1y. Omit for no limit.",
+  basicConstraints:
+    "Whether certificates under the policy may be CA certificates, and how long a CA chain may follow them.",
+  isCA: "Whether CA certificates are allowed, required or denied. Defaults to denied.",
+  maxPathLength: "The longest path length a CA certificate may request: -1 for unlimited, or 0 or more.",
+  SAN_RULE: {
+    allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.`,
+    required: `${sanRuleValues("the request must include", "requires a SAN of this type equal to the request's common name")} If it lists ${RequestReference.CommonName}, a request without a common name is refused.`,
+    denied: sanRuleValues("that are rejected", "rejects a SAN of this type equal to the request's common name")
+  },
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
+    oid: "The extension's OID in dotted-decimal form, such as 1.3.6.1.4.1.311.20.2. One rule per OID.",
+    label: "A display name for the extension, 1 to 64 characters.",
+    critical: "Whether the extension must be issued as critical. Omit to let the request or the profile decide.",
     allowed:
       "Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.",
     required:
@@ -2632,6 +2762,38 @@ export const CERTIFICATE_POLICIES = {
     required: domainComponentRule("required"),
     denied: DOMAIN_COMPONENT_DENIED_RULE
   }
+};
+
+export const CERTIFICATE_PROFILES = {
+  CREATE_DESCRIPTION:
+    "Create a certificate profile. A profile ties a certificate authority to a certificate policy and supplies the defaults applied to certificates requested through it.",
+  UPDATE_DESCRIPTION:
+    "Update a certificate profile. Send only the fields to change. The certificate authority and certificate policy can't be changed here.",
+  id: "The ID of the certificate profile.",
+  caId: "The ID of the certificate authority that signs certificates issued through the profile. Required when issuerType is ca, and not allowed when it is self-signed.",
+  certificatePolicyId: "The ID of the certificate policy that every certificate issued through the profile must meet.",
+  slug: "The name of the profile, unique in the organization: 1 to 255 lowercase letters, numbers and hyphens.",
+  description: "A description of the profile, up to 255 characters.",
+  issuerType:
+    "Who signs certificates issued through the profile: ca for the certificate authority in caId, or self-signed for certificates signed by their own key. Defaults to ca.",
+  updateIssuerType:
+    "Who signs certificates issued through the profile. Omit it to keep the current value. It must match the profile: ca when the profile has a certificate authority, self-signed when it has none.",
+  externalConfigs:
+    "Settings for an external certificate authority. For Microsoft AD CS and Azure AD CS, set template to the name of the Microsoft certificate template to issue from. Omit for other certificate authorities.",
+  defaults:
+    "Values applied to a certificate request that leaves them out. They must satisfy the profile's certificate policy.",
+  defaultTtlDays: "The default validity in days, as a positive whole number.",
+  defaultBasicConstraints:
+    "Default basic constraints. Set isCA to true to issue CA certificates by default, and pathLength (0 or more) to limit how many CAs may follow.",
+  defaultCustomExtensions:
+    "Default custom X.509 extensions, one per OID. Each has a dotted-decimal oid, an optional label, an optional critical flag and an optional value.",
+  customExtensionLabel: "A display name for the extension, 1 to 64 characters.",
+  defaultKeyUsages: "Default key usages, one of the listed values each.",
+  defaultExtendedKeyUsages: "Default extended key usages, one of the listed values each.",
+  defaultPathLength: "The maximum number of CA certificates that may follow this one in a chain, 0 or more.",
+  defaultAltNameValue:
+    "The SAN value, in the format of its type: a host name, an IP address, an email address, a URI, or a user principal name.",
+  DEFAULT_SUBJECT_ALT_NAMES: `Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is ${RequestReference.CommonName} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.`
 };
 
 export const CERTIFICATE_TEMPLATES = {
@@ -2814,6 +2976,49 @@ export const PKI_SUBSCRIBERS = {
     projectId: "The ID of the project of the PKI subscriber to list the certificates for.",
     offset: "The offset to start from.",
     limit: "The number of certificates to return."
+  }
+};
+
+export const MICROSOFT_AUTOENROLLMENT = {
+  SET: {
+    connectionId:
+      "The ID of the Active Directory LDAP connection used to look up computers. Required when turning Microsoft Autoenrollment on; when updating, leave it out to keep the current connection.",
+    allowedGroupSids:
+      "The security identifiers (SIDs) of the Active Directory security groups whose computers may enroll. Find them with GET /api/v1/app-connections/ldap/{connectionId}/groups. Null or an empty list allows any computer in the domain. Leave it out when updating to keep the current groups.",
+    renewBeforeDays:
+      "How many days before expiry Windows renews the certificate. Windows renews only when this is more than 8 hours and less than 20% of the certificate's validity, so the value Windows is given is moved into that window (see effectiveRenewBeforeSeconds). Defaults to 42 when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value.",
+    keytab:
+      "The keytab file created with ktpass, base64 encoded. When turning Microsoft Autoenrollment on, send this or reuseKeytab. Send a new one to replace the stored keytab.",
+    reuseKeytab:
+      "Copy the keytab another profile in this application already has, named by that profile's ID in profileId. Cannot be sent together with keytab.",
+    allowAnyChannelBinding:
+      "Accept any TLS channel binding a computer sends instead of requiring the one for this instance's own TLS certificate. This also accepts a Kerberos ticket relayed through another HTTPS site, so turn it on only when computers reach Infisical through a proxy that inspects HTTPS, or when this instance cannot read its own certificate, such as in FIPS mode. Defaults to false when turning Microsoft Autoenrollment on; leave it out when updating to keep the current value."
+  },
+  STATE: {
+    otherProfiles:
+      "Other profiles in this application that have Microsoft Autoenrollment on, with their keytab's service principal name, key version and LDAP connection, so their keytab can be reused.",
+    unsupportedReason:
+      "Why this profile cannot use Microsoft Autoenrollment, such as an external certificate authority, a key type Windows cannot request, or a certificate policy that refuses the key type or the Windows extensions. Null when it can, and always null once the method is on for the profile.",
+    configured: "Whether Microsoft Autoenrollment is on for this profile in the application.",
+    id: "The ID of the Microsoft Autoenrollment configuration.",
+    policyUrl:
+      "The enrollment policy server URL to add to the Group Policy object, under Certificate Services Client - Certificate Enrollment Policy.",
+    policyId: "The ID Windows uses for this enrollment policy server. Each policy server URL has its own.",
+    templateName: "The certificate template name Windows shows for this profile.",
+    templateOid:
+      "The OID of the certificate template, written into the template information extension of each certificate.",
+    allowedGroups:
+      "The Active Directory groups whose computers may enroll, each with its security identifier (SID) and name. Empty allows any computer in the domain.",
+    renewBeforeDays: "How many days before expiry Windows renews the certificate, as entered.",
+    effectiveRenewBeforeSeconds:
+      "How many seconds before expiry Windows actually renews: renewBeforeDays moved to more than 8 hours and less than 20% of the certificate's validity. For a validity of 40 hours or less no value fits, and Windows requests a new certificate instead of renewing. Null when the profile's TTL exceeds its certificate policy's maximum validity.",
+    servicePrincipalName: "The Kerberos service principal name the stored keytab is for.",
+    keyVersion: "The key version number of the stored keytab.",
+    connectionId: "The ID of the Active Directory LDAP connection used to look up computers.",
+    allowAnyChannelBinding:
+      "Whether requests are accepted with any TLS channel binding instead of only the one for this instance's own TLS certificate.",
+    channelBinding:
+      "Whether this instance can check requests' TLS channel bindings, whatever allowAnyChannelBinding is set to. status is enforced when it has read its own TLS certificate, unverifiable when it cannot check bindings, such as in FIPS mode or when it could not read its own certificate in the last day (requests are then refused unless allowAnyChannelBinding is on), and not-checked when it has not tried to read its certificate yet, which happens at the first enrollment request. reason explains unverifiable and not-checked, and is null when status is enforced."
   }
 };
 
@@ -3068,19 +3273,36 @@ export const ProjectTemplates = {
   }
 };
 
+const describeCaOfType = (type: CaType) =>
+  type === CaType.INTERNAL
+    ? "an internal certificate authority"
+    : `a certificate authority of type ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]}`;
+
 export const CertificateAuthorities = {
+  ID: "The ID of the certificate authority.",
+  CREATE_DESCRIPTION: (type: CaType) =>
+    `Create ${describeCaOfType(type)}. Certificate profiles use it to sign the certificates issued through them.`,
+  UPDATE_DESCRIPTION: (type: CaType) => `Update ${describeCaOfType(type)}. Send only the fields to change.`,
+  CONFIGURATION: (type: CaType) => `Settings for ${describeCaOfType(type)}.`,
+  UPDATE_INTERNAL_CONFIGURATION:
+    "Settings to change on the internal certificate authority. Only the CRL and OCSP settings can be changed.",
+  UPDATE_CONFIGURATION: (type: CaType) =>
+    `Settings to change on ${describeCaOfType(type)}. Send the full configuration object.`,
   CREATE: (type: CaType) => ({
-    name: `The name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to create. Must be slug-friendly.`,
-    projectId: `The ID of the project to create the Certificate Authority in.`,
-    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
-    status: `The status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+    name: `The name of the certificate authority to create. A slug of lowercase letters, numbers and hyphens, unique in the organization.`,
+    projectId: `The ID of the project to create the certificate authority in.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the certificate authority.`,
+    status:
+      type === CaType.INTERNAL
+        ? "Ignored for internal CAs, and the create response echoes the value sent; read the CA to see its stored status. A root CA created with configuration.notAfter starts active. A root CA created without it starts as pending-certificate until its CA certificate is generated, and an intermediate CA until its signed CA certificate is installed. Disable it with an update."
+        : `The status of the certificate authority: active to issue certificates, or disabled.`
   }),
   UPDATE: (type: CaType) => ({
-    caId: `The ID of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to update.`,
-    projectId: `The ID of the project to update the Certificate Authority in.`,
-    name: `The updated name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority. Must be slug-friendly.`,
-    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
-    status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+    caId: `The ID of the certificate authority to update. It must be ${describeCaOfType(type)}.`,
+    projectId: `The ID of the project to update the certificate authority in.`,
+    name: `The updated name of the certificate authority. A slug of lowercase letters, numbers and hyphens, unique in the organization.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the certificate authority.`,
+    status: `The updated status of the certificate authority: active to issue certificates, or disabled to stop issuing.`
   }),
   UPDATE_INTERNAL_RESPONSE: {
     crlWarning: "Set when the CRL validity was changed but the CRL could not be regenerated. Contains the reason."
@@ -3090,8 +3312,10 @@ export const CertificateAuthorities = {
       dnsAppConnectionId: `The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.`,
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
+      dnsProviderConfig:
+        "The DNS provider and zone where Infisical publishes the TXT records that answer the ACME DNS challenges.",
       provider: `The DNS provider for the ACME Certificate Authority.`,
-      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.`,
+      hostedZoneId: `The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       eabHmacKey: `The External Account Binding (EAB) HMAC key for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
       dnsResolver: `An optional custom DNS resolver IP address to use for verifying DNS propagation during ACME challenges. Must be a valid IP address (e.g. 8.8.8.8). When not set, the system default DNS resolver is used.`
@@ -3108,20 +3332,26 @@ export const CertificateAuthorities = {
       region: `The AWS region to use for the ACM API calls.`
     },
     INTERNAL: {
-      type: "The type of CA to create.",
+      type: "The type of CA to create: root for a self-signed root CA, or intermediate for a CA whose certificate another CA signs.",
       friendlyName: "A friendly name for the CA.",
       organization: "The organization (O) for the CA.",
       ou: "The organization unit (OU) for the CA.",
-      country: "The country name (C) for the CA.",
-      province: "The state of province name for the CA.",
+      country: "The country (C) for the CA, as a two-letter ISO 3166 code such as US.",
+      province: "The state or province name (ST) for the CA.",
       locality: "The locality name for the CA.",
       commonName: "The common name (CN) for the CA.",
       notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
-      notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      notAfter:
+        "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format. A root CA needs it to get its certificate on create; without it, the root CA starts as pending-certificate.",
       maxPathLength:
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
-        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+        "The key algorithm of the CA's key pair, one of the listed values, such as RSA_2048 or EC_prime256v1. An intermediate CA must use a key algorithm its parent CA can sign.",
+      dn: "The CA's distinguished name, built from its subject fields. Not user-supplied.",
+      parentCaId:
+        "The ID of the CA that signed this CA's certificate, for an intermediate CA. Not user-supplied: set when the certificate is installed.",
+      serialNumber: "The serial number of the CA's active certificate. Not user-supplied.",
+      activeCaCertId: "The ID of the CA's active certificate. Not user-supplied.",
       keySource:
         "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.",
       hsmConnectorId:
@@ -3617,6 +3847,12 @@ export const SecretSyncs = {
   REMOVE_SECRETS: (destination: SecretSync) => ({
     syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger removing secrets for.`
   }),
+  RECURSIVE_CONFLICTS: {
+    folders:
+      "Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.",
+    folderPath: "The folder's path.",
+    secretCount: "The number of secrets in the folder the sync would include, counting imported secrets."
+  },
   SYNC_OPTIONS: (destination: SecretSync) => {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
@@ -3630,12 +3866,14 @@ export const SecretSyncs = {
     AWS_PARAMETER_STORE: {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional resource tags to add to parameters synced by Infisical.",
-      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.`
+      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.`,
+      preserveFolderStructure: `Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.`
     },
     AWS_SECRETS_MANAGER: {
       keyId: "The AWS KMS key ID or alias to use when encrypting parameters synced by Infisical.",
       tags: "Optional tags to add to secrets synced by Infisical.",
-      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`
+      syncSecretMetadataAsTags: `Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.`,
+      preserveFolderStructure: `Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.`
     },
     RENDER: {
       autoRedeployServices:
@@ -4355,7 +4593,10 @@ export const SecretScanningDataSources = {
       isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
       isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
       isDiscoveryEnabled: `Whether ${autoScanDescription.noun} added to the provider after setup are scanned automatically. Defaults to true, except for GitLab project scope, which does not support it.`,
-      config: `The configuration parameters to use for this Data Source.`
+      config: `The configuration parameters to use for this Data Source.`,
+      alerts: `The alerts to create with this Data Source, at most one per event. Leave it out to get the default alerts, which email project admins when secrets are detected and when a scan fails. Pass an empty list to create none.`,
+      alertEventType: `The event the alert fires on.`,
+      alertChannels: `Where the alert is sent. Takes the same channels as the alert API.`
     };
   },
   UPDATE: (type: SecretScanningDataSource) => {
@@ -4470,11 +4711,7 @@ export const SecretScanningProjects = {
 };
 
 export const OidcSSo = {
-  GET_CONFIG: {
-    organizationId: "The ID of the organization to get the OIDC config for."
-  },
   UPDATE_CONFIG: {
-    organizationId: "The ID of the organization to update the OIDC config for.",
     allowedEmailDomains:
       "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com). Example: 'example.com, *.acme.com'",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
@@ -4496,7 +4733,6 @@ export const OidcSSo = {
     mfaAmrValues: "Additional MFA claim values, besides 'mfa', that prove the identity provider completed MFA."
   },
   CREATE_CONFIG: {
-    organizationId: "The ID of the organization to create the OIDC config for.",
     allowedEmailDomains:
       "A list of allowed email domains that users can use to authenticate with. This field is comma separated. Supports wildcards (e.g. *.example.com).",
     discoveryURL: "The URL of the OIDC discovery endpoint.",
@@ -4519,6 +4755,32 @@ export const OidcSSo = {
   }
 };
 
+export const ORG_SSO_SETTINGS = {
+  orgId: "The ID of the organization the settings belong to.",
+  authEnforced:
+    "Whether members must sign in through the organization's SAML or OIDC provider. Can only be turned on after someone has signed in through the active SAML or OIDC configuration.",
+  googleSsoAuthEnforced:
+    "Whether members must sign in with Google. Cannot be on at the same time as authEnforced, or while a SAML, OIDC or LDAP configuration is active.",
+  bypassOrgAuthEnabled:
+    "Whether organization admins can still sign in with a password at /login/admin while SSO is enforced.",
+  ssoMfaTrust:
+    "Whether MFA performed at the identity provider satisfies the organization's MFA requirement: 'none' or 'signal'. Has no effect unless MFA is enforced."
+};
+
+export const EMAIL_DOMAINS = {
+  CREATE: {
+    domain:
+      "The email domain to claim for the organization (e.g. company.com). The response includes the DNS TXT record to publish before verifying it."
+  },
+  VERIFY: {
+    emailDomainId:
+      "The ID of the email domain to verify. Infisical looks up the DNS record described in verificationRecord (type, name and value)."
+  },
+  DELETE: {
+    emailDomainId: "The ID of the email domain to delete."
+  }
+};
+
 export const SamlSso = {
   GET_CONFIG: {
     organizationId: "The ID of the organization to get the SAML config for."
@@ -4536,7 +4798,9 @@ export const SamlSso = {
     mfaSignalAttribute:
       "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
     mfaAuthnContexts:
-      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.",
+    mfaAttributeValues:
+      "Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey."
   },
   CREATE_CONFIG: {
     organizationId: "The ID of the organization to create the SAML config for.",
@@ -4551,7 +4815,9 @@ export const SamlSso = {
     mfaSignalAttribute:
       "The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.",
     mfaAuthnContexts:
-      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA."
+      "Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.",
+    mfaAttributeValues:
+      "Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey."
   },
   ACS: {
     samlConfigId: "The ID of the SAML configuration the response is for.",
@@ -4812,6 +5078,22 @@ export const SecretValidationRules = {
       "The secret rotation providers this rule applies to. A rotation is only constrained when its provider is listed here."
   }
 } as const;
+
+export const INSTANCE_DEPLOYMENT_AWS_METADATA = {
+  description:
+    "Get details about the AWS account the Infisical instance runs as, such as the account ID to trust in an IAM role's trust policy. If Infisical can't reach AWS STS to find out, the request fails instead of returning a null account ID.",
+  accountId:
+    "The AWS account ID Infisical acts as when it assumes an IAM role in your AWS account, for example for an AWS App Connection. Name this account as the trusted principal in the role's trust policy. Null when the instance has no AWS identity."
+} as const;
+
+export const CRON_JOB_TRIGGER = {
+  description:
+    "Run a scheduled job once, now, and wait for its handler to return. Only instance admins can call it, and only when the instance sets ALLOW_CRON_JOB_TRIGGER=true. The instance that serves the request must run general workers, because jobs are registered only there. A 200 means the handler returned; work it queued may still be running.",
+  jobName: "The name of the scheduled job to run.",
+  response: {
+    jobName: "The name of the job that ran."
+  }
+};
 
 export const ENCRYPTION_KEY_ROTATION = {
   ROOT_KEY: {
@@ -5512,7 +5794,7 @@ export const AGENT_VAULT = {
       "The name of the access bundle this session carries. Leave it out to start a session that has only services and skills, from the project or sent with it.",
     accessBundleRead: "The access bundle this session carries. Null for a session without an access bundle.",
     services:
-      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 20. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
+      "The services this session reaches besides its access bundle's. Each entry is either the name of a service in the project, up to 50, or a service sent inline, up to 30. Names must be unique across the list. If a name repeats, the request fails with a 422 error that says which one.",
     serviceName:
       "The name of a service in this project. An Agent Vault admin can use any of them, and a member only a service in an access bundle granted to them. A session on behalf of a user can use only a service in an access bundle granted to both the user and the machine identity. On every request, the session reaches the service only while its owner still does.",
     servicesRead:
@@ -5544,7 +5826,7 @@ export const AGENT_VAULT = {
     statsBrokered:
       "The requests the proxy sent with a credential attached. Null when a proxy didn't report it for any of the session's logs.",
     inlineServices:
-      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 20. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
+      "A service sent with this session, alongside its access bundle's services and the services from the project. Agent Vault admins only, up to 30. Each takes the same fields as a service in an access bundle, with three differences: the name is optional, every value is sent exactly as given because variables aren't available, and no field can be left to members. They belong to this session only and can't be edited. Their credentials, custom header values and substitution values are deleted when the session is revoked, or within an hour after it expires.",
     inlineServiceName:
       "A name for the service, shown in session logs and in the proxy's error messages. Lowercase letters, numbers and hyphens. Leave it out and the service goes by its first host. Either way, it can't match the name of another service in the session or in its access bundle.",
     inlineServiceValue:
@@ -5812,6 +6094,27 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
     "A JSON array of the values already picked in this condition, which the options always include so each keeps its label.",
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
+};
+
+export const SECRET_CHANGE_POLICIES = {
+  enforceOnSecretImports:
+    "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.",
+  LIST_IMPORTS: {
+    description:
+      "List the imports from the same project in the folders a secret change policy governs. With 'Require approval for imported secrets' on, each import that does not respect approval policies (isReplication=false) has to be recreated as one that does.",
+    sapId: "The ID of the secret change policy whose folders to list imports from.",
+    isReplicationFilter:
+      "When set, list only imports that respect approval policies (true) or only imports that read their source directly (false). Omit it to list both.",
+    imports: "The imports in folders this policy governs, leaving out folders a more specific policy governs.",
+    id: "The ID of the secret import.",
+    environment: "The environment the import is in, which is where the imported secrets are read.",
+    environmentSlug: "The slug of the environment.",
+    environmentName: "The name of the environment.",
+    secretPath: "The path of the folder the import is in.",
+    sourceEnvironment: "The environment the import reads its secrets from.",
+    sourceSecretPath: "The path of the folder the import reads its secrets from.",
+    isReplication: "True when the import respects approval policies, false when it reads its source directly."
+  }
 };
 
 export const HONEY_TOKENS = {

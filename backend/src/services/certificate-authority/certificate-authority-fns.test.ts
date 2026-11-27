@@ -8,10 +8,10 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto as appCrypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ExecutionError, ResourceLockedError } from "@app/lib/red-lock";
-import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
@@ -42,6 +42,21 @@ vi.mock("@app/lib/logger", () => ({
 const asRecord = (obj: any) => obj as Record<string, unknown>;
 
 describe("signatureAlgorithmToAlgCfg", () => {
+  describe("unsupported formats", () => {
+    it("should refuse a signature algorithm without a hash as a bad request", () => {
+      expect(() => signatureAlgorithmToAlgCfg("RSA", CertKeyAlgorithm.RSA_2048)).toThrow(BadRequestError);
+      expect(() => signatureAlgorithmToAlgCfg("RSA", CertKeyAlgorithm.RSA_2048)).toThrow(
+        "Signature algorithm 'RSA' is not in a supported format. Use the form <KEY>-<HASH>, such as RSA-SHA256 or ECDSA-SHA384, or an ML-DSA or SLH-DSA algorithm."
+      );
+    });
+
+    it("should refuse an unknown hash as a bad request", () => {
+      expect(() => signatureAlgorithmToAlgCfg("RSA-MD5", CertKeyAlgorithm.RSA_2048)).toThrow(
+        "Hash 'MD5' in signature algorithm 'RSA-MD5' is not supported. Supported hashes: SHA1, SHA224, SHA256, SHA384, SHA512, SHA3224, SHA3256, SHA3384, SHA3512."
+      );
+    });
+  });
+
   describe("RSA algorithms", () => {
     it("should handle RSA-SHA256 correctly", () => {
       const result = signatureAlgorithmToAlgCfg("RSA-SHA256", CertKeyAlgorithm.RSA_2048);
@@ -638,6 +653,35 @@ describe("rebuildCaCrl", () => {
     expect(signed.entries.map((entry) => entry.serialNumber)).toEqual([REVOKED_SERIAL]);
   });
 
+  it("should list a serial once, with its earliest revocation, when a deleted certificate and its re-import are both revoked", async () => {
+    const { deps, certificateDAL, certificateAuthorityCrlDAL } = await buildRebuildDeps({ storedCrlNumber: 41 });
+    const firstRevokedAt = new Date("2026-10-01T00:00:00.000Z");
+    certificateDAL.find.mockResolvedValue([
+      {
+        serialNumber: `00${REVOKED_SERIAL}`,
+        status: CertStatus.REVOKED,
+        revokedAt: firstRevokedAt,
+        revocationReason: 1
+      },
+      {
+        serialNumber: REVOKED_SERIAL,
+        status: CertStatus.REVOKED,
+        revokedAt: new Date("2026-11-01T00:00:00.000Z"),
+        revocationReason: 4
+      }
+    ]);
+
+    await rebuildCaCrl(deps);
+
+    const [, stored] = certificateAuthorityCrlDAL.update.mock.calls[0] as unknown as [
+      unknown,
+      { encryptedCrl: Buffer }
+    ];
+    const signed = new x509.X509Crl(new Uint8Array(stored.encryptedCrl));
+    expect(signed.entries).toHaveLength(1);
+    expect(signed.entries[0].revocationDate.getTime()).toBe(firstRevokedAt.getTime());
+  });
+
   it("should still increase the CRL number when the stored one is ahead of the clock", async () => {
     const { deps } = await buildRebuildDeps({ storedCrlNumber: 9_999_999_999 });
 
@@ -710,7 +754,10 @@ describe("rebuildCaCrl", () => {
 
     await rebuildCaCrl(deps);
 
-    expect(certificateDAL.find).toHaveBeenCalledWith({ caId: CA_ID, status: CertStatus.REVOKED }, { tx: PRIMARY });
+    expect(certificateDAL.find).toHaveBeenCalledWith(
+      { caId: CA_ID, status: CertStatus.REVOKED },
+      { tx: PRIMARY, sort: [["revokedAt", "asc"]] }
+    );
   });
 
   it("should refuse instead of overwriting a CRL another writer stored meanwhile", async () => {

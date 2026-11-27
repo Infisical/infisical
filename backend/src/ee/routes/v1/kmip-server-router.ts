@@ -9,12 +9,12 @@ import { resourceAuthMethodAuditMetadata } from "@app/ee/services/resource-auth-
 import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { AuthMethodViewSchema } from "@app/ee/services/resource-auth-method/resource-auth-method-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 const loginRateLimit = { windowMs: 60 * 1000, max: 10 };
@@ -124,12 +124,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         ttl,
         keyAlgorithm,
         authMethod: authMethodArg,
-        actor: {
-          type: req.permission.type,
-          id: req.permission.id,
-          orgId: req.permission.orgId,
-          authMethod: req.permission.authMethod
-        }
+        actor: req.actor
       });
 
       const view = await server.services.resourceAuthMethod.loadView({ type: "kmip", id: kmipServer.id });
@@ -137,7 +132,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.KMIP_SERVER_CREATE,
           metadata: { kmipServerId: kmipServer.id, name: kmipServer.name }
@@ -146,7 +141,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RESOURCE_AUTH_METHOD_CREATE,
           metadata: resourceAuthMethodAuditMetadata({
@@ -181,12 +176,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const kmipServer = await server.services.kmipServer.getOrgKmipServer({
         kmipServerId: req.params.kmipServerId,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
 
       const view = await server.services.resourceAuthMethod.getByKmipServerId({
         resource: { type: "kmip", id: req.params.kmipServerId },
-        actor: req.permission
+        actor: req.actor
       });
 
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(kmipServer, "kmip");
@@ -209,7 +204,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.kmipServer.listKmipServers({ actor: req.permission });
+      return server.services.kmipServer.listKmipServers({ actor: req.actor });
     }
   });
 
@@ -246,17 +241,17 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
             hostnamesOrIps,
             ttl,
             keyAlgorithm,
-            actor: req.permission
+            actor: req.actor
           })
         : await server.services.kmipServer.getOrgKmipServer({
             kmipServerId: req.params.kmipServerId,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           });
 
       if (hasFieldUpdate) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           event: {
             type: EventType.KMIP_SERVER_UPDATE,
             metadata: {
@@ -281,12 +276,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
         const view = await server.services.resourceAuthMethod.setMethod({
           resource: { type: "kmip", id: req.params.kmipServerId },
           authMethod: authMethodArg,
-          actor: req.permission
+          actor: req.actor
         });
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           event: {
             type: EventType.RESOURCE_AUTH_METHOD_UPDATE,
             metadata: resourceAuthMethodAuditMetadata({
@@ -304,7 +299,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
 
       const view = await server.services.resourceAuthMethod.getByKmipServerId({
         resource: { type: "kmip", id: req.params.kmipServerId },
-        actor: req.permission
+        actor: req.actor
       });
       const canRevoke = await server.services.resourceAuthMethod.canRevoke(kmipServer, "kmip");
       return { ...kmipServer, canRevoke, authMethod: view };
@@ -328,12 +323,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.mintToken({
         resource: { type: "kmip", id: req.params.kmipServerId },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.KMIP_SERVER_ENROLLMENT_TOKEN_CREATE,
           metadata: { tokenId: result.id, name: result.resourceName }
@@ -361,12 +356,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.resourceAuthMethod.revokeAccess({
         resource: { type: "kmip", id: req.params.kmipServerId },
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RESOURCE_AUTH_METHOD_REVOKE,
           metadata: {
@@ -399,12 +394,12 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const kmipServer = await server.services.kmipServer.deleteKmipServer({
         kmipServerId: req.params.kmipServerId,
-        actor: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.KMIP_SERVER_DELETE,
           metadata: { kmipServerId: kmipServer.id, name: kmipServer.name }
@@ -563,8 +558,8 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.KMIP_SERVER_ACCESS_TOKEN]),
     handler: async (req) => {
       const kmipServer = await server.services.kmipServer.getOrgKmipServer({
-        kmipServerId: req.permission.id,
-        orgId: req.permission.orgId
+        kmipServerId: req.actor.id,
+        orgId: req.actor.orgId
       });
 
       if (!kmipServer.hostnamesOrIps) {
@@ -580,10 +575,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
       const resolvedKeyAlgorithm = (kmipServer.keyAlgorithm as CertKeyAlgorithm) ?? undefined;
 
       const configs = await server.services.kmip.registerServer({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         hostnamesOrIps: kmipServer.hostnamesOrIps,
         ttl: resolvedTtl,
         commonName: resolvedCommonName,
@@ -592,7 +584,7 @@ export const registerKmipServerRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.KMIP_SERVER_CONNECT,
           metadata: {

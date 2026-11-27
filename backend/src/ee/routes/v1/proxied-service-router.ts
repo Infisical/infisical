@@ -9,10 +9,10 @@ import {
   SanitizedProxiedServiceBaseSchema
 } from "@app/ee/services/proxied-service/proxied-service-schemas";
 import { ApiDocsTags, PROXIED_SERVICES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProxiedServiceRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -66,7 +66,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      return server.services.proxiedService.list(req.query, req.permission);
+      return server.services.proxiedService.list(req.query, req.actor);
     }
   });
 
@@ -89,7 +89,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const service = await server.services.proxiedService.getById({ serviceId: req.params.serviceId }, req.permission);
+      const service = await server.services.proxiedService.getById({ serviceId: req.params.serviceId }, req.actor);
       return { service };
     }
   });
@@ -125,7 +125,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
           secretPath: req.query.secretPath,
           name: req.params.name
         },
-        req.permission
+        req.actor
       );
       return { service };
     }
@@ -156,7 +156,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const service = await server.services.proxiedService.updateById(
         { serviceId: req.params.serviceId, ...req.body },
-        req.permission
+        req.actor
       );
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -198,7 +198,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      await server.services.proxiedService.reportUsage({ serviceId: req.params.serviceId }, req.permission);
+      await server.services.proxiedService.reportUsage({ serviceId: req.params.serviceId }, req.actor);
       return { success: true };
     }
   });
@@ -220,10 +220,7 @@ export const registerProxiedServiceRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const service = await server.services.proxiedService.deleteById(
-        { serviceId: req.params.serviceId },
-        req.permission
-      );
+      const service = await server.services.proxiedService.deleteById({ serviceId: req.params.serviceId }, req.actor);
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: service.projectId,

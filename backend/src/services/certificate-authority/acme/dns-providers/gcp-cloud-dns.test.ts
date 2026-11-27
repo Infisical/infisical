@@ -1,8 +1,7 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
-import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
+import { TGcpConnection, TGcpConnectionAuthDeps } from "@app/services/app-connection/gcp/gcp-connection-types";
 
 const { getMock, postMock } = vi.hoisted(() => ({
   getMock: vi.fn<(url: string, config?: unknown) => Promise<unknown>>(),
@@ -26,7 +25,7 @@ import { TDnsRecordLockKeyStore } from "./dns-record-lock";
 import { gcpCloudDnsDeleteTxtRecord, gcpCloudDnsInsertTxtRecord, validateGcpCloudDnsZone } from "./gcp-cloud-dns";
 
 const connection = { id: "connection-id" } as TGcpConnection;
-const instanceConfigService = new FakeInstanceConfigService();
+const authDeps = {} as TGcpConnectionAuthDeps;
 const keyStore = {
   acquireLock: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) })
 } as unknown as TDnsRecordLockKeyStore;
@@ -68,7 +67,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
   it("creates the record set when none exists", async () => {
     getMock.mockRejectedValueOnce(axiosError(404));
 
-    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(getMock).toHaveBeenCalledWith(`${ZONE_URL}/rrsets/${encodeURIComponent(FQDN)}/TXT`, expect.anything());
     expect(postMock).toHaveBeenCalledWith(
@@ -81,7 +80,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
   it("appends to an existing record set so concurrent challenges on one name both survive", async () => {
     getMock.mockResolvedValueOnce(existingRecordSet(['"token-a"']));
 
-    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-b"', keyStore, instanceConfigService);
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-b"', keyStore);
 
     expect(postMock).toHaveBeenCalledWith(
       `${ZONE_URL}/changes`,
@@ -96,7 +95,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
   it("keeps the TTL of a record set it did not create", async () => {
     getMock.mockResolvedValueOnce(existingRecordSet(['"customer-value"'], 3600));
 
-    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(postMock).toHaveBeenCalledWith(
       `${ZONE_URL}/changes`,
@@ -113,16 +112,9 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     const acquireLock = vi.fn().mockResolvedValue({ release });
     getMock.mockRejectedValueOnce(axiosError(404));
 
-    await gcpCloudDnsInsertTxtRecord(
-      connection,
-      ZONE,
-      RECORD,
-      '"token-a"',
-      {
-        acquireLock
-      } as unknown as TDnsRecordLockKeyStore,
-      instanceConfigService
-    );
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', {
+      acquireLock
+    } as unknown as TDnsRecordLockKeyStore);
 
     expect(acquireLock).toHaveBeenCalledWith(
       [`acme-dns-record-mutex-connection-id-${ZONE.toLowerCase()}-${FQDN}`],
@@ -137,16 +129,9 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     const acquireLock = vi.fn().mockRejectedValue(new Error("lock busy"));
 
     await expect(
-      gcpCloudDnsInsertTxtRecord(
-        connection,
-        ZONE,
-        RECORD,
-        '"token-a"',
-        {
-          acquireLock
-        } as unknown as TDnsRecordLockKeyStore,
-        instanceConfigService
-      )
+      gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', {
+        acquireLock
+      } as unknown as TDnsRecordLockKeyStore)
     ).rejects.toThrow("Another certificate order is still using it.");
     expect(getMock).not.toHaveBeenCalled();
     expect(postMock).not.toHaveBeenCalled();
@@ -156,16 +141,9 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     const acquireLock = vi.fn().mockRejectedValue(new Error("lock busy"));
 
     await expect(
-      gcpCloudDnsInsertTxtRecord(
-        connection,
-        ZONE,
-        RECORD,
-        '"token-a"',
-        {
-          acquireLock
-        } as unknown as TDnsRecordLockKeyStore,
-        instanceConfigService
-      )
+      gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', {
+        acquireLock
+      } as unknown as TDnsRecordLockKeyStore)
     ).rejects.toThrow("Another certificate order is still using it.");
 
     const lockTtlMs = acquireLock.mock.calls[0][1] as number;
@@ -186,11 +164,11 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     await expect(
       gcpCloudDnsInsertTxtRecord(
         connection,
+        authDeps,
         ZONE,
         RECORD,
         '"token-a"',
         { acquireLock } as unknown as TDnsRecordLockKeyStore,
-        instanceConfigService,
         controller.signal
       )
     ).rejects.toThrow("ACME order aborted after timeout");
@@ -203,7 +181,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     getMock.mockResolvedValueOnce(existingRecordSet(['"token-a"'])).mockRejectedValueOnce(axiosError(404));
     postMock.mockRejectedValueOnce(axiosError(404)).mockResolvedValueOnce({ data: {} });
 
-    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-b"', keyStore, instanceConfigService);
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-b"', keyStore);
 
     expect(postMock).toHaveBeenCalledTimes(2);
     expect(postMock).toHaveBeenLastCalledWith(
@@ -217,9 +195,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     getMock.mockRejectedValueOnce(axiosError(404));
     postMock.mockRejectedValueOnce(axiosError(404, "The managed zone does not exist."));
 
-    await expect(
-      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService)
-    ).rejects.toThrow(
+    await expect(gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore)).rejects.toThrow(
       "Failed to update Google Cloud DNS TXT record '_acme-challenge.example.com.' in zone 'example-zone': The managed zone does not exist."
     );
     expect(postMock).toHaveBeenCalledTimes(1);
@@ -228,7 +204,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
   it("does nothing when the value is already present", async () => {
     getMock.mockResolvedValueOnce(existingRecordSet(["token-a"]));
 
-    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(postMock).not.toHaveBeenCalled();
   });
@@ -237,7 +213,7 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
     getMock.mockRejectedValueOnce(axiosError(404)).mockResolvedValueOnce(existingRecordSet(['"token-a"']));
     postMock.mockRejectedValueOnce(axiosError(409)).mockResolvedValueOnce({ data: {} });
 
-    await gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-b"', keyStore, instanceConfigService);
+    await gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-b"', keyStore);
 
     expect(postMock).toHaveBeenCalledTimes(2);
     expect(postMock).toHaveBeenLastCalledWith(
@@ -252,9 +228,9 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
   it("tells the user which role to grant when the service account lacks access", async () => {
     getMock.mockRejectedValueOnce(axiosError(403));
 
-    await expect(
-      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService)
-    ).rejects.toThrow("Grant it the DNS Administrator role (roles/dns.admin) on GCP project 'my-project'");
+    await expect(gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore)).rejects.toThrow(
+      "Grant it the DNS Administrator role (roles/dns.admin) on GCP project 'my-project'"
+    );
     expect(postMock).not.toHaveBeenCalled();
   });
 
@@ -263,9 +239,9 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
       axiosError(403, "Cloud DNS API has not been used in project 123456 before or it is disabled.")
     );
 
-    await expect(
-      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService)
-    ).rejects.toThrow("The Cloud DNS API is not enabled on GCP project 'my-project'");
+    await expect(gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore)).rejects.toThrow(
+      "The Cloud DNS API is not enabled on GCP project 'my-project'"
+    );
   });
 
   it("detects a disabled API from Google's error reason, whatever the message says", async () => {
@@ -275,25 +251,23 @@ describe("gcpCloudDnsInsertTxtRecord", () => {
       })
     );
 
-    await expect(
-      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService)
-    ).rejects.toThrow("The Cloud DNS API is not enabled on GCP project 'my-project'");
+    await expect(gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore)).rejects.toThrow(
+      "The Cloud DNS API is not enabled on GCP project 'my-project'"
+    );
   });
 
   it("does not treat other disabled resources as a disabled API", async () => {
     getMock.mockRejectedValueOnce(axiosError(403, "The billing account for the project is disabled."));
 
-    await expect(
-      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService)
-    ).rejects.toThrow("Grant it the DNS Administrator role");
+    await expect(gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore)).rejects.toThrow(
+      "Grant it the DNS Administrator role"
+    );
   });
 
   it("surfaces the provider message on other failures", async () => {
     getMock.mockRejectedValueOnce(axiosError(400));
 
-    await expect(
-      gcpCloudDnsInsertTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService)
-    ).rejects.toThrow(
+    await expect(gcpCloudDnsInsertTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore)).rejects.toThrow(
       "Failed to update Google Cloud DNS TXT record '_acme-challenge.example.com.' in zone 'example-zone': status 400"
     );
   });
@@ -308,7 +282,7 @@ describe("gcpCloudDnsDeleteTxtRecord", () => {
   it("removes only its own value when other values remain", async () => {
     getMock.mockResolvedValueOnce(existingRecordSet(['"token-a"', '"token-b"']));
 
-    await gcpCloudDnsDeleteTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsDeleteTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(postMock).toHaveBeenCalledWith(
       `${ZONE_URL}/changes`,
@@ -323,7 +297,7 @@ describe("gcpCloudDnsDeleteTxtRecord", () => {
   it("deletes the record set when its last value is removed", async () => {
     getMock.mockResolvedValueOnce(existingRecordSet(['"token-a"']));
 
-    await gcpCloudDnsDeleteTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsDeleteTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(postMock).toHaveBeenCalledWith(
       `${ZONE_URL}/changes`,
@@ -338,7 +312,7 @@ describe("gcpCloudDnsDeleteTxtRecord", () => {
       .mockResolvedValueOnce(existingRecordSet(['"token-a"']));
     postMock.mockRejectedValueOnce(axiosError(412)).mockResolvedValueOnce({ data: {} });
 
-    await gcpCloudDnsDeleteTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsDeleteTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(postMock).toHaveBeenCalledTimes(2);
     expect(postMock).toHaveBeenLastCalledWith(
@@ -351,8 +325,8 @@ describe("gcpCloudDnsDeleteTxtRecord", () => {
   it("is a no-op when the record set or value is already gone", async () => {
     getMock.mockRejectedValueOnce(axiosError(404)).mockResolvedValueOnce(existingRecordSet(['"token-b"']));
 
-    await gcpCloudDnsDeleteTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
-    await gcpCloudDnsDeleteTxtRecord(connection, ZONE, RECORD, '"token-a"', keyStore, instanceConfigService);
+    await gcpCloudDnsDeleteTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
+    await gcpCloudDnsDeleteTxtRecord(connection, authDeps, ZONE, RECORD, '"token-a"', keyStore);
 
     expect(postMock).not.toHaveBeenCalled();
   });

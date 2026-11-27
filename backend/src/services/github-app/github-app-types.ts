@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TInitiateGitHubManifestDTO = {
   name: string;
@@ -12,8 +12,7 @@ export type TInitiateGitHubManifestDTO = {
   projectId?: string;
   gatewayId?: string;
   gatewayPoolId?: string;
-  orgPermission: OrgServiceActor;
-};
+} & TActorInput;
 
 export type TGitHubManifestStatePayload = {
   jti: string;
@@ -39,13 +38,11 @@ export type THandleManifestCallbackDTO = {
 
 export type TListGitHubAppsDTO = {
   projectId?: string;
-  orgPermission: OrgServiceActor;
-};
+} & TActorInput;
 
 export type TDeleteGitHubAppDTO = {
   id: string;
-  orgPermission: OrgServiceActor;
-};
+} & TActorInput;
 
 export type TGitHubAppManifestResponse = {
   id: number;

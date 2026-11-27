@@ -1,6 +1,5 @@
-import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -15,24 +14,22 @@ import {
 import {
   TGcpCertificateManagerProjectScopedDTO,
   TGcpConnection,
+  TGcpConnectionAuthDeps,
   TGetGCPProjectLocationsDTO
 } from "./gcp-connection-types";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TGcpConnection>;
 
-export const gcpConnectionService = (
-  getAppConnection: TGetAppConnectionFunc,
-  instanceConfigService: TInstanceConfigService
-) => {
-  const listSecretManagerProjects = async (connectionId: string, actor: OrgServiceActor) => {
+export const gcpConnectionService = (getAppConnection: TGetAppConnectionFunc, authDeps: TGcpConnectionAuthDeps) => {
+  const listSecretManagerProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      const projects = await getGcpSecretManagerProjects(appConnection, instanceConfigService);
+      const projects = await getGcpSecretManagerProjects(appConnection, authDeps);
 
       return projects;
     } catch (error) {
@@ -43,12 +40,12 @@ export const gcpConnectionService = (
 
   const listSecretManagerProjectLocations = async (
     { connectionId, projectId }: TGetGCPProjectLocationsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      const locations = await getGcpSecretManagerProjectLocations(projectId, appConnection, instanceConfigService);
+      const locations = await getGcpSecretManagerProjectLocations(projectId, appConnection, authDeps);
 
       return locations;
     } catch (error) {
@@ -56,11 +53,11 @@ export const gcpConnectionService = (
     }
   };
 
-  const listCertificateManagerProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listCertificateManagerProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      return await getGcpCertificateManagerProjects(appConnection, instanceConfigService);
+      return await getGcpCertificateManagerProjects(appConnection, authDeps);
     } catch (error) {
       logger.error(error, "Error listing GCP Certificate Manager projects");
       throw error;
@@ -69,12 +66,12 @@ export const gcpConnectionService = (
 
   const listCertificateManagerLocations = async (
     { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      return await getGcpCertificateManagerLocations(gcpProjectId, appConnection, instanceConfigService);
+      return await getGcpCertificateManagerLocations(gcpProjectId, appConnection, authDeps);
     } catch (error) {
       logger.error(error, "Error listing GCP Certificate Manager locations");
       throw error;
@@ -83,23 +80,23 @@ export const gcpConnectionService = (
 
   const listCertificateMaps = async (
     { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      return await getGcpCertificateMaps(gcpProjectId, appConnection, instanceConfigService);
+      return await getGcpCertificateMaps(gcpProjectId, appConnection, authDeps);
     } catch (error) {
       logger.error(error, "Error listing GCP certificate maps");
       throw error;
     }
   };
 
-  const listCloudDnsProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listCloudDnsProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      return await getGcpCloudDnsProjects(appConnection, instanceConfigService);
+      return await getGcpCloudDnsProjects(appConnection, authDeps);
     } catch (error) {
       logger.error(error, `Error listing GCP Cloud DNS projects [connectionId=${connectionId}]`);
       throw error;
@@ -108,12 +105,12 @@ export const gcpConnectionService = (
 
   const listCloudDnsZones = async (
     { connectionId, gcpProjectId }: TGcpCertificateManagerProjectScopedDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.GCP, connectionId, actor);
 
     try {
-      return await getGcpCloudDnsZones(gcpProjectId, appConnection, instanceConfigService);
+      return await getGcpCloudDnsZones(gcpProjectId, appConnection, authDeps);
     } catch (error) {
       logger.error(
         error,

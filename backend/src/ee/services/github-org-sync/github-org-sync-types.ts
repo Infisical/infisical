@@ -1,30 +1,30 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgServiceActor } from "@app/lib/types";
 
 export interface TCreateGithubOrgSyncDTO {
-  orgPermission: OrgServiceActor;
+  orgPermission: TActorContext;
   githubOrgName: string;
   githubOrgAccessToken?: string;
   isActive?: boolean;
 }
 
 export interface TUpdateGithubOrgSyncDTO {
-  orgPermission: OrgServiceActor;
+  orgPermission: TActorContext;
   githubOrgName?: string;
   githubOrgAccessToken?: string;
   isActive?: boolean;
 }
 
 export interface TDeleteGithubOrgSyncDTO {
-  orgPermission: OrgServiceActor;
+  orgPermission: TActorContext;
 }
 
 export interface TGetGithubOrgSyncDTO {
-  orgPermission: OrgServiceActor;
+  orgPermission: TActorContext;
 }
 
 export interface TSyncAllTeamsDTO {
-  orgPermission: OrgServiceActor;
+  orgPermission: TActorContext;
   auditLogInfo: AuditLogInfo;
 }
 
@@ -46,6 +46,6 @@ export interface TSyncResult {
 }
 
 export interface TValidateGithubTokenDTO {
-  orgPermission: OrgServiceActor;
+  orgPermission: TActorContext;
   githubOrgAccessToken: string;
 }

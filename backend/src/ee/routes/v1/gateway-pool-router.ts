@@ -2,10 +2,10 @@ import z from "zod";
 
 import { GatewayPoolMembershipsSchema, GatewayPoolsSchema, GatewaysV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedGatewayPoolSchema = GatewayPoolsSchema.pick({
   id: true,
@@ -44,12 +44,12 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const pool = await server.services.gatewayPool.createGatewayPool({
         name: req.body.name,
-        ...req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_POOL_CREATE,
           metadata: {
@@ -83,7 +83,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.gatewayPool.listGatewayPools(req.permission);
+      return server.services.gatewayPool.listGatewayPools(req.actor);
     }
   });
 
@@ -107,7 +107,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.gatewayPool.getGatewayPoolById({
         poolId: req.params.poolId,
-        ...req.permission
+        actor: req.actor
       });
     }
   });
@@ -134,12 +134,12 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       const pool = await server.services.gatewayPool.updateGatewayPool({
         poolId: req.params.poolId,
         name: req.body.name,
-        ...req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_POOL_UPDATE,
           metadata: {
@@ -171,12 +171,12 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const pool = await server.services.gatewayPool.deleteGatewayPool({
         poolId: req.params.poolId,
-        ...req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_POOL_DELETE,
           metadata: {
@@ -217,12 +217,12 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       const { membership, poolName, gatewayName } = await server.services.gatewayPool.addGatewayToPool({
         poolId: req.params.poolId,
         gatewayId: req.body.gatewayId,
-        ...req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_POOL_ADD_MEMBER,
           metadata: {
@@ -263,12 +263,12 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       const { membership, poolName, gatewayName } = await server.services.gatewayPool.removeGatewayFromPool({
         poolId: req.params.poolId,
         gatewayId: req.params.gatewayId,
-        ...req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GATEWAY_POOL_REMOVE_MEMBER,
           metadata: {
@@ -338,7 +338,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.gatewayPool.getConnectedResources({
         poolId: req.params.poolId,
-        ...req.permission
+        actor: req.actor
       });
     }
   });

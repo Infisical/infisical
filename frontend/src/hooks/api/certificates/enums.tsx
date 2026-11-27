@@ -32,7 +32,8 @@ export enum CrlReason {
 }
 
 export enum CertificateRevocationSource {
-  MicrosoftIntune = "microsoft-intune"
+  MicrosoftIntune = "microsoft-intune",
+  SameCertificate = "same-certificate"
 }
 
 export enum CertKeyUsage {

@@ -17,6 +17,7 @@ import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/m
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -24,11 +25,11 @@ import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
+  caSignsCsrAsSent,
   caSupportsCapability,
   CERTIFICATE_AUTHORITIES_TYPE_MAP
 } from "@app/services/certificate-authority/certificate-authority-maps";
@@ -36,7 +37,7 @@ import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ACME_SAN_TYPES, CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -47,6 +48,7 @@ import {
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { joinPolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
@@ -60,7 +62,11 @@ import {
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
+import {
+  applyCommonNameDefaultSan,
+  applyProfileDefaults,
+  resolveEffectiveTtl
+} from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -1036,10 +1042,7 @@ export const pkiAcmeServiceFactory = ({
       const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
 
       const result = await certificateV3Service.signCertificateFromProfile({
-        actor: ActorType.ACME_ACCOUNT,
-        actorId: accountId,
-        actorAuthMethod: null,
-        actorOrgId,
+        enrollment: { type: ActorType.ACME_ACCOUNT, id: accountId, orgId: actorOrgId },
         profileId,
         csr,
         notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
@@ -1106,7 +1109,7 @@ export const pkiAcmeServiceFactory = ({
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
-      throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+      throw new AcmeBadCSRError({ message: `Invalid CSR: ${joinPolicyViolations(validationResult.errors)}` });
     }
     assertAcmeCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
@@ -1120,10 +1123,7 @@ export const pkiAcmeServiceFactory = ({
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({
-      actor: ActorType.ACME_ACCOUNT,
-      actorId: accountId,
-      actorAuthMethod: null,
-      actorOrgId,
+      enrollment: { type: ActorType.ACME_ACCOUNT, id: accountId, orgId: actorOrgId },
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,
@@ -1266,11 +1266,7 @@ export const pkiAcmeServiceFactory = ({
         return error;
       };
 
-      const allowedSanTypes = new Set([
-        CertSubjectAlternativeNameType.DNS_NAME,
-        CertSubjectAlternativeNameType.IP_ADDRESS
-      ]);
-      if (certificateRequest.subjectAlternativeNames?.some((san) => !allowedSanTypes.has(san.type))) {
+      if (certificateRequest.subjectAlternativeNames?.some((san) => !ACME_SAN_TYPES.includes(san.type))) {
         throw await $rejectCsr("Invalid CSR: Only DNS and IP subject alternative names are supported");
       }
 
@@ -1309,6 +1305,14 @@ export const pkiAcmeServiceFactory = ({
         throw await $rejectCsr("Invalid CSR: Common name + SANs mismatch with order identifiers");
       }
 
+      certificateRequest.subjectAlternativeNames = applyCommonNameDefaultSan({
+        defaults: profile.defaults,
+        enrollmentType: EnrollmentType.ACME,
+        csrCommonName: certificateRequest.commonName,
+        subjectAlternativeNames: certificateRequest.subjectAlternativeNames,
+        isCsrSignedAsSent: caSignsCsrAsSent(finalizeCaType)
+      }).subjectAlternativeNames;
+
       // Issuance context. These are reads only, and they deliberately run outside a transaction:
       // holding a pooled connection across signing is what let concurrent finalizations exhaust
       // the connection pool and deadlock every request in the process.
@@ -1342,7 +1346,7 @@ export const pkiAcmeServiceFactory = ({
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
-              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${joinPolicyViolations(validationResult.errors)}` });
             }
             assertAcmeCaSupportsCustomExtensions(
               finalizeCaType,

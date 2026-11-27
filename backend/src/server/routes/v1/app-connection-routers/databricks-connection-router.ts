@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedDatabricksConnectionSchema,
   UpdateDatabricksConnectionSchema
 } from "@app/services/app-connection/databricks";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -44,10 +44,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const secretScopes = await server.services.appConnection.databricks.listSecretScopes(
-        connectionId,
-        req.permission
-      );
+      const secretScopes = await server.services.appConnection.databricks.listSecretScopes(connectionId, req.actor);
 
       return { secretScopes };
     }
@@ -82,7 +79,7 @@ export const registerDatabricksConnectionRouter = async (server: FastifyZodProvi
 
       const servicePrincipals = await server.services.appConnection.databricks.listServicePrincipals(
         connectionId,
-        req.permission
+        req.actor
       );
 
       return { servicePrincipals };

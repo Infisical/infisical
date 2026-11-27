@@ -6,6 +6,7 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -14,11 +15,11 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { delay } from "@app/lib/delay";
-import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
+import { followCnameChain } from "@app/lib/dns";
+import { BadRequestError, CryptographyError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -31,6 +32,7 @@ import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/c
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
+import { TRfc2136Connection } from "@app/services/app-connection/rfc2136/rfc2136-connection-types";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -47,6 +49,7 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
@@ -54,6 +57,12 @@ import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-ut
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { route53DeleteRecord, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
@@ -74,6 +83,7 @@ import {
   validateGcpCloudDnsZone
 } from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
+import { rfc2136DeleteTxtRecord, rfc2136InsertTxtRecord, validateRfc2136Zone } from "./dns-providers/rfc2136";
 import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
@@ -147,7 +157,7 @@ const calculateFinalRenewBeforeDays = (
 };
 
 type TAcmeCertificateAuthorityFnsDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -166,11 +176,12 @@ type TAcmeCertificateAuthorityFnsDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
   instanceConfigService: TInstanceConfigService;
 };
 
 type TOrderCertificateDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "transaction" | "updateById">;
@@ -182,6 +193,7 @@ type TOrderCertificateDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
   instanceConfigService: TInstanceConfigService;
 };
 
@@ -229,30 +241,9 @@ export const castDbEntryToAcmeCertificateAuthority = (
 
 const DNS_PROPAGATION_MAX_RETRIES = 5;
 const DNS_PROPAGATION_INTERVAL_MS = 2000;
-const CNAME_MAX_DEPTH = 10;
 
-const resolveAcmeChallengeCname = async (recordName: string): Promise<string> => {
-  let current = recordName;
-  let depth = 0;
-  let resolved = true;
-
-  while (depth < CNAME_MAX_DEPTH && resolved) {
-    depth += 1;
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const [target] = await dns.promises.resolveCname(current);
-      if (!target) {
-        resolved = false;
-      } else {
-        current = target;
-      }
-    } catch {
-      resolved = false;
-    }
-  }
-
-  return current;
-};
+const resolveAcmeChallengeCname = (recordName: string): Promise<string> =>
+  followCnameChain(recordName, () => undefined);
 
 const waitForDnsPropagation = async (
   lookupName: string,
@@ -290,7 +281,8 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
   [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
-  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
+  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS,
+  [AcmeDnsProvider.Rfc2136]: AppConnection.Rfc2136
 };
 
 const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
@@ -384,6 +376,7 @@ export const executeAcmeOrder = async (
     gatewayV2Service,
     gatewayPoolService,
     keyStore,
+    oidcIssuerService,
     instanceConfigService
   } = deps;
 
@@ -533,7 +526,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -550,11 +544,11 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsInsertTxtRecord(
             connection as TGcpConnection,
+            { appConnectionDAL, kmsDataKeyService, oidcIssuerService, instanceConfigService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
             keyStore,
-            instanceConfigService,
             abortSignal
           );
           break;
@@ -566,6 +560,16 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             { keyStore }
+          );
+          break;
+        }
+        case AcmeDnsProvider.Rfc2136: {
+          await rfc2136InsertTxtRecord(
+            connection as TRfc2136Connection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { gatewayV2Service, gatewayPoolService, abortSignal }
           );
           break;
         }
@@ -630,7 +634,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -647,11 +652,11 @@ export const executeAcmeOrder = async (
         case AcmeDnsProvider.GcpCloudDns: {
           await gcpCloudDnsDeleteTxtRecord(
             connection as TGcpConnection,
+            { appConnectionDAL, kmsDataKeyService, oidcIssuerService, instanceConfigService },
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue,
-            keyStore,
-            instanceConfigService
+            keyStore
           );
           break;
         }
@@ -662,6 +667,16 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             { keyStore }
+          );
+          break;
+        }
+        case AcmeDnsProvider.Rfc2136: {
+          await rfc2136DeleteTxtRecord(
+            connection as TRfc2136Connection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { gatewayV2Service, gatewayPoolService }
           );
           break;
         }
@@ -785,6 +800,7 @@ export const AcmeCertificateAuthorityFns = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
+  oidcIssuerService,
   instanceConfigService
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
@@ -798,7 +814,7 @@ export const AcmeCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAcmeCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     if (crypto.isFipsModeEnabled()) {
       throw new CryptographyError({
@@ -811,13 +827,20 @@ export const AcmeCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(
+        dnsAppConnectionId,
+        ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProviderConfig.provider]
+      );
     }
 
     validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
     if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
       validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+    }
+
+    if (dnsProviderConfig.provider === AcmeDnsProvider.Rfc2136) {
+      validateRfc2136Zone(dnsProviderConfig.hostedZoneId);
     }
 
     if (dnsResolver) {
@@ -866,16 +889,14 @@ export const AcmeCertificateAuthorityFns = ({
         // @ts-expect-error We're expecting a database error
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (error?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAcmeCertificateAuthority(caEntity);
@@ -891,7 +912,7 @@ export const AcmeCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAcmeCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
@@ -900,13 +921,20 @@ export const AcmeCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
 
       if (!appConnection) {
-        throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(
+          dnsAppConnectionId,
+          ACME_DNS_PROVIDER_APP_CONNECTION_MAP[dnsProviderConfig.provider]
+        );
       }
 
       validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
 
       if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
         validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+      }
+
+      if (dnsProviderConfig.provider === AcmeDnsProvider.Rfc2136) {
+        validateRfc2136Zone(dnsProviderConfig.hostedZoneId);
       }
 
       if (dnsResolver) {
@@ -916,7 +944,7 @@ export const AcmeCertificateAuthorityFns = ({
       const ca = await certificateAuthorityDAL.findById(id);
 
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       // validates permission to connect
@@ -1043,6 +1071,7 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
+        oidcIssuerService,
         instanceConfigService
       }
     );
@@ -1117,6 +1146,7 @@ export const AcmeCertificateAuthorityFns = ({
         gatewayV2Service,
         gatewayPoolService,
         keyStore,
+        oidcIssuerService,
         instanceConfigService
       }
     );

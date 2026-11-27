@@ -2,13 +2,14 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { TUsers } from "@app/db/schemas";
+import { AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { resolveMfaChallenge } from "@app/services/auth/auth-fns";
-import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
+import { AuthModeMfaJwtTokenPayload } from "@app/services/auth/auth-type";
 
 const handleMfaVerification = async (
   req: FastifyRequest & {
@@ -78,19 +79,11 @@ export const registerMfaRouter = async (server: FastifyZodProvider) => {
     const user = await server.store.user.findById(decodedToken.userId);
     if (!user) throw new UnauthorizedError({ message: "Unauthorized access" });
 
-    let allowedMfaMethods = decodedToken.allowedMfaMethods ?? [];
-    if (!allowedMfaMethods.length && decodedToken.requiredMfaMethod) {
-      allowedMfaMethods = [decodedToken.requiredMfaMethod];
-    }
-
-    if (!allowedMfaMethods.length)
-      throw new UnauthorizedError({ message: "Your sign-in session expired. Sign in again." });
-
     req.mfa = {
       userId: user.id,
       user,
       orgId: decodedToken.organizationId,
-      allowedMfaMethods
+      allowedMfaMethods: decodedToken.allowedMfaMethods
     };
   });
 

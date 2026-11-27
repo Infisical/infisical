@@ -1,18 +1,14 @@
-import { createMongoAbility, ForbiddenError, RawRuleOf } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ResourceMembershipRole, TPkiSignerCertificateRevocations } from "@app/db/schemas";
-import { EntityNotFoundError, RuleViolationError } from "@app/domains/lib/errors";
-import {
-  ResourcePermissionSet,
-  ResourcePermissionSignerActions,
-  ResourcePermissionSub,
-  TResourceAbility
-} from "@app/ee/services/permission/resource-permission";
+import { SignerPermissionActions, SignerPermissionSub } from "@app/domains/certificates/code-signing/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { EntityNotFoundError, RuleViolationError, PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { ExecutionError, ExecutionStats, ResourceLockedError } from "@app/lib/red-lock";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import {
@@ -59,16 +55,16 @@ const GROUP_ADMIN_USER_ID = "user-group-admin";
 const tx = { isTransaction: true } as unknown as Knex;
 
 const actorFields = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ORG_ID
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ORG_ID }
+  } as unknown as TActorContext
 };
 
-const abilityWith = (...actions: ResourcePermissionSignerActions[]): TResourceAbility =>
-  createMongoAbility<ResourcePermissionSet>(
-    actions.map((action) => ({ action, subject: ResourcePermissionSub.Signer })) as RawRuleOf<TResourceAbility>[]
-  );
+const abilityWith = (...actions: SignerPermissionActions[]) =>
+  Permission.fromRules({
+    rules: actions.map((action) => ({ action, subject: SignerPermissionSub.Signer }))
+  }) as never;
 
 const buildSigner = (overrides: Partial<TSignerWithCertificate> = {}): TSignerWithCertificate =>
   ({
@@ -150,10 +146,10 @@ const buildService = ({
   ca = internalCa,
   revocations = [],
   permission = abilityWith(
-    ResourcePermissionSignerActions.ReissueCertificate,
-    ResourcePermissionSignerActions.RevokeCertificate,
-    ResourcePermissionSignerActions.ManageStatus,
-    ResourcePermissionSignerActions.Read
+    SignerPermissionActions.ReissueCertificate,
+    SignerPermissionActions.RevokeCertificate,
+    SignerPermissionActions.ManageStatus,
+    SignerPermissionActions.Read
   )
 }: {
   signer?: TSignerWithCertificate;
@@ -161,7 +157,7 @@ const buildService = ({
   certificate?: ReturnType<typeof buildCertificate>;
   ca?: typeof internalCa | typeof digicertCa | null;
   revocations?: TPkiSignerCertificateRevocations[];
-  permission?: TResourceAbility;
+  permission?: ReturnType<typeof abilityWith>;
 } = {}) => {
   const lock = { release: vi.fn().mockResolvedValue(undefined) };
   let currentSigner = signer;
@@ -249,7 +245,8 @@ const buildService = ({
     certificateAuthorityDAL: { findByIdWithAssociatedCa: vi.fn().mockResolvedValue(ca) },
     certificateService,
     signerIssuanceService,
-    permissionService: { getResourcePermission: vi.fn().mockResolvedValue({ permission, memberships: [] }) },
+    projectPermissionService: { getProjectPermission: vi.fn() },
+    signerPermissionService: { getSignerPermission: vi.fn().mockResolvedValue(permission) },
     keyStore: { acquireLock: vi.fn().mockResolvedValue(lock) },
     hsmConnectorService: { assertAttachPermission: vi.fn() },
     digicertFns: {
@@ -340,9 +337,9 @@ describe("signerService locked fresh read", () => {
   });
 
   it("checks the permission before taking the lock", async () => {
-    const { service, deps } = buildService({ permission: abilityWith(ResourcePermissionSignerActions.Read) });
+    const { service, deps } = buildService({ permission: abilityWith(SignerPermissionActions.Read) });
 
-    await expect(revoke(service)).rejects.toThrow(ForbiddenError);
+    await expect(revoke(service)).rejects.toThrow(PermissionDeniedError);
     expect(deps.keyStore.acquireLock).not.toHaveBeenCalled();
   });
 
@@ -858,7 +855,7 @@ describe("signerService revoke refusal notification recipients", () => {
 
 describe("signerService.delete with a certificate request in progress", () => {
   it("cleans up the signer's requests before deleting, and deletes nothing when cleanup is refused", async () => {
-    const { service, deps } = buildService({ permission: abilityWith(ResourcePermissionSignerActions.Delete) });
+    const { service, deps } = buildService({ permission: abilityWith(SignerPermissionActions.Delete) });
     deps.signerIssuanceService.cleanUpRequestsBeforeDelete.mockRejectedValue(
       new BadRequestError({
         message: `DigiCert order #${DIGICERT_ORDER_ID} for this signer couldn't be canceled. Cancel it in CertCentral, then delete the signer again.`
@@ -1108,5 +1105,165 @@ describe("signerService revoking again when DigiCert no longer knows the request
     expect(revocation().failureReason).toContain("Unauthorized");
     expect(revocation().failureReason).toContain("Fix the DigiCert connection");
     expect(signer().status).toBe(SignerStatus.RevocationPending);
+  });
+});
+
+describe("signerService revokeWithCertificate", () => {
+  const revokeCertificate = vi.fn<(trx: Knex) => Promise<boolean>>();
+  const SECOND_SIGNER_ID = "signer-2";
+
+  const buildWithSignerOnCertificate = (options: Parameters<typeof buildService>[0] = {}) => {
+    const built = buildService(options);
+    built.deps.signerDAL.find.mockResolvedValue([{ id: SIGNER_ID }]);
+    return built;
+  };
+
+  beforeEach(() => {
+    revokeCertificate.mockReset().mockResolvedValue(true);
+  });
+
+  it.each([
+    { startingStatus: SignerStatus.Active, revocations: [] },
+    { startingStatus: SignerStatus.Disabled, revocations: [] },
+    { startingStatus: SignerStatus.Failed, revocations: [] },
+    {
+      startingStatus: SignerStatus.RevocationPending,
+      revocations: [buildRevocation({ status: SignerRevocationStatus.Failed, failureReason: "timed out" })]
+    }
+  ])(
+    "revokes a $startingStatus signer and records a completed revocation in one transaction",
+    async ({ startingStatus, revocations }) => {
+      const { service, deps, signer, revocationRows } = buildWithSignerOnCertificate({
+        signer: buildSigner({ status: startingStatus }),
+        revocations
+      });
+
+      const result = await service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate);
+
+      expect(deps.signerDAL.transaction).toHaveBeenCalledTimes(2);
+      expect(revokeCertificate).toHaveBeenCalledWith(tx);
+      expect(deps.signerDAL.updateById).toHaveBeenCalledWith(SIGNER_ID, expect.anything(), tx);
+      expect(deps.signerIssuanceService.cancelOpenRequests).toHaveBeenCalledWith(
+        SIGNER_ID,
+        SignerIssuanceJobCancelReason.Revoked,
+        {},
+        tx
+      );
+      expect(signer().status).toBe(SignerStatus.Revoked);
+      expect(revocationRows()).toEqual([
+        expect.objectContaining({
+          certificateId: OLD_CERT_ID,
+          status: SignerRevocationStatus.Completed,
+          failureReason: null,
+          previousSignerStatus: revocations.length ? SignerStatus.Active : startingStatus
+        })
+      ]);
+      expect(result).toEqual({
+        isCertificateRevoked: true,
+        revokedSigners: [
+          { id: SIGNER_ID, name: "release-signer", previousStatus: startingStatus, status: SignerStatus.Revoked }
+        ]
+      });
+    }
+  );
+
+  it("revokes every signer that shares the certificate", async () => {
+    const { service, deps } = buildService();
+    const secondSigner = buildSigner({ id: SECOND_SIGNER_ID, name: "backup-signer" });
+    deps.signerDAL.find.mockResolvedValue([{ id: SECOND_SIGNER_ID }, { id: SIGNER_ID }]);
+    const findPrimary = deps.signerDAL.findByIdForUpdate.getMockImplementation()!;
+    deps.signerDAL.findByIdForUpdate.mockImplementation(async (...args: unknown[]) =>
+      args[0] === SECOND_SIGNER_ID ? secondSigner : findPrimary(...(args as []))
+    );
+
+    const result = await service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate);
+
+    expect(deps.keyStore.acquireLock).toHaveBeenCalledTimes(2);
+    expect(deps.signerIssuanceService.cancelOpenRequests).toHaveBeenCalledWith(
+      SECOND_SIGNER_ID,
+      SignerIssuanceJobCancelReason.Revoked,
+      {},
+      tx
+    );
+    expect(result?.revokedSigners.map(({ id }) => id)).toEqual([SIGNER_ID, SECOND_SIGNER_ID]);
+    for (const signerId of [SIGNER_ID, SECOND_SIGNER_ID]) {
+      expect(deps.signerDAL.updateById).toHaveBeenCalledWith(
+        signerId,
+        expect.objectContaining({ status: SignerStatus.Revoked }),
+        tx
+      );
+    }
+  });
+
+  it("skips the certificate when a signer is attached to it during the run", async () => {
+    const { service, deps } = buildWithSignerOnCertificate();
+    deps.signerDAL.find
+      .mockResolvedValueOnce([{ id: SIGNER_ID }])
+      .mockResolvedValueOnce([{ id: SIGNER_ID }, { id: SECOND_SIGNER_ID }]);
+
+    await expect(service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate)).resolves.toBeNull();
+
+    expect(revokeCertificate).toHaveBeenCalledWith(tx);
+    await expect(deps.signerDAL.transaction.mock.results[1].value).rejects.toThrow();
+    expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
+  });
+
+  it("leaves a signer that is already revoked alone", async () => {
+    const { service, deps } = buildWithSignerOnCertificate({ signer: buildSigner({ status: SignerStatus.Revoked }) });
+
+    await expect(service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate)).resolves.toEqual({
+      isCertificateRevoked: true,
+      revokedSigners: []
+    });
+
+    expect(deps.signerDAL.updateById).not.toHaveBeenCalled();
+    expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing while another request is changing the signer", async () => {
+    const { service, deps, signer } = buildWithSignerOnCertificate();
+    deps.keyStore.acquireLock.mockRejectedValue(new ResourceLockedError("locked"));
+
+    await expect(service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate)).resolves.toBeNull();
+
+    expect(revokeCertificate).not.toHaveBeenCalled();
+    expect(signer().status).toBe(SignerStatus.Active);
+  });
+
+  it("leaves the signer alone when the certificate was already revoked", async () => {
+    revokeCertificate.mockResolvedValue(false);
+    const { service, deps, signer } = buildWithSignerOnCertificate();
+
+    await expect(service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate)).resolves.toEqual({
+      isCertificateRevoked: false,
+      revokedSigners: []
+    });
+
+    expect(signer().status).toBe(SignerStatus.Active);
+    expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
+  });
+
+  it("revokes a certificate no signer uses without taking a signer lock", async () => {
+    const { service, deps } = buildService();
+
+    await expect(service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate)).resolves.toEqual({
+      isCertificateRevoked: true,
+      revokedSigners: []
+    });
+
+    expect(revokeCertificate).toHaveBeenCalledWith(tx);
+    expect(deps.keyStore.acquireLock).not.toHaveBeenCalled();
+  });
+
+  it("leaves a signer that already moved to a new certificate active", async () => {
+    const { service, deps, signer } = buildWithSignerOnCertificate({
+      signer: buildSigner({ certificateId: NEW_CERT_ID })
+    });
+
+    const result = await service.revokeWithCertificate(OLD_CERT_ID, revokeCertificate);
+
+    expect(result).toEqual({ isCertificateRevoked: true, revokedSigners: [] });
+    expect(signer().status).toBe(SignerStatus.Active);
+    expect(deps.signerIssuanceService.cancelOpenRequests).not.toHaveBeenCalled();
   });
 });

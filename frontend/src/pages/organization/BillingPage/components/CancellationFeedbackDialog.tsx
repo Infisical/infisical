@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { ReactNode, useEffect, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -15,8 +15,8 @@ import {
   Button,
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
+  FieldFeedback,
   FieldLabel,
   Label,
   RadioGroup,
@@ -95,13 +95,27 @@ export const CancellationFeedbackDialog = ({
   const {
     control,
     handleSubmit,
+    setFocus,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { comment: "" }
   });
 
+  const isOther = useWatch({ control, name: "reason" }) === "other";
+  const [isCommentNudged, setIsCommentNudged] = useState(false);
+
+  useEffect(() => {
+    if (isCommentNudged && !isSubmitting) {
+      setFocus("comment");
+    }
+  }, [isCommentNudged, isSubmitting, setFocus]);
+
   const onSubmit = async ({ reason, comment }: FormData) => {
+    if (reason === "other" && !comment && !isCommentNudged) {
+      setIsCommentNudged(true);
+      return;
+    }
     try {
       await onConfirm();
     } catch {
@@ -143,7 +157,13 @@ export const CancellationFeedbackDialog = ({
                 <RadioGroup
                   aria-labelledby="cancellation-reason-label"
                   value={field.value ?? ""}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setIsCommentNudged(false);
+                    if (value === "other") {
+                      setFocus("comment");
+                    }
+                  }}
                   disabled={isSubmitting}
                   className="sm:grid-cols-2"
                 >
@@ -172,27 +192,40 @@ export const CancellationFeedbackDialog = ({
             name="comment"
             render={({ field, fieldState }) => (
               <Field>
-                <FieldLabel htmlFor="cancellation-comment">Comment (optional)</FieldLabel>
+                <FieldLabel htmlFor="cancellation-comment">
+                  {isOther ? "Comment" : "Comment (optional)"}
+                </FieldLabel>
                 <FieldContent>
                   <TextArea
                     {...field}
+                    onChange={(event) => {
+                      field.onChange(event);
+                      setIsCommentNudged(false);
+                    }}
                     id="cancellation-comment"
                     aria-describedby="cancellation-comment-hint"
                     rows={3}
                     maxLength={COMMENT_MAX_LENGTH}
                     disabled={isSubmitting}
-                    placeholder="Tell us what would have made you stay"
+                    placeholder={
+                      isOther ? "What made you cancel?" : "Tell us what would have made you stay"
+                    }
                     isError={Boolean(fieldState.error)}
                   />
-                  <FieldDescription className="flex justify-between gap-4">
-                    <span id="cancellation-comment-hint">
-                      Don&apos;t include secrets, credentials, or personal data.
-                    </span>
-                    <span className="tabular-nums">
+                  <div className="flex justify-between gap-4">
+                    <FieldFeedback
+                      id="cancellation-comment-hint"
+                      error={fieldState.error?.message}
+                      description={
+                        isCommentNudged
+                          ? "Add a comment so we can improve, or submit again to skip."
+                          : "Don't include secrets, credentials, or personal data."
+                      }
+                    />
+                    <span className="text-2xs leading-snug text-muted tabular-nums">
                       {field.value.length}/{COMMENT_MAX_LENGTH}
                     </span>
-                  </FieldDescription>
-                  <FieldError>{fieldState.error?.message}</FieldError>
+                  </div>
                 </FieldContent>
               </Field>
             )}

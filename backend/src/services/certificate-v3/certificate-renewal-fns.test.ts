@@ -28,7 +28,9 @@ import {
   resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
   resolveRenewalSubject,
-  resolveRenewalUsages
+  resolveRenewalUsages,
+  validateRenewalEligibility,
+  withIssuedRenewalNames
 } from "./certificate-renewal-fns";
 import { CertificateRenewalKeySource } from "./certificate-v3-types";
 
@@ -775,6 +777,64 @@ describe("keepCertificateFactsInCsrRenewal", () => {
     );
     expect(keepCertificateFactsInCsrRenewal(csrRequest, { keyUsages: [] }).signatureAlgorithm).toBe(
       CertSignatureAlgorithm.ECDSA_SHA256
+    );
+  });
+});
+
+describe("withIssuedRenewalNames", () => {
+  it("keeps the names the certificate was issued with, mapping SAN types stored before the type rename", () => {
+    const renewal = withIssuedRenewalNames(
+      { commonName: undefined, subjectAlternativeNames: [] } as TCertificateRequest,
+      {
+        commonName: "app.example.com",
+        altNames: [
+          { type: "dns" as CertSubjectAlternativeNameType, value: "app.example.com" },
+          { type: "ip" as CertSubjectAlternativeNameType, value: "10.0.0.5" },
+          { type: CertSubjectAlternativeNameType.EMAIL, value: "ops@example.com" }
+        ]
+      }
+    );
+
+    expect(renewal.commonName).toBe("app.example.com");
+    expect(renewal.subjectAlternativeNames).toEqual([
+      { type: CertSubjectAlternativeNameType.DNS_NAME, value: "app.example.com" },
+      { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: "10.0.0.5" },
+      { type: CertSubjectAlternativeNameType.EMAIL, value: "ops@example.com" }
+    ]);
+  });
+
+  it("keeps the CSR's own common name and SANs when nothing was stored", () => {
+    const csrRequest = {
+      commonName: "csr.example.com",
+      subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "csr.example.com" }]
+    } as TCertificateRequest;
+
+    expect(withIssuedRenewalNames(csrRequest, { commonName: "stored.example.com", altNames: null })).toEqual(
+      csrRequest
+    );
+  });
+});
+
+describe("validateRenewalEligibility", () => {
+  const certificate = {
+    id: "cert-1",
+    status: "active",
+    notBefore: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    notAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    profileId: "profile-1"
+  };
+
+  it("tells an internal pending-certificate CA to get its CA certificate", () => {
+    const ca = { status: "pending-certificate", internalCa: { id: "internal-1" } } as never;
+    expect(validateRenewalEligibility(certificate, ca).errors).toContain(
+      "The issuing certificate authority is pending-certificate. Generate its CA certificate (a root CA) or install a signed one (an intermediate CA) before renewing"
+    );
+  });
+
+  it("tells an external pending-certificate CA to be enabled, since it has no CA certificate to install", () => {
+    const ca = { status: "pending-certificate", externalCa: { id: "external-1", type: "aws-pca" } } as never;
+    expect(validateRenewalEligibility(certificate, ca).errors).toContain(
+      "The issuing certificate authority is pending-certificate. Enable it before renewing"
     );
   });
 });

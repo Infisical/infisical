@@ -97,7 +97,8 @@ export enum AppConnection {
   ClickHouse = "clickhouse",
   IncidentIo = "incident-io",
   Jenkins = "jenkins",
-  Coolify = "coolify"
+  Coolify = "coolify",
+  Rfc2136 = "rfc2136"
 }
 
 export enum AWSRegion {

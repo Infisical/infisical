@@ -1,17 +1,11 @@
 import { LoginMethod, LoginPolicy } from "@app/domains/platform/instance-config-core/ce/module";
-import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
+import { SsoPolicy } from "@app/domains/platform/organizations/ce/module";
+import { AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
-import {
-  AuthMethod,
-  AuthModeAccountRecoveryTokenPayload,
-  AuthModeSignUpTokenPayload,
-  AuthTokenType,
-  MfaMethod,
-  SsoMfaTrust
-} from "./auth-type";
+import { AuthModeAccountRecoveryTokenPayload, AuthModeSignUpTokenPayload, SsoMfaTrust } from "./auth-type";
 
 const oauthLoginMethods = {
   [AuthMethod.GITHUB]: {
@@ -93,7 +87,7 @@ export const resolveMfaChallenge = ({
 };
 
 export const isSsoAuthMethod = (authMethod: AuthMethod) =>
-  isAuthMethodSaml(authMethod) || authMethod === AuthMethod.OIDC || authMethod === AuthMethod.LDAP;
+  SsoPolicy.isSamlMethod(authMethod) || authMethod === AuthMethod.OIDC || authMethod === AuthMethod.LDAP;
 
 /**
  * Whether a session counts as this root org's own SSO. The method alone is not enough: a SAML
@@ -126,7 +120,7 @@ export const isIdpMfaTrusted = ({
   idpMfaOrgId?: string;
 }): boolean => {
   if (!org.enforceMfa) return false;
-  if (!isAuthMethodSaml(authMethod) && authMethod !== AuthMethod.OIDC) return false;
+  if (!SsoPolicy.isSamlMethod(authMethod) && authMethod !== AuthMethod.OIDC) return false;
   return org.ssoMfaTrust === SsoMfaTrust.Signal && idpMfaOrgId === org.id;
 };
 

@@ -23,6 +23,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useCreateAdminUser, useSelectOrganization } from "@app/hooks/api";
+import { SuperAdminErrorCode } from "@app/hooks/api/admin/types";
 import { getBreachedPasswordMessage } from "@app/hooks/api/auth/errors";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
@@ -57,6 +58,7 @@ export const SignUpPage = () => {
   const [activeStep, setActiveStep] = useState(BootstrapStep.Account);
   const [accountData, setAccountData] = useState<AdminSignUpFormData>();
   const [formError, setFormError] = useState<string>();
+  const [setupTokenError, setSetupTokenError] = useState<string>();
   const [passwordError, setPasswordError] = useState<string>();
   const { mutateAsync: createAdminUser, isPending } = useCreateAdminUser();
   const { mutateAsync: selectOrganization } = useSelectOrganization();
@@ -74,6 +76,7 @@ export const SignUpPage = () => {
   const handleAccountContinue = (values: AdminSignUpFormData) => {
     setAccountData(values);
     setFormError(undefined);
+    setSetupTokenError(undefined);
     setPasswordError(undefined);
     setActiveStep(BootstrapStep.Organization);
   };
@@ -92,7 +95,8 @@ export const SignUpPage = () => {
         password: accountData.password,
         firstName: accountData.firstName,
         lastName: accountData.lastName || undefined,
-        organizationName
+        organizationName,
+        setupToken: accountData.setupToken || undefined
       });
 
       SecurityClient.setToken(result.token);
@@ -107,10 +111,17 @@ export const SignUpPage = () => {
         setActiveStep(BootstrapStep.Account);
         return;
       }
-      const message = axios.isAxiosError<{ message?: string }>(error)
-        ? error.response?.data?.message
+      const responseData = axios.isAxiosError<{ message?: string; error?: string }>(error)
+        ? error.response?.data
         : undefined;
-      setFormError(message || "Unable to create the instance. Please try again.");
+
+      if (responseData?.error === SuperAdminErrorCode.InvalidSetupToken) {
+        setSetupTokenError(responseData.message || "The setup token is missing or incorrect.");
+        setActiveStep(BootstrapStep.Account);
+        return;
+      }
+
+      setFormError(responseData?.message || "Unable to create the instance. Please try again.");
     }
   });
 
@@ -132,6 +143,7 @@ export const SignUpPage = () => {
           {activeStep === BootstrapStep.Account ? (
             <AdminSignUpForm
               defaultValues={accountData}
+              setupTokenError={setupTokenError}
               passwordError={passwordError}
               onContinue={handleAccountContinue}
             />

@@ -132,8 +132,10 @@ export const withCacheFingerprint = async <T>({
   dataFetcher,
   reviver
 }: TWithCacheFingerprintOpts<T>): Promise<T> => {
+  // TTL 0 disables the marker, so every read checks the fingerprint.
+  const usesMarker = markerTtlSeconds > 0;
   const [markerValue, cachedDataStr] = await Promise.all([
-    cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed"),
+    usesMarker ? cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed") : null,
     cacheGet(keyStore, dataKey, "withCacheFingerprint: data read failed")
   ]);
 
@@ -170,13 +172,15 @@ export const withCacheFingerprint = async <T>({
     try {
       const cachedData = JSON.parse(cachedDataStr) as TCachedData<T>;
       if (cachedData.fingerprint === currentFingerprint) {
-        await cacheSet(
-          keyStore,
-          markerKey,
-          markerTtlSeconds,
-          currentFingerprint,
-          "withCacheFingerprint: marker reset failed"
-        );
+        if (usesMarker) {
+          await cacheSet(
+            keyStore,
+            markerKey,
+            markerTtlSeconds,
+            currentFingerprint,
+            "withCacheFingerprint: marker reset failed"
+          );
+        }
         const revived = applyReviver(cachedData.payload, reviver);
         permissionCacheLookupCounter.add(1, { "cache.result": "fingerprint_match" });
         return revived;
@@ -200,13 +204,15 @@ export const withCacheFingerprint = async <T>({
     JSON.stringify({ fingerprint: currentFingerprint, payload: result }),
     "withCacheFingerprint: data write failed"
   );
-  await cacheSet(
-    keyStore,
-    markerKey,
-    markerTtlSeconds,
-    currentFingerprint,
-    "withCacheFingerprint: marker write failed"
-  );
+  if (usesMarker) {
+    await cacheSet(
+      keyStore,
+      markerKey,
+      markerTtlSeconds,
+      currentFingerprint,
+      "withCacheFingerprint: marker write failed"
+    );
+  }
 
   return result;
 };
@@ -229,6 +235,7 @@ export const readCacheFingerprint = async ({
   TWithCacheFingerprintOpts<unknown>,
   "keyStore" | "dataKey" | "markerKey" | "markerTtlSeconds" | "fingerprintFetcher"
 >): Promise<string> => {
+  if (markerTtlSeconds <= 0) return fingerprintFetcher();
   const markerValue = await cacheGet(keyStore, markerKey, "readCacheFingerprint: marker read failed");
   if (markerValue !== null && markerValue !== LEGACY_MARKER) return markerValue;
 

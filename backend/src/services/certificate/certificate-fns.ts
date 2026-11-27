@@ -35,6 +35,25 @@ import {
   TParsedCertificateBody
 } from "./certificate-types";
 
+const STORED_SERIAL_NUMBER_HEX_LENGTH = 40;
+
+export const toMinimalSerialNumber = (serialNumber: string) => serialNumber.toLowerCase().replace(/^0+(?=.)/, "");
+
+export const getSerialNumberSpellings = (serialNumber: string) => {
+  const minimal = toMinimalSerialNumber(serialNumber);
+  const byteAligned = minimal.length % 2 === 0 ? minimal : `0${minimal}`;
+  const withSignByte = /^[89a-f]/.test(byteAligned) ? [`00${byteAligned}`] : [];
+  return [
+    ...new Set([
+      serialNumber,
+      minimal,
+      byteAligned,
+      ...withSignByte,
+      minimal.padStart(STORED_SERIAL_NUMBER_HEX_LENGTH, "0")
+    ])
+  ];
+};
+
 export const keySizeToAlgorithms = (keySize: number): string[] => {
   const map: Record<number, string[]> = {
     2048: [CertKeyAlgorithm.RSA_2048],

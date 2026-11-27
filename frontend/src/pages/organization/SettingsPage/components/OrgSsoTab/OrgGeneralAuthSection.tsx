@@ -36,7 +36,7 @@ import {
   useOrganization,
   useSubscription
 } from "@app/context";
-import { useLogoutUser, useUpdateOrg } from "@app/hooks/api";
+import { useLogoutUser, useUpdateOrgSsoSettings } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { SsoMfaTrustField } from "./SsoMfaTrustField";
@@ -76,7 +76,7 @@ export const OrgGeneralAuthSection = ({
     "enforceSamlSsoConfirmation"
   ] as const);
 
-  const { mutateAsync } = useUpdateOrg();
+  const { mutateAsync } = useUpdateOrgSsoSettings();
 
   const logout = useLogoutUser();
   const [bypassEnabledInModal, setBypassEnabledInModal] = useState(false);
@@ -89,17 +89,11 @@ export const OrgGeneralAuthSection = ({
 
     try {
       if (bypassEnabledInModal && !currentOrg?.bypassOrgAuthEnabled) {
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          bypassOrgAuthEnabled: true
-        });
+        await mutateAsync({ bypassOrgAuthEnabled: true });
       }
 
       if (enforcementTypeInModal === EnforceAuthType.SAML) {
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          authEnforced: true
-        });
+        await mutateAsync({ authEnforced: true });
 
         createNotification({
           text: "Successfully enabled org-level SAML SSO enforcement",
@@ -114,10 +108,7 @@ export const OrgGeneralAuthSection = ({
         window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
         window.close();
       } else if (enforcementTypeInModal === EnforceAuthType.GOOGLE) {
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          googleSsoAuthEnforced: true
-        });
+        await mutateAsync({ googleSsoAuthEnforced: true });
 
         createNotification({
           text: "Successfully enabled org-level Google SSO enforcement",
@@ -153,10 +144,7 @@ export const OrgGeneralAuthSection = ({
         return;
       }
 
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        authEnforced: value
-      });
+      await mutateAsync({ authEnforced: value });
 
       createNotification({
         text: "Successfully disabled org-level SAML SSO enforcement",
@@ -181,10 +169,7 @@ export const OrgGeneralAuthSection = ({
         return;
       }
 
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        googleSsoAuthEnforced: value
-      });
+      await mutateAsync({ googleSsoAuthEnforced: value });
 
       createNotification({
         text: "Successfully disabled org-level Google SSO enforcement",
@@ -196,10 +181,7 @@ export const OrgGeneralAuthSection = ({
         return;
       }
 
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        authEnforced: value
-      });
+      await mutateAsync({ authEnforced: value });
 
       createNotification({
         text: `Successfully ${value ? "enabled" : "disabled"} org-level OIDC SSO enforcement`,
@@ -226,10 +208,7 @@ export const OrgGeneralAuthSection = ({
         return;
       }
 
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        bypassOrgAuthEnabled: value
-      });
+      await mutateAsync({ bypassOrgAuthEnabled: value });
 
       createNotification({
         text: `Successfully ${value ? "enabled" : "disabled"} admin bypassing of org-level auth`,
