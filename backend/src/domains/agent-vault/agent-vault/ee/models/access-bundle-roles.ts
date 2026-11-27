@@ -1,0 +1,27 @@
+import { AbilityTuple } from "@casl/ability";
+
+import { ResourceType } from "@app/db/schemas";
+import { EntityNotFoundError } from "@app/domains/lib/errors";
+import { Grant, TPermissionRule } from "@app/domains/platform/access-control/ce/module";
+import { TResourceRoles } from "@app/domains/platform/projects/ce/module";
+
+// Bundle reach is a filter in the services, not a CASL rule, so a consumer gets no rules and a project admin gets
+// nothing on a bundle it isn't granted. Unknown slugs throw instead of quietly granting nothing.
+export class AccessBundleRoles implements TResourceRoles<AbilityTuple> {
+  readonly resourceType = ResourceType.AgentVaultAccessBundle;
+
+  // The only role a bundle membership holds (AgentVaultResourceRole in ee/services/agent-vault).
+  private readonly consumerRole = "consumer";
+
+  private readonly noRules: TPermissionRule<AbilityTuple>[] = [];
+
+  rulesFor(grant: Grant): TPermissionRule<AbilityTuple>[] {
+    const slug = grant.builtInSlug() ?? grant.toJSON().slug;
+    if (slug === this.consumerRole) return this.noRules;
+    throw new EntityNotFoundError({ name: "AgentVaultRoleInvalid", message: `Agent Vault role '${slug}' not found` });
+  }
+
+  projectAdminRules(): TPermissionRule<AbilityTuple>[] {
+    return this.noRules;
+  }
+}

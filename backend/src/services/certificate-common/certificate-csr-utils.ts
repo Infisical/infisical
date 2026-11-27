@@ -25,6 +25,7 @@ import {
   mapLegacyKeyUsageToStandard,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "./certificate-constants";
+import { invalidCsrAltNameError } from "./certificate-errors";
 import {
   appendCustomExtensions,
   describeCustomExtensionValue,
@@ -120,7 +121,7 @@ export const extractSubjectAltNames = (
 
       const altNameType = validateAndMapAltNameType(name.value);
       if (!altNameType) {
-        throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
+        throw invalidCsrAltNameError(name.value);
       }
       return altNameType;
     })

@@ -62,10 +62,14 @@ func (c *CA) Create(tmpl *x509.Certificate, pub any) ([]byte, error) {
 	return x509.CreateCertificate(rand.Reader, tmpl, c.Cert, pub, c.key)
 }
 
-// Sign issues a leaf for the CSR's key, subject and DNS names, valid for days.
-func (c *CA) Sign(csr *x509.CertificateRequest, days int) (Leaf, error) {
+// Sign issues a leaf for the CSR's key, subject and DNS names, valid for days, with the
+// extended key usages given, or server authentication when none are.
+func (c *CA) Sign(csr *x509.CertificateRequest, days int, usages ...x509.ExtKeyUsage) (Leaf, error) {
 	if days <= 0 {
 		days = 90
+	}
+	if len(usages) == 0 {
+		usages = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 	}
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
@@ -78,7 +82,7 @@ func (c *CA) Sign(csr *x509.CertificateRequest, days int) (Leaf, error) {
 		NotBefore:    time.Now().Add(-time.Minute),
 		NotAfter:     time.Now().Add(time.Duration(days) * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:  usages,
 	}
 	der, err := c.Create(tmpl, csr.PublicKey)
 	if err != nil {

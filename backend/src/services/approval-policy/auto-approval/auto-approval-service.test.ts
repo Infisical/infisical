@@ -1,6 +1,10 @@
+import {
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { autoApprovalServiceFactory } from "./auto-approval-service";
 import {
@@ -254,7 +258,7 @@ describe("autoApprovalService requester checks", () => {
     const validate = (conditions: { constraint: string; values: string[] }[]) =>
       service.validateConfig({
         projectId: "project-1",
-        actor: { id: "admin-1", type: ActorType.USER, orgId: "org-1" } as never,
+        actor: actorContext({ principal: userPrincipal({ id: "admin-1" }), org: actorOrg({ id: "org-1" }) }),
         config: {
           inputs: [],
           rules: [

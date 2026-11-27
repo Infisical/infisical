@@ -1,7 +1,7 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import {
@@ -18,7 +18,7 @@ import { TPaloAltoNetworksConnection } from "./palo-alto-networks-connection-typ
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TPaloAltoNetworksConnection>;
 
 export const paloAltoNetworksConnectionService = (
@@ -28,7 +28,7 @@ export const paloAltoNetworksConnectionService = (
 ) => {
   const withClient = async <T>(
     connectionId: string,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     resourceLabel: string,
     operation: (client: TPanOsClient) => Promise<T>
   ): Promise<T> => {
@@ -42,7 +42,7 @@ export const paloAltoNetworksConnectionService = (
     }
   };
 
-  const listTemplates = async ({ connectionId }: { connectionId: string }, actor: OrgServiceActor) =>
+  const listTemplates = async ({ connectionId }: { connectionId: string }, actor: TActorContext) =>
     withClient(connectionId, actor, "templates", async (client) => {
       if (!(await isPanorama(client))) return { isPanorama: false, templates: [] };
       return { isPanorama: true, templates: await listPanoramaTemplates(client) };
@@ -50,7 +50,7 @@ export const paloAltoNetworksConnectionService = (
 
   const listProfiles = async (
     { connectionId, template }: { connectionId: string; template?: string },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) =>
     withClient(connectionId, actor, "SSL/TLS service profiles", (client) =>
       listSslTlsServiceProfiles(client, template)
@@ -58,7 +58,7 @@ export const paloAltoNetworksConnectionService = (
 
   const listCertificates = async (
     { connectionId, template }: { connectionId: string; template?: string },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => withClient(connectionId, actor, "certificates", (client) => listCertificatesWithPrivateKey(client, template));
 
   return { listTemplates, listSslTlsServiceProfiles: listProfiles, listCertificates };

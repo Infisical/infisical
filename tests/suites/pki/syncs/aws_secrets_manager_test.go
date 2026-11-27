@@ -67,12 +67,12 @@ func smSecretName(certID string) string {
 	return "infisical-" + strings.ReplaceAll(certID, "-", "")
 }
 
-// smSecretLeaf is the certificate a synced secret's JSON value holds.
-func smSecretLeaf(t *testing.T, secret *aws.Secret) []byte {
+// smSecretValue is a synced secret's JSON value.
+func smSecretValue(t *testing.T, secret *aws.Secret) map[string]string {
 	t.Helper()
 	var value map[string]string
 	require.NoError(t, json.Unmarshal([]byte(secret.SecretString), &value))
-	return pki.ParseLeaf(t, value["certificate"]).Raw
+	return value
 }
 
 func TestAwsSecretsManagerPkiSync_Sync(t *testing.T) {
@@ -100,7 +100,7 @@ func TestAwsSecretsManagerPkiSync_Sync(t *testing.T) {
 		require.ElementsMatch(t, []string{"certificate", "private_key", "certificate_chain", "ca_certificate"}, slices.Collect(maps.Keys(value)))
 		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).Raw, pki.ParseLeaf(t, value["certificate"]).Raw)
 		require.Equal(t, pki.ParseLeaf(t, cert.Chain).Raw, pki.ParseLeaf(t, value["certificate_chain"]).Raw)
-		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, acmPublicKey(t, value["private_key"]))
+		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, pki.ParsePrivateKey(t, value["private_key"]).Public())
 		require.True(t, pki.ParseLeaf(t, value["ca_certificate"]).IsCA)
 	})
 
@@ -126,7 +126,9 @@ func TestAwsSecretsManagerPkiSync_Sync(t *testing.T) {
 		secrets := s.acct.Secrets(t)
 		require.Len(t, secrets, 1)
 		require.NotNilf(t, secrets[name], "Secrets Manager should still hold %s, got %v", name, slices.Collect(maps.Keys(secrets)))
-		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, smSecretLeaf(t, secrets[name]))
+		value := smSecretValue(t, secrets[name])
+		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, value["certificate"]).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, value["certificate"], value["private_key"])
 		s.acct.SecretsManager.ExpectNoEvent[aws.SecretCreated](t, nil, fakenet.Since(mark))
 	})
 
@@ -152,7 +154,9 @@ func TestAwsSecretsManagerPkiSync_Sync(t *testing.T) {
 		s.acct.SecretsManager.ExpectEvent[aws.SecretDeleted](t, func(e aws.SecretDeleted) bool { return e.Name == old })
 		secrets := s.acct.Secrets(t)
 		require.Equal(t, []string{next}, slices.Collect(maps.Keys(secrets)))
-		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, smSecretLeaf(t, secrets[next]))
+		value := smSecretValue(t, secrets[next])
+		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, value["certificate"]).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, value["certificate"], value["private_key"])
 	})
 
 	t.Run("should mark the sync and the certificate failed, with the destination's reason, when Secrets Manager refuses the secret", func(t *testing.T) {

@@ -9,6 +9,8 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { refineCredentialRotationMethod } from "../credential-rotation/app-connection-credential-rotation-schemas";
+import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 
 export const AzureClientSecretsConnectionOAuthInputCredentialsSchema = z.object({
@@ -99,6 +101,18 @@ export const AzureClientSecretsConnectionCertificateOutputCredentialsSchema = z.
   expiresAt: z.number()
 });
 
+export const AzureClientSecretsConnectionManagedIdentityInputCredentialsSchema = z.object({
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  clientId: z.string().uuid().trim().min(1, "Client ID required")
+});
+
+export const AzureClientSecretsConnectionManagedIdentityOutputCredentialsSchema = z.object({
+  tenantId: z.string(),
+  clientId: z.string(),
+  accessToken: z.string().optional(),
+  expiresAt: z.number().optional()
+});
+
 export const ValidateAzureClientSecretsConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
@@ -123,20 +137,20 @@ export const ValidateAzureClientSecretsConnectionCredentialsSchema = z.discrimin
     credentials: AzureClientSecretsConnectionCertificateInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureClientSecrets).credentials
     )
+  }),
+  z.object({
+    method: z
+      .literal(AzureClientSecretsConnectionMethod.ManagedIdentity)
+      .describe(AppConnections.CREATE(AppConnection.AzureClientSecrets).method),
+    credentials: AzureClientSecretsConnectionManagedIdentityInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureClientSecrets).credentials
+    )
   })
 ]);
 
 export const CreateAzureClientSecretsConnectionSchema = ValidateAzureClientSecretsConnectionCredentialsSchema.and(
   GenericCreateAppConnectionFieldsSchema(AppConnection.AzureClientSecrets, { supportsCredentialRotation: true })
-).superRefine((data, ctx) => {
-  if (data.method !== AzureClientSecretsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Credential rotation is only supported for the client-secret method",
-      path: ["isAutoRotationEnabled"]
-    });
-  }
-});
+).superRefine(refineCredentialRotationMethod(AzureClientSecretsConnectionMethod.ClientSecret));
 
 export const UpdateAzureClientSecretsConnectionSchema = z
   .object({
@@ -144,7 +158,8 @@ export const UpdateAzureClientSecretsConnectionSchema = z
       .union([
         AzureClientSecretsConnectionOAuthInputCredentialsSchema,
         AzureClientSecretsConnectionClientSecretInputCredentialsSchema,
-        AzureClientSecretsConnectionCertificateInputCredentialsSchema
+        AzureClientSecretsConnectionCertificateInputCredentialsSchema,
+        AzureClientSecretsConnectionManagedIdentityInputCredentialsSchema
       ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureClientSecrets).credentials)
@@ -169,6 +184,10 @@ export const AzureClientSecretsConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureClientSecretsConnectionMethod.Certificate),
       credentials: AzureClientSecretsConnectionCertificateOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureClientSecretsConnectionMethod.ManagedIdentity),
+      credentials: AzureClientSecretsConnectionManagedIdentityOutputCredentialsSchema
     })
   ])
 );
@@ -195,7 +214,18 @@ export const SanitizedAzureClientSecretsConnectionSchema = z.discriminatedUnion(
       tenantId: true,
       clientId: true
     })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (Certificate)` }))
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (Certificate)` })),
+  BaseAzureClientSecretsConnectionSchema.extend({
+    method: z.literal(AzureClientSecretsConnectionMethod.ManagedIdentity),
+    credentials: AzureClientSecretsConnectionManagedIdentityOutputCredentialsSchema.pick({
+      clientId: true,
+      tenantId: true
+    }).extend({
+      federatedCredential: AzureConnectionFederatedCredentialSchema
+    })
+  }).describe(
+    JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (Managed Identity)` })
+  )
 ]);
 
 export const AzureClientSecretsConnectionListItemSchema = z

@@ -28,31 +28,8 @@ type acmRig struct {
 func newAcmRig(t *testing.T, tn *harness.Tenant) acmRig {
 	t.Helper()
 	proj := pki.CertManager(t, tn)
-	conn := fixture.NewAppConnection(t, tn, fixture.AWSAccessKeyAppConnection)
-	acct := aws.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-	zoneName := id.Short() + ".acm.test"
-	zone := "Z" + id.Short()
-	acct.Seed(t, aws.SeedHostedZone(zone, zoneName))
-	body := api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONRequestBody{
-		ProjectId: &proj.ID,
-		Name:      "acm-" + id.Short(),
-		Status:    api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONBodyStatusActive,
-	}
-	body.Configuration.AppConnectionId = conn.ID
-	body.Configuration.DnsAppConnectionId = conn.ID
-	body.Configuration.HostedZoneId = zone
-	body.Configuration.Region = api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1
-	res, err := tn.Admin.API.CreateAwsAcmPublicCaCertificateAuthorityV1WithResponse(t.Context(), body)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	ca := pki.CA{ID: res.JSON200.Id}
-	return acmRig{o: newOrderIssuer(t, proj, ca), acct: acct, conn: conn, ca: ca, zone: zone, zoneName: zoneName}
-}
-
-func (r acmRig) request(name string) api.CreateCertificateJSONRequestBody {
-	body := pki.ServerCertificate(name)
-	body.Attributes.Ttl = new("198d")
-	return body
+	acm := pki.NewAwsAcmPublicCA(t, proj)
+	return acmRig{o: newOrderIssuer(t, proj, acm.CA), acct: acm.Acct, conn: acm.Conn, ca: acm.CA, zone: acm.Zone, zoneName: acm.ZoneName}
 }
 
 // onlyCertificate is the one certificate ACM holds for the account.
@@ -77,7 +54,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		r := newAcmRig(t, tn)
-		certID, first := r.o.issue(t, r.request("www."+r.zoneName))
+		certID, first := r.o.issue(t, pki.AcmCertificate("www."+r.zoneName))
 		issued := r.onlyCertificate(t)
 
 		// Action
@@ -99,7 +76,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		r := newAcmRig(t, tn)
-		certID, _ := r.o.issue(t, r.request("www."+r.zoneName))
+		certID, _ := r.o.issue(t, pki.AcmCertificate("www."+r.zoneName))
 
 		// Action
 		res := pki.RevokeRequest(t, tn.Admin, certID, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
@@ -111,7 +88,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		require.Equal(t, "KEY_COMPROMISE", got.RevocationReason)
 	})
 
-	t.Run("should refuse an update naming a hosted zone the DNS connection cannot reach", func(t *testing.T) {
+	t.Run("should refuse an update naming a hosted zone the Route 53 connection cannot reach", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -127,7 +104,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Failed to access Route 53 hosted zone: No hosted zone found with ID: "+missing, apierr.Message(res.Body))
+		require.Equal(t, "Route 53 has no hosted zone '"+missing+"' that the Route 53 connection can see. Check the hosted zone ID, then try again.", apierr.Message(res.Body))
 		got, err := tn.Admin.API.GetAwsAcmPublicCaCertificateAuthorityV1WithResponse(t.Context(), r.ca.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, r.zone, decode(t, got.Body)["configuration"].(map[string]any)["hostedZoneId"])

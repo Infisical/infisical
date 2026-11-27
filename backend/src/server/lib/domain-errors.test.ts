@@ -1,10 +1,19 @@
 import {
   EntityNotFoundError,
   ExternalSystemError,
+  PERMISSION_BOUNDARY_ERROR_NAME,
+  PermissionDeniedError,
   RuleViolationError,
   StateConflictError
 } from "@app/domains/lib/errors";
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenRequestError,
+  InternalServerError,
+  NotFoundError,
+  PermissionBoundaryError
+} from "@app/lib/errors";
 
 import { toHttpError } from "./domain-errors";
 
@@ -35,6 +44,33 @@ describe("toHttpError", () => {
     // Assert
     expect(result).toBeInstanceOf(InternalServerError);
     expect(result.name).toBe("LicenseServerError");
+  });
+
+  test("should answer a refused privilege change as a permission boundary error with its missing permissions", () => {
+    // Setup
+    const details = { missingPermissions: [{ action: "delete", subject: "identity" }] };
+    const error = new PermissionDeniedError({ name: PERMISSION_BOUNDARY_ERROR_NAME, message: "Refused", details });
+
+    // Action
+    const result = toHttpError(error);
+
+    // Assert
+    expect(result).toBeInstanceOf(PermissionBoundaryError);
+    expect(result).toMatchObject({ name: "PermissionBoundaryError", message: "Refused", details });
+  });
+
+  test("should answer any other permission refusal as forbidden", () => {
+    // Setup
+    const error = new PermissionDeniedError({
+      denial: { action: "read", subject: "secrets", matchedRules: [] }
+    });
+
+    // Action
+    const result = toHttpError(error);
+
+    // Assert
+    expect(result).toBeInstanceOf(ForbiddenRequestError);
+    expect(result).not.toBeInstanceOf(PermissionBoundaryError);
   });
 
   test("should turn a missing entity into a not found error", () => {

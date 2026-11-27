@@ -32,6 +32,8 @@ export type TValidatedHost = {
 
 type SafeRequestSharedOptions = {
   allowPrivateIps?: boolean;
+  // Refuse internal addresses even when ALLOW_INTERNAL_IP_CONNECTIONS is on, for URLs an anonymous caller chose
+  requirePublicAddress?: boolean;
 };
 
 // Validates the URL and resolves its IPs in a single DNS lookup. Returning the
@@ -45,6 +47,8 @@ export const validateAndPinUrl = async (
 
   if (options?.allowPrivateIps) return undefined;
   if (appCfg.isDevelopmentMode) return undefined;
+
+  const allowInternalIps = appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && !options?.requirePublicAddress;
 
   const validUrl = new URL(url);
 
@@ -68,7 +72,7 @@ export const validateAndPinUrl = async (
   if (isIP(rawHost)) {
     entries = [{ address: rawHost, family: isIP(rawHost) }];
   } else {
-    if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && (rawHost === "localhost" || rawHost === "host.docker.internal")) {
+    if (!allowInternalIps && (rawHost === "localhost" || rawHost === "host.docker.internal")) {
       logger.warn(`safeRequest: rejecting literal local hostname [hostname=${rawHost}]`);
       throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
     }
@@ -82,7 +86,7 @@ export const validateAndPinUrl = async (
   }
 
   const isInternalIp = entries.some((e) => isPrivateIp(e.address));
-  if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+  if (isInternalIp && !allowInternalIps) {
     logger.warn(`safeRequest: rejecting private/internal IP [hostname=${rawHost}] [entries=${formatEntries(entries)}]`);
     throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
   }
@@ -470,8 +474,7 @@ type TSharedHttpsAgentOptions = {
 export const getSharedHttpsAgent = (options: TSharedHttpsAgentOptions): https.Agent =>
   buildPinnedAgent(undefined, "https:", options) as https.Agent;
 
-type TSafeRequestExtras = {
-  allowPrivateIps?: boolean;
+type TSafeRequestExtras = SafeRequestSharedOptions & {
   // Skip an ambient HTTP(S)_PROXY for this request even when SAFE_REQUEST_FORCE_DIRECT_EGRESS is off, for callers
   // whose previous transport never used one
   forceDirectEgress?: boolean;
@@ -518,11 +521,19 @@ const dispatch = async <T>(
   data: unknown,
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, forceDirectEgress, ...axiosOpts } =
-    options;
+  const {
+    allowPrivateIps,
+    requirePublicAddress,
+    addressFamily,
+    ca,
+    rejectUnauthorized,
+    servername,
+    forceDirectEgress,
+    ...axiosOpts
+  } = options;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
-  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
+  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps, requirePublicAddress });
   const { protocol } = new URL(effectiveUrl);
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
   logDispatch(method, effectiveUrl, validated);
@@ -542,11 +553,20 @@ const dispatch = async <T>(
 };
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, forceDirectEgress, url, ...axiosOpts } =
-    config;
+  const {
+    allowPrivateIps,
+    requirePublicAddress,
+    addressFamily,
+    ca,
+    rejectUnauthorized,
+    servername,
+    forceDirectEgress,
+    url,
+    ...axiosOpts
+  } = config;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
-  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
+  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps, requirePublicAddress });
   const { protocol } = new URL(effectiveUrl);
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
   logDispatch(axiosOpts.method ?? "GET", effectiveUrl, validated);

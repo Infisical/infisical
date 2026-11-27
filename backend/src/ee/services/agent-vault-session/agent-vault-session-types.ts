@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { TAgentVaultServiceHookInput, TAgentVaultServiceHookView } from "../agent-vault-hook/agent-vault-hook-fns";
 import { AgentVaultOauthClientAuthMethod } from "../agent-vault-oauth/agent-vault-oauth-types";
@@ -170,7 +170,7 @@ export type TAgentVaultSessionSkillSummary =
 
 export type TMintSessionDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   // Leave it out for a session with only services or skills, listed by name or sent inline.
   accessBundle?: string;
   // Each one the name of a project service, or a service sent inline.
@@ -190,7 +190,7 @@ export type TAgentVaultSessionMetadataFilter = Array<{ key: string; value: strin
 
 export type TListSessionsDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   scope: AgentVaultSessionScope;
   statuses?: AgentVaultSessionStatus[];
   limit: number;
@@ -201,7 +201,7 @@ export type TListSessionsDTO = {
 
 export type TRevokeSessionDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   sessionId: string;
 };
 

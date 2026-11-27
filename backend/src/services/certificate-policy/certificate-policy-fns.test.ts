@@ -40,7 +40,7 @@ describe("validateDomainComponentsAgainstRule", () => {
   it("should report a request that has no domain components as missing when a sequence is required", () => {
     const errors = validate([], domainComponentRule({ required: ["corp,example,com"] }));
     expect(errors).toEqual([
-      "Missing required domain_component attribute. This policy requires one of: 'DC=corp,DC=example,DC=com'"
+      "The request is missing the required domain_component attribute. This policy requires one of: 'DC=corp,DC=example,DC=com'"
     ]);
   });
 

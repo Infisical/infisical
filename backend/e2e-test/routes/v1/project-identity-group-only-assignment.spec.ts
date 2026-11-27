@@ -9,8 +9,8 @@ import {
   TableName
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { createIdentityActor } from "../../testUtils/identities";
 

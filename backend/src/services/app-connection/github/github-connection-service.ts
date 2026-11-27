@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   getGitHubEnvironments,
@@ -13,7 +13,7 @@ import { TGitHubConnection } from "@app/services/app-connection/github/github-co
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TGitHubConnection>;
 
 type TListGitHubEnvironmentsDTO = {
@@ -28,7 +28,7 @@ export const githubConnectionService = (
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">,
   gitHubAppDeps: TGitHubAppCredentialResolverDeps
 ) => {
-  const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
+  const listRepositories = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
     const repositories = await getGitHubRepositories(
@@ -41,7 +41,7 @@ export const githubConnectionService = (
     return repositories;
   };
 
-  const listOrganizations = async (connectionId: string, actor: OrgServiceActor) => {
+  const listOrganizations = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
     const organizations = await getGitHubOrganizations(
@@ -54,10 +54,7 @@ export const githubConnectionService = (
     return organizations;
   };
 
-  const listEnvironments = async (
-    { connectionId, repo, owner }: TListGitHubEnvironmentsDTO,
-    actor: OrgServiceActor
-  ) => {
+  const listEnvironments = async ({ connectionId, repo, owner }: TListGitHubEnvironmentsDTO, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.GitHub, connectionId, actor);
 
     const environments = await getGitHubEnvironments(

@@ -17,6 +17,7 @@ import { LdapGroupMapsSchema } from "@app/db/schemas";
 import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
 import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LdapSso } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -24,7 +25,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedLdapConfigSchema } from "@app/server/routes/sanitizedSchema/directory-config";
-import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { resolveAssertedProfileName } from "@app/services/user-alias/user-alias-fns";
 
@@ -200,11 +201,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.getLdapCfgWithPermissionCheck({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.query.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor,
+        orgId: req.query.organizationId
       });
       return ldap;
     }
@@ -252,11 +250,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.createLdapCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.actor,
         orgId: req.body.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 
@@ -264,11 +259,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "ldap",
             action: "create",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -317,11 +312,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.updateLdapCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.actor,
         orgId: req.body.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 
@@ -329,11 +321,11 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "ldap",
             action: "update",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -371,11 +363,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMaps = await server.services.ldap.getLdapGroupMaps({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ldapConfigId: req.params.configId
       });
       return ldapGroupMaps;
@@ -404,11 +393,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMap = await server.services.ldap.createLdapGroupMap({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ldapConfigId: req.params.configId,
         ...req.body
       });
@@ -435,11 +421,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMap = await server.services.ldap.deleteLdapGroupMap({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ldapConfigId: req.params.configId,
         ldapGroupMapId: req.params.groupMapId
       });
@@ -470,11 +453,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.ldap.testLDAPConnection({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         ...req.body
       });
 

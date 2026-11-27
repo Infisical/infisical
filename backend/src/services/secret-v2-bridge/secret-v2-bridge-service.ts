@@ -1,32 +1,22 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import {
-  ActionProjectType,
-  ProjectMembershipRole,
-  SecretsV2Schema,
-  SecretType,
-  TableName,
-  TSecretsV2
-} from "@app/db/schemas";
+import { ProjectMembershipRole, SecretsV2Schema, SecretType, TableName, TSecretsV2 } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
-  hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
+  ProjectPermission,
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
-  ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { effectiveActorForProject } from "@app/lib/auth/principal";
 import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
@@ -49,7 +39,6 @@ import {
   SecretEtagMissReason
 } from "@app/lib/telemetry/metrics";
 
-import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -151,7 +140,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   kmsDataKeyService: TKmsDataKeyService;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionCacheFingerprint">;
+  secretsPermissionService: TSecretsPermissionService;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
@@ -205,7 +194,7 @@ export const secretV2BridgeServiceFactory = ({
   folderCommitService,
   eventEmitter,
   folderDAL,
-  permissionService,
+  secretsPermissionService,
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
@@ -221,11 +210,7 @@ export const secretV2BridgeServiceFactory = ({
 }: TSecretV2BridgeServiceFactoryDep) => {
   // Which secret already holds a duplicated value is only named to a writer who may read there, so the
   // message is resolved against their permission rather than formatted inside validation.
-  const $validateSecrets = async (
-    dto: TValidateSecretsDTO,
-    permission: MongoAbility<ProjectPermissionSet>,
-    tx?: Knex
-  ) => {
+  const $validateSecrets = async (dto: TValidateSecretsDTO, permission: ProjectPermission, tx?: Knex) => {
     try {
       await secretValidationRuleService.validateSecrets(dto, tx);
     } catch (error) {
@@ -233,17 +218,18 @@ export const secretV2BridgeServiceFactory = ({
 
       throw new BadRequestError({
         message: describeSecretValidationFailures(error.failures, (environment, secretPath) =>
-          permission.can(
-            ProjectPermissionSecretActions.DescribeSecret,
-            subject(ProjectPermissionSub.Secrets, { environment, secretPath })
-          )
+          permission.can({
+            action: ProjectPermissionSecretActions.DescribeSecret,
+            subject: ProjectPermissionSub.Secrets,
+            fields: { environment, secretPath }
+          })
         )
       });
     }
   };
 
   const { getSecretMetadata } = secretMetadataServiceFactory({
-    permissionService,
+    secretsPermissionService,
     folderDAL,
     projectEnvDAL,
     projectDAL,
@@ -252,7 +238,7 @@ export const secretV2BridgeServiceFactory = ({
   });
   const $validateSecretReferences = async (
     projectId: string,
-    permission: MongoAbility<ProjectPermissionSet>,
+    permission: ProjectPermission,
     references: ReturnType<typeof getAllSecretReferences>["nestedReferences"],
     tx?: Knex
   ) => {
@@ -338,7 +324,7 @@ export const secretV2BridgeServiceFactory = ({
     referredSecrets.forEach((secret) => {
       const reference = validReferences.find((ref) => ref.secretKey === secret.key);
       if (reference) {
-        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment: reference.environment,
           secretPath: reference.secretPath,
           secretName: reference.secretKey,
@@ -352,26 +338,16 @@ export const secretV2BridgeServiceFactory = ({
 
   const createSecret = async ({
     actor,
-    actorId,
-    actorOrgId,
     environment,
-    actorAuthMethod,
     projectId,
     secretPath,
     secretMetadata,
     ...inputSecret
   }: TCreateSecretDTO) => {
-    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     if (
-      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      permission.hasProjectEnforcement({ name: "enforceEncryptedSecretManagerSecretMetadata" }) &&
       secretMetadata?.some((meta) => !meta.isEncrypted)
     ) {
       throw new BadRequestError({
@@ -387,7 +363,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     const folderId = folder.id;
 
-    if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
+    if (ActorType.USER !== actor.principal.type && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to create personal secret" });
     }
 
@@ -418,22 +394,23 @@ export const secretV2BridgeServiceFactory = ({
 
     if (type === SecretType.Personal) {
       // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName,
         secretTags: doesSecretExist?.tags?.map((el) => el.slug)
       });
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Create,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Create,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName,
           secretTags: tags?.map((el) => el.slug)
-        })
-      );
+        }
+      });
     }
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
@@ -469,7 +446,7 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const ciphers = await prepareSecretWriteCiphers({ kmsDataKeyService, projectId, orgId: actorOrgId });
+    const ciphers = await prepareSecretWriteCiphers({ kmsDataKeyService, projectId, orgId: actor.org.id });
     const { encryptor: secretManagerEncryptor } = ciphers.secretManager;
     const { blindIndexer } = ciphers;
     const blindIndexes = await (inputSecretData.secretValue
@@ -480,7 +457,7 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         eventEmitter,
         eventScope: { projectId, environment, secretPath: folder.path },
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         inputSecrets: [
           {
             version: 1,
@@ -495,7 +472,7 @@ export const secretV2BridgeServiceFactory = ({
             blindIndexes,
             skipMultilineEncoding: inputSecretData.skipMultilineEncoding,
             key: secretName,
-            userId: inputSecret.type === SecretType.Personal ? actorId : null,
+            userId: inputSecret.type === SecretType.Personal ? actor.principal.id : null,
             tagIds: inputSecret.tagIds,
             references: nestedReferences,
             secretMetadata: secretMetadata?.map(({ key, value, isEncrypted }) => ({
@@ -513,8 +490,8 @@ export const secretV2BridgeServiceFactory = ({
         secretTagDAL,
         secretVersionTagDAL,
         actor: {
-          type: actor,
-          actorId
+          type: actor.principal.type,
+          actorId: actor.principal.id
         },
         tx
       });
@@ -526,9 +503,6 @@ export const secretV2BridgeServiceFactory = ({
     if (inputSecret.secretReminderRepeatDays) {
       await reminderService.createReminder({
         actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod,
         reminder: {
           secretId: secret.id,
           message: inputSecret.secretReminderNote,
@@ -540,9 +514,9 @@ export const secretV2BridgeServiceFactory = ({
     if (inputSecret.type === SecretType.Shared) {
       await secretQueueService.syncSecrets({
         secretPath,
-        orgId: actorOrgId,
-        actorId,
-        actor,
+        orgId: actor.org.id,
+        actorId: actor.principal.id,
+        actor: actor.principal.type,
         projectId,
         environmentSlug: folder.environment.slug,
         environmentName: folder.environment.name,
@@ -574,26 +548,16 @@ export const secretV2BridgeServiceFactory = ({
 
   const updateSecret = async ({
     actor,
-    actorId,
-    actorOrgId,
     environment,
-    actorAuthMethod,
     projectId,
     secretPath,
     secretMetadata,
     ...inputSecret
   }: TUpdateSecretDTO) => {
-    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     if (
-      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      permission.hasProjectEnforcement({ name: "enforceEncryptedSecretManagerSecretMetadata" }) &&
       secretMetadata?.some((meta) => !meta.isEncrypted)
     ) {
       throw new BadRequestError({
@@ -613,7 +577,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     const folderId = folder.id;
 
-    if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
+    if (ActorType.USER !== actor.principal.type && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to create personal secret" });
     }
 
@@ -631,7 +595,7 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName: inputSecret.secretName,
@@ -642,7 +606,7 @@ export const secretV2BridgeServiceFactory = ({
         key: inputSecret.secretName,
         type: SecretType.Personal,
         folderId,
-        userId: actorId
+        userId: actor.principal.id
       });
       if (!personalSecretToModify)
         throw new NotFoundError({ message: `Personal secret with name ${inputSecret.secretName} not found` });
@@ -669,15 +633,16 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (secret.type !== SecretType.Personal)
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Edit,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Edit,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: inputSecret.secretName,
           secretTags: secret.tags.map((el) => el.slug)
-        })
-      );
+        }
+      });
 
     // validate tags
     // fetch all tags and if not same count throw error meaning one was invalid tags
@@ -689,17 +654,18 @@ export const secretV2BridgeServiceFactory = ({
 
     // now check with new ids
     if (secret.type !== SecretType.Personal)
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Edit,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Edit,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: inputSecret.secretName,
           ...(tagsToCheck.length && {
             secretTags: tagsToCheck.map((el) => el.slug)
           })
-        })
-      );
+        }
+      });
 
     if (inputSecret.newSecretName) {
       const doesNewNameSecretExist = await secretDAL.findOne({
@@ -708,17 +674,18 @@ export const secretV2BridgeServiceFactory = ({
         folderId
       });
       if (doesNewNameSecretExist) throw new BadRequestError({ message: "Secret with the new name already exists" });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Edit,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Edit,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: inputSecret.newSecretName,
           ...(tagsToCheck.length && {
             secretTags: tagsToCheck.map((el) => el.slug)
           })
-        })
-      );
+        }
+      });
     }
 
     const { secretName, secretValue } = inputSecret;
@@ -763,7 +730,7 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const ciphers = await prepareSecretWriteCiphers({ kmsDataKeyService, projectId, orgId: actorOrgId });
+    const ciphers = await prepareSecretWriteCiphers({ kmsDataKeyService, projectId, orgId: actor.org.id });
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
     const { blindIndexer } = ciphers;
     const encryptedValue =
@@ -788,9 +755,6 @@ export const secretV2BridgeServiceFactory = ({
     const preparedReminder = inputSecret.secretReminderRepeatDays
       ? await reminderService.prepareReminder({
           actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
           reminder: {
             secretId,
             message: inputSecret.secretReminderNote,
@@ -805,7 +769,7 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         eventEmitter,
         eventScope: { projectId, environment, secretPath: folder.path },
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         resourceMetadataDAL,
         folderCommitService,
         inputSecrets: [
@@ -835,15 +799,15 @@ export const secretV2BridgeServiceFactory = ({
         secretTagDAL,
         secretVersionTagDAL,
         actor: {
-          type: actor,
-          actorId
+          type: actor.principal.type,
+          actorId: actor.principal.id
         },
         tx
       });
 
       if (inputSecret.newSecretName && inputSecret.type === SecretType.Shared) {
         await fnUpdateSecretLinkedReferences({
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId,
           environment,
           secretPath,
@@ -873,10 +837,10 @@ export const secretV2BridgeServiceFactory = ({
     if (inputSecret.type === SecretType.Shared) {
       await secretQueueService.syncSecrets({
         secretPath,
-        actorId,
-        actor,
+        actorId: actor.principal.id,
+        actor: actor.principal.type,
         projectId,
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         environmentSlug: folder.environment.slug,
         environmentName: folder.environment.name,
         events: [
@@ -891,18 +855,14 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-      permission,
-      ProjectPermissionSecretActions.ReadValue,
-      {
-        environment,
-        secretPath,
-        secretName: inputSecret.secretName,
-        ...(tagsToCheck.length && {
-          secretTags: tagsToCheck.map((el) => el.slug)
-        })
-      }
-    );
+    const secretValueHidden = !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+      environment,
+      secretPath,
+      secretName: inputSecret.secretName,
+      ...(tagsToCheck.length && {
+        secretTags: tagsToCheck.map((el) => el.slug)
+      })
+    });
 
     return reshapeBridgeSecret(
       projectId,
@@ -915,28 +875,12 @@ export const secretV2BridgeServiceFactory = ({
         secretMetadata: undefined
       },
       secretValueHidden,
-      actorId
+      actor.principal.id
     );
   };
 
-  const deleteSecret = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    environment,
-    projectId,
-    secretPath,
-    ...inputSecret
-  }: TDeleteSecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  const deleteSecret = async ({ actor, environment, projectId, secretPath, ...inputSecret }: TDeleteSecretDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -946,7 +890,7 @@ export const secretV2BridgeServiceFactory = ({
       });
     const folderId = folder.id;
 
-    if (ActorType.USER !== actor && inputSecret.type === SecretType.Personal) {
+    if (ActorType.USER !== actor.principal.type && inputSecret.type === SecretType.Personal) {
       throw new BadRequestError({ message: "Must be user to delete personal secret" });
     }
 
@@ -954,7 +898,7 @@ export const secretV2BridgeServiceFactory = ({
       key: inputSecret.secretName,
       folderId,
       type: inputSecret.type,
-      ...(inputSecret.type === SecretType.Personal && { userId: actorId })
+      ...(inputSecret.type === SecretType.Personal && { userId: actor.principal.id })
     });
     if (!secretToDelete) throw new NotFoundError({ message: "Secret not found" });
     if (inputSecret.type === SecretType.Shared) {
@@ -971,7 +915,7 @@ export const secretV2BridgeServiceFactory = ({
       });
 
       // personal overrides are only visible to their owner, so describe access on the secret suffices to manage them
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath,
         secretName: inputSecret.secretName,
@@ -980,15 +924,16 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     if (inputSecret.type === SecretType.Shared)
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Delete,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Delete,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: secretToDelete.key,
           secretTags: secretToDelete.tags?.map((el) => el.slug)
-        })
-      );
+        }
+      });
 
     try {
       const deletedSecret = await secretDAL.transaction(async (tx) => {
@@ -997,8 +942,8 @@ export const secretV2BridgeServiceFactory = ({
           folderId,
           eventEmitter,
           eventScope: { projectId, environment, secretPath: folder.path },
-          actorId,
-          actorType: actor,
+          actorId: actor.principal.id,
+          actorType: actor.principal.type,
           folderCommitService,
           secretVersionDAL,
           secretDAL,
@@ -1018,10 +963,10 @@ export const secretV2BridgeServiceFactory = ({
       if (inputSecret.type === SecretType.Shared) {
         await secretQueueService.syncSecrets({
           secretPath,
-          actorId,
-          actor,
+          actorId: actor.principal.id,
+          actor: actor.principal.type,
           projectId,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           environmentSlug: folder.environment.slug,
           environmentName: folder.environment.name,
           events: [
@@ -1041,16 +986,12 @@ export const secretV2BridgeServiceFactory = ({
         projectId
       });
 
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment,
-          secretPath,
-          secretName: secretToDelete.key,
-          secretTags: secretToDelete.tags?.map((el) => el.slug)
-        }
-      );
+      const secretValueHidden = !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath,
+        secretName: secretToDelete.key,
+        secretTags: secretToDelete.tags?.map((el) => el.slug)
+      });
 
       // deleting a shared secret cascades to every user's personal override, so the row to return must be
       // picked by id instead of trusting the order the delete happened to return rows in
@@ -1071,7 +1012,7 @@ export const secretV2BridgeServiceFactory = ({
             : ""
         },
         secretValueHidden,
-        actorId
+        actor.principal.id
       );
     } catch (err) {
       // deferred errors aren't return as DatabaseError
@@ -1089,33 +1030,20 @@ export const secretV2BridgeServiceFactory = ({
 
   // get unique secrets count for multiple envs
   const getSecretsCountMultiEnv = async ({
-    actorId,
     path,
     projectId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     environments,
     isInternal,
     ...params
-  }: Pick<
-    TGetSecretsDTO,
-    "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "search" | "tagSlugs"
-  > & {
+  }: Pick<TGetSecretsDTO, "actor" | "path" | "projectId" | "search" | "tagSlugs"> & {
     environments: string[];
     isInternal?: boolean;
   }) => {
     if (!isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
-      });
+      const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
       environments.forEach((environment) => {
-        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment,
           secretPath: path
         });
@@ -1127,7 +1055,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const count = await secretDAL.countByFolderIds(
       folders.map((folder) => folder.id),
-      actorId,
+      actor.principal.id,
       undefined,
       params
     );
@@ -1137,36 +1065,17 @@ export const secretV2BridgeServiceFactory = ({
 
   // get secret count for individual env
   const getSecretsCount = async ({
-    actorId,
     path,
     environment,
     projectId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     ...params
   }: Pick<
     TGetSecretsDTO,
-    | "actorId"
-    | "actor"
-    | "path"
-    | "projectId"
-    | "actorOrgId"
-    | "actorAuthMethod"
-    | "tagSlugs"
-    | "environment"
-    | "search"
-    | "excludeRotatedSecrets"
+    "actor" | "path" | "projectId" | "tagSlugs" | "environment" | "search" | "excludeRotatedSecrets"
   >) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath: path
     });
@@ -1174,7 +1083,7 @@ export const secretV2BridgeServiceFactory = ({
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder) return 0;
 
-    const count = await secretDAL.countByFolderIds([folder.id], actorId, undefined, params);
+    const count = await secretDAL.countByFolderIds([folder.id], actor.principal.id, undefined, params);
 
     return count;
   };
@@ -1187,7 +1096,7 @@ export const secretV2BridgeServiceFactory = ({
       folderMappings,
       filterByAction = ProjectPermissionSecretActions.ReadValue
     }: TGetSecretsRawByFolderMappingsDTO,
-    projectPermission: Awaited<ReturnType<typeof permissionService.getProjectPermission>>["permission"]
+    projectPermission: ProjectPermission
   ) => {
     const groupedFolderMappings = groupBy(folderMappings, (folderMapping) => folderMapping.folderId);
 
@@ -1210,7 +1119,7 @@ export const secretV2BridgeServiceFactory = ({
 
     const decryptedSecrets = secrets
       .filter((el) =>
-        hasSecretReadValueOrDescribePermission(projectPermission, filterByAction, {
+        SecretReadAccess.can(projectPermission, filterByAction, {
           environment: groupedFolderMappings[el.folderId][0].environment,
           secretPath: groupedFolderMappings[el.folderId][0].path,
           secretName: el.key,
@@ -1220,16 +1129,12 @@ export const secretV2BridgeServiceFactory = ({
 
       .map((secret) => {
         // Note(Daniel): This is only relevant if the filterAction isn't set to ReadValue. This is needed for the frontend.
-        const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-          projectPermission,
-          ProjectPermissionSecretActions.ReadValue,
-          {
-            environment: groupedFolderMappings[secret.folderId][0].environment,
-            secretPath: groupedFolderMappings[secret.folderId][0].path,
-            secretName: secret.key,
-            secretTags: secret.tags.map((i) => i.slug)
-          }
-        );
+        const secretValueHidden = !SecretReadAccess.can(projectPermission, ProjectPermissionSecretActions.ReadValue, {
+          environment: groupedFolderMappings[secret.folderId][0].environment,
+          secretPath: groupedFolderMappings[secret.folderId][0].path,
+          secretName: secret.key,
+          secretTags: secret.tags.map((i) => i.slug)
+        });
 
         return reshapeBridgeSecret(
           projectId,
@@ -1264,27 +1169,17 @@ export const secretV2BridgeServiceFactory = ({
 
   // get secrets for multiple envs
   const getSecretsMultiEnv = async ({
-    actorId,
     path,
     environments,
     projectId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     isInternal,
     ...params
   }: TGetSecretsMultiEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     if (!isInternal) {
       environments.forEach((environment) => {
-        throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment,
           secretPath: path
         });
@@ -1321,7 +1216,7 @@ export const secretV2BridgeServiceFactory = ({
         projectId,
         folderMappings,
         filters: { ...params, sortFolderIds },
-        userId: actorId,
+        userId: actor.principal.id,
         filterByAction: ProjectPermissionSecretActions.DescribeSecret
       },
       permission
@@ -1331,23 +1226,13 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   const getSecretKeyEnvironments = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     environments,
     path,
     secretKey
   }: TGetSecretKeyEnvironmentsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     // the folder lookup ignores empty segments, so check permissions against the same canonical path
     const secretPath = `/${path.split("/").filter(Boolean).join("/")}`;
@@ -1365,7 +1250,7 @@ export const secretV2BridgeServiceFactory = ({
       const environment = folderEnvironments.get(folderId);
       if (
         environment &&
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
           environment,
           secretPath,
           secretName: secretKey,
@@ -1381,15 +1266,12 @@ export const secretV2BridgeServiceFactory = ({
 
   const getSecrets = async (dto: TGetSecretsDTO) => {
     const {
-      actorId,
       path,
       environment,
       projectId,
       actor,
-      actorOrgId,
       secretImportReferencesBehavior,
       viewSecretValue,
-      actorAuthMethod,
       includeImports,
       recursive,
       expandSecretReferences: shouldExpandSecretReferences,
@@ -1401,19 +1283,22 @@ export const secretV2BridgeServiceFactory = ({
       onSecretReferenced,
       ...params
     } = dto;
+    const { principal } = actor;
+    const actorId = principal.id;
+    const actorOrgId = actor.org.id;
 
     let permissionFingerprint = "";
 
-    if (actor === ActorType.USER || actor === ActorType.IDENTITY) {
+    if (principal.type === ActorType.USER || principal.type === ActorType.IDENTITY) {
+      const { actorType, actorId: grantActorId } = effectiveActorForProject(principal, projectId);
+      const grantActor = { type: actorType, id: grantActorId };
       // The fingerprint of the permission this request is answered with, read from the permission cache's own
-      // marker. It gates only the ETag cache; the real check is still getProjectPermission below. It includes the
+      // marker. It gates only the ETag cache; the real check is still getSecretsPermission below. It includes the
       // project's folder version, so folder grants are covered, at the cost of any folder change churning the ETag.
-      permissionFingerprint = await permissionService.getProjectPermissionCacheFingerprint({
-        actor,
-        actorId,
-        projectId,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
+      permissionFingerprint = await secretsPermissionService.getPermissionCacheFingerprint({
+        actor: grantActor,
+        orgId: actorOrgId,
+        projectId
       });
     }
 
@@ -1449,15 +1334,8 @@ export const secretV2BridgeServiceFactory = ({
       etagMissReason = storedEtag ? SecretEtagMissReason.VALUE_DIFFERS : SecretEtagMissReason.FIELD_ABSENT;
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret);
 
     recordSecretReadMetric({
       environment,
@@ -1598,7 +1476,7 @@ export const secretV2BridgeServiceFactory = ({
         secretTags: secret.tags.map((i) => i.slug)
       };
 
-      const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+      const canDescribeSecret = SecretReadAccess.can(
         permission,
         ProjectPermissionSecretActions.DescribeSecret,
         secretSubjectFields
@@ -1607,22 +1485,14 @@ export const secretV2BridgeServiceFactory = ({
 
       const canReadValue =
         viewSecretValue &&
-        hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.ReadValue,
-          secretSubjectFields
-        );
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, secretSubjectFields);
 
       if (viewSecretValue && !canReadValue) {
         // Recursive secret, should be filtered out
         if (secretPath !== path) continue;
 
         if (throwOnMissingReadValuePermission) {
-          throwIfMissingSecretReadValueOrDescribePermission(
-            permission,
-            ProjectPermissionSecretActions.ReadValue,
-            secretSubjectFields
-          );
+          SecretReadAccess.assert(permission, ProjectPermissionSecretActions.ReadValue, secretSubjectFields);
         }
         // Otherwise keep the secret with its value masked below.
       }
@@ -1680,7 +1550,7 @@ export const secretV2BridgeServiceFactory = ({
     }) => {
       if (entry.cacheBytes < LARGE_SECRET_CACHE_LOG_BYTES) return;
       logger.info(
-        `getSecrets: large secret cache entry [projectId=${projectId}] [actorType=${actor}] [actorId=${actorId}] [cacheBytes=${entry.cacheBytes}] [uncompressedBytes=${entry.uncompressedBytes}] [stored=${entry.stored}] [secretCount=${decryptedSecrets.length}] [importedSecretCount=${entry.importedSecretCount}] [environment=${environment}] [path=${path}] [recursive=${Boolean(recursive)}] [includeImports=${Boolean(includeImports)}] [expandSecretReferences=${Boolean(shouldExpandSecretReferences)}] [cacheVersion=${secretDalVersion}] [etag=${entry.etag}]`
+        `getSecrets: large secret cache entry [projectId=${projectId}] [actorType=${actor.principal.type}] [actorId=${actorId}] [cacheBytes=${entry.cacheBytes}] [uncompressedBytes=${entry.uncompressedBytes}] [stored=${entry.stored}] [secretCount=${decryptedSecrets.length}] [importedSecretCount=${entry.importedSecretCount}] [environment=${environment}] [path=${path}] [recursive=${Boolean(recursive)}] [includeImports=${Boolean(includeImports)}] [expandSecretReferences=${Boolean(shouldExpandSecretReferences)}] [cacheVersion=${secretDalVersion}] [etag=${entry.etag}]`
       );
     };
 
@@ -1695,7 +1565,7 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL: mainExpanderSecretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
           environment: expandEnvironment,
           secretPath: expandSecretPath,
           secretName: expandSecretKey,
@@ -1776,13 +1646,13 @@ export const secretV2BridgeServiceFactory = ({
       folderDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
           environment: expandEnvironment,
           secretPath: expandSecretPath,
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         }),
-      userId: expandPersonalOverrides ? actorId : undefined,
+      userId: expandPersonalOverrides ? actor.principal.id : undefined,
       onSecretExpanded: collectReferencedSecrets,
       abortSignal
     });
@@ -1793,7 +1663,7 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL,
       folderDAL,
       secretImportDAL,
-      userId: expandPersonalOverrides ? actorId : undefined,
+      userId: expandPersonalOverrides ? actor.principal.id : undefined,
       personalOverridesBehavior,
       expandSecretReferences:
         secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
@@ -1810,27 +1680,19 @@ export const secretV2BridgeServiceFactory = ({
         ])
       ),
       hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
-        const canDescribe = hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.DescribeSecret,
-          {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }
-        );
+        const canDescribe = SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment: expandEnvironment,
+          secretPath: expandSecretPath,
+          secretName: expandSecretKey,
+          secretTags: expandSecretTags
+        });
 
-        const canReadValue = hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.ReadValue,
-          {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }
-        );
+        const canReadValue = SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+          environment: expandEnvironment,
+          secretPath: expandSecretPath,
+          secretName: expandSecretKey,
+          secretTags: expandSecretTags
+        });
 
         return viewSecretValue ? canDescribe && canReadValue : canDescribe;
       },
@@ -1868,14 +1730,7 @@ export const secretV2BridgeServiceFactory = ({
     return { ...payload, etag: computedEtag };
   };
 
-  const getSecretById = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    secretId,
-    viewSecretValue
-  }: TGetASecretByIdDTO) => {
+  const getSecretById = async ({ actor, secretId, viewSecretValue }: TGetASecretByIdDTO) => {
     const secret = await secretDAL.findOneWithTags({
       [`${TableName.SecretV2}.id` as "id"]: secretId
     });
@@ -1896,16 +1751,9 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: secret.projectId });
 
-    throwIfMissingSecretReadValueOrDescribePermission(
+    SecretReadAccess.assert(
       permission,
       viewSecretValue ? ProjectPermissionSecretActions.ReadValue : ProjectPermissionSecretActions.DescribeSecret,
       {
@@ -1916,7 +1764,7 @@ export const secretV2BridgeServiceFactory = ({
       }
     );
 
-    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+    if (secret.type === SecretType.Personal && secret.userId !== actor.principal.id) {
       throw new ForbiddenRequestError({
         message: "You are not allowed to access this secret",
         name: "GetSecretById"
@@ -1960,10 +1808,7 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   const getSecretByName = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectId,
     environment,
     path,
@@ -1976,14 +1821,7 @@ export const secretV2BridgeServiceFactory = ({
     expandPersonalOverrides,
     onSecretReferenced
   }: TGetASecretDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, path);
     if (!folder)
@@ -1994,7 +1832,7 @@ export const secretV2BridgeServiceFactory = ({
     const folderId = folder.id;
 
     let secretType = type;
-    if (actor === ActorType.SERVICE) {
+    if (actor.principal.type === ActorType.SERVICE) {
       logger.info(
         `secretServiceFactory: overriding secret type for service token [projectId=${projectId}] [factoryFunctionName=getSecretByName]`
       );
@@ -2011,14 +1849,14 @@ export const secretV2BridgeServiceFactory = ({
           folderId,
           type: secretType,
           [`${TableName.SecretV2}.key` as "key"]: secretName,
-          [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actorId : null
+          [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actor.principal.id : null
         })
       : secretVersionDAL
           .findOneWithTags({
             folderId,
             version,
             type: secretType,
-            userId: secretType === SecretType.Personal ? actorId : null,
+            userId: secretType === SecretType.Personal ? actor.principal.id : null,
             key: secretName
           })
           .then((el) =>
@@ -2049,7 +1887,7 @@ export const secretV2BridgeServiceFactory = ({
     const secretsToCheck = currentSecret ? [secret, currentSecret] : [secret];
 
     secretsToCheck.forEach((el) =>
-      throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+      SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
         environment,
         secretPath: path,
         secretName: el?.key ?? secretName,
@@ -2072,15 +1910,15 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
-        return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        return SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
           environment: expandEnvironment,
           secretPath: expandSecretPath,
           secretName: expandSecretKey,
           secretTags: expandSecretTags
         });
       },
-      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actorId : undefined,
-      actorOrgId,
+      userId: secretType === SecretType.Personal && expandPersonalOverrides ? actor.principal.id : undefined,
+      actorOrgId: actor.org.id,
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
@@ -2109,13 +1947,13 @@ export const secretV2BridgeServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        userId: secretType === SecretType.Personal ? actorId : undefined,
+        userId: secretType === SecretType.Personal ? actor.principal.id : undefined,
         personalOverridesBehavior: secretType === SecretType.Personal ? PersonalOverridesBehavior.Priority : undefined,
         decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
         expandSecretReferences: shouldExpandSecretReferences && viewSecretValue ? expandSecretReferences : undefined,
         importAccessScopeByFolderId: new Map([[folderId, { environment, secretPath: path }]]),
         hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) => {
-          return hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          return SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
             environment: expandEnvironment,
             secretPath: expandSecretPath,
             secretName: expandSecretKey,
@@ -2124,7 +1962,7 @@ export const secretV2BridgeServiceFactory = ({
         },
         projectId,
         projectFolderGrantDAL,
-        actorOrgId,
+        actorOrgId: actor.org.id,
         orgDAL,
         kmsDataKeyService
       });
@@ -2143,7 +1981,7 @@ export const secretV2BridgeServiceFactory = ({
 
             if (viewSecretValue) {
               if (
-                !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+                !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
                   environment: importedSecrets[i].accessScope.environment,
                   secretPath: importedSecrets[i].accessScope.secretPath,
                   secretName: importedSecret.key,
@@ -2199,7 +2037,7 @@ export const secretV2BridgeServiceFactory = ({
     if (viewSecretValue) {
       if (
         !secretsToCheck.every((el) =>
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
             environment,
             secretPath: path,
             secretName: el?.key ?? secretName,
@@ -2273,9 +2111,6 @@ export const secretV2BridgeServiceFactory = ({
   const createManySecret = async ({
     secretPath,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     environment,
     projectId,
     folder: providedFolder,
@@ -2288,17 +2123,10 @@ export const secretV2BridgeServiceFactory = ({
     commitChanges?: TCommitResourceChangeDTO[];
     skipPostProcessing?: boolean;
   }) => {
-    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     if (
-      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      permission.hasProjectEnforcement({ name: "enforceEncryptedSecretManagerSecretMetadata" }) &&
       inputSecrets.some((secret) => secret.secretMetadata?.some((meta) => !meta.isEncrypted))
     ) {
       throw new BadRequestError({
@@ -2374,15 +2202,16 @@ export const secretV2BridgeServiceFactory = ({
     const tagsGroupByID = groupBy(tags, (i) => i.id);
 
     deduplicatedSecrets.forEach((el) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Create,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Create,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: el.secretKey,
           secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-        })
-      );
+        }
+      });
     });
 
     // now get all secret references made and validate the permission
@@ -2403,7 +2232,7 @@ export const secretV2BridgeServiceFactory = ({
     const ciphers = await prepareSecretWriteCiphers({
       kmsDataKeyService,
       projectId,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       tx: providedTx
     });
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
@@ -2448,7 +2277,7 @@ export const secretV2BridgeServiceFactory = ({
         eventEmitter,
         eventScope: { projectId, environment, secretPath: `/${secretPath.split("/").filter(Boolean).join("/")}` },
         commitChanges,
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         secretDAL,
         resourceMetadataDAL,
         folderCommitService,
@@ -2456,8 +2285,8 @@ export const secretV2BridgeServiceFactory = ({
         secretTagDAL,
         secretVersionTagDAL,
         actor: {
-          type: actor,
-          actorId
+          type: actor.principal.type,
+          actorId: actor.principal.id
         },
         tx
       });
@@ -2471,11 +2300,11 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!skipPostProcessing) {
       await dispatchSecretCreateSideEffects({
-        actor,
-        actorId,
+        actor: actor.principal.type,
+        actorId: actor.principal.id,
         secretPath,
         projectId,
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         environmentSlug: folder.environment.slug,
         environmentName: folder.environment.name,
         secretKeys: newSecrets.map((el) => el.key)
@@ -2483,16 +2312,12 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     return newSecrets.map((el) => {
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment,
-          secretPath,
-          secretName: el.key,
-          secretTags: el.tags?.map((i) => i.slug)
-        }
-      );
+      const secretValueHidden = !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath,
+        secretName: el.key,
+        secretTags: el.tags?.map((i) => i.slug)
+      });
 
       return reshapeBridgeSecret(
         projectId,
@@ -2505,16 +2330,13 @@ export const secretV2BridgeServiceFactory = ({
           comment: el.encryptedComment ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString() : ""
         },
         secretValueHidden,
-        actorId
+        actor.principal.id
       );
     });
   };
 
   const updateManySecret = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     environment,
     projectId,
     secretPath: defaultSecretPath = "/",
@@ -2530,17 +2352,10 @@ export const secretV2BridgeServiceFactory = ({
     skipPostProcessing?: boolean;
     deferredReferenceSyncs?: Parameters<TSecretQueueFactory["syncSecrets"]>[0][];
   }) => {
-    const { permission, hasProjectEnforcement } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     if (
-      hasProjectEnforcement("enforceEncryptedSecretManagerSecretMetadata") &&
+      permission.hasProjectEnforcement({ name: "enforceEncryptedSecretManagerSecretMetadata" }) &&
       inputSecrets.some((secret) => secret.secretMetadata?.some((meta) => !meta.isEncrypted))
     ) {
       throw new BadRequestError({
@@ -2575,7 +2390,7 @@ export const secretV2BridgeServiceFactory = ({
     const ciphers = await prepareSecretWriteCiphers({
       kmsDataKeyService,
       projectId,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       tx: providedTx
     });
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = ciphers.secretManager;
@@ -2629,15 +2444,16 @@ export const secretV2BridgeServiceFactory = ({
         secretsToUpdate = secretsToUpdate.filter((el) => secretsToUpdateInDBGroupedByKey?.[el.secretKey]);
 
         secretsToUpdateInDB.forEach((el) => {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionSecretActions.Edit,
-            subject(ProjectPermissionSub.Secrets, {
+          permission.assert({
+            action: ProjectPermissionSecretActions.Edit,
+            subject: ProjectPermissionSub.Secrets,
+            fields: {
               environment,
               secretPath,
               secretName: el.key,
               secretTags: el.tags.map((i) => i.slug)
-            })
-          );
+            }
+          });
 
           if (el.isHoneyTokenSecret) {
             const input = secretsToUpdateGroupByPath[secretPath].find((i) => i.secretKey === el.key);
@@ -2679,29 +2495,31 @@ export const secretV2BridgeServiceFactory = ({
         // check create permission allowed in upsert mode
         if (updateMode === SecretUpdateMode.Upsert) {
           secretsToCreate.forEach((el) => {
-            ForbiddenError.from(permission).throwUnlessCan(
-              ProjectPermissionSecretActions.Create,
-              subject(ProjectPermissionSub.Secrets, {
+            permission.assert({
+              action: ProjectPermissionSecretActions.Create,
+              subject: ProjectPermissionSub.Secrets,
+              fields: {
                 environment,
                 secretPath,
                 secretName: el.secretKey,
                 secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-              })
-            );
+              }
+            });
           });
         }
 
         // check again to avoid non authorized tags are removed
         secretsToUpdate.forEach((el) => {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionSecretActions.Edit,
-            subject(ProjectPermissionSub.Secrets, {
+          permission.assert({
+            action: ProjectPermissionSecretActions.Edit,
+            subject: ProjectPermissionSub.Secrets,
+            fields: {
               environment,
               secretPath,
               secretName: el.secretKey,
               secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-            })
-          );
+            }
+          });
         });
 
         // now find any secret that needs to update its name
@@ -2726,15 +2544,16 @@ export const secretV2BridgeServiceFactory = ({
             });
 
           secretsWithNewName.forEach((el) => {
-            ForbiddenError.from(permission).throwUnlessCan(
-              ProjectPermissionSecretActions.Create,
-              subject(ProjectPermissionSub.Secrets, {
+            permission.assert({
+              action: ProjectPermissionSecretActions.Create,
+              subject: ProjectPermissionSub.Secrets,
+              fields: {
                 environment,
                 secretPath,
                 secretName: el.newSecretName as string,
                 secretTags: (el.tagIds || []).map((i) => tagsGroupByID[i][0].slug)
-              })
-            );
+              }
+            });
           });
         }
         // now get all secret references made and validate the permission
@@ -2850,7 +2669,7 @@ export const secretV2BridgeServiceFactory = ({
           folderId,
           eventEmitter,
           eventScope: { projectId, environment, secretPath },
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           folderCommitService,
           tx,
           commitChanges,
@@ -2860,8 +2679,8 @@ export const secretV2BridgeServiceFactory = ({
           secretTagDAL,
           secretVersionTagDAL,
           actor: {
-            type: actor,
-            actorId
+            type: actor.principal.type,
+            actorId: actor.principal.id
           },
           resourceMetadataDAL
         });
@@ -2869,7 +2688,7 @@ export const secretV2BridgeServiceFactory = ({
         if (secretKeyUpdates.length) {
           for await (const secretKeyUpdate of secretKeyUpdates) {
             await fnUpdateSecretLinkedReferences({
-              orgId: actorOrgId,
+              orgId: actor.org.id,
               projectId,
               environment,
               secretPath,
@@ -2938,7 +2757,7 @@ export const secretV2BridgeServiceFactory = ({
             folderId,
             eventEmitter,
             eventScope: { projectId, environment, secretPath: folder.path },
-            orgId: actorOrgId,
+            orgId: actor.org.id,
             secretDAL,
             resourceMetadataDAL,
             secretVersionDAL,
@@ -2946,8 +2765,8 @@ export const secretV2BridgeServiceFactory = ({
             secretVersionTagDAL,
             folderCommitService,
             actor: {
-              type: actor,
-              actorId
+              type: actor.principal.type,
+              actorId: actor.principal.id
             },
             tx
           });
@@ -2975,11 +2794,11 @@ export const secretV2BridgeServiceFactory = ({
         folders.map((el) =>
           el
             ? secretQueueService.syncSecrets({
-                actor,
-                actorId,
+                actor: actor.principal.type,
+                actorId: actor.principal.id,
                 secretPath: el.path,
                 projectId,
-                orgId: actorOrgId,
+                orgId: actor.org.id,
                 environmentSlug: environment,
                 environmentName: projectEnvironment.name,
                 events: [
@@ -2998,16 +2817,12 @@ export const secretV2BridgeServiceFactory = ({
     }
 
     return updatedSecrets.map((el) => {
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment,
-          secretPath: el.secretPath,
-          secretName: el.key,
-          secretTags: el.tags.map((i) => i.slug)
-        }
-      );
+      const secretValueHidden = !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
+        environment,
+        secretPath: el.secretPath,
+        secretName: el.key,
+        secretTags: el.tags.map((i) => i.slug)
+      });
 
       return {
         ...reshapeBridgeSecret(
@@ -3022,7 +2837,7 @@ export const secretV2BridgeServiceFactory = ({
               : ""
           },
           secretValueHidden,
-          actorId
+          actor.principal.id
         )
       };
     });
@@ -3034,9 +2849,6 @@ export const secretV2BridgeServiceFactory = ({
     environment,
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     tx: providedTx,
     commitChanges,
     skipPostProcessing = false
@@ -3045,14 +2857,7 @@ export const secretV2BridgeServiceFactory = ({
     commitChanges?: TCommitResourceChangeDTO[];
     skipPostProcessing?: boolean;
   }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder)
@@ -3083,15 +2888,16 @@ export const secretV2BridgeServiceFactory = ({
       });
     }
     secretsToDelete.forEach((el) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretActions.Delete,
-        subject(ProjectPermissionSub.Secrets, {
+      permission.assert({
+        action: ProjectPermissionSecretActions.Delete,
+        subject: ProjectPermissionSub.Secrets,
+        fields: {
           environment,
           secretPath,
           secretName: el.key,
           secretTags: el.tags?.map((i) => i.slug)
-        })
-      );
+        }
+      });
     });
     const honeyTokenSecretsToDelete = secretsToDelete.filter((el) => el.isHoneyTokenSecret);
     if (honeyTokenSecretsToDelete.length) {
@@ -3114,8 +2920,8 @@ export const secretV2BridgeServiceFactory = ({
         folderId,
         eventEmitter,
         eventScope: { projectId, environment, secretPath: folder.path },
-        actorId,
-        actorType: actor,
+        actorId: actor.principal.id,
+        actorType: actor.principal.type,
         commitChanges,
         tx
       });
@@ -3130,11 +2936,11 @@ export const secretV2BridgeServiceFactory = ({
 
       if (!skipPostProcessing) {
         await secretQueueService.syncSecrets({
-          actor,
-          actorId,
+          actor: actor.principal.type,
+          actorId: actor.principal.id,
           secretPath,
           projectId,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           environmentSlug: folder.environment.slug,
           environmentName: folder.environment.name,
           events: [
@@ -3160,7 +2966,7 @@ export const secretV2BridgeServiceFactory = ({
 
         const secretValueHidden =
           !secretToDeleteMatch ||
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
             environment,
             secretPath,
             secretName: el.key,
@@ -3179,7 +2985,7 @@ export const secretV2BridgeServiceFactory = ({
               : ""
           },
           secretValueHidden,
-          actorId
+          actor.principal.id
         );
       });
     } catch (err) {
@@ -3197,10 +3003,7 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   const getSecretVersions = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     limit = 20,
     offset = 0,
     secretId,
@@ -3219,26 +3022,20 @@ export const secretV2BridgeServiceFactory = ({
       throw new NotFoundError({ message: `Folder with ID '${folder.id}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: folder.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: folder.projectId });
 
-    const canRead = permission.can(
-      ProjectPermissionCommitsActions.Read,
-      subject(ProjectPermissionSub.Commits, {
+    const canRead = permission.can({
+      action: ProjectPermissionCommitsActions.Read,
+      subject: ProjectPermissionSub.Commits,
+      fields: {
         environment: folder.environment.envSlug,
         secretPath: folderWithPath.path
-      })
-    );
+      }
+    });
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
-    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+    if (secret.type === SecretType.Personal && secret.userId !== actor.principal.id) {
       throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
     }
 
@@ -3260,7 +3057,7 @@ export const secretV2BridgeServiceFactory = ({
       // a version keeps the name and tags it was written with, so the secret as it is now must allow the read too
       const secretValueHidden = [el, secret].some(
         ({ key, tags }) =>
-          !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+          !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
             environment: folder.environment.envSlug,
             secretPath: folderWithPath.path,
             secretName: key,
@@ -3283,7 +3080,7 @@ export const secretV2BridgeServiceFactory = ({
               : ""
           },
           secretValueHidden,
-          actorId
+          actor.principal.id
         ),
         redactedByActor: el.isRedacted
           ? {
@@ -3302,23 +3099,10 @@ export const secretV2BridgeServiceFactory = ({
   // this is a backfilling API for secret references
   // what it does is it will go through all the secret values and parse all references
   // populate the secret reference to do sync integrations
-  const backfillSecretReferences = async ({
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TBackFillSecretReferencesDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  const backfillSecretReferences = async ({ projectId, actor }: TBackFillSecretReferencesDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    if (!hasRole(ProjectMembershipRole.Admin))
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin }))
       throw new ForbiddenRequestError({ message: "Only admins are allowed to take this action" });
 
     const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -3400,7 +3184,7 @@ export const secretV2BridgeServiceFactory = ({
       fnSecretMoveInTransaction({
         ...dto,
         tx,
-        permissionService,
+        secretsPermissionService,
         kmsDataKeyService,
         folderDAL,
         secretDAL,
@@ -3424,9 +3208,9 @@ export const secretV2BridgeServiceFactory = ({
 
     await dispatchSecretMoveSideEffects({
       projectId: dto.projectId,
-      orgId: dto.actorOrgId,
-      actor: dto.actor,
-      actorId: dto.actorId,
+      orgId: dto.actor.org.id,
+      actor: dto.actor.principal.type,
+      actorId: dto.actor.principal.id,
       ...result
     });
 
@@ -3442,19 +3226,9 @@ export const secretV2BridgeServiceFactory = ({
     secretPath,
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    secretName,
-    actorAuthMethod
+    secretName
   }: TGetSecretReferencesTreeDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
@@ -3473,7 +3247,7 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!secret) throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath,
       secretName,
@@ -3490,13 +3264,13 @@ export const secretV2BridgeServiceFactory = ({
       secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretName, expandSecretTags) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+        SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
           environment: expandEnvironment,
           secretPath: expandSecretPath,
           secretName: expandSecretName,
           secretTags: expandSecretTags
         }),
-      actorOrgId,
+      actorOrgId: actor.org.id,
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
@@ -3504,7 +3278,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     if (
-      !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+      !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
         environment,
         secretPath,
         secretName,
@@ -3531,19 +3305,9 @@ export const secretV2BridgeServiceFactory = ({
     secretName,
     environment,
     secretPath,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TGetSecretReferencesTreeDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!folder) {
@@ -3563,7 +3327,7 @@ export const secretV2BridgeServiceFactory = ({
       throw new NotFoundError({ message: `Secret with name '${secretName}' not found` });
     }
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath,
       secretName,
@@ -3760,16 +3524,12 @@ export const secretV2BridgeServiceFactory = ({
       const referencingSecrets = await findSecretsReferencingSecret(env, path, key);
 
       for await (const refSecret of referencingSecrets) {
-        const hasAccess = hasSecretReadValueOrDescribePermission(
-          permission,
-          ProjectPermissionSecretActions.DescribeSecret,
-          {
-            environment: refSecret.environment,
-            secretPath: refSecret.secretPath,
-            secretName: refSecret.key,
-            secretTags: refSecret.tags.map((t) => t.slug)
-          }
-        );
+        const hasAccess = SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment: refSecret.environment,
+          secretPath: refSecret.secretPath,
+          secretName: refSecret.key,
+          secretTags: refSecret.tags.map((t) => t.slug)
+        });
 
         if (hasAccess) {
           const childNode = await buildDependencyTree(
@@ -3802,10 +3562,7 @@ export const secretV2BridgeServiceFactory = ({
   };
 
   const getSecretVersionsByIds = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     secretId,
     secretVersionNumbers,
     secretPath,
@@ -3819,22 +3576,16 @@ export const secretV2BridgeServiceFactory = ({
   }) => {
     const environment = await projectEnvDAL.findOne({ id: envId, projectId });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    const canRead = permission.can(
-      ProjectPermissionCommitsActions.Read,
-      subject(ProjectPermissionSub.Commits, {
+    const canRead = permission.can({
+      action: ProjectPermissionCommitsActions.Read,
+      subject: ProjectPermissionSub.Commits,
+      fields: {
         environment: environment.slug,
         secretPath
-      })
-    );
+      }
+    });
 
     if (!canRead) throw new ForbiddenRequestError({ message: "You do not have permission to read secret versions" });
 
@@ -3851,11 +3602,11 @@ export const secretV2BridgeServiceFactory = ({
     // commits keep the versions of deleted secrets, which only have their own
     const secret = await secretDAL.findOne({ id: secretId });
     return secretVersions
-      .filter((el) => !el.userId || el.userId === actorId)
+      .filter((el) => !el.userId || el.userId === actor.principal.id)
       .map((el) => {
         const secretValueHidden = [el, secret ?? el].some(
           ({ key, tags }) =>
-            !hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+            !SecretReadAccess.can(permission, ProjectPermissionSecretActions.ReadValue, {
               environment: environment.slug,
               secretPath,
               secretName: key,
@@ -3901,13 +3652,7 @@ export const secretV2BridgeServiceFactory = ({
     return secrets.map((el) => ({ id: el.id, key: el.key }));
   };
 
-  const redactSecretVersionValue = async ({
-    versionId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TRedactSecretVersionValueDTO) => {
+  const redactSecretVersionValue = async ({ versionId, actor }: TRedactSecretVersionValueDTO) => {
     const secretVersion = await secretVersionDAL.findOne({ id: versionId });
 
     if (!secretVersion) {
@@ -3927,26 +3672,23 @@ export const secretV2BridgeServiceFactory = ({
       throw new NotFoundError({ message: `Folder path for folder with ID '${secretVersion.folderId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: secretVersion.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: secretVersion.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, {
+    permission.assert({
+      action: ProjectPermissionSecretActions.Edit,
+      subject: ProjectPermissionSub.Secrets,
+      fields: {
         environment: folderWithPath.environmentSlug,
         secretPath: folderWithPath.path,
         secretName: secret.key,
         secretTags: secret.tags.map((i) => i.slug)
-      })
-    );
+      }
+    });
 
-    if (secret.type === SecretType.Personal && secret.userId !== actorId) {
+    if (secret.type === SecretType.Personal && secret.userId !== actor.principal.id) {
       throw new ForbiddenRequestError({ message: "You are not allowed to access this secret" });
     }
 
@@ -3982,7 +3724,7 @@ export const secretV2BridgeServiceFactory = ({
       secretValueOrgBlindIndex: null,
       isRedacted: true,
       redactedAt: new Date(),
-      redactedByUserId: actorId
+      redactedByUserId: actor.principal.id
     });
 
     // Cascade redaction to child versions (replicated secret versions)
@@ -4019,7 +3761,7 @@ export const secretV2BridgeServiceFactory = ({
             encryptedValue,
             isRedacted: true,
             redactedAt: new Date(),
-            redactedByUserId: actorId
+            redactedByUserId: actor.principal.id
           }
         );
       }

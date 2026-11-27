@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TLoginAliCloudAuthDTO = {
   identityId: string;
@@ -22,7 +22,7 @@ export type TAttachAliCloudAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateAliCloudAuthDTO = {
   identityId: string;
@@ -32,16 +32,16 @@ export type TUpdateAliCloudAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetAliCloudAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeAliCloudAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TAliCloudGetUserResponse = {
   Arn: string;

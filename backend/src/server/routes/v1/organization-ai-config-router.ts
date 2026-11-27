@@ -3,9 +3,9 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ORG_AI_CONFIG } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const AiConfigResponseSchema = z
   .object({
@@ -39,7 +39,7 @@ export const registerOrgAiConfigRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const aiConfig = await server.services.ai.getOrgAiConfig(req.permission);
+      const aiConfig = await server.services.ai.getOrgAiConfig(req.actor);
       return { aiConfig };
     }
   });
@@ -67,11 +67,11 @@ export const registerOrgAiConfigRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const aiConfig = await server.services.ai.updateOrgAiConfig(req.body, req.permission);
+      const aiConfig = await server.services.ai.updateOrgAiConfig(req.body, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_ORG_AI_CONFIG,
           metadata: {

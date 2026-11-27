@@ -94,8 +94,22 @@ func TestAzureADCSFake_Enrollment(t *testing.T) {
 		require.Contains(t, page, "certnew.cer?ReqID=1&amp;Enc=b64")
 		got, cert := call(t, fakes, "bob", azureadcs.Password("bob"), "GET", "/s1/certsrv/certnew.cer?ReqID=1&Enc=b64", "")
 		require.Equal(t, http.StatusOK, got)
-		require.Contains(t, cert, "-----BEGIN CERTIFICATE-----")
+		require.Equal(t, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, parsePEM(t, cert).ExtKeyUsage)
 		ca.ExpectEvent[azureadcs.CertificateIssued](t, func(e azureadcs.CertificateIssued) bool { return e.Template == "HarnessWeb" && e.Username == "bob" })
+	})
+
+	t.Run("should issue the application policies seeded on a template as the certificate's extended key usages", func(t *testing.T) {
+		// Setup
+		fakes, ca := newServer(t, "s4")
+		ca.Seed(t, azureadcs.WithTemplateUsages("WebServer", x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageCodeSigning))
+
+		// Action
+		status, _ := call(t, fakes, "bob", azureadcs.Password("bob"), "POST", "/s4/certsrv/certfnsh.asp", csrForm(t, "signer.test", "WebServer"))
+
+		// Assert
+		require.Equal(t, http.StatusOK, status)
+		_, certPEM := call(t, fakes, "bob", azureadcs.Password("bob"), "GET", "/s4/certsrv/certnew.cer?ReqID=1&Enc=b64", "")
+		require.Equal(t, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageCodeSigning}, parsePEM(t, certPEM).ExtKeyUsage)
 	})
 
 	t.Run("should deny a request for a template the CA does not publish", func(t *testing.T) {

@@ -8,6 +8,7 @@ import { DomainError } from "@app/domains/lib/errors";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -21,7 +22,6 @@ import {
 import { pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ExecutionError, isLockHeldByAnotherOwner } from "@app/lib/red-lock";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { CERT_CLOCK_SKEW_MS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
@@ -78,7 +78,8 @@ export const getNotAfterWithClockSkew = (expiresAt: Date) => new Date(expiresAt.
 export const assertCaInProfileProject = (ca: { projectId: string }, profile: { projectId: string }) => {
   if (ca.projectId !== profile.projectId) {
     throw new ForbiddenRequestError({
-      message: "Certificate Authority must belong to the same project as the profile"
+      message:
+        "The certificate authority attached to this certificate profile is not in this organization. Attach one of your organization's certificate authorities to the profile."
     });
   }
 };
@@ -307,37 +308,39 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   }
 };
 
+// The hash is the part after the first "-", so only spellings without a hyphen can reach this map.
+const SIGNATURE_HASHES: Record<string, string> = {
+  SHA1: "SHA-1",
+  SHA224: "SHA-224",
+  SHA256: "SHA-256",
+  SHA384: "SHA-384",
+  SHA512: "SHA-512",
+  SHA3224: "SHA3-224",
+  SHA3256: "SHA3-256",
+  SHA3384: "SHA3-384",
+  SHA3512: "SHA3-512"
+};
+
 export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm | string) => {
   if (signatureAlgorithm.startsWith("ML-DSA-") || signatureAlgorithm.startsWith("SLH-DSA-")) {
     return { name: signatureAlgorithm, hash: signatureAlgorithm, namedCurve: signatureAlgorithm };
   }
 
-  if (!signatureAlgorithm || typeof signatureAlgorithm !== "string" || !signatureAlgorithm.includes("-")) {
-    throw new Error(`Invalid signature algorithm format: ${signatureAlgorithm}`);
-  }
-
-  const [keyType, hashType] = signatureAlgorithm.split("-");
+  const [keyType, hashType] = typeof signatureAlgorithm === "string" ? signatureAlgorithm.split("-") : [];
 
   if (!keyType || !hashType) {
-    throw new Error(`Malformed signature algorithm: ${signatureAlgorithm}`);
+    throw new BadRequestError({
+      message: `Signature algorithm '${signatureAlgorithm}' is not in a supported format. Use the form <KEY>-<HASH>, such as RSA-SHA256 or ECDSA-SHA384, or an ML-DSA or SLH-DSA algorithm.`
+    });
   }
 
   const normalizeHashType = (hash: string) => {
-    const upperHash = hash.toUpperCase();
+    const normalized = SIGNATURE_HASHES[hash.toUpperCase()];
+    if (normalized) return normalized;
 
-    if (upperHash === "SHA1" || upperHash === "SHA-1") return "SHA-1";
-
-    if (upperHash === "SHA224" || upperHash === "SHA-224") return "SHA-224";
-    if (upperHash === "SHA256" || upperHash === "SHA-256") return "SHA-256";
-    if (upperHash === "SHA384" || upperHash === "SHA-384") return "SHA-384";
-    if (upperHash === "SHA512" || upperHash === "SHA-512") return "SHA-512";
-
-    if (upperHash === "SHA3224" || upperHash === "SHA3-224") return "SHA3-224";
-    if (upperHash === "SHA3256" || upperHash === "SHA3-256") return "SHA3-256";
-    if (upperHash === "SHA3384" || upperHash === "SHA3-384") return "SHA3-384";
-    if (upperHash === "SHA3512" || upperHash === "SHA3-512") return "SHA3-512";
-
-    throw new Error(`Unsupported hash algorithm: ${hash}`);
+    throw new BadRequestError({
+      message: `Hash '${hash}' in signature algorithm '${signatureAlgorithm}' is not supported. Supported hashes: ${Object.keys(SIGNATURE_HASHES).join(", ")}.`
+    });
   };
 
   const normalizedHash = hashType ? normalizeHashType(hashType) : undefined;

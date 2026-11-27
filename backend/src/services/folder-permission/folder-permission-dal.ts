@@ -2,11 +2,11 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { sqlNestRelationships } from "@app/lib/knex";
 
-import { ActorType } from "../auth/auth-type";
 import { TProjectMemberIdentity, TProjectMemberRoleRow, TProjectMemberUser } from "./folder-permission-types";
 
 export type TFolderPermissionDALFactory = ReturnType<typeof folderPermissionDALFactory>;
@@ -249,7 +249,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
         .whereIn(`${TableName.Users}.id`, pageIds)
         .select([...$userColumns(conn), $directMembershipId(conn), ...$roleColumns(conn)]);
 
-      // isPending is deliberately not filtered: permission-dal.getPermission grants access on group
+      // isPending is deliberately not filtered: GrantStore.findActorGrants grants access on group
       // membership alone and the flag is no longer cleared when a user is accepted.
       const viaGroup = $projectMemberships(conn, scope)
         .join(
@@ -418,7 +418,7 @@ export const folderPermissionDALFactory = (db: TDbClient) => {
   };
 
   // Built-in admin role only: a custom role slugged "admin" stores role='custom' and is a regular
-  // grantee. Mirrors isActiveRole (permission-fns.ts) so an expired temporary admin does not count.
+  // grantee. Mirrors TemporaryAccess.isActive (Access Control) so an expired temporary admin does not count.
   // Folder grants replace base permissions at the granted path, so for an admin they could only
   // remove privileges; admins are therefore never accepted as grant targets.
   const isProjectAdmin = async ({ projectId, orgId, actorId, actorType }: TProjectScope & TProjectActor, tx?: Knex) => {

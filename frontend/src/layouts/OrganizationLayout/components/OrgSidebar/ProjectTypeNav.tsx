@@ -22,6 +22,12 @@ import {
 } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+const PRODUCT_SETTINGS_PATHS = {
+  [ProjectType.SecretManager]: "/organizations/$orgId/projects/secret-management/product-settings",
+  [ProjectType.CertificateManager]: "/organizations/$orgId/projects/cert-manager/product-settings",
+  [ProjectType.SecretScanning]: "/organizations/$orgId/projects/secret-scanning/product-settings"
+} as const;
+
 export const ProjectTypeNav = () => {
   const { type: paramTypeSlug, orgId } = useParams({ strict: false }) as {
     type?: string;
@@ -40,8 +46,12 @@ export const ProjectTypeNav = () => {
   // so resolve through the helper rather than comparing the slug directly.
   const projectType = typeSlug ? urlSlugToProjectType(typeSlug) : null;
   const isSecretManager = projectType === ProjectType.SecretManager;
+  const productSettingsPath =
+    projectType && projectType in PRODUCT_SETTINGS_PATHS
+      ? PRODUCT_SETTINGS_PATHS[projectType as keyof typeof PRODUCT_SETTINGS_PATHS]
+      : null;
   const hasProductSettings =
-    isSecretManager ||
+    Boolean(productSettingsPath) ||
     (projectType !== null &&
       hasProjectTemplates(projectType) &&
       permission.can(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates));
@@ -156,11 +166,8 @@ export const ProjectTypeNav = () => {
               isActive={isOnProductSettings}
               tooltip="Product Settings"
             >
-              {isSecretManager ? (
-                <Link
-                  to="/organizations/$orgId/projects/secret-management/product-settings"
-                  params={{ orgId: resolvedOrgId }}
-                >
+              {productSettingsPath ? (
+                <Link to={productSettingsPath} params={{ orgId: resolvedOrgId }}>
                   <SlidersHorizontal className="size-4" />
                   <span>Product Settings</span>
                 </Link>

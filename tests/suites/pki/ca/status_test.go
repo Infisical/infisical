@@ -33,7 +33,7 @@ func TestInternalCA_Disable(t *testing.T) {
 
 		// Assert
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "CA is not active", apierr.Message(res.Body))
+		require.Equal(t, "Certificate authority '"+upd.JSON200.Name+"' is disabled. Set it to active before issuing certificates.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, g.Project, g.Profile))
 	})
 }

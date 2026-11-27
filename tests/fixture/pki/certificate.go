@@ -2,6 +2,7 @@ package pki
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
@@ -131,6 +132,40 @@ func ParseLeaf(tt *testing.T, bundle string) *x509.Certificate {
 	cert, err := x509.ParseCertificate(block.Bytes)
 	require.NoError(tt, err)
 	return cert
+}
+
+// PrivateKey is a parsed private key of any type Infisical issues.
+type PrivateKey interface {
+	Public() crypto.PublicKey
+	Equal(crypto.PrivateKey) bool
+}
+
+// ParsePrivateKey reads the first unencrypted private key in a PEM text, which may be a
+// bundle holding certificates too.
+func ParsePrivateKey(tt *testing.T, text string) PrivateKey {
+	tt.Helper()
+	rest := []byte(text)
+	for {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		require.NotNil(tt, block, "no private key in %q", text)
+		var (
+			key any
+			err error
+		)
+		switch block.Type {
+		case "PRIVATE KEY":
+			key, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+		case "RSA PRIVATE KEY":
+			key, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+		case "EC PRIVATE KEY":
+			key, err = x509.ParseECPrivateKey(block.Bytes)
+		default:
+			continue
+		}
+		require.NoError(tt, err)
+		return key.(PrivateKey)
+	}
 }
 
 // Revoke revokes a certificate as a principal allowed to, such as the application's

@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listProjects as getRailwayProjects } from "./railway-connection-fns";
@@ -8,11 +8,11 @@ import { TRailwayConnection } from "./railway-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TRailwayConnection>;
 
 export const railwayConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Railway, connectionId, actor);
     try {
       const projects = await getRailwayProjects(appConnection);

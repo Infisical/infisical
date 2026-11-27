@@ -1,12 +1,13 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
-export type TGetCertificateCleanupConfigDTO = TProjectPermission;
+export type TGetCertificateCleanupConfigDTO = { projectId: string } & TActorInput;
 
 export type TUpdateCertificateCleanupConfigDTO = {
   isEnabled?: boolean;
   postExpiryRetentionDays?: number;
   skipCertsWithActiveSyncs?: boolean;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export enum CleanupRunStatus {
   Success = "success",

@@ -1,8 +1,9 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { memberOauthSetupOf } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";
@@ -13,15 +14,6 @@ import {
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
 import { agentVaultPersonalValueServiceFactory } from "./agent-vault-personal-value-service";
-
-vi.mock("../agent-vault/agent-vault-permission", () => ({
-  getAgentVaultGrantedReachability: vi.fn(async () => ({
-    reachesEveryBundle: false,
-    accessBundleIds: ["22222222-2222-4222-8222-222222222222"],
-    grantedAccessBundleIds: ["22222222-2222-4222-8222-222222222222"],
-    permission: createMongoAbility([{ action: "read", subject: "agent-vault-access-bundles" }])
-  }))
-}));
 
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 const BUNDLE_ID = "22222222-2222-4222-8222-222222222222";
@@ -96,8 +88,14 @@ const setup = ({
         encryptedCredential: Buffer.from("sealed-tokens")
       }))
     } as never,
-    permissionService: {} as never,
-    membershipDAL: {} as never,
+    accessBundlePermissionService: {
+      getGrantedAccessBundlePermission: vi.fn(async () => ({
+        reachesEveryBundle: false,
+        accessBundleIds: [BUNDLE_ID],
+        grantedAccessBundleIds: [BUNDLE_ID],
+        permission: Permission.fromRules({ rules: [{ action: "read", subject: "agent-vault-access-bundles" }] })
+      }))
+    } as never,
     kmsDataKeyService: {} as never
   });
 
@@ -107,11 +105,9 @@ const setup = ({
       serviceId: SERVICE_ID,
       authorizationId: "authorization",
       ctx: {
-        actor: ActorType.USER,
-        actorId: USER_ID,
-        actorAuthMethod: null,
-        actorOrgId: "org"
-      }
+        principal: { type: ActorType.USER, id: USER_ID, authMethod: null },
+        org: { id: "org" }
+      } as unknown as TActorContext
     });
 
   return { connect, create, restore, claimAuthorization };
@@ -216,8 +212,7 @@ describe("findStatusesForOwner", () => {
       agentVaultVariableDAL: {} as never,
       agentVaultServiceDAL: {} as never,
       agentVaultOauthService: {} as never,
-      permissionService: {} as never,
-      membershipDAL: {} as never,
+      accessBundlePermissionService: {} as never,
       kmsDataKeyService: {} as never
     }).findStatusesForOwner({
       projectId: PROJECT_ID,

@@ -1,12 +1,8 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionSecretRotationActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { ProjectPermissionSecretRotationActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
   SECRET_ROTATION_FAILED_EVENT,
@@ -41,7 +37,7 @@ export type TSecretRotationTarget = TSecretRotationWithLocation & {
 export type TSecretRotationAlertProviderDep = {
   secretRotationAlertDAL: Pick<TSecretRotationAlertDALFactory, "findRotationsByIds" | "findRotationNamesByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
 };
 
 const providerName = (rotationType: string) => SECRET_ROTATION_NAME_MAP[rotationType as SecretRotation] ?? rotationType;
@@ -49,7 +45,7 @@ const providerName = (rotationType: string) => SECRET_ROTATION_NAME_MAP[rotation
 export const secretRotationAlertProviderFactory = ({
   secretRotationAlertDAL,
   folderDAL,
-  permissionService
+  secretsPermissionService
 }: TSecretRotationAlertProviderDep): IEventAlertProvider<TSecretRotationTarget> => {
   const $loadRotationsWithPath = async (rotationIds: string[]) => {
     const rotations = await secretRotationAlertDAL.findRotationsByIds(rotationIds);
@@ -172,60 +168,61 @@ export const secretRotationAlertProviderFactory = ({
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
     const projectId = $requireProject(input.projectId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      projectId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor: input.actor, projectId });
 
     if (!input.resourceId) {
       if (input.action !== AlertPermissionAction.Read) {
         // A test send for a rotation that is still being created. It reads nothing back.
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretRotationActions.Create,
-          ProjectPermissionSub.SecretRotation
-        );
+        permission.assert({
+          action: ProjectPermissionSecretRotationActions.Create,
+          subject: ProjectPermissionSub.SecretRotation
+        });
         return;
       }
 
       // Listing without a rotation returns the alerts of every rotation in the project, so a read limited
       // to some environments or paths, or narrowed by a deny rule, would expose the rest.
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretRotationActions.Read,
-        ProjectPermissionSub.SecretRotation
-      );
-      const readRules = permission.rulesFor(
-        ProjectPermissionSecretRotationActions.Read,
-        ProjectPermissionSub.SecretRotation
-      );
+      permission.assert({
+        action: ProjectPermissionSecretRotationActions.Read,
+        subject: ProjectPermissionSub.SecretRotation
+      });
+      const readRules = permission
+        .toAbility()
+        .rulesFor(ProjectPermissionSecretRotationActions.Read, ProjectPermissionSub.SecretRotation);
       const canReadEveryRotation =
         readRules.some((rule) => !rule.inverted && !rule.conditions) && !readRules.some((rule) => rule.inverted);
       if (!canReadEveryRotation) {
-        // Built by hand because throwUnlessCan passes a partial read, and a CASL error is what the
+        // Built by hand because the check above passes a partial read, and a denial is what the
         // permission-denied audit hook records.
-        const denial = ForbiddenError.from(permission);
-        denial.action = ProjectPermissionSecretRotationActions.Read;
-        denial.subject = ProjectPermissionSub.SecretRotation;
-        denial.subjectType = ProjectPermissionSub.SecretRotation;
-        throw denial;
+        throw new PermissionDeniedError({
+          denial: {
+            action: ProjectPermissionSecretRotationActions.Read,
+            subject: ProjectPermissionSub.SecretRotation,
+            matchedRules: readRules.map(({ action, inverted, subject, conditions }) => ({
+              action,
+              inverted,
+              subject,
+              conditions
+            }))
+          }
+        });
       }
       return;
     }
 
     const rotation = await $loadInScopeRotation({ orgId: input.orgId, projectId, resourceId: input.resourceId });
-    ForbiddenError.from(permission).throwUnlessCan(
-      input.action === AlertPermissionAction.Read
-        ? ProjectPermissionSecretRotationActions.Read
-        : ProjectPermissionSecretRotationActions.Edit,
-      subject(ProjectPermissionSub.SecretRotation, {
+    permission.assert({
+      action:
+        input.action === AlertPermissionAction.Read
+          ? ProjectPermissionSecretRotationActions.Read
+          : ProjectPermissionSecretRotationActions.Edit,
+      subject: ProjectPermissionSub.SecretRotation,
+      fields: {
         environment: rotation.envSlug,
         secretPath: rotation.secretPath,
         connectionId: rotation.connectionId
-      })
-    );
+      }
+    });
   };
 
   return {

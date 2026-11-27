@@ -4,6 +4,7 @@ import { ApprovalRequestsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { MaxAccessDurationSecondsResponseSchema } from "@app/ee/services/pam/pam-policies";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -19,7 +20,6 @@ import {
   AutoApprovalOutcomeSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { parsePamAccessDuration } from "@app/services/approval-policy/pam-access/pam-access-policy-fns";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 // The evidence holds data fetched from other services, so only its outcome is returned
@@ -92,15 +92,12 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accessType: req.body.accessType,
         breakGlass: req.body.breakGlass,
         autoApprovalInputs: req.body.autoApprovalInputs,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCESS_REQUEST_CREATE,
@@ -123,7 +120,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         const bypass = result.breakGlassMetadata;
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalPamProjectId,
           event: {
             type: EventType.PAM_ACCESS_POLICY_BYPASSED,
@@ -133,7 +130,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
               policyName: bypass.policyName,
               requestId: result.request.id,
               grantId: bypass.grantId,
-              granteeUserId: req.permission.id,
+              granteeUserId: req.actor.id,
               granteeName: bypass.granteeName ?? undefined,
               granteeEmail: bypass.granteeEmail ?? undefined,
               accountId: bypass.accountId,
@@ -153,13 +150,13 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         const autoApprovedEvent = await server.services.approvalPolicy.buildAuditEvent({
           action: ApprovalAuditAction.RequestAutoApproved,
           request: result.request,
-          actorId: req.permission.id
+          actorId: req.actor.id
         });
         if (autoApprovedEvent) {
           await server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             actor: { type: ActorType.PLATFORM, metadata: {} },
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: req.internalPamProjectId,
             event: autoApprovedEvent
           });
@@ -170,10 +167,10 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccessRequestCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: result.accountType,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -208,10 +205,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         status: req.query.status,
         offset: req.query.offset,
         limit: req.query.limit,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return result;
     }
@@ -236,10 +230,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       const result = await server.services.pamAccessRequest.listPendingMyApproval({
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return result;
     }
@@ -261,10 +252,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const result = await server.services.pamAccessRequest.getCount({
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return result;
     }
@@ -306,10 +294,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
         accessType: req.query.accessType,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return result;
     }

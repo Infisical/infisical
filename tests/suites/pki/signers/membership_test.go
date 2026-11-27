@@ -179,7 +179,7 @@ func TestSigner_Membership(t *testing.T) {
 			// Assert
 			require.Equal(t, http.StatusOK, res.StatusCode)
 			require.Equal(t, "operator", a.roles(t, tn, s.ID)[actorID])
-			requireSigns(t, tn, signer, s.ID)
+			pki.RequireSigns(t, pki.SignerCertificate(t, tn, s.ID), signer, s.ID)
 		})
 
 		t.Run("should stop a "+a.kind+" signing once its role changes to auditor", func(t *testing.T) {

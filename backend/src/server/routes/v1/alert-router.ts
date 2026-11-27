@@ -2,6 +2,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { ALERTING, ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -13,7 +14,6 @@ import {
   MAX_CHANNELS_PER_ALERT,
   MAX_RECIPIENTS_PER_CHANNEL
 } from "@app/services/alert/alert-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { ChannelRecipientSchema, CreateChannelInputSchema, UpdateChannelInputSchema } from "./alert-channel-schemas";
 
@@ -63,7 +63,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     await server.services.telemetry.sendPostHogEvents({
       ...telemetryEvent,
       distinctId: getTelemetryDistinctId(req),
-      organizationId: req.permission.orgId
+      organizationId: req.actor.orgId
     });
   };
 
@@ -97,10 +97,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.alert.createAlert({
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -144,15 +141,12 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId, resourceName, ...result } = await server.services.alertChannelTest.testChannel({
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        ...(projectId ? { projectId } : { orgId: req.permission.orgId }),
+        ...(projectId ? { projectId } : { orgId: req.actor.orgId }),
         event: server.services.alert.getAuditEvent({
           action: AlertAuditAction.TestChannel,
           test: {
@@ -197,10 +191,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alerts = await server.services.alert.listAlerts({
         ...req.query,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
       return { alerts };
     }
@@ -222,10 +213,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.alert.getAlertById({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
       return { alert };
     }
@@ -260,10 +248,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
       const alert = await server.services.alert.updateAlert({
         alertId: req.params.alertId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -294,10 +279,7 @@ export const registerAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.alert.deleteAlert({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

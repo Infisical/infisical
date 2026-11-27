@@ -10,4 +10,6 @@ export type TDomainKeyStore = Pick<
   | "deleteItem"
   | "deleteItemIfValue"
   | "incrementByWithExpiry"
+  | "pgIncrementBy"
+  | "pgGetIntItem"
 >;

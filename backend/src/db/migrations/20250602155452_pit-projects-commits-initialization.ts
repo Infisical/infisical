@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { chunkArray } from "@app/lib/fn";
 import { selectAllTableCols } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 import { ChangeType } from "@app/services/folder-commit/folder-commit-service";
 
 import {

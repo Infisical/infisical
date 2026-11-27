@@ -23,11 +23,11 @@ import {
   SecretScanningFindings,
   SecretScanningProjects
 } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SecretScanningDataSourceOptionsSchema = z.discriminatedUnion("type", [
@@ -58,7 +58,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretScanningFindingClosed,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           status: finding.status as SecretScanningFindingStatus
         }
@@ -84,10 +84,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const projectId = await server.services.secretScanningV2Instance.resolveActiveProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
       return { projectId };
     }
@@ -123,10 +120,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) =>
       server.services.secretScanningV2Instance.getInstanceState({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       })
   });
 
@@ -179,12 +173,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { permission } = req;
+      const { actor } = req;
       const projectId = req.internalSecretScanningProjectId;
 
       const dataSources = await server.services.secretScanningV2.listSecretScanningDataSourcesByProjectId(
         { projectId },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -242,14 +236,14 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { permission } = req;
+      const { actor } = req;
       const projectId = req.internalSecretScanningProjectId;
       const { status, dataSourceId, resourceId, scanId, orderBy, orderDirection, offset, limit } = req.query;
 
       const { findings, totalCount } = await server.services.secretScanningV2.listSecretScanningFindingsByProjectId(
         projectId,
         { status, dataSourceId, resourceId, scanId, orderBy, orderDirection, offset, limit },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -302,13 +296,13 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       const {
         params: { findingId },
         query: { resourceId, offset, limit },
-        permission
+        actor
       } = req;
 
       const { locations, totalCount, finding } =
         await server.services.secretScanningV2.listSecretScanningFindingLocations(
           { findingId, resourceId, offset, limit },
-          permission
+          actor
         );
 
       await server.services.auditLog.createAuditLog({
@@ -360,11 +354,11 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       const {
         params: { findingId },
         body,
-        permission
+        actor
       } = req;
 
       const { finding, projectId, previousStatus } =
-        await server.services.secretScanningV2.updateSecretScanningFindingById({ findingId, ...body }, permission);
+        await server.services.secretScanningV2.updateSecretScanningFindingById({ findingId, ...body }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -413,11 +407,11 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { body, permission } = req;
+      const { body, actor } = req;
 
       const updatedFindingPromises = body.map(async (findingUpdatePayload) => {
         const { finding, projectId, previousStatus } =
-          await server.services.secretScanningV2.updateSecretScanningFindingById(findingUpdatePayload, permission);
+          await server.services.secretScanningV2.updateSecretScanningFindingById(findingUpdatePayload, actor);
 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -472,10 +466,10 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { permission } = req;
+      const { actor } = req;
       const projectId = req.internalSecretScanningProjectId;
 
-      const config = await server.services.secretScanningV2.findSecretScanningConfigByProjectId(projectId, permission);
+      const config = await server.services.secretScanningV2.findSecretScanningConfigByProjectId(projectId, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -517,13 +511,10 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { body, permission } = req;
+      const { body, actor } = req;
       const projectId = req.internalSecretScanningProjectId;
 
-      const config = await server.services.secretScanningV2.upsertSecretScanningConfig(
-        { projectId, ...body },
-        permission
-      );
+      const config = await server.services.secretScanningV2.upsertSecretScanningConfig({ projectId, ...body }, actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -571,12 +562,12 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     handler: async (req) => {
       const {
         query: { projectId },
-        permission
+        actor
       } = req;
 
       const dataSources = await server.services.secretScanningV2.listSecretScanningDataSourcesWithDetailsByProjectId(
         { projectId },
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -618,14 +609,11 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { permission } = req;
+      const { actor } = req;
       const projectId = req.internalSecretScanningProjectId;
 
       const unresolvedFindings =
-        await server.services.secretScanningV2.getSecretScanningUnresolvedFindingsCountByProjectId(
-          projectId,
-          permission
-        );
+        await server.services.secretScanningV2.getSecretScanningUnresolvedFindingsCountByProjectId(projectId, actor);
 
       return { unresolvedFindings };
     }

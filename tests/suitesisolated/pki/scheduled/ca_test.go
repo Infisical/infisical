@@ -42,6 +42,7 @@ func TestCaAutoRenewalJob(t *testing.T) {
 
 	t.Run("should renew a CA inside its renew-before window with a certificate valid as long as the old one", func(t *testing.T) {
 		// Setup
+		avoidScheduledFire(t, caRenewalFire)
 		tn := h.NewTenant(t)
 		ca := expiringRootCA(t, tn, pki.CertManager(t, tn))
 		before := pki.CACertificate(t, tn.Admin, ca.ID)

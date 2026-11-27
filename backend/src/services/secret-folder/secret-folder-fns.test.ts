@@ -1,23 +1,24 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole, TSecretFolders } from "@app/db/schemas";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
+import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
+  ProjectAccess,
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  StandardProjectRoles
+} from "@app/domains/platform/projects/ce/module";
+import { FolderGrant, FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
-import { conditionsMatcher } from "@app/lib/casl";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { ActorType } from "../auth/auth-type";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -687,7 +688,7 @@ describe("findDirectImportEnteringEnforcedPath", () => {
 });
 
 const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]) =>
-  createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+  Permission.fromRules<ProjectPermissionSet>({ rules });
 
 const canReadAll = buildAccess([
   { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },
@@ -773,15 +774,22 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
   const folderGrant = (
     role: SecretFolderRole,
     secretPath: string,
-    appliesToSubfolders = false
-  ): TProjectFolderScopedPrivilege => ({
-    id: `grant-${secretPath}`,
-    folderId: `folder-${secretPath}`,
-    role,
-    environmentSlug: "dev",
-    secretPath,
-    appliesToSubfolders
-  });
+    appliesToSubfolders = false,
+    environmentSlug = "dev"
+  ) =>
+    FolderGrant.restore({
+      id: `grant-${secretPath}`,
+      name: "",
+      actorId: null,
+      folderId: `folder-${secretPath}`,
+      role,
+      environmentSlug,
+      secretPath,
+      appliesToSubfolders,
+      isTemporary: false,
+      temporaryAccessStartTime: null,
+      temporaryAccessEndTime: null
+    });
 
   const folderDeleteRole = (conditions: object, inverted = false) => ({
     role: ProjectMembershipRole.Custom,
@@ -790,12 +798,15 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
     ])
   });
 
-  const accessOf = (roles: { role: string; permissions?: unknown }[], grants: TProjectFolderScopedPrivilege[] = []) =>
-    buildAccess(
-      buildProjectPermissionRules(roles, ProjectType.SecretManager, grants) as RawRuleOf<
-        MongoAbility<ProjectPermissionSet>
-      >[]
-    );
+  const accessOf = (roles: { role: string; permissions?: unknown }[], grants: FolderGrant[] = []) =>
+    Permission.fromRules<ProjectPermissionSet>({
+      rules: ProjectAccess.rulesOf(
+        roles.map(({ role, permissions }) =>
+          role === ProjectMembershipRole.Custom ? Grant.custom(permissions) : Grant.restore({ slug: role })
+        ),
+        StandardProjectRoles.generic(ProjectType.SecretManager)
+      ).then(FolderGrants.of(grants).rules())
+    });
 
   const noAccess = [{ role: ProjectMembershipRole.NoAccess, permissions: [] }];
   const member = [{ role: ProjectMembershipRole.Member, permissions: [] }];
@@ -883,7 +894,7 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
 
   test("ignores a lower role held in another environment or on a sibling folder", () => {
     const caller = accessOf(member, [
-      { ...folderGrant(SecretFolderRole.List, "/apps/scratch", true), environmentSlug: "prod" },
+      folderGrant(SecretFolderRole.List, "/apps/scratch", true, "prod"),
       folderGrant(SecretFolderRole.List, "/apps/web", true)
     ]);
 

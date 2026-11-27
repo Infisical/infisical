@@ -2,6 +2,8 @@ import type { ParsedLocation } from "@tanstack/react-router";
 
 const organizationSwitchSections = [
   "projects/secret-management/product-settings",
+  "projects/cert-manager/product-settings",
+  "projects/secret-scanning/product-settings",
   "projects/secret-management/secret-sharing",
   "projects/secret-management/insights",
   "projects/kms/kmip-servers",

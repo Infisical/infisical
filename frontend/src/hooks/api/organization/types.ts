@@ -49,19 +49,30 @@ export type Organization = {
   pamProjectId: string | null;
 };
 
+export type TOrgSsoSettings = {
+  orgId: string;
+  authEnforced: boolean;
+  googleSsoAuthEnforced: boolean;
+  bypassOrgAuthEnabled: boolean;
+  ssoMfaTrust: SsoMfaTrust;
+};
+
+export type UpdateOrgSsoSettingsDTO = {
+  authEnforced?: boolean;
+  googleSsoAuthEnforced?: boolean;
+  bypassOrgAuthEnabled?: boolean;
+  ssoMfaTrust?: SsoMfaTrust;
+};
+
 export type UpdateOrgDTO = {
   orgId: string;
   name?: string;
-  authEnforced?: boolean;
-  googleSsoAuthEnforced?: boolean;
   scimEnabled?: boolean;
   slug?: string;
   defaultMembershipRoleSlug?: string;
   enforceMfa?: boolean;
   allowedMfaMethods?: MfaMethod[];
-  ssoMfaTrust?: SsoMfaTrust;
   allowSecretSharingOutsideOrganization?: boolean;
-  bypassOrgAuthEnabled?: boolean;
   userTokenExpiration?: string;
   secretsProductEnabled?: boolean;
   pkiProductEnabled?: boolean;
