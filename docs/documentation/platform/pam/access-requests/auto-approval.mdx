@@ -105,11 +105,14 @@ To require sign-off in Jira, use **is approved in Jira** rather than **has statu
 | **has status** | The issue's status is one of the values |
 | **is in team** | The issue is in one of the teams |
 | **has label** | The issue has at least one of the labels |
+| **had its status set by** | One of the listed people, by email address, made the issue's latest status change. It never passes if the requester made that change, if an integration or automation made it, if the issue was reassigned afterward, or if Linear doesn't share that person's email address with the connection's API key. If the status never changed, the person who created the issue counts as having set it. |
 
 Rules store team keys, so update them if you change a team's key in Linear. Infisical rejects issues that are archived or in the trash.
 
+To require sign-off in Linear, combine **has status** with **had its status set by**. For example, a rule with **has status** `Approved` and **had its status set by** your security leads passes only after one of them moves the issue to `Approved`.
+
 <Warning>
-  Linear has no approvals. Anyone on a team can usually create an issue, assign it to themselves, and change its status and labels, including the requester. Don't rely on Linear checks alone to show that someone else signed off. Limit the rule to trusted requesters with a **Requester is** condition, or add an [AI check](#ai-checks) that reads the issue's comments. In the AI check's instructions, name the people who can approve by email address, since Linear users can change their own names.
+  Linear has no approvals, and anyone on a team can usually create an issue, assign it to themselves, and change its status and labels. Without **had its status set by**, Linear checks don't show that someone else signed off. An [AI check](#ai-checks) that reads the issue's comments can also look for sign-off. Name the people who can approve by email address in its instructions, since Linear users can change their own names. Infisical reads the issue's latest 50 history entries, so on a very busy issue the check fails if the status change is older than that.
 </Warning>
 
 ### Requester in incident.io

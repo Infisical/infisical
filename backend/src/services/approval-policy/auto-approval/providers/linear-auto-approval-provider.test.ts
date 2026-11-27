@@ -1,5 +1,12 @@
 import { BadRequestError } from "@app/lib/errors";
-import { getLinearIssue, LinearGraphqlError, TLinearIssue, TLinearUser } from "@app/services/app-connection/linear";
+import {
+  getLinearIssue,
+  getLinearIssueHistory,
+  LinearGraphqlError,
+  TLinearHistoryEntry,
+  TLinearIssue,
+  TLinearUser
+} from "@app/services/app-connection/linear";
 
 import { TAutoApprovalContext } from "../auto-approval-types";
 import {
@@ -13,7 +20,8 @@ import {
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("@app/services/app-connection/linear", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/services/app-connection/linear")>()),
-  getLinearIssue: vi.fn()
+  getLinearIssue: vi.fn(),
+  getLinearIssueHistory: vi.fn()
 }));
 
 const conn = { credentials: { apiKey: "lin_api_x", workspaceUrlKey: "acme" } } as Parameters<
@@ -29,6 +37,7 @@ const facts = (overrides: Partial<TLinearIssueFacts> = {}): TLinearIssueFacts =>
   teamKey: "ENG",
   labels: ["prod-access"],
   assignee: null,
+  statusSetter: null,
   ...overrides
 });
 
@@ -100,6 +109,18 @@ describe("Linear issue checks", () => {
   test("assignee check fails closed when it was not fetched", () => {
     expect(check(LinearIssueConstraint.AssignedToRequester, facts()).pass).toBe(false);
   });
+
+  test("status setter check passes only for a listed person, ignoring case", () => {
+    const setBy = (email: string | null, reason: string | null = null) => facts({ statusSetter: { email, reason } });
+    expect(check(LinearIssueConstraint.StatusSetBy, setBy("lead@acme.com"), ["Lead@acme.com"]).pass).toBe(true);
+    expect(check(LinearIssueConstraint.StatusSetBy, setBy("dev2@acme.com"), ["lead@acme.com", "cto@acme.com"])).toEqual(
+      { pass: false, reason: "status wasn't set by lead@acme.com or cto@acme.com" }
+    );
+    expect(check(LinearIssueConstraint.StatusSetBy, setBy(null, "ENG-123 was reassigned"), ["x@acme.com"]).reason).toBe(
+      "ENG-123 was reassigned"
+    );
+    expect(check(LinearIssueConstraint.StatusSetBy, facts(), ["x@acme.com"]).pass).toBe(false);
+  });
 });
 
 describe("resolving a Linear issue", () => {
@@ -123,6 +144,7 @@ describe("resolving a Linear issue", () => {
 
   beforeEach(() => {
     vi.mocked(getLinearIssue).mockReset().mockResolvedValue(issue());
+    vi.mocked(getLinearIssueHistory).mockReset();
   });
 
   test("keeps the facts the checks read", async () => {
@@ -132,8 +154,10 @@ describe("resolving a Linear issue", () => {
       status: "Approved",
       teamKey: "ENG",
       labels: ["prod-access"],
-      assignee: null
+      assignee: null,
+      statusSetter: null
     });
+    expect(getLinearIssueHistory).not.toHaveBeenCalled();
   });
 
   test("matches the assignee only by a visible email address", async () => {
@@ -189,5 +213,85 @@ describe("resolving a Linear issue", () => {
   test("identifies an issue by Linear's id, which survives a move to another team", async () => {
     vi.mocked(getLinearIssue).mockResolvedValue({ ...issue(), identifier: "OPS-9" });
     expect(subject.getStableId?.(await resolveIssue([]))).toBe("uuid-1");
+  });
+
+  describe("who set the status", () => {
+    const lead = { id: "u-lead", email: "Lead@acme.com" };
+    const dev = { id: "u-dev", email: "dev@acme.com" };
+    const moved = (actor: TLinearUser | null, at: number, extra: Partial<TLinearHistoryEntry> = {}) => ({
+      id: `h${at}`,
+      createdAt: `2026-01-0${at}T00:00:00Z`,
+      actor,
+      fromStateId: "todo",
+      toStateId: "approved",
+      ...extra
+    });
+    const reassigned = (at: number) => ({
+      id: `h${at}`,
+      createdAt: `2026-01-0${at}T00:00:00Z`,
+      actor: dev,
+      fromAssigneeId: "u-other",
+      toAssigneeId: "u-dev"
+    });
+    const setterOf = async (entries: TLinearHistoryEntry[], complete = true, creator: TLinearUser | null = null) => {
+      vi.mocked(getLinearIssue).mockResolvedValue({ ...issue(), creator });
+      vi.mocked(getLinearIssueHistory).mockResolvedValue({ entries, complete });
+      return (await resolveIssue([LinearIssueConstraint.StatusSetBy])).statusSetter;
+    };
+
+    test("reads the person behind the latest status change", async () => {
+      expect(await setterOf([moved(lead, 3), moved(dev, 1)])).toEqual({ email: "lead@acme.com", reason: null });
+      expect(getLinearIssueHistory).toHaveBeenCalledWith(conn, "uuid-1", undefined);
+    });
+
+    test("ignores entries that don't change the status", async () => {
+      expect(
+        await setterOf([{ id: "c", actor: dev, fromStateId: "approved", toStateId: "approved" }, moved(lead, 2)])
+      ).toEqual({ email: "lead@acme.com", reason: null });
+    });
+
+    test("refuses a status the requester set", async () => {
+      expect((await setterOf([moved(dev, 2), moved(lead, 1)]))?.reason).toBe(
+        "ENG-123's status was set by the requester"
+      );
+    });
+
+    test("refuses a status an automation set", async () => {
+      expect((await setterOf([moved(null, 2, { botActor: { name: "GitHub" } })]))?.reason).toBe(
+        "ENG-123's status was set by GitHub, not a person"
+      );
+    });
+
+    test("refuses an issue reassigned after its status was set", async () => {
+      expect((await setterOf([reassigned(3), moved(lead, 2)]))?.reason).toBe(
+        "ENG-123 was reassigned after its status was set"
+      );
+      expect(await setterOf([moved(lead, 3), reassigned(2)])).toEqual({ email: "lead@acme.com", reason: null });
+    });
+
+    test("falls back to the creator when the status never changed", async () => {
+      expect(await setterOf([], true, lead)).toEqual({ email: "lead@acme.com", reason: null });
+      expect((await setterOf([reassigned(2)], true, lead))?.reason).toBe(
+        "ENG-123 was reassigned after its status was set"
+      );
+      expect((await setterOf([], false, lead))?.reason).toBe(
+        "Couldn't find who set the status of ENG-123 in its recent history"
+      );
+    });
+
+    test("refuses a setter whose email Linear hides", async () => {
+      expect((await setterOf([moved({ id: "u" }, 2)]))?.reason).toBe(
+        "Linear doesn't share the email address of whoever set ENG-123's status"
+      );
+    });
+
+    test("fails closed when the history can't be read", async () => {
+      vi.mocked(getLinearIssueHistory).mockRejectedValue(
+        new LinearGraphqlError({ message: "x", extensions: { code: "RATELIMITED" } })
+      );
+      expect((await resolveIssue([LinearIssueConstraint.StatusSetBy])).statusSetter?.reason).toBe(
+        "Couldn't read the history of ENG-123: Linear is rate limiting the connection's API key"
+      );
+    });
   });
 });

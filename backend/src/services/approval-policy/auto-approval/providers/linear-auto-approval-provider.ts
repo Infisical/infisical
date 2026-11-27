@@ -4,13 +4,16 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import {
   getLinearErrorMessage,
   getLinearIssue,
+  getLinearIssueHistory,
   isLinearNotFoundError,
   LINEAR_ISSUE_IDENTIFIER_REGEX,
   LINEAR_SITE_HOST,
   listLinearLabels,
   listLinearStatuses,
   listLinearTeams,
+  listLinearUsers,
   TLinearConnection,
+  TLinearHistoryEntry,
   TLinearIssue
 } from "@app/services/app-connection/linear";
 
@@ -19,6 +22,7 @@ import {
   AutoApprovalConstraintValue,
   TAutoApprovalContext,
   TAutoApprovalProvider,
+  TAutoApprovalProviderDeps,
   TAutoApprovalTestResult
 } from "../auto-approval-types";
 
@@ -28,7 +32,8 @@ export enum LinearIssueConstraint {
   AssignedToRequester = "assigned-to-requester",
   Status = "status",
   Team = "team",
-  Label = "label"
+  Label = "label",
+  StatusSetBy = "status-set-by"
 }
 
 export type TLinearIssueFacts = {
@@ -39,6 +44,7 @@ export type TLinearIssueFacts = {
   teamKey: string | null;
   labels: string[];
   assignee: { matchesRequester: boolean; reason: string | null } | null;
+  statusSetter: { email: string | null; reason: string | null } | null;
 };
 
 const MAX_ISSUE_INPUT_LENGTH = 2048;
@@ -123,6 +129,49 @@ const matchAssigneeToRequester = (
     : { matchesRequester: false, reason: `${issue.identifier} isn't assigned to the requester` };
 };
 
+const isAssigneeChange = (entry: TLinearHistoryEntry) =>
+  (entry.fromAssigneeId ?? null) !== (entry.toAssigneeId ?? null);
+
+const readStatusSetter = async (
+  conn: TLinearConnection,
+  issue: TLinearIssue,
+  ctx: TAutoApprovalContext,
+  deps: TAutoApprovalProviderDeps
+): Promise<NonNullable<TLinearIssueFacts["statusSetter"]>> => {
+  const { identifier } = issue;
+  const fail = (reason: string) => ({ email: null, reason });
+
+  let history;
+  try {
+    history = await getLinearIssueHistory(conn, issue.id || identifier, deps.signal);
+  } catch (error) {
+    logger.warn({ err: error }, `Couldn't read Linear issue history [identifier=${identifier}]`);
+    return fail(`Couldn't read the history of ${identifier}: ${getLinearErrorMessage(error)}`);
+  }
+
+  const { entries, complete } = history;
+  const index = entries.findIndex((entry) => entry.toStateId && entry.toStateId !== entry.fromStateId);
+  if (index === -1 && !complete) return fail(`Couldn't find who set the status of ${identifier} in its recent history`);
+
+  // An issue whose status never changed got it when it was created
+  const setter = index === -1 ? issue.creator : entries[index].actor;
+  if (!setter) {
+    const bot = index === -1 ? null : entries[index].botActor?.name;
+    return fail(`${identifier}'s status was set by ${bot || "an integration or automation"}, not a person`);
+  }
+
+  const email = setter.email?.trim().toLowerCase();
+  if (!email) return fail(`Linear doesn't share the email address of whoever set ${identifier}'s status`);
+  if (email === ctx.requester.email?.trim().toLowerCase()) {
+    return fail(`${identifier}'s status was set by the requester`);
+  }
+  if (entries.slice(0, index === -1 ? entries.length : index).some(isAssigneeChange)) {
+    return fail(`${identifier} was reassigned after its status was set`);
+  }
+
+  return { email, reason: null };
+};
+
 const testValue = (actual: string | null, values: string[], noun: string): TAutoApprovalTestResult =>
   includesIgnoreCase(values, actual) ? { pass: true } : { pass: false, reason: `${noun} isn't ${anyOf(values)}` };
 
@@ -171,6 +220,9 @@ export const LINEAR_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TLinearConnect
           labels: (issue.labels?.nodes ?? []).map(({ name }) => name).slice(0, MAX_STORED_LABELS),
           assignee: Object.hasOwn(valuesByConstraint, LinearIssueConstraint.AssignedToRequester)
             ? matchAssigneeToRequester({ ...issue, identifier }, ctx)
+            : null,
+          statusSetter: Object.hasOwn(valuesByConstraint, LinearIssueConstraint.StatusSetBy)
+            ? await readStatusSetter(conn, { ...issue, identifier }, ctx, deps)
             : null
         };
       },
@@ -225,6 +277,32 @@ export const LINEAR_AUTO_APPROVAL_PROVIDER: TAutoApprovalProvider<TLinearConnect
           test: (facts: TLinearIssueFacts, values) => {
             if (facts.labels.some((label) => includesIgnoreCase(values, label))) return { pass: true };
             return { pass: false, reason: `doesn't have label ${anyOf(values)}` };
+          }
+        },
+        [LinearIssueConstraint.StatusSetBy]: {
+          label: "had its status set by",
+          value: AutoApprovalConstraintValue.Many,
+          listOptions: async (conn, { search, selected }, deps) => {
+            const [users, picked] = await withOptionsError("users", () =>
+              Promise.all([
+                listLinearUsers(conn, { search }, deps.signal),
+                selected.length ? listLinearUsers(conn, { emails: selected }, deps.signal) : Promise.resolve([])
+              ])
+            );
+            const byEmail = new Map(
+              [...picked, ...users].map((user) => [user.email.toLowerCase(), user.name || user.displayName || ""])
+            );
+            return [...byEmail.entries()].slice(0, MAX_OPTIONS).map(([email, name]) => ({
+              value: email,
+              label: name && name.toLowerCase() !== email ? `${name} (${email})` : email
+            }));
+          },
+          test: (facts: TLinearIssueFacts, values) => {
+            const setter = facts.statusSetter;
+            if (!setter?.email) return { pass: false, reason: setter?.reason ?? "Couldn't check who set the status" };
+            return includesIgnoreCase(values, setter.email)
+              ? { pass: true }
+              : { pass: false, reason: `status wasn't set by ${anyOf(values)}` };
           }
         }
       }

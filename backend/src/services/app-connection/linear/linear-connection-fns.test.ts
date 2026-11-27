@@ -3,9 +3,11 @@ import { AxiosError, AxiosHeaders } from "axios";
 import {
   getLinearErrorMessage,
   getLinearIssue,
+  getLinearIssueHistory,
   LinearGraphqlError,
   listLinearLabels,
   listLinearStatuses,
+  listLinearUsers,
   validateLinearConnectionCredentials
 } from "./linear-connection-fns";
 import { TLinearConnectionConfig } from "./linear-connection-types";
@@ -122,6 +124,36 @@ describe("getLinearIssue", () => {
   });
 });
 
+describe("getLinearIssueHistory", () => {
+  const entry = (id: string, day: number) => ({ id, createdAt: `2026-01-0${day}T00:00:00Z` });
+  const history = (first: ReturnType<typeof entry>[], last: ReturnType<typeof entry>[], hasNextPage: boolean) => ({
+    data: {
+      data: {
+        issue: {
+          historyFirst: { nodes: first, pageInfo: { hasNextPage } },
+          historyLast: { nodes: last, pageInfo: { hasNextPage } }
+        }
+      }
+    }
+  });
+
+  test("merges overlapping ends newest first", async () => {
+    post.mockResolvedValue(history([entry("a", 1), entry("b", 2)], [entry("b", 2), entry("c", 3)], true));
+    await expect(getLinearIssueHistory(config, "uuid-1")).resolves.toEqual({
+      entries: [entry("c", 3), entry("b", 2), entry("a", 1)],
+      complete: true
+    });
+  });
+
+  test("reads only the newer end when entries between the ends are missing", async () => {
+    post.mockResolvedValue(history([entry("e", 5), entry("d", 4)], [entry("b", 2), entry("a", 1)], true));
+    await expect(getLinearIssueHistory(config, "uuid-1")).resolves.toEqual({
+      entries: [entry("e", 5), entry("d", 4)],
+      complete: false
+    });
+  });
+});
+
 describe("option lists", () => {
   test("stop after four pages instead of failing", async () => {
     post.mockResolvedValue(page("issueLabels", ["Bug"], true));
@@ -136,5 +168,23 @@ describe("option lists", () => {
 
     await expect(listLinearStatuses(config, { teamKeys: ["eng"] })).resolves.toEqual(["Done", "Todo"]);
     expect(post.mock.calls[0][1]).toMatchObject({ variables: { filter: { team: { key: { in: ["ENG"] } } } } });
+  });
+
+  test("users are searched by name or email and need a visible email", async () => {
+    post.mockResolvedValue({
+      data: { data: { users: { nodes: [{ name: "Lead", email: "lead@acme.com" }, { name: "Hidden" }] } } }
+    });
+
+    await expect(listLinearUsers(config, { search: "lea" })).resolves.toEqual([
+      { name: "Lead", email: "lead@acme.com" }
+    ]);
+    expect(post.mock.calls[0][1]).toMatchObject({
+      variables: {
+        filter: {
+          app: { eq: false },
+          or: [{ name: { containsIgnoreCase: "lea" } }, expect.anything(), expect.anything()]
+        }
+      }
+    });
   });
 });

@@ -65,3 +65,16 @@ export type TLinearIssue = {
 };
 
 export type TLinearTeam = { key: string; name: string };
+
+export type TLinearHistoryEntry = {
+  id?: string | null;
+  createdAt?: string | null;
+  actor?: TLinearUser | null;
+  botActor?: { name?: string | null } | null;
+  fromStateId?: string | null;
+  toStateId?: string | null;
+  fromAssigneeId?: string | null;
+  toAssigneeId?: string | null;
+};
+
+export type TLinearIssueHistory = { entries: TLinearHistoryEntry[]; complete: boolean };

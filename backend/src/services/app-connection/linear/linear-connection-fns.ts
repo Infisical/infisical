@@ -10,7 +10,9 @@ import { LinearConnectionMethod } from "./linear-connection-enums";
 import {
   TLinearComment,
   TLinearConnectionConfig,
+  TLinearHistoryEntry,
   TLinearIssue,
+  TLinearIssueHistory,
   TLinearIssueWithCommentPages,
   TLinearTeam,
   TLinearUser
@@ -178,6 +180,12 @@ const ISSUE_FIELDS = `
   labels(first: 100) { nodes { name } }
 `;
 
+const newestFirst = <T extends { id?: string | null; createdAt?: string | null }>(pages: T[][]) => {
+  const byId = new Map<string, T>();
+  pages.flat().forEach((node, index) => byId.set(node.id ?? `index-${index}`, node));
+  return [...byId.values()].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""));
+};
+
 export const getLinearIssue = async (
   config: TLinearRequestConfig,
   identifier: string,
@@ -199,16 +207,47 @@ export const getLinearIssue = async (
   const { commentsFirst, commentsLast, ...issue } = data.issue;
   if (!commentCount) return issue as TLinearIssue;
 
-  const byId = new Map<string, TLinearComment>();
-  [...(commentsFirst?.nodes ?? []), ...(commentsLast?.nodes ?? [])].forEach((comment, index) =>
-    byId.set(comment.id ?? `index-${index}`, comment)
-  );
-  const merged = [...byId.values()].sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""));
+  const merged = newestFirst<TLinearComment>([commentsFirst?.nodes ?? [], commentsLast?.nodes ?? []]);
   return {
     ...issue,
     comments: { nodes: merged.slice(0, commentCount) },
     hasMoreComments: merged.length > commentCount
   } as TLinearIssue;
+};
+
+const HISTORY_PAGE_SIZE = 50;
+
+export const getLinearIssueHistory = async (
+  config: TLinearRequestConfig,
+  identifier: string,
+  signal?: AbortSignal
+): Promise<TLinearIssueHistory> => {
+  const fields = `nodes {
+    id createdAt actor { id name displayName email } botActor { name }
+    fromStateId toStateId fromAssigneeId toAssigneeId
+  } pageInfo { hasNextPage }`;
+  type THistoryPage = { nodes: TLinearHistoryEntry[]; pageInfo?: { hasNextPage?: boolean } };
+  const data = await linearGraphql<{ issue?: { historyFirst?: THistoryPage; historyLast?: THistoryPage } | null }>(
+    config,
+    `query History($id: String!) { issue(id: $id) {
+      historyFirst: history(first: ${HISTORY_PAGE_SIZE}) { ${fields} }
+      historyLast: history(last: ${HISTORY_PAGE_SIZE}) { ${fields} }
+    } }`,
+    { id: identifier },
+    signal
+  );
+  if (!data.issue) throw new LinearGraphqlError({ message: "Entity not found: Issue" });
+
+  const first = data.issue.historyFirst?.nodes ?? [];
+  const last = data.issue.historyLast?.nodes ?? [];
+  const firstIds = new Set(first.map(({ id }) => id));
+  const complete = !data.issue.historyFirst?.pageInfo?.hasNextPage || last.some(({ id }) => id && firstIds.has(id));
+  if (complete) return { entries: newestFirst([first, last]), complete };
+
+  // Entries between the two pages are missing, so only the newer page is read
+  const latest = (nodes: TLinearHistoryEntry[]) =>
+    Math.max(0, ...nodes.map(({ createdAt }) => Date.parse(createdAt ?? "") || 0));
+  return { entries: newestFirst([latest(first) >= latest(last) ? first : last]), complete };
 };
 
 export const searchLinearIssues = async (
@@ -247,6 +286,7 @@ export const findLinearUsersByEmail = async (config: TLinearRequestConfig, email
 };
 
 const filterTypeByField: Record<string, string> = {
+  users: "UserFilter",
   teams: "TeamFilter",
   workflowStates: "WorkflowStateFilter",
   issueLabels: "IssueLabelFilter"
@@ -340,4 +380,25 @@ export const listLinearLabels = async (
     signal
   );
   return [...new Set(labels.map(({ name }) => name))].sort((a, b) => a.localeCompare(b));
+};
+
+export const listLinearUsers = async (
+  config: TLinearRequestConfig,
+  { search, emails }: { search?: string; emails?: string[] } = {},
+  signal?: AbortSignal
+) => {
+  let filter: Record<string, unknown> = { app: { eq: false } };
+  if (emails?.length) filter = { ...filter, email: { in: emails } };
+  else if (search) {
+    filter = {
+      ...filter,
+      or: [
+        { name: { containsIgnoreCase: search } },
+        { displayName: { containsIgnoreCase: search } },
+        { email: { containsIgnoreCase: search } }
+      ]
+    };
+  }
+  const users = await listAllPages<TLinearUser>(config, "users", "id name displayName email active", filter, signal);
+  return users.filter((user): user is TLinearUser & { email: string } => Boolean(user.email));
 };
