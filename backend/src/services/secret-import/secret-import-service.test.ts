@@ -62,17 +62,23 @@ const createService = (stored: TStoredImport[]) => {
     eventEmitter: { emit: vi.fn() },
     secretQueueService: { syncSecrets: vi.fn(), replicateSecrets: vi.fn() },
     secretV2BridgeDAL: { invalidateSecretCacheByProjectId: vi.fn() },
-    licenseService: new FakeLicenseService()
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretApproval: true })
   } as never);
   return { service, secretImportDAL, folderDAL };
 };
 
-const create = (service: ReturnType<typeof createService>["service"], environment: string, sourcePath: string) =>
+const create = (
+  service: ReturnType<typeof createService>["service"],
+  environment: string,
+  sourcePath: string,
+  isReplication = false
+) =>
   service.createImport({
     actor: actor as never,
     projectId: PROJECT_ID,
     environment: "dev",
     path: "/app",
+    isReplication,
     data: { environment, path: sourcePath }
   });
 
@@ -125,6 +131,40 @@ describe("one import per source in a folder", () => {
       expect.objectContaining({ importEnv: "env-prod", importPath: "/shared" }),
       TX
     );
+  });
+
+  test("accepts a replicated import of a source the folder imports directly, the step that replaces it", async () => {
+    // Setup
+    const { service, secretImportDAL } = createService([
+      { id: "import-1", importEnv: "env-staging", importPath: "/shared" }
+    ]);
+
+    // Action
+    await create(service, "staging", "/shared", true);
+
+    // Assert
+    expect(secretImportDAL.create).toHaveBeenCalledWith(
+      expect.objectContaining({ importEnv: "env-staging", importPath: "/shared", isReplication: true }),
+      TX
+    );
+  });
+
+  test("refuses a second replicated import of the same source", async () => {
+    // Setup
+    const { service, secretImportDAL } = createService([
+      { id: "import-1", importEnv: "env-staging", importPath: "/shared", isReplication: true }
+    ]);
+
+    // Action
+    const result = create(service, "staging", "/shared", true);
+
+    // Assert
+    await expect(result).rejects.toMatchObject({
+      name: "Conflict",
+      message:
+        "Folder '/app' already replicates secrets from '/shared' in environment 'staging'. Use the existing import instead of adding another."
+    });
+    expect(secretImportDAL.create).not.toHaveBeenCalled();
   });
 
   test("refuses repointing an import onto a source the folder already imports", async () => {

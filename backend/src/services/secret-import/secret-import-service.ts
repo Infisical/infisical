@@ -140,20 +140,24 @@ export const secretImportServiceFactory = ({
     tx: Knex
   ) => eventEmitter.emit([SecretImportModifiedEventV1.build({ secretImportId, ...scope, modificationType })], tx);
 
-  // A second import of the same source adds nothing the first does not. The folder lock serializes creates and
-  // repoints in the folder, so two concurrent requests cannot both pass; rows written before this rule stay as they are.
+  // A second import of the same source adds nothing the first does not. A direct and a replicated import of one source
+  // may coexist: replacing a direct import with a replicated one under a change policy adds the replicated import
+  // before the direct one is removed. The folder lock serializes creates and repoints in the folder, so two concurrent
+  // requests cannot both pass; rows written before this rule stay as they are.
   const $assertSourceNotImported = async (
     {
       folderId,
       folderPath,
       sourceEnv,
       sourcePath,
+      isReplication,
       excludeImportId
     }: {
       folderId: string;
       folderPath: string;
       sourceEnv: { id: string; slug: string };
       sourcePath: string;
+      isReplication: boolean;
       excludeImportId?: string;
     },
     tx: Knex
@@ -165,12 +169,13 @@ export const secretImportServiceFactory = ({
       (imp) =>
         !imp.isReserved &&
         imp.id !== excludeImportId &&
+        Boolean(imp.isReplication) === isReplication &&
         imp.importEnv === sourceEnv.id &&
         canonicalizeSecretPath(imp.importPath) === canonicalSourcePath
     );
     if (duplicate) {
       throw new ConflictError({
-        message: `Folder '${folderPath}' already imports secrets from '${canonicalSourcePath}' in environment '${sourceEnv.slug}'. Use the existing import instead of adding another.`
+        message: `Folder '${folderPath}' already ${isReplication ? "replicates" : "imports"} secrets from '${canonicalSourcePath}' in environment '${sourceEnv.slug}'. Use the existing import instead of adding another.`
       });
     }
   };
@@ -303,7 +308,13 @@ export const secretImportServiceFactory = ({
     const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     const secImport = await secretImportDAL.transaction(async (tx) => {
       await $assertSourceNotImported(
-        { folderId: folder.id, folderPath: secretPath, sourceEnv: importEnv, sourcePath: data.path },
+        {
+          folderId: folder.id,
+          folderPath: secretPath,
+          sourceEnv: importEnv,
+          sourcePath: data.path,
+          isReplication: Boolean(isReplication)
+        },
         tx
       );
       if (resourceLimits.max(ResourceLimit.ImportsPerFolder) !== null) {
@@ -456,6 +467,7 @@ export const secretImportServiceFactory = ({
             folderPath: secretPath,
             sourceEnv: importedEnv,
             sourcePath: data.path || secImpDoc.importPath,
+            isReplication: Boolean(secImpDoc.isReplication),
             excludeImportId: secImpDoc.id
           },
           tx
