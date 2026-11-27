@@ -1260,6 +1260,16 @@ tables:
       - lastReplicated
       - isReserved
 
+  - name: secret_references_v2
+    source: public.secret_references_v2
+    columns:
+      - id
+      - environment
+      - secretPath
+      - secretKey
+      - secretId
+      - targetProjectSlug
+
   - name: secret_rotations
     source: public.secret_rotations
     columns:
