@@ -30,7 +30,7 @@ import type { DemoImport, DemoSecret, DemoVersion, SecretsFixtures } from "./fix
 type Scoped = { projectId: string; environment: string; path: string };
 
 const REPLICATION_FOLDER_PREFIX = "__reserve_replication_";
-const reservedPathOf = (entry: { id: string; path: string }) =>
+export const reservedPathOf = (entry: { id: string; path: string }) =>
   childPath(entry.path, `${REPLICATION_FOLDER_PREFIX}${entry.id}`);
 
 const versionsOf = (store: DemoStore, secret: DemoSecret): SecretVersions[] => {

@@ -20,7 +20,7 @@ export const valueKey = (
   path: string,
   key: string,
   isOverride = false,
-  version = 0
+  version: number | string = 0
 ) => [environment, path, key, isOverride ? "override" : `v${version}`].join("\u0000");
 
 export type LoadedValues = Record<string, string | { error: string }>;
@@ -67,6 +67,9 @@ const valueOf = (
   return { status: "loading" };
 };
 
+export const readVersion = (version: number, readFrom?: Secret["readFrom"]) =>
+  readFrom?.revision ? `${version}@${readFrom.revision}` : version;
+
 export const readThrough = (
   secret: Secret,
   readFrom: NonNullable<Secret["readFrom"]>,
@@ -74,7 +77,15 @@ export const readThrough = (
 ): Secret => {
   if (secret.value.status === "unreadable") return { ...secret, readFrom };
   const loaded =
-    values[valueKey(readFrom.environment, readFrom.path, secret.name, false, secret.version)];
+    values[
+      valueKey(
+        readFrom.environment,
+        readFrom.path,
+        secret.name,
+        false,
+        readVersion(secret.version, readFrom)
+      )
+    ];
   if (typeof loaded === "string")
     return { ...secret, readFrom, value: { status: "present", value: loaded } };
   if (loaded) return { ...secret, readFrom, value: { status: "failed", message: loaded.error } };

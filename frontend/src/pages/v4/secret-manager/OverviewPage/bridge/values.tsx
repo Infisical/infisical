@@ -12,13 +12,13 @@ import {
 import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { Secret } from "../secrets-model";
-import { type LoadedValues, valueKey } from "./view-model";
+import { type LoadedValues, readVersion, valueKey } from "./view-model";
 
 type ValueRequest = {
   environment: string;
   path: string;
   key: string;
-  version: number;
+  version: number | string;
   isOverride?: boolean;
 };
 type Waiter = { keys: string[]; resolve: (values: LoadedValues) => void };
@@ -39,7 +39,7 @@ const toRequest = (secret: Secret, isOverride?: boolean): ValueRequest => ({
   environment: secret.readFrom?.environment ?? secret.environment,
   path: secret.readFrom?.path ?? secret.path,
   key: secret.name,
-  version: secret.version,
+  version: readVersion(secret.version, secret.readFrom),
   isOverride
 });
 const keyOf = (request: ValueRequest) =>

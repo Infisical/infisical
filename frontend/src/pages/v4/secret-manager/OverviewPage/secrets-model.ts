@@ -47,7 +47,7 @@ export type Secret = ResourceBase & {
   reminder?: SecretReminder;
   skipMultilineEncoding?: boolean;
   versions?: SecretVersion[];
-  readFrom?: { environment: string; path: string };
+  readFrom?: { environment: string; path: string; revision?: string };
 };
 export type Resource =
   | Secret

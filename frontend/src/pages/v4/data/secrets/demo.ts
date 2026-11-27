@@ -19,7 +19,7 @@ import { secretsAccessInsightsDemo } from "./demo-access-insights";
 import { secretsActivationDemo } from "./demo-activation";
 import { secretsChangeRequestsDemo } from "./demo-change-requests";
 import { secretsExternalImportDemo } from "./demo-external-import";
-import { secretsFlowsDemo } from "./demo-flows";
+import { reservedPathOf, secretsFlowsDemo } from "./demo-flows";
 import { secretsPlanDemo } from "./demo-plan";
 import { secretsQuickSearchDemo } from "./demo-quick-search";
 import { secretsReminderChannelsDemo } from "./demo-reminder-channels";
@@ -405,28 +405,45 @@ export const secretsDemo: SecretsAdapter = {
     const scenario = useScenario();
     const state = useStore().use();
     if (options?.enabled === false) return { data: undefined, isPending: true, error: null };
-    const secret =
-      state.secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)) ??
-      state.imports
-        .filter(
-          (entry) =>
-            !entry.isReserved &&
-            entry.projectId === dto.projectId &&
-            entry.environment === dto.environment &&
-            entry.path === dto.secretPath
-        )
-        .sort((a, b) => Number(a.position) - Number(b.position))
-        .map((entry) =>
-          state.secrets.find(
-            secretAt(
-              entry.importEnv.projectId ?? dto.projectId,
-              entry.importEnv.slug,
-              entry.importPath,
-              dto.secretKey
-            )
+    const replication = state.imports.find(
+      (entry) =>
+        entry.isReplication &&
+        entry.projectId === dto.projectId &&
+        entry.environment === dto.environment &&
+        reservedPathOf(entry) === dto.secretPath
+    );
+    const secret = replication
+      ? state.secrets.find(
+          secretAt(
+            replication.importEnv.projectId ?? dto.projectId,
+            replication.importEnv.slug,
+            replication.importPath,
+            dto.secretKey
           )
         )
-        .find(Boolean);
+      : (state.secrets.find(
+          secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)
+        ) ??
+        state.imports
+          .filter(
+            (entry) =>
+              !entry.isReserved &&
+              entry.projectId === dto.projectId &&
+              entry.environment === dto.environment &&
+              entry.path === dto.secretPath
+          )
+          .sort((a, b) => Number(b.position) - Number(a.position))
+          .map((entry) =>
+            state.secrets.find(
+              secretAt(
+                entry.importEnv.projectId ?? dto.projectId,
+                entry.importEnv.slug,
+                entry.importPath,
+                dto.secretKey
+              )
+            )
+          )
+          .find(Boolean));
     if (!secret || (scenario === "permissions" && secret.key === "STRIPE_SECRET_KEY"))
       return { data: undefined, isPending: false, error: new Error("You cannot read this value") };
     return {

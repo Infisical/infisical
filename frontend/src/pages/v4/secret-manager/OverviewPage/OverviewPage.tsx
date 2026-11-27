@@ -1308,7 +1308,8 @@ export const OverviewPage = () => {
     if (!entry.replicated) return secrets;
     const readFrom = {
       environment: entry.environment,
-      path: `${entry.path === "/" ? "" : entry.path}/${ReservedFolders.SecretReplication}${entry.id}`
+      path: `${entry.path === "/" ? "" : entry.path}/${ReservedFolders.SecretReplication}${entry.id}`,
+      revision: entry.lastReplicated
     };
     return secrets.map((secret) => readThrough(secret, readFrom, valueStore.values));
   };
