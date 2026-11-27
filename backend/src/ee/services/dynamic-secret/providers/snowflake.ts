@@ -7,6 +7,10 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import {
+  assertSnowflakeStatementSupported,
+  SNOWFLAKE_ARRAY_BINDING_THRESHOLD
+} from "@app/services/app-connection/snowflake/snowflake-connection-fns";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
@@ -42,6 +46,11 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
       allowedExpressions: (val) => ["username"].includes(val)
     });
+    [providerInputs.creationStatement, providerInputs.revocationStatement, providerInputs.renewStatement].forEach(
+      (statement) => {
+        if (statement) assertSnowflakeStatementSupported(statement);
+      }
+    );
 
     return providerInputs;
   };
@@ -51,7 +60,8 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
       account: `${providerInputs.orgId}-${providerInputs.accountId}`,
       username: providerInputs.username,
       password: providerInputs.password,
-      application: "Infisical"
+      application: "Infisical",
+      arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD
     });
 
     await client.connectAsync(noop);
@@ -114,6 +124,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
         password,
         expiration
       });
+      assertSnowflakeStatementSupported(creationStatement);
 
       await new Promise((resolve, reject) => {
         client.execute({
@@ -147,6 +158,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     try {
       const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
+      assertSnowflakeStatementSupported(revokeStatement);
 
       await new Promise((resolve, reject) => {
         client.execute({
@@ -185,6 +197,7 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
         username: entityId,
         expiration
       });
+      assertSnowflakeStatementSupported(renewStatement);
 
       await new Promise((resolve, reject) => {
         client.execute({

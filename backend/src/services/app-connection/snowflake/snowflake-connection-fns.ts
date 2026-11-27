@@ -14,6 +14,9 @@ const SNOWFLAKE_EXCLUDED_SCHEMAS = new Set(["INFORMATION_SCHEMA"]);
 
 export const SNOWFLAKE_SHOW_PAGE_SIZE = 100;
 
+// The driver shares session parameters across connections, so each connection sets its own bind threshold
+export const SNOWFLAKE_ARRAY_BINDING_THRESHOLD = Number.MAX_SAFE_INTEGER;
+
 const escapeSnowflakeStringLiteral = (value: string) => value.replace(/'/g, "''");
 
 export const quoteSnowflakeIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
@@ -45,7 +48,8 @@ export const getSnowflakeClient = async (credentials: TSnowflakeConnection["cred
     account: credentials.account,
     username: credentials.username,
     password: credentials.password,
-    application: "Infisical"
+    application: "Infisical",
+    arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD
   });
 
   try {
@@ -71,12 +75,23 @@ export const getSnowflakeClient = async (credentials: TSnowflakeConnection["cred
   }
 };
 
+// Mirrors the driver's own check for client-side file transfer statements
+export const isSnowflakeFileTransferStatement = (sqlText: string) =>
+  ["PUT", "GET"].includes(sqlText.trim().substring(0, 3).toUpperCase());
+
+export const assertSnowflakeStatementSupported = (sqlText: string) => {
+  if (isSnowflakeFileTransferStatement(sqlText)) {
+    throw new BadRequestError({ message: "PUT and GET statements are not supported" });
+  }
+};
+
 export const executeSnowflakeSql = <TRow = Record<string, unknown>>(
   client: snowflake.Connection,
   sqlText: string,
   binds?: snowflake.Binds
 ): Promise<TRow[]> =>
   new Promise((resolve, reject) => {
+    assertSnowflakeStatementSupported(sqlText);
     client.execute({
       sqlText,
       binds,

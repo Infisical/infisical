@@ -1,7 +1,7 @@
 import snowflake from "snowflake-sdk";
 
 import { logger } from "@app/lib/logger";
-import { executeSnowflakeSql } from "@app/services/app-connection/snowflake";
+import { assertSnowflakeStatementSupported, executeSnowflakeSql } from "@app/services/app-connection/snowflake";
 
 import { type ControllerParams } from "../pam-data-explorer-session-handler";
 import {
@@ -78,6 +78,7 @@ export const createSnowflakeConnectionController = async (params: ControllerPara
 
   const execute = (sqlText: string): Promise<snowflake.RowStatement> =>
     new Promise((resolve, reject) => {
+      assertSnowflakeStatementSupported(sqlText);
       runningStatement = client.execute({
         sqlText,
         streamResult: true,
@@ -149,8 +150,12 @@ export const createSnowflakeConnectionController = async (params: ControllerPara
     let lastCommand = "";
     let lastIsTruncated = false;
 
+    // Checked before any statement runs so a rejected one does not leave earlier ones applied
+    const statements = splitSnowflakeStatements(sql);
+    statements.forEach((statementSql) => assertSnowflakeStatementSupported(statementSql));
+
     try {
-      for (const statementSql of splitSnowflakeStatements(sql)) {
+      for (const statementSql of statements) {
         // eslint-disable-next-line no-await-in-loop
         const statement = await execute(statementSql);
         // eslint-disable-next-line no-await-in-loop
