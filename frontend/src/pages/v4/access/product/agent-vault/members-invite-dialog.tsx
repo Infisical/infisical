@@ -50,7 +50,11 @@ export const InviteMembersDialog = ({
     { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: REQUESTER_LIMIT },
     Boolean(requesterEmail)
   );
-  const { data: available, isPending: loadingCandidates } = av.useAvailableMembers(
+  const {
+    data: available,
+    isPending: loadingCandidates,
+    isFetching: fetchingCandidates
+  } = av.useAvailableMembers(
     projectId,
     { actorType: AgentVaultMemberType.User, search: debouncedSearch || undefined },
     open
@@ -151,7 +155,9 @@ export const InviteMembersDialog = ({
                 noMatchText="No one matches who is not already a member"
                 options={options}
                 value={selected}
-                loading={loadingCandidates}
+                loading={
+                  loadingCandidates || fetchingCandidates || search.trim() !== debouncedSearch
+                }
                 onSearch={setSearch}
                 onChange={setSelected}
               />
