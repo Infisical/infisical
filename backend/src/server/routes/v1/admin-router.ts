@@ -11,6 +11,7 @@ import {
 import { LoginMethod, OVERRIDABLE_ENV_KEYS } from "@app/domains/platform/instance-config-core/ce/module";
 import { RootKeyEncryptionStrategy } from "@app/domains/platform/kms-core/ce/module";
 import { CRON_JOB_TRIGGER, ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -29,7 +30,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { CacheType, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -66,7 +66,7 @@ const SanitizedSuperAdminSchema = z.object({
   paramsFolderSecretDetectionEnabled: z.boolean().optional(),
   isOfflineUsageReportsEnabled: z.boolean().optional(),
   isClickhouseAuditLogEnabled: z.boolean().optional(),
-  isInitialSetupActivationTokenRequired: z.boolean().optional(),
+  isInstanceSetupTokenRequired: z.boolean().optional(),
   maxSecretsPerBatchRequest: z.number().int().positive().nullable().optional(),
   defaultAuthOrgSlug: z.string().nullable(),
   defaultAuthOrgAuthEnforced: z.boolean().nullish(),
@@ -123,7 +123,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         serverEnvs.isClickHouseConfigured && serverEnvs.CLICKHOUSE_AUDIT_LOG_ENABLED
       );
 
-      const isInitialSetupActivationTokenRequired = !initialized && Boolean(serverEnvs.INITIAL_SETUP_ACTIVATION_TOKEN);
+      const isInstanceSetupTokenRequired = !initialized && Boolean(serverEnvs.INSTANCE_SETUP_TOKEN);
 
       if (!isSuperAdminUser) {
         // Only return fields the frontend needs before authentication
@@ -145,7 +145,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
             allowedStorageHostnames,
             isPublicSecretSharingDisabled: DISABLE_PUBLIC_SECRET_SHARING,
             isClickhouseAuditLogEnabled,
-            isInitialSetupActivationTokenRequired,
+            isInstanceSetupTokenRequired,
             maxSecretsPerBatchRequest: serverEnvs.MAX_SECRETS_PER_BATCH_REQUEST ?? null,
             latestAvailableVersion
           }
@@ -181,7 +181,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
           isOfflineUsageReportsEnabled: hasOfflineLicense,
           isClickhouseAuditLogEnabled,
-          isInitialSetupActivationTokenRequired,
+          isInstanceSetupTokenRequired,
           maxSecretsPerBatchRequest: serverEnvs.MAX_SECRETS_PER_BATCH_REQUEST ?? null,
           latestAvailableVersion
         }
@@ -251,7 +251,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
+      const config = await server.services.superAdmin.updateServerCfg(req.body, req.actor.id);
       return {
         config: {
           ...config,
@@ -386,8 +386,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const organizationMembership = await server.services.superAdmin.deleteOrganizationMembership(
         req.params.organizationId,
         req.params.membershipId,
-        req.permission.id,
-        req.permission.type
+        req.actor.id,
+        req.actor.type
       );
 
       return {
@@ -884,7 +884,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         firstName: z.string().trim().min(1),
         lastName: z.string().trim().optional(),
         organizationName: GenericResourceNameSchema.optional(),
-        activationToken: z.string().trim().max(256).optional()
+        setupToken: z.string().trim().max(32).optional()
       }),
       response: {
         200: z.object({
@@ -1054,7 +1054,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
         email: z.string().email().trim().min(1),
         password: z.string().trim().min(1),
         organization: z.string().trim().min(1),
-        activationToken: z.string().trim().max(256).optional()
+        setupToken: z.string().trim().max(32).optional()
       }),
       response: {
         200: z.object({
@@ -1171,7 +1171,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.InvalidateCache,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           ...req.auditLogInfo
@@ -1235,7 +1235,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organization = await server.services.superAdmin.createOrganization(req.body, req.permission);
+      const organization = await server.services.superAdmin.createOrganization(req.body, req.actor);
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.OrganizationCreated,
@@ -1274,7 +1274,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.permission);
+      const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.actor);
 
       return {
         organizationMembership: {
@@ -1310,7 +1310,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const organizationMembership = await server.services.superAdmin.joinOrganization(
         req.params.organizationId,
-        req.permission
+        req.actor
       );
       return {
         organizationMembership: {

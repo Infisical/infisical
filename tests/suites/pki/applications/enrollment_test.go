@@ -95,7 +95,7 @@ func TestApplicationEnrollment_Read(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		eab := pki.EnableACME(t, g.App, g.Profile, api.SetPkiApplicationAcmeEnrollmentJSONRequestBody{})
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		read := readEnrollment(t, auditor, g)

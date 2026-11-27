@@ -3,10 +3,10 @@ import { z } from "zod";
 import { ExternalGroupOrgRoleMappingsSchema } from "@app/db/schemas/external-group-org-role-mappings";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, Scim } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZodProvider) => {
   // get mappings for current org
@@ -26,12 +26,10 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const mappings = await server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(
-        req.permission
-      );
+      const mappings = await server.services.externalGroupOrgRoleMapping.listExternalGroupOrgRoleMappings(req.actor);
 
       await server.services.auditLog.createAuditLog({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.GET_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS
@@ -67,15 +65,15 @@ export const registerExternalGroupOrgRoleMappingRouter = async (server: FastifyZ
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { body, permission } = req;
+      const { body, actor } = req;
 
       const mappings = await server.services.externalGroupOrgRoleMapping.updateExternalGroupOrgRoleMappings(
         body,
-        permission
+        actor
       );
 
       await server.services.auditLog.createAuditLog({
-        orgId: permission.orgId,
+        orgId: actor.orgId,
         ...req.auditLogInfo,
         event: {
           type: EventType.UPDATE_EXTERNAL_GROUP_ORG_ROLE_MAPPINGS,

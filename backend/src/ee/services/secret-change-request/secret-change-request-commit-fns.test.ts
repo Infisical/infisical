@@ -1,18 +1,22 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { conditionsMatcher } from "@app/lib/casl";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
-import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
-import { SecretOperations } from "@app/services/secret/secret-types";
-
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "../permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { conditionsMatcher } from "@app/lib/casl";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { SecretOperations } from "@app/services/secret/secret-types";
+
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
 
@@ -61,10 +65,12 @@ const buildFns = ({
     within: vi.fn(() => kmsDataKeyService)
   };
   const deps = {
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission,
-        hasProjectEnforcement: (flag: string) => Boolean(enforcement[flag])
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Object.assign(Permission.fromRules<ProjectPermissionSet>({ rules: permission.rules }), {
+          hasProjectEnforcement: ({ name }: { name: string }) => Boolean(enforcement[name])
+        }),
+        folderGrants: FolderGrants.none()
       })
     },
     folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(FOLDER) },
@@ -102,12 +108,14 @@ const buildFns = ({
 };
 
 type TBuildInput = Parameters<ReturnType<typeof buildFns>["fns"]["buildSecretApprovalCommits"]>[0];
+const actorOf = (type: ActorType) =>
+  ({
+    principal: { type, id: "user-1", authMethod: null },
+    org: { id: "org-1", rootOrgId: "org-1", parentOrgId: null }
+  }) as unknown as TActorContext;
 const input = (overrides: Partial<TBuildInput> = {}): TBuildInput =>
   ({
-    actor: ActorType.USER,
-    actorId: "user-1",
-    actorOrgId: "org-1",
-    actorAuthMethod: null,
+    actor: actorOf(ActorType.USER),
     projectId: "project-1",
     environment: "dev",
     secretPath: "/",
@@ -123,10 +131,10 @@ describe("buildSecretApprovalCommits", () => {
   test("rejects service tokens before touching the database", async () => {
     const { fns, deps } = buildFns();
 
-    await expect(fns.buildSecretApprovalCommits(input({ actor: ActorType.SERVICE }))).rejects.toBeInstanceOf(
+    await expect(fns.buildSecretApprovalCommits(input({ actor: actorOf(ActorType.SERVICE) }))).rejects.toBeInstanceOf(
       BadRequestError
     );
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretsPermissionService.getSecretsPermission).not.toHaveBeenCalled();
   });
 
   test("resolves the folder from the path unless one is provided", async () => {
@@ -317,7 +325,7 @@ describe("buildSecretApprovalCommits", () => {
     const denied = buildFns({ stored, permission: allowSecrets(ProjectPermissionSecretActions.Create) });
     await expect(
       denied.fns.buildSecretApprovalCommits(input({ data: { [SecretOperations.Delete]: [{ secretKey: "A" }] } }))
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
 
     const missing = buildFns();
     await expect(
@@ -338,7 +346,7 @@ describe("buildSecretApprovalCommits", () => {
       denied.fns.buildSecretApprovalCommits(
         input({ data: { [SecretOperations.Create]: [{ secretKey: "A", secretValue: "1" }] } })
       )
-    ).rejects.toBeInstanceOf(ForbiddenError);
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   test("rejects plaintext metadata when the project enforces encrypted metadata", async () => {

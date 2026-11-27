@@ -6,7 +6,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isValidSid, SID_PATTERN } from "@app/lib/windows-sid/windows-sid-fns";
 
-import { matchesNormalizedPattern } from "../certificate-policy/certificate-policy-fns";
+import { matchesNormalizedPattern, quotePolicyValues } from "../certificate-policy/certificate-policy-fns";
 import {
   CERT_EXTENSION_OID_PATTERN_SOURCE,
   CertExtensionCriticality,
@@ -469,16 +469,16 @@ export const findCustomExtensionRuleValueError = (
   const allowed = rule.allowed ?? [];
 
   if (matchesAnyPattern(displayValue, denied)) {
-    return `Custom extension '${oid}' value '${displayValue}' is denied by this policy. Denied values: ${denied.join(", ")}`;
+    return `Custom extension '${oid}' value '${displayValue}' is denied by this policy. Denied values: ${quotePolicyValues(denied)}`;
   }
 
   const satisfiesRequired = required.length > 0 && matchesAnyPattern(displayValue, required);
   if (required.length > 0 && !satisfiesRequired) {
-    return `Custom extension '${oid}' value '${displayValue}' does not match any value required by this policy: ${required.join(", ")}`;
+    return `Custom extension '${oid}' value '${displayValue}' does not match any value required by this policy: ${quotePolicyValues(required)}`;
   }
 
   if (!satisfiesRequired && allowed.length > 0 && !matchesAnyPattern(displayValue, allowed)) {
-    return `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${allowed.join(", ")}`;
+    return `Custom extension '${oid}' value '${displayValue}' is not allowed by this policy. Allowed values: ${quotePolicyValues(allowed)}`;
   }
 
   return null;
@@ -631,7 +631,7 @@ export const resolveCustomExtensions = ({
       }
       if (!resolvedOids.has(rule.oid)) {
         errors.push(
-          `This policy requires custom extension '${rule.oid}' matching one of: ${rule.required.join(", ")}. Supply it on the request, or set it as a default on the certificate profile.`
+          `This policy requires custom extension '${rule.oid}' matching one of: ${quotePolicyValues(rule.required)}. Supply it on the request, or set it as a default on the certificate profile.`
         );
       }
     }

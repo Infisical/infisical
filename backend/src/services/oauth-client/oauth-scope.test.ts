@@ -1,6 +1,19 @@
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { createMongoAbility, subject } from "@casl/ability";
 
-import { applyOauthScopeToProjectRules, isValidOauthScope, OauthScope, parseOauthScopeString } from "./oauth-scope";
+import {
+  OrgPermissionActions,
+  OrgPermissionProjectActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+
+import {
+  applyOauthScopeToOrgRules,
+  applyOauthScopeToProjectRules,
+  isValidOauthScope,
+  OauthScope,
+  parseOauthScopeString
+} from "./oauth-scope";
 
 describe("parseOauthScopeString", () => {
   test("splits, trims, and de-duplicates recognized scopes", () => {
@@ -105,9 +118,85 @@ describe("applyOauthScopeToProjectRules", () => {
     expect(inverted).toMatchObject({ inverted: true, conditions: { secretPath: "/x" } });
   });
 
+  test("secrets:describe lists secret names without granting their values", () => {
+    const rules = [
+      {
+        action: [
+          ProjectPermissionSecretActions.DescribeAndReadValue,
+          ProjectPermissionSecretActions.DescribeSecret,
+          ProjectPermissionSecretActions.ReadValue
+        ],
+        subject: ProjectPermissionSub.Secrets
+      }
+    ];
+    const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsDescribe]);
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0].action).toEqual([ProjectPermissionSecretActions.DescribeSecret]);
+  });
+
+  test("secrets:describe keeps the describe half of a legacy read rule", () => {
+    const rules = [
+      { action: [ProjectPermissionSecretActions.DescribeAndReadValue], subject: ProjectPermissionSub.Secrets }
+    ];
+    const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsDescribe]);
+    expect(scoped).toHaveLength(1);
+    expect(scoped[0].action).toEqual([ProjectPermissionSecretActions.DescribeSecret]);
+  });
+
+  test("secrets:describe keeps a legacy read deny in force", () => {
+    const rules = [
+      { action: [ProjectPermissionSecretActions.DescribeAndReadValue], subject: ProjectPermissionSub.Secrets },
+      {
+        action: [ProjectPermissionSecretActions.DescribeAndReadValue],
+        subject: ProjectPermissionSub.Secrets,
+        inverted: true,
+        conditions: { environment: "prod" }
+      }
+    ];
+    const ability = createMongoAbility(applyOauthScopeToProjectRules(rules, [OauthScope.SecretsDescribe]));
+    const describe = (environment: string) =>
+      ability.can(
+        ProjectPermissionSecretActions.DescribeSecret,
+        subject(ProjectPermissionSub.Secrets, { environment })
+      );
+
+    expect(describe("dev")).toBe(true);
+    expect(describe("prod")).toBe(false);
+  });
+
+  test("secrets:write grants writes without reads", () => {
+    const rules = [{ action: "manage", subject: ProjectPermissionSub.Secrets }];
+    const scoped = applyOauthScopeToProjectRules(rules, [OauthScope.SecretsWrite]);
+    expect(scoped[0].action).toEqual([
+      ProjectPermissionSecretActions.Create,
+      ProjectPermissionSecretActions.Edit,
+      ProjectPermissionSecretActions.Delete
+    ]);
+  });
+
   test("empty scopes deny all (no allow-rules survive)", () => {
     const rules = [{ action: "manage", subject: "all" }];
     const scoped = applyOauthScopeToProjectRules(rules, []);
     expect(scoped).toEqual([]);
+  });
+});
+
+describe("applyOauthScopeToOrgRules", () => {
+  const orgRules = [
+    { action: [OrgPermissionActions.Create], subject: OrgPermissionSubjects.Workspace },
+    { action: [OrgPermissionProjectActions.Create], subject: OrgPermissionSubjects.Project },
+    { action: [OrgPermissionActions.Create], subject: OrgPermissionSubjects.Member }
+  ];
+
+  test("secrets:write lets the user create projects and nothing else in the org", () => {
+    const scoped = applyOauthScopeToOrgRules(orgRules, [OauthScope.SecretsWrite]);
+    expect(scoped.map((rule) => rule.subject)).toEqual([
+      OrgPermissionSubjects.Workspace,
+      OrgPermissionSubjects.Project
+    ]);
+  });
+
+  test("the read scopes grant nothing in the org", () => {
+    expect(applyOauthScopeToOrgRules(orgRules, [OauthScope.SecretsRead, OauthScope.SecretsDescribe])).toEqual([]);
   });
 });

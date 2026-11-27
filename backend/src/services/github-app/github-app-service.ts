@@ -1,32 +1,34 @@
-import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import {
-  OrgPermissionAppConnectionActions,
-  OrgPermissionGatewayActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator/safe-request";
 import {
   assertPlatformGitHubHostAllowed,
@@ -38,7 +40,6 @@ import {
   sanitizeGitHubAxiosError,
   signGitHubAppJwt
 } from "@app/services/app-connection/github/github-connection-fns";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGitHubAppDALFactory } from "./github-app-dal";
@@ -54,7 +55,9 @@ import {
 
 type TGitHubAppServiceFactoryDep = {
   gitHubAppDAL: TGitHubAppDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  actorContextService: Pick<TActorContextService, "forSession">;
   kmsDataKeyService: TKmsDataKeyService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
   licenseService: TLicenseService;
@@ -73,7 +76,9 @@ export type TGitHubAppServiceFactory = ReturnType<typeof gitHubAppServiceFactory
 
 export const gitHubAppServiceFactory = ({
   gitHubAppDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
+  actorContextService,
   kmsDataKeyService,
   keyStore,
   licenseService,
@@ -91,42 +96,28 @@ export const gitHubAppServiceFactory = ({
     projectAction,
     orgScope
   }: {
-    actor: { type: ActorType; id: string; orgId: string; authMethod: ActorAuthMethod };
+    actor: TActorContext;
     projectId: string | null | undefined;
     orgAction: OrgPermissionAppConnectionActions;
     projectAction: ProjectPermissionAppConnectionActions;
     orgScope: OrganizationActionScope;
   }) => {
     if (projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
 
-      ForbiddenError.from(permission).throwUnlessCan(projectAction, ProjectPermissionSub.AppConnections);
+      permission.assert({ action: projectAction, subject: ProjectPermissionSub.AppConnections });
     } else {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        orgId: actor.orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
-        scope: orgScope
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor, scope: orgScope });
 
-      ForbiddenError.from(permission).throwUnlessCan(orgAction, OrgPermissionSubjects.AppConnections);
+      permission.assert({ action: orgAction, subject: OrgPermissionSubjects.AppConnections });
     }
   };
 
   // Validates that the actor may attach the given gateway and that it exists for the org.
   // Lets the manifest exchange route through a gateway when the GitHub host (e.g. a private
   // GitHub Enterprise Server) isn't directly reachable from the Infisical backend.
-  const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(orgPermission.orgId);
+  const assertGatewayUsable = async (gatewayId: string, actor: TActorContext) => {
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.Gateway)) {
       throw new BadRequestError({
         message:
@@ -134,21 +125,11 @@ export const gitHubAppServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayActions.AttachGateways,
-      OrgPermissionSubjects.Gateway
-    );
+    permission.assert({ action: OrgPermissionGatewayActions.AttachGateways, subject: OrgPermissionSubjects.Gateway });
 
-    const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: orgPermission.orgId });
+    const [gatewayV2] = await gatewayV2DAL.find({ id: gatewayId, orgId: actor.org.id });
     if (!gatewayV2) {
       throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
     }
@@ -156,24 +137,24 @@ export const gitHubAppServiceFactory = ({
 
   const assertGatewayConfigUsable = async (
     { gatewayId, gatewayPoolId }: { gatewayId?: string | null; gatewayPoolId?: string | null },
-    orgPermission: OrgServiceActor
+    actor: TActorContext
   ) => {
     if (gatewayId) {
-      await assertGatewayUsable(gatewayId, orgPermission);
+      await assertGatewayUsable(gatewayId, actor);
       return;
     }
     if (gatewayPoolId) {
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
-        orgId: orgPermission.orgId,
-        actor: orgPermission
+        orgId: actor.org.id,
+        actor
       });
     }
   };
 
-  const listGitHubApps = async ({ orgPermission, projectId }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
+  const listGitHubApps = async ({ actor, projectId }: TListGitHubAppsDTO): Promise<TSanitizedGitHubApp[]> => {
     await checkAppConnectionPermission({
-      actor: orgPermission,
+      actor,
       projectId,
       orgAction: OrgPermissionAppConnectionActions.Read,
       projectAction: ProjectPermissionAppConnectionActions.Read,
@@ -182,22 +163,18 @@ export const gitHubAppServiceFactory = ({
 
     let includeOrgApps = true;
     if (projectId) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: orgPermission.type,
-        actorId: orgPermission.id,
-        orgId: orgPermission.orgId,
-        actorAuthMethod: orgPermission.authMethod,
-        actorOrgId: orgPermission.orgId,
-        scope: OrganizationActionScope.Any
+      const permission = await orgPermissionService.getOrgPermission({ actor });
+      includeOrgApps = permission.can({
+        action: OrgPermissionAppConnectionActions.Connect,
+        subject: OrgPermissionSubjects.AppConnections
       });
-      includeOrgApps = permission.can(OrgPermissionAppConnectionActions.Connect, OrgPermissionSubjects.AppConnections);
     }
 
-    const orgApps = includeOrgApps ? await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId: null }) : [];
-    const projectApps = projectId ? await gitHubAppDAL.find({ orgId: orgPermission.orgId, projectId }) : [];
+    const orgApps = includeOrgApps ? await gitHubAppDAL.find({ orgId: actor.org.id, projectId: null }) : [];
+    const projectApps = projectId ? await gitHubAppDAL.find({ orgId: actor.org.id, projectId }) : [];
     const apps = [...orgApps, ...projectApps];
 
-    const countByAppId = await gitHubAppDAL.countConnectionsPerApp(orgPermission.orgId);
+    const countByAppId = await gitHubAppDAL.countConnectionsPerApp(actor.org.id);
 
     const dbApps: TSanitizedGitHubApp[] = apps.map((app) => ({
       id: app.id,
@@ -226,7 +203,7 @@ export const gitHubAppServiceFactory = ({
       INF_APP_CONNECTION_GITHUB_APP_ID && INF_APP_CONNECTION_GITHUB_APP_SLUG
         ? {
             id: null,
-            orgId: orgPermission.orgId,
+            orgId: actor.org.id,
             projectId: null,
             name: INF_APP_CONNECTION_GITHUB_APP_SLUG,
             appId: INF_APP_CONNECTION_GITHUB_APP_ID,
@@ -300,14 +277,14 @@ export const gitHubAppServiceFactory = ({
     });
   };
 
-  const deleteGitHubApp = async ({ id, orgPermission }: TDeleteGitHubAppDTO): Promise<TSanitizedGitHubApp> => {
-    const app = await gitHubAppDAL.findOne({ id, orgId: orgPermission.orgId });
+  const deleteGitHubApp = async ({ id, actor }: TDeleteGitHubAppDTO): Promise<TSanitizedGitHubApp> => {
+    const app = await gitHubAppDAL.findOne({ id, orgId: actor.org.id });
     if (!app) {
       throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
     }
 
     await checkAppConnectionPermission({
-      actor: orgPermission,
+      actor,
       projectId: app.projectId,
       orgAction: OrgPermissionAppConnectionActions.Delete,
       projectAction: ProjectPermissionAppConnectionActions.Delete,
@@ -319,7 +296,7 @@ export const gitHubAppServiceFactory = ({
     let credentials: Awaited<ReturnType<typeof resolveGitHubAppCredentials>> | null = null;
     try {
       credentials = await resolveGitHubAppCredentials(
-        { gitHubAppId: id, orgId: orgPermission.orgId },
+        { gitHubAppId: id, orgId: actor.org.id },
         { gitHubAppDAL, kmsDataKeyService, instanceConfigService }
       );
     } catch {
@@ -328,12 +305,12 @@ export const gitHubAppServiceFactory = ({
     }
 
     const sanitized = await gitHubAppDAL.transaction(async (tx) => {
-      const existing = await gitHubAppDAL.findByIdWithLock(id, orgPermission.orgId, tx);
+      const existing = await gitHubAppDAL.findByIdWithLock(id, actor.org.id, tx);
       if (!existing) {
         throw new NotFoundError({ message: `GitHub App with id ${id} not found in this organization.` });
       }
 
-      const connectionCounts = await gitHubAppDAL.countConnectionsPerApp(orgPermission.orgId, tx);
+      const connectionCounts = await gitHubAppDAL.countConnectionsPerApp(actor.org.id, tx);
       const connectionCount = connectionCounts.get(existing.id) ?? 0;
 
       if (connectionCount > 0) {
@@ -397,10 +374,10 @@ export const gitHubAppServiceFactory = ({
     projectId,
     gatewayId,
     gatewayPoolId,
-    orgPermission
+    actor
   }: TInitiateGitHubManifestDTO) => {
     await checkAppConnectionPermission({
-      actor: orgPermission,
+      actor,
       projectId,
       orgAction: OrgPermissionAppConnectionActions.Create,
       projectAction: ProjectPermissionAppConnectionActions.Create,
@@ -409,10 +386,10 @@ export const gitHubAppServiceFactory = ({
 
     assertPlatformGitHubHostAllowed(githubHost);
 
-    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, orgPermission);
+    await assertGatewayConfigUsable({ gatewayId, gatewayPoolId }, actor);
 
     const existing = await gitHubAppDAL.findOne({
-      orgId: orgPermission.orgId,
+      orgId: actor.org.id,
       projectId: projectId ?? null,
       name
     });
@@ -433,11 +410,11 @@ export const gitHubAppServiceFactory = ({
     const stateToken = crypto.jwt().sign(
       {
         jti: crypto.nativeCrypto.randomUUID(),
-        orgId: orgPermission.orgId,
+        orgId: actor.org.id,
         projectId: projectId ?? null,
-        actorId: orgPermission.id,
-        actorType: orgPermission.type,
-        authMethod: orgPermission.authMethod,
+        actorId: actor.principal.id,
+        actorType: actor.principal.type,
+        authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
         name,
         instanceType,
         githubOrg: githubOrg ?? "",
@@ -532,13 +509,23 @@ export const gitHubAppServiceFactory = ({
     let created: Awaited<ReturnType<typeof gitHubAppDAL.create>>;
     let codeExchanged = false;
     try {
-      await checkAppConnectionPermission({
-        actor: {
-          type: actorType as ActorType,
-          id: actorId,
-          orgId,
-          authMethod: authMethod as ActorAuthMethod
+      const stateUser = actorType === ActorType.USER ? await userDAL.findById(actorId) : undefined;
+      if (!stateUser) {
+        throw new BadRequestError({ message: "Invalid actor provided", name: "Get permission" });
+      }
+      const actor = await actorContextService.forSession({
+        principal: {
+          type: ActorType.USER,
+          id: stateUser.id,
+          username: stateUser.username,
+          email: stateUser.email ?? null,
+          authMethod: authMethod as AuthMethod | null,
+          isSuperAdmin: Boolean(stateUser.superAdmin)
         },
+        orgId
+      });
+      await checkAppConnectionPermission({
+        actor,
         projectId,
         orgAction: OrgPermissionAppConnectionActions.Create,
         projectAction: ProjectPermissionAppConnectionActions.Create,

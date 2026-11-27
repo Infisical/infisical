@@ -1,7 +1,8 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -9,7 +10,6 @@ import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAiServiceFactory } from "@app/services/ai/ai-service";
 import { TAiJudgeResult } from "@app/services/ai/ai-types";
 import {
@@ -24,7 +24,6 @@ import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connec
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
-import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -239,7 +238,7 @@ export const autoApprovalServiceFactory = ({
   }: {
     projectId: string;
     config: TAutoApprovalConfig;
-    actor: TApprovalActor;
+    actor: TActorContext;
   }): Promise<TAutoApprovalConfig> => {
     const connectionIds = [
       ...new Set([
@@ -263,7 +262,7 @@ export const autoApprovalServiceFactory = ({
 
     if (
       config.rules.some((rule) => rule.conditions.some(isAiCondition)) &&
-      !(await aiService.getOrgAiModel(actor.orgId))
+      !(await aiService.getOrgAiModel(actor.org.id))
     ) {
       throw new BadRequestError({
         message:
@@ -272,11 +271,7 @@ export const autoApprovalServiceFactory = ({
     }
 
     for await (const connectionId of contextConnectionIds) {
-      await appConnectionService.validateAppConnectionUsageById(
-        AI_CONTEXT_APPS,
-        { connectionId, projectId },
-        actor as OrgServiceActor
-      );
+      await appConnectionService.validateAppConnectionUsageById(AI_CONTEXT_APPS, { connectionId, projectId }, actor);
     }
 
     const appByConnectionId = new Map<string, { app: string; name: string }>();
@@ -284,7 +279,7 @@ export const autoApprovalServiceFactory = ({
       const connection = await appConnectionService.validateAppConnectionUsageById(
         AUTO_APPROVAL_APPS,
         { connectionId, projectId },
-        actor as OrgServiceActor
+        actor
       );
       appByConnectionId.set(connectionId, { app: connection.app, name: connection.name });
     }
@@ -904,14 +899,14 @@ export const autoApprovalServiceFactory = ({
     };
   };
 
-  const getCatalog = async ({ projectId, actor }: { projectId: string; actor: TApprovalActor }) => {
+  const getCatalog = async ({ projectId, actor }: { projectId: string; actor: TActorContext }) => {
     // Someone who manages a policy without rights to the project's own connections still sees the org's
     const listConnections = async (app: (typeof AUTO_APPROVAL_APPS)[number]) => {
       try {
-        return await appConnectionService.listAvailableAppConnectionsForUser(app, actor as OrgServiceActor, projectId);
+        return await appConnectionService.listAvailableAppConnectionsForUser(app, actor, projectId);
       } catch (error) {
-        if (error instanceof ForbiddenError) {
-          return appConnectionService.listAvailableAppConnectionsForUser(app, actor as OrgServiceActor);
+        if (error instanceof PermissionDeniedError && error.denial) {
+          return appConnectionService.listAvailableAppConnectionsForUser(app, actor);
         }
         throw error;
       }
@@ -920,7 +915,7 @@ export const autoApprovalServiceFactory = ({
     const apps = [...new Set([...AUTO_APPROVAL_APPS, ...AI_CONTEXT_APPS])];
     const [listed, aiModel] = await Promise.all([
       Promise.all(apps.map(async (app) => [app, await listConnections(app)] as const)),
-      aiService.getOrgAiModel(actor.orgId)
+      aiService.getOrgAiModel(actor.org.id)
     ]);
     const connectionsByApp = new Map(listed);
 
@@ -980,7 +975,7 @@ export const autoApprovalServiceFactory = ({
     selected
   }: {
     projectId: string;
-    actor: TApprovalActor;
+    actor: TActorContext;
     connectionId: string;
     subject: string;
     constraint: string;
@@ -991,7 +986,7 @@ export const autoApprovalServiceFactory = ({
     const connection = await appConnectionService.validateAppConnectionUsageById(
       AUTO_APPROVAL_APPS,
       { connectionId, projectId },
-      actor as OrgServiceActor
+      actor
     );
 
     const constraint = getAutoApprovalProvider(connection.app)?.subjects[subjectId]?.constraints[constraintId];

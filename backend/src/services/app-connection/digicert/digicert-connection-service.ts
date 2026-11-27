@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -23,11 +23,11 @@ const assertCodeSigningProduct = (productNameId: string) => {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TDigiCertConnection>;
 
 export const digicertConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listOrganizations = async (connectionId: string, actor: OrgServiceActor) => {
+  const listOrganizations = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
     try {
       return await listDigiCertOrganizations(appConnection);
@@ -37,7 +37,7 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
     }
   };
 
-  const listProducts = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProducts = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
     try {
       return await listDigiCertProducts(appConnection);
@@ -51,7 +51,7 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
     connectionId: string,
     organizationId: number,
     productNameId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     assertCodeSigningProduct(productNameId);
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
@@ -67,7 +67,7 @@ export const digicertConnectionService = (getAppConnection: TGetAppConnectionFun
     connectionId: string,
     organizationId: number,
     productNameId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.DigiCert, connectionId, actor);
     return listDigiCertOrders(appConnection, organizationId, productNameId);

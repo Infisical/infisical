@@ -2,10 +2,12 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { getConfig } from "@app/lib/config/env";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
+  recordSecretOrgBudgetExceededMetric,
   recordSecretOrgBudgetUsageMetric,
   recordSecretRateLimitExceededMetric,
   SecretRateLimitBucket,
@@ -39,6 +41,25 @@ export const countReturnedSecrets = ({
 export const secretsOrgBudgetCost = (secretCount: number) => Math.ceil(secretCount / SECRETS_PER_BUDGET_CREDIT);
 
 const noBudget: TSecretsOrgBudget = { check: async () => {}, charge: () => {} };
+
+export const secretImportSearchSlot =
+  (orgBudget: TSecretsOrgBudget, readSlot: TConcurrencySlot): TConcurrencySlot =>
+  async (work, opts) => {
+    await orgBudget.check();
+    let loadedSecretCount = 0;
+    try {
+      return await readSlot(
+        (reportSize) =>
+          work((secretCount) => {
+            loadedSecretCount = Math.max(loadedSecretCount, secretCount);
+            reportSize(secretCount);
+          }),
+        opts
+      );
+    } finally {
+      orgBudget.charge(loadedSecretCount);
+    }
+  };
 
 export const secretsOrgBudget = fp<TSecretsOrgBudgetOptions>(async (server, { keyStore }) => {
   const { SECRET_READ_ORG_BUDGET_MODE: mode, SECRET_READ_ORG_BUDGET: budget } = getConfig();
@@ -97,7 +118,18 @@ export const secretsOrgBudget = fp<TSecretsOrgBudgetOptions>(async (server, { ke
       if (cost <= 0) return;
       void keyStore
         .incrementByWithFixedExpiry(key, cost, BUDGET_WINDOW_IN_SECONDS)
-        .then((total) => recordSecretOrgBudgetUsageMetric({ usedCredits: total, planSlug }))
+        .then((total) => {
+          recordSecretOrgBudgetUsageMetric({ usedCredits: total, planSlug });
+
+          const exceededCredits = total - budget;
+          const didSpendLastOfBudget = exceededCredits >= 0 && exceededCredits < cost;
+          if (!didSpendLastOfBudget) return;
+
+          recordSecretOrgBudgetExceededMetric({ exceededCredits, planSlug });
+          logger.info(
+            `secretsOrgBudget: organization spent its secret read budget [orgId=${orgId}] [cost=${cost}] [used=${total}] [budget=${budget}] [exceeded=${exceededCredits}]`
+          );
+        })
         .catch((error) => logFailure(error, "charge", orgId));
     };
 

@@ -207,6 +207,18 @@ export const secretsLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// The secrets budget, counted per caller: claude.ai and ChatGPT call the MCP endpoint from a few shared addresses, so
+// counting per IP would put all of their users in one bucket.
+export const mcpLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.secretsLimit,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `mcp:${actorId}` : req.realIp;
+  }
+};
+
 export const authRateLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",

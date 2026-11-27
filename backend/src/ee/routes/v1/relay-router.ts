@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { RelaysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerRelayRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -96,9 +96,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.relay.registerRelay({
         ...req.body,
-        identityId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
     }
   });
@@ -124,10 +122,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     ]),
     handler: async (req) => {
       return server.services.relay.getRelays({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
     }
   });
@@ -151,15 +146,12 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const relay = await server.services.relay.deleteRelay({
         id: req.params.id,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.RELAY_DELETE,
           metadata: { relayId: relay.id, name: relay.name }
@@ -245,9 +237,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.relay.heartbeat({
         name: req.body.name,
-        identityId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       return { message: "Successfully triggered heartbeat" };

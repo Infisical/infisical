@@ -1,5 +1,5 @@
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export const MAX_UA_CLIENT_SECRET_TTL_SECONDS = 315_360_000; // 10 years
 
@@ -25,7 +25,7 @@ export type TAttachUaDTO = {
   lockoutThreshold: number;
   lockoutDurationSeconds: number;
   lockoutCounterResetSeconds: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateUaDTO = {
   identityId: string;
@@ -40,16 +40,16 @@ export type TUpdateUaDTO = {
   lockoutDurationSeconds?: number;
   lockoutCounterResetSeconds?: number;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetUaDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeUaDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateUaClientSecretDTO = {
   identityId: string;
@@ -57,24 +57,24 @@ export type TCreateUaClientSecretDTO = {
   numUsesLimit: number;
   ttl: number;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetUaClientSecretsDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeUaClientSecretDTO = {
   identityId: string;
   clientSecretId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TClearUaLockoutsDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetUniversalAuthClientSecretByIdDTO = {
   identityId: string;
   clientSecretId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

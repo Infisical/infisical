@@ -2,12 +2,22 @@ import ratelimiter from "@fastify/rate-limit";
 import Fastify, { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { TConcurrencySlot } from "@app/lib/concurrency/concurrency-limiter";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { recordSecretOrgBudgetUsageMetric, recordSecretRateLimitExceededMetric } from "@app/lib/telemetry/metrics";
+import {
+  recordSecretOrgBudgetExceededMetric,
+  recordSecretOrgBudgetUsageMetric,
+  recordSecretRateLimitExceededMetric
+} from "@app/lib/telemetry/metrics";
 import { DEFAULT_RATE_LIMITS, secretsLimit } from "@app/server/config/rateLimiter";
 
-import { countReturnedSecrets, secretsOrgBudget, secretsOrgBudgetCost } from "./secrets-org-budget";
+import {
+  countReturnedSecrets,
+  secretImportSearchSlot,
+  secretsOrgBudget,
+  secretsOrgBudgetCost
+} from "./secrets-org-budget";
 
 const BUDGET = 3;
 
@@ -24,7 +34,8 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/telemetry/metrics")>()),
   recordSecretRateLimitExceededMetric: vi.fn(),
-  recordSecretOrgBudgetUsageMetric: vi.fn()
+  recordSecretOrgBudgetUsageMetric: vi.fn(),
+  recordSecretOrgBudgetExceededMetric: vi.fn()
 }));
 
 const createKeyStore = () => {
@@ -140,6 +151,86 @@ describe("secrets org budget cost", () => {
   });
 });
 
+describe("secret import search slot", () => {
+  const setup = () => {
+    const events: string[] = [];
+    const charge = vi.fn();
+    const forwarded: number[] = [];
+    const orgBudget = {
+      check: vi.fn(async () => {
+        events.push("check");
+      }),
+      charge
+    };
+    const readSlot: TConcurrencySlot = (work) => {
+      events.push("slot");
+      return work((secretCount) => forwarded.push(secretCount));
+    };
+    return { slot: secretImportSearchSlot(orgBudget, readSlot), orgBudget, charge, events, forwarded };
+  };
+
+  test("checks the budget before it takes the read slot, and charges the secrets the search loaded", async () => {
+    const { slot, charge, events, forwarded } = setup();
+
+    const result = await slot(async (reportSize) => {
+      reportSize(250);
+      return "found";
+    });
+
+    expect(result).toBe("found");
+    expect(events).toEqual(["check", "slot"]);
+    expect(forwarded).toEqual([250]);
+    expect(charge).toHaveBeenCalledExactlyOnceWith(250);
+  });
+
+  test("runs nothing and charges nothing when the budget is spent", async () => {
+    const { slot, orgBudget, charge, events } = setup();
+    orgBudget.check.mockRejectedValueOnce(new RateLimitError({ message: "spent" }));
+    const work = vi.fn();
+
+    await expect(slot(work)).rejects.toThrow(RateLimitError);
+    expect(work).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+    expect(charge).not.toHaveBeenCalled();
+  });
+
+  test("charges the largest size reported, since the rows loaded outnumber the ones the caller may see", async () => {
+    const { slot, charge } = setup();
+
+    await slot(async (reportSize) => {
+      reportSize(400);
+      reportSize(120);
+    });
+
+    expect(charge).toHaveBeenCalledExactlyOnceWith(400);
+  });
+
+  test("charges a search that loaded the imports and then failed to find the secret", async () => {
+    const { slot, charge } = setup();
+
+    await expect(
+      slot(async (reportSize) => {
+        reportSize(300);
+        throw new Error("not found");
+      })
+    ).rejects.toThrow("not found");
+    expect(charge).toHaveBeenCalledExactlyOnceWith(300);
+  });
+
+  test("passes the size key on to the read slot", async () => {
+    const sizeKeys: (string | undefined)[] = [];
+    const readSlot: TConcurrencySlot = (work, opts) => {
+      sizeKeys.push(opts?.sizeKey);
+      return work(() => {});
+    };
+    const slot = secretImportSearchSlot({ check: async () => {}, charge: vi.fn() }, readSlot);
+
+    await slot(async () => {}, { sizeKey: "project:key" });
+
+    expect(sizeKeys).toEqual(["project:key"]);
+  });
+});
+
 describe("secrets org budget", () => {
   let app: FastifyInstance | undefined;
 
@@ -149,7 +240,9 @@ describe("secrets org budget", () => {
     Object.assign(config, { SECRET_READ_ORG_BUDGET_MODE: "enforce", SECRET_READ_ORG_BUDGET: BUDGET });
     vi.mocked(recordSecretRateLimitExceededMetric).mockClear();
     vi.mocked(recordSecretOrgBudgetUsageMetric).mockClear();
+    vi.mocked(recordSecretOrgBudgetExceededMetric).mockClear();
     vi.mocked(logger.warn).mockClear();
+    vi.mocked(logger.info).mockClear();
   });
 
   test("refuses an organization's reads once its budget is spent", async () => {
@@ -247,6 +340,53 @@ describe("secrets org budget", () => {
     expect(vi.mocked(recordSecretOrgBudgetUsageMetric).mock.calls).toEqual([
       [{ usedCredits: 2, planSlug: "pro" }],
       [{ usedCredits: 3, planSlug: "pro" }]
+    ]);
+  });
+
+  test("records how far the read that spends the last of the budget went past it, and logs the organization", async () => {
+    const built = await buildServer();
+    app = built.app;
+
+    await read(built.app, 200);
+    expect(recordSecretOrgBudgetExceededMetric).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
+
+    await read(built.app, 500);
+    expect(vi.mocked(recordSecretOrgBudgetExceededMetric).mock.calls).toEqual([
+      [{ exceededCredits: 4, planSlug: "pro" }]
+    ]);
+    expect(vi.mocked(logger.info).mock.calls).toEqual([
+      [expect.stringContaining("[orgId=org-a] [cost=5] [used=7] [budget=3] [exceeded=4]")]
+    ]);
+  });
+
+  test("records 0 credits exceeded for a read that lands exactly on the budget", async () => {
+    const built = await buildServer();
+    app = built.app;
+    const server = built.app;
+
+    await statusesOf(BUDGET, () => read(server, 100));
+
+    expect(vi.mocked(recordSecretOrgBudgetExceededMetric).mock.calls).toEqual([
+      [{ exceededCredits: 0, planSlug: "pro" }]
+    ]);
+  });
+
+  test("records the credits exceeded once per window, however many reads follow it", async () => {
+    config.SECRET_READ_ORG_BUDGET_MODE = "observe";
+    const built = await buildServer();
+    app = built.app;
+    const server = built.app;
+
+    await statusesOf(BUDGET + 2, () => read(server, 100));
+    expect(recordSecretOrgBudgetExceededMetric).toHaveBeenCalledTimes(1);
+
+    built.keyStore.advanceSeconds(60);
+    await read(server, 10_000);
+
+    expect(vi.mocked(recordSecretOrgBudgetExceededMetric).mock.calls).toEqual([
+      [{ exceededCredits: 0, planSlug: "pro" }],
+      [{ exceededCredits: 97, planSlug: "pro" }]
     ]);
   });
 

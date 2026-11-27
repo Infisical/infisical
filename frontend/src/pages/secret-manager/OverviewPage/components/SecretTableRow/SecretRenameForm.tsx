@@ -29,6 +29,8 @@ import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
+import { useRenameHeldDraft, useUnsavedEdits } from "../UnsavedEditsBar";
+
 enum SecretActionType {
   Created = "created",
   Modified = "modified",
@@ -82,6 +84,8 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
   );
 
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
+  const renameHeldDraft = useRenameHeldDraft();
+  const { isCommitting } = useUnsavedEdits();
 
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
     options: { meta: { skipErrorToast: true } }
@@ -121,6 +125,18 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
         })
       )
     );
+
+    secretsToRename.forEach((secret, index) => {
+      const result = results[index];
+      if (result.status !== "fulfilled" || "approval" in result.value) return;
+      if (renameHeldDraft(secret.env, secretPath, secret.key, data.key) !== "conflict") return;
+      createNotification({
+        type: "warning",
+        text: `Your unsaved value for ${secret.key} in ${
+          environments.find((env) => env.slug === secret.env)?.name ?? secret.env
+        } was dropped because ${data.key} already has an unsaved change there`
+      });
+    });
 
     if (results.every((result) => result.status === "fulfilled")) {
       createNotification({
@@ -219,7 +235,7 @@ function SecretRenameForm({ environments, getSecretByKey, secretKey, secretPath 
         </DialogClose>
         <Button
           type="submit"
-          isDisabled={isSubmitting || !isDirty}
+          isDisabled={isSubmitting || isCommitting || !isDirty}
           isPending={isSubmitting}
           variant="project"
         >

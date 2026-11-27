@@ -109,6 +109,8 @@ const SERVICE_TOKEN_ISSUER = "infisical-cloud";
 const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
 const ORG_DELETED_TIMEOUT_MS = 30_000;
+// On the request path whenever no plan is cached, so a hanging License Server must not stall requests.
+const ENTITLEMENTS_TIMEOUT_MS = 5_000;
 
 // Short-lived RS256 JWT the license server checks with our public key, so the private key is never sent.
 const mintServiceToken = (signingKey: string): string =>
@@ -255,9 +257,13 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     if (!conn) return null;
     try {
       const res = conn.isSelfHosted
-        ? await send(conn, "GET", "/v1/entitlements", { query: { region: conn.region } })
+        ? await send(conn, "GET", "/v1/entitlements", {
+            query: { region: conn.region },
+            timeoutMs: ENTITLEMENTS_TIMEOUT_MS
+          })
         : await send(conn, "GET", orgScoped(org.id, "/entitlements"), {
-            query: { org_name: org.name, org_slug: org.slug, region: conn.region }
+            query: { org_name: org.name, org_slug: org.slug, region: conn.region },
+            timeoutMs: ENTITLEMENTS_TIMEOUT_MS
           });
       return await parseBody(res, entitlementsResponseSchema);
     } catch (error) {

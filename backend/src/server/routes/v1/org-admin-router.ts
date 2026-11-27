@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
@@ -36,10 +36,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         limit: req.query.limit,
         offset: req.query.offset,
         search: req.query.search,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type
+        actor: req.actor
       });
       return { projects, count };
     }
@@ -65,10 +62,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { membership } = await server.services.orgAdmin.grantProjectAdminAccess({
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
+        actor: req.actor,
         projectId: req.params.projectId
       });
       if (isUserSessionAuth(req.auth)) {
@@ -87,7 +81,7 @@ export const registerOrgAdminRouter = async (server: FastifyZodProvider) => {
         });
       }
 
-      return { membership: { ...membership, userId: req.permission.id, projectId: req.params.projectId } };
+      return { membership: { ...membership, userId: req.actor.id, projectId: req.params.projectId } };
     }
   });
 };

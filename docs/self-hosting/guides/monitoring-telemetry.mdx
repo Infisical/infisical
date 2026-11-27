@@ -1274,7 +1274,9 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
 
 ### Secret list limit metrics (InfisicalCore)
 
-Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-hosting/configuration/envars) is `observe` or `enforce`. They show how close each instance is to the number of secrets it can hold in memory for requests to list secrets, and how many of those requests Infisical refuses. In `observe` mode, Infisical refuses no request, and the metrics show how many requests `enforce` mode would refuse.
+Infisical records the `infisical.secret.read_budget.*` and `infisical.secret.read.*` metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-hosting/configuration/envars) is `observe` or `enforce`. They show how close each instance is to the number of secrets it can hold in memory for requests to list secrets, and how many of those requests Infisical refuses. In `observe` mode, Infisical refuses no request, and the metrics show how many requests `enforce` mode would refuse.
+
+Infisical records the `infisical.secret.org_budget.*` metrics if `SECRET_READ_ORG_BUDGET_MODE` is `observe` or `enforce`. That limit applies only on Infisical Cloud, so a self-hosted instance never records them.
 
 <AccordionGroup>
   <Accordion title="Secret Read Budget Capacity">
@@ -1284,7 +1286,7 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{secret}`
 
-    **Description**: Number of secrets that requests to list secrets can hold in memory at the same time on this instance. Infisical calculates the value once, at startup, from the Node.js heap limit, `SECRET_READ_HEAP_BASELINE_BYTES`, `SECRET_READ_HEAP_RESERVE_BYTES`, and `SECRET_READ_PEAK_BYTES_PER_SECRET`. Check this value after you change the heap limit or any of those settings.
+    **Description**: Number of secrets that requests to list secrets can hold in memory at the same time on this instance. Infisical calculates the value once, at startup. It uses the memory limit of its container, or the memory of the host if the container has no limit, together with `SECRET_READ_HEAP_BASELINE_BYTES`, `SECRET_READ_HEAP_RESERVE_BYTES`, and `SECRET_READ_PEAK_BYTES_PER_SECRET`. Check this value after you change the container's memory limit or any of those settings.
   </Accordion>
 
   <Accordion title="Secret Read Budget Used">
@@ -1297,6 +1299,16 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
     **Description**: Number of secrets that the requests to list secrets running on this instance hold in memory. Divide it by `infisical.secret.read_budget.capacity` to get how full the instance is. The value can pass the capacity if a request returns more secrets than Infisical estimated. In `observe` mode, the value can stay above the capacity, because Infisical refuses no request.
   </Accordion>
 
+  <Accordion title="Secret Read Budget Peak Used">
+    **Metric Name**: `infisical.secret.read_budget.peak_used`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `{secret}`
+
+    **Description**: Highest number of secrets that requests to list secrets held in memory on this instance at any moment since the previous export. `infisical.secret.read_budget.used` shows only the moment of the export, so it can miss a burst that fills the instance and ends between two exports. Use this metric to alert when an instance runs close to `infisical.secret.read_budget.capacity`.
+  </Accordion>
+
   <Accordion title="Secret Read Size">
     **Metric Name**: `infisical.secret.read.size`
 
@@ -1304,11 +1316,10 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{secret}`
 
-    **Description**: Number of secrets a request to list secrets held in memory, including imported secrets, recorded once per request. Use the p75 of this metric as the value of `SECRET_READ_DEFAULT_SECRET_WEIGHT`. Group it by `plan.slug` to see how many secrets the organizations on each license plan hold.
+    **Description**: Number of secrets a request to list secrets held in memory, including imported secrets, recorded once per request. Use the p75 of this metric as the value of `SECRET_READ_DEFAULT_SECRET_WEIGHT`.
 
     **Attributes**:
       - `estimate.source` (string): `last_known` (the instance had handled the same request before) or `default` (the instance used `SECRET_READ_DEFAULT_SECRET_WEIGHT`)
-      - `plan.slug` (string): the slug of the organization's license plan, or `none`
   </Accordion>
 
   <Accordion title="Secret Read Estimate Error">
@@ -1331,11 +1342,40 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{request}`
 
-    **Description**: Requests to list secrets that arrived when the instance had no room for them. If this count keeps growing, the instances need more heap, or you need more instances.
+    **Description**: Requests to list secrets that a limit refused, or would have refused in `enforce` mode. If the count for `read_budget` keeps growing, the instances need more memory, or you need more instances.
 
     **Attributes**:
-      - `rate_limit.bucket` (string): `read_budget`
-      - `outcome` (string): `refused` (Infisical answered with a `503` response) or `would_refuse` (`observe` mode: the request ran, but `enforce` mode would have refused it)
+      - `rate_limit.bucket` (string): the limit that refused the request:
+        - `read_budget`: the instance had no room for the request (`503` response)
+        - `read_budget_org_share`: the organization already held its share of the instance's room (`503` response, Infisical Cloud only)
+        - `org_budget`: the organization had spent its `SECRET_READ_ORG_BUDGET` for the minute (`429` response, Infisical Cloud only)
+      - `outcome` (string): `refused` (Infisical refused the request) or `would_refuse` (`observe` mode: the request ran, but `enforce` mode would have refused it)
+      - `plan.slug` (string): the slug of the organization's license plan, or `none`
+  </Accordion>
+
+  <Accordion title="Secret Org Budget Usage">
+    **Metric Name**: `infisical.secret.org_budget.usage`
+
+    **Type**: Histogram
+
+    **Unit**: `{credit}`
+
+    **Description**: Credits an organization has spent in the current minute, recorded after each request to list secrets that costs credits. Compare it with `SECRET_READ_ORG_BUDGET` to see how close organizations come to the limit.
+
+    **Attributes**:
+      - `plan.slug` (string): the slug of the organization's license plan, or `none`
+  </Accordion>
+
+  <Accordion title="Secret Org Budget Exceeded">
+    **Metric Name**: `infisical.secret.org_budget.exceeded`
+
+    **Type**: Histogram
+
+    **Unit**: `{credit}`
+
+    **Description**: Credits by which an organization went past `SECRET_READ_ORG_BUDGET`, recorded once per organization per minute, for the request that spent the last of the budget. The value is 0 if that request used up the budget exactly. Infisical refuses only the requests after it, so large values mean single requests return many more secrets than the budget allows.
+
+    **Attributes**:
       - `plan.slug` (string): the slug of the organization's license plan, or `none`
   </Accordion>
 </AccordionGroup>

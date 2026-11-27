@@ -107,6 +107,7 @@ func TestNetScalerPkiSync_Sync(t *testing.T) {
 		state := s.adc.State(t)
 		require.Len(t, state.CertKeys, 1)
 		require.True(t, strings.HasPrefix(state.Files[state.CertKeys[name].Cert], strings.TrimSpace(renewed.JSON200.Certificate)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, state.Files[state.CertKeys[name].Cert], state.Files[state.CertKeys[name].Key])
 	})
 
 	t.Run("should create an Infisical-<id> certkey for a renewed certificate and delete the old one when preserving the item is off", func(t *testing.T) {
@@ -133,6 +134,7 @@ func TestNetScalerPkiSync_Sync(t *testing.T) {
 		s.adc.ExpectEvent[netscaler.CertKeyDeleted](t, func(e netscaler.CertKeyDeleted) bool { return e.Name == old })
 		state := s.adc.State(t)
 		require.True(t, strings.HasPrefix(state.Files[state.CertKeys[fresh].Cert], strings.TrimSpace(renewed.JSON200.Certificate)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, state.Files[state.CertKeys[fresh].Cert], state.Files[state.CertKeys[fresh].Key])
 		require.NotContains(t, state.CertKeys, old)
 	})
 

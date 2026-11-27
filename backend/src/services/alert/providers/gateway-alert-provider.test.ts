@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   emitGatewayOffline,
   GATEWAY_OFFLINE_EVENT,
@@ -30,15 +30,14 @@ const buildProvider = (opts: { gateways?: TOrgGateway[]; rules?: { action: strin
           .filter((gateway) => ids.includes(gateway.id) && (gateway.orgId ?? "org-1") === orgId)
           .map(({ id, name }) => ({ id, name }))
     },
-    permissionService: {
-      getOrgPermission: async () => ({
-        permission: createMongoAbility(
-          (opts.rules ?? [
+    orgPermissionService: {
+      getOrgPermission: async () =>
+        Permission.fromRules({
+          rules: (opts.rules ?? [
             { action: "list-gateways", subject: "gateway" },
             { action: "edit-gateways", subject: "gateway" }
           ]) as never
-        )
-      })
+        })
     } as never
   });
 

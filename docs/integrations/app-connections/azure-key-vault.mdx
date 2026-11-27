@@ -103,12 +103,25 @@ Infisical supports four methods for connecting to Azure Key Vault: OAuth, Client
 </Accordion>
 
 <Accordion title="Managed Identity Authentication">
-  To use managed identity authentication, you need a user-assigned managed identity that can access the Azure Key Vault instances you want to use. Infisical doesn't store a secret for this method.
+  With managed identity authentication, Infisical connects as a [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with access to the Azure Key Vault instances you want to use, and doesn't store a secret for the connection.
 
-  **Prerequisites:**
-  - An existing Azure Key Vault instance
-  - A [user-assigned managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities) with access to your target Azure Key Vault instance(s) via Access Policies or RBAC (such as the **Key Vault Secrets Officer** role)
-  - If you self-host Infisical, a `SITE_URL` that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it
+  If you self-host Infisical, set `SITE_URL` to a URL that Azure can reach from the internet, because Azure fetches Infisical's signing keys from it.
+
+  <Steps>
+    <Step>
+      In the Azure portal, go to **Managed Identities** and select **Create**. Choose a subscription, resource group, region, and name, then select **Review + create** and **Create**.
+    </Step>
+    <Step>
+      Open the managed identity and copy the **Client ID** from its **Overview** page. Copy your **Tenant ID** from the **Overview** page of **Microsoft Entra ID**.
+    </Step>
+    <Step>
+      Open your key vault and select **Access control (IAM)** > **Add** > **Add role assignment**. Choose a role that can manage secrets, such as **Key Vault Secrets Officer**, then select **Next**.
+
+      Under **Assign access to**, select **Managed identity**, then use **Select members** to pick your managed identity. Select **Review + assign**.
+
+      If the vault uses access policies rather than Azure RBAC, add an access policy that grants the managed identity the same secret permissions.
+    </Step>
+  </Steps>
 </Accordion>
 
 ## Setup Azure connection in Infisical
@@ -179,18 +192,25 @@ Infisical supports four methods for connecting to Azure Key Vault: OAuth, Client
       <Tab title="Managed Identity">
         <Steps>
           <Step>
-            Select the **Managed Identity** method, fill in the **Tenant ID** and **Client ID** of your managed identity, then select **Configure Federated Credential**. Infisical creates the connection and shows its **Issuer**, **Subject Identifier**, and **Audience**.
+            Select the **Managed Identity** method and enter the **Tenant ID** and **Client ID** of your managed identity. Then select **Configure Federated Credential**. Infisical creates the connection and shows the **Issuer**, **Subject Identifier**, and **Audience** to add to the managed identity.
           </Step>
           <Step>
-            In the Azure portal, open your managed identity and go to **Settings** > **Federated credentials** > **Add Credential**. Choose the **Other issuer** scenario and enter the values from Infisical.
+            In the Azure portal, open your managed identity, go to **Settings** > **Federated credentials**, and select **Add Credential**. Choose the **Other issuer** scenario and fill in the form:
+
+            - **Issuer URL**: the **Issuer** from Infisical
+            - **Subject identifier**: the **Subject Identifier** from Infisical
+            - **Name**: any name, such as `infisical`
+            - **Audience**: the **Audience** from Infisical, which Azure fills in by default
+
+            Then select **Add**.
           </Step>
           <Step>
-            Back in Infisical, select **Verify Connection**.
+            Back in Infisical, select **Verify Connection**. If verification fails right after you add the credential, wait a minute for Azure to apply it, then select **Retry Verification**.
           </Step>
         </Steps>
 
         <Tip>
-            If you create the connection through [the create endpoint](/api-reference/endpoints/app-connections/azure-key-vault/create), the response includes these values in `credentials.federatedCredential`.
+          If you create the connection with the Azure Key Vault connection [Create](/api-reference/endpoints/app-connections/azure-key-vault/create) endpoint, the response includes these values in `credentials.federatedCredential`.
         </Tip>
       </Tab>
     </Tabs>

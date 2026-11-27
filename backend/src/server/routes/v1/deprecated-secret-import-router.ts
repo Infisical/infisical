@@ -3,11 +3,12 @@ import { z } from "zod";
 import { SecretImportsSchema, SecretsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
 
 import { secretRawSchema } from "../sanitizedSchemas";
 
@@ -68,10 +69,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.createImport({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         projectId: req.body.workspaceId,
         data: req.body.import
@@ -156,10 +154,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.updateImport({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.workspaceId,
@@ -228,10 +223,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.deleteImport({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.workspaceId
@@ -286,10 +278,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { message } = await server.services.secretImport.resyncSecretImportReplication({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId,
         ...req.body,
         projectId: req.body.workspaceId
@@ -339,10 +328,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     ]),
     handler: async (req) => {
       const secretImports = await server.services.secretImport.getImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.workspaceId
       });
@@ -406,10 +392,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
     ]),
     handler: async (req) => {
       const secretImport = await server.services.secretImport.getImportById({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.secretImportId
       });
 
@@ -467,19 +450,18 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.OAUTH
     ]),
     handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
       const readSlot = server.secretReadSlot(req, reply);
-      const importedSecrets = await readSlot(async (reportSize) => {
-        const secrets = await server.services.secretImport.getSecretsFromImports({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          ...req.query,
-          projectId: req.query.workspaceId
-        });
-        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
-        return secrets;
+      const importedSecrets = await server.services.secretImport.getSecretsFromImports({
+        actor: req.actor,
+        ...req.query,
+        projectId: req.query.workspaceId,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
       return { secrets: importedSecrets };
     }
   });
@@ -526,15 +508,17 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.OAUTH
     ]),
     handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
+      const readSlot = server.secretReadSlot(req, reply);
       const { secrets, etag, notModified } = await server.services.secretImport.getRawSecretsFromImports({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId: req.query.workspaceId,
         ifNoneMatch: req.headers["if-none-match"],
-        secretReadSlot: server.secretReadSlot(req, reply)
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
 
       if (etag) {
@@ -546,6 +530,7 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
         return;
       }
 
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: secrets }));
       return { secrets };
     }
   });

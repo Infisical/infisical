@@ -45,7 +45,7 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, body)
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: dns_name SAN value 'x.denied.test' does not match allowed patterns: *.allowed.test")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: dns_name SAN value 'x.denied.test' does not match allowed patterns: '*.allowed.test'.")
 	})
 
 	t.Run("should refuse a denied DNS name even when an allowed pattern matches it", func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, body)
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: dns_name SAN matching denied pattern 'bad.allowed.test' found in request")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: dns_name SAN 'bad.allowed.test' matches the denied pattern 'bad.allowed.test'. Remove it from the request, or from the profile's default SANs if a default added it.")
 	})
 
 	t.Run("should refuse a request missing a required DNS name, naming it", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, pki.ServerCertificate(id.Short()+".other.test"))
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: Required dns_name SAN matching pattern 'required.test' not found in request")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: The request has no dns_name SAN matching the required pattern 'required.test'. Add one to the request.")
 	})
 
 	t.Run("should refuse an extended key usage the policy does not allow", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, body)
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: Invalid extended key usages: client_auth")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: The request includes extended key usages the policy does not allow: client_auth. Allowed extended key usages: server_auth.")
 	})
 
 	t.Run("should refuse a TTL above the policy's maximum", func(t *testing.T) {
@@ -114,7 +114,7 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, body)
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: Requested validity period exceeds maximum allowed duration")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: Requested validity '90d' exceeds the policy's maximum of '30d'. Request a TTL of 30d or less.")
 	})
 
 	t.Run("should refuse a key algorithm the policy does not allow", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, pki.ServerCertificate(id.Short()+".key.test"))
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: Key algorithm 'RSA_2048' is not allowed by this policy")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: Key algorithm 'RSA_2048' is not allowed by the policy. Allowed key algorithms: EC_prime256v1.")
 	})
 
 	t.Run("should refuse an organization the policy does not allow", func(t *testing.T) {
@@ -153,7 +153,29 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, body)
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: organization value 'Other Org' is not in allowed values list")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: organization value 'Other Org' is not in the allowed values: 'Allowed Org'.")
+	})
+
+	t.Run("should list every violation in one message when a request breaks several rules", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		policy := allowSANs(t, "*.allowed.test")
+		policy.Algorithms.KeyAlgorithm = &[]string{"ECDSA-P256"}
+		policy.Validity.Max = new("30d")
+		g := pki.NewGraph(t, tn, pki.WithPolicy(policy))
+		body := withSAN(pki.ServerCertificate(id.Short()+".allowed.test"), "x.denied.test")
+		body.Attributes.Ttl = new("90d")
+
+		// Action
+		res := pki.Request(t, g.Operator, g.App, g.Profile, body)
+
+		// Assert
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: "+
+			"dns_name SAN value 'x.denied.test' does not match allowed patterns: '*.allowed.test'; "+
+			"Key algorithm 'RSA_2048' is not allowed by the policy. Allowed key algorithms: EC_prime256v1; "+
+			"Requested validity '90d' exceeds the policy's maximum of '30d'. Request a TTL of 30d or less.")
 	})
 
 	t.Run("should refuse a CSR naming a DNS name outside the allowed pattern", func(t *testing.T) {
@@ -168,6 +190,6 @@ func TestCertificate_Policy(t *testing.T) {
 		res := pki.Request(t, g.Operator, g.App, g.Profile, csrRequest(csr))
 
 		// Assert
-		requireRefused(t, g, res, "Certificate request validation failed: dns_name SAN value 'x.denied.test' does not match allowed patterns: *.allowed.test")
+		requireRefused(t, g, res, "Certificate request does not meet the certificate policy: dns_name SAN value 'x.denied.test' does not match allowed patterns: '*.allowed.test'.")
 	})
 }

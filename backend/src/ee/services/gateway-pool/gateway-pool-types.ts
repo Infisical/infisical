@@ -1,5 +1,6 @@
 import { TGatewaysV2 } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { TActorInput } from "@app/lib/types";
 
 // One retry past the first attempt. Higher multiplies load onto whichever members are still up,
 // which is the flood this is meant to avoid.
@@ -7,32 +8,32 @@ export const DEFAULT_POOL_FAILOVER_ATTEMPTS = 2;
 
 export type TCreateGatewayPoolDTO = {
   name: string;
-} & OrgServiceActor;
+} & TActorInput;
 
-export type TListGatewayPoolsDTO = OrgServiceActor;
+export type TListGatewayPoolsDTO = TActorContext;
 
 export type TGetGatewayPoolByIdDTO = {
   poolId: string;
-} & OrgServiceActor;
+} & TActorInput;
 
 export type TUpdateGatewayPoolDTO = {
   poolId: string;
   name?: string;
-} & OrgServiceActor;
+} & TActorInput;
 
 export type TDeleteGatewayPoolDTO = {
   poolId: string;
-} & OrgServiceActor;
+} & TActorInput;
 
 export type TAddGatewayToPoolDTO = {
   poolId: string;
   gatewayId: string;
-} & OrgServiceActor;
+} & TActorInput;
 
 export type TRemoveGatewayFromPoolDTO = {
   poolId: string;
   gatewayId: string;
-} & OrgServiceActor;
+} & TActorInput;
 
 export type TGatewayPoolMemberFilter = (gateway: TGatewaysV2) => boolean;
 

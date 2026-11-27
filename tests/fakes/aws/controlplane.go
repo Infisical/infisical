@@ -117,6 +117,17 @@ func SeedParameter(name, value string) Fragment {
 	return Fragment{SSM, map[string]any{"parameters": map[string]any{name: map[string]any{"value": value}}}}
 }
 
+// SeedParameterWithKey seeds a SecureString parameter encrypted with the named KMS key.
+func SeedParameterWithKey(name, value, keyID string) Fragment {
+	return Fragment{SSM, map[string]any{"parameters": map[string]any{name: map[string]any{"value": value, "keyId": keyID}}}}
+}
+
+// SeedUnusableKey makes a KMS key one the caller may not decrypt with, so reading a
+// parameter encrypted with it is refused.
+func SeedUnusableKey(keyID string) Fragment {
+	return Fragment{SSM, map[string]any{"unusableKeys": []string{keyID}}}
+}
+
 // SeedSecret seeds a Secrets Manager secret holding a string.
 func SeedSecret(name, value string) Fragment {
 	return Fragment{SecretsManager, map[string]any{"secrets": map[string]any{name: map[string]any{"secretString": value}}}}
@@ -179,6 +190,42 @@ func RemoveACMCertificate(arn string) Fragment {
 // RSA-2048 key.
 func SeedPrivateCA(arn, status string) Fragment {
 	return Fragment{ACMPCA, map[string]any{"authorities": map[string]any{arn: map[string]any{"status": status}}}}
+}
+
+// ShortLivedNextACMCertificate makes the next certificate ACM issues valid for days
+// rather than AmazonIssuedValidityDays.
+func ShortLivedNextACMCertificate(days int) Fragment {
+	return Fragment{ACM, map[string]any{"nextValidityDays": days}}
+}
+
+// HoldACMValidation keeps every certificate requested from now on in PENDING_VALIDATION
+// until ReleaseACMValidation.
+func HoldACMValidation() Fragment {
+	return Fragment{ACM, map[string]any{"holdValidation": true}}
+}
+
+// ReleaseACMValidation issues every certificate held in PENDING_VALIDATION and stops
+// holding new ones.
+func ReleaseACMValidation() Fragment {
+	return Fragment{ACM, map[string]any{"releaseValidation": true}}
+}
+
+// ShortLivedNextPrivateCertificate makes the next certificate a Private CA of the account
+// issues valid for days, whatever validity it was asked for.
+func ShortLivedNextPrivateCertificate(days int) Fragment {
+	return Fragment{ACMPCA, map[string]any{"nextValidityDays": days}}
+}
+
+// HoldPrivateCertificates keeps every certificate issued from now on in progress until
+// ReleasePrivateCertificates.
+func HoldPrivateCertificates() Fragment {
+	return Fragment{ACMPCA, map[string]any{"holdIssued": true}}
+}
+
+// ReleasePrivateCertificates makes every held certificate available and stops holding
+// new ones.
+func ReleasePrivateCertificates() Fragment {
+	return Fragment{ACMPCA, map[string]any{"releaseIssued": true}}
 }
 
 // PrivateCAARN is an ARN for a Private CA in the account an access key id belongs to.

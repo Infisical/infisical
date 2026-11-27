@@ -82,7 +82,11 @@ Without a signal, Infisical prompts as usual. The `user-login` event in the [aud
 </Steps>
 
 <Note>
-  If your identity provider lists the methods under another name, change **MFA claim name** in your OIDC configuration or **MFA attribute name** in your SAML configuration. If it uses other values or authentication contexts for MFA, add them under **Additional MFA claim values** or **Additional MFA authentication contexts**.
+  If your identity provider reports MFA under another name or with other values, update the **MFA Signal** section of your SSO configuration:
+
+  - For OIDC, change **MFA claim name** or add values under **Additional MFA claim values**
+  - For a SAML attribute, change **Attribute name** or add values under **Additional values**
+  - For a SAML authentication context, add classes under **Additional contexts**
 </Note>
 
 ## Entra ID MFA

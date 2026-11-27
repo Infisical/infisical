@@ -3,10 +3,10 @@ import { z } from "zod";
 import { CertificateInventoryViewsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const InventoryViewFiltersSchema = z
   .object({
@@ -104,10 +104,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       return server.services.certificateInventoryView.listViews({
         projectId: req.internalCertManagerProjectId,
         applicationId: req.query.applicationId,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.actor
       });
     }
   });
@@ -146,10 +143,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         filters: req.body.filters,
         columns: req.body.columns,
         isShared: req.body.isShared,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -208,10 +202,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
         filters: req.body.filters,
         columns: req.body.columns,
         isShared: req.body.isShared,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -259,10 +250,7 @@ export const registerCertificateInventoryViewRouter = async (server: FastifyZodP
       const view = await server.services.certificateInventoryView.deleteView({
         viewId: req.params.viewId,
         projectId: req.internalCertManagerProjectId,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

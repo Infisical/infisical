@@ -1,11 +1,9 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, TableName } from "@app/db/schemas";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { TableName } from "@app/db/schemas";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
@@ -14,7 +12,6 @@ import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
 import { TAlertServiceFactory } from "../alert/alert-service";
 import { AlertPrincipalType } from "../alert/alert-types";
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TReminderDALFactory } from "./reminder-dal";
@@ -41,7 +38,7 @@ type TReminderServiceFactoryDep = {
     | "findOrphanedResourceIds"
     | "filterRecipientsInScope"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
@@ -50,7 +47,7 @@ export const reminderServiceFactory = ({
   reminderDAL,
   eventEmitter,
   alertService,
-  permissionService,
+  secretsPermissionService,
   secretV2BridgeDAL,
   folderDAL
 }: TReminderServiceFactoryDep): TReminderServiceFactory => {
@@ -162,26 +159,14 @@ export const reminderServiceFactory = ({
   // the secret, the schedule, the recipients, and the alert module's own checks on the reminder's alert. A
   // caller that writes something else in the same request (a secret update) prepares first, so a refused
   // reminder fails the request before that write.
-  const prepareReminder: TReminderServiceFactory["prepareReminder"] = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    reminder
-  }) => {
+  const prepareReminder: TReminderServiceFactory["prepareReminder"] = async ({ actor, reminder }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId!);
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: secret.projectId });
+    permission.assert({
+      action: ProjectPermissionSecretActions.Edit,
+      subject: ProjectPermissionSub.Secrets,
+      fields: subjectFields
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, subjectFields)
-    );
 
     const { nextReminderDate, fromDate } = $schedule(reminder);
 
@@ -199,16 +184,13 @@ export const reminderServiceFactory = ({
             replaceRecipients: {
               channelType: AlertChannelType.EMAIL,
               recipients: await $resolveEmailRecipients({
-                orgId: actorOrgId,
+                orgId: actor.org.id,
                 projectId: secret.projectId,
                 recipients: reminder.recipients
               })
             }
           },
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod
+      actor
     });
 
     return {
@@ -239,33 +221,10 @@ export const reminderServiceFactory = ({
     return result;
   };
 
-  const getReminder: TReminderServiceFactory["getReminder"] = async ({
-    secretId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: {
-    secretId: string;
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-    actorAuthMethod: ActorAuthMethod;
-  }) => {
+  const getReminder: TReminderServiceFactory["getReminder"] = async ({ secretId, actor }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    throwIfMissingSecretReadValueOrDescribePermission(
-      permission,
-      ProjectPermissionSecretActions.DescribeSecret,
-      subjectFields
-    );
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: secret.projectId });
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, subjectFields);
     const reminder = await reminderDAL.findSecretReminder(secretId);
     if (!reminder) return null;
     const recipientIds = await $findReminderRecipientIds([secretId]);
@@ -349,33 +308,15 @@ export const reminderServiceFactory = ({
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
   };
 
-  const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    secretId
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-    actorAuthMethod: ActorAuthMethod;
-    secretId: string;
-  }) => {
+  const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({ actor, secretId }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: secret.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, subjectFields)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretActions.Edit,
+      subject: ProjectPermissionSub.Secrets,
+      fields: subjectFields
+    });
     await deleteReminderBySecretId(secretId, secret.projectId);
   };
 

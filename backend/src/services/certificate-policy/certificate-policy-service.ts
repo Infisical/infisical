@@ -1,28 +1,31 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import {
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionCertificatePolicyActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { findTemplatePolicyProblem } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-template-fns";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
   CertSubjectAttributeType,
   MAX_CUSTOM_EXTENSION_RULES_PER_POLICY,
-  MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS
+  MICROSOFT_AUTOENROLLMENT_EXTENSION_OIDS,
+  POLICY_KEY_ALGORITHM_TO_REQUEST,
+  POLICY_SIGNATURE_ALGORITHM_TO_REQUEST
 } from "../certificate-common/certificate-constants";
 import {
   CUSTOM_EXTENSION_PRESETS_BY_OID,
@@ -33,20 +36,25 @@ import {
   TCustomExtensionRule,
   validateCustomExtensionValue
 } from "../certificate-common/certificate-extension-fns";
+import { assertPkiResourceInActorOrg } from "../certificate-common/pki-org-scope-fns";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TCertificatePolicyDALFactory } from "./certificate-policy-dal";
 import {
+  certificatePolicyNotFoundError,
   describeDeniedSan,
-  describeDisallowedSan,
+  describeDisallowedSans,
   describeCommonNameSanRuleWithoutCommonName,
   describeMissingRequiredSan,
+  describeTtlExceedsMax,
   describeUnsupportedCommonNameDefaultSans,
   describeValueNotAllowed,
+  quotePolicyValues,
   isDomainComponentRule,
   isWildcardPattern,
   matchesNormalizedPattern,
   matchesSanRuleValue,
   normalizeUriForComparison,
-  parsePolicyTtlMs,
+  parsePolicyTtl,
   RequestReference,
   validateDomainComponentsAgainstRule
 } from "./certificate-policy-fns";
@@ -62,12 +70,26 @@ import {
 
 type TCertificatePolicyServiceFactoryDep = {
   certificatePolicyDAL: TCertificatePolicyDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+};
+
+const findDuplicates = (values: string[]): string[] => {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  values.forEach((value) => {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  });
+  return [...duplicates];
 };
 
 export const certificatePolicyServiceFactory = ({
   certificatePolicyDAL,
-  permissionService
+  projectPermissionService,
+  applicationPermissionService,
+  projectDAL
 }: TCertificatePolicyServiceFactoryDep) => {
   const consolidateAttributeArray = <T extends { type: string }>(attributes: T[]): T[] => {
     const consolidated = new Map<string, T>();
@@ -94,7 +116,7 @@ export const certificatePolicyServiceFactory = ({
       // Ensure at least one field is provided
       if (!attr.allowed && !attr.required && !attr.denied) {
         throw new ForbiddenRequestError({
-          message: `Subject attribute type '${attr.type}' must have at least one allowed, required, or denied value`
+          message: `The subject rule for '${attr.type}' has no values. Add at least one allowed, required or denied value, or remove the rule.`
         });
       }
 
@@ -105,13 +127,11 @@ export const certificatePolicyServiceFactory = ({
       ];
 
       for (const { name, values } of arrays) {
-        if (values && values.length > 0) {
-          const uniqueValues = new Set(values);
-          if (uniqueValues.size !== values.length) {
-            throw new ForbiddenRequestError({
-              message: `Duplicate values found in ${name} list for subject attribute type '${attr.type}'`
-            });
-          }
+        const duplicates = findDuplicates(values ?? []);
+        if (duplicates.length > 0) {
+          throw new ForbiddenRequestError({
+            message: `The ${name} list of the subject rule for '${attr.type}' repeats ${duplicates.join(", ")}. List each value once.`
+          });
         }
       }
     }
@@ -126,7 +146,7 @@ export const certificatePolicyServiceFactory = ({
     for (const san of sans) {
       if (!san.allowed && !san.required && !san.denied) {
         throw new ForbiddenRequestError({
-          message: `SAN type '${san.type}' must have at least one allowed, required, or denied value`
+          message: `The SAN rule for '${san.type}' has no values. Add at least one allowed, required or denied value, or remove the rule.`
         });
       }
 
@@ -137,13 +157,11 @@ export const certificatePolicyServiceFactory = ({
       ];
 
       for (const { name, values } of arrays) {
-        if (values && values.length > 0) {
-          const uniqueValues = new Set(values);
-          if (uniqueValues.size !== values.length) {
-            throw new ForbiddenRequestError({
-              message: `Duplicate values found in ${name} list for SAN type '${san.type}'`
-            });
-          }
+        const duplicates = findDuplicates(values ?? []);
+        if (duplicates.length > 0) {
+          throw new ForbiddenRequestError({
+            message: `The ${name} list of the SAN rule for '${san.type}' repeats ${duplicates.join(", ")}. List each value once.`
+          });
         }
       }
 
@@ -209,9 +227,13 @@ export const certificatePolicyServiceFactory = ({
     }
   };
 
+  // slugify adds a hyphen at each camelCase boundary, so a name within the route's 255 limit can still outgrow the
+  // 255-character name column; a cut can also end on a hyphen, which a slug may not.
+  const truncateSlug = (slug: string, maxLength: number) => slug.slice(0, maxLength).replace(/-+$/, "");
+
   const generateTemplateSlug = (baseName?: string): string => {
     if (baseName) {
-      return slugify(baseName);
+      return truncateSlug(slugify(baseName), 255);
     }
     return slugify(alphaNumericNanoId(12));
   };
@@ -221,7 +243,7 @@ export const certificatePolicyServiceFactory = ({
     if (!existingTemplate || (policyId && existingTemplate.id === policyId)) {
       return desiredSlug;
     }
-    const alternativeSlug = `${desiredSlug}-${alphaNumericNanoId(8)}`;
+    const alternativeSlug = `${truncateSlug(desiredSlug, 246)}-${alphaNumericNanoId(8)}`;
     const existingAlternative = await certificatePolicyDAL.findByNameAndProjectId(alternativeSlug, projectId);
     if (!existingAlternative) {
       return alternativeSlug;
@@ -231,36 +253,19 @@ export const certificatePolicyServiceFactory = ({
     return randomSlug;
   };
 
-  const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string => {
-    const mapping: Record<string, string> = {
-      "SHA256-RSA": "RSA-SHA256",
-      "SHA384-RSA": "RSA-SHA384",
-      "SHA512-RSA": "RSA-SHA512",
-      "SHA256-ECDSA": "ECDSA-SHA256",
-      "SHA384-ECDSA": "ECDSA-SHA384",
-      "SHA512-ECDSA": "ECDSA-SHA512"
-    };
-    return mapping[templateFormat] || templateFormat;
-  };
+  const mapTemplateSignatureAlgorithmToApi = (templateFormat: string): string =>
+    POLICY_SIGNATURE_ALGORITHM_TO_REQUEST[templateFormat] || templateFormat;
 
-  const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => {
-    const mapping: Record<string, string> = {
-      "RSA-2048": "RSA_2048",
-      "RSA-3072": "RSA_3072",
-      "RSA-4096": "RSA_4096",
-      "ECDSA-P256": "EC_prime256v1",
-      "ECDSA-P384": "EC_secp384r1",
-      "ECDSA-P521": "EC_secp521r1"
-    };
-    return mapping[templateFormat] || templateFormat;
-  };
+  const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string =>
+    POLICY_KEY_ALGORITHM_TO_REQUEST[templateFormat] || templateFormat;
 
   const validateKeyUsagePolicy = (keyUsages: { allowed?: string[]; required?: string[]; denied?: string[] }) => {
     if (!keyUsages) return;
 
     if (!keyUsages.allowed && !keyUsages.required && !keyUsages.denied) {
       throw new BadRequestError({
-        message: "Key usages must have at least one allowed, required, or denied value"
+        message:
+          "The key usage rule has no values. Add at least one allowed, required or denied key usage, or remove the rule."
       });
     }
 
@@ -271,13 +276,11 @@ export const certificatePolicyServiceFactory = ({
     ];
 
     for (const { name, values } of arrays) {
-      if (values && values.length > 0) {
-        const uniqueValues = new Set(values);
-        if (uniqueValues.size !== values.length) {
-          throw new BadRequestError({
-            message: `Duplicate values found in ${name} key usages list`
-          });
-        }
+      const duplicates = findDuplicates(values ?? []);
+      if (duplicates.length > 0) {
+        throw new BadRequestError({
+          message: `The ${name} key usages list repeats ${duplicates.join(", ")}. List each key usage once.`
+        });
       }
     }
   };
@@ -291,7 +294,8 @@ export const certificatePolicyServiceFactory = ({
 
     if (!extendedKeyUsages.allowed && !extendedKeyUsages.required && !extendedKeyUsages.denied) {
       throw new BadRequestError({
-        message: "Extended key usages must have at least one allowed, required, or denied value"
+        message:
+          "The extended key usage rule has no values. Add at least one allowed, required or denied extended key usage, or remove the rule."
       });
     }
 
@@ -302,13 +306,11 @@ export const certificatePolicyServiceFactory = ({
     ];
 
     for (const { name, values } of arrays) {
-      if (values && values.length > 0) {
-        const uniqueValues = new Set(values);
-        if (uniqueValues.size !== values.length) {
-          throw new BadRequestError({
-            message: `Duplicate values found in ${name} extended key usages list`
-          });
-        }
+      const duplicates = findDuplicates(values ?? []);
+      if (duplicates.length > 0) {
+        throw new BadRequestError({
+          message: `The ${name} extended key usages list repeats ${duplicates.join(", ")}. List each extended key usage once.`
+        });
       }
     }
   };
@@ -339,6 +341,9 @@ export const certificatePolicyServiceFactory = ({
     };
   };
 
+  const describeAllowedTypes = (label: string, allowed: string[]): string =>
+    allowed.length > 0 ? `Allowed ${label}: ${[...new Set(allowed)].join(", ")}` : `The policy allows no ${label}`;
+
   const validateRequestAgainstPolicy = (
     template: TCertificatePolicy,
     request: TCertificateRequest,
@@ -346,6 +351,7 @@ export const certificatePolicyServiceFactory = ({
   ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
+    let ttlExceedsMax = false;
 
     // Validate subject attributes
     const subjectPolicies = template.subject;
@@ -367,7 +373,9 @@ export const certificatePolicyServiceFactory = ({
 
         if (!options?.skipRequired && attrPolicy.required && attrPolicy.required.length > 0) {
           if (!requestValue) {
-            errors.push(`Missing required ${attrPolicy.type} attribute`);
+            errors.push(
+              `The request is missing the required ${attrPolicy.type} attribute. The policy requires a value matching: ${quotePolicyValues(attrPolicy.required)}`
+            );
           } else {
             const hasMatchingRequired = attrPolicy.required.some((requiredValue) => {
               const validation = validateValueAgainstConstraints(requestValue, [requiredValue], attrPolicy.type);
@@ -375,7 +383,7 @@ export const certificatePolicyServiceFactory = ({
             });
             if (!hasMatchingRequired) {
               errors.push(
-                `${attrPolicy.type} value '${requestValue}' does not match any required patterns: ${attrPolicy.required.join(", ")}`
+                `${attrPolicy.type} value '${requestValue}' does not match any required patterns: ${quotePolicyValues(attrPolicy.required)}`
               );
             }
           }
@@ -386,7 +394,9 @@ export const certificatePolicyServiceFactory = ({
           if (attrPolicy.denied && attrPolicy.denied.length > 0) {
             const validation = validateValueAgainstConstraints(requestValue, attrPolicy.denied, attrPolicy.type);
             if (validation.isValid) {
-              errors.push(`${attrPolicy.type} value '${requestValue}' is denied by this policy`);
+              errors.push(
+                `${attrPolicy.type} value '${requestValue}' is denied by the policy. Denied values: ${quotePolicyValues(attrPolicy.denied)}`
+              );
               isValueDenied = true;
             }
           }
@@ -418,7 +428,12 @@ export const certificatePolicyServiceFactory = ({
       for (const [attrType] of requestAttributes) {
         const hasPolicy = subjectPolicies.some((policy) => policy.type === attrType);
         if (!hasPolicy) {
-          errors.push(`${attrType} is not allowed by this policy`);
+          errors.push(
+            `Subject attribute ${attrType} is not allowed by the policy. ${describeAllowedTypes(
+              "subject attributes",
+              subjectPolicies.map((policy) => policy.type)
+            )}`
+          );
         }
       }
     }
@@ -436,7 +451,12 @@ export const certificatePolicyServiceFactory = ({
     } else if (subjectPolicies && requestDomainComponents.length > 0) {
       // A subject policy is defined but has no domain_component rule, so DCs aren't
       // permitted. When no subject policy is defined at all, every subject attribute is allowed.
-      errors.push(`${CertSubjectAttributeType.DOMAIN_COMPONENT} is not allowed by this policy`);
+      errors.push(
+        `Subject attribute ${CertSubjectAttributeType.DOMAIN_COMPONENT} is not allowed by the policy. ${describeAllowedTypes(
+          "subject attributes",
+          subjectPolicies.map((policy) => policy.type)
+        )}`
+      );
     }
 
     // Validate Subject Alternative Names. An undefined SAN policy means no constraint (allow all);
@@ -492,10 +512,11 @@ export const certificatePolicyServiceFactory = ({
         // Check ALLOWED values - if present, all SANs must match at least one allowed pattern
         if (sanPolicy.allowed && sanPolicy.allowed.length > 0 && requestSans.length > 0) {
           const permittedValues = [...(sanPolicy.required ?? []), ...sanPolicy.allowed];
-          for (const sanValue of requestSans) {
-            if (!permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))) {
-              errors.push(describeDisallowedSan(sanPolicy.type, sanValue, sanPolicy.allowed, request.commonName));
-            }
+          const disallowedSans = requestSans.filter(
+            (sanValue) => !permittedValues.some((ruleValue) => matchesRuleValue(sanValue, ruleValue))
+          );
+          if (disallowedSans.length > 0) {
+            errors.push(describeDisallowedSans(sanPolicy.type, disallowedSans, permittedValues, request.commonName));
           }
         }
       }
@@ -504,7 +525,12 @@ export const certificatePolicyServiceFactory = ({
       for (const [requestSanType] of requestSansByType) {
         const hasPolicy = sansPolicies.some((policy) => policy.type === requestSanType);
         if (!hasPolicy) {
-          errors.push(`${requestSanType} SAN is not allowed by this policy`);
+          errors.push(
+            `SAN type ${requestSanType} is not allowed by the policy. ${describeAllowedTypes(
+              "SAN types",
+              sansPolicies.map((policy) => policy.type)
+            )}`
+          );
         }
       }
     }
@@ -516,7 +542,9 @@ export const certificatePolicyServiceFactory = ({
       if (!options?.skipRequired && keyUsagePolicy.required && keyUsagePolicy.required.length > 0) {
         const missingRequired = keyUsagePolicy.required.filter((usage) => !request.keyUsages?.includes(usage));
         if (missingRequired.length > 0) {
-          errors.push(`Missing required key usages: ${missingRequired.join(", ")}`);
+          errors.push(
+            `The request is missing the required key usages: ${missingRequired.join(", ")}. Add them to the request's key usages`
+          );
         }
       }
 
@@ -524,7 +552,9 @@ export const certificatePolicyServiceFactory = ({
       if (request.keyUsages && keyUsagePolicy.denied && keyUsagePolicy.denied.length > 0) {
         const deniedUsages = request.keyUsages.filter((usage) => keyUsagePolicy?.denied?.includes(usage));
         if (deniedUsages.length > 0) {
-          errors.push(`Denied key usages found in request: ${deniedUsages.join(", ")}`);
+          errors.push(
+            `The request includes key usages the policy denies: ${deniedUsages.join(", ")}. Remove them from the request`
+          );
         }
       }
 
@@ -533,7 +563,9 @@ export const certificatePolicyServiceFactory = ({
         const allAllowedUsages = [...(keyUsagePolicy.required || []), ...(keyUsagePolicy.allowed || [])];
         const invalidUsages = request.keyUsages.filter((usage) => !allAllowedUsages.includes(usage));
         if (invalidUsages.length > 0) {
-          errors.push(`Invalid key usages: ${invalidUsages.join(", ")}`);
+          errors.push(
+            `The request includes key usages the policy does not allow: ${invalidUsages.join(", ")}. ${describeAllowedTypes("key usages", allAllowedUsages)}`
+          );
         }
       }
     }
@@ -548,7 +580,9 @@ export const certificatePolicyServiceFactory = ({
           (usage) => !request.extendedKeyUsages?.includes(usage)
         );
         if (missingRequired.length > 0) {
-          errors.push(`Missing required extended key usages: ${missingRequired.join(", ")}`);
+          errors.push(
+            `The request is missing the required extended key usages: ${missingRequired.join(", ")}. Add them to the request's extended key usages`
+          );
         }
       }
 
@@ -558,7 +592,9 @@ export const certificatePolicyServiceFactory = ({
           extendedKeyUsagePolicy?.denied?.includes(usage)
         );
         if (deniedUsages.length > 0) {
-          errors.push(`Denied extended key usages found in request: ${deniedUsages.join(", ")}`);
+          errors.push(
+            `The request includes extended key usages the policy denies: ${deniedUsages.join(", ")}. Remove them from the request`
+          );
         }
       }
 
@@ -572,7 +608,9 @@ export const certificatePolicyServiceFactory = ({
           (usage) => !allAllowedExtendedUsages.includes(usage)
         );
         if (invalidExtendedUsages.length > 0) {
-          errors.push(`Invalid extended key usages: ${invalidExtendedUsages.join(", ")}`);
+          errors.push(
+            `The request includes extended key usages the policy does not allow: ${invalidExtendedUsages.join(", ")}. ${describeAllowedTypes("extended key usages", allAllowedExtendedUsages)}`
+          );
         }
       }
     }
@@ -582,14 +620,18 @@ export const certificatePolicyServiceFactory = ({
     if (request.signatureAlgorithm && template.algorithms?.signature && template.algorithms.signature.length > 0) {
       const mappedTemplateAlgorithms = template.algorithms.signature.map(mapTemplateSignatureAlgorithmToApi);
       if (!mappedTemplateAlgorithms.includes(request.signatureAlgorithm)) {
-        errors.push(`Signature algorithm '${request.signatureAlgorithm}' is not allowed by this policy`);
+        errors.push(
+          `Signature algorithm '${request.signatureAlgorithm}' is not allowed by the policy. Allowed signature algorithms: ${mappedTemplateAlgorithms.join(", ")}`
+        );
       }
     }
 
     if (request.keyAlgorithm && template.algorithms?.keyAlgorithm && template.algorithms.keyAlgorithm.length > 0) {
       const mappedTemplateKeyTypes = template.algorithms.keyAlgorithm.map(mapTemplateKeyAlgorithmToApi);
       if (!mappedTemplateKeyTypes.includes(request.keyAlgorithm)) {
-        errors.push(`Key algorithm '${request.keyAlgorithm}' is not allowed by this policy`);
+        errors.push(
+          `Key algorithm '${request.keyAlgorithm}' is not allowed by the policy. Allowed key algorithms: ${mappedTemplateKeyTypes.join(", ")}`
+        );
       }
     }
 
@@ -601,19 +643,30 @@ export const certificatePolicyServiceFactory = ({
     }
 
     if (request.notBefore && request.notAfter && request.notBefore >= request.notAfter) {
-      errors.push("notBefore must be earlier than notAfter");
+      errors.push(
+        `notBefore (${request.notBefore.toISOString()}) must be earlier than notAfter (${request.notAfter.toISOString()})`
+      );
     }
+
+    // A policy reads m as months, but a request ttl reads m as minutes, so give a month limit in days.
+    const isMonthsMax = Boolean(template.validity?.max?.endsWith("m"));
+    const requestableMax =
+      template.validity?.max && isMonthsMax ? `${parseInt(template.validity.max, 10) * 30}d` : template.validity?.max;
+    const maxWithDays = template.validity?.max
+      ? `'${template.validity.max}'${isMonthsMax ? ` (${requestableMax})` : ""}`
+      : "";
 
     // Validate TTL against template validity constraints
     if (request.validity?.ttl && template.validity) {
-      const requestDurationMs = parsePolicyTtlMs(request.validity.ttl);
+      const requestDurationMs = parsePolicyTtl(request.validity.ttl);
 
       // Check maximum duration using max field
       if (template.validity.max) {
-        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
+        const maxDurationMs = parsePolicyTtl(template.validity.max);
 
         if (requestDurationMs > maxDurationMs) {
-          errors.push("Requested validity period exceeds maximum allowed duration");
+          ttlExceedsMax = true;
+          errors.push(describeTtlExceedsMax(request.validity.ttl, maxWithDays, requestableMax));
         }
       }
     }
@@ -624,11 +677,11 @@ export const certificatePolicyServiceFactory = ({
 
       if (notAfter && notBefore && notAfter instanceof Date && notBefore instanceof Date) {
         const requestDuration = notAfter.getTime() - notBefore.getTime();
-        const maxDurationMs = parsePolicyTtlMs(template.validity.max);
+        const maxDurationMs = parsePolicyTtl(template.validity.max);
 
         if (requestDuration > maxDurationMs) {
           errors.push(
-            `Requested validity period (notBefore to notAfter) exceeds maximum allowed duration of ${template.validity.max}`
+            `Requested validity from notBefore ${notBefore.toISOString()} to notAfter ${notAfter.toISOString()} exceeds the policy's maximum of ${maxWithDays}. Shorten the range to ${requestableMax} or less`
           );
         }
       }
@@ -681,40 +734,33 @@ export const certificatePolicyServiceFactory = ({
       isValid: errors.length === 0,
       errors,
       warnings,
-      resolvedCustomExtensions
+      resolvedCustomExtensions,
+      ttlExceedsMax
     };
   };
 
   const createPolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     data: Omit<TCertificatePolicyInsert, "projectId">;
   }): Promise<TCertificatePolicy> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Create,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Create,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: data.name
-      })
-    );
+      }
+    });
 
     if (!data) {
       throw new Error("Template data is required");
@@ -756,7 +802,7 @@ export const certificatePolicyServiceFactory = ({
     }
 
     if (!data.name) {
-      throw new BadRequestError({ message: "Template name is required" });
+      throw new BadRequestError({ message: "A certificate policy needs a name. Set name in the request." });
     }
 
     const slug = generateTemplateSlug(data.name);
@@ -773,39 +819,37 @@ export const certificatePolicyServiceFactory = ({
 
   const updatePolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     policyId: string;
     data: TCertificatePolicyUpdate;
   }): Promise<TCertificatePolicy> => {
     const existingTemplate = await certificatePolicyDAL.findById(policyId);
     if (!existingTemplate) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
+      throw certificatePolicyNotFoundError(policyId);
     }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
+    await assertPkiResourceInActorOrg({
+      projectDAL,
       projectId: existingTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId: actor.org.id,
+      notFoundError: () => certificatePolicyNotFoundError(policyId)
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Edit,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: existingTemplate.projectId,
+      type: ProjectType.CertificateManager
+    });
+
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Edit,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: existingTemplate.name
-      })
-    );
+      }
+    });
 
     const consolidatedData = {
       ...data,
@@ -924,62 +968,57 @@ export const certificatePolicyServiceFactory = ({
 
   const getPolicyById = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId,
     applicationId,
     internal = false
   }: {
-    actor?: ActorType;
-    actorId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    actorOrgId?: string;
+    actor?: TActorContext;
     policyId: string;
     applicationId?: string;
     internal?: boolean;
   }): Promise<TCertificatePolicy> => {
     const template = await certificatePolicyDAL.findById(policyId);
     if (!template) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
+      throw certificatePolicyNotFoundError(policyId);
     }
 
     if (!internal) {
-      if (!actor || !actorId || !actorOrgId) {
+      if (!actor) {
         throw new BadRequestError({ message: "Actor is required" });
       }
 
-      if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-        const { permission } = await permissionService.getResourcePermission({
+      await assertPkiResourceInActorOrg({
+        projectDAL,
+        projectId: template.projectId,
+        actorOrgId: actor.org.id,
+        notFoundError: () => certificatePolicyNotFoundError(policyId)
+      });
+
+      if (applicationId && (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)) {
+        const permission = await applicationPermissionService.getApplicationPermission({
           actor,
-          actorId,
           projectId: template.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: applicationId,
-          actorAuthMethod: actorAuthMethod || null,
-          actorOrgId
+          applicationId
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionApplicationActions.Read,
-          ResourcePermissionSub.Application
-        );
+        permission.assert({
+          action: ApplicationPermissionActions.Read,
+          subject: ApplicationPermissionSub.Application
+        });
       } else {
-        const { permission } = await permissionService.getProjectPermission({
+        const permission = await projectPermissionService.getProjectPermission({
           actor,
-          actorId,
           projectId: template.projectId,
-          actorAuthMethod: actorAuthMethod || null,
-          actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
+          type: ProjectType.CertificateManager
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificatePolicyActions.Read,
-          subject(ProjectPermissionSub.CertificatePolicies, {
+        permission.assert({
+          action: ProjectPermissionCertificatePolicyActions.Read,
+          subject: ProjectPermissionSub.CertificatePolicies,
+          fields: {
             name: template.name
-          })
-        );
+          }
+        });
       }
     }
 
@@ -988,56 +1027,44 @@ export const certificatePolicyServiceFactory = ({
 
   const getPolicyBySlug = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     slug
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     slug: string;
   }): Promise<TCertificatePolicy> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const template = await certificatePolicyDAL.findByNameAndProjectId(slug, projectId);
     if (!template) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
+      throw new NotFoundError({
+        message: `Certificate policy named '${slug}' not found in this organization. List your organization's certificate policies with GET /api/v1/cert-manager/certificate-policies to find the right name.`
+      });
     }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Read,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Read,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: template.name
-      })
-    );
+      }
+    });
     return template;
   };
 
   const listPolicies = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     offset = 0,
     limit = 20,
     search
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     offset?: number;
     limit?: number;
@@ -1046,22 +1073,19 @@ export const certificatePolicyServiceFactory = ({
     policies: TCertificatePolicy[];
     totalCount: number;
   }> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Read,
-      ProjectPermissionSub.CertificatePolicies
-    );
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Read,
+      subject: ProjectPermissionSub.CertificatePolicies
+    });
 
     const processedRules = getProcessedPermissionRules(
-      permission,
+      permission.toAbility(),
       ProjectPermissionCertificatePolicyActions.Read,
       ProjectPermissionSub.CertificatePolicies
     );
@@ -1077,37 +1101,35 @@ export const certificatePolicyServiceFactory = ({
 
   const deletePolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     policyId: string;
   }): Promise<TCertificatePolicy> => {
     const template = await certificatePolicyDAL.findById(policyId);
     if (!template) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
+      throw certificatePolicyNotFoundError(policyId);
     }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
+    await assertPkiResourceInActorOrg({
+      projectDAL,
       projectId: template.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actorOrgId: actor.org.id,
+      notFoundError: () => certificatePolicyNotFoundError(policyId)
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Delete,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: template.projectId,
+      type: ProjectType.CertificateManager
+    });
+
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Delete,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: template.name
-      })
-    );
+      }
+    });
 
     const isInUse = await certificatePolicyDAL.isPolicyInUse(policyId);
     if (isInUse) {
@@ -1139,7 +1161,7 @@ export const certificatePolicyServiceFactory = ({
   ): Promise<TPolicyValidationResult> => {
     const policy = await certificatePolicyDAL.findById(policyId);
     if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found" });
+      throw certificatePolicyNotFoundError(policyId);
     }
 
     return validateRequestAgainstPolicy(policy, request, options);

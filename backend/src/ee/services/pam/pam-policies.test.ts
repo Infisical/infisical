@@ -105,7 +105,8 @@ describe("resolveAccessControls", () => {
     allowBreakGlass: false,
     requireReason: false,
     requireMfa: false,
-    maxSessionDurationSeconds: null
+    maxSessionDurationSeconds: null,
+    maxAccessDurationSeconds: null
   };
 
   test("falls back to defaults for a missing or non-object map", () => {
@@ -181,6 +182,26 @@ describe("resolveAccessControls", () => {
     expect(resolveAccessControls({ [PamPolicyType.MaxSessionDuration]: "3600" }).maxSessionDurationSeconds).toBeNull();
     // non-integer
     expect(resolveAccessControls({ [PamPolicyType.MaxSessionDuration]: 60.5 }).maxSessionDurationSeconds).toBeNull();
+  });
+
+  test("max access duration only resolves alongside the approval it limits", () => {
+    expect(
+      resolveAccessControls({
+        [PamPolicyType.RequiresApproval]: true,
+        [PamPolicyType.MaxAccessDuration]: 3600
+      }).maxAccessDurationSeconds
+    ).toBe(3600);
+    expect(resolveAccessControls({ [PamPolicyType.MaxAccessDuration]: 3600 }).maxAccessDurationSeconds).toBeNull();
+  });
+
+  test("drops a stored max access duration outside 60 seconds to 7 days", () => {
+    const resolve = (value: unknown) =>
+      resolveAccessControls({ [PamPolicyType.RequiresApproval]: true, [PamPolicyType.MaxAccessDuration]: value })
+        .maxAccessDurationSeconds;
+    expect(resolve(59)).toBeNull();
+    expect(resolve(604_801)).toBeNull();
+    expect(resolve(604_800)).toBe(604_800);
+    expect(resolve("3600")).toBeNull();
   });
 
   test("ignores unknown keys in the stored map", () => {

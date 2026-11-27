@@ -156,6 +156,17 @@ describe("cert manager certificate alert DAL", () => {
     expect(bindings).toEqual(expect.arrayContaining(["app-1", "app-2", "prof-1"]));
   });
 
+  test("findCertificatesByIds narrows a project-wide lookup by the application list", async () => {
+    const { dal, queries } = buildDAL();
+
+    await dal.findCertificatesByIds({ projectId: PROJECT_ID, applicationIds: ["app-1"], certificateIds: ["cert-1"] });
+
+    expect(queries[0].sql).toContain(
+      'where "certificates"."projectId" = ? and "certificates"."applicationId" in (?) and "certificates"."id" in (?)'
+    );
+    expect(queries[0].bindings).toEqual([PROJECT_ID, "app-1", "cert-1"]);
+  });
+
   test("findCertificatesByIds narrows a project-wide lookup by the profile list", async () => {
     const { dal, queries } = buildDAL();
 

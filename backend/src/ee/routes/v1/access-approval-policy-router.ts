@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { EnforcementLevel } from "@app/lib/types";
@@ -9,7 +10,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { sapPubSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -167,11 +167,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretAccessApprovalPolicy.createAccessApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgActor: req.permission,
+        actor: req.actor,
         ...req.body,
         approvers: req.body.approvers ?? [],
         projectSlug: req.body.projectSlug,
@@ -184,7 +180,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -240,10 +236,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretAccessApprovalPolicy.getAccessApprovalPolicyByProjectSlug({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectSlug: req.query.projectSlug
       });
 
@@ -270,11 +263,8 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { count } = await server.services.secretAccessApprovalPolicy.getAccessPolicyCountByEnvSlug({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         projectSlug: req.query.projectSlug,
-        actorOrgId: req.permission.orgId,
         envSlug: req.query.envSlug
       });
       return { count };
@@ -366,11 +356,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const approval = await server.services.secretAccessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        orgActor: req.permission,
+        actor: req.actor,
         ...req.body,
         approvers: req.body.approvers ?? []
       });
@@ -379,7 +365,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { policyId: req.params.policyId }
         })
         .catch(() => {});
@@ -408,10 +394,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretAccessApprovalPolicy.deleteAccessApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.policyId
       });
 
@@ -419,7 +402,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.AccessApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -475,10 +458,7 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretAccessApprovalPolicy.getAccessApprovalPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.params
       });
 

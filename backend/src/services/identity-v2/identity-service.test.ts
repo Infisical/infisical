@@ -1,8 +1,8 @@
-import { createMongoAbility } from "@casl/ability";
 import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
+import { ActorPermission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-service";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
@@ -33,7 +33,10 @@ const TX = { sentinel: "tx" } as unknown as Knex;
 
 const buildDto = (): TDeleteIdentityV2DTO =>
   ({
-    permission: { type: "user", id: "actor-1", authMethod: null, orgId: ORG_ID },
+    actor: {
+      principal: { type: "user", id: "actor-1" },
+      org: { id: ORG_ID, shouldUseNewPrivilegeSystem: true }
+    },
     scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
     selector: { identityId: IDENTITY_ID }
   }) as unknown as TDeleteIdentityV2DTO;
@@ -57,14 +60,22 @@ const createService = ({
     instanceConfigService,
     identityDAL: identityDAL as never,
     identityMembershipV2DAL: {} as never,
-    permissionService: {
+    orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getProjectPermission: vi
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }], usesNewPrivilegeSystem: true })
+        ),
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([])
+    } as never,
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
+        .mockResolvedValue(
+          ActorPermission.of({ rules: [{ action: "manage", subject: "all" }], usesNewPrivilegeSystem: true })
+        )
+    } as never,
+    projectPermissionService: {
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
     licenseService,
@@ -86,7 +97,6 @@ const createService = ({
       findOrgProjectIds: vi.fn(),
       findById: vi.fn().mockResolvedValue(projectType ? { id: PROJECT_ID, type: projectType } : undefined)
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never
   });

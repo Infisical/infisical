@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { OauthDelegationMode, OauthGrantType, OauthTokenType } from "@app/services/oauth-client/oauth-client-types";
 
 const TOKEN_EXCHANGE_GRANT = OauthGrantType.TokenExchange;

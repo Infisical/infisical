@@ -1,4 +1,4 @@
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 // A shared prefix separates these from PAM audit events like pam-session-start.
 export const PAM_SESSION_ACTIVITY_EVENT_TYPE_PREFIX = "pam-session-activity-";

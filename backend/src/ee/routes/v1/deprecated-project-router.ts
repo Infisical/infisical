@@ -4,11 +4,11 @@ import { AuditLogsSchema } from "@app/db/schemas";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls } from "@app/keystore/keystore";
 import { AUDIT_LOGS } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { getLastMidnightDateISO } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider) => {
@@ -100,10 +100,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogs = await server.services.auditLog.listAuditLogs({
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type,
+        actor: req.actor,
 
         filter: {
           ...req.query,
@@ -122,18 +119,18 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           .sendPostHogEvents({
             event: PostHogEventTypes.AuditLogsViewed,
             distinctId,
-            organizationId: req.permission.orgId,
+            organizationId: req.actor.orgId,
             dedup: {
-              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.permission.orgId, distinctId),
+              key: KeyStorePrefixes.TelemetryAuditLogsViewed(req.actor.orgId, distinctId),
               ttlSeconds: KeyStoreTtls.TelemetryAuditLogsViewedInSeconds
             },
             properties: {
-              orgId: req.permission.orgId,
+              orgId: req.actor.orgId,
               projectId: req.params.workspaceId,
               resultCount: auditLogs.length,
               dateRangeStart: req.query.startDate || getLastMidnightDateISO(),
               dateRangeEnd: req.query.endDate || new Date().toISOString(),
-              actorType: req.permission.type
+              actorType: req.actor.type
             }
           })
           .catch(() => {});

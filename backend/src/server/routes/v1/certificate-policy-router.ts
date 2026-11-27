@@ -3,17 +3,21 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, CERTIFICATE_POLICIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertPolicyState,
   CertSubjectAlternativeNameType,
-  pkiDescriptionSchema
+  pkiDescriptionSchema,
+  POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES,
+  POLICY_KEY_ALGORITHM_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_VALUES
 } from "@app/services/certificate-common/certificate-constants";
 import {
   certificatePolicyResponseSchema,
@@ -27,9 +31,9 @@ const sanTypeSchema = z.nativeEnum(CertSubjectAlternativeNameType);
 
 const policyKeyUsagesSchema = z
   .object({
-    allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-    required: z.array(z.nativeEnum(CertKeyUsageType)).optional(),
-    denied: z.array(z.nativeEnum(CertKeyUsageType)).optional()
+    allowed: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageAllowed),
+    required: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageRequired),
+    denied: z.array(z.nativeEnum(CertKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageDenied)
   })
   .refine(
     (data) => {
@@ -68,9 +72,9 @@ const policyKeyUsagesSchema = z
 
 const policyExtendedKeyUsagesSchema = z
   .object({
-    allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-    required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional(),
-    denied: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional()
+    allowed: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageAllowed),
+    required: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageRequired),
+    denied: z.array(z.nativeEnum(CertExtendedKeyUsageType)).optional().describe(CERTIFICATE_POLICIES.usageDenied)
   })
   .refine(
     (data) => {
@@ -111,7 +115,7 @@ const sanRuleValueSchema = z.string().superRefine(refineRequestReference);
 
 const policySanSchema = z
   .object({
-    type: sanTypeSchema,
+    type: sanTypeSchema.describe(CERTIFICATE_POLICIES.sanType),
     allowed: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.allowed),
     required: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.required),
     denied: z.array(sanRuleValueSchema).optional().describe(CERTIFICATE_POLICIES.SAN_RULE.denied)
@@ -145,49 +149,84 @@ const policyValiditySchema = z.object({
       }
     )
     .optional()
+    .describe(CERTIFICATE_POLICIES.validityMax)
 });
 
+const policyAlgorithmValueSchema = (kind: string, values: string[], documentedValues: string[]) =>
+  // Zod copies the rejected value into the issue's `received`, which the 422 response and the logs include, so a long
+  // value is clipped before the enum check. No allowed value is that long, so clipping never turns a value valid.
+  z.preprocess(
+    (value) => (typeof value === "string" && value.length > 64 ? `${value.slice(0, 64)}...` : value),
+    z.enum(values as [string, ...string[]], {
+      errorMap: (issue, ctx) => {
+        if (issue.code === z.ZodIssueCode.invalid_type) {
+          return { message: `Each ${kind} algorithm must be a string. Use one of: ${documentedValues.join(", ")}.` };
+        }
+        if (issue.code !== z.ZodIssueCode.invalid_enum_value) return { message: ctx.defaultError };
+        return {
+          message: `Unsupported ${kind} algorithm '${String(issue.received)}'. Use one of: ${documentedValues.join(", ")}.`
+        };
+      }
+    })
+  );
+
+// Every rejected item gets its own issue listing the allowed values, so a list over the limit is cut to one item past it
+// before the items are checked: the length check still fails, and the 422 stays bounded however long the list is.
+const policyAlgorithmListSchema = (kind: string, values: string[], documentedValues: string[]) =>
+  z.preprocess(
+    (list) => (Array.isArray(list) && list.length > values.length ? list.slice(0, values.length + 1) : list),
+    z
+      .array(policyAlgorithmValueSchema(kind, values, documentedValues))
+      .min(1, `At least one ${kind} algorithm must be provided`)
+      .max(values.length, `List at most ${values.length} ${kind} algorithms, each once.`)
+  );
+
 const policyAlgorithmsSchema = z.object({
-  signature: z.array(z.string()).min(1, "At least one signature algorithm must be provided").optional(),
-  keyAlgorithm: z.array(z.string()).min(1, "At least one key algorithm must be provided").optional()
+  signature: policyAlgorithmListSchema(
+    "signature",
+    POLICY_SIGNATURE_ALGORITHM_VALUES,
+    POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES
+  )
+    .optional()
+    .describe(CERTIFICATE_POLICIES.signatureAlgorithms),
+  keyAlgorithm: policyAlgorithmListSchema("key", POLICY_KEY_ALGORITHM_VALUES, POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES)
+    .optional()
+    .describe(CERTIFICATE_POLICIES.keyAlgorithms)
 });
 
 const policyBasicConstraintsSchema = z
   .object({
-    isCA: z.nativeEnum(CertPolicyState).optional(),
+    isCA: z.nativeEnum(CertPolicyState).optional().describe(CERTIFICATE_POLICIES.isCA),
     maxPathLength: z
       .number()
       .int("Path length must be an integer")
       .min(-1, "Path length must be -1 (unlimited) or a non-negative integer")
       .optional()
+      .describe(CERTIFICATE_POLICIES.maxPathLength)
   })
   .nullable();
 
 const createCertificatePolicySchema = z.object({
   projectId: z.string().min(1).optional().describe(openApiHidden()),
-  name: slugSchema({ min: 1, max: 255, field: "Name" }),
-  description: pkiDescriptionSchema.optional(),
-  subject: z.array(policySubjectSchema).nullish(),
-  sans: z.array(policySanSchema).nullish(),
-  keyUsages: policyKeyUsagesSchema.nullish(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
-  algorithms: policyAlgorithmsSchema.nullish(),
-  validity: policyValiditySchema.nullish(),
-  basicConstraints: policyBasicConstraintsSchema.optional(),
+  name: slugSchema({ min: 1, max: 255, field: "Name" }).describe(CERTIFICATE_POLICIES.name),
+  description: pkiDescriptionSchema.optional().describe(CERTIFICATE_POLICIES.description),
+  subject: z.array(policySubjectSchema).nullish().describe(CERTIFICATE_POLICIES.subject),
+  sans: z.array(policySanSchema).nullish().describe(CERTIFICATE_POLICIES.sans),
+  keyUsages: policyKeyUsagesSchema.nullish().describe(CERTIFICATE_POLICIES.keyUsages),
+  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish().describe(CERTIFICATE_POLICIES.extendedKeyUsages),
+  algorithms: policyAlgorithmsSchema.nullish().describe(CERTIFICATE_POLICIES.algorithms),
+  validity: policyValiditySchema.nullish().describe(CERTIFICATE_POLICIES.validity),
+  basicConstraints: policyBasicConstraintsSchema.optional().describe(CERTIFICATE_POLICIES.basicConstraints),
   customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
 });
 
-const updateCertificatePolicySchema = z.object({
-  name: z.string().min(1).max(255, "Name must be between 1 and 255 characters").optional(),
-  description: pkiDescriptionSchema.optional(),
-  subject: z.array(policySubjectSchema).nullish(),
-  sans: z.array(policySanSchema).nullish(),
-  keyUsages: policyKeyUsagesSchema.nullish(),
-  extendedKeyUsages: policyExtendedKeyUsagesSchema.nullish(),
-  algorithms: policyAlgorithmsSchema.nullish(),
-  validity: policyValiditySchema.nullish(),
-  basicConstraints: policyBasicConstraintsSchema.optional(),
-  customExtensions: z.array(policyCustomExtensionSchema).nullish().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULES)
+const updateCertificatePolicySchema = createCertificatePolicySchema.omit({ projectId: true }).extend({
+  name: z
+    .string()
+    .min(1)
+    .max(255, "Name must be between 1 and 255 characters")
+    .optional()
+    .describe(CERTIFICATE_POLICIES.updateName)
 });
 
 export const registerCertificatePolicyRouter = async (server: FastifyZodProvider) => {
@@ -201,6 +240,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "createCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
+      description: CERTIFICATE_POLICIES.CREATE_DESCRIPTION,
       body: createCertificatePolicySchema,
       response: {
         200: z.object({
@@ -211,10 +251,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.createPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         data: req.body
       });
@@ -238,9 +275,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePolicyCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificatePolicy.projectId
         }
       });
@@ -276,10 +313,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId
       });
@@ -324,10 +358,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.getPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.id,
         applicationId: req.query.applicationId
       });
@@ -358,8 +389,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "updateCertificatePolicy",
       tags: [ApiDocsTags.PkiCertificatePolicies],
+      description: CERTIFICATE_POLICIES.UPDATE_DESCRIPTION,
       params: z.object({
-        id: z.string().uuid()
+        id: z.string().uuid().describe(CERTIFICATE_POLICIES.id)
       }),
       body: updateCertificatePolicySchema,
       response: {
@@ -371,10 +403,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.updatePolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.id,
         data: req.body
       });
@@ -397,9 +426,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePolicyUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificatePolicy.projectId
         }
       });
@@ -430,10 +459,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.deletePolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         policyId: req.params.id
       });
 
@@ -452,9 +478,9 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificatePolicyDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificatePolicy.projectId
         }
       });

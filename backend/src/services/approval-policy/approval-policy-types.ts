@@ -1,9 +1,10 @@
 import { Knex } from "knex";
 
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
+import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TEventInput } from "@app/domains/platform/events/ce/module";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
-import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
 import { TSecretChangeRequestData } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
@@ -69,6 +70,10 @@ import {
 } from "./secret-access/secret-access-policy-types";
 
 export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
+
+// Also carries the actor context the service's own permission checks need. req.actor is one; without a
+// request, build one with toApprovalActorContext.
+export type TApprovalActorContext = TApprovalActor & TActorContext;
 
 export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 
@@ -324,7 +329,7 @@ export type TApprovalResource<
     projectId: string;
     scopeId: string | null;
     actor: TApprovalActor;
-    action: ResourcePermissionApprovalPolicyActions;
+    action: ApplicationApprovalPolicyPermissionActions;
   }) => Promise<void>;
 
   // Whether the actor may read a scope's requests and grants, for a type whose read authority is the

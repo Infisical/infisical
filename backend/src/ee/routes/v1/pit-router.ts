@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { SecretApprovalRequestsSchema, SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
@@ -10,7 +11,6 @@ import { SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { booleanSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { limitSecretBatchSize } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
@@ -117,10 +117,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.getCommitsCount({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.query.projectId,
         environment: req.query.environment,
         path: req.query.path
@@ -183,10 +180,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.getCommitsForFolder({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.query.projectId,
         environment: req.query.environment,
         path: req.query.path,
@@ -246,10 +240,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.getCommitAuthorsForFolder({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.query.projectId,
         environment: req.query.environment,
         path: req.query.path
@@ -294,10 +285,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.getCommitChanges({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.query.projectId,
         commitId: req.params.commitId
       });
@@ -349,10 +337,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { diffs, environment, folderPath } = await server.services.pit.compareCommitChanges({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.query.projectId,
         commitId: req.params.commitId,
         folderId: req.query.folderId,
@@ -410,10 +395,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.rollbackToCommit({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.body.projectId,
         commitId: req.params.commitId,
         folderId: req.body.folderId,
@@ -440,7 +422,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretRollbackPerformed,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           projectId: req.body.projectId,
           environment: req.body.environment,
@@ -482,10 +464,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.revertCommit({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.body.projectId,
         commitId: req.params.commitId
       });
@@ -507,7 +486,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRevertPerformed,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             projectId: req.body.projectId,
             commitId: req.params.commitId,
@@ -543,10 +522,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.getFolderStateAtCommit({
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorOrgId: req.permission?.orgId,
-        actorAuthMethod: req.permission?.authMethod,
+        actor: req.actor,
         projectId: req.query.projectId,
         commitId: req.params.commitId
       });
@@ -695,10 +671,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pit.processNewCommitRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         projectId: req.body.projectId,
         environment: req.body.environment,
         secretPath: req.body.secretPath,
@@ -729,7 +702,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       for await (const event of result.secretMutationEvents) {
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.body.projectId,
           event
         });
@@ -742,7 +715,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
             server.services.telemetry.sendPostHogEvents({
               event: PostHogEventTypes.SecretFolderCreated,
               distinctId: getTelemetryDistinctId(req),
-              organizationId: req.permission.orgId,
+              organizationId: req.actor.orgId,
               properties: {
                 projectId: req.body.projectId,
                 environment: req.body.environment,

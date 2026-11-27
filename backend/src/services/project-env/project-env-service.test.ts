@@ -1,12 +1,18 @@
-import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
-import { ActorType } from "@app/services/auth/auth-type";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import {
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import { projectEnvServiceFactory } from "./project-env-service";
 
-const tx = {} as Knex;
+const tx = { executionPromise: Promise.resolve() } as unknown as Knex;
 
 const buildService = () => {
   let inTransaction = false;
@@ -35,11 +41,14 @@ const buildService = () => {
   const service = projectEnvServiceFactory({
     projectEnvDAL,
     secretV2BridgeDAL,
-    permissionService: {
-      getProjectPermission: vi
-        .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      invalidateProjectFolderPermissionCache: vi.fn().mockResolvedValue(undefined)
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Permission.fromRules({
+          rules: [{ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Environments }] as never
+        }),
+        folderGrants: FolderGrants.none()
+      }),
+      within: vi.fn().mockReturnValue({ invalidateFolderGrants: vi.fn().mockResolvedValue(undefined) })
     },
     keyStore: {
       acquireLock: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
@@ -53,10 +62,7 @@ const buildService = () => {
 const deleteDto = {
   projectId: "project-1",
   id: "env-1",
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: null,
-  actorOrgId: "org-1"
+  actor: actorContext({ principal: userPrincipal({ id: "user-1" }), org: actorOrg({ id: "org-1" }) })
 };
 
 describe("deleteEnvironment", () => {

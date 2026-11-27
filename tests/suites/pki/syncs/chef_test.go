@@ -109,6 +109,7 @@ func TestChefPkiSync_Sync(t *testing.T) {
 		require.Len(t, items, 1)
 		require.Contains(t, items, item)
 		require.Equal(t, strings.TrimSpace(renewed.JSON200.Certificate), strings.TrimSpace(items[item]["certificate"].(string)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, items[item]["certificate"].(string), items[item]["private_key"].(string))
 	})
 
 	t.Run("should write a renewed certificate to a new item and delete the old one when preserving the item is off", func(t *testing.T) {
@@ -134,6 +135,7 @@ func TestChefPkiSync_Sync(t *testing.T) {
 		require.Len(t, items, 1)
 		require.Contains(t, items, fresh)
 		require.Equal(t, strings.TrimSpace(renewed.JSON200.Certificate), strings.TrimSpace(items[fresh]["certificate"].(string)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, items[fresh]["certificate"].(string), items[fresh]["private_key"].(string))
 	})
 
 	t.Run("should delete the sync's data bag item and leave items Infisical did not write", func(t *testing.T) {

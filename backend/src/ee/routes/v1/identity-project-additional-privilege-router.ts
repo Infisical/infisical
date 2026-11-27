@@ -2,8 +2,9 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
-import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
+import { backfillPermissionV1SchemaToV2Schema } from "@app/domains/platform/projects/ce/module";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -15,7 +16,6 @@ import {
   ProjectSpecificPrivilegePermissionSchema,
   SanitizedIdentityPrivilegeSchema
 } from "@app/server/routes/sanitizedSchemas";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -58,7 +58,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         throw new UnauthorizedError({ message: "Permission or privilegePermission must be provided" });
       }
       const { id: projectId } = await server.services.convertor.projectSlugToId({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         slug: req.body.projectSlug
       });
 
@@ -71,11 +71,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         : permissions!;
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           actorId: req.body.identityId,
@@ -161,16 +161,16 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         : permissions!;
 
       const { id: projectId } = await server.services.convertor.projectSlugToId({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         slug: req.body.projectSlug
       });
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.createAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           actorId: req.body.identityId,
@@ -261,7 +261,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         : permissions!;
 
       const { id: projectId } = await server.services.convertor.projectSlugToId({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         slug: req.body.projectSlug
       });
 
@@ -271,11 +271,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.updateAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           actorId: req.body.identityId,
@@ -339,7 +339,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         slug: req.body.projectSlug
       });
 
@@ -349,11 +349,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.deleteAdditionalPrivilege({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           actorId: req.body.identityId,
@@ -406,7 +406,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         slug: req.query.projectSlug
       });
 
@@ -416,11 +416,11 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
       );
 
       const { additionalPrivilege: privilege } = await server.services.additionalPrivilege.getAdditionalPrivilegeById({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           actorId: req.query.identityId,
@@ -470,16 +470,16 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { id: projectId } = await server.services.convertor.projectSlugToId({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         slug: req.query.projectSlug
       });
 
       const { additionalPrivileges: privileges } = await server.services.additionalPrivilege.listAdditionalPrivileges({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         selector: {
           actorId: req.query.identityId,

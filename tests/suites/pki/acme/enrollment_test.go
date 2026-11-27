@@ -86,8 +86,8 @@ func TestAcmeEnrollment_KnownIssues(t *testing.T) {
 		res := c.Post(t, c.NewOrderURL(), map[string]any{"identifiers": []identifier{{Type: "dns", Value: domain("cleared")}}})
 
 		// Assert
-		require.GreaterOrEqualf(t, res.Status, http.StatusBadRequest, "new-order answered: %s", apierr.Body(res.Body))
-		require.NotEmpty(t, res.Problem(t).Type)
+		requireProblem(t, res, http.StatusBadRequest, "externalAccountRequired", "External account binding is not configured")
+		require.Empty(t, listOrders(t, c), "the refused order was still created")
 	})
 }
 

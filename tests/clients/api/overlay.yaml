@@ -211,3 +211,41 @@ actions:
   - target: $.paths['/api/v1/cert-manager/ca/internal/{caId}/crls/regenerate'].post.responses['200'].content['application/json'].schema.properties.crl.properties.crlNumber
     update:
       x-go-type: int64
+  # The OCSP GET route takes the request as a Fastify wildcard, which the spec declares as
+  # a path parameter named "*" that oapi-codegen cannot match to the path. Declare it as a
+  # named parameter; the client escapes the base64 request, which the server decodes.
+  # Removing the route's operationId first, only when it is getOcspRequest, makes the
+  # strict overlay fail if the route loses or renames it, which the replacement below
+  # would otherwise hide.
+  - target: $.paths['/api/v1/cert-manager/ocsp/{caId}/{*}'].get[?(@.operationId == 'getOcspRequest')].operationId
+    remove: true
+  - target: $.paths['/api/v1/cert-manager/ocsp/{caId}/{*}']
+    remove: true
+  - target: $.paths
+    update:
+      /api/v1/cert-manager/ocsp/{caId}/{request}:
+        get:
+          operationId: getOcspRequest
+          parameters:
+            - in: path
+              name: caId
+              required: true
+              schema:
+                type: string
+                format: uuid
+            - in: path
+              name: request
+              required: true
+              description: The DER-encoded OCSP request, base64-encoded and then URL-escaped.
+              schema:
+                type: string
+                minLength: 1
+                maxLength: 16384
+          responses:
+            "200":
+              description: A DER-encoded OCSP response
+              content:
+                application/ocsp-response:
+                  schema:
+                    type: string
+                    format: binary

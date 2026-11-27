@@ -179,6 +179,7 @@ output-options:
     - deleteDynamicSecret
     - deleteEnvironment
     - deleteGroup
+    - deleteHoneyToken
     - deleteIdentityFolderAccess
     - deleteIdentityProjectAdditionalPrivilege
     - deleteIdentityProjectAdditionalPrivilegeV1
@@ -471,6 +472,9 @@ output-options:
     - createOidcConfig
     - updateOidcConfig
     - getOidcConfig
+    - deleteOidcConfig
+    - getOrganizationSsoSettings
+    - updateOrganizationSsoSettings
     - redirectOidcLogin
     - oidcCallback
     - listExternalGroupOrgRoleMappings
@@ -1077,3 +1081,13 @@ output-options:
     - deleteCaCrossSignedCertificate
     - getCaSigningConfig
     - updateCaSigningConfig
+    - getOcspRequest
+    - generateScepDynamicChallenge
+    - postScepOperation
+    - generateScepApplicationDynamicChallenge
+    - getSignerPublicKey
+    - updateCertificate
+    - previewPkiAlertCertificatesV1
+    - createAzureDnsAppConnection
+    - createPowerdnsAppConnection
+    - createUltradnsAppConnection

@@ -45,7 +45,7 @@ func TestOIDCMFATrust(t *testing.T) {
 			// Setup
 			o := setup(t)
 			alice := o.SignedUp(t)
-			sso.EnforceMFA(t, o.Tenant, api.UpdateOrganizationJSONBodySsoMfaTrustSignal)
+			sso.EnforceMFA(t, o.Tenant, api.UpdateOrganizationSsoSettingsJSONBodySsoMfaTrustSignal)
 			if c.config != nil {
 				updateConfig(t, o, *c.config)
 			}
@@ -88,7 +88,6 @@ func selectAfterLogin(t *testing.T, o *sso.OIDC, p oidcidp.Person) *api.SelectOr
 
 func updateConfig(t *testing.T, o *sso.OIDC, body api.UpdateOidcConfigJSONRequestBody) {
 	t.Helper()
-	body.OrganizationId = o.Tenant.OrgID.String()
 	res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "updating the OIDC config: %s", apierr.Body(res.Body))

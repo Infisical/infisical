@@ -1,16 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
-import { ActorType } from "../auth/auth-type";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
@@ -27,7 +25,7 @@ import {
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "findPolicyByEnvId">;
@@ -38,32 +36,16 @@ export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFacto
 
 export const projectEnvServiceFactory = ({
   projectEnvDAL,
-  permissionService,
+  secretsPermissionService,
   licenseService,
   keyStore,
   folderDAL,
   approvalPolicySecretEnvironmentDAL,
   secretV2BridgeDAL
 }: TProjectEnvServiceFactoryDep) => {
-  const createEnvironment = async ({
-    projectId,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    position,
-    name,
-    slug
-  }: TCreateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
+  const createEnvironment = async ({ projectId, actor, position, name, slug }: TCreateEnvDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.Environments });
 
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
@@ -96,8 +78,8 @@ export const projectEnvServiceFactory = ({
       }
 
       // getProjectPermission above guarantees project existence and org membership,
-      // so actorOrgId === project.orgId — no separate project lookup needed.
-      const plan = await licenseService.getPlan(actorOrgId);
+      // so actor.org.id === project.orgId, so no separate project lookup is needed.
+      const plan = await licenseService.getPlan(actor.org.id);
       if (plan.exceeds(PlanLimit.Environments, envs.length)) {
         throw new BadRequestError({
           message:
@@ -140,26 +122,9 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const updateEnvironment = async ({
-    projectId,
-    slug,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    name,
-    id,
-    position
-  }: TUpdateEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Environments);
+  const updateEnvironment = async ({ projectId, slug, actor, name, id, position }: TUpdateEnvDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Environments });
 
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
@@ -199,8 +164,8 @@ export const projectEnvServiceFactory = ({
 
       const envs = await projectEnvDAL.find({ projectId });
       // getProjectPermission above guarantees project existence and org membership,
-      // so actorOrgId === project.orgId — no separate project lookup needed.
-      const plan = await licenseService.getPlan(actorOrgId);
+      // so actor.org.id === project.orgId, so no separate project lookup is needed.
+      const plan = await licenseService.getPlan(actor.org.id);
       // An update adds nothing, so it's refused only once the project is already over the limit.
       if (plan.exceeds(PlanLimit.Environments, envs.length, 0)) {
         throw new BadRequestError({
@@ -218,7 +183,9 @@ export const projectEnvServiceFactory = ({
           }
         }
         const updated = await projectEnvDAL.updateById(oldEnv.id, { name, slug, position }, tx);
-        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        await secretsPermissionService
+          .within(sealKnexTransaction(tx))
+          .invalidateFolderGrants({ projectIds: [projectId] });
         return updated;
       });
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
@@ -235,24 +202,9 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const deleteEnvironment = async ({
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    id,
-    hardDelete = false
-  }: TDeleteEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
+  const deleteEnvironment = async ({ projectId, actor, id, hardDelete = false }: TDeleteEnvDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Environments });
 
     const lock = await keyStore
       .acquireLock([KeyStorePrefixes.ProjectEnvironmentLock(projectId)], 5000)
@@ -288,7 +240,9 @@ export const projectEnvServiceFactory = ({
 
           await projectEnvDAL.closePositionGap(projectId, doc.position, tx);
           await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx, { grantTargetProjectIds });
-          await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+          await secretsPermissionService
+            .within(sealKnexTransaction(tx))
+            .invalidateFolderGrants({ projectIds: [projectId] });
 
           return doc;
         }
@@ -308,8 +262,8 @@ export const projectEnvServiceFactory = ({
 
         const softDeletedAt = new Date();
         const deleteAfter = new Date(softDeletedAt.getTime() + SOFT_DELETE_GRACE_MS);
-        const deletedByUserId = actor === ActorType.USER ? actorId : null;
-        const deletedByIdentityId = actor === ActorType.IDENTITY ? actorId : null;
+        const deletedByUserId = actor.principal.type === ActorType.USER ? actor.principal.id : null;
+        const deletedByIdentityId = actor.principal.type === ActorType.IDENTITY ? actor.principal.id : null;
         const doc = await projectEnvDAL.softDeleteById(
           id,
           projectId,
@@ -327,7 +281,9 @@ export const projectEnvServiceFactory = ({
           });
 
         await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
-        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        await secretsPermissionService
+          .within(sealKnexTransaction(tx))
+          .invalidateFolderGrants({ projectIds: [projectId] });
         return doc;
       });
 
@@ -343,16 +299,9 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const restoreEnvironment = async ({ projectId, actor, actorId, actorOrgId, actorAuthMethod, id }: TRestoreEnvDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Environments);
+  const restoreEnvironment = async ({ projectId, actor, id }: TRestoreEnvDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Environments });
 
     const operationMarkerKey = KeyStorePrefixes.WaitUntilReadyProjectEnvironmentOperation(projectId);
     const lock = await keyStore
@@ -402,8 +351,8 @@ export const projectEnvServiceFactory = ({
 
         const activeEnvs = await projectEnvDAL.find({ projectId }, { tx });
         // getProjectPermission above guarantees project existence and org membership,
-        // so actorOrgId === project.orgId — no separate project lookup needed.
-        const plan = await licenseService.getPlan(actorOrgId);
+        // so actor.org.id === project.orgId, so no separate project lookup is needed.
+        const plan = await licenseService.getPlan(actor.org.id);
         if (plan.exceeds(PlanLimit.Environments, activeEnvs.length)) {
           throw new BadRequestError({
             message:
@@ -419,7 +368,9 @@ export const projectEnvServiceFactory = ({
             name: "RestoreEnvironment"
           });
 
-        await permissionService.invalidateProjectFolderPermissionCache(projectId, tx);
+        await secretsPermissionService
+          .within(sealKnexTransaction(tx))
+          .invalidateFolderGrants({ projectIds: [projectId] });
         return doc;
       });
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
@@ -431,7 +382,7 @@ export const projectEnvServiceFactory = ({
     }
   };
 
-  const getEnvironmentById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetEnvDTO) => {
+  const getEnvironmentById = async ({ actor, id }: TGetEnvDTO) => {
     const environment = await projectEnvDAL.findById(id);
 
     if (!environment) {
@@ -440,38 +391,20 @@ export const projectEnvServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsPermissionService.getSecretsPermission({
       actor,
-      actorId,
-      projectId: environment.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: environment.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Environments });
 
     return environment;
   };
 
-  const getEnvironmentBySlug = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId,
-    slug
-  }: TGetEnvBySlugDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  const getEnvironmentBySlug = async ({ actor, projectId, slug }: TGetEnvBySlugDTO) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Environments);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Environments });
 
     const environment = await projectEnvDAL.findOne({ projectId, slug });
 

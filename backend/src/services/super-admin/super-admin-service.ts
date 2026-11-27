@@ -23,6 +23,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -41,7 +42,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -56,7 +56,7 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
-import { assertInitialSetupActivationToken } from "./super-admin-fns";
+import { assertInstanceSetupToken } from "./super-admin-fns";
 import {
   CacheType,
   SuperAdminErrorCode,
@@ -210,10 +210,10 @@ export const superAdminServiceFactory = ({
     organizationName,
     ip,
     userAgent,
-    activationToken
+    setupToken
   }: TAdminSignUpDTO) => {
     const appCfg = getConfig();
-    assertInitialSetupActivationToken(activationToken);
+    assertInstanceSetupToken(setupToken);
 
     const sanitizedEmail = email.trim().toLowerCase();
     const existingUser = await userDAL.findOne({ username: sanitizedEmail });
@@ -273,12 +273,7 @@ export const superAdminServiceFactory = ({
     return { token, user: userInfo, organization };
   };
 
-  const bootstrapInstance = async ({
-    email,
-    password,
-    organizationName,
-    activationToken
-  }: TAdminBootstrapInstanceDTO) => {
+  const bootstrapInstance = async ({ email, password, organizationName, setupToken }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const sanitizedEmail = email.trim().toLowerCase();
     const { initialized } = await instanceConfigService.getSettings();
@@ -289,7 +284,7 @@ export const superAdminServiceFactory = ({
       });
     }
 
-    assertInitialSetupActivationToken(activationToken);
+    assertInstanceSetupToken(setupToken);
 
     const existingUser = await userDAL.findOne({ email: sanitizedEmail });
     if (existingUser) throw new BadRequestError({ name: "Instance initialization", message: "User already exists" });

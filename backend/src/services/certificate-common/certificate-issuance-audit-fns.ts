@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import {
   ACTOR_TYPE_TO_METADATA_ID_KEY,
   AuditLogInfo,
@@ -60,7 +61,12 @@ export const recordCertificateIssuanceFailure = async (
   { auditLogInfo, projectId, error, metadata }: TRecordCertificateIssuanceFailureDTO
 ) => {
   // An access refusal is not an issuance failure; CASL denials get their own permission-denied event.
-  if (error instanceof ForbiddenError || error instanceof ForbiddenRequestError) return;
+  if (
+    error instanceof ForbiddenError ||
+    error instanceof ForbiddenRequestError ||
+    error instanceof PermissionDeniedError
+  )
+    return;
 
   const errorName = error instanceof Error ? error.name : "UnknownError";
   const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, MAX_ERROR_MESSAGE_LENGTH);

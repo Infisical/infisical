@@ -3,13 +3,13 @@ import { z } from "zod";
 
 import { ApproverType, BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { SECRET_CHANGE_POLICIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { canonicalizeSecretPathPattern, hasDotPathSegment, removeTrailingSlash } from "@app/lib/fn";
 import { EnforcementLevel } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { secretChangePolicyPubSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { DelegatedApprovalSchema } from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -79,10 +79,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.createSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         name: req.body.name ?? `${req.body.environment || req.body.environments?.join(",")}-${nanoid(3)}`,
         enforcementLevel: req.body.enforcementLevel
@@ -92,7 +89,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -166,10 +163,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.updateSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         secretPolicyId: req.params.sapId
       });
@@ -178,7 +172,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: { policyId: req.params.sapId, enforceOnSecretImports: approval.enforceOnSecretImports }
         })
         .catch(() => {});
@@ -207,10 +201,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.deleteSecretApprovalPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         secretPolicyId: req.params.sapId
       });
 
@@ -218,7 +209,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretApprovalPolicyDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             policyId: approval.id,
             projectId: approval.projectId,
@@ -266,10 +257,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const approvals = await server.services.secretChangePolicy.getSecretApprovalPolicyByProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.query.projectId
       });
       return { approvals };
@@ -311,10 +299,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const approval = await server.services.secretChangePolicy.getSecretApprovalPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.params
       });
 
@@ -371,10 +356,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const imports = await server.services.secretChangePolicy.listSecretApprovalPolicyImports({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         sapId: req.params.sapId,
         isReplication: req.query.isReplication
       });
@@ -408,10 +390,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const policy = await server.services.secretChangePolicy.getSecretApprovalPolicyOfFolder({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query
       });
       return { policy };

@@ -1,7 +1,6 @@
 import { TSamlConfigs } from "@app/db/schemas";
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TProviderAuthResult } from "@app/services/auth/auth-login-type";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 
 export enum SamlProviders {
@@ -22,7 +21,9 @@ export type TCreateSamlCfgDTO = {
   enableGroupSync?: boolean;
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
-} & TOrgPermission;
+  mfaAttributeValues?: string[] | null;
+  orgId: string;
+} & TActorInput;
 
 export type TUpdateSamlCfgDTO = Partial<{
   authProvider: SamlProviders;
@@ -33,18 +34,15 @@ export type TUpdateSamlCfgDTO = Partial<{
   enableGroupSync?: boolean;
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
+  mfaAttributeValues?: string[] | null;
 }> &
-  TOrgPermission;
+  ({ orgId: string } & TActorInput);
 
 export type TGetSamlCfgDTO =
-  | {
+  | ({
       type: "org";
       orgId: string;
-      actor: ActorType;
-      actorId: string;
-      actorAuthMethod: ActorAuthMethod;
-      actorOrgId: string;
-    }
+    } & TActorInput)
   | {
       type: "domain";
       domain: string;
@@ -89,6 +87,7 @@ export type TSamlConfigServiceFactory = {
     enableGroupSync?: boolean;
     mfaSignalAttribute?: string | null;
     mfaAuthnContexts?: string[] | null;
+    mfaAttributeValues?: string[] | null;
   }>;
   samlLogin: (arg: TSamlLoginDTO) => Promise<TProviderAuthResult & { userId: string; orgId: string; orgName: string }>;
   consumeSamlAssertion: (arg: { samlConfigId: string; parsedAssertion: unknown }) => Promise<void>;

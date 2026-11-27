@@ -377,6 +377,7 @@ export type TAccessiblePamAccount = {
   // site that quietly omitted them is what stopped the break-glass action from ever rendering.
   pendingRequestId: string | null;
   canBreakGlass: boolean;
+  maxAccessDurationSeconds: number | null;
   credentialAccessStatus?: PamAccessStatus;
   credentialPendingRequestId?: string | null;
   disabledReason?: string | null;
@@ -755,8 +756,10 @@ export type TPamAccessRequest = {
   folderName?: string;
   host?: string;
   accessType?: PamAccessType;
+  maxAccessDurationSeconds?: number | null;
   grantId?: string | null;
   grantExpiresAt?: string | null;
+  grantCreatedAt?: string | null;
   grantStatus?: string | null;
   isBreakGlass?: boolean;
   bypassReason?: string | null;
@@ -781,6 +784,7 @@ export type TPamApprovalConfig = {
   })[];
   breakGlassUsers: { type: PamApproverType; id: string }[];
   autoApproval: TAutoApprovalConfigResponse;
+  emailApproversOnRequest: boolean;
 };
 
 export type TPamAccessGrant = {
@@ -834,4 +838,5 @@ export type TSetPamApprovalConfigDTO = {
   breakGlassUsers?: { type: PamApproverType; id: string }[];
   // Omit to leave the folder's auto-approval rules unchanged
   autoApproval?: TAutoApprovalConfig;
+  emailApproversOnRequest?: boolean;
 };

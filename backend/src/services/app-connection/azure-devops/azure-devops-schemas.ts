@@ -9,6 +9,8 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
+import { refineCredentialRotationMethod } from "../credential-rotation/app-connection-credential-rotation-schemas";
+import { AzureConnectionFederatedCredentialSchema } from "../shared/azure/azure-managed-identity-schemas";
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 
 export const AzureDevOpsConnectionOAuthInputCredentialsSchema = z.object({
@@ -84,6 +86,41 @@ export const AzureDevOpsConnectionClientSecretOutputCredentialsSchema = z.object
   expiresAt: z.number()
 });
 
+export const AzureDevOpsConnectionManagedIdentityInputCredentialsSchema = z.object({
+  tenantId: z
+    .string()
+    .uuid()
+    .trim()
+    .min(1, "Tenant ID required")
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.tenantId),
+  clientId: z
+    .string()
+    .uuid()
+    .trim()
+    .min(1, "Client ID required")
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.clientId),
+  // Azure DevOps' own naming rules. The older methods don't enforce them because tightening their input would
+  // reject requests callers already send.
+  orgName: z
+    .string()
+    .trim()
+    .min(1, "Organization name required")
+    .max(50, "Organization name must be at most 50 characters long")
+    .regex(
+      /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/,
+      "Organization name must start and end with a letter or number, and contain only letters, numbers and hyphens"
+    )
+    .describe(AppConnections.CREDENTIALS.AZURE_DEVOPS.orgName)
+});
+
+export const AzureDevOpsConnectionManagedIdentityOutputCredentialsSchema = z.object({
+  tenantId: z.string(),
+  clientId: z.string(),
+  orgName: z.string(),
+  accessToken: z.string().optional(),
+  expiresAt: z.number().optional()
+});
+
 export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
@@ -108,6 +145,14 @@ export const ValidateAzureDevOpsConnectionCredentialsSchema = z.discriminatedUni
     credentials: AzureDevOpsConnectionClientSecretInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureDevOps).credentials
     )
+  }),
+  z.object({
+    method: z
+      .literal(AzureDevOpsConnectionMethod.ManagedIdentity)
+      .describe(AppConnections.CREATE(AppConnection.AzureDevOps).method),
+    credentials: AzureDevOpsConnectionManagedIdentityInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureDevOps).credentials
+    )
   })
 ]);
 
@@ -115,15 +160,7 @@ export const CreateAzureDevOpsConnectionSchema = ValidateAzureDevOpsConnectionCr
   GenericCreateAppConnectionFieldsSchema(AppConnection.AzureDevOps, {
     supportsCredentialRotation: true
   })
-).superRefine((data, ctx) => {
-  if (data.method !== AzureDevOpsConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Credential rotation is only supported for the client-secret method",
-      path: ["isAutoRotationEnabled"]
-    });
-  }
-});
+).superRefine(refineCredentialRotationMethod(AzureDevOpsConnectionMethod.ClientSecret));
 
 export const UpdateAzureDevOpsConnectionSchema = z
   .object({
@@ -131,7 +168,8 @@ export const UpdateAzureDevOpsConnectionSchema = z
       .union([
         AzureDevOpsConnectionOAuthInputCredentialsSchema,
         AzureDevOpsConnectionAccessTokenInputCredentialsSchema,
-        AzureDevOpsConnectionClientSecretInputCredentialsSchema
+        AzureDevOpsConnectionClientSecretInputCredentialsSchema,
+        AzureDevOpsConnectionManagedIdentityInputCredentialsSchema
       ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureDevOps).credentials)
@@ -160,6 +198,10 @@ export const AzureDevOpsConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureDevOpsConnectionMethod.ClientSecret),
       credentials: AzureDevOpsConnectionClientSecretOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureDevOpsConnectionMethod.ManagedIdentity),
+      credentials: AzureDevOpsConnectionManagedIdentityOutputCredentialsSchema
     })
   ])
 );
@@ -185,7 +227,17 @@ export const SanitizedAzureDevOpsConnectionSchema = z.discriminatedUnion("method
       tenantId: true,
       orgName: true
     })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps]} (Client Secret)` }))
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps]} (Client Secret)` })),
+  BaseAzureDevOpsConnectionSchema.extend({
+    method: z.literal(AzureDevOpsConnectionMethod.ManagedIdentity),
+    credentials: AzureDevOpsConnectionManagedIdentityOutputCredentialsSchema.pick({
+      clientId: true,
+      tenantId: true,
+      orgName: true
+    }).extend({
+      federatedCredential: AzureConnectionFederatedCredentialSchema
+    })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps]} (Managed Identity)` }))
 ]);
 
 export const AzureDevOpsConnectionListItemSchema = z

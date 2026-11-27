@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -38,7 +39,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
@@ -57,7 +58,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.approver.API.RejectCertRequestApprovalRequestWithResponse(t.Context(), approval, api.RejectCertRequestApprovalRequestJSONRequestBody{})
@@ -76,7 +77,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.Operator.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
@@ -86,6 +87,34 @@ func TestCertificateApproval_Request(t *testing.T) {
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.Equal(t, "You are not an eligible approver for this step", apierr.Message(res.Body))
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
+	})
+
+	t.Run("should refuse the requester rejecting their own request when they are not an approver and keep it pending", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := newGated(t, tn, separateApproverOnly)
+		reqID := g.request(t).JSON200.CertificateRequestId
+		approval := pki.ApprovalFor(t, g.App, reqID)
+
+		// Action
+		res, err := g.Operator.API.RejectCertRequestApprovalRequestWithResponse(t.Context(), approval, api.RejectCertRequestApprovalRequestJSONRequestBody{})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t, "You are not an eligible approver for this step", apierr.Message(res.Body))
+		pending := g.approvalRequest(t, approval).JSON200.Request
+		require.Equal(t, "pending", pending.Status)
+		require.Len(t, pending.Steps, 1)
+		require.Empty(t, pending.Steps[0].Approvals)
+		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
+		approved, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, approved.StatusCode(), "the approver approving afterwards: %s", apierr.Body(approved.Body))
+		issued := g.waitStatus(t, reqID, api.GetCertificateRequest200JSONResponseBodyStatusIssued)
+		require.NotNil(t, issued.JSON200.CertificateId)
 	})
 
 	t.Run("should let a requester the policy lists as an approver approve their own request", func(t *testing.T) {
@@ -98,7 +127,7 @@ func TestCertificateApproval_Request(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, requesterAlsoApproves)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.Operator.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
