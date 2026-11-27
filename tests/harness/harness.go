@@ -121,7 +121,7 @@ func run(m *testing.M, profile Profile, cfg *config, mainFile string) (int, erro
 	// listening. Key Vault and GCP are scoped by ids derived from the credential (a
 	// client UUID, a service account email), which cannot carry the binary's prefix.
 	if fn, ok := stack.modules[fakenet.Key].(*fakenet.Handle); ok {
-		wholeHosts := []string{license.Host, azure.KeyVault.Host(), oauth.GCPIAMCredentials.Host(), oauth.GCPCertificateManager.Host()}
+		wholeHosts := []string{license.Host, azure.KeyVault.Host(), azure.BotConnector.Host(), oauth.GCPIAMCredentials.Host(), oauth.GCPCertificateManager.Host()}
 		if err := fakenet.Listen(ctx, fn.AdminURL(), id.Binary(), wholeHosts...); err != nil {
 			return 0, err
 		}

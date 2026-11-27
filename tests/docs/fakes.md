@@ -219,6 +219,18 @@ Appliances the customer hosts have no real hostname, so each fake answers on one
 Like LDAP, `linuxserver` is not HTTP: fakenet serves it on its own listener and finds the
 host by the username of each login. Seed and read it through the admin API.
 
+## Workflow integrations
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `slack` | `slack.com` | OAuth code on `oauth.v2.access`, then the bot token it is redeemed into (`xoxb-<code>`) | Slack workflow integration: `slack.NewWorkspace` mints a workspace and its code, the test hands the code to Infisical's `oauth_redirect` callback, and `Messages` holds what `chat.postMessage` accepted. `conversations.list` pages by cursor (`WithPageSize` caps a page); `chat.postMessage` answers Slack's `channel_not_found`, `is_archived` and `not_in_channel` (a private channel the bot has not joined) with HTTP 200. The app credentials are `slack.ClientID` and `slack.ClientSecret`, which the shared stack sets as `WORKFLOW_SLACK_CLIENT_ID` and `WORKFLOW_SLACK_CLIENT_SECRET`. A code works once, and a code or token no test seeded gets `invalid_code` or `invalid_auth` |
+| `azure` | `login.microsoftonline.com/<tenant>`, for Teams: the token endpoint | tenant id in the path (`botframework.com` for the bot token) | Microsoft Teams integration: Graph tokens are JWTs whose `tid` is the tenant (`WithCode` makes a code issue another tenant's token, `WithAppTenant` the application's own, `WithConsentRequired` answers `AADSTS65001`); the bot token names the app by its client id |
+| `azure` | `graph.microsoft.com` | the `tid` of the Graph token | Teams app catalog, teams, installed apps and channels (`WithApp`, `WithTeam`; `WithPageSize` serves lists through `@odata.nextLink`), opened with `azure.OpenGraph` |
+| `azure` | `smba.trafficmanager.net` | the `appid` of the bot token, which is the app's client id | Teams channel cards: every activity the app posted (`azure.OpenBot(...).ActivitiesIn(conversationID)`). Teams app credentials are instance-wide, so one app serves every tenant on a stack and a test tells its posts apart by the channel ids it made up |
+
+Both Teams token endpoints answer for whatever client id and secret they are given: the
+instance's Teams credentials are not known to the fake.
+
 ## Test plumbing once
 
 Secret sync is tested end to end through GitHub. A new sync provider gets tests only for

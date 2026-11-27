@@ -3,10 +3,16 @@
 //
 // The tenant id in the path is the scope. A test generates a key pair, publishes the
 // certificate here, and signs the managed identity token itself.
+//
+// The same token endpoint issues the Microsoft Teams integration's tokens (teams_token.go):
+// a JWT naming the tenant for Graph, and a Bot Framework token naming the app. Graph
+// (graph.go) is scoped by the tenant that JWT names, and the Bot Framework connector
+// (bot.go) by the client id the bot token names.
 package azure
 
 import (
 	"encoding/json"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -49,6 +55,23 @@ type Tenant struct {
 	// Azure Monitor log stream makes them. The secret itself is not kept.
 	SecretGrants []SecretGrant `json:"secretGrants"`
 
+	// Grants are the Microsoft Graph and Bot Framework token requests the Teams
+	// integration made.
+	Grants []TokenGrant `json:"grants"`
+
+	// CodeTenants makes an authorization code issue a Graph token for another tenant than
+	// the one the request names, for a test of a user who consented in the wrong tenant.
+	// A code not listed gets a token for the request's tenant.
+	CodeTenants map[string]string `json:"codeTenants,omitempty"`
+
+	// AppTenant, when set, is the tenant the application's own Graph token carries
+	// instead of this one.
+	AppTenant string `json:"appTenant,omitempty"`
+
+	// ConsentRequired answers every Graph token request with AADSTS65001, as Entra does
+	// until a tenant admin consents to the app.
+	ConsentRequired bool `json:"consentRequired,omitempty"`
+
 	mu  sync.Mutex
 	mux *http.ServeMux
 }
@@ -79,6 +102,9 @@ func (t *Tenant) ServeHTTP(w http.ResponseWriter, r *http.Request) { t.mux.Serve
 func (t *Tenant) token(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
+		return
+	}
+	if t.graphOrBot(w, r, r.PathValue("tenant")) {
 		return
 	}
 	if secret := r.PostForm.Get("client_secret"); secret != "" {
@@ -121,15 +147,22 @@ func (t *Tenant) Snapshot() ([]byte, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return json.Marshal(struct {
-		Keys         []Key         `json:"keys"`
-		Assertions   []Assertion   `json:"assertions"`
-		SecretGrants []SecretGrant `json:"secretGrants"`
-	}{t.Keys, t.Assertions, t.SecretGrants})
+		Keys            []Key             `json:"keys"`
+		Assertions      []Assertion       `json:"assertions"`
+		SecretGrants    []SecretGrant     `json:"secretGrants"`
+		Grants          []TokenGrant      `json:"grants"`
+		CodeTenants     map[string]string `json:"codeTenants,omitempty"`
+		AppTenant       string            `json:"appTenant,omitempty"`
+		ConsentRequired bool              `json:"consentRequired,omitempty"`
+	}{t.Keys, t.Assertions, t.SecretGrants, t.Grants, t.CodeTenants, t.AppTenant, t.ConsentRequired})
 }
 
 func (t *Tenant) Seed(raw []byte) error {
 	var in struct {
-		Keys []Key `json:"keys"`
+		Keys            []Key             `json:"keys"`
+		CodeTenants     map[string]string `json:"codeTenants"`
+		AppTenant       string            `json:"appTenant"`
+		ConsentRequired *bool             `json:"consentRequired"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -137,6 +170,16 @@ func (t *Tenant) Seed(raw []byte) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.Keys = append(t.Keys, in.Keys...)
+	if len(in.CodeTenants) > 0 && t.CodeTenants == nil {
+		t.CodeTenants = map[string]string{}
+	}
+	maps.Copy(t.CodeTenants, in.CodeTenants)
+	if in.AppTenant != "" {
+		t.AppTenant = in.AppTenant
+	}
+	if in.ConsentRequired != nil {
+		t.ConsentRequired = *in.ConsentRequired
+	}
 	return nil
 }
 
@@ -150,6 +193,20 @@ func Open(tt *testing.T, adminURL, tenantID string) *ControlPlane {
 	tt.Helper()
 	return &ControlPlane{Scope: fakenet.Open[Tenant](tt, adminURL, Service.Host(), tenantID), TenantID: tenantID}
 }
+
+// WithCode is a seed fragment making an authorization code issue a Graph token for
+// another tenant than the one the token request names.
+func WithCode(code, tenantID string) any {
+	return map[string]any{"codeTenants": map[string]string{code: tenantID}}
+}
+
+// WithAppTenant is a seed fragment making the application's own Graph token carry
+// another tenant.
+func WithAppTenant(tenantID string) any { return map[string]any{"appTenant": tenantID} }
+
+// WithConsentRequired is a seed fragment that makes the tenant refuse Graph tokens until
+// an admin consents (true) or lets them through again (false).
+func WithConsentRequired(required bool) any { return map[string]any{"consentRequired": required} }
 
 // Publish makes a certificate's key trusted for this tenant's tokens.
 func (cp *ControlPlane) Publish(tt *testing.T, kid, certDERBase64 string) {

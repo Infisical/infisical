@@ -11,6 +11,7 @@ import (
 
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/oauth"
+	"github.com/Infisical/infisical/tests/fakes/slack"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -162,6 +163,12 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	for k, v := range OAuthClients {
 		env[k] = v
 	}
+
+	// The Slack app of the Slack workflow integration. The instance falls back to these
+	// when it has stored no Slack credentials; the slack fake checks oauth.v2.access
+	// against the same pair.
+	env["WORKFLOW_SLACK_CLIENT_ID"] = slack.ClientID
+	env["WORKFLOW_SLACK_CLIENT_SECRET"] = slack.ClientSecret
 
 	// The service account the instance impersonates GCP App Connections' accounts with,
 	// for the GCP Certificate Manager sync. Instance-wide, so it also enables GCP dynamic

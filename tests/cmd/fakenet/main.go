@@ -46,6 +46,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/panos"
 	"github.com/Infisical/infisical/tests/fakes/pwnedpasswords"
 	"github.com/Infisical/infisical/tests/fakes/servicenow"
+	"github.com/Infisical/infisical/tests/fakes/slack"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/fakes/venaficloud"
 	"github.com/Infisical/infisical/tests/fakes/venafitpp"
@@ -77,7 +78,7 @@ func main() {
 		vercel.Service,
 		oauth.Google, oauth.GitHub, oauth.GitLab, oauth.GCPCertificateManager,
 		gcp.STS, gcpIAMCredentials{},
-		kubernetes.Service, azure.Service, azure.KeyVault, alicloud.Service, oci.Service,
+		kubernetes.Service, azure.Service, azure.KeyVault, azure.Graph, azure.BotConnector, slack.Service, alicloud.Service, oci.Service,
 		ldap.Service, linuxserver.Service,
 		acmeca.Service, cloudflare.Service, dnsmadeeasy.Service, website.Service,
 		f5bigip.Service, kemp.Service, netscaler.Service, nutanix.Service, panos.Service,
