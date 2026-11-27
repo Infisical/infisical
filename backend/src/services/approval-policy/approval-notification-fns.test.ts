@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { TApprovalRequests } from "@app/db/schemas";
+import { ChatMessage, ChatPostFailure } from "@app/domains/platform/workflow-integrations/ce/module";
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 
 import { dispatchApprovalNotification, TApprovalNotificationDeps } from "./approval-notification-fns";
@@ -48,5 +50,40 @@ describe("dispatchApprovalNotification recipients", () => {
     const recipients = await deliver(ApprovalNotificationEvent.Approved);
 
     expect(recipients).toEqual(["requester"]);
+  });
+});
+
+describe("dispatchApprovalNotification chat", () => {
+  const resourceWithChat = (chat: { workflowIntegrationId: string; channelIds: string[]; message: ChatMessage }[]) =>
+    ({ buildNotification: async () => ({ chat }) }) as unknown as TApprovalResource;
+
+  it("posts every delivery to its integration and keeps going after a refused channel or a missing integration", async () => {
+    // Setup
+    const chatDeliveryService = new FakeChatDeliveryService()
+      .refuse("C1", { failure: ChatPostFailure.NotInChannel })
+      .markMissing("integration-gone");
+    const first = ChatMessage.slack({ text: "first" });
+    const second = ChatMessage.slack({ text: "second" });
+    const resource = resourceWithChat([
+      { workflowIntegrationId: "integration-gone", channelIds: ["C0"], message: first },
+      { workflowIntegrationId: "integration-a", channelIds: ["C1", "C2"], message: first },
+      { workflowIntegrationId: "integration-b", channelIds: ["C3"], message: second }
+    ]);
+    const deps = {
+      chatDeliveryService,
+      userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
+    } as unknown as TApprovalNotificationDeps;
+
+    // Action
+    await dispatchApprovalNotification(
+      { event: ApprovalNotificationEvent.Requested, request, resource, approvers },
+      deps
+    );
+
+    // Assert
+    expect(chatDeliveryService.posts).toEqual([
+      { orgId: "org-1", integrationId: "integration-a", channelIds: ["C1", "C2"], message: first },
+      { orgId: "org-1", integrationId: "integration-b", channelIds: ["C3"], message: second }
+    ]);
   });
 });

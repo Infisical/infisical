@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
 import { TActorInput } from "@app/lib/types";
 
 import { alertChannelTestServiceFactory, TAlertChannelTestServiceFactoryDep } from "./alert-channel-test-service";
@@ -136,6 +138,8 @@ const buildDeps = (overrides?: {
         })
       },
       smtpService: { sendMail: async () => {} },
+      workflowIntegrationService: new FakeWorkflowIntegrationService(),
+      chatDeliveryService: new FakeChatDeliveryService(),
       keyStore
     } as unknown as TAlertChannelTestServiceFactoryDep
   };

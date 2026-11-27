@@ -14,7 +14,6 @@ import {
 } from "@app/domains/certificates/cert-manager/ce/module";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
 import {
@@ -24,6 +23,7 @@ import {
   ProjectPermissionSub,
   TProjectPermissionService
 } from "@app/domains/platform/projects/ce/module";
+import { TChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -34,7 +34,6 @@ import { ms } from "@app/lib/ms";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
-import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -108,8 +107,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestStepEligibleApproversDAL: TApprovalRequestStepEligibleApproversDALFactory;
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsDataKeyService: TKmsDataKeyService;
+  chatDeliveryService: Pick<TChatDeliveryService, "post">;
   notificationService: TNotificationServiceFactory;
   orgPermissionService: TOrgPermissionService;
   projectPermissionService: TProjectPermissionService;
@@ -163,8 +161,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
   userGroupMembershipDAL,
-  slackIntegrationDAL,
-  kmsDataKeyService,
+  chatDeliveryService,
   notificationService,
   orgPermissionService,
   projectPermissionService,
@@ -193,8 +190,7 @@ export const approvalPolicyServiceFactory = ({
     userDAL,
     notificationService,
     smtpService,
-    slackIntegrationDAL,
-    kmsDataKeyService
+    chatDeliveryService
   };
 
   const $notify = (args: {

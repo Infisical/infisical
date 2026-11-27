@@ -5,6 +5,10 @@ import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certifi
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import {
+  TWorkflowIntegrationService,
+  WorkflowIntegrationProvider
+} from "@app/domains/platform/workflow-integrations/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -17,8 +21,6 @@ import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approv
 import { TPamAccessPolicyInputs } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
-import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
-import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
@@ -65,9 +67,9 @@ type TPamAccessRequestServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   pamFolderNotificationConfigDAL: Pick<
     TPamFolderNotificationConfigDALFactory,
-    "findByFolderIdWithIntegration" | "delete" | "insertMany" | "transaction"
+    "findByFolderId" | "delete" | "insertMany" | "transaction"
   >;
-  workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "find">;
+  workflowIntegrationService: Pick<TWorkflowIntegrationService, "listInOrg">;
   approvalPolicyService: Pick<
     TApprovalPolicyServiceFactory,
     | "create"
@@ -117,7 +119,7 @@ export const pamAccessRequestServiceFactory = ({
   userDAL,
   identityDAL,
   pamFolderNotificationConfigDAL,
-  workflowIntegrationDAL,
+  workflowIntegrationService,
   approvalPolicyService,
   pamAccessApprovalResource
 }: TPamAccessRequestServiceFactoryDep) => {
@@ -137,16 +139,27 @@ export const pamAccessRequestServiceFactory = ({
     return { name: fullName || user.username || user.email || actorId, email: user.email ?? "" };
   };
 
-  const getNotificationConfigs = async (folderId: string) => {
-    const configs = await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId);
-    return configs.map((config) => ({
-      id: config.id,
-      workflowIntegrationId: config.workflowIntegrationId,
-      integration: config.integration,
-      integrationSlug: config.slug,
-      channels: parseNotificationChannels(config.channels),
-      events: parseNotificationEvents(config.events)
-    }));
+  const getNotificationConfigs = async (folderId: string, orgId: string) => {
+    const configs = await pamFolderNotificationConfigDAL.findByFolderId(folderId);
+    const integrations = await workflowIntegrationService.listInOrg({
+      orgId,
+      ids: [...new Set(configs.map((config) => config.workflowIntegrationId))]
+    });
+    const integrationById = new Map(integrations.map((integration) => [integration.id, integration]));
+    return configs.flatMap((config) => {
+      const integration = integrationById.get(config.workflowIntegrationId);
+      if (!integration) return [];
+      return [
+        {
+          id: config.id,
+          workflowIntegrationId: config.workflowIntegrationId,
+          integration: integration.provider,
+          integrationSlug: integration.slug,
+          channels: parseNotificationChannels(config.channels),
+          events: parseNotificationEvents(config.events)
+        }
+      ];
+    });
   };
 
   // Guards cross-project IDOR and checks the actor may manage the configuration
@@ -184,7 +197,7 @@ export const pamAccessRequestServiceFactory = ({
 
     return {
       steps: steps.map((step) => ({ approvers: step.approvers })),
-      notificationConfigs: await getNotificationConfigs(folderId),
+      notificationConfigs: await getNotificationConfigs(folderId, actor.org.id),
       breakGlassUsers: bypassers,
       autoApproval,
       emailApproversOnRequest: folder.emailApproversOnRequest
@@ -244,15 +257,15 @@ export const pamAccessRequestServiceFactory = ({
     if (notificationConfigs !== undefined) {
       if (notificationConfigs.length > 0) {
         const integrationIds = [...new Set(notificationConfigs.map((c) => c.workflowIntegrationId))];
-        const integrations = await workflowIntegrationDAL.find({ $in: { id: integrationIds } });
+        const integrations = await workflowIntegrationService.listInOrg({ orgId: actor.org.id, ids: integrationIds });
         const integrationById = new Map(integrations.map((i) => [i.id, i]));
 
         for (const config of notificationConfigs) {
           const integration = integrationById.get(config.workflowIntegrationId);
-          if (!integration || integration.orgId !== actor.org.id) {
+          if (!integration) {
             throw new BadRequestError({ message: "Workflow integration not found in your organization" });
           }
-          if (integration.integration !== WorkflowIntegration.SLACK) {
+          if (!integration.isProvider(WorkflowIntegrationProvider.Slack)) {
             throw new BadRequestError({
               message: "Only Slack workflow integrations are supported for PAM notifications"
             });
@@ -262,7 +275,7 @@ export const pamAccessRequestServiceFactory = ({
 
       // Legacy Slack configs can only be removed, so every config sent back must match a stored one.
       const unmatchedKeyById = new Map<string, string>(
-        (await pamFolderNotificationConfigDAL.findByFolderIdWithIntegration(folderId)).map((row) => [
+        (await pamFolderNotificationConfigDAL.findByFolderId(folderId)).map((row) => [
           row.id,
           toNotificationConfigKey({
             workflowIntegrationId: row.workflowIntegrationId,

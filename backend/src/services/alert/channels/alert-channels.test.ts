@@ -3,6 +3,8 @@ import { validateHeaderValue } from "node:http";
 import { render } from "@react-email/components";
 import React from "react";
 
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
 import { BadRequestError } from "@app/lib/errors";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "@app/lib/validator";
 import { AlertNotificationTemplate } from "@app/services/smtp/emails/AlertNotificationTemplate";
@@ -81,8 +83,8 @@ const samplePayload = (): TAlertPayload => ({
 });
 
 const slackAppDeps = () => ({
-  kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() },
-  slackIntegrationDAL: { findByIdWithWorkflowIntegrationDetails: vi.fn() }
+  workflowIntegrationService: new FakeWorkflowIntegrationService(),
+  chatDeliveryService: new FakeChatDeliveryService()
 });
 
 const baseCtx = () => ({

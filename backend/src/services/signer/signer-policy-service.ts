@@ -5,7 +5,7 @@ import {
   TSignerPermissionService
 } from "@app/domains/certificates/code-signing/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -44,7 +44,6 @@ import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
-import { TSlackIntegrationDALFactory } from "../slack/slack-integration-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TSignerDALFactory } from "./signer-dal";
@@ -79,8 +78,7 @@ type TSignerPolicyServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "find" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsDataKeyService: TKmsDataKeyService;
+  chatDeliveryService: Pick<TChatDeliveryService, "post">;
   approvalResources: TApprovalResourceRegistry;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
@@ -150,8 +148,7 @@ export const signerPolicyServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   userGroupMembershipDAL,
-  slackIntegrationDAL,
-  kmsDataKeyService,
+  chatDeliveryService,
   approvalResources,
   identityGroupMembershipDAL,
   userDAL,
@@ -640,7 +637,7 @@ export const signerPolicyServiceFactory = ({
         resource: approvalResources[ApprovalPolicyType.CertCodeSigning]!,
         approvers: requestWithSteps.steps[0]?.approvers ?? []
       },
-      { userGroupMembershipDAL, userDAL, notificationService, smtpService, slackIntegrationDAL, kmsDataKeyService }
+      { userGroupMembershipDAL, userDAL, notificationService, smtpService, chatDeliveryService }
     );
 
     return requestWithSteps;

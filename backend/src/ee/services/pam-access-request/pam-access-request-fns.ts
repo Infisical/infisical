@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-import {
-  WorkflowIntegration,
-  WorkflowIntegrationStatus
-} from "@app/services/workflow-integration/workflow-integration-types";
-
 import { PamNotificationEvent } from "../pam/pam-enums";
 
 export const escapeMarkdown = (text: string) => text.replace(/[\\`*_[\]()#+\-!>|~]/g, "\\$&");
@@ -24,20 +19,21 @@ export const parseNotificationEvents = (value: unknown) => {
 
 export type TFolderNotificationConfigRow = {
   workflowIntegrationId: string;
-  integration: string;
-  status: string;
   channels?: unknown;
   events?: unknown;
 };
 
 // Channel ids are merged per integration so overlapping configs can't post the same message twice
-export const getSlackSendTargets = (configs: TFolderNotificationConfigRow[], event: PamNotificationEvent) => {
+export const getSlackSendTargets = (
+  configs: TFolderNotificationConfigRow[],
+  event: PamNotificationEvent,
+  installedSlackIntegrationIds: Set<string>
+) => {
   const channelIdsByIntegration = new Map<string, Set<string>>();
 
   for (const config of configs) {
     const isSubscribed =
-      config.integration === WorkflowIntegration.SLACK &&
-      config.status === WorkflowIntegrationStatus.INSTALLED &&
+      installedSlackIntegrationIds.has(config.workflowIntegrationId) &&
       parseNotificationEvents(config.events).includes(event);
 
     if (isSubscribed) {

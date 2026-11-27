@@ -1148,7 +1148,8 @@ export const registerRoutes = async (
     alertRecipientResolver,
     kmsDataKeyService,
     smtpService,
-    slackIntegrationDAL
+    workflowIntegrationService: domains.workflowIntegrations.workflowIntegrationService,
+    chatDeliveryService: domains.workflowIntegrations.chatDeliveryService
   });
   const alertQueue = alertQueueServiceFactory({
     cronJob,
@@ -1173,7 +1174,7 @@ export const registerRoutes = async (
     projectDAL,
     groupDAL,
     emailDomainDAL,
-    slackIntegrationDAL,
+    workflowIntegrationService: domains.workflowIntegrations.workflowIntegrationService,
     orgPermissionService
   });
   const alertService = alertServiceFactory({
@@ -1209,7 +1210,8 @@ export const registerRoutes = async (
     alertProviderRegistry,
     kmsDataKeyService,
     smtpService,
-    slackIntegrationDAL,
+    workflowIntegrationService: domains.workflowIntegrations.workflowIntegrationService,
+    chatDeliveryService: domains.workflowIntegrations.chatDeliveryService,
     keyStore
   });
 
@@ -4168,6 +4170,7 @@ export const registerRoutes = async (
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
     projectPermissionService,
+    workflowIntegrationService: domains.workflowIntegrations.workflowIntegrationService,
     pamPermissionService,
     pamFolderNotificationConfigDAL,
     approvalPolicyDAL,
@@ -4237,8 +4240,7 @@ export const registerRoutes = async (
     smtpService,
     userDAL,
     groupDAL,
-    slackIntegrationDAL,
-    kmsDataKeyService,
+    chatDeliveryService: domains.workflowIntegrations.chatDeliveryService,
     eventEmitter,
     autoApprovalService,
     resources: approvalResources
@@ -4423,7 +4425,7 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     pamFolderNotificationConfigDAL,
-    workflowIntegrationDAL,
+    workflowIntegrationService: domains.workflowIntegrations.workflowIntegrationService,
     approvalPolicyService,
     pamAccessApprovalResource
   });
@@ -4971,8 +4973,7 @@ export const registerRoutes = async (
     identityDAL,
     notificationService,
     smtpService,
-    slackIntegrationDAL,
-    kmsDataKeyService,
+    chatDeliveryService: domains.workflowIntegrations.chatDeliveryService,
     approvalResources
   });
 

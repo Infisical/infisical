@@ -53,7 +53,8 @@ export type TAlertEngineDep = {
   alertRecipientResolver: Pick<TAlertRecipientResolver, "resolveMany">;
   kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
-  slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
+  workflowIntegrationService: TAlertChannelDeps["workflowIntegrationService"];
+  chatDeliveryService: TAlertChannelDeps["chatDeliveryService"];
 };
 
 export type TAlertEngine = ReturnType<typeof alertEngineFactory>;
@@ -66,7 +67,8 @@ export const alertEngineFactory = ({
   alertRecipientResolver,
   kmsDataKeyService,
   smtpService,
-  slackIntegrationDAL
+  workflowIntegrationService,
+  chatDeliveryService
 }: TAlertEngineDep) => {
   const $dispatchChannelWork = async (
     alert: TAlerts,
@@ -109,7 +111,7 @@ export const alertEngineFactory = ({
       });
     }
 
-    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
+    const deps: TAlertChannelDeps = { smtpService, workflowIntegrationService, chatDeliveryService };
 
     const sendLimit = pLimit(ALERT_DELIVERY_CONCURRENCY);
 

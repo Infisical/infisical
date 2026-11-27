@@ -39,7 +39,7 @@ export type TAlertChannelServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
-  slackIntegrationDAL: TAlertChannelScopeDeps["slackIntegrationDAL"];
+  workflowIntegrationService: TAlertChannelScopeDeps["workflowIntegrationService"];
   orgPermissionService: Pick<TOrgPermissionService, "getOrgPermission">;
 };
 
@@ -82,7 +82,7 @@ export const alertChannelServiceFactory = ({
   projectDAL,
   groupDAL,
   emailDomainDAL,
-  slackIntegrationDAL,
+  workflowIntegrationService,
   orgPermissionService
 }: TAlertChannelServiceFactoryDep) => {
   const $idsOfType = (recipients: TChannelRecipientInput[], principalType: AlertPrincipalType) => [
@@ -226,7 +226,7 @@ export const alertChannelServiceFactory = ({
     orgId: string,
     config: Record<string, unknown>
   ): Promise<string | null> => {
-    await definition.assertConfigInScope?.({ orgId, config }, { slackIntegrationDAL });
+    await definition.assertConfigInScope?.({ orgId, config }, { workflowIntegrationService });
     return definition.getWorkflowIntegrationId?.(config) ?? null;
   };
 

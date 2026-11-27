@@ -4,10 +4,10 @@ import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@a
 import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { TEventInput } from "@app/domains/platform/events/ce/module";
+import type { ChatMessage } from "@app/domains/platform/workflow-integrations/ce/module";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestData } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { OrgServiceActor } from "@app/lib/types";
-import { TNotification } from "@app/lib/workflow-integrations/types";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
@@ -218,7 +218,7 @@ export interface TCreateRequestFromPolicyDTO {
 export type TApprovalNotification = {
   inApp?: { type: NotificationType; title: string; body: string; link?: string };
   email?: { subjectLine: string; template: SmtpTemplates; substitutions: Record<string, unknown> };
-  chat?: { workflowIntegrationId: string; channelIds: string[]; notification: TNotification }[];
+  chat?: { workflowIntegrationId: string; channelIds: string[]; message: ChatMessage }[];
 };
 
 // The one extension point: a policy type implements this and registers it at wiring time. Only the

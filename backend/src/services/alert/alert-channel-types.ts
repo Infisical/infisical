@@ -2,11 +2,13 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { TPermissionCheck } from "@app/domains/platform/access-control/ce/module";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
+import {
+  TChatDeliveryService,
+  TWorkflowIntegrationService
+} from "@app/domains/platform/workflow-integrations/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
-import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 export const ALERT_CHANNEL_HTTP_TIMEOUT = 7 * 1000;
@@ -70,12 +72,12 @@ export type TAlertRecipient = {
 };
 
 export type TAlertChannelScopeDeps = {
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
+  workflowIntegrationService: Pick<TWorkflowIntegrationService, "findInOrg">;
 };
 
 export type TAlertChannelDeps = TAlertChannelScopeDeps & {
   smtpService: Pick<TSmtpService, "sendMail">;
-  kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey">;
+  chatDeliveryService: Pick<TChatDeliveryService, "post">;
 };
 
 export type TAlertChannelSendContext = {

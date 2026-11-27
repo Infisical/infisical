@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
 import { AlertDispatchOutcome } from "@app/lib/telemetry/metrics";
 
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
@@ -196,6 +198,8 @@ const buildEngine = (opts: {
       }
     },
     kmsDataKeyService: kmsServiceMock,
+    workflowIntegrationService: new FakeWorkflowIntegrationService(),
+    chatDeliveryService: new FakeChatDeliveryService(),
     smtpService: {
       sendMail: async (opt: { recipients: string[] }) => {
         inFlightSends += 1;

@@ -1,10 +1,8 @@
 import { TApprovalRequests } from "@app/db/schemas";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { logger } from "@app/lib/logger";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { sendSlackNotification } from "@app/services/slack/slack-fns";
-import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -18,8 +16,7 @@ export type TApprovalNotificationDeps = {
   userDAL: Pick<TUserDALFactory, "find">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
-  kmsDataKeyService: TKmsDataKeyService;
+  chatDeliveryService: Pick<TChatDeliveryService, "post">;
 };
 
 export const expandApproversToUserIds = async (
@@ -91,22 +88,25 @@ const deliverToUsers = async (
 const deliverToChat = async (
   content: TApprovalNotification,
   request: TApprovalRequests,
-  { slackIntegrationDAL, kmsDataKeyService }: TApprovalNotificationDeps
+  { chatDeliveryService }: TApprovalNotificationDeps
 ) => {
   for (const delivery of content.chat ?? []) {
     // eslint-disable-next-line no-await-in-loop
-    const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(
-      delivery.workflowIntegrationId
-    );
-    if (slackIntegration) {
-      // eslint-disable-next-line no-await-in-loop
-      await sendSlackNotification({
-        orgId: request.organizationId,
-        notification: delivery.notification,
-        kmsDataKeyService,
-        targetChannelIds: delivery.channelIds,
-        slackIntegration
-      });
+    const result = await chatDeliveryService.post({
+      orgId: request.organizationId,
+      integrationId: delivery.workflowIntegrationId,
+      channelIds: delivery.channelIds,
+      message: delivery.message
+    });
+    if (!result.integrationMissing) {
+      result.channels
+        .filter((channel) => !channel.delivered)
+        .forEach((channel) =>
+          logger.error(
+            { requestId: request.id, channelId: channel.channelId, failure: channel.failure },
+            `Failed to post approval notification to chat channel [requestId=${request.id}] [channelId=${channel.channelId}]`
+          )
+        );
     }
   }
 };

@@ -28,7 +28,8 @@ export type TAlertChannelTestServiceFactoryDep = {
   alertProviderRegistry: TAlertProviderRegistry;
   kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
-  slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
+  workflowIntegrationService: TAlertChannelDeps["workflowIntegrationService"];
+  chatDeliveryService: TAlertChannelDeps["chatDeliveryService"];
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "ttl">;
 };
 
@@ -46,7 +47,8 @@ export const alertChannelTestServiceFactory = ({
   alertProviderRegistry,
   kmsDataKeyService,
   smtpService,
-  slackIntegrationDAL,
+  workflowIntegrationService,
+  chatDeliveryService,
   keyStore
 }: TAlertChannelTestServiceFactoryDep) => {
   const $assertCooldown = async (orgId: string, actorId: string, channelType: string) => {
@@ -173,7 +175,7 @@ export const alertChannelTestServiceFactory = ({
     // Last, so a rejected config or an unresolvable recipient doesn't spend the window.
     await $assertCooldown(dto.actor.org.id, dto.actor.principal.id, dto.channelType);
 
-    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
+    const deps: TAlertChannelDeps = { smtpService, workflowIntegrationService, chatDeliveryService };
     const payload = buildTestAlertPayload({
       orgId: dto.actor.org.id,
       projectId,

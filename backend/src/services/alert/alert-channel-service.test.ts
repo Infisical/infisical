@@ -1,5 +1,8 @@
 import { Knex } from "knex";
 
+import { WorkflowIntegration } from "@app/domains/platform/workflow-integrations/ce/module";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
+import { slackIntegration } from "@app/domains/platform/workflow-integrations/ce/testing/workflow-integration-fixture";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import { alertChannelServiceFactory, TAlertChannelServiceFactoryDep } from "./alert-channel-service";
@@ -45,6 +48,11 @@ const buildService = (opts?: {
   canReadSettings?: boolean;
 }) => {
   const slackLookups: string[] = [];
+  const workflowIntegrations = new FakeWorkflowIntegrationService().add(
+    ...(opts?.slackIntegrations ?? []).map(({ id, orgId }) =>
+      WorkflowIntegration.restore({ ...slackIntegration({ orgId }).toJSON(), id })
+    )
+  );
   const scopeCheckTxs: unknown[] = [];
   const store = new Map<string, TRow>();
   (opts?.seed ?? []).forEach((r) => store.set(r.id, r));
@@ -110,11 +118,10 @@ const buildService = (opts?: {
     },
     groupDAL: { find: async (filter: { $in?: { id?: string[] } }) => (filter.$in?.id ?? []).map((id) => ({ id })) },
     emailDomainDAL: { find: async () => [{ domain: "verified-example.com" }] },
-    slackIntegrationDAL: {
-      findByIdWithWorkflowIntegrationDetails: async (id: string) => {
-        slackLookups.push(id);
-        const found = (opts?.slackIntegrations ?? []).find((integration) => integration.id === id);
-        return found ? { ...found, integration: "slack" } : undefined;
+    workflowIntegrationService: {
+      findInOrg: async (input: Parameters<typeof workflowIntegrations.findInOrg>[0]) => {
+        slackLookups.push(input.id);
+        return workflowIntegrations.findInOrg(input);
       }
     },
     orgPermissionService: {

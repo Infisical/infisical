@@ -1,4 +1,10 @@
-import { ErrorCode } from "@slack/web-api";
+import { ChatPostFailure, WorkflowIntegration } from "@app/domains/platform/workflow-integrations/ce/module";
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
+import {
+  microsoftTeamsIntegration,
+  slackIntegration
+} from "@app/domains/platform/workflow-integrations/ce/testing/workflow-integration-fixture";
 
 import { SlackAppChannelConfigSchema, TAlertChannelDeps, TAlertPayload } from "../alert-channel-types";
 import { assertSlackAppConfigInScope, sendSlackAppNotification } from "./alert-channel-slack-app-fns";
@@ -6,19 +12,6 @@ import { assertSlackAppConfigInScope, sendSlackAppNotification } from "./alert-c
 vi.mock("@app/lib/logger", () => ({
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
   initLogger: () => {}
-}));
-
-const { postMessage, clientOptions } = vi.hoisted(() => ({
-  postMessage: vi.fn<(args: { channel: string; text: string }) => Promise<unknown>>(),
-  clientOptions: [] as unknown[]
-}));
-
-vi.mock("@slack/web-api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@slack/web-api")>()),
-  WebClient: vi.fn().mockImplementation((_token: string, options: unknown) => {
-    clientOptions.push(options);
-    return { chat: { postMessage } };
-  })
 }));
 
 const ORG_ID = "6f1f6f9e-4a4b-4a4b-8a8a-1f1f1f1f1f1f";
@@ -50,36 +43,28 @@ const config = {
   ]
 };
 
-const slackIntegration = (overrides: Record<string, unknown> = {}) => ({
-  id: INTEGRATION_ID,
-  orgId: ORG_ID,
-  integration: "slack",
-  slug: "main-workspace",
-  encryptedBotAccessToken: Buffer.from("encrypted"),
-  ...overrides
-});
+const withId = (integration: WorkflowIntegration) =>
+  WorkflowIntegration.restore({ ...integration.toJSON(), id: INTEGRATION_ID });
 
-const deps = (integration: ReturnType<typeof slackIntegration> | null = slackIntegration()) =>
-  ({
+const buildDeps = (integration: WorkflowIntegration | null = withId(slackIntegration({ orgId: ORG_ID }))) => {
+  const workflowIntegrationService = new FakeWorkflowIntegrationService();
+  if (integration) workflowIntegrationService.add(integration);
+  const chatDeliveryService = new FakeChatDeliveryService();
+  if (!integration) chatDeliveryService.markMissing(INTEGRATION_ID);
+  const deps = {
     smtpService: { sendMail: async () => undefined },
-    kmsDataKeyService: {
-      createCipherPairWithDataKey: vi.fn(async () => ({
-        encryptor: vi.fn(),
-        decryptor: () => Buffer.from("xoxb-token")
-      }))
-    },
-    slackIntegrationDAL: { findByIdWithWorkflowIntegrationDetails: vi.fn(async () => integration ?? undefined) }
-  }) as unknown as TAlertChannelDeps;
+    workflowIntegrationService,
+    chatDeliveryService
+  } as unknown as TAlertChannelDeps;
+  return { deps, chatDeliveryService };
+};
 
-const platformError = (error: string) =>
-  Object.assign(new Error(error), { code: ErrorCode.PlatformError, data: { error } });
-
-const send = (dependencies = deps()) =>
+const send = (setup = buildDeps()) =>
   sendSlackAppNotification({
     channelId: "chan-1",
     config,
     payload: payload(),
-    deps: dependencies
+    deps: setup.deps
   });
 
 describe("SlackAppChannelConfigSchema", () => {
@@ -116,85 +101,105 @@ describe("SlackAppChannelConfigSchema", () => {
 
 describe("assertSlackAppConfigInScope", () => {
   test("accepts an integration from the alert's org", async () => {
-    await expect(assertSlackAppConfigInScope({ orgId: ORG_ID, config }, deps())).resolves.toBeUndefined();
+    await expect(assertSlackAppConfigInScope({ orgId: ORG_ID, config }, buildDeps().deps)).resolves.toBeUndefined();
   });
 
   test("rejects an integration from another org", async () => {
     await expect(
-      assertSlackAppConfigInScope({ orgId: ORG_ID, config }, deps(slackIntegration({ orgId: "other-org" })))
+      assertSlackAppConfigInScope(
+        { orgId: ORG_ID, config },
+        buildDeps(withId(slackIntegration({ orgId: "other-org" }))).deps
+      )
     ).rejects.toThrow(/not found in this organization/);
   });
 
   test("rejects a Microsoft Teams integration", async () => {
     await expect(
-      assertSlackAppConfigInScope({ orgId: ORG_ID, config }, deps(slackIntegration({ integration: "microsoft-teams" })))
+      assertSlackAppConfigInScope(
+        { orgId: ORG_ID, config },
+        buildDeps(withId(microsoftTeamsIntegration({ orgId: ORG_ID }))).deps
+      )
     ).rejects.toThrow(/not found in this organization/);
   });
 });
 
 describe("sendSlackAppNotification", () => {
-  beforeEach(() => {
-    postMessage.mockReset();
-    clientOptions.length = 0;
-  });
-
   test("posts the alert to every selected channel", async () => {
-    postMessage.mockResolvedValue({ ok: true });
+    const setup = buildDeps();
 
-    await expect(send()).resolves.toEqual({ success: true });
-    expect(postMessage.mock.calls.map(([args]) => args.channel)).toEqual(["C0123ABCD", "C0456EFGH"]);
-    expect(postMessage.mock.calls[0][0].text).toContain("prod-cert-expiry");
+    await expect(send(setup)).resolves.toEqual({ success: true });
+
+    expect(setup.chatDeliveryService.posts).toHaveLength(1);
+    expect(setup.chatDeliveryService.posts[0].channelIds).toEqual(["C0123ABCD", "C0456EFGH"]);
+    expect(JSON.stringify(setup.chatDeliveryService.posts[0].message)).toContain("prod-cert-expiry");
   });
 
   test("bounds the Slack client's retries and timeout", async () => {
-    postMessage.mockResolvedValue({ ok: true });
-    await send();
-    expect(clientOptions[0]).toMatchObject({ rejectRateLimitedCalls: true, retryConfig: { retries: 2 } });
+    const setup = buildDeps();
+    await send(setup);
+    expect(setup.chatDeliveryService.posts[0].limits).toEqual({ timeoutMs: 7000, retries: 2 });
   });
 
   test("fails with a readable error when the integration was deleted", async () => {
-    const result = await send(deps(null));
+    const setup = buildDeps(null);
+    const result = await send(setup);
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/no longer exists/);
-    expect(postMessage).not.toHaveBeenCalled();
-  });
-
-  test("does not post through an integration from another org", async () => {
-    const result = await send(deps(slackIntegration({ orgId: "other-org" })));
-    expect(result.success).toBe(false);
-    expect(postMessage).not.toHaveBeenCalled();
+    expect(setup.chatDeliveryService.posts).toHaveLength(0);
   });
 
   test("tells the user to add the app when it isn't in the channel", async () => {
-    postMessage.mockRejectedValue(platformError("not_in_channel"));
-    const result = await send();
+    const setup = buildDeps();
+    setup.chatDeliveryService
+      .refuse("C0123ABCD", { failure: ChatPostFailure.NotInChannel })
+      .refuse("C0456EFGH", { failure: ChatPostFailure.NotInChannel });
+    const result = await send(setup);
     expect(result.success).toBe(false);
     expect(result.error).toContain("The Infisical app isn't in #team-payments");
   });
 
   test("points at reconnecting when the token was revoked", async () => {
-    postMessage.mockRejectedValue(platformError("token_revoked"));
-    const result = await send();
+    const setup = buildDeps();
+    setup.chatDeliveryService
+      .refuse("C0123ABCD", { failure: ChatPostFailure.AuthRejected, providerError: "token_revoked" })
+      .refuse("C0456EFGH", { failure: ChatPostFailure.AuthRejected, providerError: "token_revoked" });
+    const result = await send(setup);
     expect(result.error).toContain("Reconnect the Slack integration");
   });
 
   test("counts a run as delivered when one channel received it, and reports the other", async () => {
-    postMessage.mockRejectedValueOnce(platformError("is_archived")).mockResolvedValueOnce({ ok: true });
-    await expect(send()).resolves.toEqual({ success: true, error: "#team-payments is archived." });
+    const setup = buildDeps();
+    setup.chatDeliveryService.refuse("C0123ABCD", { failure: ChatPostFailure.Archived });
+    await expect(send(setup)).resolves.toEqual({ success: true, error: "#team-payments is archived." });
   });
 
   test("reports a revoked token once, not once per channel", async () => {
-    postMessage.mockRejectedValue(platformError("token_revoked"));
-    const result = await send();
+    const setup = buildDeps();
+    setup.chatDeliveryService
+      .refuse("C0123ABCD", { failure: ChatPostFailure.AuthRejected })
+      .refuse("C0456EFGH", { failure: ChatPostFailure.AuthRejected });
+    const result = await send(setup);
     expect(result.error?.match(/Reconnect/g)).toHaveLength(1);
   });
 
   test("names a rate limit and an unreachable Slack", async () => {
-    postMessage
-      .mockRejectedValueOnce(Object.assign(new Error("rl"), { code: ErrorCode.RateLimitedError }))
-      .mockRejectedValueOnce(Object.assign(new Error("net"), { code: ErrorCode.RequestError }));
-    const result = await send();
+    const setup = buildDeps();
+    setup.chatDeliveryService
+      .refuse("C0123ABCD", { failure: ChatPostFailure.RateLimited })
+      .refuse("C0456EFGH", { failure: ChatPostFailure.Unreachable });
+    const result = await send(setup);
     expect(result.error).toContain("Slack rate limited the message to #team-payments");
     expect(result.error).toContain("Could not reach Slack to post to #security");
+  });
+
+  test("quotes Slack's own code for an error it has no wording for, and has a generic fallback without one", async () => {
+    const setup = buildDeps();
+    setup.chatDeliveryService
+      .refuse("C0123ABCD", { failure: ChatPostFailure.Other, providerError: "restricted_action" })
+      .refuse("C0456EFGH", { failure: ChatPostFailure.Other });
+    const result = await send(setup);
+    expect(result.error).toBe(
+      "Slack refused the message to #team-payments (restricted_action). Failed to post to #security."
+    );
   });
 });

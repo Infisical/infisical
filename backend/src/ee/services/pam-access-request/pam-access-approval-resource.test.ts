@@ -1,6 +1,13 @@
+import { WorkflowIntegrationProvider } from "@app/domains/platform/workflow-integrations/ce/module";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
+import {
+  microsoftTeamsIntegration,
+  slackIntegration
+} from "@app/domains/platform/workflow-integrations/ce/testing/workflow-integration-fixture";
 import { ApprovalNotificationEvent, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TPamAccessPolicy } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
 
+import { PamNotificationEvent } from "../pam/pam-enums";
 import { pamAccessApprovalResourceFactory } from "./pam-access-approval-resource";
 import { TPamAccessRequestData } from "./pam-access-request-types";
 
@@ -69,7 +76,8 @@ describe("pam access resource: buildNotification email", () => {
     pamAccessApprovalResourceFactory({
       pamAccountDAL: { findByIdWithDetails: vi.fn().mockResolvedValue({ name: "prod-db" }) },
       pamFolderDAL: { findById: vi.fn().mockResolvedValue(folder) },
-      pamFolderNotificationConfigDAL: { findByFolderIdWithIntegration: vi.fn().mockResolvedValue([]) }
+      pamFolderNotificationConfigDAL: { findByFolderId: vi.fn().mockResolvedValue([]) },
+      workflowIntegrationService: new FakeWorkflowIntegrationService()
     } as never);
 
   const request = {
@@ -102,5 +110,51 @@ describe("pam access resource: buildNotification email", () => {
     });
 
     expect(content?.email).toBeDefined();
+  });
+});
+
+describe("pam access resource: buildNotification chat", () => {
+  const request = {
+    id: "request",
+    organizationId: "org",
+    requesterName: "Jane",
+    requesterEmail: "jane@example.com",
+    requestData: { version: 1, requestData: { accountId: ACCOUNT_ID, folderId: FOLDER_ID, duration: "1h" } }
+  } as never;
+
+  test("posts to the folder's installed Slack integrations that subscribe to the event, merging channels", async () => {
+    // Setup
+    const slack = slackIntegration({ orgId: "org" });
+    const teams = microsoftTeamsIntegration({ orgId: "org" });
+    const otherOrgSlack = slackIntegration({ orgId: "other-org" });
+    const config = (workflowIntegrationId: string, channelId: string, events: string[]) => ({
+      workflowIntegrationId,
+      channels: [{ id: channelId, name: channelId }],
+      events
+    });
+    const resource = pamAccessApprovalResourceFactory({
+      pamAccountDAL: { findByIdWithDetails: vi.fn().mockResolvedValue({ name: "prod-db" }) },
+      pamFolderDAL: { findById: vi.fn().mockResolvedValue({ name: "prod", emailApproversOnRequest: true }) },
+      pamFolderNotificationConfigDAL: {
+        findByFolderId: vi
+          .fn()
+          .mockResolvedValue([
+            config(slack.id, "C1", [PamNotificationEvent.AccessRequested]),
+            config(slack.id, "C2", [PamNotificationEvent.AccessRequested]),
+            config(slack.id, "C3", [PamNotificationEvent.AccessRequestDenied]),
+            config(teams.id, "C4", [PamNotificationEvent.AccessRequested]),
+            config(otherOrgSlack.id, "C5", [PamNotificationEvent.AccessRequested])
+          ])
+      },
+      workflowIntegrationService: new FakeWorkflowIntegrationService().add(slack, teams, otherOrgSlack)
+    } as never);
+
+    // Action
+    const content = await resource.buildNotification!({ event: ApprovalNotificationEvent.Requested, request });
+
+    // Assert
+    expect(content?.chat).toHaveLength(1);
+    expect(content?.chat?.[0]).toMatchObject({ workflowIntegrationId: slack.id, channelIds: ["C1", "C2"] });
+    expect(content?.chat?.[0].message.provider).toBe(WorkflowIntegrationProvider.Slack);
   });
 });
