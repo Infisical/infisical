@@ -61,7 +61,7 @@ import {
 import { useProjectPermission } from "../../access/permissions";
 import { useProjectScope } from "../../access/project/scope";
 import { dismissToast, saved, toast } from "../../access/toast";
-import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
+import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 
 const eventLabel = (event: WebhookEvent) => {
@@ -363,7 +363,6 @@ const StatusCell = ({ webhook }: { webhook: TWebhook }) => {
         Disabled
       </StatusText>
     );
-  if (!webhook.lastStatus) return <Muted>-</Muted>;
   const failedRun = webhook.lastStatus === "failed";
   return (
     <Tooltip
@@ -466,7 +465,8 @@ export const WebhooksSettings = () => {
       id: "status",
       header: "Status",
       width: 130,
-      render: (webhook) => <StatusCell webhook={webhook} />
+      render: (webhook) =>
+        webhook.isDisabled || webhook.lastStatus ? <StatusCell webhook={webhook} /> : null
     }
   ];
 
