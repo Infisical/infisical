@@ -102,6 +102,11 @@ const valuesOf = (store: DemoStore, rotation: TSecretRotationV2) => {
   );
 };
 
+const DEMO_HONEY_TOKEN_DEPLOYMENT_OPTIONS = [
+  { managedBy: HoneyTokenManagedBy.Instance, unavailableReason: null },
+  { managedBy: HoneyTokenManagedBy.Organization, unavailableReason: null }
+];
+
 export const secretsManagedDemo: SecretsManagedAdapter = {
   ...secretsOptionsDemo,
   ...syncCloudDemo,
@@ -289,10 +294,7 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
     };
   },
   useHoneyTokenDeploymentOptions: () => ({
-    data: [
-      { managedBy: HoneyTokenManagedBy.Instance, unavailableReason: null },
-      { managedBy: HoneyTokenManagedBy.Organization, unavailableReason: null }
-    ],
+    data: DEMO_HONEY_TOKEN_DEPLOYMENT_OPTIONS,
     isPending: false,
     error: null,
     refetch: () => undefined

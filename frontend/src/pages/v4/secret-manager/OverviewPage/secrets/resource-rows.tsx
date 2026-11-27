@@ -51,13 +51,14 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import type { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { v4Path } from "../../../links";
 import { nameLabel } from "../../../shell/resource-name";
 import { withoutDefaults } from "../../search-defaults";
 import {
   environments,
-  readableValue,
   type Resource,
   type ResourceKind,
   type Secret,
@@ -84,6 +85,7 @@ import {
 } from "./overview-cells";
 import type { PermissionScope } from "./row-actions/permissions";
 import { canReconcile } from "./row-actions/rotation-actions";
+import { SecretValue } from "./secret-row";
 
 import styles from "./overview.module.css";
 
@@ -111,7 +113,6 @@ const gateAny = (
   const blocks = scopes.map((scope) => gate(ctx, sub, action, scope, verb));
   return blocks.every(Boolean) ? blocks[0] : undefined;
 };
-const mask = "••••••••••••••••";
 const tone = (value: string): BadgeTone =>
   (
     {
@@ -134,12 +135,10 @@ function InfoHint({ text }: { text: string }) {
 function RotationStatus({ rotation }: { rotation: Of<"rotation"> }) {
   if (rotation.status === "failed")
     return (
-      <Tooltip content={`Failure reason: ${rotation.statusDetails ?? "unknown"}`}>
-        <Badge tone="bad">
-          <Icon icon={XIcon} />
-          Rotation failed
-        </Badge>
-      </Tooltip>
+      <Badge reason={`Failure reason: ${rotation.statusDetails ?? "unknown"}`} tone="bad">
+        <Icon icon={XIcon} />
+        Rotation failed
+      </Badge>
     );
   if (!rotation.autoRotation)
     return (
@@ -174,28 +173,23 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         <>
           <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
-            <Tooltip
-              content={
-                item.statusDetails ?? "The provider returned an error while revoking leases."
-              }
+            <Badge
+              reason={item.statusDetails ?? "The provider returned an error while revoking leases."}
+              tone={item.status === "deleting" ? "warn" : "bad"}
             >
-              <Badge tone={item.status === "deleting" ? "warn" : "bad"}>
-                <Icon icon={TriangleAlertIcon} />
-                {item.status === "deleting" ? "Revoking" : "Deletion failed"}
-              </Badge>
-            </Tooltip>
+              <Icon icon={TriangleAlertIcon} />
+              {item.status === "deleting" ? "Revoking" : "Deletion failed"}
+            </Badge>
           )}
         </>
       );
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "dynamic" && entry.status) && (
-        <Tooltip content="One or more dynamic secrets have issues.">
-          <Badge tone="bad">
-            <Icon icon={XIcon} />
-            Deletion failed
-          </Badge>
-        </Tooltip>
+        <Badge reason="One or more dynamic secrets have issues." tone="bad">
+          <Icon icon={XIcon} />
+          Deletion failed
+        </Badge>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"dynamic">;
@@ -277,7 +271,12 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"rotation">;
       return (
         <>
-          <Badge tone="outline">{item.provider}</Badge>
+          <Badge
+            tone="outline"
+            media={item.type && providerMedia("secret-rotation", item.type as SecretRotation)}
+          >
+            {item.provider}
+          </Badge>
           {item.description && <InfoHint text={item.description} />}
           <span className={styles.push}>
             <RotationStatus rotation={item} />
@@ -287,12 +286,10 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "rotation" && entry.status === "failed") && (
-        <Tooltip content="One or more secrets failed to rotate.">
-          <Badge tone="bad">
-            <Icon icon={XIcon} />
-            Rotation failed
-          </Badge>
-        </Tooltip>
+        <Badge reason="One or more secrets failed to rotate." tone="bad">
+          <Icon icon={XIcon} />
+          Rotation failed
+        </Badge>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"rotation">;
@@ -401,7 +398,9 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       return (
         <>
-          <Badge tone="outline">{item.provider} honey token</Badge>
+          <Badge tone="outline" media={item.type && providerMedia("honey-token", item.type)}>
+            {item.provider} honey token
+          </Badge>
           {item.mappedKeys.length > 0 && (
             <InfoHint text={`Mapped secrets: ${item.mappedKeys.join(", ")}`} />
           )}
@@ -968,7 +967,8 @@ export function ImportRow({
   ctx,
   sourceSecrets,
   projectId,
-  sites
+  sites,
+  revealAll
 }: {
   rowKey: string;
   entries: Of<"import">[];
@@ -976,6 +976,7 @@ export function ImportRow({
   sourceSecrets: (entry: Of<"import">) => Secret[];
   projectId: string;
   sites: EnvironmentOption[];
+  revealAll: boolean;
 }) {
   const expanded = ctx.expanded.includes(rowKey);
   const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
@@ -1151,9 +1152,7 @@ export function ImportRow({
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
-              <code className={styles.value}>
-                {readableValue(secret) === undefined ? "No access" : mask}
-              </code>
+              <SecretValue secret={secret} visible={revealAll} />
             </TableCell>
           </TableRow>
         ))}
@@ -1196,9 +1195,7 @@ export function ImportRow({
                         <span className={styles.truncate}>{secret.name}</span>
                       </TableCell>
                       <TableCell className={styles.valueCell}>
-                        <code className={styles.value}>
-                          {readableValue(secret) === undefined ? "No access" : mask}
-                        </code>
+                        <SecretValue secret={secret} visible={revealAll} />
                       </TableCell>
                     </TableRow>
                   ))

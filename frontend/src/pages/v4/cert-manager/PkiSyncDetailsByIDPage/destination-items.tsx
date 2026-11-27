@@ -17,7 +17,7 @@ import {
 } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
 import { Dash } from "../../access/org/detail-parts";
-import { destinationNameOf } from "../components/pki-syncs/shared";
+import { ProviderLabel } from "../../components/provider-label";
 
 const F5_PROFILE_TYPE_LABELS: Record<F5BigIpProfileType, string> = {
   [F5BigIpProfileType.None]: "None",
@@ -42,11 +42,11 @@ const exportFormatOf = (format: PkiSyncExportFormat) =>
 const destinationRows = (pkiSync: TPkiSync): DataListItem[] => {
   switch (pkiSync.destination) {
     case PkiSync.AwsCertificateManager:
-      return [["AWS region", orDash(pkiSync.destinationConfig?.region)]];
+      return [["Region", orDash(pkiSync.destinationConfig?.region)]];
     case PkiSync.AwsElasticLoadBalancer: {
       const { region, loadBalancerArn, listeners = [] } = pkiSync.destinationConfig ?? {};
       return [
-        ["AWS region", orDash(region)],
+        ["Region", orDash(region)],
         ["Load balancer", loadBalancerArn ? loadBalancerNameOf(loadBalancerArn) : <Dash />],
         [
           "Listeners",
@@ -67,19 +67,19 @@ const destinationRows = (pkiSync: TPkiSync): DataListItem[] => {
     case PkiSync.AwsSecretsManager: {
       const { region, keyId } = pkiSync.destinationConfig;
       return [
-        ["AWS region", region || "us-east-1"],
+        ["Region", region || "us-east-1"],
         ...(keyId ? [["KMS key", keyId] as DataListItem] : [])
       ];
     }
     case PkiSync.AzureKeyVault:
-      return [["Key Vault URL", orDash(pkiSync.destinationConfig.vaultBaseUrl)]];
+      return [["Vault URL", orDash(pkiSync.destinationConfig.vaultBaseUrl)]];
     case PkiSync.Chef:
-      return [["Chef data bag name", orDash(pkiSync.destinationConfig?.dataBagName)]];
+      return [["Data bag name", orDash(pkiSync.destinationConfig?.dataBagName)]];
     case PkiSync.GcpCertificateManager: {
       const { gcpProjectId, location, scope, certificateMapBinding } = pkiSync.destinationConfig;
       const { labels } = pkiSync.syncOptions;
       return [
-        ["GCP project", orDash(gcpProjectId)],
+        ["Project", orDash(gcpProjectId)],
         [
           "Location",
           <Badge key="location" tone="soft">
@@ -220,9 +220,7 @@ const destinationRows = (pkiSync: TPkiSync): DataListItem[] => {
 };
 
 export const usePkiSyncDestinationItems = (pkiSync: TPkiSync): DataListItem[] => [
-  [
-    `${destinationNameOf(pkiSync.destination)} connection`,
-    pkiSync.appConnectionName || "Default connection"
-  ],
+  ["Service", <ProviderLabel key="service" kind="pki-sync" value={pkiSync.destination} />],
+  ["Connection", pkiSync.appConnectionName || "Default connection"],
   ...destinationRows(pkiSync)
 ];

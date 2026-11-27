@@ -91,8 +91,7 @@ export const TemplateEnvironmentsCard = ({
             placeholder="Name"
             data-1p-ignore
             disabled={!canEdit}
-            invalid={Boolean(error)}
-            title={error}
+            error={error}
             value={row.name}
             onChange={(event) =>
               change(row.id, {
@@ -120,8 +119,7 @@ export const TemplateEnvironmentsCard = ({
             placeholder="slug"
             data-1p-ignore
             disabled={!canEdit}
-            invalid={Boolean(error)}
-            title={error}
+            error={error}
             value={row.slug}
             onChange={(event) => change(row.id, { slug: event.target.value, slugTouched: true })}
           />

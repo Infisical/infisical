@@ -42,6 +42,8 @@ const TeamsEditor = ({
   orgId,
   title,
   lead,
+  pending,
+  setPending,
   onClose,
   initial,
   integrations
@@ -50,7 +52,6 @@ const TeamsEditor = ({
   const updateConfig = adapter.useUpdateWorkflowIntegrationConfig();
   const [draft, setDraft] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
-  const [pending, setPending] = useState(false);
   const teams = adapter.useMicrosoftTeamsTeams(draft.integrationId || undefined);
   const sortedTeams = [...(teams.data ?? [])].sort((a, b) =>
     a.teamName.toLowerCase().localeCompare(b.teamName.toLowerCase())

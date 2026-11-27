@@ -52,6 +52,7 @@ import { copyText } from "../../clipboard";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { OrgAiModel } from "./ai-model";
 import { EncryptionTab } from "./encryption";
 import { ProductSettingsTab } from "./product-settings-tab";
@@ -484,6 +485,7 @@ const DeleteOrganization = ({
 };
 
 const GeneralTab = () => {
+  const scope = useOrgPageScope();
   const { organization: current } = useV4Session();
   const org = useV4Adapter("org");
   const { data: organization } = org.useOrganization(current.id);
@@ -496,6 +498,7 @@ const GeneralTab = () => {
   return (
     <Stack gap={24}>
       <PageHeader
+        scope={scope}
         title="General"
         description={
           current.isSubOrganization

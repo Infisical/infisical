@@ -7,7 +7,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Inline, InlineItem, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
 import { Meta } from "@infisical/cipher/ui/text";
@@ -89,6 +89,7 @@ export const ChangeRequests = ({
   const [selected, setSelected] = useState<Record<string, ChangeRequest>>({});
   const [failures, setFailures] = useState<Record<string, string>>({});
   const [reviewing, setReviewing] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
 
   const { data: project } = secrets.useProject(projectId);
   const environmentFilter = filters.find((filter) => filter.field === "environment")?.values[0];
@@ -171,6 +172,7 @@ export const ChangeRequests = ({
     const version = selectionVersion.current;
     let matching: ChangeRequest[];
     let matchingCount: number;
+    setSelectingAll(true);
     try {
       ({ approvals: matching, totalCount: matchingCount } = await fetchApprovals({
         ...listFilters,
@@ -180,6 +182,8 @@ export const ChangeRequests = ({
     } catch (fetchError) {
       failed("Couldn't load the matching change requests", fetchError);
       return;
+    } finally {
+      setSelectingAll(false);
     }
     if (version !== selectionVersion.current) return;
     const unselected = matching.filter(({ id }) => !selected[id]);
@@ -252,14 +256,22 @@ export const ChangeRequests = ({
       width: 220,
       text: authorName,
       render: (row) => (
-        <Inline gap={8} wrap={false}>
+        <Inline gap={8} align="center" wrap={false}>
           {row.committerUser || row.committerIdentity ? (
-            <span>{authorName(row)}</span>
+            <InlineItem truncate>{authorName(row)}</InlineItem>
           ) : (
             <Meta mono={false}>Deleted user</Meta>
           )}
-          {row.committerUser && row.committerUserId === user.id && <Badge tone="soft">You</Badge>}
-          {row.committerIdentity && <Badge tone="soft">Machine</Badge>}
+          {row.committerUser && row.committerUserId === user.id && (
+            <InlineItem shrink={false}>
+              <Badge tone="soft">You</Badge>
+            </InlineItem>
+          )}
+          {row.committerIdentity && (
+            <InlineItem shrink={false}>
+              <Badge tone="soft">Machine</Badge>
+            </InlineItem>
+          )}
         </Inline>
       )
     },
@@ -444,6 +456,10 @@ export const ChangeRequests = ({
               count={selectedList.length}
               total={Math.min(MAX_SELECTION, Math.max(totalCount, selectedList.length))}
               onSelectAll={selectAllMatching}
+              selectAllLabel={
+                totalCount > MAX_SELECTION ? `Select first ${MAX_SELECTION}` : undefined
+              }
+              selectAllLoading={selectingAll}
               onClear={clearSelection}
               noun={selectedList.length === 1 ? "change request" : "change requests"}
               actions={[

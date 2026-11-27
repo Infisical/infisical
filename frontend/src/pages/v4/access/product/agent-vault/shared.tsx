@@ -12,7 +12,6 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { MailIcon } from "lucide-react";
 
 import { AGENT_VAULT_PRODUCT_ROLE_OPTIONS, formatProjectRoleName } from "@app/helpers/roles";
@@ -47,12 +46,10 @@ export const ProductRoleBadge = ({ role }: { role: string }) => (
 );
 
 export const PendingInvitationBadge = () => (
-  <Tooltip content="Access begins once they accept their organization invitation.">
-    <Badge tone="info">
-      <Icon icon={MailIcon} />
-      Pending invitation
-    </Badge>
-  </Tooltip>
+  <Badge reason="Access begins once they accept their organization invitation." tone="info">
+    <Icon icon={MailIcon} />
+    Pending invitation
+  </Badge>
 );
 
 export const ProductRoleField = ({

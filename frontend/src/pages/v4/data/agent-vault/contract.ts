@@ -165,7 +165,7 @@ export type AgentVaultAdapter = {
     projectId: string,
     params: TListAgentVaultMembersDTO & { actorType: T },
     enabled?: boolean
-  ) => V4QueryResult<TAgentVaultAvailableList<T>>;
+  ) => V4QueryResult<TAgentVaultAvailableList<T>> & { isFetching: boolean };
   useAddMembers: (
     projectId: string
   ) => ReturnType<

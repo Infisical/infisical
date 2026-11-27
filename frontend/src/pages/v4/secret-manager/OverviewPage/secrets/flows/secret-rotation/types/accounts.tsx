@@ -86,11 +86,11 @@ function RotationMethodField({
         <RotationField
           label="Rotation Method"
           tooltip={tooltip}
-          description={isUpdate ? "Cannot be updated." : description(field.value)}
+          description={description(field.value)}
           error={error?.message}
         >
           <Select
-            disabled={isUpdate}
+            disabledReason={isUpdate ? "Can't be changed after creation" : undefined}
             value={field.value ?? ""}
             onValueChange={(value) => {
               onMethodChange(value);

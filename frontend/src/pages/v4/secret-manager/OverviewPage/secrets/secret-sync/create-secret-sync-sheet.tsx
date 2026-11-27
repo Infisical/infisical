@@ -57,6 +57,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/hooks/api/secretSyncs/enums";
 import type { TSecretSync } from "@app/hooks/api/secretSyncs/types";
 import { getSecretSyncDestinationColValues } from "@app/pages/secret-manager/IntegrationsListPage/components/SecretSyncsTab/SecretSyncTable/helpers";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../../access/permissions";
 import { useAlertMembers } from "../../../../cert-manager/SettingsPage/alert-members";
@@ -871,6 +872,7 @@ function ReviewFields({
         <ReviewSection
           label="Destination"
           items={[
+            ["Service", <ProviderLabel key="service" kind="secret-sync" value={destination} />],
             ["Connection", values.connection?.name],
             ...(view?.destinationReview(values.destinationConfig ?? {}) ?? [])
           ]}

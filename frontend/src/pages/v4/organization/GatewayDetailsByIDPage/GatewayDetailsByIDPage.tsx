@@ -47,6 +47,7 @@ import { ConfirmDialog } from "../../networking/confirm-dialog";
 import { GatewayHealth, isGatewayRegistered } from "../../networking/health";
 import { NameDialog } from "../../networking/name-dialog";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { GatewayDeployCard } from "./deploy";
 import { ConnectedResourcesCard } from "./resources";
 
@@ -86,19 +87,15 @@ const Connection = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
     <Stack gap={4}>
       {transports.map((transport) => (
         <Stack key={transport.transport} gap={4}>
-          <Tooltip
-            content={
+          <StatusText
+            reason={
               transport.probedAt ? `Last seen ${dateTime(transport.probedAt)}` : "Never reached"
             }
+            tone={transport.isHealthy ? "ok" : "bad"}
+            icon={transport.isHealthy ? "check-c" : "x"}
           >
-            <StatusText
-              tone={transport.isHealthy ? "ok" : "bad"}
-              icon={transport.isHealthy ? "check-c" : "x"}
-              tabIndex={0}
-            >
-              {transport.label}
-            </StatusText>
-          </Tooltip>
+            {transport.label}
+          </StatusText>
           {transport.transport === "direct" && gateway.directAddress && (
             <TruncatedValue value={gateway.directAddress} />
           )}
@@ -151,6 +148,7 @@ const AuthenticationCard = ({
 };
 
 export const GatewayDetailsByIDPage = () => {
+  const scope = useOrgPageScope();
   const { gatewayId } = useParams({
     from: v4Path("/organizations/$orgId/networking/gateways/$gatewayId")
   });
@@ -204,6 +202,7 @@ export const GatewayDetailsByIDPage = () => {
   return (
     <Stack gap={24}>
       <PageHeader
+        scope={scope}
         breadcrumb={[{ label: "Gateways", link: go.link(backHref(orgId)) }]}
         title={gateway.name}
         actions={

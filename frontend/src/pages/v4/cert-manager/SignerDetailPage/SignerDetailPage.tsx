@@ -16,7 +16,7 @@ import { DetailLayout, Stack } from "@infisical/cipher/ui/layout";
 import { Loader } from "@infisical/cipher/ui/loader";
 import { PageHeader } from "@infisical/cipher/ui/page-header";
 import { Tabs } from "@infisical/cipher/ui/tabs";
-import { Tooltip, TooltipProvider } from "@infisical/cipher/ui/tooltip";
+import { TooltipProvider } from "@infisical/cipher/ui/tooltip";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -121,20 +121,20 @@ const SignerBadges = ({ signer }: { signer: TSigner }) => {
     <>
       <SignerStatusBadge signer={signer} note={statusNote(signer)} size="control-sm" />
       {renewal && (
-        <Tooltip content={renewal}>
-          <Badge tone="info" icon="clock" size="control-sm" collapse>
-            Renewal in progress
-          </Badge>
-        </Tooltip>
+        <Badge reason={renewal} tone="info" icon="clock" size="control-sm" collapse>
+          Renewal in progress
+        </Badge>
       )}
       {hasFailedRenewal(signer) && (
-        <Tooltip
-          content={`${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer still has its current certificate.`}
+        <Badge
+          reason={`${(signer.certificateFailureReason ?? "").replace(/\.$/, "")}. The signer still has its current certificate.`}
+          tone="warn"
+          icon="alert"
+          size="control-sm"
+          collapse
         >
-          <Badge tone="warn" icon="alert" size="control-sm" collapse>
-            Request failed
-          </Badge>
-        </Tooltip>
+          Request failed
+        </Badge>
       )}
       <DocumentationLink href={CODE_SIGNING_DOCS.signers} subject="Signers" />
     </>

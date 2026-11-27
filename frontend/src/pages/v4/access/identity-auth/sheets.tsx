@@ -30,10 +30,10 @@ import {
   SheetTitle
 } from "@infisical/cipher/ui/sheet";
 import { Snippet } from "@infisical/cipher/ui/snippet";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
+import { ProviderLabel, providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { failed, readableFailure, saved } from "../toast";
 import { DetailSkeleton, FormSkeleton, Gate } from "../ui";
@@ -61,11 +61,9 @@ export type AuthIdentity = {
 };
 
 export const LockBadge = ({ label }: { label: string }) => (
-  <Tooltip content={label}>
-    <Badge tone="bad" aria-label={label}>
-      <Icon name="lock" />
-    </Badge>
-  </Tooltip>
+  <Badge reason={label} tone="bad" aria-label={label}>
+    <Icon name="lock" />
+  </Badge>
 );
 
 export const ACTIVE_LOCKOUTS = "Auth method has active lockouts";
@@ -177,6 +175,7 @@ const MethodPicker = ({
       options={AUTH_METHOD_ORDER.map((method) => ({
         value: method,
         label: authMethodName(method),
+        media: providerMedia("identity-auth", method),
         disabled: configured.includes(method),
         meta: configured.includes(method) ? "Configured" : undefined
       }))}
@@ -261,8 +260,10 @@ const AuthMethodForm = ({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open
         title={isUpdate && method ? `Edit ${authMethodName(method)}` : "Add auth method"}
+        media={method ? providerMedia("identity-auth", method, "md") : undefined}
         completeLabel={copy.complete}
         onOpenChange={(open) => {
           if (open) return;
@@ -298,7 +299,11 @@ const EditAuthMethodForm = ({ method, ...props }: FormProps & { method: Identity
       <Sheet open onOpenChange={(open) => !open && props.onClose()}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>{`Edit ${authMethodName(method)}`}</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel kind="identity-auth" value={method}>
+                {`Edit ${authMethodName(method)}`}
+              </ProviderLabel>
+            </SheetTitle>
           </SheetHeader>
           <SheetBody>
             <EmptyState size="sm" icon="lock" title={`Couldn't load ${authMethodName(method)}`} />
@@ -476,7 +481,7 @@ export const AuthMethodViewSheet = ({
             <SheetHeader>
               <SheetTitle>
                 <Inline gap={8}>
-                  {authMethodName(method)}
+                  <ProviderLabel kind="identity-auth" value={method} />
                   {locked && <LockBadge label={ACTIVE_LOCKOUTS} />}
                 </Inline>
               </SheetTitle>
