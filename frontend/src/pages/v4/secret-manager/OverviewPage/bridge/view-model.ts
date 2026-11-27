@@ -7,7 +7,8 @@ import type { TProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/t
 import { SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
-import type { Resource, Secret, ValueState } from "../secrets-model";
+import type { ImportedSecretGroup } from "../../../data/secrets/contract";
+import { importName, type Resource, type Secret, type ValueState } from "../secrets-model";
 
 export type ScopeSecrets = { environment: string; path: string; secrets: SecretV3RawSanitized[] };
 
@@ -49,7 +50,7 @@ const honeyStatusOf = (status: HoneyTokenStatus) => {
 };
 
 const valueOf = (
-  secret: SecretV3RawSanitized,
+  secret: Pick<SecretV3RawSanitized, "secretValueHidden" | "value" | "isEmpty" | "key" | "version">,
   environment: string,
   path: string,
   values: LoadedValues
@@ -79,6 +80,28 @@ const reminderOf = (secret: SecretV3RawSanitized) => {
     recipients: secret.reminder?.recipients ?? secret.reminderRecipients ?? []
   };
 };
+
+export const toImportedSecret = (
+  projectId: string,
+  environment: string,
+  path: string,
+  secret: ImportedSecretGroup["secrets"][number],
+  values: LoadedValues
+): Secret => ({
+  kind: "secret",
+  id: secret.id,
+  project: projectId,
+  environment,
+  path,
+  name: secret.key,
+  value: valueOf(secret, environment, path, values),
+  comment: "",
+  tags: [],
+  metadata: [],
+  version: secret.version,
+  createdAt: "",
+  updatedAt: ""
+});
 
 export const toSecretResource = (
   projectId: string,
@@ -158,7 +181,12 @@ export const buildResources = ({
         ...at(entry.environment ?? ""),
         kind: "import",
         id: entry.id,
-        name: `${entry.importEnv.slug}:${entry.importPath}`,
+        name: importName(
+          projectId,
+          entry.importEnv.projectId ?? projectId,
+          entry.importEnv.slug,
+          entry.importPath
+        ),
         source: {
           project: entry.importEnv.projectId ?? projectId,
           environment: entry.importEnv.slug,

@@ -108,7 +108,7 @@ import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges, toUnsavedPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
-import { buildResources, valueKey } from "./bridge/view-model";
+import { buildResources, toImportedSecret, valueKey } from "./bridge/view-model";
 import {
   readableValue,
   type Resource,
@@ -500,6 +500,22 @@ export const OverviewPage = () => {
       ) === index
   );
   const breadth = useScopeSecrets(projectId, breadthScopes);
+  const foreignImports = adapter.useImportedSecrets({
+    projectId,
+    path,
+    environments: [
+      ...new Set(
+        (overview.data?.imports ?? [])
+          .filter(
+            (entry) =>
+              !entry.isReserved &&
+              Boolean(entry.importEnv.projectId) &&
+              entry.importEnv.projectId !== projectId
+          )
+          .map((entry) => entry.environment ?? "")
+      )
+    ]
+  });
   const resourcesRef = useRef<Resource[]>([]);
   const resources = replaceEqualDeep(
     resourcesRef.current,
@@ -1276,11 +1292,24 @@ export const OverviewPage = () => {
             scopeMatches(resource, entry.source)
         )
       )?.source.environment;
-  const sourceSecrets = (entry: Of<"import">) =>
-    resources.filter(
-      (resource): resource is Secret =>
-        resource.kind === "secret" && scopeMatches(resource, entry.source)
+  const sourceSecrets = (entry: Of<"import">) => {
+    if (entry.source.project === projectId)
+      return resources.filter(
+        (resource): resource is Secret =>
+          resource.kind === "secret" && scopeMatches(resource, entry.source)
+      );
+    const imported = foreignImports[entry.environment] ?? [];
+    const group =
+      imported.find((candidate) => candidate.importId === entry.id) ??
+      imported.find(
+        (candidate) =>
+          candidate.environment === entry.source.environment &&
+          candidate.secretPath === entry.source.path
+      );
+    return (group?.secrets ?? []).map((secret) =>
+      toImportedSecret(projectId, entry.environment, entry.path, secret, valueStore.values)
     );
+  };
 
   const insert = (
     created: NewResource[],

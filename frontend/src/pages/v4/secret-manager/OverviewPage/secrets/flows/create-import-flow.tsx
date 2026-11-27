@@ -21,6 +21,7 @@ import {
 
 import { useOrgId } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
+import { importName } from "../../secrets-model";
 import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
@@ -121,7 +122,12 @@ export function CreateImportFlow({
           project: scope.project,
           environment: destination,
           path: scope.path,
-          name: `${grant.environmentSlug}:${grant.secretPath}`,
+          name: importName(
+            scope.project,
+            grant.sourceProjectId,
+            grant.environmentSlug,
+            grant.secretPath
+          ),
           source: {
             project: grant.sourceProjectId,
             environment: grant.environmentSlug,
