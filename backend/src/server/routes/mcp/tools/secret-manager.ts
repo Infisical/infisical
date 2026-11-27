@@ -21,8 +21,8 @@ import { ProjectIdSchema, TMcpToolContext } from "../mcp-tool-fns";
 
 // Lookups accept what the REST routes accept, so secrets and environments named before today's rules stay reachable.
 const EnvironmentSlugSchema = z.string().trim().min(1).max(255).describe("The environment slug, from list-projects.");
-// Secret keys are stored in a 500-character column.
-const SecretLookupNameSchema = BaseSecretNameSchema.max(500);
+// BaseSecretNameSchema already bounds a key to its 500-character column.
+const SecretLookupNameSchema = BaseSecretNameSchema;
 const NewSecretNameSchema = SecretLookupNameSchema.pipe(SecretNameSchema);
 const PathSchema = z
   .string()

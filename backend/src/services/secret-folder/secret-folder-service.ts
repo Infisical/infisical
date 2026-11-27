@@ -42,6 +42,7 @@ import {
   findDirectImportEnteringEnforcedPath,
   findFoldersWithContent,
   findPolicyProtectedFolder,
+  MAX_FOLDER_DEPTH,
   resolveBatchFolderEntries,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
@@ -88,6 +89,12 @@ import {
   TUpdateManyFoldersDTO
 } from "./secret-folder-types";
 import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
+
+const countPathSegments = (folderPath: string) => folderPath.split("/").filter(Boolean).length;
+
+const assertFolderDepthWithinLimit = (depth: number, describe: (max: number) => string) => {
+  if (depth > MAX_FOLDER_DEPTH) throw new BadRequestError({ message: describe(MAX_FOLDER_DEPTH) });
+};
 
 type TSecretFolderServiceFactoryDep = {
   secretsPermissionService: TSecretsPermissionService;
@@ -196,6 +203,10 @@ export const secretFolderServiceFactory = ({
     }
 
     const pathWithFolder = path.join(secretPath, name);
+    assertFolderDepthWithinLimit(
+      countPathSegments(secretPath) + 1,
+      (max) => `Folder '${name}' in path '${secretPath}' would be nested deeper than the maximum of ${max} levels.`
+    );
 
     const lock = await keyStore.acquireLock([KeyStorePrefixes.CreateFolderLock(env.id)], 5000, {
       retryCount: 25,
@@ -1342,12 +1353,16 @@ export const secretFolderServiceFactory = ({
   }: TCreateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    folders.forEach(({ environment, path: secretPath }) => {
+    folders.forEach(({ environment, path: secretPath, name }) => {
       permission.assert({
         action: ProjectPermissionActions.Create,
         subject: ProjectPermissionSub.SecretFolders,
         fields: { environment, secretPath }
       });
+      assertFolderDepthWithinLimit(
+        countPathSegments(secretPath) + 1,
+        (max) => `Folder '${name}' in path '${secretPath}' would be nested deeper than the maximum of ${max} levels.`
+      );
     });
 
     const foldersByEnv = folders.reduce(
@@ -1976,6 +1991,12 @@ export const secretFolderServiceFactory = ({
       const destinationEnvId = destinationParentFolder.envId;
       // locking the source folder rows blocks concurrent secret inserts into them (secret -> folder FK) until commit.
       const subtree = await folderDAL.findByEnvsDeep({ parentIds: [sourceFolder.id] }, tx);
+      const subtreeHeight = subtree.reduce((deepest, f) => Math.max(deepest, countPathSegments(f.path)), 0);
+      assertFolderDepthWithinLimit(
+        countPathSegments(destinationPath) + 1 + subtreeHeight,
+        (max) =>
+          `Moving folder '${folderName}' to '${destinationPath}' would nest folders deeper than the maximum of ${max} levels.`
+      );
       await folderDAL.lockFoldersForUpdate(
         subtree.map((f) => f.id),
         tx

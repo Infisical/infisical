@@ -50,7 +50,21 @@ export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = 
     message: LOG_UNSAFE_TEXT_MESSAGE
   });
 
-export const BaseSecretNameSchema = z.string().trim().min(1);
+export const SECRET_NAME_MAX_LENGTH = 500;
+
+// Counts code points, as Postgres does for the varchar(500) key column. Zod's .max() counts UTF-16 units, so a stored
+// name with emoji would fail it, and this schema also validates stored names in responses and existing-secret lookups.
+export const BaseSecretNameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .refine(
+    (val) => [...val].length <= SECRET_NAME_MAX_LENGTH,
+    `Secret name must be ${SECRET_NAME_MAX_LENGTH} or fewer characters`
+  );
+
+export const SECRET_COMMENT_MAX_LENGTH = 10000;
+export const SECRET_COMMENT_TOO_LONG = `Secret comment must be ${SECRET_COMMENT_MAX_LENGTH} or fewer characters`;
 
 export const SecretNameSchema = BaseSecretNameSchema.refine(
   (el) => !el.includes(":") && !el.includes("/"),

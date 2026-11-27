@@ -4,6 +4,7 @@ import tweetnaclUtil from "tweetnacl-util";
 
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { Plan } from "@app/domains/platform/license/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -43,6 +44,7 @@ export type TImportDataIntoInfisicalDTO = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
+  plan: Plan;
 
   input: TImportInfisicalDataCreate;
   projectActor: TActorContext;

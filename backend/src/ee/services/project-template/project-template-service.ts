@@ -21,6 +21,7 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
@@ -281,6 +282,7 @@ export const projectTemplateServiceFactory = ({
         message: `Failed to create project template due to environment count exceeding your current limit of ${plan.limit(PlanLimit.Environments)}. Contact Infisical to increase limit.`
       });
     }
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
 
     const isConflictingName = Boolean(
       await projectTemplateDAL.findOne({
@@ -419,6 +421,15 @@ export const projectTemplateServiceFactory = ({
         : environments;
 
     const projectTemplate = await projectTemplateDAL.transaction(async (tx) => {
+      if (type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectTemplatesPerOrg) !== null) {
+        resourceLimits.assertWithin({
+          limit: ResourceLimit.ProjectTemplatesPerOrg,
+          used: await projectTemplateDAL.countByTypeInOrgTree(actor.org.rootOrgId, ProjectType.SecretManager, tx),
+          describe: (max) =>
+            `Your organization and its sub-organizations already have the maximum of ${max} Secrets Management project templates. Delete templates you no longer use before creating another.`
+        });
+      }
+
       const template = await projectTemplateDAL.create(
         {
           ...params,

@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { EntityNotFoundError, PermissionDeniedError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
@@ -10,6 +11,7 @@ import {
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 
 import { TProjectDALFactory } from "../project/project-dal";
@@ -62,6 +64,7 @@ type TSecretValidationRuleServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   secretsPermissionService: TSecretsPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSecretValidationRuleServiceFactory = ReturnType<typeof secretValidationRuleServiceFactory>;
@@ -74,7 +77,8 @@ export const secretValidationRuleServiceFactory = ({
   secretVersionV2BridgeDAL,
   projectDAL,
   secretsPermissionService,
-  kmsDataKeyService
+  kmsDataKeyService,
+  licenseService
 }: TSecretValidationRuleServiceFactoryDep) => {
   const $getPermission = async (projectId: string, actor: TActorContext) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
@@ -267,6 +271,36 @@ export const secretValidationRuleServiceFactory = ({
     return $toRecord(rule, config);
   };
 
+  // Rules without an environment apply to every environment, so they share one bucket of their own.
+  const $assertEnvironmentRuleCapacity = async ({
+    orgId,
+    projectId,
+    envId,
+    environment,
+    wayOut
+  }: {
+    orgId: string;
+    projectId: string;
+    envId: string | null;
+    environment?: string | null;
+    wayOut: string;
+  }) => {
+    const resourceLimits = await getResourceLimits(licenseService, orgId);
+    if (resourceLimits.max(ResourceLimit.SecretValidationRulesPerEnvironment) === null) return;
+    const envRuleCount = await countOnPrimary(secretValidationRuleDAL, async (tx) => {
+      const [{ count }] = await secretValidationRuleDAL.find({ projectId, envId }, { countDistinct: "id", tx });
+      return Number(count);
+    });
+    resourceLimits.assertWithin({
+      limit: ResourceLimit.SecretValidationRulesPerEnvironment,
+      used: envRuleCount,
+      describe: (max) =>
+        environment
+          ? `Environment '${environment}' already has the maximum of ${max} secret validation rules. ${wayOut}`
+          : `Project already has the maximum of ${max} secret validation rules that apply to all environments. ${wayOut}`
+    });
+  };
+
   const createSecretValidationRule = async (
     {
       type,
@@ -296,6 +330,14 @@ export const secretValidationRuleServiceFactory = ({
 
     const { encryptor } = await $getCipher(projectId);
     const { cipherTextBlob: encryptedInputs } = encryptor({ plainText: Buffer.from(JSON.stringify(config)) });
+
+    await $assertEnvironmentRuleCapacity({
+      orgId: actor.org.id,
+      projectId,
+      envId,
+      environment,
+      wayOut: "Delete rules you no longer use before creating another."
+    });
 
     const rule = await secretValidationRuleDAL.createWithEnv({
       name,
@@ -359,6 +401,15 @@ export const secretValidationRuleServiceFactory = ({
     $assertGeneratorCanSatisfy(type, config);
     await $assertBlindIndexingAvailable(projectId, config);
     await $assertNoOverlap({ projectId, type, envId, secretPath: finalSecretPath, config, excludeRuleId: ruleId });
+    if (envId !== (existingRule.envId ?? null)) {
+      await $assertEnvironmentRuleCapacity({
+        orgId: actor.org.id,
+        projectId,
+        envId,
+        environment,
+        wayOut: "Delete rules you no longer use there before moving this rule to it."
+      });
+    }
 
     const rule = await secretValidationRuleDAL.updateByIdWithEnv(ruleId, {
       ...(name !== undefined && { name }),

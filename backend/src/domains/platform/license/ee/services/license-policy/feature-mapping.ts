@@ -228,6 +228,50 @@ const secretManagerMappings: TFeatureMapping[] = [
   {
     v2Key: "secrets_folder_rbac",
     v1Field: "secretsFolderRbac"
+  },
+  {
+    v2Key: "sm_projects_per_org_limit",
+    v1Field: "smProjectsPerOrgLimit"
+  },
+  {
+    v2Key: "sm_tags_per_project_limit",
+    v1Field: "smTagsPerProjectLimit"
+  },
+  {
+    v2Key: "sm_secret_imports_per_folder_limit",
+    v1Field: "smSecretImportsPerFolderLimit"
+  },
+  {
+    v2Key: "sm_secret_syncs_per_project_limit",
+    v1Field: "smSecretSyncsPerProjectLimit"
+  },
+  {
+    v2Key: "sm_secret_rotations_per_project_limit",
+    v1Field: "smSecretRotationsPerProjectLimit"
+  },
+  {
+    v2Key: "sm_webhooks_per_project_limit",
+    v1Field: "smWebhooksPerProjectLimit"
+  },
+  {
+    v2Key: "sm_service_tokens_per_project_limit",
+    v1Field: "smServiceTokensPerProjectLimit"
+  },
+  {
+    v2Key: "sm_integration_auths_per_project_limit",
+    v1Field: "smIntegrationAuthsPerProjectLimit"
+  },
+  {
+    v2Key: "sm_approval_policies_per_environment_limit",
+    v1Field: "smApprovalPoliciesPerEnvironmentLimit"
+  },
+  {
+    v2Key: "sm_project_templates_per_org_limit",
+    v1Field: "smProjectTemplatesPerOrgLimit"
+  },
+  {
+    v2Key: "sm_secret_validation_rules_per_environment_limit",
+    v1Field: "smSecretValidationRulesPerEnvironmentLimit"
   }
 ];
 

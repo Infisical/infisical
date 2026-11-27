@@ -7,6 +7,7 @@ import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { canonicalizeSecretPath, canonicalizeSecretPathPattern } from "@app/lib/fn";
 import { containsGlobPatterns } from "@app/lib/picomatch";
+import { TResourceLimits } from "@app/lib/resource-limits";
 import {
   TApprovalPolicyBypassersDALFactory,
   TApprovalPolicyDALFactory,
@@ -14,6 +15,7 @@ import {
   TApprovalPolicyStepApproversDALFactory,
   TApprovalPolicyStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
+import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -34,7 +36,7 @@ type TSecretChangePolicyFnsFactoryDep = {
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "findSecretChangePolicyByEnvIdsAndSecretPath" | "insertMany" | "delete"
+    "findSecretChangePolicyByEnvIdsAndSecretPath" | "insertMany" | "delete" | "countPoliciesByEnvIds"
   >;
   secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;
   projectDAL: Pick<TProjectDALFactory, "findEffectiveProjectSubjectsMembership">;
@@ -52,6 +54,7 @@ type TUpdatePolicyInput = Pick<
   | "bypassForMachineIdentities"
 > & {
   policy: Pick<TApprovalPolicies, "id">;
+  resourceLimits: TResourceLimits;
   requestedEnvs?: TSecretChangePolicyEnvironment[];
   approverCount: number;
   userApproverIds: string[];
@@ -367,6 +370,7 @@ export const secretChangePolicyFnsFactory = ({
 
   const updatePolicy = ({
     policy,
+    resourceLimits,
     name,
     approvals,
     secretPath,
@@ -430,6 +434,17 @@ export const secretChangePolicyFnsFactory = ({
       );
 
       if (requestedEnvs || secretPath !== undefined) {
+        await assertApprovalPolicyEnvironmentCapacity(
+          {
+            approvalPolicySecretEnvironmentDAL,
+            resourceLimits,
+            envs,
+            currentEnvIds: current.envs.map((env) => env.id),
+            describe: (envSlug, max) =>
+              `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use there before adding this policy to it.`
+          },
+          tx
+        );
         await approvalPolicySecretEnvironmentDAL.delete({ policyId: policy.id }, tx);
         await approvalPolicySecretEnvironmentDAL.insertMany(
           envs.map((env) => ({ policyId: policy.id, envId: env.id, secretPath: nextSecretPath })),

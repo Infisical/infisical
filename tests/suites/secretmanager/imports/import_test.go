@@ -134,3 +134,52 @@ func TestSecretImport_Errors(t *testing.T) {
 		require.Equal(t, "Secret import with folder ID '"+missing+"' not found", deleted.JSON404.Message)
 	})
 }
+
+func TestSecretImport_OnePerSource(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	staging := func(path string) secretmanager.Location { return secretmanager.Location{Env: "staging", Path: path} }
+
+	t.Run("should refuse a second direct import of the same source into a folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", "/app")
+		first := secretmanager.CreateImport(t, proj, "prod", staging("/app"))
+
+		// Action
+		res := importInto(t, tn.Admin, proj, "prod", "/", staging("/app/"))
+
+		// Assert
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "importing again returned %s", apierr.Body(res.Body))
+		require.Equal(t, "Folder '/' already imports secrets from '/app' in environment 'staging'. "+
+			"Use the existing import instead of adding another.", apierr.Message(res.Body))
+		require.Equal(t, []string{first}, importIDs(listImports(t, proj, "prod", "/")))
+	})
+
+	t.Run("should refuse repointing an import onto a source the folder already imports", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", "/app")
+		secretmanager.CreateFolder(t, proj, "staging", "/other")
+		secretmanager.CreateImport(t, proj, "prod", staging("/app"))
+		other := secretmanager.CreateImport(t, proj, "prod", staging("/other"))
+
+		// Action
+		res := repoint(t, tn.Admin, proj, "prod", other, staging("/app"))
+
+		// Assert
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "repointing returned %s", apierr.Body(res.Body))
+		paths := []string{}
+		for _, row := range listImports(t, proj, "prod", "/") {
+			paths = append(paths, row.Path)
+		}
+		require.Equal(t, []string{"/app", "/other"}, paths)
+	})
+}

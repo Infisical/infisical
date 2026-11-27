@@ -2,6 +2,7 @@ import { Knex } from "knex";
 
 import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import type { Plan } from "@app/domains/platform/license/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { TActorInput } from "@app/lib/types";
 
@@ -46,6 +47,7 @@ export type TCreateProjectDTO = {
   template?: string;
   pitVersionLimit?: number;
   tx?: Knex;
+  plan?: Plan;
   type?: ProjectType;
   hasDeleteProtection?: boolean;
 };

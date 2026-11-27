@@ -73,6 +73,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { getResourceLimits, ResourceLimit, resourceLimitsForPlan } from "@app/lib/resource-limits";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TActorInput } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -309,6 +310,7 @@ export const projectServiceFactory = ({
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
+    plan: callerPlan,
     createDefaultEnvs = true,
     template = InfisicalProjectTemplate.Default,
     type = ProjectType.SecretManager,
@@ -334,7 +336,8 @@ export const projectServiceFactory = ({
     }
 
     // Before the transaction: a plan cache miss calls the License Server.
-    const plan = await licenseService.getPlan(organization.id);
+    const plan = callerPlan ?? (await licenseService.getPlan(organization.id));
+    const resourceLimits = resourceLimitsForPlan(plan);
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);
@@ -350,6 +353,16 @@ export const projectServiceFactory = ({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
           });
         }
+      }
+
+      if (type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null) {
+        // The limit spans the root org and its sub-orgs, so sub-orgs cannot multiply it.
+        resourceLimits.assertWithin({
+          limit: ResourceLimit.ProjectsPerOrg,
+          used: await projectDAL.countActiveByTypeInOrgTree(actor.org.rootOrgId, ProjectType.SecretManager, tx),
+          describe: (max) =>
+            `Your organization and its sub-organizations already have the maximum of ${max} Secrets Management projects. Delete projects you no longer use before creating another.`
+        });
       }
 
       if (type === ProjectType.SecretScanning) {
@@ -394,6 +407,18 @@ export const projectServiceFactory = ({
           break;
         default:
           projectTemplate = await projectTemplateService.findProjectTemplateByName(template, actor);
+      }
+
+      // A template saved under a higher environment limit (before a plan change) can list more than the plan allows.
+      const templateEnvironments = projectTemplate?.environments;
+      if (
+        projectTemplate &&
+        templateEnvironments &&
+        plan.exceeds(PlanLimit.Environments, 0, templateEnvironments.length)
+      ) {
+        throw new BadRequestError({
+          message: `Project template '${projectTemplate.name}' has ${templateEnvironments.length} environments, more than the ${plan.limit(PlanLimit.Environments)} your plan allows in a project. Remove environments from the template or upgrade your plan.`
+        });
       }
 
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
@@ -1022,7 +1047,13 @@ export const projectServiceFactory = ({
           }
         }
 
+        const resourceLimits = await getResourceLimits(licenseService, project.orgId);
+        const isProjectCapped =
+          project.type === ProjectType.SecretManager && resourceLimits.max(ResourceLimit.ProjectsPerOrg) !== null;
         const restored = await projectDAL.transaction(async (tx) => {
+          if (isProjectCapped) {
+            await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
+          }
           if (plan.isLimited(PlanLimit.Projects) && project.type === ProjectType.SecretManager) {
             const currentProjectCount = await projectsService
               .within(sealKnexTransaction(tx))
@@ -1033,6 +1064,15 @@ export const projectServiceFactory = ({
                   "Failed to restore project due to project limit reached. Upgrade plan or remove an existing project."
               });
             }
+          }
+
+          if (isProjectCapped) {
+            resourceLimits.assertWithin({
+              limit: ResourceLimit.ProjectsPerOrg,
+              used: await projectDAL.countActiveByTypeInOrgTree(dto.actor.org.rootOrgId, ProjectType.SecretManager, tx),
+              describe: (max) =>
+                `Your organization and its sub-organizations already have the maximum of ${max} Secrets Management projects. Delete a project before restoring this one.`
+            });
           }
 
           return projectDAL.restoreById(project.id, tx);

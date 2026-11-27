@@ -1067,6 +1067,16 @@ for verifiers such as Okta `private_key_jwt`. `kms_keys.isPublicKeyPublished` tu
 - KMS ECDSA signatures are DER, so an ES* JWT signed through the sign API needs its signature re-encoded as raw R||S
   before a JWKS verifier accepts it.
 
+### Resource Limits (everything is bounded)
+
+Every row a tenant can create and every field a tenant can send needs an upper bound.
+
+- **Bound every field in Zod, on every instance.** Every string and array in a request body gets a plain `.max()`, matched to the column width where there is one (see [`CODE_QUALITY.md`](CODE_QUALITY.md)). A `bytea`, `text` or `jsonb` column has no width, so the route is its only bound. Put it on a request schema only: responses are validated too, so a bound on a shared response schema turns rows written before it into 500s (`SecretMetadataInputSchema` is the input-only copy of the metadata schema for this reason).
+- **Cap every count.** A create (or restore) path that adds rows resolves `getResourceLimits(licenseService, orgId)` from `src/lib/resource-limits/` and calls its `assertWithin` with a count per the parent the rows hang off (org, project, folder). Resolve the limits before opening a transaction, since a plan cache miss calls the License Server, and pass them in to code that runs inside one. Count before the insert, on the primary: with the transaction's `tx`, or through `countOnPrimary` when none is open, because a replica can lag behind the caller's own last create. Skip the count when `max(...)` returns null, so self-hosted and orgs whose plan lifts the cap pay no query. Do not take a lock for a cap: a burst of concurrent creates can end a few over, which is accepted. The caps apply on Infisical Cloud only, and to Secrets Management only: where the parent is shared across products (projects per org, project templates per org), check only when the new row is `secret-manager` and count only `secret-manager` rows, so a KMS project or Secret Scanning's lazily created project is never refused. A per-org cap counts the root org and all its sub-orgs together (`actor.org.rootOrgId`, `countActiveByTypeInOrgTree`), or every sub-org would get its own copy of the limit. A new cap needs a `ResourceLimit` member, a `PlanLimit` member and optional plan field, and a `secretManagerMappings` entry in `feature-mapping.ts`. Environments per project use the existing `environment_limit` (`PlanLimit.Environments`), not an `sm_*` cap.
+- **Check only where the count grows.** Never on read, list, update or delete, so a tenant already over a new cap keeps what it has and can still clean up.
+- **Count caps apply only on Infisical Cloud** (`INFISICAL_CLOUD`) and sit on top of `PlanLimit`, which is null on most paid plans and so does not protect the database. Field bounds and folder depth (`MAX_FOLDER_DEPTH`) apply everywhere.
+- **Rows written as a side effect** (versions, commits, history, events, tokens) need a retention job or a per-parent cap before they ship.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -1312,5 +1322,6 @@ Migrations in `src/db/migrations/`. Auto-generated Zod schemas in `src/db/schema
 3. Wire in `src/server/routes/index.ts`: instantiate DAL → instantiate service → add to `server.decorate("services", {...})`
 4. Create router in `src/server/routes/v<N>/` (or `src/ee/routes/v<N>/` for EE) and register it
 5. Plan the blackbox tests in the root `tests/` suite (see "Every API change gets a blackbox test plan")
-6. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
-7. Run `make reviewable-api` to verify lint + types
+6. Bound the new resource: a count cap on its create path and a `.max()` on every input field (see "Resource Limits")
+7. Review the whole change against [`CODE_QUALITY.md`](CODE_QUALITY.md)
+8. Run `make reviewable-api` to verify lint + types

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TableName } from "@app/db/schemas";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
@@ -18,9 +18,11 @@ const rotateCredentials = vi.fn<(inactive: unknown, callback: TRotationCallback)
 // What a provider does on success: issue new credentials and hand them to the service to persist.
 const runCallback = async (_inactive: unknown, callback: TRotationCallback) => callback({});
 
+const mockConfig = vi.hoisted(() => ({ INFISICAL_CLOUD: false }));
+
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/config/env")>()),
-  getConfig: () => ({})
+  getConfig: () => mockConfig
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -489,5 +491,65 @@ describe("rotation alert cleanup", () => {
     await service.reapOrphanedRotationAlerts();
 
     expect(deps.alertService.deleteAlertsForDeletedResources).not.toHaveBeenCalled();
+  });
+});
+
+describe("create rotation cap", () => {
+  afterEach(() => {
+    mockConfig.INFISICAL_CLOUD = false;
+  });
+
+  const createDeps = (rotationCount: number) => ({
+    licenseService: new FakeLicenseService().setPlan("org-1", {
+      secretRotation: true,
+      smSecretRotationsPerProjectLimit: 500
+    }),
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }),
+        folderGrants: FolderGrants.none()
+      }))
+    },
+    projectBotService: { getBotKey: vi.fn(async () => ({ shouldUseSecretV2Bridge: true })) },
+    secretRotationV2DAL: {
+      countByProject: vi.fn(async () => rotationCount),
+      transaction: vi.fn(<T>(cb: (tx: unknown) => Promise<T>) => cb({}))
+    },
+    folderDAL: { findBySecretPath: vi.fn(async () => undefined) }
+  });
+
+  const createInput = {
+    type: SecretRotation.StripeApiKey,
+    projectId: "project-1",
+    secretPath: "/",
+    environment: "dev",
+    name: "rotation",
+    connectionId: "connection-1",
+    parameters: {},
+    secretsMapping: { apiKey: "STRIPE_KEY" },
+    rotationInterval: 1,
+    isAutoRotationEnabled: false
+  };
+
+  test("refuses a new rotation on Infisical Cloud once the project is at the cap", async () => {
+    mockConfig.INFISICAL_CLOUD = true;
+    const deps = createDeps(500);
+    const service = secretRotationV2ServiceFactory(deps as never);
+
+    await expect(service.createSecretRotation(createInput as never, actor as never)).rejects.toThrow(
+      "Project already has the maximum of 500 secret rotations"
+    );
+    expect(deps.secretRotationV2DAL.countByProject).toHaveBeenCalledWith("project-1", {});
+    expect(deps.folderDAL.findBySecretPath).not.toHaveBeenCalled();
+  });
+
+  test("does not count rotations on a self-hosted instance", async () => {
+    const deps = createDeps(500);
+    const service = secretRotationV2ServiceFactory(deps as never);
+
+    await expect(service.createSecretRotation(createInput as never, actor as never)).rejects.toThrow(
+      "Could not find folder"
+    );
+    expect(deps.secretRotationV2DAL.countByProject).not.toHaveBeenCalled();
   });
 });

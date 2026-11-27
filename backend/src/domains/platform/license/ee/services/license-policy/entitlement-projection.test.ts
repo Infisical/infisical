@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { TInstanceFeatures } from "../../../ce/models/instance-entitlements";
 import { entitlementsResponseSchema, TEntitlementsResponse } from "../../../ce/services/helpers/license-server-types";
-import { cloudPlanFeatures, applyEntitlements } from "./entitlement-projection";
+import { applyEntitlements, cloudPlanFeatures } from "./entitlement-projection";
 
 const makeBase = (overrides: Partial<Record<keyof TInstanceFeatures, unknown>>): TInstanceFeatures =>
   ({ rateLimits: { readLimit: 0, writeLimit: 0, secretsLimit: 0 }, ...overrides }) as TInstanceFeatures;
@@ -136,5 +136,23 @@ describe("cloud plan defaults for session log default storage", () => {
 
   test("is on in the stand-in plan used while the License Server can't be reached", () => {
     expect(cloudPlanFeatures(null).agentVaultManagedStorage).toBe(true);
+  });
+});
+
+describe("cloud plan Secrets Management resource caps", () => {
+  test("take the org's value from the License Server", () => {
+    expect(cloudPlan({ sm_projects_per_org_limit: { value: 1000 } }).smProjectsPerOrgLimit).toBe(1000);
+  });
+
+  test("are lifted when the License Server sends null", () => {
+    expect(cloudPlan({ sm_tags_per_project_limit: { value: null } }).smTagsPerProjectLimit).toBeNull();
+  });
+
+  test("are absent when the License Server doesn't send the key", () => {
+    expect(cloudPlan({}).smProjectsPerOrgLimit).toBeUndefined();
+  });
+
+  test("are absent in the stand-in plan used while the License Server can't be reached", () => {
+    expect(cloudPlanFeatures(null).smWebhooksPerProjectLimit).toBeUndefined();
   });
 });

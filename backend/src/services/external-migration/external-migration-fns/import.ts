@@ -3,6 +3,7 @@ import path from "node:path";
 import slugify from "@sindresorhus/slugify";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
+import { PlanLimit } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -29,6 +30,7 @@ export const importDataIntoInfisicalFn = async ({
   folderVersionDAL,
   folderCommitService,
   eventEmitter,
+  plan,
   input: { data, actor, actorId, actorOrgId },
   projectActor
 }: TImportDataIntoInfisicalDTO) => {
@@ -61,7 +63,8 @@ export const importDataIntoInfisicalFn = async ({
           actor: projectActor,
           projectName: project.name,
           createDefaultEnvs: false,
-          tx
+          tx,
+          plan
         })
         .catch((e) => {
           logger.error(e, `Failed to import to project [name:${project.name}]`);
@@ -89,6 +92,15 @@ export const importDataIntoInfisicalFn = async ({
             message: `Environment with slug '${slug}' already exists`,
             name: "CreateEnvironment"
           });
+        }
+
+        if (plan.isLimited(PlanLimit.Environments)) {
+          const projectEnvs = await projectEnvDAL.find({ projectId }, { tx });
+          if (plan.exceeds(PlanLimit.Environments, projectEnvs.length)) {
+            throw new BadRequestError({
+              message: `Project already has the ${plan.limit(PlanLimit.Environments)} environments your plan allows, so environment '${environment.name}' could not be imported. Upgrade your plan to import more environments.`
+            });
+          }
         }
 
         const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);

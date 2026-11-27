@@ -10,12 +10,20 @@ import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { secretsLimit } from "@app/server/config/rateLimiter";
 import { getClientDisconnectSignal } from "@app/server/lib/client-disconnect";
-import { BaseSecretNameSchema, SecretNameSchema } from "@app/server/lib/schemas";
+import {
+  BaseSecretNameSchema,
+  SECRET_COMMENT_MAX_LENGTH,
+  SECRET_COMMENT_TOO_LONG,
+  SecretNameSchema
+} from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
-import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
+import {
+  ResourceMetadataWithEncryptionSchema,
+  SecretMetadataInputSchema
+} from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import {
   PersonalOverridesBehavior,
@@ -501,8 +509,14 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .string()
           .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
           .describe(RAW_SECRETS.CREATE.secretValue),
-        secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-        secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+        secretComment: z
+          .string()
+          .trim()
+          .max(SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG)
+          .optional()
+          .default("")
+          .describe(RAW_SECRETS.CREATE.secretComment),
+        secretMetadata: SecretMetadataInputSchema.optional(),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
         skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
@@ -661,7 +675,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.UPDATE.type),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
         metadata: z.record(z.string()).optional(),
-        secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+        secretMetadata: SecretMetadataInputSchema.optional(),
         secretReminderNote: z
           .string()
           .max(1024, "Secret reminder note cannot exceed 1024 characters")
@@ -680,7 +694,11 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           .optional()
           .describe(RAW_SECRETS.UPDATE.secretReminderRecipients),
         newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
-        secretComment: z.string().optional().describe(RAW_SECRETS.UPDATE.secretComment)
+        secretComment: z
+          .string()
+          .max(SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG)
+          .optional()
+          .describe(RAW_SECRETS.UPDATE.secretComment)
       }),
       response: {
         200: z.union([
@@ -1097,10 +1115,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .string()
               .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
               .describe(RAW_SECRETS.CREATE.secretValue),
-            secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
+            secretComment: z
+              .string()
+              .trim()
+              .max(SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG)
+              .optional()
+              .default("")
+              .describe(RAW_SECRETS.CREATE.secretComment),
             skipMultilineEncoding: z.boolean().nullish().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
             metadata: z.record(z.string()).optional(),
-            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+            secretMetadata: SecretMetadataInputSchema.optional(),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds)
           })
           .array()
@@ -1238,7 +1262,12 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .transform(removeTrailingSlash)
               .optional()
               .describe(RAW_SECRETS.UPDATE.secretPath),
-            secretComment: z.string().trim().optional().describe(RAW_SECRETS.UPDATE.secretComment),
+            secretComment: z
+              .string()
+              .trim()
+              .max(SECRET_COMMENT_MAX_LENGTH, SECRET_COMMENT_TOO_LONG)
+              .optional()
+              .describe(RAW_SECRETS.UPDATE.secretComment),
             skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.UPDATE.skipMultilineEncoding),
             newSecretName: SecretNameSchema.optional().describe(RAW_SECRETS.UPDATE.newSecretName),
             tagIds: z.string().array().optional().describe(RAW_SECRETS.UPDATE.tagIds),
@@ -1248,7 +1277,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               .optional()
               .nullable()
               .describe(RAW_SECRETS.UPDATE.secretReminderNote),
-            secretMetadata: ResourceMetadataWithEncryptionSchema.optional(),
+            secretMetadata: SecretMetadataInputSchema.optional(),
             secretReminderRepeatDays: z
               .number()
               .optional()

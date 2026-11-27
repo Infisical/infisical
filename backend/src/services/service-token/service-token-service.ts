@@ -1,3 +1,4 @@
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   buildServiceTokenProjectPermission,
   ProjectPermissionActions,
@@ -13,6 +14,7 @@ import { ForbiddenRequestError, NotFoundError, PermissionBoundaryError, Unauthor
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -37,6 +39,7 @@ type TServiceTokenServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
   smtpService: Pick<TSmtpService, "sendMail">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceFactory>;
@@ -49,7 +52,8 @@ export const serviceTokenServiceFactory = ({
   projectDAL,
   accessTokenQueue,
   smtpService,
-  orgDAL
+  orgDAL,
+  licenseService
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -146,6 +150,20 @@ export const serviceTokenServiceFactory = ({
     const inputEnvs = await projectEnvDAL.findBySlugs(projectId, scopeEnvs);
     if (inputEnvs.length !== scopeEnvs.length)
       throw new NotFoundError({ message: `One or more selected environments not found` });
+
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
+    if (resourceLimits.max(ResourceLimit.ServiceTokensPerProject) !== null) {
+      const serviceTokenCount = await countOnPrimary(serviceTokenDAL, async (tx) => {
+        const [{ count }] = await serviceTokenDAL.find({ projectId }, { countDistinct: "id", tx });
+        return Number(count);
+      });
+      resourceLimits.assertWithin({
+        limit: ResourceLimit.ServiceTokensPerProject,
+        used: serviceTokenCount,
+        describe: (max) =>
+          `Project already has the maximum of ${max} service tokens. Delete service tokens you no longer use before creating another.`
+      });
+    }
 
     const secret = crypto.randomBytes(16).toString("hex");
     const secretHash = await crypto.hashing().createHash(secret, appCfg.SALT_ROUNDS);

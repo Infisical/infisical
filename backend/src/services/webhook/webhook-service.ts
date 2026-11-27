@@ -3,6 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { TWebhooksInsert } from "@app/db/schemas";
 import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -12,6 +13,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
@@ -36,6 +38,7 @@ type TWebhookServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectPermissionService: TProjectPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TWebhookServiceFactory = ReturnType<typeof webhookServiceFactory>;
@@ -45,7 +48,8 @@ export const webhookServiceFactory = ({
   projectEnvDAL,
   projectPermissionService,
   projectDAL,
-  kmsDataKeyService
+  kmsDataKeyService,
+  licenseService
 }: TWebhookServiceFactoryDep) => {
   const subscribableEvents = new Set<string>(SUBSCRIBABLE_WEBHOOK_EVENTS);
 
@@ -71,6 +75,17 @@ export const webhookServiceFactory = ({
   }: TCreateWebhookDTO) => {
     const permission = await projectPermissionService.getProjectPermission({ actor, projectId });
     permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.Webhooks });
+
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
+    if (resourceLimits.max(ResourceLimit.WebhooksPerProject) !== null) {
+      resourceLimits.assertWithin({
+        limit: ResourceLimit.WebhooksPerProject,
+        used: await countOnPrimary(webhookDAL, (tx) => webhookDAL.countByProjectId(projectId, tx)),
+        describe: (max) =>
+          `Project already has the maximum of ${max} webhooks. Delete webhooks you no longer use before creating another.`
+      });
+    }
+
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env)
       throw new NotFoundError({

@@ -135,7 +135,7 @@ export type TSecretChangePolicyServiceFactoryDep = {
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
   approvalPolicySecretEnvironmentDAL: Pick<
     TApprovalPolicySecretEnvironmentDALFactory,
-    "insertMany" | "delete" | "findSecretChangePolicyByEnvIdsAndSecretPath"
+    "insertMany" | "delete" | "findSecretChangePolicyByEnvIdsAndSecretPath" | "countPoliciesByEnvIds"
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update">;
   secretChangePolicyDAL: Pick<TSecretChangePolicyDALFactory, "findSecretChangePolicies">;

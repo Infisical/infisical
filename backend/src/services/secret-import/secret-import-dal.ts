@@ -248,6 +248,66 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Counts the imports the folder's list shows. Users cannot see or directly remove the other rows (reserved replication
+  // rows, imports whose source environment or project is soft-deleted), so counting them would block a folder that looks
+  // empty. They stay bounded: replication adds one reserved row per import, and importEnv cascades on hard delete.
+  // While an environment is soft-deleted, imports reading from it drop out of countByFolderId, so restoring it adds
+  // them back. Folders in a soft-deleted environment or project are left out: they can't be opened or edited, so a refusal naming them would leave nothing to fix.
+  const findFolderPastLimitOnSourceRestore = async (importEnvId: string, maxPerFolder: number, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const notReserved = (bd: Knex.QueryBuilder) =>
+        void bd
+          .where(`${TableName.SecretImport}.isReserved`, false)
+          .orWhereNull(`${TableName.SecretImport}.isReserved`);
+      const importingFolders = conn(TableName.SecretImport)
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.SecretImport}.importEnv`, importEnvId)
+        .where(notReserved)
+        .distinct(`${TableName.SecretImport}.folderId`);
+      // countByFolderId's filter, plus the rows the restore brings back.
+      const total = `count(*) filter (where "srcEnv"."deleteAfter" is null and "srcProject"."deleteAfter" is null)
+        + count(*) filter (where "${TableName.SecretImport}"."importEnv" = ?)`;
+      const row = (await conn(TableName.SecretImport)
+        .join({ srcEnv: TableName.Environment }, `${TableName.SecretImport}.importEnv`, "srcEnv.id")
+        .leftJoin({ srcProject: TableName.Project }, "srcEnv.projectId", "srcProject.id")
+        .whereIn(`${TableName.SecretImport}.folderId`, importingFolders)
+        .where(notReserved)
+        .groupBy(`${TableName.SecretImport}.folderId`)
+        .select(`${TableName.SecretImport}.folderId`, db.raw(`${total} as total`, [importEnvId]))
+        .havingRaw(`${total} > ?`, [importEnvId, maxPerFolder])
+        .first()) as { folderId: string; total: string | number } | undefined;
+      return row ? { folderId: row.folderId, total: Number(row.total) } : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find a folder past the import limit on restore" });
+    }
+  };
+
+  const countByFolderId = async (folderId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db.replicaNode())(TableName.SecretImport)
+        .where(`${TableName.SecretImport}.folderId`, folderId)
+        .where(
+          (bd) =>
+            void bd
+              .where(`${TableName.SecretImport}.isReserved`, false)
+              .orWhereNull(`${TableName.SecretImport}.isReserved`)
+        )
+        .join(TableName.Environment, `${TableName.SecretImport}.importEnv`, `${TableName.Environment}.id`)
+        .leftJoin(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .count({ count: `${TableName.SecretImport}.id` });
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count secret imports by folder" });
+    }
+  };
+
   // Bypasses the soft-deleted source filter of find. Positions are unique per folder across every
   // stored row, so renumbering must see imports whose source environment or project is soft-deleted.
   const findIncludingExpired = (folderId: string, tx?: Knex) => secretImportOrm.find({ folderId }, { tx });
@@ -721,6 +781,8 @@ export const secretImportDALFactory = (db: TDbClient) => {
     lockWithFolderAgainstDelete,
     findByIds,
     findIncludingExpired,
+    countByFolderId,
+    findFolderPastLimitOnSourceRestore,
     findByFolderIds,
     findImportByFolderIds,
     findFolderIdsWithImports,

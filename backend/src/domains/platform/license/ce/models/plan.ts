@@ -124,6 +124,17 @@ export type TPlanFeatures = {
   enterprisePamAccount: boolean | null;
   crossProjectSecretSharing: boolean;
   secretsFolderRbac: boolean;
+  smProjectsPerOrgLimit?: number | null;
+  smTagsPerProjectLimit?: number | null;
+  smSecretImportsPerFolderLimit?: number | null;
+  smSecretSyncsPerProjectLimit?: number | null;
+  smSecretRotationsPerProjectLimit?: number | null;
+  smWebhooksPerProjectLimit?: number | null;
+  smServiceTokensPerProjectLimit?: number | null;
+  smIntegrationAuthsPerProjectLimit?: number | null;
+  smApprovalPoliciesPerEnvironmentLimit?: number | null;
+  smProjectTemplatesPerOrgLimit?: number | null;
+  smSecretValidationRulesPerEnvironmentLimit?: number | null;
 };
 
 // Each value is the plan field holding that flag.
@@ -207,7 +218,18 @@ export enum PlanLimit {
   InternalCertificateAuthorities = "maxInternalCas",
   Certificates = "maxCertificates",
   WildcardCertificates = "maxWildcardCertificates",
-  SansPerCertificate = "maxSansPerCertificate"
+  SansPerCertificate = "maxSansPerCertificate",
+  SmProjectsPerOrg = "smProjectsPerOrgLimit",
+  SmTagsPerProject = "smTagsPerProjectLimit",
+  SmSecretImportsPerFolder = "smSecretImportsPerFolderLimit",
+  SmSecretSyncsPerProject = "smSecretSyncsPerProjectLimit",
+  SmSecretRotationsPerProject = "smSecretRotationsPerProjectLimit",
+  SmWebhooksPerProject = "smWebhooksPerProjectLimit",
+  SmServiceTokensPerProject = "smServiceTokensPerProjectLimit",
+  SmIntegrationAuthsPerProject = "smIntegrationAuthsPerProjectLimit",
+  SmApprovalPoliciesPerEnvironment = "smApprovalPoliciesPerEnvironmentLimit",
+  SmProjectTemplatesPerOrg = "smProjectTemplatesPerOrgLimit",
+  SmSecretValidationRulesPerEnvironment = "smSecretValidationRulesPerEnvironmentLimit"
 }
 
 const deepFreeze = <T>(value: T): T => {

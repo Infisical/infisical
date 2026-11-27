@@ -1,6 +1,8 @@
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretTagDALFactory } from "./secret-tag-dal";
@@ -17,6 +19,7 @@ type TSecretTagServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   secretsPermissionService: TSecretsPermissionService;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory>;
@@ -24,7 +27,8 @@ export type TSecretTagServiceFactory = ReturnType<typeof secretTagServiceFactory
 export const secretTagServiceFactory = ({
   secretTagDAL,
   secretsPermissionService,
-  secretV2BridgeDAL
+  secretV2BridgeDAL,
+  licenseService
 }: TSecretTagServiceFactoryDep) => {
   const createTag = async ({ slug, actor, color, projectId }: TCreateTagDTO) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
@@ -32,6 +36,20 @@ export const secretTagServiceFactory = ({
 
     const existingTag = await secretTagDAL.findOne({ slug, projectId });
     if (existingTag) throw new BadRequestError({ message: "Tag already exists" });
+
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
+    if (resourceLimits.max(ResourceLimit.TagsPerProject) !== null) {
+      const tagCount = await countOnPrimary(secretTagDAL, async (tx) => {
+        const [{ count }] = await secretTagDAL.find({ projectId }, { countDistinct: "id", tx });
+        return Number(count);
+      });
+      resourceLimits.assertWithin({
+        limit: ResourceLimit.TagsPerProject,
+        used: tagCount,
+        describe: (max) =>
+          `Project already has the maximum of ${max} tags. Delete tags you no longer use before creating another.`
+      });
+    }
 
     const newTag = await secretTagDAL.create({
       projectId,

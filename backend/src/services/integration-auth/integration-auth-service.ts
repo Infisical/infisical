@@ -2,9 +2,11 @@ import { KMSClient, ListAliasesCommand } from "@aws-sdk/client-kms";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
 import type { Space as OctopusSpace } from "@octopusdeploy/api-client";
+import { Knex } from "knex";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding, TIntegrationAuths, TIntegrationAuthsInsert } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
@@ -13,6 +15,7 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { countOnPrimary, getResourceLimits, ResourceLimit, TResourceLimits } from "@app/lib/resource-limits";
 import { TActorInput } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 
@@ -73,6 +76,7 @@ type TIntegrationAuthServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretsPermissionService: TSecretsPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
+  licenseService: Pick<TLicenseService, "getPlan">;
 };
 
 export type TIntegrationAuthServiceFactory = ReturnType<typeof integrationAuthServiceFactory>;
@@ -82,8 +86,24 @@ export const integrationAuthServiceFactory = ({
   integrationAuthDAL,
   integrationDAL,
   projectBotService,
-  kmsDataKeyService
+  kmsDataKeyService,
+  licenseService
 }: TIntegrationAuthServiceFactoryDep) => {
+  const $assertCanAddIntegrationAuth = async (resourceLimits: TResourceLimits, projectId: string, tx?: Knex) => {
+    if (resourceLimits.max(ResourceLimit.IntegrationAuthsPerProject) === null) return;
+
+    const countAuths = async (trx: Knex) => {
+      const [{ count }] = await integrationAuthDAL.find({ projectId }, { countDistinct: "id", tx: trx });
+      return Number(count);
+    };
+    resourceLimits.assertWithin({
+      limit: ResourceLimit.IntegrationAuthsPerProject,
+      used: tx ? await countAuths(tx) : await countOnPrimary(integrationAuthDAL, countAuths),
+      describe: (max) =>
+        `Project already has the maximum of ${max} integration authorizations. Delete integrations you no longer use before connecting another.`
+    });
+  };
+
   const listIntegrationAuthByProjectId = async ({ actor, projectId }: { projectId: string } & TActorInput) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations });
@@ -136,6 +156,11 @@ export const integrationAuthServiceFactory = ({
 
     if (url) {
       await blockLocalAndPrivateIpAddresses(url);
+    }
+
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
+    if (installationId && integration === Integrations.GITHUB) {
+      await $assertCanAddIntegrationAuth(resourceLimits, projectId);
     }
 
     const tokenExchange = await exchangeCode({ integration, code, url, installationId });
@@ -223,6 +248,7 @@ export const integrationAuthServiceFactory = ({
       }
 
       if (!existingIntegrationAuth) {
+        await $assertCanAddIntegrationAuth(resourceLimits, projectId, tx);
         return integrationAuthDAL.create(updateDoc, tx);
       }
 
@@ -250,6 +276,8 @@ export const integrationAuthServiceFactory = ({
     if (url) {
       await blockLocalAndPrivateIpAddresses(url);
     }
+
+    await $assertCanAddIntegrationAuth(await getResourceLimits(licenseService, actor.org.id), projectId);
 
     const updateDoc: TIntegrationAuthsInsert = {
       projectId,
@@ -1586,6 +1614,8 @@ export const integrationAuthServiceFactory = ({
     const { permission: targetPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     targetPermission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.Integrations });
+
+    await $assertCanAddIntegrationAuth(await getResourceLimits(licenseService, actor.org.id), projectId);
 
     const newIntegrationAuth: Omit<typeof integrationAuth, "id"> & { id?: string } = {
       ...integrationAuth,

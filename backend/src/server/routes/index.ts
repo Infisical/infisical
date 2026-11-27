@@ -2264,7 +2264,8 @@ export const registerRoutes = async (
     integrationAuthDAL,
     integrationDAL,
     projectBotService,
-    kmsDataKeyService
+    kmsDataKeyService,
+    licenseService
   });
 
   // Populated after gatewayV2Service and gatewayPoolService exist; both depend on
@@ -2626,13 +2627,21 @@ export const registerRoutes = async (
   const projectEnvService = projectEnvServiceFactory({
     secretsPermissionService,
     projectEnvDAL,
+    webhookDAL,
+    secretRotationV2DAL,
+    secretImportDAL,
     keyStore,
     licenseService,
     folderDAL,
     approvalPolicySecretEnvironmentDAL
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, secretsPermissionService, secretV2BridgeDAL });
+  const secretTagService = secretTagServiceFactory({
+    secretTagDAL,
+    secretsPermissionService,
+    secretV2BridgeDAL,
+    licenseService
+  });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretsPermissionService,
     secretValidationRuleDAL,
@@ -2641,7 +2650,8 @@ export const registerRoutes = async (
     folderDAL,
     secretDAL: secretV2BridgeDAL,
     secretVersionV2BridgeDAL,
-    projectDAL
+    projectDAL,
+    licenseService
   });
   const secretImportService = secretImportServiceFactory({
     secretsPermissionService,
@@ -2865,7 +2875,8 @@ export const registerRoutes = async (
     projectDAL,
     accessTokenQueue,
     smtpService,
-    orgDAL
+    orgDAL,
+    licenseService
   });
 
   const identityService = identityServiceFactory({
@@ -3431,7 +3442,8 @@ export const registerRoutes = async (
     folderVersionDAL,
     notificationService,
     secretChangeRequestService,
-    auditLogService
+    auditLogService,
+    licenseService
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
@@ -3729,7 +3741,8 @@ export const registerRoutes = async (
     webhookDAL,
     projectEnvDAL,
     projectDAL,
-    kmsDataKeyService
+    kmsDataKeyService,
+    licenseService
   });
 
   const secretSyncService = secretSyncServiceFactory({

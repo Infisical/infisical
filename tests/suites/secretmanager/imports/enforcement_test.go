@@ -87,7 +87,6 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 		secretmanager.CreateFolder(t, proj, "staging", stagingApp.Path)
 		secretmanager.CreateSecret(t, proj, "staging", "KEY", "v1", secretmanager.WithPath(stagingApp.Path))
 		directImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
-		secondDirectImport := secretmanager.CreateImport(t, proj, "prod", stagingApp)
 		createPolicy(t, proj, "prod", "/", tn.Admin, true)
 		replicatedImport := secretmanager.CreateImport(t, proj, "prod", stagingApp, secretmanager.Replicated())
 		waitForOpenRequest(t, proj)
@@ -117,7 +116,6 @@ func TestImportReplicationEnforcement_ExistingImports(t *testing.T) {
 			keysByImport[group.ImportId] = keys
 		}
 		require.Equal(t, map[string][]string{directImport: {"KEY"}, replicatedImport: {}}, keysByImport)
-		require.NotContains(t, keysByImport, secondDirectImport)
 	})
 
 	t.Run("should list only the replicated imports when asked for them", func(t *testing.T) {

@@ -286,6 +286,24 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countActiveByTypeInOrgTree = async (rootOrgId: string, type: ProjectType, tx?: Knex) => {
+    try {
+      const conn = tx || db.replicaNode();
+      const doc = await conn(TableName.Project)
+        .where({ type })
+        .whereNull("deleteAfter")
+        .whereIn(
+          "orgId",
+          conn(TableName.Organization).where("id", rootOrgId).orWhere("rootOrgId", rootOrgId).select("id")
+        )
+        .count({ count: "id" })
+        .first();
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count projects in organization tree" });
+    }
+  };
+
   // Counts ALL env rows (any soft-delete state). Primary-backed so a stale replica cannot end the drain early.
   const countProjectEnvironments = async (projectId: string, tx?: Knex) => {
     try {
@@ -1130,6 +1148,7 @@ export const projectDALFactory = (db: TDbClient) => {
     hardDeleteProjectSecretsInBatches,
     softDeleteProjectEnvironments,
     countProjectEnvironments,
+    countActiveByTypeInOrgTree,
     findUserProjects,
     findActorProjects,
     findIdentityProjects,

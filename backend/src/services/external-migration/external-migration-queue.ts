@@ -3,6 +3,7 @@ import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
@@ -66,6 +67,7 @@ export type TExternalMigrationQueueFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalSideEffects">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  licenseService: Pick<TLicenseService, "getPlan">;
   actorContextService: TActorContextService;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -94,6 +96,7 @@ export const externalMigrationQueueFactory = ({
   notificationService,
   secretChangeRequestService,
   auditLogService,
+  licenseService,
   actorContextService,
   userDAL,
   identityDAL
@@ -169,6 +172,7 @@ export const externalMigrationQueueFactory = ({
       );
       const { projectsNotImported } = await importDataIntoInfisicalFn({
         input: decryptedJson,
+        plan: await licenseService.getPlan(decryptedJson.actorOrgId),
         projectActor,
         projectDAL,
         projectEnvDAL,

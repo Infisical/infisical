@@ -76,6 +76,7 @@ import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } fr
 import { takeRowScanWindow } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
+import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -589,6 +590,16 @@ export const secretRotationV2ServiceFactory = ({
         connection: payload.connectionId ? { id: payload.connectionId } : undefined
       })
     });
+
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
+    if (resourceLimits.max(ResourceLimit.SecretRotationsPerProject) !== null) {
+      resourceLimits.assertWithin({
+        limit: ResourceLimit.SecretRotationsPerProject,
+        used: await countOnPrimary(secretRotationV2DAL, (tx) => secretRotationV2DAL.countByProject(projectId, tx)),
+        describe: (max) =>
+          `Project already has the maximum of ${max} secret rotations. Delete secret rotations you no longer use before creating another.`
+      });
+    }
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 

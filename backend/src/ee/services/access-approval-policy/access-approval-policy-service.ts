@@ -5,7 +5,9 @@ import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/pla
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { getResourceLimits } from "@app/lib/resource-limits";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
 import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
@@ -486,7 +488,19 @@ export const secretAccessApprovalPolicyServiceFactory = ({
 
     await $assertNoConflictingPolicy({ envs, secretPath });
 
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
+      await assertApprovalPolicyEnvironmentCapacity(
+        {
+          approvalPolicySecretEnvironmentDAL,
+          resourceLimits,
+          envs,
+          describe: (envSlug, max) =>
+            `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use before creating another.`
+        },
+        tx
+      );
+
       const doc = await approvalPolicyDAL.create(
         {
           projectId: project.id,
@@ -609,6 +623,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       }
     }
 
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     return approvalPolicyDAL.transaction(async (tx) => {
       const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
       if (!lockedPolicy) {
@@ -664,6 +679,17 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       if (!delegatedApprovalAfterUpdate) await $insertStepsAndBypassers({ policyId: policy.id, ...reviewers }, tx);
 
       if (scopeChanged) {
+        await assertApprovalPolicyEnvironmentCapacity(
+          {
+            approvalPolicySecretEnvironmentDAL,
+            resourceLimits,
+            envs,
+            currentEnvIds: current.environments.map((env) => env.id),
+            describe: (envSlug, max) =>
+              `Environment '${envSlug}' already has the maximum of ${max} approval policies. Delete policies you no longer use there before adding this policy to it.`
+          },
+          tx
+        );
         await $replacePolicyScope(
           { policyId: policy.id, envs, secretPath: nextSecretPath, steps: reviewers.steps },
           tx

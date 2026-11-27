@@ -15,10 +15,12 @@ import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secret
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { canonicalizeSecretPath } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
 
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
@@ -137,6 +139,46 @@ export const secretImportServiceFactory = ({
     modificationType: EventModificationType,
     tx: Knex
   ) => eventEmitter.emit([SecretImportModifiedEventV1.build({ secretImportId, ...scope, modificationType })], tx);
+
+  // A second import of the same source adds nothing the first does not. A direct and a replicated import of one source
+  // may coexist: replacing a direct import with a replicated one under a change policy adds the replicated import
+  // before the direct one is removed. The folder lock serializes creates and repoints in the folder, so two concurrent
+  // requests cannot both pass; rows written before this rule stay as they are.
+  const $assertSourceNotImported = async (
+    {
+      folderId,
+      folderPath,
+      sourceEnv,
+      sourcePath,
+      isReplication,
+      excludeImportId
+    }: {
+      folderId: string;
+      folderPath: string;
+      sourceEnv: { id: string; slug: string };
+      sourcePath: string;
+      isReplication: boolean;
+      excludeImportId?: string;
+    },
+    tx: Knex
+  ) => {
+    await folderDAL.lockFoldersForUpdate([folderId], tx);
+    const canonicalSourcePath = canonicalizeSecretPath(sourcePath);
+    const imports = await secretImportDAL.findIncludingExpired(folderId, tx);
+    const duplicate = imports.some(
+      (imp) =>
+        !imp.isReserved &&
+        imp.id !== excludeImportId &&
+        Boolean(imp.isReplication) === isReplication &&
+        imp.importEnv === sourceEnv.id &&
+        canonicalizeSecretPath(imp.importPath) === canonicalSourcePath
+    );
+    if (duplicate) {
+      throw new ConflictError({
+        message: `Folder '${folderPath}' already ${isReplication ? "replicates" : "imports"} secrets from '${canonicalSourcePath}' in environment '${sourceEnv.slug}'. Use the existing import instead of adding another.`
+      });
+    }
+  };
 
   // a rename can carry the folder under a policy between the request's first read and the write. renames lock every
   // folder they move, so locking this one orders the two, and the path read after the lock is where the import lands.
@@ -263,7 +305,26 @@ export const secretImportServiceFactory = ({
       if (existingImport) throw new BadRequestError({ message: `Cyclic import not allowed` });
     }
 
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     const secImport = await secretImportDAL.transaction(async (tx) => {
+      await $assertSourceNotImported(
+        {
+          folderId: folder.id,
+          folderPath: secretPath,
+          sourceEnv: importEnv,
+          sourcePath: data.path,
+          isReplication: Boolean(isReplication)
+        },
+        tx
+      );
+      if (resourceLimits.max(ResourceLimit.ImportsPerFolder) !== null) {
+        resourceLimits.assertWithin({
+          limit: ResourceLimit.ImportsPerFolder,
+          used: await secretImportDAL.countByFolderId(folder.id, tx),
+          describe: (max) =>
+            `Folder '${secretPath}' already has the maximum of ${max} secret imports. Remove imports you no longer use before adding another.`
+        });
+      }
       if (!isReplication && !isCrossProjectImport) {
         await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);
       }
@@ -399,6 +460,29 @@ export const secretImportServiceFactory = ({
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
+      if (data.environment || data.path) {
+        // The row read before the transaction can come from a lagging replica, and the write below keeps whichever of
+        // environment and path the request leaves out, so the source it will save is read here, after the lock.
+        await folderDAL.lockFoldersForUpdate([folder.id], tx);
+        const current = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
+        if (!current) throw ERR_SEC_IMP_NOT_FOUND;
+        const nextEnvId = data.environment ? importedEnv.id : current.importEnv;
+        const nextPath = data.path || current.importPath;
+        const nextEnv = nextEnvId === importedEnv.id ? importedEnv : await projectEnvDAL.findById(nextEnvId, tx);
+        if (nextEnv && (nextEnvId !== current.importEnv || nextPath !== current.importPath)) {
+          await $assertSourceNotImported(
+            {
+              folderId: folder.id,
+              folderPath: secretPath,
+              sourceEnv: nextEnv,
+              sourcePath: nextPath,
+              isReplication: Boolean(current.isReplication),
+              excludeImportId: id
+            },
+            tx
+          );
+        }
+      }
       if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
         await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);
       }

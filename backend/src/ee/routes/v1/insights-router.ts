@@ -552,7 +552,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().max(36).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.projectId),
-        secretName: BaseSecretNameSchema.max(500).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretName)
+        secretName: BaseSecretNameSchema.describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretName)
       }),
       querystring: z.object({
         environment: z.string().trim().min(1).max(255).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.environment),
