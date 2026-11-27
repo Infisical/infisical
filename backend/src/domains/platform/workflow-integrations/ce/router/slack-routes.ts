@@ -40,7 +40,7 @@ export const registerSlackRoutes = async (
       ],
       querystring: z.object({
         slug: slugSchema({ max: 64 }),
-        description: z.string().optional()
+        description: z.string().max(255).optional()
       }),
       response: {
         200: z.string()
@@ -83,7 +83,7 @@ export const registerSlackRoutes = async (
         }
       ],
       querystring: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z.string()
@@ -152,7 +152,7 @@ export const registerSlackRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: sanitizedSlackIntegrationSchema
@@ -194,7 +194,7 @@ export const registerSlackRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: sanitizedSlackIntegrationSchema
@@ -236,7 +236,7 @@ export const registerSlackRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: z
@@ -273,11 +273,11 @@ export const registerSlackRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         slug: slugSchema({ max: 64 }).optional(),
-        description: z.string().optional()
+        description: z.string().max(255).optional()
       }),
       response: {
         200: sanitizedSlackIntegrationSchema

@@ -67,11 +67,11 @@ export const registerMicrosoftTeamsRoutes = async (
     schema: {
       operationId: "completeMicrosoftTeamsIntegration",
       body: z.object({
-        redirectUri: z.string(),
+        redirectUri: z.string().trim().max(2048),
         tenantId: z.string().uuid(),
-        slug: z.string(),
-        description: z.string().optional(),
-        code: z.string().trim()
+        slug: z.string().max(255),
+        description: z.string().max(255).optional(),
+        code: z.string().trim().max(4096)
       })
     },
 
@@ -148,7 +148,7 @@ export const registerMicrosoftTeamsRoutes = async (
     schema: {
       operationId: "checkMicrosoftTeamsInstallationStatus",
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       })
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -188,7 +188,7 @@ export const registerMicrosoftTeamsRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: sanitizedMicrosoftTeamsIntegrationSchema
@@ -234,7 +234,7 @@ export const registerMicrosoftTeamsRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       response: {
         200: sanitizedMicrosoftTeamsIntegrationSchema
@@ -280,11 +280,11 @@ export const registerMicrosoftTeamsRoutes = async (
         }
       ],
       params: z.object({
-        id: z.string()
+        id: z.string().uuid()
       }),
       body: z.object({
         slug: slugSchema({ max: 64 }).optional(),
-        description: z.string().optional()
+        description: z.string().max(255).optional()
       }),
       response: {
         200: sanitizedMicrosoftTeamsIntegrationSchema
@@ -328,7 +328,7 @@ export const registerMicrosoftTeamsRoutes = async (
     schema: {
       operationId: "listMicrosoftTeamsIntegrationTeams",
       params: z.object({
-        workflowIntegrationId: z.string()
+        workflowIntegrationId: z.string().uuid()
       }),
       response: {
         200: z

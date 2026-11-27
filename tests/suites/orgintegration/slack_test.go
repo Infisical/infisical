@@ -230,6 +230,20 @@ func TestSlackIntegration_Manage(t *testing.T) {
 		requireStatus(t, http.StatusOK, owner.StatusCode(), owner.Body)
 	})
 
+	t.Run("should refuse a malformed integration id as invalid input, not a server error", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.GetSlackIntegrationWithResponse(t.Context(), "not-an-id")
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusUnprocessableEntity, res.StatusCode(), res.Body)
+	})
+
 	t.Run("should refuse another organization's admin deleting the integration, and keep it", func(t *testing.T) {
 		t.Parallel()
 
