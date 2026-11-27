@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -11,7 +12,6 @@ import {
   SanitizedLdapConnectionSchema,
   UpdateLdapConnectionSchema
 } from "@app/services/app-connection/ldap";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -68,7 +68,7 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
       const machines = await server.services.appConnection.ldap.listMachines(
         connectionId,
         { search, limit },
-        req.permission
+        req.actor
       );
       return { machines };
     }
@@ -109,10 +109,6 @@ export const registerLdapConnectionRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) =>
-      server.services.appConnection.ldap.listGroups(
-        req.params.connectionId,
-        { search: req.query.search },
-        req.permission
-      )
+      server.services.appConnection.ldap.listGroups(req.params.connectionId, { search: req.query.search }, req.actor)
   });
 };

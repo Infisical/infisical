@@ -1,15 +1,20 @@
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature } from "@app/domains/platform/license/ce/module";
+import {
+  ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, groupByUnique, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { EnforcementLevel } from "@app/lib/types";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import {
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
@@ -22,12 +27,10 @@ import {
   resolveStepApproverUserIds,
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub } from "../permission/project-permission";
 import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
 import {
   buildSecretApprovalCommitValueAccess,
@@ -78,7 +81,7 @@ export const secretChangeRequestServiceFactory = ({
   secretChangeRequestDAL,
   membershipUserDAL,
   secretChangePolicyService,
-  permissionService,
+  secretsPermissionService,
   licenseService,
   userGroupMembershipDAL,
   folderDAL,
@@ -105,7 +108,7 @@ export const secretChangeRequestServiceFactory = ({
   telemetryService
 }: TSecretChangeRequestServiceFactoryDep) => {
   const { buildSecretApprovalCommits, validateSecrets } = secretApprovalRequestCommitFnsFactory({
-    permissionService,
+    secretsPermissionService,
     folderDAL,
     projectDAL,
     kmsDataKeyService,
@@ -185,24 +188,15 @@ export const secretChangeRequestServiceFactory = ({
 
   const $assertCanActOnRequest = async ({
     approvalRequest,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    actor,
     action
   }: {
     approvalRequest: TApprovalRequests;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
     action: "review" | "merge" | "update";
-  }) => {
-    const { hasRole, permission } = await permissionService.getProjectPermission({
-      actor: ActorType.USER,
-      actorId,
-      projectId: approvalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+  } & TActorInput) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
+      projectId: approvalRequest.projectId
     });
 
     const steps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id);
@@ -213,19 +207,20 @@ export const secretChangeRequestServiceFactory = ({
       });
     }
 
-    const userGroups = await requestMemoize(requestMemoKeys.userGroupMembershipsInOrg(actorId, actorOrgId), () =>
-      userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId)
+    const userGroups = await requestMemoize(
+      requestMemoKeys.userGroupMembershipsInOrg(actor.principal.id, actor.org.id),
+      () => userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.principal.id, actor.org.id)
     );
     const userGroupIds = new Set(userGroups.map((group) => group.groupId));
     if (
-      !hasRole(ProjectMembershipRole.Admin) &&
-      approvalRequest.requesterId !== actorId &&
-      !isEligibleStepApprover(currentStep, actorId, userGroupIds)
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      approvalRequest.requesterId !== actor.principal.id &&
+      !isEligibleStepApprover(currentStep, actor.principal.id, userGroupIds)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
-    return { hasRole, permission, steps, currentStep, userGroupIds };
+    return { permission, steps, currentStep, userGroupIds };
   };
 
   const $findUnmetStep = (steps: TRequestSteps, eligibleByStepId: Map<string, Set<string>>) =>
@@ -361,8 +356,7 @@ export const secretChangeRequestServiceFactory = ({
 
   const generateSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["generateSecretApprovalRequestV2Bridge"] =
     async (dto) => {
-      const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
-        dto;
+      const { actor, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } = dto;
       const { folderId, project, commits, commitTagIds, secretKeys } = await buildSecretApprovalCommits(dto);
 
       const write = (tx: Knex) =>
@@ -372,8 +366,8 @@ export const secretChangeRequestServiceFactory = ({
             folderId,
             projectId,
             orgId: project.orgId,
-            actor,
-            actorId,
+            actor: actor.principal.type,
+            actorId: actor.principal.id,
             commitMessage,
             commits: commits.map((commit) => pickApprovalCommitColumns(commit)),
             commitTags: commitTagIds
@@ -391,9 +385,9 @@ export const secretChangeRequestServiceFactory = ({
           environment,
           secretPath,
           secretKeys,
-          actor,
-          actorId,
-          actorOrgId,
+          actor: actor.principal.type,
+          actorId: actor.principal.id,
+          actorOrgId: actor.org.id,
           tx: trx
         });
       }
@@ -475,14 +469,11 @@ export const secretChangeRequestServiceFactory = ({
   const mergeSecretApprovalRequest: TSecretChangeRequestMethods["mergeSecretApprovalRequest"] = async ({
     approvalId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     bypassReason,
     requireApprovals
   }) => {
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     if (secretChangeRequest.hasMerged) {
       throw new BadRequestError({ message: "This secret approval request has already been merged." });
@@ -496,9 +487,7 @@ export const secretChangeRequestServiceFactory = ({
 
     const { permission, steps, userGroupIds } = await $assertCanActOnRequest({
       approvalRequest,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      actor,
       action: "merge"
     });
 
@@ -512,7 +501,7 @@ export const secretChangeRequestServiceFactory = ({
       !policy.bypassers.length ||
       policy.bypassers.some(
         (bypasser) =>
-          (bypasser.type === BypasserType.User && bypasser.id === actorId) ||
+          (bypasser.type === BypasserType.User && bypasser.id === actor.principal.id) ||
           (bypasser.type === BypasserType.Group && userGroupIds.has(bypasser.id))
       );
     const resolveBypass = (requestSteps: TRequestSteps) =>
@@ -543,7 +532,7 @@ export const secretChangeRequestServiceFactory = ({
     const { secretManager: cipher, blindIndexer } = await prepareSecretWriteCiphers({
       kmsDataKeyService,
       projectId,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
@@ -560,10 +549,10 @@ export const secretChangeRequestServiceFactory = ({
         environment: folder.environmentSlug,
         envId: folder.envId,
         secretPath: folder.path,
-        actor,
-        actorId,
-        actorOrgId,
-        permission,
+        actor: actor.principal.type,
+        actorId: actor.principal.id,
+        actorOrgId: actor.org.id,
+        permission: permission.toAbility(),
         cipher,
         blindIndexer,
         creates,
@@ -577,7 +566,7 @@ export const secretChangeRequestServiceFactory = ({
         {
           conflicts: JSON.stringify(conflicts),
           hasMerged: true,
-          statusChangedByUserId: actorId,
+          statusChangedByUserId: actor.principal.id,
           bypassReason: bypass.bypassReason
         },
         tx
@@ -592,7 +581,14 @@ export const secretChangeRequestServiceFactory = ({
       return { secrets, approvalRequest: mergedApprovalRequest, secretChangeRequest: mergedChangeRequest, bypass };
     });
 
-    await syncMergedSecrets({ projectId, actorOrgId, actor, actorId, folder, secrets: merged.secrets });
+    await syncMergedSecrets({
+      projectId,
+      actorOrgId: actor.org.id,
+      actor: actor.principal.type,
+      actorId: actor.principal.id,
+      folder,
+      secrets: merged.secrets
+    });
 
     try {
       await queueChangeRequestWebhook({
@@ -618,7 +614,7 @@ export const secretChangeRequestServiceFactory = ({
         project,
         environmentName: folder.environmentName,
         secretPath: folder.path,
-        actorId,
+        actorId: actor.principal.id,
         approverUserIds: unique(policy.userApprovers.map((approver) => approver.userId)),
         bypassReason: merged.bypass.bypassReason
       });
@@ -652,21 +648,18 @@ export const secretChangeRequestServiceFactory = ({
   const reviewApproval: TSecretChangeRequestMethods["reviewApproval"] = async ({
     approvalId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     status,
     comment
   }) => {
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     if (approvalRequest.status !== ApprovalRequestStatus.Open) {
       throw new BadRequestError({ message: "You can only review open approval requests" });
     }
 
     const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
-    if (!policy.allowedSelfApprovals && actorId === approvalRequest.requesterId) {
+    if (!policy.allowedSelfApprovals && actor.principal.id === approvalRequest.requesterId) {
       throw new BadRequestError({
         message: "Failed to review secret approval request. Users are not authorized to review their own request."
       });
@@ -674,9 +667,7 @@ export const secretChangeRequestServiceFactory = ({
 
     const { currentStep } = await $assertCanActOnRequest({
       approvalRequest,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      actor,
       action: "review"
     });
 
@@ -691,7 +682,7 @@ export const secretChangeRequestServiceFactory = ({
         throw new BadRequestError({ message: "You can only review open approval requests" });
       }
       return upsertApprovalRequestStepDecision(
-        { stepId: currentStep.id, approverUserId: actorId, decision, comment },
+        { stepId: currentStep.id, approverUserId: actor.principal.id, decision, comment },
         { approvalRequestApprovalsDAL },
         tx
       );
@@ -735,12 +726,9 @@ export const secretChangeRequestServiceFactory = ({
   const updateApprovalStatus: TSecretChangeRequestMethods["updateApprovalStatus"] = async ({
     approvalId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     status
   }) => {
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.SecretApproval) && status === RequestState.Open) {
       throw new BadRequestError({
         message:
@@ -749,10 +737,10 @@ export const secretChangeRequestServiceFactory = ({
     }
 
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
-    await $assertCanActOnRequest({ approvalRequest, actorId, actorAuthMethod, actorOrgId, action: "update" });
+    await $assertCanActOnRequest({ approvalRequest, actor, action: "update" });
 
     const alreadyInStatusMessage =
       status === RequestState.Open ? "Approval request is already open" : "Approval request is already closed";
@@ -803,7 +791,7 @@ export const secretChangeRequestServiceFactory = ({
       const updatedApprovalRequest = await approvalRequestDAL.updateById(approvalRequest.id, { status }, tx);
       const updatedChangeRequest = await secretChangeRequestDAL.updateById(
         lockedChangeRequest.id,
-        { statusChangedByUserId: actorId },
+        { statusChangedByUserId: actor.principal.id },
         tx
       );
       return { approvalRequest: updatedApprovalRequest, secretChangeRequest: updatedChangeRequest };
@@ -842,28 +830,15 @@ export const secretChangeRequestServiceFactory = ({
     return { ...toSecretChangeRequestBase(updated), policyId: policy.id, projectId: approvalRequest.projectId };
   };
 
-  const getSecretApprovalDetails: TSecretChangeRequestMethods["getSecretApprovalDetails"] = async ({
-    id,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }) => {
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+  const getSecretApprovalDetails: TSecretChangeRequestMethods["getSecretApprovalDetails"] = async ({ id, actor }) => {
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(id);
     const { projectId } = approvalRequest;
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [secretChangeRequest.folderId]);
     if (!folder) throw new NotFoundError({ message: `Secret approval request with ID '${id}' not found` });
 
-    const { hasRole, permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const steps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id);
     const policy = approvalRequest.policyId
@@ -882,17 +857,17 @@ export const secretChangeRequestServiceFactory = ({
       userIdsByGroupId
     );
     const bypasserUserIds = resolveActorUserIds(bypassers, userIdsByGroupId);
-    const isReviewer = approverUserIds.includes(actorId);
+    const isReviewer = approverUserIds.includes(actor.principal.id);
 
-    const canReadApprovalRequests = permission.can(
-      ProjectPermissionSecretApprovalRequestActions.Read,
-      ProjectPermissionSub.SecretApprovalRequest
-    );
+    const canReadApprovalRequests = permission.can({
+      action: ProjectPermissionSecretApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.SecretApprovalRequest
+    });
     if (
       !canReadApprovalRequests &&
-      !hasRole(ProjectMembershipRole.Admin) &&
-      approvalRequest.requesterId !== actorId &&
-      approvalRequest.machineIdentityId !== actorId &&
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      approvalRequest.requesterId !== actor.principal.id &&
+      approvalRequest.machineIdentityId !== actor.principal.id &&
       !isReviewer
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -1053,29 +1028,16 @@ export const secretChangeRequestServiceFactory = ({
     policyId
   }) => secretChangeRequestDAL.countByProjectId(projectId, userId, policyId);
 
-  const $resolveRequestAccessFilter = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: Pick<TListApprovalsDTO, "projectId" | "actor" | "actorId" | "actorAuthMethod" | "actorOrgId">) => {
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+  const $resolveRequestAccessFilter = async ({ projectId, actor }: Pick<TListApprovalsDTO, "projectId" | "actor">) => {
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+
+    const canReadAllApprovalRequests = permission.can({
+      action: ProjectPermissionSecretApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.SecretApprovalRequest
     });
-
-    const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionSecretApprovalRequestActions.Read,
-      ProjectPermissionSub.SecretApprovalRequest
-    );
-    return canReadAllApprovalRequests ? undefined : actorId;
+    return canReadAllApprovalRequests ? undefined : actor.principal.id;
   };
 
   const requestCount = async ({ projectId, policyId, ...actorDto }: TApprovalRequestCountDTO) => {
@@ -1085,10 +1047,7 @@ export const secretChangeRequestServiceFactory = ({
 
   const getSecretApprovals = async ({
     projectId,
-    actorId,
     actor,
-    actorAuthMethod,
-    actorOrgId,
     status,
     environment,
     committer,
@@ -1098,7 +1057,7 @@ export const secretChangeRequestServiceFactory = ({
     orderBy,
     orderDirection
   }: TListApprovalsDTO) => {
-    const userId = await $resolveRequestAccessFilter({ projectId, actor, actorId, actorAuthMethod, actorOrgId });
+    const userId = await $resolveRequestAccessFilter({ projectId, actor });
 
     const page = await listSecretChangeRequests({
       projectId,

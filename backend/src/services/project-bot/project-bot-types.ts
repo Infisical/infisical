@@ -1,5 +1,5 @@
 import { TProjectBots } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TSetActiveStateDTO = {
   isActive: boolean;
@@ -8,7 +8,7 @@ export type TSetActiveStateDTO = {
     encryptedKey?: string;
   };
   botId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TFindBotByProjectIdDTO = {
   privateKey?: string;
@@ -17,7 +17,8 @@ export type TFindBotByProjectIdDTO = {
     nonce: string;
     encryptedKey: string;
   };
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetPrivateKeyDTO = {
   bot: TProjectBots;

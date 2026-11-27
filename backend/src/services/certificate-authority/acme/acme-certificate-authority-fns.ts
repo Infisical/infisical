@@ -6,6 +6,7 @@ import net from "net";
 import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -19,7 +20,6 @@ import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/erro
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -32,6 +32,7 @@ import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/c
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
+import { TRfc2136Connection } from "@app/services/app-connection/rfc2136/rfc2136-connection-types";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -76,6 +77,7 @@ import {
   validateGcpCloudDnsZone
 } from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
+import { rfc2136DeleteTxtRecord, rfc2136InsertTxtRecord, validateRfc2136Zone } from "./dns-providers/rfc2136";
 import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
@@ -273,7 +275,8 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
   [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
-  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
+  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS,
+  [AcmeDnsProvider.Rfc2136]: AppConnection.Rfc2136
 };
 
 const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
@@ -517,7 +520,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -550,6 +554,16 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             { keyStore }
+          );
+          break;
+        }
+        case AcmeDnsProvider.Rfc2136: {
+          await rfc2136InsertTxtRecord(
+            connection as TRfc2136Connection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { gatewayV2Service, gatewayPoolService, abortSignal }
           );
           break;
         }
@@ -614,7 +628,8 @@ export const executeAcmeOrder = async (
             connection as TAzureDnsConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
-            recordValue
+            recordValue,
+            oidcIssuerService
           );
           break;
         }
@@ -646,6 +661,16 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             { keyStore }
+          );
+          break;
+        }
+        case AcmeDnsProvider.Rfc2136: {
+          await rfc2136DeleteTxtRecord(
+            connection as TRfc2136Connection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { gatewayV2Service, gatewayPoolService }
           );
           break;
         }
@@ -783,7 +808,7 @@ export const AcmeCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAcmeCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     if (crypto.isFipsModeEnabled()) {
       throw new CryptographyError({
@@ -803,6 +828,10 @@ export const AcmeCertificateAuthorityFns = ({
 
     if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
       validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+    }
+
+    if (dnsProviderConfig.provider === AcmeDnsProvider.Rfc2136) {
+      validateRfc2136Zone(dnsProviderConfig.hostedZoneId);
     }
 
     if (dnsResolver) {
@@ -876,7 +905,7 @@ export const AcmeCertificateAuthorityFns = ({
     id: string;
     status?: CaStatus;
     configuration: TUpdateAcmeCertificateAuthorityDTO["configuration"];
-    actor: OrgServiceActor;
+    actor: TActorContext;
     name?: string;
   }) => {
     // Validated before the transaction: the connection check decrypts through KMS Core, which takes its own connection.
@@ -892,6 +921,10 @@ export const AcmeCertificateAuthorityFns = ({
 
       if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
         validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+      }
+
+      if (dnsProviderConfig.provider === AcmeDnsProvider.Rfc2136) {
+        validateRfc2136Zone(dnsProviderConfig.hostedZoneId);
       }
 
       if (dnsResolver) {

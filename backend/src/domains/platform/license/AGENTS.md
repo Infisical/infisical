@@ -67,7 +67,7 @@ Rules:
 - **License never joins a caller's transaction.** It owns no rows, so it hands out values before the
   transaction and the domain owning the rows does the locked count. For a seat limit that must hold under
   concurrency (identity create), read the plan and `getSeatCountScope(orgId)` before your transaction, then
-  call `organizationsProjectsService.within(sealKnexTransaction(trx)).lockAndCountBillableOrgActors(scope)`
+  call `organizationsService.within(sealKnexTransaction(trx)).lockAndCountBillableOrgActors(scope)`
   inside it, before the insert, and check
   `plan.exceeds(PlanLimit.Identities, SeatUsage.fromBillableActors(counts).identitiesUsed)`. Paths that never locked
   (SSO, SCIM, invites) read `getSeatUsage` before the transaction and call `seatUsage.assertAvailable(plan, via)`
@@ -82,9 +82,10 @@ Rules:
 - **Deleted orgs close from the outbox.** Only the `license-org-deleted` consumer
   (`services/org/license-org-deleted-consumer.ts`) calls `closeDeletedOrg`, for root orgs on cloud. It throws so
   the outbox retries; the License Server delete is idempotent.
-- **License knows no product.** It sits on `organizationsProjectsService` and builds the two seat meters
+- **License knows no product.** It sits on `organizationsService` (roots, org reads, billable actors) and `projectsService`
+  (workspaces), and builds the two seat meters
   (`identities`, `user_identities`) itself (`seatUsageCounters` in `services/helpers/usage-counters.ts`). Every other meter comes in as a
-  `TUsageCounter` from the owning product domain. organizations-projects never imports License. A meter's
+  `TUsageCounter` from the owning product domain. Organizations and Projects never import License. A meter's
   `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Metering events
   (`recordMeteringEvents`) follow the same rule, from their meter's scope. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
@@ -109,6 +110,6 @@ Rules:
   `.github/workflows/run-backend-bdd-tests.yml` `sed`s feature lines in it by path, so update that workflow if the
   file moves.
 - **Tests:** `ce/testing/build-license.ts` builds the module on an in-memory key store and queue, with
-  `FakeLicenseServer` (policy and License Server) and `FakeOrganizationsProjectsService`. `testFeatures()` is
+  `FakeLicenseServer` (policy and License Server) `FakeOrganizationsService` and `FakeProjectsService`. `testFeatures()` is
   test data, not product defaults. Consumers use `FakeLicenseService` / `FakeUsageMeteringService`; product
   domains read their counters with `usageCounter(module.usageCounters, Meter.X)`.

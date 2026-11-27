@@ -39,6 +39,12 @@ Used to configure platform-specific security and operational settings.
   https://app.infisical.com).
 </ParamField>
 
+<ParamField query="MCP_SERVER_URL" type="string" default="SITE_URL followed by /api/mcp" optional>
+  The URL that MCP clients use to connect to the [Infisical MCP server](/documentation/platform/mcp-server). Set it if a proxy serves the MCP server at a URL other than your `SITE_URL` followed by `/api/mcp`, such as `https://mcp.example.com/mcp`. The proxy has to forward requests for that URL to `/api/mcp` on Infisical.
+
+  If you change the URL, connected MCP clients stop working until users add the server again with the new URL.
+</ParamField>
+
 <ParamField query="INSTANCE_SETUP_TOKEN" type="string" optional>
   A token that the first super admin must enter to set up the instance. The token must be
   6 to 32 characters long. If the token is shorter or longer, Infisical doesn't start.

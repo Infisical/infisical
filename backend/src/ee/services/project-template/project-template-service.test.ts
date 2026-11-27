@@ -1,10 +1,10 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { projectTemplateServiceFactory } from "./project-template-service";
 
@@ -22,10 +22,8 @@ const LEGACY_NAME = "legacy​bot";
 const REACHED_TRANSACTION = new Error("reached transaction");
 
 const actor = {
-  type: ActorType.USER,
-  id: "actor-1",
-  orgId: ORG_ID,
-  authMethod: null
+  principal: { type: ActorType.USER, id: "actor-1" },
+  org: { id: ORG_ID }
 } as unknown as Parameters<ReturnType<typeof projectTemplateServiceFactory>["createProjectTemplate"]>[1];
 
 const templateCountQuery = vi.fn();
@@ -38,10 +36,12 @@ const createService = ({ orgTemplateCount }: { orgTemplateCount?: number } = {})
       environmentLimit: null,
       smProjectTemplatesPerOrgLimit: 100
     }),
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: ["create", "edit"], subject: "project-templates" }])
-      })
+    orgPermissionService: {
+      getOrgPermission: vi
+        .fn()
+        .mockResolvedValue(
+          Permission.fromRules({ rules: [{ action: ["create", "edit"], subject: "project-templates" }] as never })
+        )
     },
     projectTemplateDAL: {
       findOne: vi.fn().mockResolvedValue(undefined),

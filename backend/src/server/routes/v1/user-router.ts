@@ -2,12 +2,12 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simp
 import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
+import { AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
 import {
   ensureFactorEnrollmentStepUpMfa,
@@ -41,7 +41,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
-      const user = await server.services.user.getMe(req.permission.id);
+      const user = await server.services.user.getMe(req.actor.id);
       return { user };
     }
   });
@@ -66,7 +66,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.authMode === AuthMode.JWT && req.auth.user.email) {
-        const users = await server.services.user.getAllMyAccounts(req.auth.user.email, req.permission.id);
+        const users = await server.services.user.getAllMyAccounts(req.auth.user.email, req.actor.id);
         return { users };
       }
       return { users: [] };
@@ -90,7 +90,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       if (req.auth.authMode === AuthMode.JWT && req.auth.user.email) {
-        await server.services.user.removeMyDuplicateAccounts(req.auth.user.email, req.permission.id);
+        await server.services.user.removeMyDuplicateAccounts(req.auth.user.email, req.actor.id);
       }
       return { message: "Removed all duplicate accounts" };
     }
@@ -141,7 +141,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.user.getUserProjectFavorites(req.permission.id, req.query.orgId);
+      return server.services.user.getUserProjectFavorites(req.actor.id, req.query.orgId);
     }
   });
 
@@ -160,11 +160,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.user.updateUserProjectFavorites(
-        req.permission.id,
-        req.body.orgId,
-        req.body.projectFavorites
-      );
+      return server.services.user.updateUserProjectFavorites(req.actor.id, req.body.orgId, req.body.projectFavorites);
     }
   });
 
@@ -194,10 +190,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const groupMemberships = await server.services.user.listUserGroups({
         username: req.params.username,
-        actorOrgId: req.permission.orgId,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.actor
       });
 
       return groupMemberships;
@@ -221,7 +214,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.totp.getUserTotpConfig({
-        userId: req.permission.id
+        userId: req.actor.id
       });
     }
   });
@@ -240,10 +233,10 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.user.assertMfaFactorRemovable(req.permission.id, MfaMethod.TOTP);
+      await server.services.user.assertMfaFactorRemovable(req.actor.id, MfaMethod.TOTP);
       await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        orgId: req.permission.orgId,
+        userId: req.actor.id,
+        orgId: req.actor.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
@@ -251,7 +244,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         excludeMfaMethod: MfaMethod.TOTP
       });
       return server.services.totp.deleteUserTotpConfig({
-        userId: req.permission.id
+        userId: req.actor.id
       });
     }
   });
@@ -275,11 +268,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }),
     handler: async (req) => {
       await ensureFactorEnrollmentStepUpMfa(server, {
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: getStepUpSessionId(req)
       });
       return server.services.totp.registerUserTotp({
-        userId: req.permission.id
+        userId: req.actor.id
       });
     }
   });
@@ -306,11 +299,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }),
     handler: async (req) => {
       await ensureFactorEnrollmentStepUpMfa(server, {
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: getStepUpSessionId(req)
       });
       return server.services.totp.verifyUserTotpConfig({
-        userId: req.permission.id,
+        userId: req.actor.id,
         totp: req.body.totp
       });
     }
@@ -336,15 +329,15 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        orgId: req.permission.orgId,
+        userId: req.actor.id,
+        orgId: req.actor.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
         message: "MFA verification is required to access recovery codes"
       });
       const recoveryCodes = await server.services.mfaRecoveryCode.getRecoveryCodes({
-        userId: req.permission.id
+        userId: req.actor.id
       });
       return { recoveryCodes };
     }
@@ -372,15 +365,15 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        orgId: req.permission.orgId,
+        userId: req.actor.id,
+        orgId: req.actor.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
         message: "MFA verification is required to access recovery codes"
       });
       const recoveryCodes = await server.services.mfaRecoveryCode.rotateRecoveryCodes({
-        userId: req.permission.id
+        userId: req.actor.id
       });
       return { recoveryCodes };
     }
@@ -414,7 +407,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.webAuthn.getUserWebAuthnCredentials({
-        userId: req.permission.id
+        userId: req.actor.id
       });
     }
   });
@@ -436,11 +429,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }),
     handler: async (req) => {
       await ensureFactorEnrollmentStepUpMfa(server, {
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: getStepUpSessionId(req)
       });
       return server.services.webAuthn.generateRegistrationOptions({
-        userId: req.permission.id
+        userId: req.actor.id
       });
     }
   });
@@ -482,11 +475,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     }),
     handler: async (req) => {
       await ensureFactorEnrollmentStepUpMfa(server, {
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: getStepUpSessionId(req)
       });
       return server.services.webAuthn.verifyRegistrationResponse({
-        userId: req.permission.id,
+        userId: req.actor.id,
         registrationResponse: req.body.registrationResponse as RegistrationResponseJSON,
         name: req.body.name
       });
@@ -508,7 +501,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       return server.services.webAuthn.generateAuthenticationOptions({
-        userId: req.permission.id
+        userId: req.actor.id
       });
     }
   });
@@ -549,7 +542,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       return server.services.webAuthn.verifyAuthenticationResponse({
-        userId: req.permission.id,
+        userId: req.actor.id,
         authenticationResponse: req.body.authenticationResponse as AuthenticationResponseJSON
       });
     }
@@ -580,7 +573,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       return server.services.webAuthn.updateWebAuthnCredential({
-        userId: req.permission.id,
+        userId: req.actor.id,
         id: req.params.id,
         name: req.body.name
       });
@@ -610,7 +603,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { credentials } = await server.services.webAuthn.getUserWebAuthnCredentials({
-        userId: req.permission.id
+        userId: req.actor.id
       });
       const credential = credentials.find((cred) => cred.id.toLowerCase() === req.params.id.toLowerCase());
       if (!credential) {
@@ -618,12 +611,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }
       const isRemovingLastPasskey = credentials.length === 1;
       if (isRemovingLastPasskey) {
-        await server.services.user.assertMfaFactorRemovable(req.permission.id, MfaMethod.WEBAUTHN);
+        await server.services.user.assertMfaFactorRemovable(req.actor.id, MfaMethod.WEBAUTHN);
       }
 
       await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        orgId: req.permission.orgId,
+        userId: req.actor.id,
+        orgId: req.actor.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.query.mfaSessionId,
@@ -631,7 +624,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         excludeMfaMethod: isRemovingLastPasskey ? MfaMethod.WEBAUTHN : undefined
       });
       await server.services.webAuthn.deleteWebAuthnCredential({
-        userId: req.permission.id,
+        userId: req.actor.id,
         id: credential.id
       });
       return { success: true };

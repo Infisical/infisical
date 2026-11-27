@@ -1,19 +1,19 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
 import { join } from "path";
 
-import { ActionProjectType, TSecretScanningDataSourcesInsert } from "@app/db/schemas";
+import { ProjectType, TSecretScanningDataSourcesInsert } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretScanningConfigActions,
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSecretScanningFindingActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
 import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
 import {
@@ -63,17 +63,16 @@ import {
   writeTextToFile
 } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { AlertPrincipalType } from "@app/services/alert/alert-types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { bitbucketSecretScanningService } from "./bitbucket/bitbucket-secret-scanning-service";
@@ -94,7 +93,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   secretScanningV2DAL: TSecretScanningV2DALFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
@@ -116,7 +115,7 @@ const DATA_SOURCE_LOCK_TTL_MS = 60 * 1000;
 
 export const secretScanningV2ServiceFactory = ({
   secretScanningV2DAL,
-  permissionService,
+  projectPermissionService,
   appConnectionService,
   licenseService,
   secretScanningV2Queue,
@@ -157,11 +156,8 @@ export const secretScanningV2ServiceFactory = ({
     }
   };
 
-  const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (
-    projectId: string,
-    actor: OrgServiceActor
-  ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+  const $checkListSecretScanningDataSourcesByProjectIdPermissions = async (projectId: string, actor: TActorContext) => {
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -169,24 +165,21 @@ export const secretScanningV2ServiceFactory = ({
           "Failed to access Secret Scanning Data Sources due to plan restriction. Upgrade plan to enable Secret Scanning."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Read,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Read,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
   };
 
   const listSecretScanningDataSourcesByProjectId = async (
     { projectId, type }: TListSecretScanningDataSourcesByProjectId,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     await $checkListSecretScanningDataSourcesByProjectIdPermissions(projectId, actor);
 
@@ -200,7 +193,7 @@ export const secretScanningV2ServiceFactory = ({
 
   const listSecretScanningDataSourcesWithDetailsByProjectId = async (
     { projectId, type }: TListSecretScanningDataSourcesByProjectId,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     await $checkListSecretScanningDataSourcesByProjectIdPermissions(projectId, actor);
 
@@ -214,9 +207,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const findSecretScanningDataSourceById = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -231,19 +224,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Read,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Read,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -255,9 +245,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const findSecretScanningDataSourceByName = async (
     { type, sourceName, projectId }: TFindSecretScanningDataSourceByNameDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -276,19 +266,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with name "${sourceName}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Read,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Read,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -346,7 +333,7 @@ export const secretScanningV2ServiceFactory = ({
 
   const createSecretScanningDataSource = async (
     { isAutoScanEnabled, alerts, ...dto }: TCreateSecretScanningDataSourceDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const supportsDiscovery = doesDataSourceSupportDiscovery(dto);
 
@@ -365,7 +352,7 @@ export const secretScanningV2ServiceFactory = ({
       isAutoScanEnabled: isScanNewCommitsEnabled
     };
 
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -373,27 +360,24 @@ export const secretScanningV2ServiceFactory = ({
           "Failed to create Secret Scanning Data Source due to plan restriction. Upgrade plan to enable Secret Scanning."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: payload.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: payload.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Create,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Create,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     // Choosing alerts is managing them, which the alert API allows only with edit on data sources.
     if (
       alerts &&
-      permission.cannot(
-        ProjectPermissionSecretScanningDataSourceActions.Edit,
-        ProjectPermissionSub.SecretScanningDataSources
-      )
+      permission.cannot({
+        action: ProjectPermissionSecretScanningDataSourceActions.Edit,
+        subject: ProjectPermissionSub.SecretScanningDataSources
+      })
     ) {
       throw new ForbiddenRequestError({
         message:
@@ -438,10 +422,7 @@ export const secretScanningV2ServiceFactory = ({
               eventType,
               name: SECRET_SCANNING_ALERT_NAMES[eventType],
               channels,
-              actor: actor.type,
-              actorId: actor.id,
-              actorAuthMethod: actor.authMethod,
-              actorOrgId: actor.orgId
+              actor
             })
           )
         : SECRET_SCANNING_DEFAULT_ALERTS.map(({ eventType, name }) =>
@@ -541,7 +522,7 @@ export const secretScanningV2ServiceFactory = ({
 
   const $updateSecretScanningDataSource = async (
     { type, dataSourceId, isAutoScanEnabled, ...dto }: TUpdateSecretScanningDataSourceDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const isScanNewCommitsEnabled = dto.isScanNewCommitsEnabled ?? isAutoScanEnabled;
     const payload = {
@@ -552,7 +533,7 @@ export const secretScanningV2ServiceFactory = ({
       isAutoScanEnabled: isScanNewCommitsEnabled
     };
 
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -567,19 +548,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Edit,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Edit,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -696,9 +674,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const $deleteSecretScanningDataSource = async (
     { type, dataSourceId }: TDeleteSecretScanningDataSourceDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -713,19 +691,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Delete,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Delete,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -781,9 +756,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const triggerSecretScanningDataSourceScan = async (
     { type, dataSourceId, resourceId }: TTriggerSecretScanningDataSourceDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -798,19 +773,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.TriggerScans,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -840,7 +812,7 @@ export const secretScanningV2ServiceFactory = ({
       {
         trigger: SecretScanningScanTrigger.Manual,
         resourceExternalId,
-        triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined
+        triggeredByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : undefined
       }
     );
 
@@ -850,9 +822,9 @@ export const secretScanningV2ServiceFactory = ({
   // Adds one resource by name, or every resource the connection can access when no name is given.
   const $addSecretScanningResources = async (
     { type, dataSourceId, resourceName }: TAddAllSecretScanningResourcesDTO & { resourceName?: string },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -868,19 +840,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${sourceName} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Edit,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Edit,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -998,7 +967,7 @@ export const secretScanningV2ServiceFactory = ({
       try {
         await secretScanningV2Queue.queueDataSourceFullScan(dataSourceWithConnection, {
           trigger: SecretScanningScanTrigger.ResourcesAdded,
-          triggeredByUserId: actor.type === ActorType.USER ? actor.id : undefined,
+          triggeredByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : undefined,
           shouldScanResource: (resource) => newExternalIds.has(resource.externalId)
         });
       } catch (error) {
@@ -1013,16 +982,16 @@ export const secretScanningV2ServiceFactory = ({
     return { resources: addedResources, projectId: dataSource.projectId, dataSourceName: dataSource.name };
   };
 
-  const addSecretScanningResource = ({ resourceName, ...dto }: TAddSecretScanningResourceDTO, actor: OrgServiceActor) =>
+  const addSecretScanningResource = ({ resourceName, ...dto }: TAddSecretScanningResourceDTO, actor: TActorContext) =>
     $withDataSourceLock(dto.dataSourceId, () => $addSecretScanningResources({ ...dto, resourceName }, actor));
 
-  const addAllSecretScanningResources = (dto: TAddAllSecretScanningResourcesDTO, actor: OrgServiceActor) =>
+  const addAllSecretScanningResources = (dto: TAddAllSecretScanningResourcesDTO, actor: TActorContext) =>
     $withDataSourceLock(dto.dataSourceId, () => $addSecretScanningResources(dto, actor));
 
   // Not gated on the plan: a downgraded org must still be able to remove what it added.
   const $removeSecretScanningResource = async (
     { type, dataSourceId, resourceId }: TRemoveSecretScanningResourceDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
     const sourceName = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
@@ -1032,19 +1001,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${sourceName} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.Edit,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.Edit,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -1096,9 +1062,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const listSecretScanningResourcesByDataSourceId = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1113,19 +1079,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.ReadResources,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -1142,7 +1105,7 @@ export const secretScanningV2ServiceFactory = ({
   // Lists what the data source's connection can see, so a user can pick resources to add to its include list.
   const listSecretScanningAvailableResourcesByDataSourceId = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
@@ -1151,19 +1114,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.ReadResources,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -1227,9 +1187,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const listSecretScanningScansByDataSourceId = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1244,19 +1204,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -1270,9 +1227,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const listSecretScanningResourcesWithDetailsByDataSourceId = async (
     { type, dataSourceId, ...filter }: TFindSecretScanningDataSourceByIdDTO & TListSecretScanningResourcesFilter,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1287,19 +1244,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.ReadResources,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.ReadResources,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -1320,9 +1274,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const listSecretScanningScansWithDetailsByDataSourceId = async (
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1337,19 +1291,16 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source with ID "${dataSourceId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: dataSource.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: dataSource.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningDataSourceActions.ReadScans,
-      ProjectPermissionSub.SecretScanningDataSources
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningDataSourceActions.ReadScans,
+      subject: ProjectPermissionSub.SecretScanningDataSources
+    });
 
     if (type !== dataSource.type)
       throw new BadRequestError({
@@ -1361,20 +1312,17 @@ export const secretScanningV2ServiceFactory = ({
     return { scans: scans as TSecretScanningScanWithDetails[], projectId: dataSource.projectId };
   };
 
-  const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
+  const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: TActorContext) => {
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningFindingActions.Read,
-      ProjectPermissionSub.SecretScanningFindings
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningFindingActions.Read,
+      subject: ProjectPermissionSub.SecretScanningFindings
+    });
 
     return secretScanningV2DAL.findings.countByProjectId(projectId, {
       status: SecretScanningFindingStatus.Unresolved
@@ -1384,21 +1332,18 @@ export const secretScanningV2ServiceFactory = ({
   const listSecretScanningFindingsByProjectId = async (
     projectId: string,
     filter: TListSecretScanningFindingsFilter,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningFindingActions.Read,
-      ProjectPermissionSub.SecretScanningFindings
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningFindingActions.Read,
+      subject: ProjectPermissionSub.SecretScanningFindings
+    });
 
     const { findings, totalCount } = await secretScanningV2DAL.findings.findByProjectId(projectId, filter);
 
@@ -1409,7 +1354,7 @@ export const secretScanningV2ServiceFactory = ({
   const findSecretScanningFindingWithPermission = async (
     findingId: string,
     action: ProjectPermissionSecretScanningFindingActions,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const finding = await secretScanningV2DAL.findings.findByIdWithDetails(findingId);
 
@@ -1418,23 +1363,20 @@ export const secretScanningV2ServiceFactory = ({
         message: `Could not find Secret Scanning Finding with ID "${findingId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId: finding.projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId: finding.projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.SecretScanningFindings);
+    permission.assert({ action, subject: ProjectPermissionSub.SecretScanningFindings });
 
     return finding;
   };
 
   const listSecretScanningFindingLocations = async (
     { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const finding = await findSecretScanningFindingWithPermission(
       findingId,
@@ -1452,9 +1394,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const updateSecretScanningFindingById = async (
     { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1478,7 +1420,7 @@ export const secretScanningV2ServiceFactory = ({
           triageComment,
           status,
           ...(isStatusChange || triageComment !== undefined
-            ? { triagedAt: now, triagedByUserId: actor.type === ActorType.USER ? actor.id : null }
+            ? { triagedAt: now, triagedByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : null }
             : {}),
           ...(isStatusChange ? { resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null } : {})
         },
@@ -1496,8 +1438,8 @@ export const secretScanningV2ServiceFactory = ({
     };
   };
 
-  const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+  const findSecretScanningConfigByProjectId = async (projectId: string, actor: TActorContext) => {
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1505,19 +1447,16 @@ export const secretScanningV2ServiceFactory = ({
           "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningConfigActions.Read,
-      ProjectPermissionSub.SecretScanningConfigs
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningConfigActions.Read,
+      subject: ProjectPermissionSub.SecretScanningConfigs
+    });
 
     const config = await secretScanningV2DAL.configs.findOne({
       projectId
@@ -1530,9 +1469,9 @@ export const secretScanningV2ServiceFactory = ({
 
   const upsertSecretScanningConfig = async (
     { projectId, content }: TUpsertSecretScanningConfigDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
 
     if (!plan.has(PlanFeature.SecretScanning))
       throw new BadRequestError({
@@ -1540,19 +1479,16 @@ export const secretScanningV2ServiceFactory = ({
           "Failed to access Secret Scanning Configuration due to plan restriction. Upgrade plan to enable Secret Scanning."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretScanning,
-      projectId
+    const permission = await projectPermissionService.getProjectPermission({
+      actor,
+      projectId,
+      type: ProjectType.SecretScanning
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretScanningConfigActions.Update,
-      ProjectPermissionSub.SecretScanningConfigs
-    );
+    permission.assert({
+      action: ProjectPermissionSecretScanningConfigActions.Update,
+      subject: ProjectPermissionSub.SecretScanningConfigs
+    });
 
     if (content) {
       const tempFolder = await createTempFolder();
@@ -1584,13 +1520,13 @@ export const secretScanningV2ServiceFactory = ({
     return config;
   };
 
-  const updateSecretScanningDataSource = (dto: TUpdateSecretScanningDataSourceDTO, actor: OrgServiceActor) =>
+  const updateSecretScanningDataSource = (dto: TUpdateSecretScanningDataSourceDTO, actor: TActorContext) =>
     $withDataSourceLock(dto.dataSourceId, () => $updateSecretScanningDataSource(dto, actor));
 
-  const deleteSecretScanningDataSource = (dto: TDeleteSecretScanningDataSourceDTO, actor: OrgServiceActor) =>
+  const deleteSecretScanningDataSource = (dto: TDeleteSecretScanningDataSourceDTO, actor: TActorContext) =>
     $withDataSourceLock(dto.dataSourceId, () => $deleteSecretScanningDataSource(dto, actor));
 
-  const removeSecretScanningResource = (dto: TRemoveSecretScanningResourceDTO, actor: OrgServiceActor) =>
+  const removeSecretScanningResource = (dto: TRemoveSecretScanningResourceDTO, actor: TActorContext) =>
     $withDataSourceLock(dto.dataSourceId, () => $removeSecretScanningResource(dto, actor));
 
   return {

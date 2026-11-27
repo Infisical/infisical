@@ -1,16 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { PlanFeature } from "@app/domains/platform/license/ce/module";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { getResourceLimits } from "@app/lib/resource-limits";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { assertApprovalPolicyEnvironmentCapacity } from "@app/services/approval-policy/approval-policy-environment-limit-fns";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
-import { ActorType } from "@app/services/auth/auth-type";
 import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
@@ -53,7 +51,7 @@ const isDelegatedApprovalChanged = (
 
 export const secretAccessApprovalPolicyServiceFactory = ({
   projectDAL,
-  permissionService,
+  secretsPermissionService,
   projectEnvDAL,
   userDAL,
   groupDAL,
@@ -317,21 +315,9 @@ export const secretAccessApprovalPolicyServiceFactory = ({
 
   const $getProjectPermission = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId
-  }: Pick<TUpdateAccessApprovalPolicy, "actor" | "actorId" | "actorAuthMethod" | "actorOrgId"> & {
-    projectId: string;
-  }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  }: Pick<TUpdateAccessApprovalPolicy, "actor"> & { projectId: string }) => {
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     return permission;
   };
 
@@ -441,10 +427,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
   const createAccessApprovalPolicy = async ({
     name,
     actor,
-    actorId,
-    actorOrgId,
     secretPath,
-    actorAuthMethod,
     approvals,
     approvers,
     bypassers,
@@ -456,25 +439,18 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     approvalsRequired,
     maxTimePeriod,
     requestExpirationTime,
-    delegatedApproval,
-    orgActor
+    delegatedApproval
   }: TCreateAccessApprovalPolicy) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: project.id
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.SecretApproval
-    );
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.SecretApproval });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message:
@@ -507,12 +483,12 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       { projectId: project.id, orgId: project.orgId }
     );
     if (delegatedApproval) {
-      await delegatedApprovalService.validateConnection({ ...delegatedApproval, projectId: project.id }, orgActor);
+      await delegatedApprovalService.validateConnection({ ...delegatedApproval, projectId: project.id }, actor);
     }
 
     await $assertNoConflictingPolicy({ envs, secretPath });
 
-    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
       await assertApprovalPolicyEnvironmentCapacity(
         {
@@ -589,10 +565,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     bypassers,
     secretPath,
     name,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     approvals,
     enforcementLevel,
     allowedSelfApprovals: allowedSelfApprovalsInput,
@@ -600,25 +573,21 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     environments,
     maxTimePeriod,
     requestExpirationTime,
-    delegatedApproval,
-    orgActor
+    delegatedApproval
   }: TUpdateAccessApprovalPolicy) => {
     const policy = await $findPolicyById(
       policyId,
-      actorOrgId,
+      actor.org.id,
       `Access approval policy with ID '${policyId}' not found`
     );
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: policy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.SecretApproval)) {
       throw new BadRequestError({
         message:
@@ -645,16 +614,16 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     const nextDelegatedApproval = delegatedApproval === undefined ? policy.delegatedApproval : delegatedApproval;
     if (nextDelegatedApproval) {
       // we might need to change this in the future to check a specific permission if this is changed on the license server
-      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actorOrgId);
+      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actor.org.id);
       if (isDelegatedApprovalChanged(policy.delegatedApproval, nextDelegatedApproval)) {
         await delegatedApprovalService.validateConnection(
           { ...nextDelegatedApproval, projectId: policy.projectId },
-          orgActor
+          actor
         );
       }
     }
 
-    const resourceLimits = await getResourceLimits(licenseService, actorOrgId);
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     return approvalPolicyDAL.transaction(async (tx) => {
       const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
       if (!lockedPolicy) {
@@ -663,7 +632,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
 
       const current = await $findPolicyById(
         policy.id,
-        actorOrgId,
+        actor.org.id,
         `Access approval policy with ID '${policyId}' not found`,
         tx
       );
@@ -682,7 +651,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
           approvalsRequired,
           approvals: approvals ?? current.approvals
         },
-        { projectId: current.projectId, orgId: actorOrgId },
+        { projectId: current.projectId, orgId: actor.org.id },
         tx
       );
       if (involvesDelegatedApproval) await $assertNoPendingRequests(current, tx);
@@ -737,30 +706,18 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     });
   };
 
-  const deleteAccessApprovalPolicy = async ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteAccessApprovalPolicy) => {
+  const deleteAccessApprovalPolicy = async ({ policyId, actor }: TDeleteAccessApprovalPolicy) => {
     const policy = await $findPolicyById(
       policyId,
-      actorOrgId,
+      actor.org.id,
       `Secret approval policy with ID '${policyId}' not found`
     );
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: policy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.SecretApproval
-    );
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretApproval });
 
     await approvalPolicyDAL.transaction(async (tx) => {
       await approvalRequestDAL.update(
@@ -773,7 +730,7 @@ export const secretAccessApprovalPolicyServiceFactory = ({
       await revokeActiveSecretAccessGrants(
         {
           requestIds: requests.map((request) => request.id),
-          revokedByUserId: actor === ActorType.USER ? actorId : null
+          revokedByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : null
         },
         { approvalRequestGrantsDAL, additionalPrivilegeDAL },
         tx
@@ -785,59 +742,41 @@ export const secretAccessApprovalPolicyServiceFactory = ({
     return policy;
   };
 
-  const getAccessApprovalPolicyById = async ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetAccessApprovalPolicyByIdDTO) => {
+  const getAccessApprovalPolicyById = async ({ policyId, actor }: TGetAccessApprovalPolicyByIdDTO) => {
     const policy = await $findPolicyById(
       policyId,
-      actorOrgId,
+      actor.org.id,
       `Cannot find access approval policy with ID ${policyId}`
     );
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: policy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval });
 
     return policy;
   };
 
-  const getAccessApprovalPolicyByProjectSlug = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug
-  }: TListAccessApprovalPoliciesDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+  const getAccessApprovalPolicyByProjectSlug = async ({ actor, projectSlug }: TListAccessApprovalPoliciesDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone in the project should be able to get the policies.
-    await $getProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId: project.id });
+    await $getProjectPermission({ actor, projectId: project.id });
 
     return secretAccessApprovalPolicyDAL.findSecretAccessPolicies({ projectId: project.id });
   };
 
   const getAccessPolicyCountByEnvSlug = async ({
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectSlug,
-    actorId,
     envSlug
   }: TGetAccessPolicyCountByEnvironmentDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await $getProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId: project.id });
+    await $getProjectPermission({ actor, projectId: project.id });
 
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });

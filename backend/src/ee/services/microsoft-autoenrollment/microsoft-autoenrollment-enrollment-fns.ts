@@ -1,9 +1,9 @@
 import { TPkiMicrosoftAutoenrollmentConfigs } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TLdapConnection } from "@app/services/app-connection/ldap/ldap-connection-types";
@@ -93,16 +93,7 @@ export const buildMicrosoftAutoenrollmentState = ({
 });
 
 export const resolveMicrosoftAutoenrollmentConnection = async (
-  {
-    connectionId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    actorRootOrgId,
-    actorParentOrgId
-  }: { connectionId: string; actorRootOrgId: string; actorParentOrgId: string } & TProjectPermission,
+  { connectionId, projectId, actor }: { connectionId: string; projectId: string; actor: TActorContext },
   {
     appConnectionService
   }: { appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById"> }
@@ -110,14 +101,7 @@ export const resolveMicrosoftAutoenrollmentConnection = async (
   const connection = await appConnectionService.validateAppConnectionUsageById(
     AppConnection.LDAP,
     { connectionId, projectId },
-    {
-      id: actorId,
-      type: actor,
-      orgId: actorOrgId,
-      authMethod: actorAuthMethod,
-      rootOrgId: actorRootOrgId,
-      parentOrgId: actorParentOrgId
-    }
+    actor
   );
   if (connection.app !== AppConnection.LDAP) {
     throw new BadRequestError({

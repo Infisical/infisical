@@ -1,6 +1,7 @@
 package azureadcs
 
 import (
+	"crypto/x509"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -27,4 +28,11 @@ func WithTemplates(names ...string) map[string]any {
 // SubCA.
 func WithCATemplates(names ...string) map[string]any {
 	return map[string]any{"caTemplates": names}
+}
+
+// WithTemplateUsages is a seed publishing a template whose certificates carry the
+// application policies (extended key usages) given, as an AD CS administrator sets them
+// on the template's Extensions tab.
+func WithTemplateUsages(template string, usages ...x509.ExtKeyUsage) map[string]any {
+	return map[string]any{"templateUsages": map[string][]x509.ExtKeyUsage{template: usages}}
 }

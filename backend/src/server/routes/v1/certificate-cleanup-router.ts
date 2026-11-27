@@ -3,11 +3,11 @@ import { z } from "zod";
 import { CertificateCleanupConfigsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerCertificateCleanupRouter = async (server: FastifyZodProvider) => {
@@ -35,10 +35,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const config = await server.services.certificateCleanup.getConfig({
         projectId: req.internalCertManagerProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
       return { config };
     }
@@ -80,10 +77,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
         isEnabled: req.body.isEnabled,
         postExpiryRetentionDays: req.body.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: req.body.skipCertsWithActiveSyncs,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -103,10 +97,10 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateCleanupConfigured,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           isEnabled: config.isEnabled,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId
         }
       });

@@ -1,15 +1,8 @@
-import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { conditionsMatcher } from "@app/lib/casl";
+import { ActorType } from "@app/lib/auth/actor-types";
 
-import { ActorType } from "../auth/auth-type";
 import { projectEnvServiceFactory } from "./project-env-service";
 
 vi.mock("@app/lib/logger", () => ({
@@ -21,10 +14,6 @@ const ORG_ID = "org-id";
 const TX = { isTransaction: true };
 
 const createService = ({ environmentLimit, replicaEnvs, primaryEnvs }: Record<string, number>) => {
-  const builder = new AbilityBuilder<MongoAbility<ProjectPermissionSet>>(createMongoAbility);
-  builder.can(ProjectPermissionActions.Create, ProjectPermissionSub.Environments);
-  const permission = builder.build({ conditionsMatcher });
-
   const envsOf = (count: number) => Array.from({ length: count }, (_, i) => ({ id: `env-${i}` }));
   const projectEnvDAL = {
     find: vi.fn((_filter: unknown, opts?: { tx?: unknown }) =>
@@ -39,9 +28,8 @@ const createService = ({ environmentLimit, replicaEnvs, primaryEnvs }: Record<st
   const service = projectEnvServiceFactory({
     projectEnvDAL: projectEnvDAL as never,
     folderDAL: { create: vi.fn().mockResolvedValue({}) } as never,
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission }),
-      invalidateProjectFolderPermissionCache: vi.fn()
+    secretsPermissionService: {
+      getSecretsPermission: vi.fn().mockResolvedValue({ permission: { assert: vi.fn() } })
     } as never,
     licenseService: new FakeLicenseService().setPlan(ORG_ID, { environmentLimit }),
     keyStore: {
@@ -57,10 +45,7 @@ const createService = ({ environmentLimit, replicaEnvs, primaryEnvs }: Record<st
   const createEnvironment = () =>
     service.createEnvironment({
       projectId: PROJECT_ID,
-      actor: ActorType.USER,
-      actorId: "actor-id",
-      actorOrgId: ORG_ID,
-      actorAuthMethod: null,
+      actor: { principal: { type: ActorType.USER, id: "actor-id" }, org: { id: ORG_ID } } as never,
       name: "Staging",
       slug: "staging"
     });

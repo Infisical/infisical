@@ -1,21 +1,16 @@
 /* eslint-disable no-await-in-loop */
 import { posix as posixPath } from "node:path";
 
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import {
-  ActionProjectType,
-  TSecretFolders,
-  TSecretFolderVersions,
-  TSecretV2TagJunctionInsert,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { TSecretFolders, TSecretFolderVersions, TSecretV2TagJunctionInsert, TSecretVersionsV2 } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { DomainError } from "@app/domains/lib/errors";
 import { EventModificationType, TEventInput } from "@app/domains/platform/events/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
@@ -23,7 +18,6 @@ import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { logger } from "@app/lib/logger";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TFolderCheckpointResourcesDALFactory } from "../folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { TFolderCheckpointDALFactory } from "../folder-checkpoint/folder-checkpoint-dal";
 import { TFolderCommitChangesDALFactory } from "../folder-commit-changes/folder-commit-changes-dal";
@@ -181,7 +175,7 @@ type TFolderCommitServiceFactoryDep = {
     TFolderCommitQueueServiceFactory,
     "scheduleTreeCheckpoint" | "createFolderTreeCheckpoint"
   >;
-  permissionService?: TPermissionServiceFactory;
+  secretsPermissionService: TSecretsPermissionService;
   kmsDataKeyService: TKmsDataKeyService;
   secretTagDAL: Pick<
     TSecretTagDALFactory,
@@ -245,7 +239,7 @@ export const folderCommitServiceFactory = ({
   secretV2BridgeDAL,
   folderTreeCheckpointResourcesDAL,
   folderCommitQueueService,
-  permissionService,
+  secretsPermissionService,
   kmsDataKeyService,
   secretTagDAL,
   resourceMetadataDAL,
@@ -255,37 +249,22 @@ export const folderCommitServiceFactory = ({
 
   const checkProjectCommitReadPermission = async ({
     actor,
-    actorId,
     projectId,
-    actorAuthMethod,
-    actorOrgId,
     environment,
     secretPath
   }: {
-    actor: ActorType;
-    actorId: string;
+    actor: TActorContext;
     projectId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
     environment: string;
     secretPath: string;
   }) => {
-    if (!permissionService) {
-      throw new Error("Permission service not initialized");
-    }
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCommitsActions.Read,
-      subject(ProjectPermissionSub.Commits, { environment, secretPath })
-    );
+    permission.assert({
+      action: ProjectPermissionCommitsActions.Read,
+      subject: ProjectPermissionSub.Commits,
+      fields: { environment, secretPath }
+    });
   };
 
   /**
@@ -1625,17 +1604,11 @@ export const folderCommitServiceFactory = ({
   const getCommitById = async ({
     commitId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     tx
   }: {
     commitId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     tx?: Knex;
   }) => {
@@ -1651,9 +1624,6 @@ export const folderCommitServiceFactory = ({
 
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId,
       environment: folderWithPath.environmentSlug,
       secretPath: folderWithPath.path
@@ -1671,9 +1641,6 @@ export const folderCommitServiceFactory = ({
 
   const getCommitsForFolder = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     environment,
     path,
@@ -1683,10 +1650,7 @@ export const folderCommitServiceFactory = ({
     sort = "desc",
     authorFilter
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     environment: string;
     path: string;
@@ -1698,9 +1662,6 @@ export const folderCommitServiceFactory = ({
   }) => {
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId,
       environment,
       secretPath: path
@@ -1727,26 +1688,17 @@ export const folderCommitServiceFactory = ({
    */
   const getCommitAuthorsForFolder = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     environment,
     path
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     environment: string;
     path: string;
   }) => {
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId,
       environment,
       secretPath: path
@@ -1762,26 +1714,17 @@ export const folderCommitServiceFactory = ({
 
   const getCommitsCount = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     environment,
     path
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     environment: string;
     path: string;
   }) => {
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId,
       environment,
       secretPath: path
@@ -1802,16 +1745,10 @@ export const folderCommitServiceFactory = ({
    */
   const getCommitChanges = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     commitId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     commitId: string;
   }) => {
@@ -1827,9 +1764,6 @@ export const folderCommitServiceFactory = ({
 
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId,
       environment: folderWithPath.environmentSlug,
       secretPath: folderWithPath.path
@@ -2309,16 +2243,10 @@ export const folderCommitServiceFactory = ({
   const getLatestCommit = async ({
     folderId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId
   }: {
     folderId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
   }) => {
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId]);
@@ -2328,9 +2256,6 @@ export const folderCommitServiceFactory = ({
 
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId,
       environment: folderWithPath.environmentSlug,
       secretPath: folderWithPath.path
@@ -2345,24 +2270,14 @@ export const folderCommitServiceFactory = ({
   const revertCommitChanges = async ({
     commitId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     message = "Revert commit changes"
   }: {
     commitId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     message?: string;
   }) => {
-    if (!permissionService) {
-      throw new Error("Permission service not initialized");
-    }
-
     // Get the commit to revert first to get folder info for permission check
     const commitToRevert = await folderCommitDAL.findById(commitId, undefined, projectId);
     if (!commitToRevert) {
@@ -2374,30 +2289,21 @@ export const folderCommitServiceFactory = ({
       throw new NotFoundError({ message: `Folder for commit ${commitId} not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCommitsActions.PerformRollback,
-      subject(ProjectPermissionSub.Commits, {
+    permission.assert({
+      action: ProjectPermissionCommitsActions.PerformRollback,
+      subject: ProjectPermissionSub.Commits,
+      fields: {
         environment: folderWithPath.environmentSlug,
         secretPath: folderWithPath.path
-      })
-    );
+      }
+    });
 
     // Check read permissions
     await checkProjectCommitReadPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
       environment: folderWithPath.environmentSlug,
       secretPath: folderWithPath.path
     });
@@ -2440,8 +2346,8 @@ export const folderCommitServiceFactory = ({
     const revertResult = await applyFolderStateDifferences({
       differences: filteredChanges,
       actorInfo: {
-        actorType: actor,
-        actorId,
+        actorType: actor.principal.type,
+        actorId: actor.principal.id,
         message: message || `Reverted changes from commit ${commitId}`
       },
       folderId: commitToRevert.folderId,

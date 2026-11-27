@@ -22,6 +22,13 @@ const AmazonIssuedValidityDays = 198
 type CertificateManager struct {
 	Policy
 	Certificates map[string]*ACMCertificate `json:"certificates"`
+	// NextValidityDays, when set, is how long the next certificate RequestCertificate
+	// issues is valid instead of AmazonIssuedValidityDays, so a test can make one that is
+	// already inside its renewal window. Renewals keep the usual validity.
+	NextValidityDays int `json:"nextValidityDays,omitempty"`
+	// HoldValidation keeps every requested certificate in PENDING_VALIDATION, as ACM does
+	// until it sees the validation record, until a seed releases them.
+	HoldValidation bool `json:"holdValidation,omitempty"`
 
 	mu     sync.Mutex
 	events fakenet.Emitter
@@ -119,12 +126,16 @@ func (m *CertificateManager) Snapshot() ([]byte, error) {
 
 // Seed merges certificates someone else imported, keyed by any name, and deletes the
 // ARNs listed as removed, as an operator would in the console. A seed without a body
-// gets a self-signed one for its domain, and one without an ARN gets one.
+// gets a self-signed one for its domain, and one without an ARN gets one. It also sets
+// the validity of the next requested certificate and holds or releases validation.
 func (m *CertificateManager) Seed(raw []byte) error {
 	var in struct {
 		Policy
-		Certificates map[string]*ACMCertificate `json:"certificates"`
-		Removed      []string                   `json:"removedCertificates"`
+		Certificates      map[string]*ACMCertificate `json:"certificates"`
+		Removed           []string                   `json:"removedCertificates"`
+		NextValidityDays  int                        `json:"nextValidityDays"`
+		HoldValidation    bool                       `json:"holdValidation"`
+		ReleaseValidation bool                       `json:"releaseValidation"`
 	}
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return err
@@ -132,6 +143,15 @@ func (m *CertificateManager) Seed(raw []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.merge(in.Policy)
+	if in.NextValidityDays > 0 {
+		m.NextValidityDays = in.NextValidityDays
+	}
+	if in.HoldValidation {
+		m.HoldValidation = true
+	}
+	if in.ReleaseValidation {
+		m.releaseValidation()
+	}
 	for _, arn := range in.Removed {
 		delete(m.Certificates, arn)
 	}
@@ -250,9 +270,21 @@ func (m *CertificateManager) importCertificate(c call) (any, *apiError) {
 	return map[string]any{"CertificateArn": cert.ARN}, nil
 }
 
-// requestCertificate issues straight away, so a caller polling for ISSUED never waits.
-// ExportCertificate still refuses until Route 53 serves every validation CNAME, so a
-// caller that exports before writing the record fails as it would against ACM.
+// releaseValidation issues every certificate held in PENDING_VALIDATION.
+func (m *CertificateManager) releaseValidation() {
+	m.HoldValidation = false
+	for _, cert := range m.Certificates {
+		if cert.Type == "AMAZON_ISSUED" && cert.Status == "PENDING_VALIDATION" {
+			cert.Status = "ISSUED"
+			m.events.Publish(CertificateIssued{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}})
+		}
+	}
+}
+
+// requestCertificate issues straight away, so a caller polling for ISSUED never waits,
+// unless validation is held. ExportCertificate still refuses until Route 53 serves every
+// validation CNAME, so a caller that exports before writing the record fails as it would
+// against ACM.
 func (m *CertificateManager) requestCertificate(c call) (any, *apiError) {
 	var in struct {
 		DomainName              string
@@ -301,7 +333,11 @@ func (m *CertificateManager) requestCertificate(c call) (any, *apiError) {
 	if err != nil {
 		return nil, errf(http.StatusBadRequest, "ValidationException", "%v", err)
 	}
-	leaf, leafPEM, err := ca.sign(key.Public(), pkix.Name{CommonName: in.DomainName}, names, AmazonIssuedValidityDays)
+	days := AmazonIssuedValidityDays
+	if m.NextValidityDays > 0 {
+		days, m.NextValidityDays = m.NextValidityDays, 0
+	}
+	leaf, leafPEM, err := ca.sign(key.Public(), pkix.Name{CommonName: in.DomainName}, names, days)
 	if err != nil {
 		return nil, errf(http.StatusInternalServerError, "InternalFailure", "%v", err)
 	}
@@ -336,7 +372,11 @@ func (m *CertificateManager) requestCertificate(c call) (any, *apiError) {
 	describeParsed(cert, leaf)
 	m.Certificates[cert.ARN] = cert
 	m.events.Publish(CertificateRequested{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}})
-	m.events.Publish(CertificateIssued{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}})
+	if m.HoldValidation {
+		cert.Status = "PENDING_VALIDATION"
+	} else {
+		m.events.Publish(CertificateIssued{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}})
+	}
 	return map[string]any{"CertificateArn": cert.ARN}, nil
 }
 
@@ -366,17 +406,21 @@ func (m *CertificateManager) describeCertificate(c call) (any, *apiError) {
 	if aErr != nil {
 		return nil, aErr
 	}
+	m.events.Publish(CertificateDescribed{ACMCertificateDetail{ARN: cert.ARN, DomainName: cert.DomainName}, cert.Status})
 	out := map[string]any{
 		"CertificateArn":          cert.ARN,
 		"DomainName":              cert.DomainName,
 		"SubjectAlternativeNames": cert.SubjectAlternativeNames,
 		"Status":                  cert.Status,
 		"Type":                    cert.Type,
-		"Serial":                  cert.Serial,
 		"KeyAlgorithm":            keyAlgorithmName(cert.KeyAlgorithm),
-		"NotBefore":               epoch(cert.NotBefore),
-		"NotAfter":                epoch(cert.NotAfter),
 		"InUseBy":                 []string{},
+	}
+	// ACM reports no serial or validity for a certificate it has not issued yet.
+	if cert.Status != "PENDING_VALIDATION" {
+		out["Serial"] = cert.Serial
+		out["NotBefore"] = epoch(cert.NotBefore)
+		out["NotAfter"] = epoch(cert.NotAfter)
 	}
 	if cert.ImportedAt != nil {
 		out["ImportedAt"] = epoch(*cert.ImportedAt)
@@ -390,13 +434,17 @@ func (m *CertificateManager) describeCertificate(c call) (any, *apiError) {
 	}
 	if cert.Type == "AMAZON_ISSUED" {
 		out["Options"] = map[string]string{"Export": map[bool]string{true: "ENABLED", false: "DISABLED"}[cert.Exportable]}
+		validationStatus := "SUCCESS"
+		if cert.Status == "PENDING_VALIDATION" {
+			validationStatus = "PENDING_VALIDATION"
+		}
 		dvos := make([]map[string]any, 0, len(cert.Validation))
 		for _, v := range cert.Validation {
 			dvos = append(dvos, map[string]any{
 				"DomainName":       v.DomainName,
 				"ValidationDomain": v.DomainName,
 				"ValidationMethod": "DNS",
-				"ValidationStatus": "SUCCESS",
+				"ValidationStatus": validationStatus,
 				"ResourceRecord":   map[string]string{"Name": v.Name, "Type": v.Type, "Value": v.Value},
 			})
 		}
@@ -438,6 +486,9 @@ func (m *CertificateManager) exportCertificate(c call) (any, *apiError) {
 	}
 	if cert.Type == "IMPORTED" || (cert.Type == "AMAZON_ISSUED" && !cert.Exportable) {
 		return nil, errf(http.StatusBadRequest, "ValidationException", "Certificate ARN: %s is not a private certificate", cert.ARN)
+	}
+	if cert.Status == "PENDING_VALIDATION" {
+		return nil, errf(http.StatusBadRequest, "RequestInProgressException", "Certificate %s is still in process", cert.ARN)
 	}
 	for _, v := range cert.Validation {
 		if !cnameServed(v.Name, v.Value) {

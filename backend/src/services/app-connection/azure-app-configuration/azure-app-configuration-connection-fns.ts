@@ -7,8 +7,10 @@ import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { getAppConnectionMethodName } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { AppConnection } from "../app-connection-enums";
+import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
 import { AzureAppConfigurationConnectionMethod } from "./azure-app-configuration-connection-enums";
 import {
   ExchangeCodeAzureResponse,
@@ -25,7 +27,8 @@ export const getAzureAppConfigurationConnectionListItem = ({
     app: AppConnection.AzureAppConfiguration as const,
     methods: Object.values(AzureAppConfigurationConnectionMethod) as [
       AzureAppConfigurationConnectionMethod.OAuth,
-      AzureAppConfigurationConnectionMethod.ClientSecret
+      AzureAppConfigurationConnectionMethod.ClientSecret,
+      AzureAppConfigurationConnectionMethod.ManagedIdentity
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID
   };
@@ -33,9 +36,10 @@ export const getAzureAppConfigurationConnectionListItem = ({
 
 export const validateAzureAppConfigurationConnectionCredentials = async (
   config: TAzureAppConfigurationConnectionConfig,
-  instanceConfigService: TInstanceConfigService
+  instanceConfigService: TInstanceConfigService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const { credentials: inputCredentials, method } = config;
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const {
     INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_ID,
@@ -145,6 +149,39 @@ export const validateAzureAppConfigurationConnectionCredentials = async (
             message: "Failed to get access token"
           });
         }
+      }
+
+    case AzureAppConfigurationConnectionMethod.ManagedIdentity:
+      const { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId } = inputCredentials as {
+        tenantId: string;
+        clientId: string;
+      };
+
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
+
+      try {
+        const managedIdentityToken = await getAzureManagedIdentityAccessToken(
+          {
+            appConnection: { ...connection, orgId, projectId },
+            tenantId: managedIdentityTenantId,
+            clientId: managedIdentityClientId,
+            scope: "https://azconfig.io/.default"
+          },
+          oidcIssuerService
+        );
+
+        return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId, ...managedIdentityToken };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        }
+        throw e;
       }
 
     default:

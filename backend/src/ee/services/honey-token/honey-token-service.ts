@@ -1,25 +1,22 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection } from "@app/lib/types";
 import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-scope-fns";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -46,7 +43,6 @@ import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
@@ -96,7 +92,7 @@ export type THoneyTokenServiceFactoryDep = {
     THoneyTokenEventDALFactory,
     "create" | "find" | "countByHoneyTokenId" | "findByHoneyTokenId"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   kmsDataKeyService: TKmsDataKeyService;
   instanceConfigService: TInstanceConfigService;
@@ -153,7 +149,7 @@ export const honeyTokenServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
   honeyTokenEventDAL,
-  permissionService,
+  secretsPermissionService,
   licenseService,
   kmsDataKeyService,
   instanceConfigService,
@@ -190,7 +186,7 @@ export const honeyTokenServiceFactory = ({
   });
 
   const $getOrgAppConnection =
-    ({ type, projectId, actor }: { type: HoneyTokenType; projectId: string; actor: OrgServiceActor }) =>
+    ({ type, projectId, actor }: { type: HoneyTokenType; projectId: string; actor: TActorContext }) =>
     async (connectionId: string) => {
       const provider = getHoneyTokenProviderDefinition(type);
       const appConnection = await appConnectionService.validateAppConnectionUsageById(
@@ -211,22 +207,16 @@ export const honeyTokenServiceFactory = ({
 
   const $create = async (
     { projectId, type, config, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({
+      action: ProjectPermissionHoneyTokenActions.Create,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: { environment, secretPath: canonicalPath }
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Create,
-      subject(ProjectPermissionSub.HoneyTokens, { environment, secretPath: canonicalPath })
-    );
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -242,7 +232,7 @@ export const honeyTokenServiceFactory = ({
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
 
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to create honey token due to plan restriction. Upgrade plan to use honey tokens."
@@ -251,7 +241,7 @@ export const honeyTokenServiceFactory = ({
 
     if (plan.isLimited(PlanLimit.HoneyTokens)) {
       // From the primary: a replica behind the previous lock holder's commit would undercount.
-      const honeyTokensCreated = await honeyTokenDAL.transaction((tx) => honeyTokenDAL.countByOrgId(actor.orgId, tx));
+      const honeyTokensCreated = await honeyTokenDAL.transaction((tx) => honeyTokenDAL.countByOrgId(actor.org.id, tx));
       if (plan.exceeds(PlanLimit.HoneyTokens, honeyTokensCreated)) {
         throw new BadRequestError({
           message: `Failed to create honey token because your organization has reached its honey token limit (${honeyTokensCreated}/${plan.limit(PlanLimit.HoneyTokens)}).`
@@ -269,7 +259,7 @@ export const honeyTokenServiceFactory = ({
 
     const { target, orgConnection } = await providerHooks.prepareCreate({
       config,
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       getAppConnection: $getOrgAppConnection({ type: providerType, projectId, actor })
     });
 
@@ -310,7 +300,7 @@ export const honeyTokenServiceFactory = ({
     if (orgConnection) {
       // Checked before any credentials exist, so a stack that is not deployed never leaves an IAM user behind.
       stackDeployment = providerHooks.verifyDeployment
-        ? await providerHooks.verifyDeployment({ ...orgConnection, orgId: actor.orgId })
+        ? await providerHooks.verifyDeployment({ ...orgConnection, orgId: actor.org.id })
         : undefined;
 
       if (stackDeployment && !stackDeployment.deployed) {
@@ -331,7 +321,7 @@ export const honeyTokenServiceFactory = ({
       const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
         kmsDataKeyService,
         projectId,
-        orgId: actor.orgId
+        orgId: actor.org.id
       });
       const { encryptor: credentialEncryptor } = projectCipher;
 
@@ -364,7 +354,7 @@ export const honeyTokenServiceFactory = ({
             encryptedCredentials,
             secretsMapping,
             tokenIdentifier,
-            createdByUserId: actor.id
+            createdByUserId: actor.principal.id
           },
           tx
         );
@@ -385,7 +375,7 @@ export const honeyTokenServiceFactory = ({
           folderId: folder.id,
           eventEmitter,
           eventScope: { projectId, environment, secretPath: folder.path },
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           inputSecrets: inputSecretsWithBlindIndex,
           secretDAL,
           secretVersionDAL,
@@ -394,8 +384,8 @@ export const honeyTokenServiceFactory = ({
           folderCommitService,
           resourceMetadataDAL,
           actor: {
-            type: actor.type as ActorType,
-            actorId: actor.id
+            type: actor.principal.type,
+            actorId: actor.principal.id
           },
           tx
         });
@@ -414,7 +404,7 @@ export const honeyTokenServiceFactory = ({
         .catch((revokeErr: unknown) => {
           logger.error(
             { err: revokeErr, tokenIdentifier },
-            `Failed to clean up honey token credentials after create failed [orgId=${actor.orgId}] [tokenIdentifier=${tokenIdentifier}]`
+            `Failed to clean up honey token credentials after create failed [orgId=${actor.org.id}] [tokenIdentifier=${tokenIdentifier}]`
           );
         });
       throw err;
@@ -422,7 +412,7 @@ export const honeyTokenServiceFactory = ({
 
     await secretDAL.invalidateSecretCacheByProjectId(projectId);
     await secretQueueService.syncSecrets({
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       secretPath,
       projectId,
       environmentSlug: environment,
@@ -438,10 +428,10 @@ export const honeyTokenServiceFactory = ({
 
   // One creation per org at a time: concurrent requests would all pass the limit check before any of them
   // commits, each creating a user in the provider account.
-  const create = async (input: THoneyTokenCreateInput, actor: OrgServiceActor) => {
+  const create = async (input: THoneyTokenCreateInput, actor: TActorContext) => {
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
     try {
-      lock = await keyStore.acquireLock([KeyStorePrefixes.HoneyTokenCreateLock(actor.orgId)], CREATE_LOCK_TTL_MS, {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.HoneyTokenCreateLock(actor.org.id)], CREATE_LOCK_TTL_MS, {
         retryCount: 25,
         retryDelay: 400,
         retryJitter: 50
@@ -476,7 +466,7 @@ export const honeyTokenServiceFactory = ({
 
   const updateHoneyToken = async (
     { honeyTokenId, name, description, secretsMapping }: THoneyTokenUpdateInput,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
@@ -486,23 +476,17 @@ export const honeyTokenServiceFactory = ({
     const { projectId } = honeyToken;
     const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
     const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
-    const { permission: updatePermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-    ForbiddenError.from(updatePermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Edit,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    const { permission: updatePermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    updatePermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Edit,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: folderWithEnv.environmentSlug,
         secretPath: folderWithEnv.path
-      })
-    );
+      }
+    });
 
-    const updatePlan = await licenseService.getPlan(actor.orgId);
+    const updatePlan = await licenseService.getPlan(actor.org.id);
     if (!updatePlan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to update honey token due to plan restriction. Upgrade plan to use honey tokens."
@@ -569,7 +553,7 @@ export const honeyTokenServiceFactory = ({
       const { secretManager: projectCipher, blindIndexer } = await prepareSecretWriteCiphers({
         kmsDataKeyService,
         projectId,
-        orgId: actor.orgId
+        orgId: actor.org.id
       });
 
       const { decryptor } = projectCipher;
@@ -598,7 +582,7 @@ export const honeyTokenServiceFactory = ({
           eventScope,
           projectId,
           inputSecrets: oldSecretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
-          actorId: actor.id,
+          actorId: actor.principal.id,
           secretDAL,
           secretQueueService,
           folderCommitService,
@@ -622,7 +606,7 @@ export const honeyTokenServiceFactory = ({
           folderId: honeyToken.folderId,
           eventEmitter,
           eventScope,
-          orgId: actor.orgId,
+          orgId: actor.org.id,
           inputSecrets: inputSecretsWithBlindIndex,
           secretDAL,
           secretVersionDAL,
@@ -631,8 +615,8 @@ export const honeyTokenServiceFactory = ({
           folderCommitService,
           resourceMetadataDAL,
           actor: {
-            type: actor.type as ActorType,
-            actorId: actor.id
+            type: actor.principal.type,
+            actorId: actor.principal.id
           },
           tx
         });
@@ -657,7 +641,7 @@ export const honeyTokenServiceFactory = ({
     const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
     if (folderInfo && hasSecretsMappingChanges) {
       await secretQueueService.syncSecrets({
-        orgId: actor.orgId,
+        orgId: actor.org.id,
         secretPath: folderInfo.path,
         projectId,
         environmentSlug: folderInfo.environmentSlug,
@@ -672,7 +656,7 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
-  const revokeHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+  const revokeHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: TActorContext) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
@@ -681,23 +665,17 @@ export const honeyTokenServiceFactory = ({
     const { projectId } = honeyToken;
     const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
     const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
-    const { permission: revokePermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-    ForbiddenError.from(revokePermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Revoke,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    const { permission: revokePermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    revokePermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Revoke,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: folderWithEnv.environmentSlug,
         secretPath: folderWithEnv.path
-      })
-    );
+      }
+    });
 
-    const revokePlan = await licenseService.getPlan(actor.orgId);
+    const revokePlan = await licenseService.getPlan(actor.org.id);
     if (!revokePlan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to revoke honey token due to plan restriction. Upgrade plan to use honey tokens."
@@ -723,7 +701,7 @@ export const honeyTokenServiceFactory = ({
 
     const target = await providerHooks.getRevokeTarget({
       honeyToken,
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       getAppConnection: $getOrgAppConnection({ type, projectId, actor })
     });
 
@@ -743,7 +721,7 @@ export const honeyTokenServiceFactory = ({
         eventScope,
         projectId,
         inputSecrets: secretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
-        actorId: actor.id,
+        actorId: actor.principal.id,
         secretDAL,
         secretQueueService,
         folderCommitService,
@@ -756,13 +734,13 @@ export const honeyTokenServiceFactory = ({
         {
           status: HoneyTokenStatus.Revoked,
           revokedAt: new Date(),
-          revokedByUserId: actor.id
+          revokedByUserId: actor.principal.id
         },
         tx
       );
 
       await alertService.deleteAlertsForResource(
-        { orgId: actor.orgId, projectId, resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceId: honeyTokenId },
+        { orgId: actor.org.id, projectId, resourceType: HONEY_TOKEN_RESOURCE_TYPE, resourceId: honeyTokenId },
         tx
       );
     });
@@ -772,7 +750,7 @@ export const honeyTokenServiceFactory = ({
     const [folderInfo] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
     if (folderInfo) {
       await secretQueueService.syncSecrets({
-        orgId: actor.orgId,
+        orgId: actor.org.id,
         secretPath: folderInfo.path,
         projectId,
         environmentSlug: folderInfo.environmentSlug,
@@ -784,29 +762,30 @@ export const honeyTokenServiceFactory = ({
     return { honeyTokenId, honeyToken, folderInfo };
   };
 
-  const deleteHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+  const deleteHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: TActorContext) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
     const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
-    const { permission: deletePermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission: deletePermission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: honeyToken.projectId
     });
-    const honeyTokenSubject = subject(ProjectPermissionSub.HoneyTokens, {
-      environment: folderWithEnv.environmentSlug,
-      secretPath: folderWithEnv.path
-    });
+    const honeyTokenFields = { environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
     // Deleting only removes the record of a token that revoke already disabled, so it shares revoke's permission.
     // Read is required too, because the response returns the token.
-    ForbiddenError.from(deletePermission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Read, honeyTokenSubject);
-    ForbiddenError.from(deletePermission).throwUnlessCan(ProjectPermissionHoneyTokenActions.Revoke, honeyTokenSubject);
+    deletePermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Read,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: honeyTokenFields
+    });
+    deletePermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Revoke,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: honeyTokenFields
+    });
 
     await honeyTokenDAL.transaction(async (tx) => {
       // The status is checked on the primary in the delete itself, since the replica read above can still see a
@@ -827,28 +806,25 @@ export const honeyTokenServiceFactory = ({
     return { honeyToken: { ...honeyToken, config: getHoneyTokenConfig(honeyToken) }, folderInfo: folderWithEnv };
   };
 
-  const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+  const resetHoneyToken = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: TActorContext) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
-    const { permission: resetPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission: resetPermission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: honeyToken.projectId
     });
-    ForbiddenError.from(resetPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Reset,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    resetPermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Reset,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: folderWithEnv?.environmentSlug ?? "",
         secretPath: folderWithEnv?.path ?? "/"
-      })
-    );
+      }
+    });
 
     assertSupportedHoneyTokenType(honeyToken.type);
 
@@ -860,7 +836,7 @@ export const honeyTokenServiceFactory = ({
       status: HoneyTokenStatus.Active,
       lastResetAt: new Date(),
       lastTriggeredAt: null,
-      resetByUserId: actor.id
+      resetByUserId: actor.principal.id
     });
 
     return { honeyToken: { ...updated, config: getHoneyTokenConfig(updated) } };
@@ -878,29 +854,23 @@ export const honeyTokenServiceFactory = ({
       secretPath: string;
       search?: string;
     },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission: readPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission: readPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const canonicalSecretPath = prefixWithSlash(removeTrailingSlash(secretPath));
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return 0;
 
     const allowedFolders = folders.filter((f) =>
-      readPermission.can(
-        ProjectPermissionHoneyTokenActions.Read,
-        subject(ProjectPermissionSub.HoneyTokens, {
+      readPermission.can({
+        action: ProjectPermissionHoneyTokenActions.Read,
+        subject: ProjectPermissionSub.HoneyTokens,
+        fields: {
           environment: f.environment.slug,
           secretPath: canonicalSecretPath
-        })
-      )
+        }
+      })
     );
     if (!allowedFolders.length) return 0;
 
@@ -908,27 +878,20 @@ export const honeyTokenServiceFactory = ({
     return honeyTokenDAL.countByFolderIds(folderIds, search);
   };
 
-  const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
-    const { permission: limitPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
+  const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: TActorContext) => {
+    const { permission: limitPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    limitPermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Read,
+      subject: ProjectPermissionSub.HoneyTokens
     });
-    ForbiddenError.from(limitPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
-    );
 
-    const limitPlan = await licenseService.getPlan(actor.orgId);
+    const limitPlan = await licenseService.getPlan(actor.org.id);
     if (!limitPlan.has(PlanFeature.HoneyTokens)) {
       throw new BadRequestError({
         message: "Failed to access honey token limits due to plan restriction. Upgrade plan to use honey tokens."
       });
     }
-    const used = await honeyTokenDAL.countByOrgId(actor.orgId);
+    const used = await honeyTokenDAL.countByOrgId(actor.org.id);
 
     return {
       used,
@@ -938,29 +901,23 @@ export const honeyTokenServiceFactory = ({
 
   const getDashboardHoneyTokens = async (
     { projectId, environments, secretPath, search, orderBy, orderDirection, limit, offset }: THoneyTokenListInput,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission: readPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission: readPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const canonicalSecretPath = prefixWithSlash(removeTrailingSlash(secretPath));
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
 
     const allowedFolders = folders.filter((f) =>
-      readPermission.can(
-        ProjectPermissionHoneyTokenActions.Read,
-        subject(ProjectPermissionSub.HoneyTokens, {
+      readPermission.can({
+        action: ProjectPermissionHoneyTokenActions.Read,
+        subject: ProjectPermissionSub.HoneyTokens,
+        fields: {
           environment: f.environment.slug,
           secretPath: canonicalSecretPath
-        })
-      )
+        }
+      })
     );
     if (!allowedFolders.length) return [];
 
@@ -985,28 +942,25 @@ export const honeyTokenServiceFactory = ({
     return honeyTokens;
   };
 
-  const getCredentials = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+  const getCredentials = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: TActorContext) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
-    const { permission: credentialPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission: credentialPermission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: honeyToken.projectId
     });
-    ForbiddenError.from(credentialPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.ReadCredentials,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    credentialPermission.assert({
+      action: ProjectPermissionHoneyTokenActions.ReadCredentials,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: folderWithEnv?.environmentSlug ?? "",
         secretPath: folderWithEnv?.path ?? "/"
-      })
-    );
+      }
+    });
 
     if (honeyToken.status === HoneyTokenStatus.Revoked) {
       throw new BadRequestError({ message: "Cannot retrieve credentials for a revoked honey token" });
@@ -1243,28 +1197,25 @@ export const honeyTokenServiceFactory = ({
     return { acknowledged: true };
   };
 
-  const getHoneyTokenById = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: OrgServiceActor) => {
+  const getHoneyTokenById = async ({ honeyTokenId }: THoneyTokenByIdInput, actor: TActorContext) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
-    const { permission: readPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission: readPermission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: honeyToken.projectId
     });
-    ForbiddenError.from(readPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    readPermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Read,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: folderWithEnv?.environmentSlug ?? "",
         secretPath: folderWithEnv?.path ?? "/"
-      })
-    );
+      }
+    });
 
     const allInFolder = await honeyTokenDAL.findByFolderIds([honeyToken.folderId]);
     const match = allInFolder.find((ht) => ht.id === honeyTokenId);
@@ -1282,31 +1233,25 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
-  const getHoneyTokenEvents = async (
-    { honeyTokenId, offset, limit }: THoneyTokenEventsInput,
-    actor: OrgServiceActor
-  ) => {
+  const getHoneyTokenEvents = async ({ honeyTokenId, offset, limit }: THoneyTokenEventsInput, actor: TActorContext) => {
     const honeyToken = await honeyTokenDAL.findLiveById(honeyTokenId);
     if (!honeyToken) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(honeyToken.projectId, [honeyToken.folderId]);
-    const { permission: eventsPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission: eventsPermission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: honeyToken.projectId
     });
-    ForbiddenError.from(eventsPermission).throwUnlessCan(
-      ProjectPermissionHoneyTokenActions.Read,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    eventsPermission.assert({
+      action: ProjectPermissionHoneyTokenActions.Read,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: folderWithEnv?.environmentSlug ?? "",
         secretPath: folderWithEnv?.path ?? "/"
-      })
-    );
+      }
+    });
 
     const since = honeyToken.lastResetAt ?? undefined;
 

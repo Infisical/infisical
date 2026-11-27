@@ -1,25 +1,25 @@
-import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
+import { MongoAbility, RawRule, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { AccessScope } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { permissionBoundsMessage } from "@app/domains/platform/access-control/ce/module";
+import { TActorContextService } from "@app/domains/platform/organizations/ce/module";
 import {
   ProjectPermissionIdentityActions,
+  ProjectPermission,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { unpackPermissions } from "@app/lib/casl/permission-schemas";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor } from "@app/lib/types";
-import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
-import { ActorType } from "@app/services/auth/auth-type";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { buildMemberActorContext } from "@app/services/membership/membership-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -32,31 +32,34 @@ type TPermissionRule = RawRule & {
 };
 
 type TProjectAdditionalPrivilegesScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
+  actorContextService: TActorContextService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
-  permissionService,
+  secretsPermissionService,
+  actorContextService,
   additionalPrivilegeDAL,
-  orgDAL,
   membershipDAL,
   userDAL,
+  identityDAL,
   projectDAL
 }: TProjectAdditionalPrivilegesScopeFactoryDep): TAdditionalPrivilegesScopeFactory => {
-  const $getPermission = (permission: OrgServiceActor, projectId: string) => {
-    return permissionService.getProjectPermission({
-      actor: permission.type,
-      actorId: permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: permission.authMethod,
-      projectId,
-      actorOrgId: permission.orgId
-    });
+  const $getTargetPermission = async (
+    actor: TActorContext,
+    target: { type: ActorType.USER | ActorType.IDENTITY; id: string },
+    projectId: string
+  ) => {
+    const targetActor = await buildMemberActorContext(
+      { actorContextService, userDAL, identityDAL },
+      { target, orgId: actor.org.id, requester: actor }
+    );
+    return secretsPermissionService.getProjectPermissionWithFolderGrants({ actor: targetActor, projectId });
   };
 
   const getScopeField: TAdditionalPrivilegesScopeFactory["getScopeField"] = (dto) => {
@@ -166,14 +169,15 @@ export const newProjectAdditionalPrivilegesFactory = ({
     shouldUseNewPrivilegeSystem: boolean,
     actions: ProjectPermissionSet[0][],
     permissionSubject: PrivilegeValidationSubject,
-    actorPermission: MongoAbility,
-    targetUserPermission: MongoAbility,
+    actorPermission: ProjectPermission,
+    targetUserPermission: ProjectPermission,
     subjectFields: Record<string, string | undefined>
   ) => {
     if (shouldUseNewPrivilegeSystem) {
+      const actorAbility = actorPermission.toAbility() as MongoAbility;
       const subjectToCheck = subject(permissionSubject, subjectFields);
       const isConditionallyForbidden = actions.some((action) => {
-        const rule = actorPermission.relevantRuleFor(action, subjectToCheck);
+        const rule = actorAbility.relevantRuleFor(action, subjectToCheck);
         return Boolean(rule?.inverted && rule.conditions);
       });
       if (isConditionallyForbidden) {
@@ -181,14 +185,13 @@ export const newProjectAdditionalPrivilegesFactory = ({
       }
     }
 
-    return validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
+    const missingPermissions = actorPermission.boundsViolations({
       actions,
-      permissionSubject,
-      actorPermission,
-      targetUserPermission,
-      subjectFields
-    );
+      subject: permissionSubject,
+      fields: subjectFields,
+      targets: [{ permission: targetUserPermission }]
+    });
+    return { isValid: missingPermissions.length === 0, missingPermissions };
   };
 
   const hasSubjectOrActionConditions = (
@@ -211,19 +214,20 @@ export const newProjectAdditionalPrivilegesFactory = ({
       | typeof ProjectPermissionIdentityActions.GrantPrivileges
       | typeof ProjectPermissionIdentityActions.AssignAdditionalPrivileges,
     permissionSubject: ProjectPermissionSub.Member | ProjectPermissionSub.Identity,
-    actorPermission: MongoAbility,
-    targetUserPermission: MongoAbility,
+    actorPermission: ProjectPermission,
+    targetUserPermission: ProjectPermission,
     targetIdentifier: string | undefined,
     permissions: unknown
   ) => {
+    const actorAbility = actorPermission.toAbility() as MongoAbility;
     const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
 
     const hasConditionalForbid = actionsToTry.some((action) =>
-      checkPermissionConditions(actorPermission, action, permissionSubject, "conditionalForbid")
+      checkPermissionConditions(actorAbility, action, permissionSubject, "conditionalForbid")
     );
     if (
       !hasConditionalForbid &&
-      actionsToTry.some((action) => hasUnrestrictedGrantPrivileges(actorPermission, action, permissionSubject))
+      actionsToTry.some((action) => hasUnrestrictedGrantPrivileges(actorAbility, action, permissionSubject))
     ) {
       return;
     }
@@ -234,11 +238,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
     // Check if the actor has action conditions - if so, skip subject-only validation
     const actorHasActionConditions =
-      hasActionConditions(actorPermission, permissionAction, permissionSubject) ||
+      hasActionConditions(actorAbility, permissionAction, permissionSubject) ||
       (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
-        hasActionConditions(actorPermission, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject)) ||
+        hasActionConditions(actorAbility, ProjectPermissionMemberActions.GrantPrivileges, permissionSubject)) ||
       (permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges &&
-        hasActionConditions(actorPermission, ProjectPermissionIdentityActions.GrantPrivileges, permissionSubject));
+        hasActionConditions(actorAbility, ProjectPermissionIdentityActions.GrantPrivileges, permissionSubject));
 
     for (const rule of permissionRules) {
       let ruleSubjects: string[];
@@ -309,8 +313,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
     actorType: ActorType;
     actorId: string;
     permissions: unknown;
-    permission: MongoAbility;
-    targetUserPermission: MongoAbility;
+    permission: ProjectPermission;
+    targetUserPermission: ProjectPermission;
     memberships: Array<{ actorUserId?: string | null; actorIdentityId?: string | null }>;
     shouldUseNewPrivilegeSystem: boolean;
     targetIdentifier: string | undefined;
@@ -328,6 +332,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
       errorMessage
     } = params;
 
+    const actorAbility = permission.toAbility() as MongoAbility;
+
     const permissionAction =
       actorType === ActorType.USER
         ? ProjectPermissionMemberActions.AssignAdditionalPrivileges
@@ -337,16 +343,16 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
     const hasDetailedConditions =
       shouldUseNewPrivilegeSystem &&
-      (hasSubjectOrActionConditions(permission, permissionAction, permissionSubject) ||
+      (hasSubjectOrActionConditions(actorAbility, permissionAction, permissionSubject) ||
         (actorType === ActorType.USER &&
           hasSubjectOrActionConditions(
-            permission,
+            actorAbility,
             ProjectPermissionMemberActions.GrantPrivileges,
             permissionSubject
           )) ||
         (actorType === ActorType.IDENTITY &&
           hasSubjectOrActionConditions(
-            permission,
+            actorAbility,
             ProjectPermissionIdentityActions.GrantPrivileges,
             permissionSubject
           )));
@@ -371,32 +377,32 @@ export const newProjectAdditionalPrivilegesFactory = ({
 
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            errorMessage,
-            shouldUseNewPrivilegeSystem,
-            permissionAction,
-            permissionSubject
-          ),
+          message: permissionBoundsMessage({
+            message: errorMessage,
+            usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+            action: permissionAction,
+            subject: permissionSubject
+          }),
           details: { missingPermissions: permissionBoundary.missingPermissions }
         });
     } else {
       // This prevents bypassing authorization by providing an empty permissions payload.
-      const canPerformNewAction = permission.can(permissionAction, permissionSubject);
+      const canPerformNewAction = actorAbility.can(permissionAction, permissionSubject);
 
       const legacyAction =
         actorType === ActorType.USER
           ? ProjectPermissionMemberActions.GrantPrivileges
           : ProjectPermissionIdentityActions.GrantPrivileges;
-      const canPerformLegacyAction = permission.can(legacyAction, permissionSubject);
+      const canPerformLegacyAction = actorAbility.can(legacyAction, permissionSubject);
 
       if (!canPerformNewAction && !canPerformLegacyAction) {
         throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            errorMessage,
-            shouldUseNewPrivilegeSystem,
-            permissionAction,
-            permissionSubject
-          ),
+          message: permissionBoundsMessage({
+            message: errorMessage,
+            usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem,
+            action: permissionAction,
+            subject: permissionSubject
+          }),
           details: {
             missingPermissions: [
               {
@@ -432,12 +438,15 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType, actorId } = dto.data;
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+        actor: dto.actor,
+        projectId: scope.value
+      });
       const permissionSet =
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
       const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
         projectDAL.findById(scope.value)
@@ -451,14 +460,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
         });
       }
 
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
-      const { permission: targetUserPermission, memberships } = await $getPermission(
-        { ...dto.permission, type: actorType, id: actorId },
-        scope.value
-      );
+      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
+      const targetUserPermission = await $getTargetPermission(dto.actor, { type: actorType, id: actorId }, scope.value);
 
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
@@ -478,7 +481,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
         permissions: dto.data.permissions,
         permission,
         targetUserPermission,
-        memberships,
+        memberships: targetUserPermission.memberships.map((membership) => membership.toJSON()),
         shouldUseNewPrivilegeSystem,
         targetIdentifier,
         errorMessage: "Failed to create additional privileges"
@@ -490,21 +493,18 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType, actorId } = dto.selector;
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+        actor: dto.actor,
+        projectId: scope.value
+      });
       const permissionSet =
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
-      const { permission: targetUserPermission, memberships } = await $getPermission(
-        { ...dto.permission, type: actorType, id: actorId },
-        scope.value
-      );
+      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
+      const targetUserPermission = await $getTargetPermission(dto.actor, { type: actorType, id: actorId }, scope.value);
 
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
@@ -545,7 +545,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
         permissions: permissionsToValidate,
         permission,
         targetUserPermission,
-        memberships,
+        memberships: targetUserPermission.memberships.map((membership) => membership.toJSON()),
         shouldUseNewPrivilegeSystem,
         targetIdentifier,
         errorMessage: "Failed to update additional privileges"
@@ -557,15 +557,18 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType } = dto.selector;
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+        actor: dto.actor,
+        projectId: scope.value
+      });
       const permissionSet =
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
       const membership = await membershipDAL.findOne({
-        scopeOrgId: dto.permission.orgId,
+        scopeOrgId: dto.actor.org.id,
         scopeProjectId: scope.value,
         [actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: dto.selector.actorId
       });
@@ -583,11 +586,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
       actorType === ActorType.USER
         ? ([ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const)
         : ([ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const);
-    const { permission } = await $getPermission(dto.permission, scope.value);
-    ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+      actor: dto.actor,
+      projectId: scope.value
+    });
+    permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
     const membership = await membershipDAL.findOne({
-      scopeOrgId: dto.permission.orgId,
+      scopeOrgId: dto.actor.org.id,
       scopeProjectId: scope.value,
       [actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: dto.selector.actorId
     });
@@ -604,11 +610,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const);
-      const { permission } = await $getPermission(dto.permission, scope.value);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+        actor: dto.actor,
+        projectId: scope.value
+      });
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
       const membership = await membershipDAL.findOne({
-        scopeOrgId: dto.permission.orgId,
+        scopeOrgId: dto.actor.org.id,
         scopeProjectId: scope.value,
         [actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: dto.selector.actorId
       });

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func TestCertificateApproval_Cancel(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.Operator.API.CancelCertRequestApprovalRequestWithResponse(t.Context(), approval)
@@ -31,7 +32,7 @@ func TestCertificateApproval_Cancel(t *testing.T) {
 		// Assert
 		ended := g.waitStatus(t, reqID, api.GetCertificateRequest200JSONResponseBodyStatusRejected)
 		require.Nil(t, ended.JSON200.CertificateId)
-		require.Equal(t, "cancelled", g.approvalStatus(t, approval))
+		require.Equal(t, "cancelled", g.approvalRequest(t, approval).JSON200.Request.Status)
 		late, err := g.approver.API.ApproveCertRequestApprovalRequestWithResponse(t.Context(), approval, api.ApproveCertRequestApprovalRequestJSONRequestBody{})
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusBadRequest, late.StatusCode(), "approving answered: %s", apierr.Body(late.Body))
@@ -45,7 +46,7 @@ func TestCertificateApproval_Cancel(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.approver.API.CancelCertRequestApprovalRequestWithResponse(t.Context(), approval)
@@ -55,6 +56,6 @@ func TestCertificateApproval_Cancel(t *testing.T) {
 		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "cancelling answered: %s", apierr.Body(res.Body))
 		require.Equal(t, "You are not the requester of this request", apierr.Message(res.Body))
 		require.Equal(t, api.GetCertificateRequest200JSONResponseBodyStatusPendingApproval, g.certificateRequest(t, reqID).JSON200.Status)
-		require.Equal(t, "pending", g.approvalStatus(t, approval))
+		require.Equal(t, "pending", g.approvalRequest(t, approval).JSON200.Request.Status)
 	})
 }

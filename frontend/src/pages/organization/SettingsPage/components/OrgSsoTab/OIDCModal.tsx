@@ -5,6 +5,7 @@ import { EyeIcon, EyeOffIcon, Trash2 } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,10 +44,14 @@ import {
   TabsTrigger,
   TagsInput
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { OrgPermissionSsoActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useGetOIDCConfig } from "@app/hooks/api";
-import { useCreateOIDCConfig, useUpdateOIDCConfig } from "@app/hooks/api/oidcConfig/mutations";
+import {
+  useCreateOIDCConfig,
+  useDeleteOIDCConfig,
+  useUpdateOIDCConfig
+} from "@app/hooks/api/oidcConfig/mutations";
 import { OIDCJWTSignatureAlgorithm } from "@app/hooks/api/oidcConfig/types";
 import { SsoMfaTrust } from "@app/hooks/api/organization/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -142,6 +147,7 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const { mutateAsync: createMutateAsync, isPending: createIsLoading } = useCreateOIDCConfig();
   const { mutateAsync: updateMutateAsync, isPending: updateIsLoading } = useUpdateOIDCConfig();
+  const { mutateAsync: deleteMutateAsync } = useDeleteOIDCConfig();
   const [isDeletePopupOpen, setIsDeletePopupOpen] = useToggle(false);
   const [isClientSecretRevealed, setIsClientSecretRevealed] = useState(false);
   const [amrValueTagError, setAmrValueTagError] = useState<string | null>(null);
@@ -159,23 +165,11 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
 
   const configurationTypeValue = watch("configurationType");
 
-  const handleOidcSoftDelete = async () => {
+  const handleOidcDelete = async () => {
     if (!currentOrg) return;
-    await updateMutateAsync({
-      issuer: "",
-      discoveryURL: "",
-      authorizationEndpoint: "",
-      allowedEmailDomains: "",
-      jwksUri: "",
-      tokenEndpoint: "",
-      userinfoEndpoint: "",
-      clientId: "",
-      clientSecret: "",
-      mfaClaimName: "amr",
-      mfaAmrValues: null,
-      isActive: false,
-      organizationId: currentOrg.id
-    });
+    await deleteMutateAsync({ organizationId: currentOrg.id });
+    reset();
+    handlePopUpClose("addOIDC");
 
     createNotification({
       text: "Successfully deleted OIDC configuration.",
@@ -582,9 +576,18 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
                 </Button>
               </div>
               {!hideDelete && (
-                <Button type="button" variant="danger" onClick={() => setIsDeletePopupOpen.on()}>
-                  Delete
-                </Button>
+                <OrgPermissionCan I={OrgPermissionSsoActions.Delete} a={OrgPermissionSubjects.Sso}>
+                  {(isAllowed) => (
+                    <Button
+                      type="button"
+                      variant="danger"
+                      isDisabled={!isAllowed}
+                      onClick={() => setIsDeletePopupOpen.on()}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </OrgPermissionCan>
               )}
             </SheetFooter>
           </form>
@@ -599,13 +602,14 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
             </AlertDialogMedia>
             <AlertDialogTitle>Delete OIDC Configuration?</AlertDialogTitle>
             <AlertDialogDescription>
-              This clears the OIDC connection. Members will no longer be able to sign in via OIDC
-              until it&apos;s reconfigured.
+              This removes the OIDC configuration and turns off SSO enforcement and SCIM for the
+              organization. Members can&apos;t sign in through OIDC until it&apos;s configured
+              again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleOidcSoftDelete}>
+            <AlertDialogAction variant="danger" onClick={handleOidcDelete}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,16 +1,17 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretSyncActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  ProjectPermission
+} from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -19,11 +20,11 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { countOnPrimary, getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -82,7 +83,7 @@ type TSecretSyncServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsDataKeyService: TKmsDataKeyService;
   instanceConfigService: TInstanceConfigService;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOrgById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<
@@ -99,6 +100,7 @@ type TSecretSyncServiceFactoryDep = {
   >;
   licenseService: TLicenseService;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResources">;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -115,13 +117,14 @@ export const secretSyncServiceFactory = ({
   appConnectionService,
   kmsDataKeyService,
   instanceConfigService,
-  permissionService,
+  secretsPermissionService,
   orgDAL,
   projectBotService,
   secretSyncQueue,
   keyStore,
   licenseService,
-  alertService
+  alertService,
+  oidcIssuerService
 }: TSecretSyncServiceFactoryDep) => {
   const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
     sync.connectionId ?? sync.connection?.id;
@@ -139,15 +142,18 @@ export const secretSyncServiceFactory = ({
     const envSlug = sync.environment?.slug;
     const secretPath = sync.folder?.path;
     const hasAny = connectionId || envSlug || secretPath;
-    if (!hasAny) return ProjectPermissionSub.SecretSyncs;
-    return subject(ProjectPermissionSub.SecretSyncs, {
-      ...(envSlug && { environment: envSlug }),
-      ...(secretPath && { secretPath }),
-      ...(connectionId && { connectionId })
-    });
+    if (!hasAny) return { subject: ProjectPermissionSub.SecretSyncs };
+    return {
+      subject: ProjectPermissionSub.SecretSyncs,
+      fields: {
+        ...(envSlug && { environment: envSlug }),
+        ...(secretPath && { secretPath }),
+        ...(connectionId && { connectionId })
+      }
+    };
   };
 
-  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService };
+  const preSaveTransformDeps = { secretV2BridgeDAL, appConnectionDAL, kmsDataKeyService, oidcIssuerService };
 
   // The sync worker reads its folders with every access check disabled, so this is the only place
   // the actor's read access to them is established. A sync including subfolders reads the whole
@@ -155,7 +161,7 @@ export const secretSyncServiceFactory = ({
   // folder grants are per-folder rather than inherited, so checking only the root wouldn't catch a
   // child folder the actor is denied on.
   const $assertCanReadSyncedFolders = async (
-    projectPermission: Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>["permission"],
+    projectPermission: ProjectPermission,
     {
       projectId,
       environment,
@@ -182,16 +188,12 @@ export const secretSyncServiceFactory = ({
 
     for (const { path } of folders) {
       try {
-        throwIfMissingSecretReadValueOrDescribePermission(
-          projectPermission,
-          ProjectPermissionSecretActions.DescribeSecret,
-          {
-            environment,
-            secretPath: path
-          }
-        );
+        SecretReadAccess.assert(projectPermission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path
+        });
       } catch (error) {
-        if (!(error instanceof ForbiddenError)) throw error;
+        if (!(error instanceof ForbiddenError || error instanceof PermissionDeniedError)) throw error;
 
         throw new ForbiddenRequestError({
           message: `You do not have permission to read secrets at path "${path}" in environment "${environment}".`
@@ -349,16 +351,9 @@ export const secretSyncServiceFactory = ({
   // role can deny individual secret names or tags inside a folder it allows.
   const findRecursiveConflicts = async (
     { projectId, environment, secretPath, keySchema }: TFindRecursiveSyncConflictsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission: projectPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission: projectPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     // Create or Edit rather than Read, because configuring a sync at this source is the only
     // reason to call this, and the source step is shared by the create and the edit form: a custom
@@ -366,11 +361,11 @@ export const secretSyncServiceFactory = ({
     // saving. Subject-scoped so it holds for an actor whose sync permission is narrowed to
     // particular paths. Neither action can be narrowed further here, since the route carries no
     // sync and so no connection to name in the subject.
-    const sourceSubject = subject(ProjectPermissionSub.SecretSyncs, { environment, secretPath });
+    const sourceSubject = { subject: ProjectPermissionSub.SecretSyncs, fields: { environment, secretPath } };
 
     if (
-      projectPermission.cannot(ProjectPermissionSecretSyncActions.Create, sourceSubject) &&
-      projectPermission.cannot(ProjectPermissionSecretSyncActions.Edit, sourceSubject)
+      projectPermission.cannot({ action: ProjectPermissionSecretSyncActions.Create, ...sourceSubject }) &&
+      projectPermission.cannot({ action: ProjectPermissionSecretSyncActions.Edit, ...sourceSubject })
     ) {
       throw new ForbiddenRequestError({
         message: `You do not have permission to configure secret syncs at path "${secretPath}" in environment "${environment}".`
@@ -394,7 +389,7 @@ export const secretSyncServiceFactory = ({
 
     const payload = await $buildRecursiveSyncPayload({
       projectId,
-      actorOrgId: actor.orgId,
+      actorOrgId: actor.org.id,
       environment,
       sourcePath: secretPath,
       sourceFolderId: folder.id,
@@ -411,21 +406,11 @@ export const secretSyncServiceFactory = ({
 
   const listSecretSyncsByProjectId = async (
     { projectId, destination }: TListSecretSyncsByProjectId,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSub.SecretSyncs
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.Read, subject: ProjectPermissionSub.SecretSyncs });
 
     const secretSyncs = await secretSyncDAL.find({
       ...(destination && { destination }),
@@ -433,31 +418,25 @@ export const secretSyncServiceFactory = ({
     });
 
     return secretSyncs.filter((secretSync) =>
-      permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(secretSync))
+      permission.can({ action: ProjectPermissionSecretSyncActions.Read, ...getSecretSyncSubject(secretSync) })
     ) as TSecretSync[];
   };
 
   const listSecretSyncsBySecretPath = async (
     { projectId, secretPath, environment }: TListSecretSyncsByFolderId,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     if (
-      permission.cannot(
-        ProjectPermissionSecretSyncActions.Read,
-        subject(ProjectPermissionSub.SecretSyncs, {
+      permission.cannot({
+        action: ProjectPermissionSecretSyncActions.Read,
+        subject: ProjectPermissionSub.SecretSyncs,
+        fields: {
           environment,
           secretPath
-        })
-      )
+        }
+      })
     ) {
       return [];
     }
@@ -474,11 +453,11 @@ export const secretSyncServiceFactory = ({
     });
 
     return secretSyncs.filter((sync) =>
-      permission.can(ProjectPermissionSecretSyncActions.Read, getSecretSyncSubject(sync))
+      permission.can({ action: ProjectPermissionSecretSyncActions.Read, ...getSecretSyncSubject(sync) })
     ) as TSecretSync[];
   };
 
-  const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: OrgServiceActor) => {
+  const findSecretSyncById = async ({ destination, syncId }: TFindSecretSyncByIdDTO, actor: TActorContext) => {
     const secretSync = await secretSyncDAL.findById(syncId);
 
     if (!secretSync)
@@ -486,19 +465,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with ID "${syncId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Read,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.Read, ...getSecretSyncSubject(secretSync) });
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -510,7 +482,7 @@ export const secretSyncServiceFactory = ({
 
   const findSecretSyncByName = async (
     { destination, syncName, projectId }: TFindSecretSyncByNameDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     // we prevent conflicting names within a project
     const secretSync = await secretSyncDAL.findOne({
@@ -523,19 +495,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with name "${syncName}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Read,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.Read, ...getSecretSyncSubject(secretSync) });
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -547,22 +512,12 @@ export const secretSyncServiceFactory = ({
 
   const checkDuplicateDestination = async (
     { destination, destinationConfig, connectionId, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSub.SecretSyncs
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.Read, subject: ProjectPermissionSub.SecretSyncs });
 
     // An absent config means the caller has not filled the form in yet, so there is nothing to
     // compare. An empty one is different: a destination whose scope comes entirely from its
@@ -572,7 +527,7 @@ export const secretSyncServiceFactory = ({
     }
 
     try {
-      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
+      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.org.id);
 
       const connectionCache = new Map<string, Promise<TAppConnection>>();
       const decryptConnection = (connId: string): Promise<TAppConnection> => {
@@ -581,7 +536,7 @@ export const secretSyncServiceFactory = ({
 
         const promise = (async () => {
           const conn = await appConnectionDAL.findById(connId);
-          if (!conn || conn.orgId !== actor.orgId) {
+          if (!conn || conn.orgId !== actor.org.id) {
             throw new NotFoundError({ message: `App connection with ID "${connId}" not found` });
           }
           const credentials = await decryptAppConnectionCredentials({
@@ -632,18 +587,11 @@ export const secretSyncServiceFactory = ({
       if (hasDuplicate) {
         const duplicateProject = duplicates[0]!.projectId;
         try {
-          await permissionService.getProjectPermission({
-            actor: actor.type,
-            actorId: actor.id,
-            actorAuthMethod: actor.authMethod,
-            actorOrgId: actor.orgId,
-            actionProjectType: ActionProjectType.SecretManager,
-            projectId: duplicateProject
-          });
+          await secretsPermissionService.getSecretsPermission({ actor, projectId: duplicateProject });
           duplicateProjectId = duplicateProject;
         } catch {
           logger.warn(
-            `Duplicate secret sync destination detected but actor has no access to conflicting project [actorId=${actor.id}] [duplicateProjectId=${duplicateProject}]`
+            `Duplicate secret sync destination detected but actor has no access to conflicting project [actorId=${actor.principal.id}] [duplicateProjectId=${duplicateProject}]`
           );
         }
       }
@@ -659,18 +607,18 @@ export const secretSyncServiceFactory = ({
 
   const createSecretSync = async (
     { projectId, secretPath, environment, ...params }: TCreateSecretSyncDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     await enterpriseSyncCheck(
       licenseService,
       params.destination,
-      actor.orgId,
+      actor.org.id,
       "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    const plan = await licenseService.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (plan.isLimited(PlanLimit.SecretSyncs)) {
-      const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.orgId);
+      const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.org.id);
       if (plan.exceeds(PlanLimit.SecretSyncs, currentSecretSyncCount)) {
         throw new BadRequestError({
           message: "Failed to create secret sync due to plan limit reached. Upgrade plan to add more secret syncs."
@@ -678,28 +626,22 @@ export const secretSyncServiceFactory = ({
       }
     }
 
-    const { permission: projectPermission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission: projectPermission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     if (!shouldUseSecretV2Bridge)
       throw new BadRequestError({ message: "Project version does not support Secret Syncs" });
 
-    ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Create,
-      subject(ProjectPermissionSub.SecretSyncs, {
+    projectPermission.assert({
+      action: ProjectPermissionSecretSyncActions.Create,
+      subject: ProjectPermissionSub.SecretSyncs,
+      fields: {
         environment,
         secretPath,
         ...(params.connectionId && { connectionId: params.connectionId })
-      })
-    );
+      }
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -756,7 +698,7 @@ export const secretSyncServiceFactory = ({
     ) {
       await $assertSyncedSecretsAreFlattenable({
         projectId,
-        actorOrgId: actor.orgId,
+        actorOrgId: actor.org.id,
         environment,
         sourcePath: secretPath,
         sourceFolderId: folder.id,
@@ -765,9 +707,9 @@ export const secretSyncServiceFactory = ({
     }
 
     // getProjectPermission above throws NotFoundError if the project doesn't exist and
-    // guarantees actor.orgId === project.orgId — no separate project lookup needed.
-    const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
-      orgDAL.findById(actor.orgId)
+    // guarantees actor.org.id === project.orgId, so no separate project lookup is needed.
+    const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.org.id), () =>
+      orgDAL.findById(actor.org.id)
     );
     if (organization?.blockDuplicateSecretSyncDestinations) {
       const duplicateCheck = await checkDuplicateDestination(
@@ -817,7 +759,7 @@ export const secretSyncServiceFactory = ({
       preSaveTransformDeps
     );
 
-    const resourceLimits = await getResourceLimits(licenseService, actor.orgId);
+    const resourceLimits = await getResourceLimits(licenseService, actor.org.id);
     if (resourceLimits.max(ResourceLimit.SecretSyncsPerProject) !== null) {
       resourceLimits.assertWithin({
         limit: ResourceLimit.SecretSyncsPerProject,
@@ -857,7 +799,7 @@ export const secretSyncServiceFactory = ({
 
   const updateSecretSync = async (
     { destination, syncId, secretPath, environment, ...params }: TUpdateSecretSyncDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const secretSync = await secretSyncDAL.findById(syncId);
 
@@ -869,25 +811,18 @@ export const secretSyncServiceFactory = ({
     await enterpriseSyncCheck(
       licenseService,
       secretSync.destination as SecretSync,
-      actor.orgId,
+      actor.org.id,
       "Failed to update secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
     const connectionId = secretSync.connectionId ?? secretSync.connection?.id;
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Edit,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.Edit, ...getSecretSyncSubject(secretSync) });
 
     // if the user is updating the secret path or environment, we need to check the permission against the new values
     if (secretPath || environment) {
@@ -895,14 +830,15 @@ export const secretSyncServiceFactory = ({
       const secretPathToCheck = secretPath || secretSync.folder?.path || "";
 
       if (environmentToCheck && secretPathToCheck) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretSyncActions.Edit,
-          subject(ProjectPermissionSub.SecretSyncs, {
+        permission.assert({
+          action: ProjectPermissionSecretSyncActions.Edit,
+          subject: ProjectPermissionSub.SecretSyncs,
+          fields: {
             environment: environmentToCheck,
             secretPath: secretPathToCheck,
             ...(connectionId && { connectionId })
-          })
-        );
+          }
+        });
       }
     }
 
@@ -915,9 +851,9 @@ export const secretSyncServiceFactory = ({
 
     if (params.destinationConfig || params.connectionId) {
       // getProjectPermission above throws NotFoundError if the project doesn't exist and
-      // guarantees actor.orgId === project.orgId — no separate project lookup needed.
-      const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.orgId), () =>
-        orgDAL.findById(actor.orgId)
+      // guarantees actor.org.id === project.orgId, so no separate project lookup is needed.
+      const organization = await requestMemoize(requestMemoKeys.orgFindById(actor.org.id), () =>
+        orgDAL.findById(actor.org.id)
       );
 
       if (organization?.blockDuplicateSecretSyncDestinations) {
@@ -953,10 +889,10 @@ export const secretSyncServiceFactory = ({
 
       // If changing connectionId, verify user has Edit permission for syncs with the NEW connectionId
       if (params.connectionId !== connectionId) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionSecretSyncActions.Edit,
-          getSecretSyncSubject(secretSync, { connectionId: params.connectionId })
-        );
+        permission.assert({
+          action: ProjectPermissionSecretSyncActions.Edit,
+          ...getSecretSyncSubject(secretSync, { connectionId: params.connectionId })
+        });
       }
     }
 
@@ -1065,7 +1001,7 @@ export const secretSyncServiceFactory = ({
       ) {
         await $assertSyncedSecretsAreFlattenable({
           projectId: secretSync.projectId,
-          actorOrgId: actor.orgId,
+          actorOrgId: actor.org.id,
           environment: updatedEnvironment,
           sourcePath: updatedSecretPath,
           sourceFolderId: folderId,
@@ -1119,7 +1055,7 @@ export const secretSyncServiceFactory = ({
 
   const deleteSecretSync = async (
     { destination, syncId, removeSecrets }: TDeleteSecretSyncDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const secretSync = await secretSyncDAL.findById(syncId);
 
@@ -1128,19 +1064,12 @@ export const secretSyncServiceFactory = ({
         message: `Could not find ${SECRET_SYNC_NAME_MAP[destination]} Sync with ID "${syncId}"`
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Delete,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.Delete, ...getSecretSyncSubject(secretSync) });
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -1148,10 +1077,10 @@ export const secretSyncServiceFactory = ({
       });
 
     if (removeSecrets) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionSecretSyncActions.RemoveSecrets,
-        getSecretSyncSubject(secretSync)
-      );
+      permission.assert({
+        action: ProjectPermissionSecretSyncActions.RemoveSecrets,
+        ...getSecretSyncSubject(secretSync)
+      });
 
       if (!secretSync.folderId)
         throw new BadRequestError({
@@ -1185,7 +1114,7 @@ export const secretSyncServiceFactory = ({
 
   const triggerSecretSyncSyncSecretsById = async (
     { syncId, destination, ...params }: TTriggerSecretSyncSyncSecretsByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const secretSync = await secretSyncDAL.findById(syncId);
 
@@ -1197,23 +1126,16 @@ export const secretSyncServiceFactory = ({
     await enterpriseSyncCheck(
       licenseService,
       secretSync.destination as SecretSync,
-      actor.orgId,
+      actor.org.id,
       "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.SyncSecrets,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({ action: ProjectPermissionSecretSyncActions.SyncSecrets, ...getSecretSyncSubject(secretSync) });
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -1241,7 +1163,7 @@ export const secretSyncServiceFactory = ({
 
   const triggerSecretSyncImportSecretsById = async (
     { syncId, destination, ...params }: TTriggerSecretSyncImportSecretsByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     if (!listSecretSyncOptions().find((option) => option.destination === destination)?.canImportSecrets) {
       throw new BadRequestError({
@@ -1259,23 +1181,19 @@ export const secretSyncServiceFactory = ({
     await enterpriseSyncCheck(
       licenseService,
       secretSync.destination as SecretSync,
-      actor.orgId,
+      actor.org.id,
       "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.ImportSecrets,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretSyncActions.ImportSecrets,
+      ...getSecretSyncSubject(secretSync)
+    });
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({
@@ -1303,7 +1221,7 @@ export const secretSyncServiceFactory = ({
 
   const triggerSecretSyncRemoveSecretsById = async (
     { syncId, destination, ...params }: TTriggerSecretSyncRemoveSecretsByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const secretSync = await secretSyncDAL.findById(syncId);
 
@@ -1315,23 +1233,19 @@ export const secretSyncServiceFactory = ({
     await enterpriseSyncCheck(
       licenseService,
       secretSync.destination as SecretSync,
-      actor.orgId,
+      actor.org.id,
       "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
+    const { permission } = await secretsPermissionService.getSecretsPermission({
+      actor,
       projectId: secretSync.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.RemoveSecrets,
-      getSecretSyncSubject(secretSync)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretSyncActions.RemoveSecrets,
+      ...getSecretSyncSubject(secretSync)
+    });
 
     if (secretSync.connection.app !== SECRET_SYNC_CONNECTION_MAP[destination])
       throw new BadRequestError({

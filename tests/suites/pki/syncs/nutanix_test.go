@@ -102,6 +102,7 @@ func TestNutanixPrismCentralPkiSync_Sync(t *testing.T) {
 		s.pc.ExpectEvent[nutanix.CertificateReplaced](t, func(e nutanix.CertificateReplaced) bool { return e.ClusterID == "cluster-1" }, fakenet.Since(mark))
 		cluster := s.pc.State(t).Clusters["cluster-1"]
 		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, cluster.PublicCertificate).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, cluster.PublicCertificate, cluster.PrivateKey)
 	})
 
 	t.Run("should mark the certificate failed with Prism's reason when Prism refuses the certificate", func(t *testing.T) {

@@ -3,9 +3,9 @@ import { z } from "zod";
 import { AccessScope, ProjectMembershipRole, ProjectMembershipsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_USERS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -53,10 +53,10 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
       await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Organization,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         data: {
           roles: [],
@@ -66,10 +66,10 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
       });
 
       const { memberships } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -145,10 +145,7 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.params.projectId,
         emails: req.body.emails,
         usernames: req.body.usernames

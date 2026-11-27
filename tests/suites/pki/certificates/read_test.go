@@ -1,7 +1,6 @@
 package certificates_test
 
 import (
-	"crypto"
 	"fmt"
 	"net/http"
 	"testing"
@@ -64,7 +63,7 @@ func TestCertificate_Read(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, pki.ParseLeaf(t, issued.Certificate).Raw, cert.Raw)
 		require.Len(t, chain, 2)
-		require.True(t, publicKeyOf(t, issued.PrivateKey).Equal(key.(crypto.Signer).Public()))
+		require.True(t, pki.ParsePrivateKey(t, issued.PrivateKey).Equal(key))
 	})
 
 	t.Run("should refuse the private key of a certificate issued from a CSR", func(t *testing.T) {

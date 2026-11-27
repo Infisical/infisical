@@ -39,7 +39,7 @@ func TestSigner_ExternalCA(t *testing.T) {
 		pca.Acct.ACMPCA.ExpectEvent[aws.PrivateCertificateIssued](t, func(e aws.PrivateCertificateIssued) bool {
 			return e.CertificateAuthorityArn == pca.ARN
 		})
-		leaf := certificateOf(t, tn, s.ID)
+		leaf := pki.SignerCertificate(t, tn, s.ID)
 		require.Contains(t, leaf.ExtKeyUsage, x509.ExtKeyUsageCodeSigning)
 		require.NoError(t, leaf.CheckSignatureFrom(pki.ParseLeaf(t, pca.Acct.ACMPCA.State(t).Authorities[pca.ARN].Certificate)))
 	})
@@ -64,6 +64,31 @@ func TestSigner_ExternalCA(t *testing.T) {
 		require.Equal(t, "failed", status)
 		require.Equal(t, "The issued certificate does not have the codeSigning extended key usage set.", reason)
 		adcs.ExpectEvent[azureadcs.CertificateIssued](t, nil)
+	})
+
+	t.Run("should activate a signer whose Azure AD CS template issues the code signing usage, and sign with it", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Infisical always orders signer certificates under the WebServer template, so a
+			code signing certificate comes back only when an AD CS admin has added codeSigning to it.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		ca, adcs := pki.NewAzureADCSCA(t, proj)
+		adcs.Seed(t, azureadcs.WithTemplateUsages("WebServer", x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageCodeSigning))
+		operator := tn.NewUser(t, harness.WithName("operator"))
+		proj.Grant(t, operator)
+
+		// Action
+		s, status, reason := createSignerWaiting(t, proj, pki.IssuedBy(ca), pki.SignerMember(operator, "operator"))
+
+		// Assert
+		require.Equalf(t, "active", status, "reason: %s", reason)
+		adcs.ExpectEvent[azureadcs.CertificateIssued](t, func(e azureadcs.CertificateIssued) bool { return e.Template == "WebServer" })
+		leaf := pki.SignerCertificate(t, tn, s.ID)
+		require.Contains(t, leaf.ExtKeyUsage, x509.ExtKeyUsageCodeSigning)
+		require.NoError(t, leaf.CheckSignatureFrom(pki.ParseLeaf(t, adcs.State(t).Root)))
+		pki.RequireSigns(t, leaf, operator, s.ID)
 	})
 }
 

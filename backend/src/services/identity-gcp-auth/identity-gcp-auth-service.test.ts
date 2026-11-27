@@ -34,6 +34,7 @@ vi.mock("@fastify/request-context", () => ({
 
 const IDENTITY_ID = "5d3a8b2e-7c61-4b0f-9f3e-2a1c4d6e8f90";
 const ORG_ID = "org-id";
+const ACTOR = { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID } };
 const ACCESS_TOKEN = "access-token";
 
 const SERVICE_ACCOUNT = "gce-sa@my-project.iam.gserviceaccount.com";
@@ -92,7 +93,10 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}, authMethods: string[] =
     } as never,
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
-    permissionService: {} as never,
+    orgPermissionService: {} as never,
+    projectPermissionService: {} as never,
+    secretsPermissionService: {} as never,
+    actorGrantsService: {} as never,
     licenseService: new FakeLicenseService(),
     instanceConfigService: new FakeInstanceConfigService(),
     identityAccessTokenService: { issueIdentityAccessToken } as never,
@@ -237,7 +241,7 @@ describe("gcpAuthService.login without a trust binding", () => {
 });
 
 // Attach and update are the only places a binding can be saved, so they are what keeps new identities bound. The
-// permission service is an empty object here, so a call that got past the binding check would throw a TypeError
+// permission domains are empty objects here, so a call that got past the binding check would throw a TypeError
 // instead of the binding message.
 describe("gcpAuthService trust binding on write", () => {
   const BINDING_MESSAGE = "Configure at least one allowed GCP service account";
@@ -246,7 +250,7 @@ describe("gcpAuthService trust binding on write", () => {
     const { service } = makeService({}, []);
     return service.attachGcpAuth({
       identityId: IDENTITY_ID,
-      actorOrgId: ORG_ID,
+      actor: ACTOR,
       type: "gce",
       allowedServiceAccounts: "",
       allowedProjects: "",
@@ -261,7 +265,7 @@ describe("gcpAuthService trust binding on write", () => {
 
   const update = (existing: Partial<TGcpAuthRow>, body: Record<string, unknown>) => {
     const { service } = makeService(existing, [IdentityAuthMethod.GCP_AUTH]);
-    return service.updateGcpAuth({ identityId: IDENTITY_ID, actorOrgId: ORG_ID, ...body } as never);
+    return service.updateGcpAuth({ identityId: IDENTITY_ID, actor: ACTOR, ...body } as never);
   };
 
   test("attach rejects a GCE identity with no binding", async () => {

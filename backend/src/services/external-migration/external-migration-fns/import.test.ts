@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import { FakeKmsCore } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
 import { importDataIntoInfisicalFn } from "./import";

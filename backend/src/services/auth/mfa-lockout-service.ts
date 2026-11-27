@@ -1,4 +1,5 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -8,7 +9,6 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { isMfaProofAccepted, TMfaAssurance } from "./auth-fns";
-import { MfaMethod } from "./auth-type";
 
 const PROGRESSIVE_DELAY_INTERVAL = 5;
 const PROGRESSIVE_DELAYS_IN_MINS = [5, 30, 60];

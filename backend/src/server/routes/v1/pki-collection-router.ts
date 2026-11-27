@@ -3,9 +3,9 @@ import { z } from "zod";
 import { PkiCollectionItemsSchema, PkiCollectionsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PKI_COLLECTIONS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 
 export const registerPkiCollectionRouter = async (server: FastifyZodProvider) => {
@@ -31,10 +31,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.createPkiCollection({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -76,10 +73,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.getPkiCollectionById({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -123,10 +117,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.updatePkiCollection({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -168,10 +159,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.deletePkiCollection({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -228,10 +216,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       const { pkiCollection, pkiCollectionItems, totalCount } =
         await server.services.pkiCollection.getPkiCollectionItems({
           collectionId: req.params.collectionId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           ...req.query
         });
 
@@ -282,10 +267,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.addItemToPkiCollection({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -334,10 +316,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.removeItemFromPkiCollection({
         collectionId: req.params.collectionId,
         itemId: req.params.collectionItemId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

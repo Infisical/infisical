@@ -2,6 +2,7 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -46,6 +47,7 @@ export type TImportDataIntoInfisicalDTO = {
   plan: Plan;
 
   input: TImportInfisicalDataCreate;
+  projectActor: TActorContext;
 };
 
 const { codec, hash } = sjcl;

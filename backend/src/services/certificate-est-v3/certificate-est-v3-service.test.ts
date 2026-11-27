@@ -8,8 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   CertificateIssuanceOperation,
   CertSubjectAlternativeNameType

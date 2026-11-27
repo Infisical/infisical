@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { ProjectFolderGrantsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectFolderGrantRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,10 +32,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsByProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         sourceProjectId: req.query.sourceProjectId
       });
       return { grants };
@@ -68,10 +65,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const grants = await server.services.projectFolderGrant.listGrantsForTargetProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         targetProjectId: req.query.targetProjectId
       });
       return { grants };
@@ -97,10 +91,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const grant = await server.services.projectFolderGrant.createGrant({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body
       });
 
@@ -145,10 +136,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.projectFolderGrant.getGrantUsage({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         grantId: req.params.grantId,
         sourceProjectId: req.query.sourceProjectId
       });
@@ -174,10 +162,7 @@ export const registerProjectFolderGrantRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const grant = await server.services.projectFolderGrant.deleteGrant({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         grantId: req.params.grantId,
         sourceProjectId: req.query.sourceProjectId
       });

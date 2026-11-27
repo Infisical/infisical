@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import RE2 from "re2";
 
@@ -14,6 +13,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -22,8 +22,14 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -37,10 +43,8 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { AuthMethod } from "@app/services/auth/auth-type";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
@@ -61,6 +65,7 @@ import {
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
+  assertOrgHasVerifiedEmailDomain,
   findOrgIdByVerifiedDomain,
   isIdpAuthoritativeForDomain,
   verifyEmailDomainOwnership
@@ -72,8 +77,6 @@ import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-memb
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
@@ -108,9 +111,9 @@ type TSamlConfigServiceFactoryDep = {
     | "lockActorsForOrgAccess"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  orgPermissionService: TOrgPermissionService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
@@ -154,14 +157,14 @@ export const samlConfigServiceFactory = ({
   alertChannelRecipientDAL,
   eventEmitter,
   additionalPrivilegeDAL,
-  permissionService,
+  orgPermissionService,
   licenseService,
   usageMeteringService,
   tokenService,
   smtpService,
   identityMetadataDAL,
   kmsDataKeyService,
-  membershipDAL,
+  pamPermissionService,
   membershipRoleDAL,
   membershipGroupDAL,
   loginService,
@@ -311,8 +314,7 @@ export const samlConfigServiceFactory = ({
               usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
-              membershipDAL,
-              membershipRoleDAL,
+              pamPermissionService,
               pamAccountDAL,
               pamSessionDAL,
               gatewayV2Service,
@@ -346,11 +348,8 @@ export const samlConfigServiceFactory = ({
   const createSamlCfg: TSamlConfigServiceFactory["createSamlCfg"] = async ({
     idpCert,
     actor,
-    actorAuthMethod,
-    actorOrgId,
     orgId,
     issuer,
-    actorId,
     isActive,
     entryPoint,
     authProvider,
@@ -359,15 +358,12 @@ export const samlConfigServiceFactory = ({
     mfaAuthnContexts,
     mfaAttributeValues
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
+    permission.assert({ action: OrgPermissionSsoActions.Create, subject: OrgPermissionSubjects.Sso });
 
     const plan = await licenseService.getPlan(orgId);
     if (!plan.has(PlanFeature.SamlSso))
@@ -381,6 +377,8 @@ export const samlConfigServiceFactory = ({
     if (!org) {
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
     }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
@@ -427,10 +425,7 @@ export const samlConfigServiceFactory = ({
   const updateSamlCfg: TSamlConfigServiceFactory["updateSamlCfg"] = async ({
     orgId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     idpCert,
-    actorId,
     issuer,
     isActive,
     entryPoint,
@@ -440,15 +435,12 @@ export const samlConfigServiceFactory = ({
     mfaAuthnContexts,
     mfaAttributeValues
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+    permission.assert({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso });
     const plan = await licenseService.getPlan(orgId);
     if (!plan.has(PlanFeature.SamlSso))
       throw new BadRequestError({
@@ -575,15 +567,12 @@ export const samlConfigServiceFactory = ({
 
     // when dto is type id means it's internally used
     if (dto.type === "org") {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.ParentOrganization,
+      const permission = await orgPermissionService.getOrgPermission({
         actor: dto.actor,
-        actorId: dto.actorId,
         orgId: samlConfig.orgId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
+        scope: OrganizationActionScope.ParentOrganization
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
+      permission.assert({ action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso });
     }
     const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

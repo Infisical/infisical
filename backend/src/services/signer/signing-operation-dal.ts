@@ -2,10 +2,10 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, TableName } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { fillActivityPeriods, getActivityPeriodWindow, selectActivityPeriod } from "@app/lib/knex/activity-periods";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { SigningOperationStatus } from "./signer-enums";
 

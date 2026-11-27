@@ -1,10 +1,12 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { TAzureFederatedCredential } from "@app/hooks/api/appConnections/types/azure-federated-credential";
 import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-connection";
 
 export enum AzureClientSecretsConnectionMethod {
   OAuth = "oauth",
   ClientSecret = "client-secret",
-  Certificate = "certificate"
+  Certificate = "certificate",
+  ManagedIdentity = "managed-identity"
 }
 
 export type TAzureClientSecretsConnection = TRootAppConnection & {
@@ -32,6 +34,14 @@ export type TAzureClientSecretsConnection = TRootAppConnection & {
           tenantId: string;
           certificateBody: string;
           privateKey: string;
+        };
+      }
+    | {
+        method: AzureClientSecretsConnectionMethod.ManagedIdentity;
+        credentials: {
+          clientId: string;
+          tenantId: string;
+          federatedCredential?: TAzureFederatedCredential;
         };
       }
   );

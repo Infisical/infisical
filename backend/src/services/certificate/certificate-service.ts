@@ -1,26 +1,29 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 
-import { ActionProjectType, ProjectMembershipRole, ResourceType, TApprovalRequests } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { ProjectMembershipRole, ProjectType, TApprovalRequests } from "@app/db/schemas";
+import {
+  TCertManagerService,
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -43,7 +46,6 @@ import {
   TCertRevocationRequestData,
   TMatchedCertRevocationPolicy
 } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-types";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -205,7 +207,8 @@ type TCertificateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findById" | "find">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "find">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
   signerDAL: Pick<TSignerDALFactory, "findOne">;
@@ -253,7 +256,8 @@ export const certificateServiceFactory = ({
   projectDAL,
   kmsDataKeyService,
   kmsKeyService,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   certificateSyncDAL,
   certificateRequestDAL,
   auditLogService,
@@ -284,25 +288,16 @@ export const certificateServiceFactory = ({
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
-    action: ResourcePermissionCertificateActions,
-    actor: {
-      type: Parameters<TPermissionServiceFactory["getResourcePermission"]>[0]["actor"];
-      id: string;
-      authMethod: Parameters<TPermissionServiceFactory["getResourcePermission"]>[0]["actorAuthMethod"];
-      orgId: string;
-    }
+    action: ApplicationCertificatePermissionActions,
+    actor: TActorContext
   ): Promise<boolean> => {
     if (!cert.applicationId) return false;
-    const { permission } = await permissionService.getResourcePermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await applicationPermissionService.getApplicationPermission({
+      actor,
       projectId: cert.projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: cert.applicationId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
+      applicationId: cert.applicationId
     });
-    return permission.can(action, ResourcePermissionSub.Certificates);
+    return permission.can({ action, subject: ApplicationPermissionSub.Certificates });
   };
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -318,28 +313,34 @@ export const certificateServiceFactory = ({
       message,
       details: {
         missingPermissions: [
-          error instanceof ForbiddenError
-            ? { action: String(error.action), subject: String(error.subjectType) }
-            : { action: ResourcePermissionCertificateActions.Delete, subject: ResourcePermissionSub.Certificates }
+          error instanceof PermissionDeniedError && error.denial
+            ? { action: error.denial.action, subject: error.denial.subject }
+            : { action: ApplicationCertificatePermissionActions.Delete, subject: ApplicationPermissionSub.Certificates }
         ]
       }
     });
 
   const $assertCanRevokeOrRequestRevocationExplained = async (
     certificate: Parameters<typeof assertCanRevokeOrRequestRevocation>[0]["certificate"],
-    actorContext: { actor: ActorType; actorId: string; actorAuthMethod: ActorAuthMethod; actorOrgId: string },
+    actor: TActorContext,
     permissionMessages?: { member: string; nonMember: string }
   ) => {
     try {
       return await assertCanRevokeOrRequestRevocation({
         certificate,
-        ...actorContext,
-        permissionService,
+        actor,
+        projectPermissionService,
+        applicationPermissionService,
         resourceMetadataDAL
       });
     } catch (error) {
-      if (permissionMessages && error instanceof ForbiddenError) {
-        throw $buildRevokePermissionError(permissionMessages.member, error);
+      // Rule refusals carry a denial. "Not a member of this application" carries none and must not name the cert or
+      // the Application.
+      if (permissionMessages && error instanceof PermissionDeniedError) {
+        throw $buildRevokePermissionError(
+          error.denial ? permissionMessages.member : permissionMessages.nonMember,
+          error
+        );
       }
       if (permissionMessages && error instanceof ForbiddenRequestError) {
         throw $buildRevokePermissionError(permissionMessages.nonMember, error);
@@ -379,15 +380,7 @@ export const certificateServiceFactory = ({
     return parseCertificateBody(decryptedCert);
   };
 
-  const getCert = async ({
-    id,
-    serialNumber,
-    includeDeleted = false,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCertDTO) => {
+  const getCert = async ({ id, serialNumber, includeDeleted = false, actor }: TGetCertDTO) => {
     // Validation: require either id or serialNumber
     if (!id && !serialNumber) {
       throw new BadRequestError({ message: "Either id or serialNumber must be provided" });
@@ -395,39 +388,46 @@ export const certificateServiceFactory = ({
 
     // Unified lookup - consistent response for both id and serialNumber
     const certWithDetails = await certificateDAL.findWithFullDetails(
-      id ? { id } : { serialNumber: serialNumber!, orgId: actorOrgId }
+      id ? { id } : { serialNumber: serialNumber!, orgId: actor.org.id }
     );
 
     if (!certWithDetails) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: certWithDetails.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: certWithDetails.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const readSubject = subject(ProjectPermissionSub.Certificates, {
+    const readSubject = {
       commonName: certWithDetails.commonName,
       altNames: certWithDetails.altNames?.split(",").map((s) => s.trim()),
       serialNumber: certWithDetails.serialNumber,
       metadata: certMetadata
-    });
-    if (!permission.can(ProjectPermissionCertificateActions.Read, readSubject)) {
+    };
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates,
+        fields: readSubject
+      })
+    ) {
       const allowedByApplication = await $canActOnCertViaApplication(
         certWithDetails,
-        ResourcePermissionCertificateActions.Read,
-        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+        ApplicationCertificatePermissionActions.Read,
+        actor
       );
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, readSubject);
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates,
+          fields: readSubject
+        });
       }
     }
 
@@ -498,21 +498,19 @@ export const certificateServiceFactory = ({
 
       if (renewal) {
         const renewalMetadataRows = await resourceMetadataDAL.find({ certificateId: renewal.id });
-        const renewalReadSubject = subject(ProjectPermissionSub.Certificates, {
+        const renewalReadSubject = {
           commonName: renewal.commonName,
           altNames: renewal.altNames?.split(",").map((s) => s.trim()),
           serialNumber: renewal.serialNumber,
           metadata: renewalMetadataRows.map(({ key, value }) => ({ key, value: value || "" }))
-        });
+        };
 
         const canReadRenewal =
-          permission.can(ProjectPermissionCertificateActions.Read, renewalReadSubject) ||
-          (await $canActOnCertViaApplication(renewal, ResourcePermissionCertificateActions.Read, {
-            type: actor,
-            id: actorId,
-            authMethod: actorAuthMethod,
-            orgId: actorOrgId
-          }));
+          permission.can({
+            action: ProjectPermissionCertificateActions.Read,
+            subject: ProjectPermissionSub.Certificates,
+            fields: renewalReadSubject
+          }) || (await $canActOnCertViaApplication(renewal, ApplicationCertificatePermissionActions.Read, actor));
 
         if (canReadRenewal) latestRenewalCertificateId = renewal.id;
       }
@@ -538,44 +536,34 @@ export const certificateServiceFactory = ({
   /**
    * Get certificate private key.
    */
-  const getCertPrivateKey = async ({
-    id,
-    serialNumber,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCertPrivateKeyDTO) => {
+  const getCertPrivateKey = async ({ id, serialNumber, actor }: TGetCertPrivateKeyDTO) => {
     const cert = id
       ? await certificateDAL.findById(id)
-      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
+      : await certificateDAL.findBySerialNumberInOrg({ orgId: actor.org.id, serialNumber });
     if (!cert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const certSubject = subject(ProjectPermissionSub.Certificates, {
+    const certSubject = {
       commonName: cert.commonName,
       altNames: cert.altNames?.split(",").map((s) => s.trim()),
       serialNumber: cert.serialNumber,
       metadata: certMetadata
-    });
+    };
     if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+        ApplicationCertificatePermissionActions.ReadPrivateKey,
+        actor
       );
       if (!allowedByApplication) {
         throw new ForbiddenRequestError({
@@ -583,7 +571,11 @@ export const certificateServiceFactory = ({
         });
       }
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      permission.assert({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certSubject
+      });
     }
 
     assertCertificateMaterialAvailable(cert);
@@ -606,18 +598,10 @@ export const certificateServiceFactory = ({
   /**
    * Delete certificate with serial number [serialNumber]
    */
-  const deleteCert = async ({
-    id,
-    serialNumber,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    auditLogInfo
-  }: TDeleteCertDTO) => {
+  const deleteCert = async ({ id, serialNumber, actor, auditLogInfo }: TDeleteCertDTO) => {
     const cert = id
       ? await certificateDAL.findById(id)
-      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
+      : await certificateDAL.findBySerialNumberInOrg({ orgId: actor.org.id, serialNumber });
     if (!cert) {
       throw new NotFoundError({
         message: id
@@ -630,38 +614,32 @@ export const certificateServiceFactory = ({
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
     if (cert.applicationId) {
-      const { permission } = await permissionService.getResourcePermission({
+      const permission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId: cert.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: cert.applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId: cert.applicationId
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Delete,
-        ResourcePermissionSub.Certificates
-      );
+      permission.assert({
+        action: ApplicationCertificatePermissionActions.Delete,
+        subject: ApplicationPermissionSub.Certificates
+      });
     } else {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId: cert.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Delete,
-        subject(ProjectPermissionSub.Certificates, {
+      permission.assert({
+        action: ProjectPermissionCertificateActions.Delete,
+        subject: ProjectPermissionSub.Certificates,
+        fields: {
           commonName: cert.commonName,
           altNames: cert.altNames?.split(",").map((s) => s.trim()),
           serialNumber: cert.serialNumber,
           metadata: certMetadata
-        })
-      );
+        }
+      });
     }
 
     if (cert.deletedAt) {
@@ -687,7 +665,7 @@ export const certificateServiceFactory = ({
       }
 
       const { deletedCertificates, pkiSyncIdsHoldingCertificates } = await softDeleteCertificates(
-        { certificateIds: [cert.id], actorType: actor, actorId },
+        { certificateIds: [cert.id], actorType: actor.principal.type, actorId: actor.principal.id },
         {
           certificateDAL,
           certificateBodyDAL,
@@ -710,8 +688,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
-    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
+    usageMeteringService.emit(actor.org.id, Meter.ActiveCerts);
+    usageMeteringService.emit(actor.org.id, Meter.WildcardCerts);
 
     return {
       deletedCert,
@@ -750,8 +728,8 @@ export const certificateServiceFactory = ({
     id,
     serialNumber,
     thumbprint,
-    actorOrgId
-  }: Pick<TRevokeCertDTO, "id" | "serialNumber" | "thumbprint" | "actorOrgId">) => {
+    orgId
+  }: Pick<TRevokeCertDTO, "id" | "serialNumber" | "thumbprint"> & { orgId: string }) => {
     // The row decides whether the revocation needs approval (its Application and profile), so a replica that
     // hasn't seen the certificate join a covered Application would let the caller revoke it directly.
     const primary = certificateDAL.primaryNode();
@@ -759,14 +737,14 @@ export const certificateServiceFactory = ({
     if (id) {
       cert = await certificateDAL.findById(id, primary);
     } else if (serialNumber) {
-      cert = await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber }, primary);
+      cert = await certificateDAL.findBySerialNumberInOrg({ orgId, serialNumber }, primary);
     } else if (thumbprint) {
       const { algorithm, fingerprint } = normalizeThumbprint(thumbprint);
       const column = algorithm === CertificateThumbprintAlgorithm.SHA1 ? "fingerprintSha1" : "fingerprintSha256";
 
       const matches = await certificateDAL.findByThumbprintInOrg(
         {
-          orgId: actorOrgId,
+          orgId,
           column,
           fingerprint,
           limit: 2
@@ -865,7 +843,7 @@ export const certificateServiceFactory = ({
 
   const $assertSerialNumberImportable = async (
     { serialNumber, fingerprintSha256 }: { serialNumber: string; fingerprintSha256: string },
-    actorOrgId: string,
+    orgId: string,
     tx: Knex
   ) => {
     const revokedCerts = (
@@ -879,7 +857,7 @@ export const certificateServiceFactory = ({
       { $in: { id: [...new Set(revokedCerts.map((cert) => cert.projectId))] } },
       { tx }
     );
-    if (!projects.some((project) => project.orgId === actorOrgId)) return;
+    if (!projects.some((project) => project.orgId === orgId)) return;
     throw new BadRequestError({
       message: `Certificate with serial number '${serialNumber}' is revoked and can't be imported.`
     });
@@ -1199,22 +1177,13 @@ export const certificateServiceFactory = ({
     throw new BadRequestError({ message: "Only users and machine identities can request a certificate revocation" });
   };
 
-  const revokeCert = async ({
-    id,
-    serialNumber,
-    thumbprint,
-    revocationReason,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TRevokeCertDTO) => {
-    const requestedCert = await $findCertificateToRevoke({ id, serialNumber, thumbprint, actorOrgId });
+  const revokeCert = async ({ id, serialNumber, thumbprint, revocationReason, actor }: TRevokeCertDTO) => {
+    const requestedCert = await $findCertificateToRevoke({ id, serialNumber, thumbprint, orgId: actor.org.id });
     const cert = await $resolveActiveRecord(requestedCert);
     const ca = await $loadRevocationCa(cert);
 
     let redirectedPermissionMessages: { member: string; nonMember: string } | undefined;
-    if (cert.id !== requestedCert.id && (await projectDAL.findById(cert.projectId))?.orgId === actorOrgId) {
+    if (cert.id !== requestedCert.id && (await projectDAL.findById(cert.projectId))?.orgId === actor.org.id) {
       const redirectedApplicationName = await $resolveApplicationName(cert.applicationId);
       redirectedPermissionMessages = {
         member: redirectedApplicationName
@@ -1226,7 +1195,7 @@ export const certificateServiceFactory = ({
     }
     const { canRevokeDirectly } = await $assertCanRevokeOrRequestRevocationExplained(
       { ...cert, projectId: ca.projectId },
-      { actor, actorId, actorAuthMethod, actorOrgId },
+      actor,
       redirectedPermissionMessages
     );
 
@@ -1259,7 +1228,7 @@ export const certificateServiceFactory = ({
           });
         }
       });
-      const requester = await $resolveRevocationRequester(actor, actorId);
+      const requester = await $resolveRevocationRequester(actor.principal.type, actor.principal.id);
       const requestData: TCertRevocationRequestData = {
         certificateId: cert.id,
         serialNumber: cert.serialNumber,
@@ -1315,7 +1284,7 @@ export const certificateServiceFactory = ({
 
         const created = await approvalPolicyService.createRequestFromPolicy({
           projectId: ca.projectId,
-          organizationId: actorOrgId,
+          organizationId: actor.org.id,
           policy,
           requestData,
           justification: null,
@@ -1360,7 +1329,7 @@ export const certificateServiceFactory = ({
       };
     }
 
-    const { revokedAt, crlWarning } = await $performRevocation({ cert, ca, revocationReason, orgId: actorOrgId });
+    const { revokedAt, crlWarning } = await $performRevocation({ cert, ca, revocationReason, orgId: actor.org.id });
 
     return {
       status: CertificateRevocationStatus.Revoked as const,
@@ -1688,41 +1657,47 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
-  const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
+  const getCertBody = async ({ id, serialNumber, actor }: TGetCertBodyDTO) => {
     const cert = id
       ? await certificateDAL.findById(id)
-      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
+      : await certificateDAL.findBySerialNumberInOrg({ orgId: actor.org.id, serialNumber });
     if (!cert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const readSubject = subject(ProjectPermissionSub.Certificates, {
+    const readSubject = {
       commonName: cert.commonName,
       altNames: cert.altNames?.split(",").map((s) => s.trim()),
       serialNumber: cert.serialNumber,
       metadata: certMetadata
-    });
-    if (!permission.can(ProjectPermissionCertificateActions.Read, readSubject)) {
-      const allowedByApplication = await $canActOnCertViaApplication(cert, ResourcePermissionCertificateActions.Read, {
-        type: actor,
-        id: actorId,
-        authMethod: actorAuthMethod,
-        orgId: actorOrgId
-      });
+    };
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates,
+        fields: readSubject
+      })
+    ) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ApplicationCertificatePermissionActions.Read,
+        actor
+      );
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, readSubject);
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates,
+          fields: readSubject
+        });
       }
     }
 
@@ -1839,19 +1814,13 @@ export const certificateServiceFactory = ({
     projectId,
     applicationId,
     externalMetadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     profileId: string;
     projectId: string;
     applicationId?: string;
     externalMetadata?: TImportExternalMetadata;
-    actor: TImportCertDTO["actor"];
-    actorId: string;
-    actorAuthMethod: TImportCertDTO["actorAuthMethod"];
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile || profile.projectId !== projectId) {
@@ -1866,32 +1835,26 @@ export const certificateServiceFactory = ({
         });
       }
 
-      const { permission } = await permissionService.getResourcePermission({
+      const permission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.IssueCert,
-        ProjectPermissionSub.CertificateProfiles
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.IssueCert,
+        subject: ProjectPermissionSub.CertificateProfiles
+      });
     } else {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.IssueCert,
-        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.IssueCert,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: { slug: profile.slug }
+      });
     }
 
     if (!profile.caId) {
@@ -2007,19 +1970,13 @@ export const certificateServiceFactory = ({
       projectId,
       applicationId,
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+      actor
     }: {
       caId: string;
       projectId: string;
       applicationId?: string | null;
       profileId?: string | null;
-      actor: ActorType;
-      actorId: string;
-      actorAuthMethod: ActorAuthMethod;
-      actorOrgId: string;
+      actor: TActorContext;
     }
   ) => {
     const deletedRecords = await $findDeletedRecordsOnCa(leafIdentity, caId, certificateDAL.primaryNode());
@@ -2035,15 +1992,11 @@ export const certificateServiceFactory = ({
       const permissionMessage = applicationName
         ? `Certificate '${getCertificateDisplayName(deletedRecord)}' was deleted from Application '${applicationName}'. Importing it again needs permission to revoke it in '${applicationName}'.`
         : `Certificate '${getCertificateDisplayName(deletedRecord)}' was deleted. Importing it again needs permission to revoke it.`;
-      const { canRevokeDirectly } = await $assertCanRevokeOrRequestRevocationExplained(
-        deletedRecord,
-        { actor, actorId, actorAuthMethod, actorOrgId },
-        {
-          member: permissionMessage,
-          nonMember:
-            "Importing this certificate again needs permission to revoke a deleted copy of it in an Application you don't have access to."
-        }
-      );
+      const { canRevokeDirectly } = await $assertCanRevokeOrRequestRevocationExplained(deletedRecord, actor, {
+        member: permissionMessage,
+        nonMember:
+          "Importing this certificate again needs permission to revoke a deleted copy of it in an Application you don't have access to."
+      });
       const recordApproval = await $matchRevocationApprovalPolicy(deletedRecord, deletedRecord.projectId);
       if (!recordApproval && !canRevokeDirectly) throw $buildRevokePermissionError(permissionMessage);
       if (recordApproval) {
@@ -2069,10 +2022,7 @@ export const certificateServiceFactory = ({
     projectSlug,
     applicationId,
     pkiCollectionId,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     friendlyName,
     certificatePem: rawCertificatePem,
     chainPem: rawChainPem,
@@ -2090,7 +2040,7 @@ export const certificateServiceFactory = ({
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
       if (projectSlug) {
-        const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+        const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
         if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
         return project.id;
       }
@@ -2104,34 +2054,27 @@ export const certificateServiceFactory = ({
         throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
       }
 
-      const { permission } = await permissionService.getResourcePermission({
+      const permission = await applicationPermissionService.getApplicationPermission({
         actor,
-        actorId,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Import,
-        ResourcePermissionSub.Certificates
-      );
+      permission.assert({
+        action: ApplicationCertificatePermissionActions.Import,
+        subject: ApplicationPermissionSub.Certificates
+      });
     } else {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectPermissionService.getProjectPermission({
         actor,
-        actorId,
         projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Import,
-        ProjectPermissionSub.Certificates
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateActions.Import,
+        subject: ProjectPermissionSub.Certificates
+      });
     }
 
     // Check PKI collection
@@ -2147,10 +2090,7 @@ export const certificateServiceFactory = ({
           projectId,
           applicationId,
           externalMetadata,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId
+          actor
         })
       : null;
 
@@ -2186,17 +2126,14 @@ export const certificateServiceFactory = ({
         crypto.nativeCrypto.createHash("sha256").update(Buffer.from(leafCert.rawData)).digest("hex")
       )
     };
-    await $assertSerialNumberImportable(leafIdentity, actorOrgId, certificateDAL.primaryNode());
+    await $assertSerialNumberImportable(leafIdentity, actor.org.id, certificateDAL.primaryNode());
     const reimportCheck = linkage?.caId
       ? {
           caId: linkage.caId,
           projectId,
           applicationId,
           profileId,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId
+          actor
         }
       : null;
     const checkedDeletedRecordIds = reimportCheck
@@ -2390,7 +2327,7 @@ export const certificateServiceFactory = ({
 
     const cert = await certificateDAL.transaction(async (tx) => {
       await certificateDAL.lockSerialNumber(serialNumber, tx);
-      await $assertSerialNumberImportable(leafIdentity, actorOrgId, tx);
+      await $assertSerialNumberImportable(leafIdentity, actor.org.id, tx);
       const [liveRecord] = await certificateDAL.find(
         { $in: { serialNumber: getSerialNumberSpellings(serialNumber) }, deletedAt: null },
         { limit: 1, tx }
@@ -2476,8 +2413,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts);
-    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts);
+    usageMeteringService.emit(actor.org.id, Meter.ActiveCerts);
+    usageMeteringService.emit(actor.org.id, Meter.WildcardCerts);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
@@ -2499,57 +2436,56 @@ export const certificateServiceFactory = ({
    * Return certificate body and certificate chain for certificate with
    * serial number [serialNumber]
    */
-  const getCertBundle = async ({
-    id,
-    serialNumber,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCertBundleDTO) => {
+  const getCertBundle = async ({ id, serialNumber, actor }: TGetCertBundleDTO) => {
     const cert = id
       ? await certificateDAL.findById(id)
-      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
+      : await certificateDAL.findBySerialNumberInOrg({ orgId: actor.org.id, serialNumber });
     if (!cert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const certSubject = subject(ProjectPermissionSub.Certificates, {
+    const certSubject = {
       commonName: cert.commonName,
       altNames: cert.altNames?.split(",").map((s) => s.trim()),
       serialNumber: cert.serialNumber,
       friendlyName: cert.friendlyName,
       status: cert.status,
       metadata: certMetadata
-    });
-    if (!permission.can(ProjectPermissionCertificateActions.Read, certSubject)) {
-      const allowedByApplication = await $canActOnCertViaApplication(cert, ResourcePermissionCertificateActions.Read, {
-        type: actor,
-        id: actorId,
-        authMethod: actorAuthMethod,
-        orgId: actorOrgId
-      });
+    };
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certSubject
+      })
+    ) {
+      const allowedByApplication = await $canActOnCertViaApplication(
+        cert,
+        ApplicationCertificatePermissionActions.Read,
+        actor
+      );
       if (!allowedByApplication) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, certSubject);
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates,
+          fields: certSubject
+        });
       }
     }
     if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+        ApplicationCertificatePermissionActions.ReadPrivateKey,
+        actor
       );
       if (!allowedByApplication) {
         throw new ForbiddenRequestError({
@@ -2557,7 +2493,11 @@ export const certificateServiceFactory = ({
         });
       }
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      permission.assert({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certSubject
+      });
     }
 
     assertCertificateMaterialAvailable(cert);
@@ -2632,16 +2572,7 @@ export const certificateServiceFactory = ({
     };
   };
 
-  const getCertPkcs12 = async ({
-    id,
-    serialNumber,
-    password,
-    alias,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCertPkcs12DTO) => {
+  const getCertPkcs12 = async ({ id, serialNumber, password, alias, actor }: TGetCertPkcs12DTO) => {
     const passwordCheck = Pkcs12PasswordSchema.safeParse(password);
     if (!passwordCheck.success) {
       throw new BadRequestError({
@@ -2654,36 +2585,33 @@ export const certificateServiceFactory = ({
     }
     const cert = id
       ? await certificateDAL.findById(id)
-      : await certificateDAL.findBySerialNumberInOrg({ orgId: actorOrgId, serialNumber });
+      : await certificateDAL.findBySerialNumberInOrg({ orgId: actor.org.id, serialNumber });
     if (!cert) {
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
     const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const certSubject = subject(ProjectPermissionSub.Certificates, {
+    const certSubject = {
       commonName: cert.commonName,
       altNames: cert.altNames?.split(",").map((s) => s.trim()),
       serialNumber: cert.serialNumber,
       friendlyName: cert.friendlyName,
       status: cert.status,
       metadata: certMetadata
-    });
+    };
     if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        { type: actor, id: actorId, authMethod: actorAuthMethod, orgId: actorOrgId }
+        ApplicationCertificatePermissionActions.ReadPrivateKey,
+        actor
       );
       if (!allowedByApplication) {
         throw new ForbiddenRequestError({
@@ -2691,7 +2619,11 @@ export const certificateServiceFactory = ({
         });
       }
     } else {
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.ReadPrivateKey, certSubject);
+      permission.assert({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certSubject
+      });
     }
 
     assertCertificateMaterialAvailable(cert);
@@ -2699,10 +2631,7 @@ export const certificateServiceFactory = ({
     // Get certificate bundle (certificate, chain, private key)
     const { certificate, certificateChain, privateKey } = await getCertBundle({
       id: cert.id,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+      actor
     });
 
     if (!privateKey) {
@@ -2727,10 +2656,7 @@ export const certificateServiceFactory = ({
   const assignCertificateToApplication = async ({
     certificateId,
     applicationId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TAssignCertToApplicationDTO) => {
     const cert = await certificateDAL.findById(certificateId);
     if (!cert) {
@@ -2748,15 +2674,12 @@ export const certificateServiceFactory = ({
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found in this project.` });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: cert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "Only project admins can assign certificates to an Application."
       });

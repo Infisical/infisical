@@ -102,9 +102,17 @@ func readProject(t *testing.T, c *api.ClientWithResponses, projectID string) (in
 	return res.StatusCode(), res.Body
 }
 
+// Org selection and token reissue refuse the session themselves, with 403.
 func requireForeignSession(t *testing.T, status int, body []byte) {
 	t.Helper()
 	require.Equalf(t, http.StatusForbidden, status, "%s", apierr.Body(body))
+	require.Contains(t, string(body), "another organization's identity provider")
+}
+
+// Any other org-scoped request is turned away before its route runs, like an expired session, with 401.
+func requireForeignSessionRefused(t *testing.T, status int, body []byte) {
+	t.Helper()
+	require.Equalf(t, http.StatusUnauthorized, status, "%s", apierr.Body(body))
 	require.Contains(t, string(body), "another organization's identity provider")
 }
 

@@ -1,4 +1,4 @@
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TActorInput } from "@app/lib/types";
 
 export enum ScepOperation {
   GetCACaps = "GetCACaps",
@@ -96,8 +96,4 @@ export type THandlePkiOperationDTO = {
 export type TGenerateDynamicChallengeDTO = {
   profileId: string;
   applicationId?: string;
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
-};
+} & TActorInput;

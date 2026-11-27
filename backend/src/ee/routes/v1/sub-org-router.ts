@@ -4,13 +4,13 @@ import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SubOrgOrderBy } from "@app/ee/services/sub-org/sub-org-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { pick } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { GenericResourceNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const sanitizedSubOrganizationSchema = OrganizationsSchema.pick({
@@ -54,12 +54,12 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       const { organization } = await server.services.subOrganization.createSubOrg({
         name: req.body.name,
         slug: req.body.slug,
-        permission: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
@@ -75,7 +75,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         organizationId: organization.id,
         properties: {
           name: organization.name,
-          parentOrgId: req.permission.orgId
+          parentOrgId: req.actor.orgId
         }
       });
 
@@ -124,7 +124,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { organizations, totalCount } = await server.services.subOrganization.listSubOrgs({
-        permission: req.permission,
+        actor: req.actor,
         data: {
           limit: req.query.limit,
           offset: req.query.offset,
@@ -178,12 +178,12 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         subOrgId: req.params.subOrgId,
         name: req.body.name,
         slug: req.body.slug,
-        permission: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_SUB_ORGANIZATION,
           metadata: {
@@ -226,12 +226,12 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.joinSubOrg({
         subOrgId: req.params.subOrgId,
-        permission: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.JOIN_SUB_ORGANIZATION,
           metadata: {
@@ -274,12 +274,12 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.deleteSubOrg({
         subOrgId: req.params.subOrgId,
-        permission: req.permission
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_SUB_ORGANIZATION,
           metadata: {

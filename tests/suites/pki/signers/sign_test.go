@@ -33,7 +33,7 @@ func TestSigner_Sign(t *testing.T) {
 		require.NotNilf(t, res.JSON200, "signing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		sig, err := base64.StdEncoding.DecodeString(res.JSON200.Signature)
 		require.NoError(t, err)
-		require.NoError(t, rsa.VerifyPKCS1v15(certificateOf(t, tn, signerID).PublicKey.(*rsa.PublicKey), crypto.SHA256, sum, sig))
+		require.NoError(t, rsa.VerifyPKCS1v15(pki.SignerCertificate(t, tn, signerID).PublicKey.(*rsa.PublicKey), crypto.SHA256, sum, sig))
 		fixture.WaitForAuditEvents(t, tn, "pki-signer-sign", 1, func(e fixture.AuditEvent) bool {
 			return e.Metadata["signerId"] == signerID.String()
 		})

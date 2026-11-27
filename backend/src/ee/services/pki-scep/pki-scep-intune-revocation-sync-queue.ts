@@ -3,6 +3,7 @@ import * as x509 from "@peculiar/x509";
 
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
@@ -21,7 +22,6 @@ import {
   TIntuneRevocationResult,
   TMicrosoftIntuneConnectionCredentials
 } from "@app/services/app-connection/microsoft-intune";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";

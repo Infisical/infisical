@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -10,7 +11,6 @@ import {
   SanitizedCloudflareConnectionSchema,
   UpdateCloudflareConnectionSchema
 } from "@app/services/app-connection/cloudflare/cloudflare-connection-schema";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -48,7 +48,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.cloudflare.listPagesProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.cloudflare.listPagesProjects(connectionId, req.actor);
       return projects;
     }
   });
@@ -76,7 +76,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const scripts = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.permission);
+      const scripts = await server.services.appConnection.cloudflare.listWorkersScripts(connectionId, req.actor);
       return scripts;
     }
   });
@@ -114,7 +114,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
       const previews = await server.services.appConnection.cloudflare.listWorkersPreviews(
         connectionId,
         scriptId,
-        req.permission
+        req.actor
       );
       return previews;
     }
@@ -144,7 +144,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const stores = await server.services.appConnection.cloudflare.listSecretsStores(connectionId, req.permission);
+      const stores = await server.services.appConnection.cloudflare.listSecretsStores(connectionId, req.actor);
       return stores;
     }
   });
@@ -173,7 +173,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const zones = await server.services.appConnection.cloudflare.listZones(connectionId, req.permission);
+      const zones = await server.services.appConnection.cloudflare.listZones(connectionId, req.actor);
       return zones;
     }
   });
@@ -205,7 +205,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
 
       const permissionGroups = await server.services.appConnection.cloudflare.listPermissionGroups(
         connectionId,
-        req.permission
+        req.actor
       );
       return permissionGroups;
     }
@@ -235,7 +235,7 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const buckets = await server.services.appConnection.cloudflare.listR2Buckets(connectionId, req.permission);
+      const buckets = await server.services.appConnection.cloudflare.listR2Buckets(connectionId, req.actor);
       return buckets;
     }
   });

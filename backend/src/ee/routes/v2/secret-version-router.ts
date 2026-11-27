@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { SecretVersionsV2Schema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretVersionRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -28,10 +28,7 @@ export const registerSecretVersionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { secretVersion, projectId, environment, secretPath, secretKey, secretId } =
         await server.services.secret.redactSecretVersionValue({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           versionId: req.params.versionId
         });
 

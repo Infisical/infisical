@@ -36,7 +36,7 @@ func TestCertificate_Issue(t *testing.T) {
 		require.Equal(t, []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, leaf.ExtKeyUsage)
 		require.WithinDuration(t, time.Now().Add(30*24*time.Hour), leaf.NotAfter, time.Hour)
 		verifyChain(t, leaf, got.Chain)
-		require.True(t, publicKeyOf(t, got.PrivateKey).Equal(leaf.PublicKey), "the returned key is not the leaf's")
+		require.Equal(t, leaf.PublicKey, pki.ParsePrivateKey(t, got.PrivateKey).Public(), "the returned key is not the leaf's")
 	})
 
 	t.Run("should issue on the CSR's key and return no private key when a CSR is sent", func(t *testing.T) {

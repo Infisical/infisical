@@ -1,6 +1,5 @@
 import { IdentityProjectAdditionalPrivilegeSchema } from "@app/db/schemas";
-
-import { UnpackedPermissionSchema } from "./permission";
+import { UnpackedPermissionSchema } from "@app/lib/casl/permission-schemas";
 
 export const SanitizedIdentityPrivilegeSchema = IdentityProjectAdditionalPrivilegeSchema.omit({
   projectMembershipId: true

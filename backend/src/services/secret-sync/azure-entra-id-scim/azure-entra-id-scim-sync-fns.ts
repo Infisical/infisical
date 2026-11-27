@@ -1,6 +1,7 @@
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import {
@@ -16,13 +17,14 @@ import { TAzureEntraIdScimSyncWithCredentials } from "./azure-entra-id-scim-sync
 type TAzureEntraIdScimSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsDataKeyService: TKmsDataKeyService;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export const AzureEntraIdScimSyncFns = {
   syncSecrets: async (
     secretSync: TAzureEntraIdScimSyncWithCredentials,
     payload: TSecretSyncPayload,
-    { appConnectionDAL, kmsDataKeyService }: TAzureEntraIdScimSyncFactoryDeps
+    { appConnectionDAL, kmsDataKeyService, oidcIssuerService }: TAzureEntraIdScimSyncFactoryDeps
   ): Promise<void> => {
     const secretMap = payload.flatten();
     const { servicePrincipalId } = secretSync.destinationConfig;
@@ -49,7 +51,8 @@ export const AzureEntraIdScimSyncFns = {
     const accessToken = await getAzureEntraIdConnectionAccessToken(
       secretSync.connection.id,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      oidcIssuerService
     );
 
     await request.put(
@@ -113,7 +116,7 @@ export const azureEntraIdScimPreSaveTransformSyncOptions: TPreSaveTransformSyncO
 // Fetches service principal display name from Azure Graph API and stores it in destinationConfig
 export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
   { destinationConfig, connectionId },
-  { appConnectionDAL, kmsDataKeyService }
+  { appConnectionDAL, kmsDataKeyService, oidcIssuerService }
 ) => {
   if (!destinationConfig) return destinationConfig;
 
@@ -121,7 +124,12 @@ export const azureEntraIdScimPreSaveTransformDestinationConfig: TPreSaveTransfor
   if (!servicePrincipalId) return destinationConfig;
 
   try {
-    const accessToken = await getAzureEntraIdConnectionAccessToken(connectionId, appConnectionDAL, kmsDataKeyService);
+    const accessToken = await getAzureEntraIdConnectionAccessToken(
+      connectionId,
+      appConnectionDAL,
+      kmsDataKeyService,
+      oidcIssuerService
+    );
 
     const { data } = await request.get<{ displayName?: string }>(
       `https://graph.microsoft.com/v1.0/servicePrincipals/${servicePrincipalId as string}`,

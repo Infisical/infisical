@@ -1,10 +1,21 @@
-import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
-import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TUsers } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError } from "@app/lib/errors";
@@ -13,15 +24,11 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "../permission/org-permission";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
 import { getAuditLogEventClass, resolveEventClassFilter } from "./audit-log-event-classes";
@@ -50,7 +57,8 @@ type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
   instanceConfigService: TInstanceConfigService;
   clickhouseAuditLogDAL?: TClickHouseAuditLogDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   licenseService: TLicenseService;
@@ -62,13 +70,7 @@ type TAuditLogServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  resolvePamAuditScope?: (args: {
-    projectId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-  }) => Promise<TPamAuditLogScope | null>;
+  resolvePamAuditScope?: (args: { projectId: string; actor: TActorContext }) => Promise<TPamAuditLogScope | null>;
 };
 
 export const auditLogServiceFactory = ({
@@ -78,7 +80,8 @@ export const auditLogServiceFactory = ({
   auditLogQueue,
   auditLogSettingsService,
   licenseService,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
   queueService,
   keyStore,
   smtpService,
@@ -86,60 +89,26 @@ export const auditLogServiceFactory = ({
   notificationService,
   resolvePamAuditScope
 }: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
-  const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({
-    actorAuthMethod,
-    actorId,
-    actorOrgId,
-    actor,
-    filter
-  }) => {
+  const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({ actor, filter }) => {
     // Products with their own permission model (e.g. PAM) scope logs by resource
     let pamScope: TPamAuditLogScope | null = null;
 
     // Filter logs for specific project
     if (filter.projectId) {
-      pamScope = resolvePamAuditScope
-        ? await resolvePamAuditScope({
-            projectId: filter.projectId,
-            actor,
-            actorId,
-            actorAuthMethod,
-            actorOrgId
-          })
-        : null;
+      pamScope = resolvePamAuditScope ? await resolvePamAuditScope({ projectId: filter.projectId, actor }) : null;
 
       if (!pamScope) {
-        const { permission } = await permissionService.getProjectPermission({
-          actor,
-          actorId,
-          projectId: filter.projectId,
-          actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.Any
-        });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionAuditLogsActions.Read,
-          ProjectPermissionSub.AuditLogs
-        );
+        const permission = await projectPermissionService.getProjectPermission({ actor, projectId: filter.projectId });
+        permission.assert({ action: ProjectPermissionAuditLogsActions.Read, subject: ProjectPermissionSub.AuditLogs });
       }
     } else {
       // Organization-wide logs
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+      const permission = await orgPermissionService.getOrgPermission({ actor });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAuditLogsActions.Read,
-        OrgPermissionSubjects.AuditLogs
-      );
+      permission.assert({ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs });
     }
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan.has(PlanFeature.AuditLogs)) {
       throw new BadRequestError({
         message: "Failed to list audit logs due to plan restriction. Upgrade your plan to view audit logs."
@@ -175,7 +144,7 @@ export const auditLogServiceFactory = ({
       secretPath: filter.secretPath,
       secretKey: filter.secretKey,
       environment: filter.environment,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       ...(filter.projectId ? { projectId: filter.projectId } : {}),
       ...(pamScope ? { pamScope } : {})
     };
@@ -347,21 +316,11 @@ export const auditLogServiceFactory = ({
   };
 
   const getAuditLogPostgresStorageStatus: TAuditLogServiceFactory["getAuditLogPostgresStorageStatus"] = async ({
-    actorAuthMethod,
-    actorId,
-    actorOrgId,
     actor
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+    permission.assert({ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs });
 
     const appCfg = getConfig();
     const clickHouseConfigured = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);

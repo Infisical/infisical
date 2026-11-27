@@ -1,9 +1,9 @@
 import { z } from "zod";
 
+import { AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 
 // Org-less sessions are allowed because enrolling a factor at login is challenged before
@@ -40,7 +40,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
 
       const result = await server.services.mfaSession.verifyMfaSession({
         mfaSessionId: req.params.mfaSessionId,
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: req.auth.tokenVersionId,
         mfaToken: req.body.mfaToken,
         mfaMethod: req.body.mfaMethod
@@ -77,7 +77,7 @@ export const registerMfaSessionRouter = async (server: FastifyZodProvider) => {
 
       const result = await server.services.mfaSession.getMfaSessionStatus({
         mfaSessionId: req.params.mfaSessionId,
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: req.auth.tokenVersionId
       });
 
