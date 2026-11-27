@@ -45,6 +45,7 @@ export function ServerExportFormatFields({ isUpdate }: { isUpdate?: boolean }) {
             error={errorOf(error)}
           >
             <Select
+              descriptionLayout="stacked"
               value={(field.value as PkiSyncExportFormat | undefined) ?? PkiSyncExportFormat.Pem}
               onValueChange={(value) => field.onChange(value as PkiSyncExportFormat)}
               options={Object.values(PkiSyncExportFormat).map((format) => {

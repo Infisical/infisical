@@ -40,6 +40,7 @@ import type { AppConnection as ApiAppConnection } from "@app/hooks/api/appConnec
 
 import { useConnectionCreation } from "../../../../components/connection-creation";
 import { ProviderIcon } from "../../../../components/provider-icon";
+import { providerMedia } from "../../../../components/provider-label";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { useCreateBlock } from "../row-actions/permissions";
@@ -164,7 +165,7 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
       items={items}
       onSelect={(type) => onSelect(type as SecretRotation)}
       searchLabel="Search secret rotation providers"
-      searchPlaceholder="Search providers like PostgreSQL, AWS, Cloudflare..."
+      searchPlaceholder="Search providers..."
       noun="providers"
     />
   );
@@ -266,7 +267,8 @@ function ConfigurationFields({
               options={available.map((connection) => ({
                 value: connection.id,
                 label: connection.name,
-                meta: apps.length > 1 ? appConnectionName(connection.app) : undefined
+                meta: apps.length > 1 ? appConnectionName(connection.app) : undefined,
+                media: providerMedia("app-connection", connection.app as string as ApiAppConnection)
               }))}
               placeholder="Select connection..."
               emptyText={`No ${apps.map(appConnectionName).join(" or ")} connections yet.`}
@@ -328,6 +330,7 @@ function ConfigurationFields({
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
         <Alert tone="warn">
+          {/* v4-check-ignore bare-provider-name -- the provider name opens a sentence */}
           {SECRET_ROTATION_MAP[type].name} rotates a single credential set, so auto-rotation can
           interrupt services that use it. Turn it off if you need continuity.{" "}
           <a
@@ -689,7 +692,7 @@ export function SecretRotationFlow({
         }}
       >
         <FormProvider {...form}>
-          <SheetContent className="data-[side=right]:w-full data-[side=right]:sm:w-3/4 data-[side=right]:sm:max-w-none">
+          <SheetContent size="xl">
             {type ? (
               <SheetHeader>
                 <Inline gap={12} wrap={false} align="start">
@@ -703,6 +706,7 @@ export function SecretRotationFlow({
                         />
                       }
                     >
+                      {/* v4-check-ignore bare-provider-name -- ProviderLogo already leads this header */}
                       {SECRET_ROTATION_MAP[type].name} secret rotation
                     </SheetTitle>
                     {!isUpdate && (
@@ -717,9 +721,6 @@ export function SecretRotationFlow({
             ) : (
               <SheetHeader>
                 <SheetTitle>Choose a rotation provider</SheetTitle>
-                <SheetDescription>
-                  Pick the service whose credentials Infisical rotates on a schedule.
-                </SheetDescription>
               </SheetHeader>
             )}
             {type ? (

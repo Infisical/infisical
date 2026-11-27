@@ -42,6 +42,7 @@ import { useOrgPermission } from "../../access/permissions";
 import { errorMessage } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
 import { ProviderIcon } from "../../components/provider-icon";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { INLINE_CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 import {
@@ -280,6 +281,7 @@ const AiConditionRow = ({
       value: connection.id,
       label: connection.name,
       meta: APP_CONNECTION_MAP[connection.app as AppConnection]?.name ?? connection.app,
+      media: providerMedia("app-connection", connection.app as AppConnection),
       disabled: atLimit && !selectedIds.has(connection.id)
     })),
     ...selected

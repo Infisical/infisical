@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { WrenchIcon } from "lucide-react";
 
 import { CustomRolesUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
@@ -58,6 +59,11 @@ export const ProjectRolesTab = () => {
   const { permission } = useProjectPermission(projectId);
   const { data: roles = [], isPending } = access.useProjectRoles(projectId, scope.projectType);
   const deleteRole = access.useDeleteProjectRole();
+  const navigate = useNavigate();
+  const createRequested = useSearch({
+    strict: false,
+    select: (search) => Boolean((search as { createRole?: boolean }).createRole)
+  });
   const [sheet, setSheet] = useState<{ open: boolean; mode: RoleSheetMode; key: number }>({
     open: false,
     mode: { kind: "create" },
@@ -73,13 +79,26 @@ export const ProjectRolesTab = () => {
   const canEdit = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
   const canDelete = permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
-  const openSheet = (mode: RoleSheetMode) => {
-    if (subscription && !subscription.rbac) {
-      setUpgrade("rbac");
-      return;
-    }
-    setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
-  };
+  const openSheet = useCallback(
+    (mode: RoleSheetMode) => {
+      if (subscription && !subscription.rbac) {
+        setUpgrade("rbac");
+        return;
+      }
+      setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
+    },
+    [subscription]
+  );
+  useEffect(() => {
+    if (!createRequested) return;
+    navigate({
+      to: ".",
+      search: (prev: object) => ({ ...prev, createRole: undefined }),
+      replace: true
+    });
+    if (canCreate) openSheet({ kind: "create" });
+  }, [createRequested, canCreate, navigate, openSheet]);
+
   const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
   const list = usePagedList<ProjectRoleRow>({

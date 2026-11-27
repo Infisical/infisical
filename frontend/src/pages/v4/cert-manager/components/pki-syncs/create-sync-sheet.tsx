@@ -22,7 +22,6 @@ import {
 } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
 import {
   isPaloAltoNetworksPkiSync,
-  PKI_SYNC_MAP,
   PRESERVE_ARN_DESTINATIONS,
   PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS
 } from "@app/helpers/pkiSyncs";
@@ -32,7 +31,7 @@ import type { TPkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs/types";
 
 import { useOrgId } from "../../../access/permissions";
 import { readableFailure, saved } from "../../../access/toast";
-import { ProviderIcon } from "../../../components/provider-icon";
+import { ProviderLabel } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license/useUpgradeGate";
 import { PkiSyncCertificatesFields } from "./certificates/certificates-fields";
@@ -285,8 +284,11 @@ const CreateSyncForm = ({
       <MultiStep
         variant="sheet"
         layout="aside"
-        media={<ProviderIcon icon={PKI_SYNC_MAP[destination].image} alt="" size="sm" />}
-        title={`${destinationName} certificate sync`}
+        title={
+          <ProviderLabel kind="pki-sync" value={destination}>
+            {destinationName} certificate sync
+          </ProviderLabel>
+        }
         badges={
           <DocumentationLink
             href={pkiSyncDocsHref(destination)}

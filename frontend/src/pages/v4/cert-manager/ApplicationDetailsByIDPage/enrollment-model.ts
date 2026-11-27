@@ -85,7 +85,7 @@ export type EnrollmentDrafts = {
   "microsoft-autoenrollment"?: MicrosoftAutoenrollmentDraft;
 };
 
-export type EnrollmentBodyProps = HTMLAttributes<HTMLDivElement> & { lead?: ReactNode };
+export type EnrollmentBodyProps = HTMLAttributes<HTMLDivElement>;
 
 export type EnrollmentPanelProps<M extends EnrollmentMethod> = {
   applicationId: string;

@@ -153,6 +153,7 @@ export const MembersTab = ({
       width: 176,
       render: (member) => (
         <Select
+          descriptionLayout="stacked"
           size="sm"
           aria-label={`Role for ${memberName(member)}`}
           options={APP_ROLES}

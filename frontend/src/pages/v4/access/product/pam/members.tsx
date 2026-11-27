@@ -22,7 +22,6 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useSearch } from "@tanstack/react-router";
 import { UserXIcon } from "lucide-react";
 
@@ -232,9 +231,12 @@ export const PamMembersTab = () => {
             {displayName(member) ?? <Muted>-</Muted>}
           </span>
           {member.user.isOrgMembershipPending && (
-            <Tooltip content="Access begins once they accept their organization invitation.">
-              <Badge tone="outline">Pending invitation</Badge>
-            </Tooltip>
+            <Badge
+              reason="Access begins once they accept their organization invitation."
+              tone="outline"
+            >
+              Pending invitation
+            </Badge>
           )}
         </Inline>
       )

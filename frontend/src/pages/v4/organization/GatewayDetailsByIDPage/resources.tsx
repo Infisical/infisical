@@ -5,8 +5,10 @@ import { RowLink } from "@infisical/cipher/ui/row-link";
 
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import type { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
 import { useOrgId } from "../../access/permissions";
+import { ProviderLabel, providerOf } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 
@@ -14,6 +16,7 @@ type ResourceRow = {
   id: string;
   name: string;
   type: string;
+  image?: string;
   location: string;
   link: ReturnType<ReturnType<typeof useGo>["link"]>;
 };
@@ -31,6 +34,7 @@ export const ConnectedResourcesCard = ({ gatewayId }: { gatewayId: string }) => 
           id: connection.id,
           name: connection.name,
           type: `App connection (${APP_CONNECTION_MAP[connection.app as AppConnection]?.name ?? connection.app})`,
+          image: APP_CONNECTION_MAP[connection.app as AppConnection]?.image,
           location: connection.projectName ?? "Organization",
           link: link("/integrations")
         })),
@@ -52,6 +56,7 @@ export const ConnectedResourcesCard = ({ gatewayId }: { gatewayId: string }) => 
           id: auth.id,
           name: auth.identityName,
           type: "Kubernetes Auth",
+          image: providerOf("identity-auth", IdentityAuthMethod.KUBERNETES_AUTH)?.image,
           location: "Organization",
           link: link(`/identities/${auth.identityId}`)
         })),
@@ -93,7 +98,11 @@ export const ConnectedResourcesCard = ({ gatewayId }: { gatewayId: string }) => 
         </RowLink>
       )
     },
-    { id: "type", header: "Type", render: (row) => row.type },
+    {
+      id: "type",
+      header: "Type",
+      render: (row) => <ProviderLabel provider={{ name: row.type, image: row.image }} />
+    },
     { id: "location", header: "Location", render: (row) => row.location }
   ];
 

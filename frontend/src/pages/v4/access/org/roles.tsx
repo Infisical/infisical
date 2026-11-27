@@ -31,7 +31,6 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import slugify from "@sindresorhus/slugify";
 import { WrenchIcon } from "lucide-react";
 
@@ -231,11 +230,12 @@ export const OrgRolesTab = () => {
           {role.name}
           {isDefault(role) && (
             <span className={styles.linkBadges}>
-              <Tooltip
-                content={`Members joining your organization will be assigned the ${role.name} role unless otherwise specified.`}
+              <Badge
+                reason={`Members joining your organization will be assigned the ${role.name} role unless otherwise specified.`}
+                tone="info"
               >
-                <Badge tone="info">Default</Badge>
-              </Tooltip>
+                Default
+              </Badge>
             </span>
           )}
         </RowLink>
