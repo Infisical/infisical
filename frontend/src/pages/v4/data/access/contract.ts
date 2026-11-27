@@ -398,7 +398,9 @@ export type AccessAdapter = {
   useCreateServiceToken: MutationOf<typeof useCreateServiceToken>;
   useDeleteServiceToken: MutationOf<typeof useDeleteServiceToken>;
 
-  useProjectRoles: QueryOf<typeof useGetProjectRoles>;
+  useProjectRoles: (
+    ...args: Parameters<typeof useGetProjectRoles>
+  ) => ReturnType<QueryOf<typeof useGetProjectRoles>> & { refetch?: () => unknown };
   useProjectRole: QueryOf<typeof useGetProjectRoleBySlug>;
   useCreateProjectRole: MutationOf<typeof useCreateProjectRole>;
   useUpdateProjectRole: MutationOf<typeof useUpdateProjectRole>;
