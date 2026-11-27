@@ -950,6 +950,15 @@ the same transaction. Keys are released on CA delete, on project hard delete, an
 fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
 failure is logged, never thrown, so the original outcome stands.
 
+### DNS providers for CA domain validation
+
+ACME DNS-01 and DigiCert domain validation write TXT records through the same DNS app connections.
+A new `AcmeDnsProvider` also needs an entry in `DNS_TXT_RECORD_PROVIDERS`
+(`services/certificate-authority/dns-providers/dns-txt-records.ts`), whose `getZone` returns the provider's
+canonical zone id, or the backend type-check fails. Any CA that keeps an app connection id inside its JSON
+`configuration` must be covered by the delete guard in `appConnectionService.deleteAppConnection` (as
+`findDigiCertCaNamesByDnsZoneConnectionId` does), because no foreign key stops the connection from being deleted under it.
+
 ### Cross-signed CA certificates and issued chains
 
 An internal CA holds at most one cross-signed certificate (`certificate_authority_cross_signed_certs`),

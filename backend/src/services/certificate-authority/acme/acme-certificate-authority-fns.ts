@@ -276,7 +276,11 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
 };
 
-const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
+export const validateDnsProviderAppConnection = (
+  provider: AcmeDnsProvider,
+  dnsAppConnectionId: string,
+  app: string
+) => {
   const requiredApp = ACME_DNS_PROVIDER_APP_CONNECTION_MAP[provider];
   if (app !== requiredApp) {
     throw new BadRequestError({

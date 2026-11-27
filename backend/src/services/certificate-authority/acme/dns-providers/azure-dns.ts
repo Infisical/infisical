@@ -50,6 +50,56 @@ export const azureDnsInsertTxtRecord = async (
   }
 };
 
+type TAzureTxtRecordSet = { properties?: { TTL?: number; TXTRecords?: { value: string[] }[] } };
+
+export const azureDnsAppendTxtRecord = async (
+  connection: TAzureDnsConnection,
+  hostedZoneId: string,
+  recordName: string,
+  value: string
+) => {
+  const {
+    credentials: { tenantId, clientId, clientSecret }
+  } = connection;
+
+  validateAzureDnsZoneResourceId(hostedZoneId);
+  const unquotedValue = value.replaceAll('"', "");
+  const recordUrl = `https://management.azure.com${hostedZoneId}/TXT/${encodeURIComponent(recordName)}?api-version=2018-05-01`;
+
+  try {
+    const accessToken = await getAzureDnsAccessToken(tenantId, clientId, clientSecret);
+    const headers = { Authorization: `Bearer ${accessToken}`, Accept: "application/json" };
+
+    let existing: TAzureTxtRecordSet | undefined;
+    try {
+      existing = (await request.get<TAzureTxtRecordSet>(recordUrl, { headers })).data;
+    } catch (error) {
+      if (!isAxiosError(error) || error.response?.status !== 404) throw error;
+    }
+
+    const existingRecords = existing?.properties?.TXTRecords ?? [];
+    if (existingRecords.some((record) => record.value.join("") === unquotedValue)) return;
+
+    await request.put(
+      recordUrl,
+      {
+        properties: {
+          TTL: existing?.properties?.TTL ?? 60,
+          TXTRecords: [...existingRecords, { value: [unquotedValue] }]
+        }
+      },
+      { headers: { ...headers, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    if (isAxiosError(error)) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const errorMessage = (error.response?.data?.error?.message || error.message || "Unknown error") as string;
+      throw new Error(typeof errorMessage === "string" ? errorMessage : String(errorMessage));
+    }
+    throw error;
+  }
+};
+
 export const azureDnsDeleteTxtRecord = async (
   connection: TAzureDnsConnection,
   hostedZoneId: string,

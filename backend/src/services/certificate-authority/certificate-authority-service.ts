@@ -314,7 +314,11 @@ export const certificateAuthorityServiceFactory = ({
     certificateBodyDAL,
     certificateSecretDAL,
     kmsDataKeyService,
-    kmsKeyService
+    kmsKeyService,
+    instanceConfigService,
+    oidcIssuerService,
+    gatewayV2Service,
+    gatewayPoolService
   });
   const godaddyFns = GoDaddyCertificateAuthorityFns({
     appConnectionDAL,

@@ -57,6 +57,7 @@ export type TDigiCertOrderMetadata = {
     isRenewal?: boolean;
     originalCertificateId?: string;
     previousCertificateId?: number;
+    domainValidationFailures?: string[];
   };
 };
 
@@ -278,9 +279,15 @@ export const processDigiCertPendingValidationRequest = async (
 
   try {
     const validationDetail = lastCheckStatus && lastCheckStatus !== orderStatus ? `, ${lastCheckStatus}` : "";
+    const domainValidationFailures = parsed.digicert.domainValidationFailures ?? [];
     await deps.certificateRequestDAL.setPendingMessage(
       request.id,
-      `DigiCert is processing the request — order #${parsed.digicert.orderId} (status: ${orderStatus}${validationDetail})`
+      [
+        `DigiCert is processing the request — order #${parsed.digicert.orderId} (status: ${orderStatus}${validationDetail})`,
+        ...(domainValidationFailures.length
+          ? [`When the order was placed: ${domainValidationFailures.join(". ")}`]
+          : [])
+      ].join(". ")
     );
   } catch (error) {
     logger.warn(error, `Failed to update DigiCert pendingMessage [certificateRequestId=${request.id}]`);

@@ -12,7 +12,7 @@ import { splitPemChain } from "@app/services/certificate/certificate-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
-import { TDigiCertCertificateAuthority } from "./digicert-certificate-authority-types";
+import { TDigiCertCertificateAuthority, TDigiCertDnsZone } from "./digicert-certificate-authority-types";
 
 export const castDbEntryToDigiCertCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
@@ -38,6 +38,7 @@ export const castDbEntryToDigiCertCertificateAuthority = (
       jobTitle: string;
       telephone: string;
     };
+    dnsZones?: TDigiCertDnsZone[];
   };
 
   if (typeof config.organizationId !== "number" || !config.productNameId) {
@@ -60,7 +61,8 @@ export const castDbEntryToDigiCertCertificateAuthority = (
       organizationId: config.organizationId,
       productNameId: config.productNameId,
       purpose,
-      verifiedContact: config.verifiedContact
+      verifiedContact: config.verifiedContact,
+      dnsZones: config.dnsZones
     },
     status: ca.status as CaStatus
   };

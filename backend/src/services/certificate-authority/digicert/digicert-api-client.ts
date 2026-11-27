@@ -2,13 +2,22 @@ import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { DIGICERT_AUTH_HEADER } from "@app/services/app-connection/digicert/digicert-connection-constants";
 import { extractDigiCertErrorMessage } from "@app/services/app-connection/digicert/digicert-connection-errors";
 
-import { DigiCertRevocationRequestStatus } from "./digicert-certificate-authority-enums";
+import {
+  DigiCertDcvMethod,
+  DigiCertDomainValidationStatus,
+  DigiCertDomainValidationType,
+  DigiCertRevocationRequestStatus
+} from "./digicert-certificate-authority-enums";
 import {
   TCheckValidationResponse,
   TDigiCertAlternateOrdersResponse,
+  TDigiCertDomain,
+  TDigiCertDomainDcvResponse,
+  TDigiCertDomainsResponse,
   TOrderResponse,
   TOrderStatusChangesResponse,
   TOrganizationValidationsResponse,
@@ -21,6 +30,9 @@ export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
 
 const ORDER_REQUEST_TIMEOUT_MS = 2 * 60_000;
 export const DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS = 20_000;
+const DIGICERT_DOMAINS_PAGE_SIZE = 1000;
+const DIGICERT_DOMAINS_MAX_PAGES = 20;
+const DIGICERT_RECORD_NOT_SEEN_YET_ERROR_CODES = new Set(["invalid_persistent_dns", "mpic_corroboration_error"]);
 
 type TDigiCertRevocationRequest = { id: number; status: DigiCertRevocationRequestStatus };
 
@@ -32,6 +44,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
   const boundedRequestConfig = options?.requestTimeoutMs
     ? { timeout: options.requestTimeoutMs, "axios-retry": { retries: 0 } }
     : {};
+  const domainWriteConfig = { headers, timeout: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS, "axios-retry": { retries: 0 } };
 
   const wrap = <T>(fn: () => Promise<T>, action: string) =>
     fn().catch((error: unknown) => {
@@ -185,6 +198,108 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
       return data;
     }, `list order status changes (seconds=${seconds})`);
 
+  const listDomains = async (organizationId: number) =>
+    wrap(async () => {
+      const domains: TDigiCertDomain[] = [];
+      let isComplete = false;
+      for (let page = 0; page < DIGICERT_DOMAINS_MAX_PAGES && !isComplete; page += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const { data } = await request.get<TDigiCertDomainsResponse>(`${baseURL}/domain`, {
+          headers,
+          timeout: DIGICERT_BOUNDED_REQUEST_TIMEOUT_MS,
+          params: {
+            include_validation: true,
+            limit: DIGICERT_DOMAINS_PAGE_SIZE,
+            offset: page * DIGICERT_DOMAINS_PAGE_SIZE
+          }
+        });
+        const pageDomains = data.domains ?? [];
+        domains.push(...pageDomains);
+
+        const total = data.page?.total;
+        isComplete = total === undefined ? pageDomains.length < DIGICERT_DOMAINS_PAGE_SIZE : domains.length >= total;
+      }
+
+      if (!isComplete) {
+        logger.warn(
+          `DigiCert domain listing hit the page cap and is truncated [organizationId=${organizationId}] [collected=${domains.length}]`
+        );
+      }
+      return domains.filter((domain) => domain.organization?.id === organizationId);
+    }, "domain listing");
+
+  const addDomain = async ({
+    name,
+    organizationId,
+    validationType
+  }: {
+    name: string;
+    organizationId: number;
+    validationType: DigiCertDomainValidationType;
+  }) =>
+    wrap(async () => {
+      const { data } = await request.post<TDigiCertDomainDcvResponse>(
+        `${baseURL}/domain`,
+        {
+          name,
+          keep_www: true,
+          organization: { id: organizationId },
+          validations: [{ type: validationType }],
+          dcv_method: DigiCertDcvMethod.PersistentTxt
+        },
+        domainWriteConfig
+      );
+      return data;
+    }, `domain creation for ${name}`);
+
+  const activateDomain = async (domainId: number) =>
+    wrap(async () => {
+      await request.put(`${baseURL}/domain/${domainId}/activate`, null, domainWriteConfig);
+    }, `domain activation for ${domainId}`);
+
+  const submitDomainValidation = async (domainId: number, validationType: DigiCertDomainValidationType) =>
+    wrap(async () => {
+      await request.post(
+        `${baseURL}/domain/${domainId}/validation`,
+        { validations: [{ type: validationType }] },
+        domainWriteConfig
+      );
+    }, `domain validation submission for ${domainId}`);
+
+  const setDomainDcvMethod = async (domainId: number) =>
+    wrap(async () => {
+      const { data } = await request.put<TDigiCertDomainDcvResponse>(
+        `${baseURL}/domain/${domainId}/dcv/method`,
+        { dcv_method: DigiCertDcvMethod.PersistentTxt },
+        domainWriteConfig
+      );
+      return data;
+    }, `validation method change for domain ${domainId}`);
+
+  const validateDomainDcv = async (domainId: number) =>
+    wrap(async () => {
+      try {
+        const { data } = await request.put<{ status?: string }>(
+          `${baseURL}/domain/${domainId}/dcv/validate-token`,
+          null,
+          domainWriteConfig
+        );
+        return data.status === DigiCertDomainValidationStatus.Active
+          ? DigiCertDomainValidationStatus.Active
+          : DigiCertDomainValidationStatus.Pending;
+      } catch (error) {
+        if (
+          error instanceof AxiosError &&
+          (error.response?.data as { errors?: { code?: string }[] } | undefined)?.errors?.some(({ code }) =>
+            Boolean(code && DIGICERT_RECORD_NOT_SEEN_YET_ERROR_CODES.has(code))
+          )
+        ) {
+          return DigiCertDomainValidationStatus.Pending;
+        }
+        throw error;
+      }
+    }, `domain validation check for ${domainId}`);
+
   return {
     placeOrder,
     reissueOrder,
@@ -197,6 +312,12 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string, options
     revokeCertificate,
     cancelOrderReissue,
     getRequest,
-    listOrderStatusChanges
+    listOrderStatusChanges,
+    listDomains,
+    addDomain,
+    activateDomain,
+    submitDomainValidation,
+    setDomainDcvMethod,
+    validateDomainDcv
   };
 };

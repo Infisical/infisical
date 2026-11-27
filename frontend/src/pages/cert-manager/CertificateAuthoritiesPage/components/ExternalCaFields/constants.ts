@@ -14,3 +14,5 @@ export const DigiCertProductType = {
   CodeSigning: "code_signing_certificate",
   Ssl: "ssl_certificate"
 } as const;
+
+export const DIGICERT_MAX_DNS_ZONES = 20;

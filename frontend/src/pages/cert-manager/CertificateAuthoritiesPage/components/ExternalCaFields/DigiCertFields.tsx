@@ -125,6 +125,18 @@ export const DigiCertFields = ({
               if (next) {
                 onChange(next);
                 setValue("configuration.productNameId", "");
+                if (
+                  next === DigiCertCaPurpose.CodeSigning &&
+                  configuration &&
+                  "dnsZones" in configuration
+                ) {
+                  setValue(
+                    "configuration.dnsZones",
+                    configuration.dnsZones?.filter(
+                      (zone) => zone.appConnection.id && zone.hostedZoneId.trim()
+                    )
+                  );
+                }
               }
             }}
             ref={ref}

@@ -22,7 +22,14 @@ import { FormData } from "./schema";
 type Props = {
   control: Control<FormData>;
   connectionId: string;
+  name?:
+    | "configuration.dnsProviderConfig.hostedZoneId"
+    | `configuration.dnsZones.${number}.hostedZoneId`;
+  zoneTooltip?: string;
 };
+
+const DEFAULT_ZONE_TOOLTIP =
+  "The public Cloud DNS zone where Infisical creates the challenge TXT records. It must contain the domains you request certificates for.";
 
 const getProjectIdFromZone = (zoneResourceName?: string | null) =>
   zoneResourceName?.split("/")[1] ?? "";
@@ -36,8 +43,10 @@ const GcpCloudDnsZoneSelect = ({
   value,
   onChange,
   inputRef,
-  error
+  error,
+  zoneTooltip
 }: {
+  zoneTooltip: string;
   connectionId: string;
   gcpProjectId: string;
   value?: string | null;
@@ -69,10 +78,7 @@ const GcpCloudDnsZoneSelect = ({
           <TooltipTrigger asChild>
             <Info />
           </TooltipTrigger>
-          <TooltipContent className="max-w-md">
-            The public Cloud DNS zone where Infisical creates the challenge TXT records. It must
-            contain the domains you request certificates for.
-          </TooltipContent>
+          <TooltipContent className="max-w-md">{zoneTooltip}</TooltipContent>
         </Tooltip>
       </FieldLabel>
       <Combobox
@@ -102,7 +108,12 @@ const GcpCloudDnsZoneSelect = ({
   );
 };
 
-export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
+export const GcpCloudDnsZoneFields = ({
+  control,
+  connectionId,
+  name = "configuration.dnsProviderConfig.hostedZoneId",
+  zoneTooltip = DEFAULT_ZONE_TOOLTIP
+}: Props) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>();
 
   const {
@@ -118,7 +129,7 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
 
   return (
     <Controller
-      name="configuration.dnsProviderConfig.hostedZoneId"
+      name={name}
       control={control}
       render={({ field: { value, onChange, ref }, fieldState: { error } }) => {
         const gcpProjectId = getProjectIdFromZone(value) || selectedProjectId || "";
@@ -174,6 +185,7 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
               onChange={onChange}
               inputRef={ref}
               error={error}
+              zoneTooltip={zoneTooltip}
             />
           </>
         );

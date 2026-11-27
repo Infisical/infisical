@@ -95,7 +95,7 @@ If a [DigiCert CA](/documentation/platform/pki/ca/digicert-direct) issued the ce
 
 A reissue requests the same validity as the current certificate, capped at 199 days and at the end of the order, so the **Validity (TTL)** field is read-only and the API rejects `ttl`. The profile's policy still applies to it, so a validity the policy doesn't allow is flagged before you submit. If you need a certificate that lasts longer than the order, select **Place a new order** instead.
 
-If you add a name that DigiCert hasn't validated yet, validate it in DigiCert CertCentral within 24 hours. Otherwise the reissue is canceled and the request fails.
+If you add a name that DigiCert hasn't validated yet, and it isn't in one of the CA's [linked DNS zones](/documentation/platform/pki/ca/digicert-direct#domain-validation-with-dns-zones) or the request's status message says its zone couldn't be validated automatically, validate it in DigiCert CertCentral within 24 hours. Otherwise the reissue is canceled and the request fails.
 
 Automatic renewal always places a new order. To reissue on the existing order, renew the certificate manually.
 

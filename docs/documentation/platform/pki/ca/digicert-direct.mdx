@@ -49,7 +49,8 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
 
     ```bash Create a DigiCert CA (SSL)
     curl --request POST \
-      --url https://app.infisical.com/api/v1/pki/ca/digicert \
+      --url https://app.infisical.com/api/v1/cert-manager/ca/digicert \
+      --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data '{
         "name": "digicert-ov",
@@ -58,14 +59,22 @@ Infisical can issue certificates directly from [DigiCert CertCentral](https://ww
           "appConnectionId": "<digicert-app-connection-id>",
           "organizationId": 112236,
           "productNameId": "ssl_plus",
-          "purpose": "ssl"
+          "purpose": "ssl",
+          "dnsZones": [
+            {
+              "provider": "cloudflare",
+              "appConnectionId": "<cloudflare-app-connection-id>",
+              "hostedZoneId": "<cloudflare-zone-id>"
+            }
+          ]
         }
       }'
     ```
 
     ```bash Create a DigiCert CA (Code Signing)
     curl --request POST \
-      --url https://app.infisical.com/api/v1/pki/ca/digicert \
+      --url https://app.infisical.com/api/v1/cert-manager/ca/digicert \
+      --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data '{
         "name": "digicert-cs",
@@ -96,19 +105,71 @@ A CA configured for code signing is used from the **Code Signing** product, not 
   Issue code-signing certificates from this CA with an HSM-backed key.
 </Card>
 
+## Domain validation with DNS zones
+
+DigiCert issues an OV or EV certificate only after it validates that your organization controls every domain on the certificate. Each validation expires after a set period. If you link the DNS zones that hold your domains to an SSL/TLS DigiCert CA, a persistent DNS TXT record is written for those domains before each order so DigiCert can validate them, and you don't have to redo the validation in DigiCert CertCentral.
+
+### Link a DNS zone
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In **Certificate Manager**, go to **Certificate Authorities**, then create a DigiCert CA with the **SSL / TLS** purpose and pick its **Product**, or select **Edit CA** on an existing one. **Domain Validation** appears once a TLS product is selected.
+      </Step>
+      <Step>
+        Under **Domain Validation**, select **Add DNS Zone**, then select the DNS provider that hosts the zone.
+      </Step>
+      <Step>
+        Select the **DNS App Connection** for that provider, such as a [Cloudflare connection](/integrations/app-connections/cloudflare), then select the **Zone**. For Google Cloud DNS, select the **GCP Project** before the zone. For Route 53, enter the **Hosted Zone ID** of a public hosted zone.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Pass `dnsZones` in the CA's `configuration` to the DigiCert CA [Create](/api-reference/endpoints/certificate-authorities/digicert/create) or [Update](/api-reference/endpoints/certificate-authorities/digicert/update) endpoint. Each zone takes the DNS `provider`, the `appConnectionId` of the DNS App Connection, and the provider's `hostedZoneId`, like the Cloudflare zone in the [SSL example](#create-a-digicert-certificate-authority).
+
+    If you leave out `dnsZones` on an update, the linked zones stay linked, unless the update changes the purpose to code signing. An empty list removes them all.
+  </Tab>
+</Tabs>
+
+A CA can link up to 20 zones from any mix of DNS providers. The DNS App Connection needs permission to read the zone and its TXT records and to create TXT records in it. For Route 53, that means `route53:GetHostedZone`, `route53:ListResourceRecordSets` and `route53:ChangeResourceRecordSets` on the hosted zone.
+
+You can't delete an App Connection while a DigiCert CA links a zone through it. Remove the zone from the CA first.
+
+### Validation before each order
+
+Before each new order, renewal, or reissue, each domain on the certificate is checked with DigiCert:
+
+1. If the CA's DigiCert organization already has an active validation for the domain or one of its parent domains, the domain is skipped. A parent validated with an HTTP file only covers its own name, so it doesn't skip its subdomains.
+2. If the domain is in a linked zone, such as `example.com`, the zone's domain is validated with DigiCert through a persistent DNS TXT record at `_validation-persist.example.com`. If more than one linked zone holds the domain, the most specific zone is used.
+3. Once DigiCert sees the record, the order is placed.
+
+The record stays in the zone after the order, and DigiCert rechecks it on its own, so the zone's domain stays validated. If someone deletes the record and the validation expires, the record is written again before the next order.
+
+<Note>
+  If a [certificate policy](/documentation/platform/pki/settings/policies#subject-alternative-names-sans) allows a name in a linked zone, anyone who can request a certificate under that policy can have the zone's domain validated in DigiCert, which covers every name in the zone. Link only the zones this CA should issue for, and limit the names the policy allows.
+</Note>
+
+### Domains that wait for validation
+
+In the following cases, the order is still placed and waits in **Pending Validation**, as it does without linked zones:
+
+- The domain isn't in any linked zone
+- The DNS provider refuses the record, for example because the App Connection can't write to the zone
+- DigiCert doesn't see the record after several checks
+- DigiCert refuses the request, for example because of its rate limit
+
+The request's status message names each linked zone whose domain wasn't validated when the order was placed, and the cause. It doesn't update when DigiCert later validates one of those domains. If the record was written, the certificate is issued once DigiCert's own recheck validates the domain.
+
 ## DigiCert validation workflow
 
 When you request a certificate through a DigiCert CertCentral CA, the request moves through these states:
 
 | State | Description |
 |-------|-------------|
-| **Pending Validation** | DigiCert has accepted the order. Complete domain control validation in DigiCert CertCentral. |
+| **Pending Validation** | DigiCert has accepted the order. Complete domain control validation in DigiCert CertCentral for each domain that the [linked DNS zones](#domain-validation-with-dns-zones) didn't validate. |
 | **Issued** | Infisical polls DigiCert and downloads the certificate once validation completes. Select **Trigger Validation** to force an immediate check. |
 | **Failed** | If DigiCert doesn't issue within 24 hours. Complete validation on CertCentral and submit a new request. |
-
-<Note>
-  OV and EV certificates require manual domain validation on the DigiCert CertCentral side before issuance.
-</Note>
 
 ## FAQ
 

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { CertificateAuthorities } from "@app/lib/api-docs/constants";
+
+import { AcmeDnsProvider } from "../acme/acme-certificate-authority-enums";
 import { CaType } from "../certificate-authority-enums";
 import {
   BaseCertificateAuthoritySchema,
@@ -11,6 +14,23 @@ export enum DigiCertCaPurpose {
   Ssl = "ssl",
   CodeSigning = "code_signing"
 }
+
+const DIGICERT_MAX_DNS_ZONES = 20;
+
+const DigiCertDnsZoneSchema = z.object({
+  provider: z.nativeEnum(AcmeDnsProvider).describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZoneProvider),
+  appConnectionId: z
+    .string()
+    .uuid()
+    .trim()
+    .describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZoneAppConnectionId),
+  hostedZoneId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZoneHostedZoneId)
+});
 
 export const DigiCertCertificateAuthorityConfigurationSchema = z.object({
   appConnectionId: z.string().uuid().trim().describe("DigiCert App Connection ID"),
@@ -39,12 +59,23 @@ export const DigiCertCertificateAuthorityConfigurationSchema = z.object({
       telephone: z.string().trim().min(1).max(32)
     })
     .optional()
-    .describe("Contact info for the user who approves first-time code signing orders for the organization")
+    .describe("Contact info for the user who approves first-time code signing orders for the organization"),
+  dnsZones: DigiCertDnsZoneSchema.array()
+    .max(DIGICERT_MAX_DNS_ZONES)
+    .optional()
+    .describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZones)
 });
 
 export const DigiCertCertificateAuthoritySchema = BaseCertificateAuthoritySchema.extend({
   type: z.literal(CaType.DIGICERT),
-  configuration: DigiCertCertificateAuthorityConfigurationSchema
+  configuration: DigiCertCertificateAuthorityConfigurationSchema.extend({
+    dnsZones: DigiCertDnsZoneSchema.extend({
+      zoneName: z.string().describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZoneName)
+    })
+      .array()
+      .optional()
+      .describe(CertificateAuthorities.CONFIGURATIONS.DIGICERT.dnsZones)
+  })
 });
 
 export const CreateDigiCertCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
@@ -70,6 +101,7 @@ export const DigiCertCertificateRequestMetadataSchema = z.object({
     lastCheckStatus: z.string().optional(),
     isRenewal: z.boolean().optional(),
     originalCertificateId: z.string().uuid().optional(),
-    previousCertificateId: z.number().int().optional()
+    previousCertificateId: z.number().int().optional(),
+    domainValidationFailures: z.string().array().optional()
   })
 });

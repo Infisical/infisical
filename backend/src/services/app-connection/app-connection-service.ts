@@ -45,6 +45,7 @@ import {
   TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM,
   validateAppConnectionCredentials
 } from "@app/services/app-connection/app-connection-fns";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
@@ -254,6 +255,10 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionCredentialRotationService: TAppConnectionCredentialRotationServiceFactory;
   identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
   gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne" | "upsertConnectionLink">;
+  externalCertificateAuthorityDAL: Pick<
+    TExternalCertificateAuthorityDALFactory,
+    "findDigiCertCaNamesByDnsZoneConnectionId"
+  >;
   keyStore: Pick<
     TKeyStoreFactory,
     "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
@@ -379,6 +384,7 @@ export const appConnectionServiceFactory = ({
   appConnectionCredentialRotationService,
   identityUaDAL,
   gitHubAppDAL,
+  externalCertificateAuthorityDAL,
   keyStore,
   oidcIssuerService
 }: TAppConnectionServiceFactoryDep) => {
@@ -1275,6 +1281,19 @@ export const appConnectionServiceFactory = ({
 
     if (appConnection.app !== app)
       throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
+    const digiCertCaNames = await externalCertificateAuthorityDAL.findDigiCertCaNamesByDnsZoneConnectionId(
+      appConnection.id
+    );
+    if (digiCertCaNames.length) {
+      const quotedCaNames = digiCertCaNames.map((name) => `"${name}"`).join(", ");
+      const isSingleCa = digiCertCaNames.length === 1;
+      throw new BadRequestError({
+        message: isSingleCa
+          ? `Cannot delete this App Connection because the DigiCert certificate authority ${quotedCaNames} validates domains in a DNS zone linked through it. Remove that DNS zone from the certificate authority first.`
+          : `Cannot delete this App Connection because the DigiCert certificate authorities ${quotedCaNames} validate domains in DNS zones linked through it. Remove those DNS zones from the certificate authorities first.`
+      });
+    }
 
     // TODO (scott): add option to delete all dependencies
 

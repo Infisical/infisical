@@ -29,7 +29,8 @@ class PermissionReached extends Error {}
 
 const buildService = (
   connection: { orgId: string; projectId: string | null; app?: AppConnection },
-  abilities: { org?: unknown; project?: unknown } = {}
+  abilities: { org?: unknown; project?: unknown } = {},
+  extraDeps: Record<string, unknown> = {}
 ) => {
   const permissionService = {
     getOrgPermission: vi.fn(async () => {
@@ -42,15 +43,18 @@ const buildService = (
     })
   };
 
+  const appConnectionDAL = {
+    findById: vi.fn(async () => ({
+      id: CONNECTION_ID,
+      app: AppConnection.AWS,
+      encryptedCredentials: Buffer.from("{}"),
+      ...connection
+    })),
+    deleteById: vi.fn()
+  };
+
   const overrides: Record<string, unknown> = {
-    appConnectionDAL: {
-      findById: vi.fn(async () => ({
-        id: CONNECTION_ID,
-        app: AppConnection.AWS,
-        encryptedCredentials: Buffer.from("{}"),
-        ...connection
-      }))
-    },
+    appConnectionDAL,
     projectDAL: { findProjectById: vi.fn(async (id: string) => ({ id, type: "cert-manager" })) },
     kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn(async () => ({
@@ -58,7 +62,8 @@ const buildService = (
       }))
     },
     permissionService,
-    licenseService: new FakeLicenseService()
+    licenseService: new FakeLicenseService(),
+    ...extraDeps
   };
 
   const deps = new Proxy(overrides, {
@@ -66,7 +71,7 @@ const buildService = (
   });
 
   const service = appConnectionServiceFactory(deps as unknown as Parameters<typeof appConnectionServiceFactory>[0]);
-  return { service, permissionService };
+  return { service, permissionService, appConnectionDAL };
 };
 
 type TService = ReturnType<typeof buildService>["service"];
@@ -202,5 +207,47 @@ describe("validateAppConnectionUsageById refuses connections the caller cannot u
         actor
       )
     ).rejects.toThrow(BadRequestError);
+  });
+});
+
+describe("deleteAppConnection", () => {
+  test("refuses to delete a connection a DigiCert CA validates domains through", async () => {
+    const { service, appConnectionDAL } = buildService(
+      { orgId: ACTOR_ORG_ID, projectId: null },
+      {
+        org: createMongoAbility([
+          { action: OrgPermissionAppConnectionActions.Delete, subject: OrgPermissionSubjects.AppConnections }
+        ])
+      },
+      {
+        externalCertificateAuthorityDAL: {
+          findDigiCertCaNamesByDnsZoneConnectionId: vi.fn(async () => ["digicert-ca"])
+        }
+      }
+    );
+
+    await expect(service.deleteAppConnection(AppConnection.AWS, CONNECTION_ID, actor)).rejects.toThrow(BadRequestError);
+    expect(appConnectionDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("checks DigiCert DNS zones by the stored connection ID, not the spelling in the request", async () => {
+    const findDigiCertCaNamesByDnsZoneConnectionId = vi.fn(async (id: string) =>
+      id === CONNECTION_ID ? ["digicert-ca"] : []
+    );
+    const { service, appConnectionDAL } = buildService(
+      { orgId: ACTOR_ORG_ID, projectId: null },
+      {
+        org: createMongoAbility([
+          { action: OrgPermissionAppConnectionActions.Delete, subject: OrgPermissionSubjects.AppConnections }
+        ])
+      },
+      { externalCertificateAuthorityDAL: { findDigiCertCaNamesByDnsZoneConnectionId } }
+    );
+
+    await expect(service.deleteAppConnection(AppConnection.AWS, CONNECTION_ID.toUpperCase(), actor)).rejects.toThrow(
+      BadRequestError
+    );
+    expect(findDigiCertCaNamesByDnsZoneConnectionId).toHaveBeenCalledWith(CONNECTION_ID);
+    expect(appConnectionDAL.deleteById).not.toHaveBeenCalled();
   });
 });

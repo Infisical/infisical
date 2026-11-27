@@ -83,6 +83,8 @@ export const KeyStorePrefixes = {
     `app-connection-command-mutex-${connectionId}${targetHost ? `-${targetHost.toLowerCase()}` : ""}` as const,
   AcmeDnsRecordLock: (connectionId: string, zoneId: string, recordName: string) =>
     `acme-dns-record-mutex-${connectionId}-${zoneId.toLowerCase()}-${recordName.toLowerCase()}` as const,
+  DigiCertDomainValidationLock: (organizationId: number, domain: string) =>
+    `digicert-domain-validation-mutex-${organizationId}-${domain.toLowerCase()}` as const,
   LdapHostLogin: (fingerprint: string) => `ldap-host-login-${fingerprint}` as const,
   LdapDirectoryMachines: (connectionId: string, search: string, limit: number) =>
     `ldap-directory-machines-${connectionId}-${limit}-${search}` as const,
