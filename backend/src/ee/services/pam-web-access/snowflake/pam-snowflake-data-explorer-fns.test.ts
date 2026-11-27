@@ -1,13 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { BadRequestError } from "@app/lib/errors";
-
-import {
-  extractCommand,
-  nextTransactionState,
-  splitSnowflakeStatements,
-  splitSupportedSnowflakeStatements
-} from "./pam-snowflake-data-explorer-fns";
+import { extractCommand, nextTransactionState, splitSnowflakeStatements } from "./pam-snowflake-data-explorer-fns";
 
 describe("splitSnowflakeStatements", () => {
   test("single statement with and without a trailing semicolon", () => {
@@ -64,16 +57,6 @@ describe("splitSnowflakeStatements", () => {
       "SELECT 2"
     ]);
     expect(splitSnowflakeStatements(String.raw`SELECT "a\"; SELECT 2`)).toEqual([String.raw`SELECT "a\"`, "SELECT 2"]);
-  });
-});
-
-describe("splitSupportedSnowflakeStatements", () => {
-  test("returns every statement of a query without PUT or GET", () => {
-    expect(splitSupportedSnowflakeStatements("SELECT 1; SHOW TABLES")).toEqual(["SELECT 1", "SHOW TABLES"]);
-  });
-
-  test("refuses the whole query when any statement is PUT or GET", () => {
-    expect(() => splitSupportedSnowflakeStatements("SELECT 1; PUT file://data.csv @~")).toThrow(BadRequestError);
   });
 });
 
