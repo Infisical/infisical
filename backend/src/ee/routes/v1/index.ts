@@ -141,16 +141,15 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (ssoRouter) => {
       await ssoRouter.register(registerSamlRouter);
       await ssoRouter.register(registerSamlConfigRouter, { prefix: "/saml" });
-      await ssoRouter.register(async (legacySamlConfigRouter) => {
-        await registerSamlConfigRouter(legacySamlConfigRouter as unknown as FastifyZodProvider, { isLegacyPath: true });
-      });
+      await ssoRouter.register(registerSamlConfigRouter, { isLegacyPath: true });
       await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
+      await ssoRouter.register(registerLdapRouter, { prefix: "/ldap" });
     },
     { prefix: "/sso" }
   );
 
   await server.register(registerScimRouter, { prefix: "/scim" });
-  await server.register(registerLdapRouter, { prefix: "/ldap" });
+  await server.register(registerLdapRouter, { prefix: "/ldap", isLegacyPath: true });
   await server.register(registerSecretScanningRouter, { prefix: "/secret-scanning" });
   await server.register(registerSecretRouter, { prefix: "/secrets" });
   await server.register(registerSecretVersionRouter, { prefix: "/secret" });

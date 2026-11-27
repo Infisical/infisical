@@ -33,7 +33,9 @@ import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { assertNoOtherSsoMethod } from "@app/ee/services/sso-config/sso-config-fns";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { dataKeysOn } from "@app/lib/knex/kms-core-tx";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -83,6 +85,7 @@ import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import {
   TCreateLdapCfgDTO,
   TCreateLdapGroupMapDTO,
+  TDeleteLdapCfgDTO,
   TDeleteLdapGroupMapDTO,
   TGetLdapCfgDTO,
   TGetLdapGroupMapsDTO,
@@ -95,7 +98,7 @@ import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 
 type TLdapConfigServiceFactoryDep = {
   instanceConfigService: TInstanceConfigService;
-  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
+  ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "deleteById" | "transaction">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -275,25 +278,34 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const ldapConfig = await ldapConfigDAL.create({
-      orgId,
-      isActive,
-      url,
-      uniqueUserAttribute,
-      searchBase,
-      searchFilter,
-      groupSearchBase,
-      groupSearchFilter,
-      encryptedLdapCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
-      encryptedLdapBindDN: encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob,
-      encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob,
-      encryptedLdapClientCertificate: clientCertificate
-        ? encryptor({ plainText: Buffer.from(clientCertificate) }).cipherTextBlob
-        : null,
-      encryptedLdapClientKeyCertificate: clientKeyCertificate
-        ? encryptor({ plainText: Buffer.from(clientKeyCertificate) }).cipherTextBlob
-        : null
-    });
+    const ldapConfig = await ldapConfigDAL
+      .create({
+        orgId,
+        isActive,
+        url,
+        uniqueUserAttribute,
+        searchBase,
+        searchFilter,
+        groupSearchBase,
+        groupSearchFilter,
+        encryptedLdapCaCertificate: encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob,
+        encryptedLdapBindDN: encryptor({ plainText: Buffer.from(bindDN) }).cipherTextBlob,
+        encryptedLdapBindPass: encryptor({ plainText: Buffer.from(bindPass) }).cipherTextBlob,
+        encryptedLdapClientCertificate: clientCertificate
+          ? encryptor({ plainText: Buffer.from(clientCertificate) }).cipherTextBlob
+          : null,
+        encryptedLdapClientKeyCertificate: clientKeyCertificate
+          ? encryptor({ plainText: Buffer.from(clientKeyCertificate) }).cipherTextBlob
+          : null
+      })
+      .catch((err: unknown) => {
+        if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
+          throw new ConflictError({
+            message: `An LDAP configuration already exists for organization with ID '${orgId}'.`
+          });
+        }
+        throw err;
+      });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Create, orgId });
 
@@ -405,6 +417,10 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
+    if (!(await ldapConfigDAL.findOne({ orgId }))) {
+      throw new NotFoundError({ message: `LDAP configuration for organization with ID '${orgId}' not found` });
+    }
+
     if (url) {
       await blockLocalAndPrivateIpAddresses(url);
     }
@@ -475,6 +491,29 @@ export const ldapConfigServiceFactory = ({
     recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Update, orgId });
 
     return config;
+  };
+
+  const deleteLdapCfg = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TDeleteLdapCfgDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
+
+    const ldapConfig = await ldapConfigDAL.findOne({ orgId });
+    if (!ldapConfig) {
+      throw new NotFoundError({ message: `LDAP configuration for organization with ID '${orgId}' not found` });
+    }
+
+    const deletedCfg = await ldapConfigDAL.deleteById(ldapConfig.id);
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Delete, orgId });
+
+    return deletedCfg;
   };
 
   const getLdapCfgWithPermissionCheck = async ({
@@ -1025,11 +1064,20 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    const groupMap = await ldapGroupMapDAL.create({
-      ldapConfigId,
-      ldapGroupCN: matchedGroup.cn,
-      groupId: group.id
-    });
+    const groupMap = await ldapGroupMapDAL
+      .create({
+        ldapConfigId,
+        ldapGroupCN: matchedGroup.cn,
+        groupId: group.id
+      })
+      .catch((err: unknown) => {
+        if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
+          throw new ConflictError({
+            message: `LDAP group '${matchedGroup.cn}' is already mapped to group '${groupSlug}'.`
+          });
+        }
+        throw err;
+      });
 
     return groupMap;
   };
@@ -1053,12 +1101,6 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
-    const plan = await licenseService.getPlan(orgId);
-    if (!plan.has(PlanFeature.Ldap))
-      throw new BadRequestError({
-        message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
-      });
-
     const ldapConfig = await ldapConfigDAL.findOne({
       id: ldapConfigId,
       orgId
@@ -1074,6 +1116,12 @@ export const ldapConfigServiceFactory = ({
       ldapConfigId: ldapConfig.id,
       id: ldapGroupMapId
     });
+
+    if (!deletedGroupMap) {
+      throw new NotFoundError({
+        message: `LDAP group map with ID '${ldapGroupMapId}' not found in LDAP configuration with ID '${ldapConfigId}'`
+      });
+    }
 
     return deletedGroupMap;
   };
@@ -1134,6 +1182,7 @@ export const ldapConfigServiceFactory = ({
   return {
     createLdapCfg,
     updateLdapCfg,
+    deleteLdapCfg,
     getLdapCfgWithPermissionCheck,
     getLdapCfg,
     // getLdapPassportOpts,

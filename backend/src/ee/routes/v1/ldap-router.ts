@@ -28,7 +28,13 @@ import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { resolveAssertedProfileName } from "@app/services/user-alias/user-alias-fns";
 
-export const registerLdapRouter = async (server: FastifyZodProvider) => {
+export const registerLdapRouter = async (
+  server: FastifyZodProvider,
+  { isLegacyPath = false }: { isLegacyPath?: boolean } = {}
+) => {
+  const describeRoute = (description: string) =>
+    isLegacyPath ? `Deprecated: use /api/v1/sso/ldap/config instead. ${description}` : description;
+
   const appCfg = getConfig();
   const passport = new Authenticator({ key: "ldap", userProperty: "passportUser" });
   await server.register(fastifySession, { secret: server.cookieSigningKey });
@@ -119,7 +125,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      operationId: "loginWithLdapSso",
+      ...(isLegacyPath ? {} : { operationId: "loginWithLdapSso" }),
       body: z.object({
         organizationSlug: z.string().trim(),
         callbackPort: z.coerce.number().optional()
@@ -167,18 +173,15 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      operationId: "getLdapConfig",
+      ...(isLegacyPath ? {} : { operationId: "getLdapConfig" }),
       hide: false,
       tags: [ApiDocsTags.LdapSso],
-      description: "Get LDAP config",
+      description: describeRoute("Get LDAP config"),
       security: [
         {
           bearerAuth: []
         }
       ],
-      querystring: z.object({
-        organizationId: z.string().trim().describe(LdapSso.GET_CONFIG.organizationId)
-      }),
       response: {
         200: z.object({
           id: z.string(),
@@ -202,7 +205,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       const ldap = await server.services.ldap.getLdapCfgWithPermissionCheck({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.query.organizationId,
+        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
@@ -218,17 +221,16 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      operationId: "createLdapConfig",
+      ...(isLegacyPath ? {} : { operationId: "createLdapConfig" }),
       hide: false,
       tags: [ApiDocsTags.LdapSso],
-      description: "Create LDAP config",
+      description: describeRoute("Create LDAP config"),
       security: [
         {
           bearerAuth: []
         }
       ],
       body: z.object({
-        organizationId: z.string().trim().describe(LdapSso.CREATE_CONFIG.organizationId),
         isActive: z.boolean().describe(LdapSso.CREATE_CONFIG.isActive),
         url: z.string().trim().describe(LdapSso.CREATE_CONFIG.url),
         bindDN: z.string().trim().describe(LdapSso.CREATE_CONFIG.bindDN),
@@ -254,7 +256,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       const ldap = await server.services.ldap.createLdapCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.body.organizationId,
+        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
@@ -285,10 +287,10 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      operationId: "updateLdapConfig",
+      ...(isLegacyPath ? {} : { operationId: "updateLdapConfig" }),
       hide: false,
       tags: [ApiDocsTags.LdapSso],
-      description: "Update LDAP config",
+      description: describeRoute("Update LDAP config"),
       security: [
         {
           bearerAuth: []
@@ -309,8 +311,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
           clientCertificate: z.string().trim().describe(LdapSso.UPDATE_CONFIG.clientCertificate),
           clientKeyCertificate: z.string().trim().describe(LdapSso.UPDATE_CONFIG.clientKeyCertificate)
         })
-        .partial()
-        .merge(z.object({ organizationId: z.string().trim().describe(LdapSso.UPDATE_CONFIG.organizationId) })),
+        .partial(),
       response: {
         200: SanitizedLdapConfigSchema
       }
@@ -319,7 +320,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
       const ldap = await server.services.ldap.updateLdapCfg({
         actor: req.permission.type,
         actorId: req.permission.id,
-        orgId: req.body.organizationId,
+        orgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body
@@ -342,6 +343,42 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     }
   });
 
+  if (!isLegacyPath) {
+    server.route({
+      method: "DELETE",
+      url: "/config",
+      config: {
+        rateLimit: writeLimit
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      schema: {
+        operationId: "deleteLdapConfig",
+        hide: false,
+        tags: [ApiDocsTags.LdapSso],
+        description: "Delete LDAP config",
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        response: {
+          200: SanitizedLdapConfigSchema
+        }
+      },
+      handler: async (req) => {
+        const ldap = await server.services.ldap.deleteLdapCfg({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          orgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+        return ldap;
+      }
+    });
+  }
+
   server.route({
     method: "GET",
     url: "/config/:configId/group-maps",
@@ -350,7 +387,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
-      operationId: "listLdapGroupMaps",
+      ...(isLegacyPath ? {} : { operationId: "listLdapGroupMaps" }),
       params: z.object({
         configId: z.string().trim()
       }),
@@ -390,7 +427,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      operationId: "createLdapGroupMap",
+      ...(isLegacyPath ? {} : { operationId: "createLdapGroupMap" }),
       params: z.object({
         configId: z.string().trim()
       }),
@@ -424,7 +461,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      operationId: "deleteLdapGroupMap",
+      ...(isLegacyPath ? {} : { operationId: "deleteLdapGroupMap" }),
       params: z.object({
         configId: z.string().trim(),
         groupMapId: z.string().trim()
@@ -455,7 +492,7 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     schema: {
-      operationId: "testLdapConnection",
+      ...(isLegacyPath ? {} : { operationId: "testLdapConnection" }),
       body: z.object({
         url: z.string().trim(),
         bindDN: z.string().trim(),

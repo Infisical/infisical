@@ -59,6 +59,8 @@ export type TGetLdapCfgDTO = {
   orgId: string;
 } & TOrgPermission;
 
+export type TDeleteLdapCfgDTO = TOrgPermission;
+
 export type TLdapLoginDTO = {
   ldapConfigId: string;
   externalId: string;

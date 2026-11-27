@@ -2,9 +2,11 @@ package ldap_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -41,13 +43,12 @@ func (d *directory) person(t *testing.T, email string) (string, string, string) 
 
 func (d *directory) configBody() api.CreateLdapConfigJSONRequestBody {
 	return api.CreateLdapConfigJSONRequestBody{
-		OrganizationId: d.tn.OrgID.String(),
-		IsActive:       true,
-		Url:            ldap.Service.URL(),
-		BindDN:         d.BindDN,
-		BindPass:       d.BindPassword,
-		SearchBase:     "ou=people," + d.BaseDN,
-		SearchFilter:   new("(uid={{username}})"),
+		IsActive:     true,
+		Url:          ldap.Service.URL(),
+		BindDN:       d.BindDN,
+		BindPass:     d.BindPassword,
+		SearchBase:   "ou=people," + d.BaseDN,
+		SearchFilter: new("(uid={{username}})"),
 	}
 }
 
@@ -71,7 +72,7 @@ func configured(t *testing.T, tn *harness.Tenant) *directory {
 
 func storedConfig(t *testing.T, tn *harness.Tenant) *api.GetLdapConfigResponse {
 	t.Helper()
-	res, err := tn.Admin.API.GetLdapConfigWithResponse(t.Context(), &api.GetLdapConfigParams{OrganizationId: tn.OrgID.String()})
+	res, err := tn.Admin.API.GetLdapConfigWithResponse(t.Context())
 	require.NoError(t, err)
 	return res
 }
@@ -119,4 +120,24 @@ func completeSignup(t *testing.T, tn *harness.Tenant, signupToken, code string) 
 func requireStatus(t *testing.T, want, got int, body []byte) {
 	t.Helper()
 	require.Equalf(t, want, got, "answered %d: %s", got, apierr.Body(body))
+}
+
+// legacyPath sends a request for /api/v1/sso/ldap to the old /api/v1/ldap mount. The legacy
+// routes have no operationId, so the generated client has no methods of its own for them.
+func legacyPath(_ context.Context, req *http.Request) error {
+	req.URL.Path = strings.Replace(req.URL.Path, "/api/v1/sso/ldap/", "/api/v1/ldap/", 1)
+	return nil
+}
+
+// legacyBody adds the organizationId that callers of the legacy path still send.
+func legacyBody(t *testing.T, body any, organizationID string) *bytes.Reader {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	fields := map[string]any{}
+	require.NoError(t, json.Unmarshal(raw, &fields))
+	fields["organizationId"] = organizationID
+	raw, err = json.Marshal(fields)
+	require.NoError(t, err)
+	return bytes.NewReader(raw)
 }

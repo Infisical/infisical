@@ -719,6 +719,7 @@ output-options:
     - getLdapConfig
     - createLdapConfig
     - updateLdapConfig
+    - deleteLdapConfig
     - listLdapGroupMaps
     - createLdapGroupMap
     - deleteLdapGroupMap

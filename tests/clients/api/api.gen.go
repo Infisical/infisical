@@ -96210,636 +96210,6 @@ func (e VerifyMacWithKmsKey500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// Defines values for GetLdapConfig400JSONResponseBodyStatusCode.
-const (
-	GetLdapConfig400JSONResponseBodyStatusCodeN400 GetLdapConfig400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the GetLdapConfig400JSONResponseBodyStatusCode enum.
-func (e GetLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetLdapConfig400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetLdapConfig401JSONResponseBodyStatusCode.
-const (
-	GetLdapConfig401JSONResponseBodyStatusCodeN401 GetLdapConfig401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the GetLdapConfig401JSONResponseBodyStatusCode enum.
-func (e GetLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetLdapConfig401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetLdapConfig403JSONResponseBodyStatusCode.
-const (
-	GetLdapConfig403JSONResponseBodyStatusCodeN403 GetLdapConfig403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the GetLdapConfig403JSONResponseBodyStatusCode enum.
-func (e GetLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetLdapConfig403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetLdapConfig404JSONResponseBodyStatusCode.
-const (
-	GetLdapConfig404JSONResponseBodyStatusCodeN404 GetLdapConfig404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the GetLdapConfig404JSONResponseBodyStatusCode enum.
-func (e GetLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetLdapConfig404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetLdapConfig422JSONResponseBodyStatusCode.
-const (
-	GetLdapConfig422JSONResponseBodyStatusCodeN422 GetLdapConfig422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the GetLdapConfig422JSONResponseBodyStatusCode enum.
-func (e GetLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetLdapConfig422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetLdapConfig500JSONResponseBodyStatusCode.
-const (
-	GetLdapConfig500JSONResponseBodyStatusCodeN500 GetLdapConfig500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the GetLdapConfig500JSONResponseBodyStatusCode enum.
-func (e GetLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetLdapConfig500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateLdapConfig400JSONResponseBodyStatusCode.
-const (
-	UpdateLdapConfig400JSONResponseBodyStatusCodeN400 UpdateLdapConfig400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the UpdateLdapConfig400JSONResponseBodyStatusCode enum.
-func (e UpdateLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateLdapConfig400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateLdapConfig401JSONResponseBodyStatusCode.
-const (
-	UpdateLdapConfig401JSONResponseBodyStatusCodeN401 UpdateLdapConfig401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the UpdateLdapConfig401JSONResponseBodyStatusCode enum.
-func (e UpdateLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateLdapConfig401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateLdapConfig403JSONResponseBodyStatusCode.
-const (
-	UpdateLdapConfig403JSONResponseBodyStatusCodeN403 UpdateLdapConfig403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the UpdateLdapConfig403JSONResponseBodyStatusCode enum.
-func (e UpdateLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateLdapConfig403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateLdapConfig404JSONResponseBodyStatusCode.
-const (
-	UpdateLdapConfig404JSONResponseBodyStatusCodeN404 UpdateLdapConfig404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the UpdateLdapConfig404JSONResponseBodyStatusCode enum.
-func (e UpdateLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateLdapConfig404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateLdapConfig422JSONResponseBodyStatusCode.
-const (
-	UpdateLdapConfig422JSONResponseBodyStatusCodeN422 UpdateLdapConfig422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the UpdateLdapConfig422JSONResponseBodyStatusCode enum.
-func (e UpdateLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateLdapConfig422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateLdapConfig500JSONResponseBodyStatusCode.
-const (
-	UpdateLdapConfig500JSONResponseBodyStatusCodeN500 UpdateLdapConfig500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the UpdateLdapConfig500JSONResponseBodyStatusCode enum.
-func (e UpdateLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateLdapConfig500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapConfig400JSONResponseBodyStatusCode.
-const (
-	CreateLdapConfig400JSONResponseBodyStatusCodeN400 CreateLdapConfig400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapConfig400JSONResponseBodyStatusCode enum.
-func (e CreateLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapConfig400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapConfig401JSONResponseBodyStatusCode.
-const (
-	CreateLdapConfig401JSONResponseBodyStatusCodeN401 CreateLdapConfig401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapConfig401JSONResponseBodyStatusCode enum.
-func (e CreateLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapConfig401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapConfig403JSONResponseBodyStatusCode.
-const (
-	CreateLdapConfig403JSONResponseBodyStatusCodeN403 CreateLdapConfig403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapConfig403JSONResponseBodyStatusCode enum.
-func (e CreateLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapConfig403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapConfig404JSONResponseBodyStatusCode.
-const (
-	CreateLdapConfig404JSONResponseBodyStatusCodeN404 CreateLdapConfig404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapConfig404JSONResponseBodyStatusCode enum.
-func (e CreateLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapConfig404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapConfig422JSONResponseBodyStatusCode.
-const (
-	CreateLdapConfig422JSONResponseBodyStatusCodeN422 CreateLdapConfig422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapConfig422JSONResponseBodyStatusCode enum.
-func (e CreateLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapConfig422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapConfig500JSONResponseBodyStatusCode.
-const (
-	CreateLdapConfig500JSONResponseBodyStatusCodeN500 CreateLdapConfig500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapConfig500JSONResponseBodyStatusCode enum.
-func (e CreateLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapConfig500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TestLdapConnection400JSONResponseBodyStatusCode.
-const (
-	TestLdapConnection400JSONResponseBodyStatusCodeN400 TestLdapConnection400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the TestLdapConnection400JSONResponseBodyStatusCode enum.
-func (e TestLdapConnection400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case TestLdapConnection400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TestLdapConnection401JSONResponseBodyStatusCode.
-const (
-	TestLdapConnection401JSONResponseBodyStatusCodeN401 TestLdapConnection401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the TestLdapConnection401JSONResponseBodyStatusCode enum.
-func (e TestLdapConnection401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case TestLdapConnection401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TestLdapConnection403JSONResponseBodyStatusCode.
-const (
-	TestLdapConnection403JSONResponseBodyStatusCodeN403 TestLdapConnection403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the TestLdapConnection403JSONResponseBodyStatusCode enum.
-func (e TestLdapConnection403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case TestLdapConnection403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TestLdapConnection404JSONResponseBodyStatusCode.
-const (
-	TestLdapConnection404JSONResponseBodyStatusCodeN404 TestLdapConnection404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the TestLdapConnection404JSONResponseBodyStatusCode enum.
-func (e TestLdapConnection404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case TestLdapConnection404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TestLdapConnection422JSONResponseBodyStatusCode.
-const (
-	TestLdapConnection422JSONResponseBodyStatusCodeN422 TestLdapConnection422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the TestLdapConnection422JSONResponseBodyStatusCode enum.
-func (e TestLdapConnection422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case TestLdapConnection422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TestLdapConnection500JSONResponseBodyStatusCode.
-const (
-	TestLdapConnection500JSONResponseBodyStatusCodeN500 TestLdapConnection500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the TestLdapConnection500JSONResponseBodyStatusCode enum.
-func (e TestLdapConnection500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case TestLdapConnection500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListLdapGroupMaps400JSONResponseBodyStatusCode.
-const (
-	ListLdapGroupMaps400JSONResponseBodyStatusCodeN400 ListLdapGroupMaps400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the ListLdapGroupMaps400JSONResponseBodyStatusCode enum.
-func (e ListLdapGroupMaps400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListLdapGroupMaps400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListLdapGroupMaps401JSONResponseBodyStatusCode.
-const (
-	ListLdapGroupMaps401JSONResponseBodyStatusCodeN401 ListLdapGroupMaps401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the ListLdapGroupMaps401JSONResponseBodyStatusCode enum.
-func (e ListLdapGroupMaps401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListLdapGroupMaps401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListLdapGroupMaps403JSONResponseBodyStatusCode.
-const (
-	ListLdapGroupMaps403JSONResponseBodyStatusCodeN403 ListLdapGroupMaps403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the ListLdapGroupMaps403JSONResponseBodyStatusCode enum.
-func (e ListLdapGroupMaps403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListLdapGroupMaps403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListLdapGroupMaps404JSONResponseBodyStatusCode.
-const (
-	ListLdapGroupMaps404JSONResponseBodyStatusCodeN404 ListLdapGroupMaps404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the ListLdapGroupMaps404JSONResponseBodyStatusCode enum.
-func (e ListLdapGroupMaps404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListLdapGroupMaps404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListLdapGroupMaps422JSONResponseBodyStatusCode.
-const (
-	ListLdapGroupMaps422JSONResponseBodyStatusCodeN422 ListLdapGroupMaps422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the ListLdapGroupMaps422JSONResponseBodyStatusCode enum.
-func (e ListLdapGroupMaps422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListLdapGroupMaps422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListLdapGroupMaps500JSONResponseBodyStatusCode.
-const (
-	ListLdapGroupMaps500JSONResponseBodyStatusCodeN500 ListLdapGroupMaps500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the ListLdapGroupMaps500JSONResponseBodyStatusCode enum.
-func (e ListLdapGroupMaps500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case ListLdapGroupMaps500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapGroupMap400JSONResponseBodyStatusCode.
-const (
-	CreateLdapGroupMap400JSONResponseBodyStatusCodeN400 CreateLdapGroupMap400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapGroupMap400JSONResponseBodyStatusCode enum.
-func (e CreateLdapGroupMap400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapGroupMap400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapGroupMap401JSONResponseBodyStatusCode.
-const (
-	CreateLdapGroupMap401JSONResponseBodyStatusCodeN401 CreateLdapGroupMap401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapGroupMap401JSONResponseBodyStatusCode enum.
-func (e CreateLdapGroupMap401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapGroupMap401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapGroupMap403JSONResponseBodyStatusCode.
-const (
-	CreateLdapGroupMap403JSONResponseBodyStatusCodeN403 CreateLdapGroupMap403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapGroupMap403JSONResponseBodyStatusCode enum.
-func (e CreateLdapGroupMap403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapGroupMap403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapGroupMap404JSONResponseBodyStatusCode.
-const (
-	CreateLdapGroupMap404JSONResponseBodyStatusCodeN404 CreateLdapGroupMap404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapGroupMap404JSONResponseBodyStatusCode enum.
-func (e CreateLdapGroupMap404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapGroupMap404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapGroupMap422JSONResponseBodyStatusCode.
-const (
-	CreateLdapGroupMap422JSONResponseBodyStatusCodeN422 CreateLdapGroupMap422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapGroupMap422JSONResponseBodyStatusCode enum.
-func (e CreateLdapGroupMap422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapGroupMap422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateLdapGroupMap500JSONResponseBodyStatusCode.
-const (
-	CreateLdapGroupMap500JSONResponseBodyStatusCodeN500 CreateLdapGroupMap500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the CreateLdapGroupMap500JSONResponseBodyStatusCode enum.
-func (e CreateLdapGroupMap500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateLdapGroupMap500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteLdapGroupMap400JSONResponseBodyStatusCode.
-const (
-	DeleteLdapGroupMap400JSONResponseBodyStatusCodeN400 DeleteLdapGroupMap400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the DeleteLdapGroupMap400JSONResponseBodyStatusCode enum.
-func (e DeleteLdapGroupMap400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteLdapGroupMap400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteLdapGroupMap401JSONResponseBodyStatusCode.
-const (
-	DeleteLdapGroupMap401JSONResponseBodyStatusCodeN401 DeleteLdapGroupMap401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the DeleteLdapGroupMap401JSONResponseBodyStatusCode enum.
-func (e DeleteLdapGroupMap401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteLdapGroupMap401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteLdapGroupMap403JSONResponseBodyStatusCode.
-const (
-	DeleteLdapGroupMap403JSONResponseBodyStatusCodeN403 DeleteLdapGroupMap403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the DeleteLdapGroupMap403JSONResponseBodyStatusCode enum.
-func (e DeleteLdapGroupMap403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteLdapGroupMap403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteLdapGroupMap404JSONResponseBodyStatusCode.
-const (
-	DeleteLdapGroupMap404JSONResponseBodyStatusCodeN404 DeleteLdapGroupMap404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the DeleteLdapGroupMap404JSONResponseBodyStatusCode enum.
-func (e DeleteLdapGroupMap404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteLdapGroupMap404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteLdapGroupMap422JSONResponseBodyStatusCode.
-const (
-	DeleteLdapGroupMap422JSONResponseBodyStatusCodeN422 DeleteLdapGroupMap422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the DeleteLdapGroupMap422JSONResponseBodyStatusCode enum.
-func (e DeleteLdapGroupMap422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteLdapGroupMap422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteLdapGroupMap500JSONResponseBodyStatusCode.
-const (
-	DeleteLdapGroupMap500JSONResponseBodyStatusCodeN500 DeleteLdapGroupMap500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the DeleteLdapGroupMap500JSONResponseBodyStatusCode enum.
-func (e DeleteLdapGroupMap500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteLdapGroupMap500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DeleteUserNotifications400JSONResponseBodyStatusCode.
 const (
 	DeleteUserNotifications400JSONResponseBodyStatusCodeN400 DeleteUserNotifications400JSONResponseBodyStatusCode = 400
@@ -128679,6 +128049,726 @@ const (
 func (e AccessSharedSecret500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case AccessSharedSecret500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapConfig400JSONResponseBodyStatusCode.
+const (
+	DeleteLdapConfig400JSONResponseBodyStatusCodeN400 DeleteLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapConfig400JSONResponseBodyStatusCode enum.
+func (e DeleteLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapConfig401JSONResponseBodyStatusCode.
+const (
+	DeleteLdapConfig401JSONResponseBodyStatusCodeN401 DeleteLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapConfig401JSONResponseBodyStatusCode enum.
+func (e DeleteLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapConfig403JSONResponseBodyStatusCode.
+const (
+	DeleteLdapConfig403JSONResponseBodyStatusCodeN403 DeleteLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapConfig403JSONResponseBodyStatusCode enum.
+func (e DeleteLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapConfig404JSONResponseBodyStatusCode.
+const (
+	DeleteLdapConfig404JSONResponseBodyStatusCodeN404 DeleteLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapConfig404JSONResponseBodyStatusCode enum.
+func (e DeleteLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapConfig422JSONResponseBodyStatusCode.
+const (
+	DeleteLdapConfig422JSONResponseBodyStatusCodeN422 DeleteLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapConfig422JSONResponseBodyStatusCode enum.
+func (e DeleteLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapConfig500JSONResponseBodyStatusCode.
+const (
+	DeleteLdapConfig500JSONResponseBodyStatusCodeN500 DeleteLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapConfig500JSONResponseBodyStatusCode enum.
+func (e DeleteLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig400JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig400JSONResponseBodyStatusCodeN400 GetLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig400JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig401JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig401JSONResponseBodyStatusCodeN401 GetLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig401JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig403JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig403JSONResponseBodyStatusCodeN403 GetLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig403JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig404JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig404JSONResponseBodyStatusCodeN404 GetLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig404JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig422JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig422JSONResponseBodyStatusCodeN422 GetLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig422JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetLdapConfig500JSONResponseBodyStatusCode.
+const (
+	GetLdapConfig500JSONResponseBodyStatusCodeN500 GetLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetLdapConfig500JSONResponseBodyStatusCode enum.
+func (e GetLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig400JSONResponseBodyStatusCodeN400 UpdateLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig401JSONResponseBodyStatusCodeN401 UpdateLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig403JSONResponseBodyStatusCodeN403 UpdateLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig404JSONResponseBodyStatusCodeN404 UpdateLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig422JSONResponseBodyStatusCodeN422 UpdateLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateLdapConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateLdapConfig500JSONResponseBodyStatusCodeN500 UpdateLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateLdapConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig400JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig400JSONResponseBodyStatusCodeN400 CreateLdapConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig400JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig401JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig401JSONResponseBodyStatusCodeN401 CreateLdapConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig401JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig403JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig403JSONResponseBodyStatusCodeN403 CreateLdapConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig403JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig404JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig404JSONResponseBodyStatusCodeN404 CreateLdapConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig404JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig422JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig422JSONResponseBodyStatusCodeN422 CreateLdapConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig422JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapConfig500JSONResponseBodyStatusCode.
+const (
+	CreateLdapConfig500JSONResponseBodyStatusCodeN500 CreateLdapConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapConfig500JSONResponseBodyStatusCode enum.
+func (e CreateLdapConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection400JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection400JSONResponseBodyStatusCodeN400 TestLdapConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection400JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection401JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection401JSONResponseBodyStatusCodeN401 TestLdapConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection401JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection403JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection403JSONResponseBodyStatusCodeN403 TestLdapConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection403JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection404JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection404JSONResponseBodyStatusCodeN404 TestLdapConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection404JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection422JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection422JSONResponseBodyStatusCodeN422 TestLdapConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection422JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for TestLdapConnection500JSONResponseBodyStatusCode.
+const (
+	TestLdapConnection500JSONResponseBodyStatusCodeN500 TestLdapConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the TestLdapConnection500JSONResponseBodyStatusCode enum.
+func (e TestLdapConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case TestLdapConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps400JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps400JSONResponseBodyStatusCodeN400 ListLdapGroupMaps400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps400JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps401JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps401JSONResponseBodyStatusCodeN401 ListLdapGroupMaps401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps401JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps403JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps403JSONResponseBodyStatusCodeN403 ListLdapGroupMaps403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps403JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps404JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps404JSONResponseBodyStatusCodeN404 ListLdapGroupMaps404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps404JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps422JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps422JSONResponseBodyStatusCodeN422 ListLdapGroupMaps422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps422JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListLdapGroupMaps500JSONResponseBodyStatusCode.
+const (
+	ListLdapGroupMaps500JSONResponseBodyStatusCodeN500 ListLdapGroupMaps500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListLdapGroupMaps500JSONResponseBodyStatusCode enum.
+func (e ListLdapGroupMaps500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListLdapGroupMaps500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap400JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap400JSONResponseBodyStatusCodeN400 CreateLdapGroupMap400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap400JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap401JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap401JSONResponseBodyStatusCodeN401 CreateLdapGroupMap401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap401JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap403JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap403JSONResponseBodyStatusCodeN403 CreateLdapGroupMap403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap403JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap404JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap404JSONResponseBodyStatusCodeN404 CreateLdapGroupMap404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap404JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap422JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap422JSONResponseBodyStatusCodeN422 CreateLdapGroupMap422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap422JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateLdapGroupMap500JSONResponseBodyStatusCode.
+const (
+	CreateLdapGroupMap500JSONResponseBodyStatusCodeN500 CreateLdapGroupMap500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateLdapGroupMap500JSONResponseBodyStatusCode enum.
+func (e CreateLdapGroupMap500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateLdapGroupMap500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap400JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap400JSONResponseBodyStatusCodeN400 DeleteLdapGroupMap400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap400JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap401JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap401JSONResponseBodyStatusCodeN401 DeleteLdapGroupMap401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap401JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap403JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap403JSONResponseBodyStatusCodeN403 DeleteLdapGroupMap403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap403JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap404JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap404JSONResponseBodyStatusCodeN404 DeleteLdapGroupMap404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap404JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap422JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap422JSONResponseBodyStatusCodeN422 DeleteLdapGroupMap422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap422JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteLdapGroupMap500JSONResponseBodyStatusCode.
+const (
+	DeleteLdapGroupMap500JSONResponseBodyStatusCodeN500 DeleteLdapGroupMap500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteLdapGroupMap500JSONResponseBodyStatusCode enum.
+func (e DeleteLdapGroupMap500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteLdapGroupMap500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -193711,244 +193801,6 @@ type VerifyMacWithKmsKey422JSONResponseBodyStatusCode float32
 // VerifyMacWithKmsKey500JSONResponseBodyStatusCode defines parameters for VerifyMacWithKmsKey.
 type VerifyMacWithKmsKey500JSONResponseBodyStatusCode float32
 
-// GetLdapConfigParams defines parameters for GetLdapConfig.
-type GetLdapConfigParams struct {
-	// OrganizationId The ID of the organization to get the LDAP config for.
-	OrganizationId string `form:"organizationId" json:"organizationId"`
-}
-
-// GetLdapConfig400JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
-type GetLdapConfig400JSONResponseBodyStatusCode float32
-
-// GetLdapConfig401JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
-type GetLdapConfig401JSONResponseBodyStatusCode float32
-
-// GetLdapConfig403JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
-type GetLdapConfig403JSONResponseBodyStatusCode float32
-
-// GetLdapConfig404JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
-type GetLdapConfig404JSONResponseBodyStatusCode float32
-
-// GetLdapConfig422JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
-type GetLdapConfig422JSONResponseBodyStatusCode float32
-
-// GetLdapConfig500JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
-type GetLdapConfig500JSONResponseBodyStatusCode float32
-
-// UpdateLdapConfigJSONBody defines parameters for UpdateLdapConfig.
-type UpdateLdapConfigJSONBody struct {
-	// BindDN The distinguished name of object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`
-	BindDN *string `json:"bindDN,omitempty"`
-
-	// BindPass The password to use along with Bind DN when performing the user search.
-	BindPass *string `json:"bindPass,omitempty"`
-
-	// CaCert The CA certificate to use when verifying the LDAP server certificate.
-	CaCert *string `json:"caCert,omitempty"`
-
-	// ClientCertificate PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.
-	ClientCertificate *string `json:"clientCertificate,omitempty"`
-
-	// ClientKeyCertificate PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate.
-	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
-
-	// GroupSearchBase LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`
-	GroupSearchBase *string `json:"groupSearchBase,omitempty"`
-
-	// GroupSearchFilter The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
-	GroupSearchFilter *string `json:"groupSearchFilter,omitempty"`
-
-	// IsActive Whether to enable or disable this LDAP configuration.
-	IsActive *bool `json:"isActive,omitempty"`
-
-	// OrganizationId The ID of the organization to update the LDAP config for.
-	OrganizationId string `json:"organizationId"`
-
-	// SearchBase The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`
-	SearchBase *string `json:"searchBase,omitempty"`
-
-	// SearchFilter The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
-	SearchFilter *string `json:"searchFilter,omitempty"`
-
-	// UniqueUserAttribute The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber
-	UniqueUserAttribute *string `json:"uniqueUserAttribute,omitempty"`
-
-	// Url The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
-	Url *string `json:"url,omitempty"`
-}
-
-// UpdateLdapConfig400JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
-type UpdateLdapConfig400JSONResponseBodyStatusCode float32
-
-// UpdateLdapConfig401JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
-type UpdateLdapConfig401JSONResponseBodyStatusCode float32
-
-// UpdateLdapConfig403JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
-type UpdateLdapConfig403JSONResponseBodyStatusCode float32
-
-// UpdateLdapConfig404JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
-type UpdateLdapConfig404JSONResponseBodyStatusCode float32
-
-// UpdateLdapConfig422JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
-type UpdateLdapConfig422JSONResponseBodyStatusCode float32
-
-// UpdateLdapConfig500JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
-type UpdateLdapConfig500JSONResponseBodyStatusCode float32
-
-// CreateLdapConfigJSONBody defines parameters for CreateLdapConfig.
-type CreateLdapConfigJSONBody struct {
-	// BindDN The distinguished name of the object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`
-	BindDN string `json:"bindDN"`
-
-	// BindPass The password to use along with Bind DN when performing the user search.
-	BindPass string `json:"bindPass"`
-
-	// CaCert The CA certificate to use when verifying the LDAP server certificate.
-	CaCert *string `json:"caCert,omitempty"`
-
-	// ClientCertificate PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.
-	ClientCertificate *string `json:"clientCertificate,omitempty"`
-
-	// ClientKeyCertificate PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate.
-	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
-
-	// GroupSearchBase LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`
-	GroupSearchBase string `json:"groupSearchBase"`
-
-	// GroupSearchFilter The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
-	GroupSearchFilter *string `json:"groupSearchFilter,omitempty"`
-
-	// IsActive Whether to enable or disable this LDAP configuration.
-	IsActive bool `json:"isActive"`
-
-	// OrganizationId The ID of the organization to create the LDAP config for.
-	OrganizationId string `json:"organizationId"`
-
-	// SearchBase The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`
-	SearchBase string `json:"searchBase"`
-
-	// SearchFilter The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
-	SearchFilter *string `json:"searchFilter,omitempty"`
-
-	// UniqueUserAttribute The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber
-	UniqueUserAttribute *string `json:"uniqueUserAttribute,omitempty"`
-
-	// Url The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
-	Url string `json:"url"`
-}
-
-// CreateLdapConfig400JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
-type CreateLdapConfig400JSONResponseBodyStatusCode float32
-
-// CreateLdapConfig401JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
-type CreateLdapConfig401JSONResponseBodyStatusCode float32
-
-// CreateLdapConfig403JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
-type CreateLdapConfig403JSONResponseBodyStatusCode float32
-
-// CreateLdapConfig404JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
-type CreateLdapConfig404JSONResponseBodyStatusCode float32
-
-// CreateLdapConfig422JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
-type CreateLdapConfig422JSONResponseBodyStatusCode float32
-
-// CreateLdapConfig500JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
-type CreateLdapConfig500JSONResponseBodyStatusCode float32
-
-// TestLdapConnectionJSONBody defines parameters for TestLdapConnection.
-type TestLdapConnectionJSONBody struct {
-	BindDN               string  `json:"bindDN"`
-	BindPass             string  `json:"bindPass"`
-	CaCert               string  `json:"caCert"`
-	ClientCertificate    *string `json:"clientCertificate,omitempty"`
-	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
-	Url                  string  `json:"url"`
-}
-
-// TestLdapConnection400JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
-type TestLdapConnection400JSONResponseBodyStatusCode float32
-
-// TestLdapConnection401JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
-type TestLdapConnection401JSONResponseBodyStatusCode float32
-
-// TestLdapConnection403JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
-type TestLdapConnection403JSONResponseBodyStatusCode float32
-
-// TestLdapConnection404JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
-type TestLdapConnection404JSONResponseBodyStatusCode float32
-
-// TestLdapConnection422JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
-type TestLdapConnection422JSONResponseBodyStatusCode float32
-
-// TestLdapConnection500JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
-type TestLdapConnection500JSONResponseBodyStatusCode float32
-
-// ListLdapGroupMaps400JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
-type ListLdapGroupMaps400JSONResponseBodyStatusCode float32
-
-// ListLdapGroupMaps401JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
-type ListLdapGroupMaps401JSONResponseBodyStatusCode float32
-
-// ListLdapGroupMaps403JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
-type ListLdapGroupMaps403JSONResponseBodyStatusCode float32
-
-// ListLdapGroupMaps404JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
-type ListLdapGroupMaps404JSONResponseBodyStatusCode float32
-
-// ListLdapGroupMaps422JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
-type ListLdapGroupMaps422JSONResponseBodyStatusCode float32
-
-// ListLdapGroupMaps500JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
-type ListLdapGroupMaps500JSONResponseBodyStatusCode float32
-
-// CreateLdapGroupMapJSONBody defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMapJSONBody struct {
-	GroupSlug   string `json:"groupSlug"`
-	LdapGroupCN string `json:"ldapGroupCN"`
-}
-
-// CreateLdapGroupMap400JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMap400JSONResponseBodyStatusCode float32
-
-// CreateLdapGroupMap401JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMap401JSONResponseBodyStatusCode float32
-
-// CreateLdapGroupMap403JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMap403JSONResponseBodyStatusCode float32
-
-// CreateLdapGroupMap404JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMap404JSONResponseBodyStatusCode float32
-
-// CreateLdapGroupMap422JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMap422JSONResponseBodyStatusCode float32
-
-// CreateLdapGroupMap500JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
-type CreateLdapGroupMap500JSONResponseBodyStatusCode float32
-
-// DeleteLdapGroupMap400JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
-type DeleteLdapGroupMap400JSONResponseBodyStatusCode float32
-
-// DeleteLdapGroupMap401JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
-type DeleteLdapGroupMap401JSONResponseBodyStatusCode float32
-
-// DeleteLdapGroupMap403JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
-type DeleteLdapGroupMap403JSONResponseBodyStatusCode float32
-
-// DeleteLdapGroupMap404JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
-type DeleteLdapGroupMap404JSONResponseBodyStatusCode float32
-
-// DeleteLdapGroupMap422JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
-type DeleteLdapGroupMap422JSONResponseBodyStatusCode float32
-
-// DeleteLdapGroupMap500JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
-type DeleteLdapGroupMap500JSONResponseBodyStatusCode float32
-
-// LoginWithLdapSsoJSONBody defines parameters for LoginWithLdapSso.
-type LoginWithLdapSsoJSONBody struct {
-	CallbackPort     *float32 `json:"callbackPort,omitempty"`
-	OrganizationSlug string   `json:"organizationSlug"`
-}
-
 // DeleteUserNotifications400JSONResponseBodyStatusCode defines parameters for DeleteUserNotifications.
 type DeleteUserNotifications400JSONResponseBodyStatusCode float32
 
@@ -204388,6 +204240,250 @@ type GoogleLoginCallbackParams struct {
 	Error *string `form:"error,omitempty" json:"error,omitempty"`
 }
 
+// DeleteLdapConfig400JSONResponseBodyStatusCode defines parameters for DeleteLdapConfig.
+type DeleteLdapConfig400JSONResponseBodyStatusCode float32
+
+// DeleteLdapConfig401JSONResponseBodyStatusCode defines parameters for DeleteLdapConfig.
+type DeleteLdapConfig401JSONResponseBodyStatusCode float32
+
+// DeleteLdapConfig403JSONResponseBodyStatusCode defines parameters for DeleteLdapConfig.
+type DeleteLdapConfig403JSONResponseBodyStatusCode float32
+
+// DeleteLdapConfig404JSONResponseBodyStatusCode defines parameters for DeleteLdapConfig.
+type DeleteLdapConfig404JSONResponseBodyStatusCode float32
+
+// DeleteLdapConfig422JSONResponseBodyStatusCode defines parameters for DeleteLdapConfig.
+type DeleteLdapConfig422JSONResponseBodyStatusCode float32
+
+// DeleteLdapConfig500JSONResponseBodyStatusCode defines parameters for DeleteLdapConfig.
+type DeleteLdapConfig500JSONResponseBodyStatusCode float32
+
+// GetLdapConfig400JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig400JSONResponseBodyStatusCode float32
+
+// GetLdapConfig401JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig401JSONResponseBodyStatusCode float32
+
+// GetLdapConfig403JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig403JSONResponseBodyStatusCode float32
+
+// GetLdapConfig404JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig404JSONResponseBodyStatusCode float32
+
+// GetLdapConfig422JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig422JSONResponseBodyStatusCode float32
+
+// GetLdapConfig500JSONResponseBodyStatusCode defines parameters for GetLdapConfig.
+type GetLdapConfig500JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfigJSONBody defines parameters for UpdateLdapConfig.
+type UpdateLdapConfigJSONBody struct {
+	// BindDN The distinguished name of object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`
+	BindDN *string `json:"bindDN,omitempty"`
+
+	// BindPass The password to use along with Bind DN when performing the user search.
+	BindPass *string `json:"bindPass,omitempty"`
+
+	// CaCert The CA certificate to use when verifying the LDAP server certificate.
+	CaCert *string `json:"caCert,omitempty"`
+
+	// ClientCertificate PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.
+	ClientCertificate *string `json:"clientCertificate,omitempty"`
+
+	// ClientKeyCertificate PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate.
+	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
+
+	// GroupSearchBase LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`
+	GroupSearchBase *string `json:"groupSearchBase,omitempty"`
+
+	// GroupSearchFilter The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
+	GroupSearchFilter *string `json:"groupSearchFilter,omitempty"`
+
+	// IsActive Whether to enable or disable this LDAP configuration.
+	IsActive *bool `json:"isActive,omitempty"`
+
+	// SearchBase The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`
+	SearchBase *string `json:"searchBase,omitempty"`
+
+	// SearchFilter The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
+	SearchFilter *string `json:"searchFilter,omitempty"`
+
+	// UniqueUserAttribute The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber
+	UniqueUserAttribute *string `json:"uniqueUserAttribute,omitempty"`
+
+	// Url The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
+	Url *string `json:"url,omitempty"`
+}
+
+// UpdateLdapConfig400JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig400JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig401JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig401JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig403JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig403JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig404JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig404JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig422JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig422JSONResponseBodyStatusCode float32
+
+// UpdateLdapConfig500JSONResponseBodyStatusCode defines parameters for UpdateLdapConfig.
+type UpdateLdapConfig500JSONResponseBodyStatusCode float32
+
+// CreateLdapConfigJSONBody defines parameters for CreateLdapConfig.
+type CreateLdapConfigJSONBody struct {
+	// BindDN The distinguished name of the object to bind when performing the user search such as `cn=infisical,ou=Users,dc=acme,dc=com`
+	BindDN string `json:"bindDN"`
+
+	// BindPass The password to use along with Bind DN when performing the user search.
+	BindPass string `json:"bindPass"`
+
+	// CaCert The CA certificate to use when verifying the LDAP server certificate.
+	CaCert *string `json:"caCert,omitempty"`
+
+	// ClientCertificate PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.
+	ClientCertificate *string `json:"clientCertificate,omitempty"`
+
+	// ClientKeyCertificate PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate.
+	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
+
+	// GroupSearchBase LDAP search base to use for group membership search such as `ou=Groups,dc=acme,dc=com`
+	GroupSearchBase string `json:"groupSearchBase"`
+
+	// GroupSearchFilter The template used when constructing the group membership query such as `(&(objectClass=posixGroup)(memberUid={{.Username}}))`. The template can access the following context variables: `[UserDN, UserName]`. The default is `(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))` which is compatible with several common directory schemas.
+	GroupSearchFilter *string `json:"groupSearchFilter,omitempty"`
+
+	// IsActive Whether to enable or disable this LDAP configuration.
+	IsActive bool `json:"isActive"`
+
+	// SearchBase The base DN to use for the user search such as `ou=Users,dc=acme,dc=com`
+	SearchBase string `json:"searchBase"`
+
+	// SearchFilter The template used to construct the LDAP user search filter such as `(uid={{username}})` uses literal `{{username}}` to have the given username used in the search. The default is `(uid={{username}})` which is compatible with several common directory schemas.
+	SearchFilter *string `json:"searchFilter,omitempty"`
+
+	// UniqueUserAttribute The attribute to use as the unique identifier of LDAP users such as `sAMAccountName`, `cn`, `uid`, `objectGUID`. If left blank, defaults to uidNumber
+	UniqueUserAttribute *string `json:"uniqueUserAttribute,omitempty"`
+
+	// Url The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.
+	Url string `json:"url"`
+}
+
+// CreateLdapConfig400JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig400JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig401JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig401JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig403JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig403JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig404JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig404JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig422JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig422JSONResponseBodyStatusCode float32
+
+// CreateLdapConfig500JSONResponseBodyStatusCode defines parameters for CreateLdapConfig.
+type CreateLdapConfig500JSONResponseBodyStatusCode float32
+
+// TestLdapConnectionJSONBody defines parameters for TestLdapConnection.
+type TestLdapConnectionJSONBody struct {
+	BindDN               string  `json:"bindDN"`
+	BindPass             string  `json:"bindPass"`
+	CaCert               string  `json:"caCert"`
+	ClientCertificate    *string `json:"clientCertificate,omitempty"`
+	ClientKeyCertificate *string `json:"clientKeyCertificate,omitempty"`
+	Url                  string  `json:"url"`
+}
+
+// TestLdapConnection400JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection400JSONResponseBodyStatusCode float32
+
+// TestLdapConnection401JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection401JSONResponseBodyStatusCode float32
+
+// TestLdapConnection403JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection403JSONResponseBodyStatusCode float32
+
+// TestLdapConnection404JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection404JSONResponseBodyStatusCode float32
+
+// TestLdapConnection422JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection422JSONResponseBodyStatusCode float32
+
+// TestLdapConnection500JSONResponseBodyStatusCode defines parameters for TestLdapConnection.
+type TestLdapConnection500JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps400JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps400JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps401JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps401JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps403JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps403JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps404JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps404JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps422JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps422JSONResponseBodyStatusCode float32
+
+// ListLdapGroupMaps500JSONResponseBodyStatusCode defines parameters for ListLdapGroupMaps.
+type ListLdapGroupMaps500JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMapJSONBody defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMapJSONBody struct {
+	GroupSlug   string `json:"groupSlug"`
+	LdapGroupCN string `json:"ldapGroupCN"`
+}
+
+// CreateLdapGroupMap400JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap400JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap401JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap401JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap403JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap403JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap404JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap404JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap422JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap422JSONResponseBodyStatusCode float32
+
+// CreateLdapGroupMap500JSONResponseBodyStatusCode defines parameters for CreateLdapGroupMap.
+type CreateLdapGroupMap500JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap400JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap400JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap401JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap401JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap403JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap403JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap404JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap404JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap422JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap422JSONResponseBodyStatusCode float32
+
+// DeleteLdapGroupMap500JSONResponseBodyStatusCode defines parameters for DeleteLdapGroupMap.
+type DeleteLdapGroupMap500JSONResponseBodyStatusCode float32
+
+// LoginWithLdapSsoJSONBody defines parameters for LoginWithLdapSso.
+type LoginWithLdapSsoJSONBody struct {
+	CallbackPort     *float32 `json:"callbackPort,omitempty"`
+	OrganizationSlug string   `json:"organizationSlug"`
+}
+
 // OidcCallbackParams defines parameters for OidcCallback.
 type OidcCallbackParams struct {
 	Code  *string `form:"code,omitempty" json:"code,omitempty"`
@@ -212169,21 +212265,6 @@ type VerifyWithKmsKeyJSONRequestBody VerifyWithKmsKeyJSONBody
 // VerifyMacWithKmsKeyJSONRequestBody defines body for VerifyMacWithKmsKey for application/json ContentType.
 type VerifyMacWithKmsKeyJSONRequestBody VerifyMacWithKmsKeyJSONBody
 
-// UpdateLdapConfigJSONRequestBody defines body for UpdateLdapConfig for application/json ContentType.
-type UpdateLdapConfigJSONRequestBody UpdateLdapConfigJSONBody
-
-// CreateLdapConfigJSONRequestBody defines body for CreateLdapConfig for application/json ContentType.
-type CreateLdapConfigJSONRequestBody CreateLdapConfigJSONBody
-
-// TestLdapConnectionJSONRequestBody defines body for TestLdapConnection for application/json ContentType.
-type TestLdapConnectionJSONRequestBody TestLdapConnectionJSONBody
-
-// CreateLdapGroupMapJSONRequestBody defines body for CreateLdapGroupMap for application/json ContentType.
-type CreateLdapGroupMapJSONRequestBody CreateLdapGroupMapJSONBody
-
-// LoginWithLdapSsoJSONRequestBody defines body for LoginWithLdapSso for application/json ContentType.
-type LoginWithLdapSsoJSONRequestBody LoginWithLdapSsoJSONBody
-
 // UpdateUserNotificationJSONRequestBody defines body for UpdateUserNotification for application/json ContentType.
 type UpdateUserNotificationJSONRequestBody UpdateUserNotificationJSONBody
 
@@ -212474,6 +212555,21 @@ type SetSecretRequestValueJSONRequestBody SetSecretRequestValueJSONBody
 
 // AccessSharedSecretJSONRequestBody defines body for AccessSharedSecret for application/json ContentType.
 type AccessSharedSecretJSONRequestBody AccessSharedSecretJSONBody
+
+// UpdateLdapConfigJSONRequestBody defines body for UpdateLdapConfig for application/json ContentType.
+type UpdateLdapConfigJSONRequestBody UpdateLdapConfigJSONBody
+
+// CreateLdapConfigJSONRequestBody defines body for CreateLdapConfig for application/json ContentType.
+type CreateLdapConfigJSONRequestBody CreateLdapConfigJSONBody
+
+// TestLdapConnectionJSONRequestBody defines body for TestLdapConnection for application/json ContentType.
+type TestLdapConnectionJSONRequestBody TestLdapConnectionJSONBody
+
+// CreateLdapGroupMapJSONRequestBody defines body for CreateLdapGroupMap for application/json ContentType.
+type CreateLdapGroupMapJSONRequestBody CreateLdapGroupMapJSONBody
+
+// LoginWithLdapSsoJSONRequestBody defines body for LoginWithLdapSso for application/json ContentType.
+type LoginWithLdapSsoJSONRequestBody LoginWithLdapSsoJSONBody
 
 // UpdateOidcConfigJSONRequestBody defines body for UpdateOidcConfig for application/json ContentType.
 type UpdateOidcConfigJSONRequestBody UpdateOidcConfigJSONBody
@@ -259252,65 +259348,6 @@ type ClientInterface interface {
 	// Verify an HMAC (MAC) for data with a KMS key.
 	VerifyMacWithKmsKey(ctx context.Context, keyId openapi_types.UUID, body VerifyMacWithKmsKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetLdapConfig performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
-	//
-	// Get LDAP config.
-	GetLdapConfig(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateLdapConfigWithBody performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Update LDAP config.
-	UpdateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateLdapConfig performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Update LDAP config.
-	UpdateLdapConfig(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateLdapConfigWithBody performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Create LDAP config.
-	CreateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateLdapConfig performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Create LDAP config.
-	CreateLdapConfig(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// TestLdapConnectionWithBody performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
-	// with any type of body and a specified content type.
-	TestLdapConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// TestLdapConnection performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
-	// Takes a body of the `application/json` content type.
-	TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ListLdapGroupMaps performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
-	ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateLdapGroupMapWithBody performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
-	// with any type of body and a specified content type.
-	CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateLdapGroupMap performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
-	// Takes a body of the `application/json` content type.
-	CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteLdapGroupMap performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
-	DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LoginWithLdapSsoWithBody performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
-	// with any type of body and a specified content type.
-	LoginWithLdapSsoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LoginWithLdapSso performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
-	// Takes a body of the `application/json` content type.
-	LoginWithLdapSso(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteUserNotifications performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
 	DeleteUserNotifications(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -261016,6 +261053,70 @@ type ClientInterface interface {
 
 	// GoogleLoginCallback performs a GET /api/v1/sso/google (the `GoogleLoginCallback` operationId) request.
 	GoogleLoginCallback(ctx context.Context, params *GoogleLoginCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLdapConfig performs a DELETE /api/v1/sso/ldap/config (the `DeleteLdapConfig` operationId) request.
+	//
+	// Delete LDAP config.
+	DeleteLdapConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLdapConfig performs a GET /api/v1/sso/ldap/config (the `GetLdapConfig` operationId) request.
+	//
+	// Get LDAP config.
+	GetLdapConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLdapConfigWithBody performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update LDAP config.
+	UpdateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLdapConfig performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update LDAP config.
+	UpdateLdapConfig(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapConfigWithBody performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create LDAP config.
+	CreateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapConfig performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create LDAP config.
+	CreateLdapConfig(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TestLdapConnectionWithBody performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+	// with any type of body and a specified content type.
+	TestLdapConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// TestLdapConnection performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListLdapGroupMaps performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+	ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapGroupMapWithBody performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+	// with any type of body and a specified content type.
+	CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLdapGroupMap performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+	// Takes a body of the `application/json` content type.
+	CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLdapGroupMap performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+	DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LoginWithLdapSsoWithBody performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request,
+	// with any type of body and a specified content type.
+	LoginWithLdapSsoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LoginWithLdapSso performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request.
+	// Takes a body of the `application/json` content type.
+	LoginWithLdapSso(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OidcCallback performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
 	OidcCallback(ctx context.Context, params *OidcCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -275419,195 +275520,6 @@ func (c *Client) VerifyMacWithKmsKey(ctx context.Context, keyId openapi_types.UU
 	return c.Client.Do(req)
 }
 
-// GetLdapConfig performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
-//
-// Get LDAP config.
-func (c *Client) GetLdapConfig(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetLdapConfigRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateLdapConfigWithBody performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Update LDAP config.
-func (c *Client) UpdateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateLdapConfigRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateLdapConfig performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Update LDAP config.
-func (c *Client) UpdateLdapConfig(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateLdapConfigRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateLdapConfigWithBody performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Create LDAP config.
-func (c *Client) CreateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateLdapConfigRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateLdapConfig performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Create LDAP config.
-func (c *Client) CreateLdapConfig(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateLdapConfigRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// TestLdapConnectionWithBody performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
-// with any type of body and a specified content type.
-func (c *Client) TestLdapConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewTestLdapConnectionRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// TestLdapConnection performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
-// Takes a body of the `application/json` content type.
-func (c *Client) TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewTestLdapConnectionRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// ListLdapGroupMaps performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
-func (c *Client) ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListLdapGroupMapsRequest(c.Server, configId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateLdapGroupMapWithBody performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
-// with any type of body and a specified content type.
-func (c *Client) CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateLdapGroupMapRequestWithBody(c.Server, configId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateLdapGroupMap performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
-// Takes a body of the `application/json` content type.
-func (c *Client) CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateLdapGroupMapRequest(c.Server, configId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// DeleteLdapGroupMap performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
-func (c *Client) DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteLdapGroupMapRequest(c.Server, configId, groupMapId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// LoginWithLdapSsoWithBody performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
-// with any type of body and a specified content type.
-func (c *Client) LoginWithLdapSsoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginWithLdapSsoRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// LoginWithLdapSso performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
-// Takes a body of the `application/json` content type.
-func (c *Client) LoginWithLdapSso(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginWithLdapSsoRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 // DeleteUserNotifications performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
 func (c *Client) DeleteUserNotifications(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteUserNotificationsRequest(c.Server)
@@ -280913,6 +280825,210 @@ func (c *Client) GitlabLoginCallback(ctx context.Context, params *GitlabLoginCal
 // GoogleLoginCallback performs a GET /api/v1/sso/google (the `GoogleLoginCallback` operationId) request.
 func (c *Client) GoogleLoginCallback(ctx context.Context, params *GoogleLoginCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGoogleLoginCallbackRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLdapConfig performs a DELETE /api/v1/sso/ldap/config (the `DeleteLdapConfig` operationId) request.
+//
+// Delete LDAP config.
+func (c *Client) DeleteLdapConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLdapConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLdapConfig performs a GET /api/v1/sso/ldap/config (the `GetLdapConfig` operationId) request.
+//
+// Get LDAP config.
+func (c *Client) GetLdapConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLdapConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLdapConfigWithBody performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update LDAP config.
+func (c *Client) UpdateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLdapConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLdapConfig performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update LDAP config.
+func (c *Client) UpdateLdapConfig(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLdapConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapConfigWithBody performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create LDAP config.
+func (c *Client) CreateLdapConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapConfig performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create LDAP config.
+func (c *Client) CreateLdapConfig(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TestLdapConnectionWithBody performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) TestLdapConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTestLdapConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// TestLdapConnection performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTestLdapConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListLdapGroupMaps performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+func (c *Client) ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLdapGroupMapsRequest(c.Server, configId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapGroupMapWithBody performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapGroupMapRequestWithBody(c.Server, configId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLdapGroupMap performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLdapGroupMapRequest(c.Server, configId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLdapGroupMap performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+func (c *Client) DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLdapGroupMapRequest(c.Server, configId, groupMapId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LoginWithLdapSsoWithBody performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) LoginWithLdapSsoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginWithLdapSsoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// LoginWithLdapSso performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request.
+// Takes a body of the `application/json` content type.
+func (c *Client) LoginWithLdapSso(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLoginWithLdapSsoRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -311012,338 +311128,6 @@ func NewVerifyMacWithKmsKeyRequestWithBody(server string, keyId openapi_types.UU
 	return req, nil
 }
 
-// NewGetLdapConfigRequest constructs an http.Request for the GetLdapConfig method
-func NewGetLdapConfigRequest(server string, params *GetLdapConfigParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateLdapConfigRequest calls the generic UpdateLdapConfig builder with application/json body
-func NewUpdateLdapConfigRequest(server string, body UpdateLdapConfigJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateLdapConfigRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewUpdateLdapConfigRequestWithBody constructs an http.Request for the UpdateLdapConfig method, with any body, and a specified content type
-func NewUpdateLdapConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCreateLdapConfigRequest calls the generic CreateLdapConfig builder with application/json body
-func NewCreateLdapConfigRequest(server string, body CreateLdapConfigJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateLdapConfigRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCreateLdapConfigRequestWithBody constructs an http.Request for the CreateLdapConfig method, with any body, and a specified content type
-func NewCreateLdapConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewTestLdapConnectionRequest calls the generic TestLdapConnection builder with application/json body
-func NewTestLdapConnectionRequest(server string, body TestLdapConnectionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewTestLdapConnectionRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewTestLdapConnectionRequestWithBody constructs an http.Request for the TestLdapConnection method, with any body, and a specified content type
-func NewTestLdapConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config/test-connection")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewListLdapGroupMapsRequest constructs an http.Request for the ListLdapGroupMaps method
-func NewListLdapGroupMapsRequest(server string, configId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config/%s/group-maps", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCreateLdapGroupMapRequest calls the generic CreateLdapGroupMap builder with application/json body
-func NewCreateLdapGroupMapRequest(server string, configId string, body CreateLdapGroupMapJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateLdapGroupMapRequestWithBody(server, configId, "application/json", bodyReader)
-}
-
-// NewCreateLdapGroupMapRequestWithBody constructs an http.Request for the CreateLdapGroupMap method, with any body, and a specified content type
-func NewCreateLdapGroupMapRequestWithBody(server string, configId string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config/%s/group-maps", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteLdapGroupMapRequest constructs an http.Request for the DeleteLdapGroupMap method
-func NewDeleteLdapGroupMapRequest(server string, configId string, groupMapId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupMapId", groupMapId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/config/%s/group-maps/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewLoginWithLdapSsoRequest calls the generic LoginWithLdapSso builder with application/json body
-func NewLoginWithLdapSsoRequest(server string, body LoginWithLdapSsoJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewLoginWithLdapSsoRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewLoginWithLdapSsoRequestWithBody constructs an http.Request for the LoginWithLdapSso method, with any body, and a specified content type
-func NewLoginWithLdapSsoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/ldap/login")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewDeleteUserNotificationsRequest constructs an http.Request for the DeleteUserNotifications method
 func NewDeleteUserNotificationsRequest(server string) (*http.Request, error) {
 	var err error
@@ -324107,6 +323891,342 @@ func NewGoogleLoginCallbackRequest(server string, params *GoogleLoginCallbackPar
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDeleteLdapConfigRequest constructs an http.Request for the DeleteLdapConfig method
+func NewDeleteLdapConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetLdapConfigRequest constructs an http.Request for the GetLdapConfig method
+func NewGetLdapConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLdapConfigRequest calls the generic UpdateLdapConfig builder with application/json body
+func NewUpdateLdapConfigRequest(server string, body UpdateLdapConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLdapConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateLdapConfigRequestWithBody constructs an http.Request for the UpdateLdapConfig method, with any body, and a specified content type
+func NewUpdateLdapConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateLdapConfigRequest calls the generic CreateLdapConfig builder with application/json body
+func NewCreateLdapConfigRequest(server string, body CreateLdapConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLdapConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateLdapConfigRequestWithBody constructs an http.Request for the CreateLdapConfig method, with any body, and a specified content type
+func NewCreateLdapConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewTestLdapConnectionRequest calls the generic TestLdapConnection builder with application/json body
+func NewTestLdapConnectionRequest(server string, body TestLdapConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTestLdapConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewTestLdapConnectionRequestWithBody constructs an http.Request for the TestLdapConnection method, with any body, and a specified content type
+func NewTestLdapConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config/test-connection")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListLdapGroupMapsRequest constructs an http.Request for the ListLdapGroupMaps method
+func NewListLdapGroupMapsRequest(server string, configId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config/%s/group-maps", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLdapGroupMapRequest calls the generic CreateLdapGroupMap builder with application/json body
+func NewCreateLdapGroupMapRequest(server string, configId string, body CreateLdapGroupMapJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLdapGroupMapRequestWithBody(server, configId, "application/json", bodyReader)
+}
+
+// NewCreateLdapGroupMapRequestWithBody constructs an http.Request for the CreateLdapGroupMap method, with any body, and a specified content type
+func NewCreateLdapGroupMapRequestWithBody(server string, configId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config/%s/group-maps", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteLdapGroupMapRequest constructs an http.Request for the DeleteLdapGroupMap method
+func NewDeleteLdapGroupMapRequest(server string, configId string, groupMapId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupMapId", groupMapId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/config/%s/group-maps/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewLoginWithLdapSsoRequest calls the generic LoginWithLdapSso builder with application/json body
+func NewLoginWithLdapSsoRequest(server string, body LoginWithLdapSsoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLoginWithLdapSsoRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLoginWithLdapSsoRequestWithBody constructs an http.Request for the LoginWithLdapSso method, with any body, and a specified content type
+func NewLoginWithLdapSsoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/ldap/login")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -338486,81 +338606,6 @@ type ClientWithResponsesInterface interface {
 	// Verify an HMAC (MAC) for data with a KMS key.
 	VerifyMacWithKmsKeyWithResponse(ctx context.Context, keyId openapi_types.UUID, body VerifyMacWithKmsKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*VerifyMacWithKmsKeyResponse, error)
 
-	// GetLdapConfigWithResponse performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
-	//
-	// Get LDAP config.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetLdapConfigWithResponse(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*GetLdapConfigResponse, error)
-
-	// UpdateLdapConfigWithBodyWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Update LDAP config.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	UpdateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error)
-
-	// UpdateLdapConfigWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Update LDAP config.
-	UpdateLdapConfigWithResponse(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error)
-
-	// CreateLdapConfigWithBodyWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Create LDAP config.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	CreateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error)
-
-	// CreateLdapConfigWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Create LDAP config.
-	CreateLdapConfigWithResponse(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error)
-
-	// TestLdapConnectionWithBodyWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	TestLdapConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error)
-
-	// TestLdapConnectionWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	TestLdapConnectionWithResponse(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error)
-
-	// ListLdapGroupMapsWithResponse performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error)
-
-	// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
-
-	// CreateLdapGroupMapWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
-
-	// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error)
-
-	// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	LoginWithLdapSsoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error)
-
-	// LoginWithLdapSsoWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	LoginWithLdapSsoWithResponse(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error)
-
 	// DeleteUserNotificationsWithResponse performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -340800,6 +340845,88 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GoogleLoginCallbackWithResponse(ctx context.Context, params *GoogleLoginCallbackParams, reqEditors ...RequestEditorFn) (*GoogleLoginCallbackResponse, error)
+
+	// DeleteLdapConfigWithResponse performs a DELETE /api/v1/sso/ldap/config (the `DeleteLdapConfig` operationId) request.
+	//
+	// Delete LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteLdapConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteLdapConfigResponse, error)
+
+	// GetLdapConfigWithResponse performs a GET /api/v1/sso/ldap/config (the `GetLdapConfig` operationId) request.
+	//
+	// Get LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetLdapConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetLdapConfigResponse, error)
+
+	// UpdateLdapConfigWithBodyWithResponse performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error)
+
+	// UpdateLdapConfigWithResponse performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update LDAP config.
+	UpdateLdapConfigWithResponse(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error)
+
+	// CreateLdapConfigWithBodyWithResponse performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create LDAP config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error)
+
+	// CreateLdapConfigWithResponse performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create LDAP config.
+	CreateLdapConfigWithResponse(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error)
+
+	// TestLdapConnectionWithBodyWithResponse performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	TestLdapConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error)
+
+	// TestLdapConnectionWithResponse performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	TestLdapConnectionWithResponse(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error)
+
+	// ListLdapGroupMapsWithResponse performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error)
+
+	// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
+
+	// CreateLdapGroupMapWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
+
+	// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error)
+
+	// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	LoginWithLdapSsoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error)
+
+	// LoginWithLdapSsoWithResponse performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	LoginWithLdapSsoWithResponse(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error)
 
 	// OidcCallbackWithResponse performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
 	//
@@ -451869,1185 +451996,6 @@ func (r VerifyMacWithKmsKeyResponse) ContentType() string {
 	return ""
 }
 
-type GetLdapConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		BindDN                  string `json:"bindDN"`
-		BindPass                string `json:"bindPass"`
-		CaCert                  string `json:"caCert"`
-		ClientCertificate       string `json:"clientCertificate"`
-		GroupSearchBase         string `json:"groupSearchBase"`
-		GroupSearchFilter       string `json:"groupSearchFilter"`
-		HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
-		Id                      string `json:"id"`
-		IsActive                bool   `json:"isActive"`
-		Organization            string `json:"organization"`
-		SearchBase              string `json:"searchBase"`
-		SearchFilter            string `json:"searchFilter"`
-		UniqueUserAttribute     string `json:"uniqueUserAttribute"`
-		Url                     string `json:"url"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                `json:"details,omitempty"`
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                `json:"details,omitempty"`
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                     `json:"error"`
-		Message    interface{}                                `json:"message,omitempty"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetLdapConfigResponse) GetJSON200() *struct {
-	BindDN                  string `json:"bindDN"`
-	BindPass                string `json:"bindPass"`
-	CaCert                  string `json:"caCert"`
-	ClientCertificate       string `json:"clientCertificate"`
-	GroupSearchBase         string `json:"groupSearchBase"`
-	GroupSearchFilter       string `json:"groupSearchFilter"`
-	HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
-	Id                      string `json:"id"`
-	IsActive                bool   `json:"isActive"`
-	Organization            string `json:"organization"`
-	SearchBase              string `json:"searchBase"`
-	SearchFilter            string `json:"searchFilter"`
-	UniqueUserAttribute     string `json:"uniqueUserAttribute"`
-	Url                     string `json:"url"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetLdapConfigResponse) GetJSON400() *struct {
-	Details    interface{}                                `json:"details,omitempty"`
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetLdapConfigResponse) GetJSON401() *struct {
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetLdapConfigResponse) GetJSON403() *struct {
-	Details    interface{}                                `json:"details,omitempty"`
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetLdapConfigResponse) GetJSON404() *struct {
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r GetLdapConfigResponse) GetJSON422() *struct {
-	Error      string                                     `json:"error"`
-	Message    interface{}                                `json:"message,omitempty"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetLdapConfigResponse) GetJSON500() *struct {
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r GetLdapConfigResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetLdapConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetLdapConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetLdapConfigResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type UpdateLdapConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		CreatedAt           time.Time          `json:"createdAt"`
-		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
-		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
-		Id                  openapi_types.UUID `json:"id"`
-		IsActive            bool               `json:"isActive"`
-		OrgId               openapi_types.UUID `json:"orgId"`
-		SearchBase          string             `json:"searchBase"`
-		SearchFilter        *string            `json:"searchFilter,omitempty"`
-		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
-		UpdatedAt           time.Time          `json:"updatedAt"`
-		Url                 string             `json:"url"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON200() *struct {
-	CreatedAt           time.Time          `json:"createdAt"`
-	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
-	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
-	Id                  openapi_types.UUID `json:"id"`
-	IsActive            bool               `json:"isActive"`
-	OrgId               openapi_types.UUID `json:"orgId"`
-	SearchBase          string             `json:"searchBase"`
-	SearchFilter        *string            `json:"searchFilter,omitempty"`
-	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
-	UpdatedAt           time.Time          `json:"updatedAt"`
-	Url                 string             `json:"url"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r UpdateLdapConfigResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r UpdateLdapConfigResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateLdapConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateLdapConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateLdapConfigResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateLdapConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		CreatedAt           time.Time          `json:"createdAt"`
-		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
-		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
-		Id                  openapi_types.UUID `json:"id"`
-		IsActive            bool               `json:"isActive"`
-		OrgId               openapi_types.UUID `json:"orgId"`
-		SearchBase          string             `json:"searchBase"`
-		SearchFilter        *string            `json:"searchFilter,omitempty"`
-		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
-		UpdatedAt           time.Time          `json:"updatedAt"`
-		Url                 string             `json:"url"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON200() *struct {
-	CreatedAt           time.Time          `json:"createdAt"`
-	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
-	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
-	Id                  openapi_types.UUID `json:"id"`
-	IsActive            bool               `json:"isActive"`
-	OrgId               openapi_types.UUID `json:"orgId"`
-	SearchBase          string             `json:"searchBase"`
-	SearchFilter        *string            `json:"searchFilter,omitempty"`
-	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
-	UpdatedAt           time.Time          `json:"updatedAt"`
-	Url                 string             `json:"url"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r CreateLdapConfigResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r CreateLdapConfigResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateLdapConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateLdapConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateLdapConfigResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type TestLdapConnectionResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *bool
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                     `json:"details,omitempty"`
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                     `json:"details,omitempty"`
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                          `json:"error"`
-		Message    interface{}                                     `json:"message,omitempty"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON200() *bool {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON400() *struct {
-	Details    interface{}                                     `json:"details,omitempty"`
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON401() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON403() *struct {
-	Details    interface{}                                     `json:"details,omitempty"`
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON404() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON422() *struct {
-	Error      string                                          `json:"error"`
-	Message    interface{}                                     `json:"message,omitempty"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r TestLdapConnectionResponse) GetJSON500() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r TestLdapConnectionResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r TestLdapConnectionResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r TestLdapConnectionResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r TestLdapConnectionResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type ListLdapGroupMapsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *[]struct {
-		Group struct {
-			Id   string `json:"id"`
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"group"`
-		Id           string `json:"id"`
-		LdapConfigId string `json:"ldapConfigId"`
-		LdapGroupCN  string `json:"ldapGroupCN"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                    `json:"details,omitempty"`
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                    `json:"details,omitempty"`
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                         `json:"error"`
-		Message    interface{}                                    `json:"message,omitempty"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                         `json:"error"`
-		Message    string                                         `json:"message"`
-		ReqId      string                                         `json:"reqId"`
-		StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON200() *[]struct {
-	Group struct {
-		Id   string `json:"id"`
-		Name string `json:"name"`
-		Slug string `json:"slug"`
-	} `json:"group"`
-	Id           string `json:"id"`
-	LdapConfigId string `json:"ldapConfigId"`
-	LdapGroupCN  string `json:"ldapGroupCN"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON400() *struct {
-	Details    interface{}                                    `json:"details,omitempty"`
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON401() *struct {
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON403() *struct {
-	Details    interface{}                                    `json:"details,omitempty"`
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON404() *struct {
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON422() *struct {
-	Error      string                                         `json:"error"`
-	Message    interface{}                                    `json:"message,omitempty"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r ListLdapGroupMapsResponse) GetJSON500() *struct {
-	Error      string                                         `json:"error"`
-	Message    string                                         `json:"message"`
-	ReqId      string                                         `json:"reqId"`
-	StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r ListLdapGroupMapsResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r ListLdapGroupMapsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListLdapGroupMapsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListLdapGroupMapsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateLdapGroupMapResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		GroupId      openapi_types.UUID `json:"groupId"`
-		Id           openapi_types.UUID `json:"id"`
-		LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
-		LdapGroupCN  string             `json:"ldapGroupCN"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                     `json:"details,omitempty"`
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                     `json:"details,omitempty"`
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                          `json:"error"`
-		Message    interface{}                                     `json:"message,omitempty"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON200() *struct {
-	GroupId      openapi_types.UUID `json:"groupId"`
-	Id           openapi_types.UUID `json:"id"`
-	LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
-	LdapGroupCN  string             `json:"ldapGroupCN"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON400() *struct {
-	Details    interface{}                                     `json:"details,omitempty"`
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON401() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON403() *struct {
-	Details    interface{}                                     `json:"details,omitempty"`
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON404() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON422() *struct {
-	Error      string                                          `json:"error"`
-	Message    interface{}                                     `json:"message,omitempty"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r CreateLdapGroupMapResponse) GetJSON500() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r CreateLdapGroupMapResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateLdapGroupMapResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateLdapGroupMapResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateLdapGroupMapResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type DeleteLdapGroupMapResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		GroupId      openapi_types.UUID `json:"groupId"`
-		Id           openapi_types.UUID `json:"id"`
-		LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
-		LdapGroupCN  string             `json:"ldapGroupCN"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                     `json:"details,omitempty"`
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                     `json:"details,omitempty"`
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                          `json:"error"`
-		Message    interface{}                                     `json:"message,omitempty"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                          `json:"error"`
-		Message    string                                          `json:"message"`
-		ReqId      string                                          `json:"reqId"`
-		StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON200() *struct {
-	GroupId      openapi_types.UUID `json:"groupId"`
-	Id           openapi_types.UUID `json:"id"`
-	LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
-	LdapGroupCN  string             `json:"ldapGroupCN"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON400() *struct {
-	Details    interface{}                                     `json:"details,omitempty"`
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON401() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON403() *struct {
-	Details    interface{}                                     `json:"details,omitempty"`
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON404() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON422() *struct {
-	Error      string                                          `json:"error"`
-	Message    interface{}                                     `json:"message,omitempty"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r DeleteLdapGroupMapResponse) GetJSON500() *struct {
-	Error      string                                          `json:"error"`
-	Message    string                                          `json:"message"`
-	ReqId      string                                          `json:"reqId"`
-	StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r DeleteLdapGroupMapResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteLdapGroupMapResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteLdapGroupMapResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteLdapGroupMapResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type LoginWithLdapSsoResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// GetBody returns the raw response body bytes
-func (r LoginWithLdapSsoResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r LoginWithLdapSsoResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r LoginWithLdapSsoResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r LoginWithLdapSsoResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type DeleteUserNotificationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -503527,6 +502475,1356 @@ func (r GoogleLoginCallbackResponse) ContentType() string {
 	return ""
 }
 
+type DeleteLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt           time.Time          `json:"createdAt"`
+		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsActive            bool               `json:"isActive"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		SearchBase          string             `json:"searchBase"`
+		SearchFilter        *string            `json:"searchFilter,omitempty"`
+		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+		Url                 string             `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON200() *struct {
+	CreatedAt           time.Time          `json:"createdAt"`
+	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsActive            bool               `json:"isActive"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	SearchBase          string             `json:"searchBase"`
+	SearchFilter        *string            `json:"searchFilter,omitempty"`
+	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+	Url                 string             `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		BindDN                  string `json:"bindDN"`
+		BindPass                string `json:"bindPass"`
+		CaCert                  string `json:"caCert"`
+		ClientCertificate       string `json:"clientCertificate"`
+		GroupSearchBase         string `json:"groupSearchBase"`
+		GroupSearchFilter       string `json:"groupSearchFilter"`
+		HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
+		Id                      string `json:"id"`
+		IsActive                bool   `json:"isActive"`
+		Organization            string `json:"organization"`
+		SearchBase              string `json:"searchBase"`
+		SearchFilter            string `json:"searchFilter"`
+		UniqueUserAttribute     string `json:"uniqueUserAttribute"`
+		Url                     string `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                     `json:"error"`
+		Message    interface{}                                `json:"message,omitempty"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLdapConfigResponse) GetJSON200() *struct {
+	BindDN                  string `json:"bindDN"`
+	BindPass                string `json:"bindPass"`
+	CaCert                  string `json:"caCert"`
+	ClientCertificate       string `json:"clientCertificate"`
+	GroupSearchBase         string `json:"groupSearchBase"`
+	GroupSearchFilter       string `json:"groupSearchFilter"`
+	HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
+	Id                      string `json:"id"`
+	IsActive                bool   `json:"isActive"`
+	Organization            string `json:"organization"`
+	SearchBase              string `json:"searchBase"`
+	SearchFilter            string `json:"searchFilter"`
+	UniqueUserAttribute     string `json:"uniqueUserAttribute"`
+	Url                     string `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                     `json:"error"`
+	Message    interface{}                                `json:"message,omitempty"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt           time.Time          `json:"createdAt"`
+		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsActive            bool               `json:"isActive"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		SearchBase          string             `json:"searchBase"`
+		SearchFilter        *string            `json:"searchFilter,omitempty"`
+		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+		Url                 string             `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON200() *struct {
+	CreatedAt           time.Time          `json:"createdAt"`
+	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsActive            bool               `json:"isActive"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	SearchBase          string             `json:"searchBase"`
+	SearchFilter        *string            `json:"searchFilter,omitempty"`
+	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+	Url                 string             `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLdapConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		CreatedAt           time.Time          `json:"createdAt"`
+		GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+		GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+		Id                  openapi_types.UUID `json:"id"`
+		IsActive            bool               `json:"isActive"`
+		OrgId               openapi_types.UUID `json:"orgId"`
+		SearchBase          string             `json:"searchBase"`
+		SearchFilter        *string            `json:"searchFilter,omitempty"`
+		UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+		UpdatedAt           time.Time          `json:"updatedAt"`
+		Url                 string             `json:"url"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON200() *struct {
+	CreatedAt           time.Time          `json:"createdAt"`
+	GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+	GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+	Id                  openapi_types.UUID `json:"id"`
+	IsActive            bool               `json:"isActive"`
+	OrgId               openapi_types.UUID `json:"orgId"`
+	SearchBase          string             `json:"searchBase"`
+	SearchFilter        *string            `json:"searchFilter,omitempty"`
+	UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+	UpdatedAt           time.Time          `json:"updatedAt"`
+	Url                 string             `json:"url"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateLdapConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLdapConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLdapConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLdapConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLdapConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type TestLdapConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *bool
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON200() *bool {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r TestLdapConnectionResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r TestLdapConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r TestLdapConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TestLdapConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TestLdapConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListLdapGroupMapsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *[]struct {
+		Group struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		} `json:"group"`
+		Id           string `json:"id"`
+		LdapConfigId string `json:"ldapConfigId"`
+		LdapGroupCN  string `json:"ldapGroupCN"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON200() *[]struct {
+	Group struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	} `json:"group"`
+	Id           string `json:"id"`
+	LdapConfigId string `json:"ldapConfigId"`
+	LdapGroupCN  string `json:"ldapGroupCN"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListLdapGroupMapsResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListLdapGroupMapsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLdapGroupMapsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLdapGroupMapsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLdapGroupMapsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLdapGroupMapResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GroupId      openapi_types.UUID `json:"groupId"`
+		Id           openapi_types.UUID `json:"id"`
+		LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+		LdapGroupCN  string             `json:"ldapGroupCN"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON200() *struct {
+	GroupId      openapi_types.UUID `json:"groupId"`
+	Id           openapi_types.UUID `json:"id"`
+	LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+	LdapGroupCN  string             `json:"ldapGroupCN"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateLdapGroupMapResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLdapGroupMapResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLdapGroupMapResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLdapGroupMapResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLdapGroupMapResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLdapGroupMapResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		GroupId      openapi_types.UUID `json:"groupId"`
+		Id           openapi_types.UUID `json:"id"`
+		LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+		LdapGroupCN  string             `json:"ldapGroupCN"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON200() *struct {
+	GroupId      openapi_types.UUID `json:"groupId"`
+	Id           openapi_types.UUID `json:"id"`
+	LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+	LdapGroupCN  string             `json:"ldapGroupCN"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteLdapGroupMapResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLdapGroupMapResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLdapGroupMapResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLdapGroupMapResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLdapGroupMapResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type LoginWithLdapSsoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r LoginWithLdapSsoResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r LoginWithLdapSsoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LoginWithLdapSsoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r LoginWithLdapSsoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type OidcCallbackResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -547020,159 +547318,6 @@ func (c *ClientWithResponses) VerifyMacWithKmsKeyWithResponse(ctx context.Contex
 	return ParseVerifyMacWithKmsKeyResponse(rsp)
 }
 
-// GetLdapConfigWithResponse performs a GET /api/v1/ldap/config (the `GetLdapConfig` operationId) request.
-//
-// Get LDAP config.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetLdapConfigWithResponse(ctx context.Context, params *GetLdapConfigParams, reqEditors ...RequestEditorFn) (*GetLdapConfigResponse, error) {
-	rsp, err := c.GetLdapConfig(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetLdapConfigResponse(rsp)
-}
-
-// UpdateLdapConfigWithBodyWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Update LDAP config.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error) {
-	rsp, err := c.UpdateLdapConfigWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateLdapConfigResponse(rsp)
-}
-
-// UpdateLdapConfigWithResponse performs a PATCH /api/v1/ldap/config (the `UpdateLdapConfig` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Update LDAP config.
-func (c *ClientWithResponses) UpdateLdapConfigWithResponse(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error) {
-	rsp, err := c.UpdateLdapConfig(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateLdapConfigResponse(rsp)
-}
-
-// CreateLdapConfigWithBodyWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Create LDAP config.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error) {
-	rsp, err := c.CreateLdapConfigWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateLdapConfigResponse(rsp)
-}
-
-// CreateLdapConfigWithResponse performs a POST /api/v1/ldap/config (the `CreateLdapConfig` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Create LDAP config.
-func (c *ClientWithResponses) CreateLdapConfigWithResponse(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error) {
-	rsp, err := c.CreateLdapConfig(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateLdapConfigResponse(rsp)
-}
-
-// TestLdapConnectionWithBodyWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
-// with any type of body and a specified content type.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) TestLdapConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error) {
-	rsp, err := c.TestLdapConnectionWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseTestLdapConnectionResponse(rsp)
-}
-
-// TestLdapConnectionWithResponse performs a POST /api/v1/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) TestLdapConnectionWithResponse(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error) {
-	rsp, err := c.TestLdapConnection(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseTestLdapConnectionResponse(rsp)
-}
-
-// ListLdapGroupMapsWithResponse performs a GET /api/v1/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error) {
-	rsp, err := c.ListLdapGroupMaps(ctx, configId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListLdapGroupMapsResponse(rsp)
-}
-
-// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
-// with any type of body and a specified content type.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
-	rsp, err := c.CreateLdapGroupMapWithBody(ctx, configId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateLdapGroupMapResponse(rsp)
-}
-
-// CreateLdapGroupMapWithResponse performs a POST /api/v1/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
-	rsp, err := c.CreateLdapGroupMap(ctx, configId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateLdapGroupMapResponse(rsp)
-}
-
-// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error) {
-	rsp, err := c.DeleteLdapGroupMap(ctx, configId, groupMapId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteLdapGroupMapResponse(rsp)
-}
-
-// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request,
-// with any type of body and a specified content type.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) LoginWithLdapSsoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error) {
-	rsp, err := c.LoginWithLdapSsoWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLoginWithLdapSsoResponse(rsp)
-}
-
-// LoginWithLdapSsoWithResponse performs a POST /api/v1/ldap/login (the `LoginWithLdapSso` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) LoginWithLdapSsoWithResponse(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error) {
-	rsp, err := c.LoginWithLdapSso(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLoginWithLdapSsoResponse(rsp)
-}
-
 // DeleteUserNotificationsWithResponse performs a DELETE /api/v1/notifications/user (the `DeleteUserNotifications` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -551580,6 +551725,172 @@ func (c *ClientWithResponses) GoogleLoginCallbackWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseGoogleLoginCallbackResponse(rsp)
+}
+
+// DeleteLdapConfigWithResponse performs a DELETE /api/v1/sso/ldap/config (the `DeleteLdapConfig` operationId) request.
+//
+// Delete LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteLdapConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteLdapConfigResponse, error) {
+	rsp, err := c.DeleteLdapConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLdapConfigResponse(rsp)
+}
+
+// GetLdapConfigWithResponse performs a GET /api/v1/sso/ldap/config (the `GetLdapConfig` operationId) request.
+//
+// Get LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetLdapConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetLdapConfigResponse, error) {
+	rsp, err := c.GetLdapConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLdapConfigResponse(rsp)
+}
+
+// UpdateLdapConfigWithBodyWithResponse performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error) {
+	rsp, err := c.UpdateLdapConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLdapConfigResponse(rsp)
+}
+
+// UpdateLdapConfigWithResponse performs a PATCH /api/v1/sso/ldap/config (the `UpdateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update LDAP config.
+func (c *ClientWithResponses) UpdateLdapConfigWithResponse(ctx context.Context, body UpdateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLdapConfigResponse, error) {
+	rsp, err := c.UpdateLdapConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLdapConfigResponse(rsp)
+}
+
+// CreateLdapConfigWithBodyWithResponse performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create LDAP config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateLdapConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error) {
+	rsp, err := c.CreateLdapConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapConfigResponse(rsp)
+}
+
+// CreateLdapConfigWithResponse performs a POST /api/v1/sso/ldap/config (the `CreateLdapConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create LDAP config.
+func (c *ClientWithResponses) CreateLdapConfigWithResponse(ctx context.Context, body CreateLdapConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapConfigResponse, error) {
+	rsp, err := c.CreateLdapConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapConfigResponse(rsp)
+}
+
+// TestLdapConnectionWithBodyWithResponse performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) TestLdapConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error) {
+	rsp, err := c.TestLdapConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTestLdapConnectionResponse(rsp)
+}
+
+// TestLdapConnectionWithResponse performs a POST /api/v1/sso/ldap/config/test-connection (the `TestLdapConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) TestLdapConnectionWithResponse(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*TestLdapConnectionResponse, error) {
+	rsp, err := c.TestLdapConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTestLdapConnectionResponse(rsp)
+}
+
+// ListLdapGroupMapsWithResponse performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error) {
+	rsp, err := c.ListLdapGroupMaps(ctx, configId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLdapGroupMapsResponse(rsp)
+}
+
+// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
+	rsp, err := c.CreateLdapGroupMapWithBody(ctx, configId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapGroupMapResponse(rsp)
+}
+
+// CreateLdapGroupMapWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
+	rsp, err := c.CreateLdapGroupMap(ctx, configId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLdapGroupMapResponse(rsp)
+}
+
+// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error) {
+	rsp, err := c.DeleteLdapGroupMap(ctx, configId, groupMapId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLdapGroupMapResponse(rsp)
+}
+
+// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) LoginWithLdapSsoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error) {
+	rsp, err := c.LoginWithLdapSsoWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginWithLdapSsoResponse(rsp)
+}
+
+// LoginWithLdapSsoWithResponse performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) LoginWithLdapSsoWithResponse(ctx context.Context, body LoginWithLdapSsoJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginWithLdapSsoResponse, error) {
+	rsp, err := c.LoginWithLdapSso(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLoginWithLdapSsoResponse(rsp)
 }
 
 // OidcCallbackWithResponse performs a GET /api/v1/sso/oidc/callback (the `OidcCallback` operationId) request.
@@ -625101,780 +625412,6 @@ func ParseVerifyMacWithKmsKeyResponse(rsp *http.Response) (*VerifyMacWithKmsKeyR
 	return response, nil
 }
 
-// ParseGetLdapConfigResponse parses an HTTP response from a GetLdapConfigWithResponse call
-func ParseGetLdapConfigResponse(rsp *http.Response) (*GetLdapConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetLdapConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			BindDN                  string `json:"bindDN"`
-			BindPass                string `json:"bindPass"`
-			CaCert                  string `json:"caCert"`
-			ClientCertificate       string `json:"clientCertificate"`
-			GroupSearchBase         string `json:"groupSearchBase"`
-			GroupSearchFilter       string `json:"groupSearchFilter"`
-			HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
-			Id                      string `json:"id"`
-			IsActive                bool   `json:"isActive"`
-			Organization            string `json:"organization"`
-			SearchBase              string `json:"searchBase"`
-			SearchFilter            string `json:"searchFilter"`
-			UniqueUserAttribute     string `json:"uniqueUserAttribute"`
-			Url                     string `json:"url"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                `json:"details,omitempty"`
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                `json:"details,omitempty"`
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    interface{}                                `json:"message,omitempty"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateLdapConfigResponse parses an HTTP response from a UpdateLdapConfigWithResponse call
-func ParseUpdateLdapConfigResponse(rsp *http.Response) (*UpdateLdapConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateLdapConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			CreatedAt           time.Time          `json:"createdAt"`
-			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
-			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
-			Id                  openapi_types.UUID `json:"id"`
-			IsActive            bool               `json:"isActive"`
-			OrgId               openapi_types.UUID `json:"orgId"`
-			SearchBase          string             `json:"searchBase"`
-			SearchFilter        *string            `json:"searchFilter,omitempty"`
-			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
-			UpdatedAt           time.Time          `json:"updatedAt"`
-			Url                 string             `json:"url"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateLdapConfigResponse parses an HTTP response from a CreateLdapConfigWithResponse call
-func ParseCreateLdapConfigResponse(rsp *http.Response) (*CreateLdapConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateLdapConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			CreatedAt           time.Time          `json:"createdAt"`
-			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
-			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
-			Id                  openapi_types.UUID `json:"id"`
-			IsActive            bool               `json:"isActive"`
-			OrgId               openapi_types.UUID `json:"orgId"`
-			SearchBase          string             `json:"searchBase"`
-			SearchFilter        *string            `json:"searchFilter,omitempty"`
-			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
-			UpdatedAt           time.Time          `json:"updatedAt"`
-			Url                 string             `json:"url"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseTestLdapConnectionResponse parses an HTTP response from a TestLdapConnectionWithResponse call
-func ParseTestLdapConnectionResponse(rsp *http.Response) (*TestLdapConnectionResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &TestLdapConnectionResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest bool
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                     `json:"details,omitempty"`
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                     `json:"details,omitempty"`
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    interface{}                                     `json:"message,omitempty"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseListLdapGroupMapsResponse parses an HTTP response from a ListLdapGroupMapsWithResponse call
-func ParseListLdapGroupMapsResponse(rsp *http.Response) (*ListLdapGroupMapsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListLdapGroupMapsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []struct {
-			Group struct {
-				Id   string `json:"id"`
-				Name string `json:"name"`
-				Slug string `json:"slug"`
-			} `json:"group"`
-			Id           string `json:"id"`
-			LdapConfigId string `json:"ldapConfigId"`
-			LdapGroupCN  string `json:"ldapGroupCN"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                    `json:"details,omitempty"`
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                    `json:"details,omitempty"`
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                         `json:"error"`
-			Message    interface{}                                    `json:"message,omitempty"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                         `json:"error"`
-			Message    string                                         `json:"message"`
-			ReqId      string                                         `json:"reqId"`
-			StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateLdapGroupMapResponse parses an HTTP response from a CreateLdapGroupMapWithResponse call
-func ParseCreateLdapGroupMapResponse(rsp *http.Response) (*CreateLdapGroupMapResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateLdapGroupMapResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			GroupId      openapi_types.UUID `json:"groupId"`
-			Id           openapi_types.UUID `json:"id"`
-			LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
-			LdapGroupCN  string             `json:"ldapGroupCN"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                     `json:"details,omitempty"`
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                     `json:"details,omitempty"`
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    interface{}                                     `json:"message,omitempty"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteLdapGroupMapResponse parses an HTTP response from a DeleteLdapGroupMapWithResponse call
-func ParseDeleteLdapGroupMapResponse(rsp *http.Response) (*DeleteLdapGroupMapResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteLdapGroupMapResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			GroupId      openapi_types.UUID `json:"groupId"`
-			Id           openapi_types.UUID `json:"id"`
-			LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
-			LdapGroupCN  string             `json:"ldapGroupCN"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                     `json:"details,omitempty"`
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                     `json:"details,omitempty"`
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    interface{}                                     `json:"message,omitempty"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                          `json:"error"`
-			Message    string                                          `json:"message"`
-			ReqId      string                                          `json:"reqId"`
-			StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseLoginWithLdapSsoResponse parses an HTTP response from a LoginWithLdapSsoWithResponse call
-func ParseLoginWithLdapSsoResponse(rsp *http.Response) (*LoginWithLdapSsoResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LoginWithLdapSsoResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
 // ParseDeleteUserNotificationsResponse parses an HTTP response from a DeleteUserNotificationsWithResponse call
 func ParseDeleteUserNotificationsResponse(rsp *http.Response) (*DeleteUserNotificationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -657821,6 +657358,892 @@ func ParseGoogleLoginCallbackResponse(rsp *http.Response) (*GoogleLoginCallbackR
 	}
 
 	response := &GoogleLoginCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLdapConfigResponse parses an HTTP response from a DeleteLdapConfigWithResponse call
+func ParseDeleteLdapConfigResponse(rsp *http.Response) (*DeleteLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt           time.Time          `json:"createdAt"`
+			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsActive            bool               `json:"isActive"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			SearchBase          string             `json:"searchBase"`
+			SearchFilter        *string            `json:"searchFilter,omitempty"`
+			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+			Url                 string             `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetLdapConfigResponse parses an HTTP response from a GetLdapConfigWithResponse call
+func ParseGetLdapConfigResponse(rsp *http.Response) (*GetLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			BindDN                  string `json:"bindDN"`
+			BindPass                string `json:"bindPass"`
+			CaCert                  string `json:"caCert"`
+			ClientCertificate       string `json:"clientCertificate"`
+			GroupSearchBase         string `json:"groupSearchBase"`
+			GroupSearchFilter       string `json:"groupSearchFilter"`
+			HasClientKeyCertificate bool   `json:"hasClientKeyCertificate"`
+			Id                      string `json:"id"`
+			IsActive                bool   `json:"isActive"`
+			Organization            string `json:"organization"`
+			SearchBase              string `json:"searchBase"`
+			SearchFilter            string `json:"searchFilter"`
+			UniqueUserAttribute     string `json:"uniqueUserAttribute"`
+			Url                     string `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    interface{}                                `json:"message,omitempty"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLdapConfigResponse parses an HTTP response from a UpdateLdapConfigWithResponse call
+func ParseUpdateLdapConfigResponse(rsp *http.Response) (*UpdateLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt           time.Time          `json:"createdAt"`
+			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsActive            bool               `json:"isActive"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			SearchBase          string             `json:"searchBase"`
+			SearchFilter        *string            `json:"searchFilter,omitempty"`
+			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+			Url                 string             `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLdapConfigResponse parses an HTTP response from a CreateLdapConfigWithResponse call
+func ParseCreateLdapConfigResponse(rsp *http.Response) (*CreateLdapConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLdapConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			CreatedAt           time.Time          `json:"createdAt"`
+			GroupSearchBase     *string            `json:"groupSearchBase,omitempty"`
+			GroupSearchFilter   *string            `json:"groupSearchFilter,omitempty"`
+			Id                  openapi_types.UUID `json:"id"`
+			IsActive            bool               `json:"isActive"`
+			OrgId               openapi_types.UUID `json:"orgId"`
+			SearchBase          string             `json:"searchBase"`
+			SearchFilter        *string            `json:"searchFilter,omitempty"`
+			UniqueUserAttribute *string            `json:"uniqueUserAttribute,omitempty"`
+			UpdatedAt           time.Time          `json:"updatedAt"`
+			Url                 string             `json:"url"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateLdapConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseTestLdapConnectionResponse parses an HTTP response from a TestLdapConnectionWithResponse call
+func ParseTestLdapConnectionResponse(rsp *http.Response) (*TestLdapConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TestLdapConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest bool
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode TestLdapConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListLdapGroupMapsResponse parses an HTTP response from a ListLdapGroupMapsWithResponse call
+func ParseListLdapGroupMapsResponse(rsp *http.Response) (*ListLdapGroupMapsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLdapGroupMapsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []struct {
+			Group struct {
+				Id   string `json:"id"`
+				Name string `json:"name"`
+				Slug string `json:"slug"`
+			} `json:"group"`
+			Id           string `json:"id"`
+			LdapConfigId string `json:"ldapConfigId"`
+			LdapGroupCN  string `json:"ldapGroupCN"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode ListLdapGroupMaps500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLdapGroupMapResponse parses an HTTP response from a CreateLdapGroupMapWithResponse call
+func ParseCreateLdapGroupMapResponse(rsp *http.Response) (*CreateLdapGroupMapResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLdapGroupMapResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GroupId      openapi_types.UUID `json:"groupId"`
+			Id           openapi_types.UUID `json:"id"`
+			LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+			LdapGroupCN  string             `json:"ldapGroupCN"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode CreateLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLdapGroupMapResponse parses an HTTP response from a DeleteLdapGroupMapWithResponse call
+func ParseDeleteLdapGroupMapResponse(rsp *http.Response) (*DeleteLdapGroupMapResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLdapGroupMapResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			GroupId      openapi_types.UUID `json:"groupId"`
+			Id           openapi_types.UUID `json:"id"`
+			LdapConfigId openapi_types.UUID `json:"ldapConfigId"`
+			LdapGroupCN  string             `json:"ldapGroupCN"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode DeleteLdapGroupMap500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLoginWithLdapSsoResponse parses an HTTP response from a LoginWithLdapSsoWithResponse call
+func ParseLoginWithLdapSsoResponse(rsp *http.Response) (*LoginWithLdapSsoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LoginWithLdapSsoResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

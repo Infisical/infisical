@@ -4636,11 +4636,7 @@ export const SamlSso = {
 };
 
 export const LdapSso = {
-  GET_CONFIG: {
-    organizationId: "The ID of the organization to get the LDAP config for."
-  },
   CREATE_CONFIG: {
-    organizationId: "The ID of the organization to create the LDAP config for.",
     isActive: "Whether to enable or disable this LDAP configuration.",
     url: "The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.",
     bindDN:
@@ -4661,7 +4657,6 @@ export const LdapSso = {
       "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
   },
   UPDATE_CONFIG: {
-    organizationId: "The ID of the organization to update the LDAP config for.",
     isActive: "Whether to enable or disable this LDAP configuration.",
     url: "The LDAP server to connect to such as `ldap://ldap.your-org.com`, `ldaps://ldap.myorg.com:636` (for connection over SSL/TLS), etc.",
     bindDN:

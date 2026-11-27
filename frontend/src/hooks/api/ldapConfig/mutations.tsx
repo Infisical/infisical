@@ -10,7 +10,6 @@ export const useCreateLDAPConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      organizationId,
       isActive,
       url,
       bindDN,
@@ -38,8 +37,7 @@ export const useCreateLDAPConfig = () => {
       clientCertificate?: string;
       clientKeyCertificate?: string;
     }) => {
-      const { data } = await apiRequest.post("/api/v1/ldap/config", {
-        organizationId,
+      const { data } = await apiRequest.post("/api/v1/sso/ldap/config", {
         isActive,
         url,
         bindDN,
@@ -68,7 +66,6 @@ export const useUpdateLDAPConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      organizationId,
       isActive,
       url,
       bindDN,
@@ -96,8 +93,7 @@ export const useUpdateLDAPConfig = () => {
       clientCertificate?: string;
       clientKeyCertificate?: string;
     }) => {
-      const { data } = await apiRequest.patch("/api/v1/ldap/config", {
-        organizationId,
+      const { data } = await apiRequest.patch("/api/v1/sso/ldap/config", {
         isActive,
         url,
         bindDN,
@@ -134,7 +130,7 @@ export const useCreateLDAPGroupMapping = () => {
       ldapGroupCN: string;
       groupSlug: string;
     }) => {
-      const { data } = await apiRequest.post(`/api/v1/ldap/config/${ldapConfigId}/group-maps`, {
+      const { data } = await apiRequest.post(`/api/v1/sso/ldap/config/${ldapConfigId}/group-maps`, {
         ldapGroupCN,
         groupSlug
       });
@@ -157,7 +153,7 @@ export const useDeleteLDAPGroupMapping = () => {
       ldapGroupMapId: string;
     }) => {
       const { data } = await apiRequest.delete(
-        `/api/v1/ldap/config/${ldapConfigId}/group-maps/${ldapGroupMapId}`
+        `/api/v1/sso/ldap/config/${ldapConfigId}/group-maps/${ldapGroupMapId}`
       );
       return data;
     },
@@ -184,7 +180,7 @@ export const useTestLDAPConnection = () => {
       clientCertificate?: string;
       clientKeyCertificate?: string;
     }) => {
-      const { data } = await apiRequest.post<boolean>("/api/v1/ldap/config/test-connection", {
+      const { data } = await apiRequest.post<boolean>("/api/v1/sso/ldap/config/test-connection", {
         url,
         bindDN,
         bindPass,

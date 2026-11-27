@@ -57,7 +57,7 @@ export const loginV3 = async (loginDetails: LoginV3DTO) => {
 };
 
 export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
-  const { data } = await apiRequest.post<LoginLDAPRes>("/api/v1/ldap/login", loginLDAPDetails); // return if account is complete or not + provider auth token
+  const { data } = await apiRequest.post<LoginLDAPRes>("/api/v1/sso/ldap/login", loginLDAPDetails); // return if account is complete or not + provider auth token
   return data;
 };
 
