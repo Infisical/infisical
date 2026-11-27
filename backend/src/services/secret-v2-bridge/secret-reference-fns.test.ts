@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ClientClosedRequestError } from "@app/lib/errors";
 
-import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
+import {
+  assertSecretReferencesWithinLimit,
+  expandSecretReferencesFactory,
+  getAllSecretReferences
+} from "./secret-reference-fns";
 
 vi.mock("@app/lib/logger", () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
 vi.mock("../project-folder-grant/project-folder-grant-fns", () => ({ isCrossProjectEnabled: vi.fn() }));
@@ -204,6 +208,13 @@ describe("getAllSecretReferences", () => {
     });
   });
 
+  it("lists a reference repeated in one value once", () => {
+    expect(getAllSecretReferences(`\${KEY}\${KEY} \${dev.a.KEY}\${dev.a.KEY}`)).toEqual({
+      localReferences: ["KEY"],
+      nestedReferences: [{ environment: "dev", secretPath: "/a", secretKey: "KEY" }]
+    });
+  });
+
   it.each([
     [`\${ KEY }`],
     [`\${ KEY}`],
@@ -272,5 +283,182 @@ describe("expandSecretReferencesFactory onSecretExpanded", () => {
     const reported: { secretKey: string; referencedSecretIds: string[] }[] = [];
     await expect(expand(rows, `\${READABLE}\${FORBIDDEN}`, { forbidden: "FORBIDDEN", reported })).rejects.toThrow();
     expect(reported).toEqual([]);
+  });
+});
+
+describe("expandSecretReferencesFactory expansion", () => {
+  // Folders are keyed "<environment>:<path>" and map secret names to plain values.
+  const expanderFor = (folders: Record<string, Record<string, string>>, shouldStackTrace = false) => {
+    const findBySecretPath = vi.fn(async (_projectId: string, environment: string, secretPath: string) =>
+      folders[`${environment}:${secretPath}`] ? { id: `${environment}:${secretPath}` } : undefined
+    ) as unknown as Args["folderDAL"]["findBySecretPath"];
+    const findByFolderId = vi.fn(async ({ folderId }: { folderId: string }) =>
+      Object.entries(folders[folderId] ?? {}).map(([key, value]) => ({
+        id: `${folderId}:${key}`,
+        key,
+        userId: null,
+        encryptedValue: Buffer.from(value),
+        tags: []
+      }))
+    ) as unknown as Args["secretDAL"]["findByFolderId"];
+    const factory = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: () => true
+    });
+    const expand = (secretKey: string, environment = "dev", secretPath = "/") =>
+      shouldStackTrace
+        ? factory.getExpandedSecretStackTrace({
+            secretKey,
+            value: folders[`${environment}:${secretPath}`][secretKey],
+            environment,
+            secretPath
+          })
+        : factory.expandSecretReferences({
+            secretKey,
+            value: folders[`${environment}:${secretPath}`][secretKey],
+            environment,
+            secretPath
+          });
+    return { expand, findByFolderId };
+  };
+
+  it("expands every occurrence of a reference and every distinct reference in one value", async () => {
+    const { expand } = expanderFor({ "dev:/": { HOST: "db", PORT: "5432", URL: `\${HOST}:\${PORT}/\${HOST}` } });
+    expect(await expand("URL")).toBe("db:5432/db");
+  });
+
+  it("resolves a referenced secret's own references in that secret's environment and path", async () => {
+    const { expand } = expanderFor({
+      "dev:/": { NAME: "dev-name", URL: `\${prod.x.HOST} \${NAME}` },
+      "prod:/x": { NAME: "prod-name", HOST: `\${NAME}` }
+    });
+    expect(await expand("URL")).toBe("prod-name dev-name");
+  });
+
+  it("inserts replacement-pattern characters from a referenced value literally", async () => {
+    const { expand } = expanderFor({ "dev:/": { SPECIAL: "$& $1 $$ $`", URL: `<\${SPECIAL}>` } });
+    expect(await expand("URL")).toBe("<$& $1 $$ $`>");
+  });
+
+  it("answers a circular pair with a literal reference rather than looping", async () => {
+    const { expand } = expanderFor({ "dev:/": { A: `\${B}`, B: `\${A}` } });
+    expect(await expand("A")).toBe(`\${B}`);
+  });
+
+  it("stops expanding a chain longer than the reference depth limit", async () => {
+    const chain = (prefix: string, length: number) =>
+      Object.fromEntries(
+        Array.from({ length }, (_, i) => [`${prefix}${i + 1}`, i + 1 === length ? "end" : `\${${prefix}${i + 2}}`])
+      );
+    const { expand } = expanderFor({ "dev:/": { ...chain("WITHIN", 12), ...chain("BEYOND", 13) } });
+    expect(await expand("WITHIN1")).toBe("end");
+    expect(await expand("BEYOND1")).toBe(`\${BEYOND13}`);
+  });
+
+  it("expands a secret repeated through another repeated secret once per distinct reference", async () => {
+    const { expand, findByFolderId } = expanderFor({
+      "dev:/": { C: "x", B: `\${C}`.repeat(1000), A: `\${B}`.repeat(1000) }
+    });
+    expect(await expand("A")).toBe("x".repeat(1_000_000));
+    expect(findByFolderId).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a secret whose references fan out to more than the reference limit", async () => {
+    // Every level references the three secrets of the next one, so the tree holds 3 + 9 + ... + 3^10 references.
+    const levels: Record<string, string> = {};
+    for (let level = 0; level <= 10; level += 1) {
+      const next = ["a", "b", "c"].map((name) => `\${L${level + 1}${name}}`).join("");
+      for (const name of ["a", "b", "c"]) levels[`L${level}${name}`] = level === 10 ? "end" : next;
+    }
+    const { expand } = expanderFor({ "dev:/": levels });
+    await expect(expand("L0a")).rejects.toThrow(
+      "Unable to expand the references in secret 'L0a' in environment 'dev' at path '/' because it leads to more than 1,000 references"
+    );
+  });
+
+  it("refuses a secret whose references fan out through each other in a cycle", async () => {
+    const names = Array.from({ length: 12 }, (_, i) => `N${i}`);
+    const everyName = names.map((name) => `\${${name}}`).join("");
+    const { expand } = expanderFor({
+      "dev:/": Object.fromEntries(names.map((name): [string, string] => [name, everyName]))
+    });
+    await expect(expand("N0")).rejects.toThrow("more than 1,000 references");
+  });
+
+  it("refuses a secret whose expanded value exceeds the character limit", async () => {
+    const { expand } = expanderFor({ "dev:/": { BIG: "x".repeat(4000), A: `\${BIG}`.repeat(3000) } });
+    await expect(expand("A")).rejects.toThrow("expanding it would process more than 10,485,760 characters");
+  });
+
+  it("lists each distinct referenced secret once in the reference tree, with its own references nested", async () => {
+    const { expand } = expanderFor(
+      {
+        "dev:/": { HOST: `\${prod.HOST}`, URL: `\${HOST}:\${prod.PORT}/\${HOST}` },
+        "prod:/": { HOST: "db", PORT: "5432" }
+      },
+      true
+    );
+    const { expandedValue, stackTrace } = (await expand("URL")) as {
+      expandedValue: string;
+      stackTrace: { children: { key: string; environment: string; children: { key: string }[] }[] };
+    };
+    expect(expandedValue).toBe("db:5432/db");
+    expect(
+      stackTrace.children.map(({ key, environment, children }) => ({
+        key,
+        environment,
+        children: children.map((child) => child.key)
+      }))
+    ).toEqual([
+      { key: "HOST", environment: "dev", children: ["HOST"] },
+      { key: "PORT", environment: "prod", children: [] }
+    ]);
+  });
+});
+
+describe("assertSecretReferencesWithinLimit", () => {
+  const distinct = (count: number) => Array.from({ length: count }, (_, i) => `\${K${i}}`).join("");
+
+  it("accepts a value with up to 100 different references, however often each repeats", () => {
+    expect(() =>
+      assertSecretReferencesWithinLimit([
+        { secretKey: "AT_LIMIT", secretValue: distinct(100) },
+        { secretKey: "REPEATED", secretValue: `\${K}`.repeat(50_000) },
+        { secretKey: "EMPTY", secretValue: undefined }
+      ])
+    ).not.toThrow();
+  });
+
+  it("refuses a value with more than 100 different references, naming the secret", () => {
+    expect(() =>
+      assertSecretReferencesWithinLimit([
+        { secretKey: "FINE", secretValue: "plain" },
+        { secretKey: "TOO_MANY", secretValue: distinct(101) }
+      ])
+    ).toThrow("The value of secret 'TOO_MANY' holds more than 100 different secret references");
+  });
+});
+
+describe("expandSecretReferencesFactory up-front refusal", () => {
+  it("refuses a value holding more distinct references than the limit before resolving any of them", async () => {
+    const { findBySecretPath, findByFolderId } = makeDALs();
+    const canExpandValue = vi.fn(() => true);
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue
+    });
+    const value = Array.from({ length: 1_001 }, (_, i) => `\${K${i}}`).join("");
+
+    await expect(
+      expandSecretReferences({ secretKey: "MANY", value, environment: "prod", secretPath: "/shared" })
+    ).rejects.toThrow("because it leads to more than 1,000 references");
+    // Only the permission check on the secret itself ran; no reference was resolved.
+    expect(canExpandValue).toHaveBeenCalledOnce();
   });
 });

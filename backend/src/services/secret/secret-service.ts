@@ -60,7 +60,7 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
+import { assertSecretReferencesWithinLimit, getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TGetSecretKeyEnvironmentsDTO, TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
@@ -1778,6 +1778,7 @@ export const secretServiceFactory = ({
     secretReminderRepeatDays,
     secretMetadata
   }: TCreateSecretRawDTO) => {
+    assertSecretReferencesWithinLimit([{ secretKey: secretName, secretValue }]);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -1929,6 +1930,7 @@ export const secretServiceFactory = ({
     newSecretName,
     secretMetadata
   }: TUpdateSecretRawDTO) => {
+    assertSecretReferencesWithinLimit([{ secretKey: secretName, secretValue }]);
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -2150,6 +2152,7 @@ export const secretServiceFactory = ({
     tx,
     skipPostProcessing
   }: TCreateManySecretRawDTO & { tx?: Knex; skipPostProcessing?: boolean }) => {
+    assertSecretReferencesWithinLimit(inputSecrets);
     if (!projectSlug && !optionalProjectId)
       throw new BadRequestError({
         message: "Must provide either project slug or projectId"
@@ -2325,6 +2328,7 @@ export const secretServiceFactory = ({
     mode = SecretUpdateMode.FailOnNotFound,
     secrets: inputSecrets = []
   }: TUpdateManySecretRawDTO) => {
+    assertSecretReferencesWithinLimit(inputSecrets);
     if (!projectSlug && !optionalProjectId)
       throw new BadRequestError({
         message: "Must provide either project slug or projectId"
