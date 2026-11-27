@@ -11,6 +11,7 @@ const RESOURCE = TableName.SecretScanningResource;
 const DATA_SOURCE = TableName.SecretScanningDataSource;
 
 const BATCH_LOCATIONS = 20_000;
+const SPLIT_BATCH_FINDINGS = 1_000;
 const STATEMENT_TIMEOUT_MS = 10 * 60 * 1000;
 
 const STATUS_PRECEDENCE = [
@@ -44,6 +45,8 @@ type TFinding = {
 const lockAll = (tx: Knex, keys: number[]) =>
   tx.raw("SELECT pg_advisory_xact_lock(k) FROM unnest(?::bigint[]) AS k", [keys]);
 
+// The merged finding takes the safest status, so a leak still open in one repository is never hidden by a verdict from
+// another. Between equal statuses the latest triage wins, as the most recent decision about the value.
 const isSafer = (a: TFinding, b: TFinding) => {
   const rankA = STATUS_PRECEDENCE.indexOf(a.status);
   const rankB = STATUS_PRECEDENCE.indexOf(b.status);
@@ -168,39 +171,68 @@ export async function up(knex: Knex): Promise<void> {
   }
 }
 
+const splitBatch = async (tx: Knex, findingIds: string[]) => {
+  await tx.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
+
+  await tx.raw(
+    `CREATE TEMPORARY TABLE finding_split ON COMMIT DROP AS
+     SELECT DISTINCT ON (l."findingId", l."resourceId")
+       l."findingId", l."resourceId", gen_random_uuid() AS "newId", l."scanId", l.fingerprint, l.details, l."createdAt"
+     FROM ?? AS l
+     JOIN ?? AS f ON f.id = l."findingId"
+     WHERE l."resourceId" <> f."resourceId" AND f.id = ANY(?::uuid[])
+     ORDER BY l."findingId", l."resourceId", l."createdAt", l.id`,
+    [LOCATION, FINDING, findingIds]
+  );
+
+  await tx.raw(
+    `INSERT INTO ?? (
+       id, "resourceId", "scanId", fingerprint, details, rule, severity, confidence, status, "triageComment",
+       "triagedByUserId", "triagedAt", "resolvedAt", "secretFindingBlindIndex", "createdAt", "lastDetectedAt"
+     )
+     SELECT s."newId", s."resourceId", s."scanId", s.fingerprint, s.details, f.rule, f.severity, f.confidence, f.status,
+       f."triageComment", f."triagedByUserId", f."triagedAt", f."resolvedAt", f."secretFindingBlindIndex", s."createdAt",
+       f."lastDetectedAt"
+     FROM finding_split AS s
+     JOIN ?? AS f ON f.id = s."findingId"`,
+    [FINDING, FINDING]
+  );
+
+  await tx.raw(
+    `UPDATE ?? AS l SET "findingId" = s."newId"
+     FROM finding_split AS s
+     WHERE l."findingId" = s."findingId" AND l."resourceId" = s."resourceId"`,
+    [LOCATION]
+  );
+};
+
+// A split finding has no location left in another resource, so an interrupted run can start over.
 export async function down(knex: Knex): Promise<void> {
-  await knex.transaction(async (tx) => {
-    await tx.raw(
-      `CREATE TEMPORARY TABLE finding_split ON COMMIT DROP AS
-       SELECT DISTINCT ON (l."findingId", l."resourceId")
-         l."findingId", l."resourceId", gen_random_uuid() AS "newId", l."scanId", l.fingerprint, l.details, l."createdAt"
-       FROM ?? AS l
-       JOIN ?? AS f ON f.id = l."findingId"
-       WHERE l."resourceId" <> f."resourceId"
-       ORDER BY l."findingId", l."resourceId", l."createdAt", l.id`,
-      [LOCATION, FINDING]
-    );
+  let lastFindingId: string | null = null;
 
-    await tx.raw(
-      `INSERT INTO ?? (
-         id, "resourceId", "scanId", fingerprint, details, rule, severity, confidence, status, "triageComment",
-         "triagedByUserId", "triagedAt", "resolvedAt", "secretFindingBlindIndex", "createdAt", "lastDetectedAt"
-       )
-       SELECT s."newId", s."resourceId", s."scanId", s.fingerprint, s.details, f.rule, f.severity, f.confidence, f.status,
-         f."triageComment", f."triagedByUserId", f."triagedAt", f."resolvedAt", f."secretFindingBlindIndex", s."createdAt",
-         f."lastDetectedAt"
-       FROM finding_split AS s
-       JOIN ?? AS f ON f.id = s."findingId"`,
-      [FINDING, FINDING]
-    );
+  for (;;) {
+    const cursor = lastFindingId;
+    // eslint-disable-next-line no-await-in-loop
+    const findingIds: string[] = await knex(`${FINDING} as f`)
+      .whereExists((locations) => {
+        void locations
+          .select(knex.raw("1"))
+          .from(`${LOCATION} as l`)
+          .whereRaw(`l."findingId" = f.id AND l."resourceId" <> f."resourceId"`);
+      })
+      .modify((qb) => {
+        if (cursor) void qb.where("f.id", ">", cursor);
+      })
+      .orderBy("f.id")
+      .limit(SPLIT_BATCH_FINDINGS)
+      .pluck("f.id");
 
-    await tx.raw(
-      `UPDATE ?? AS l SET "findingId" = s."newId"
-       FROM finding_split AS s
-       WHERE l."findingId" = s."findingId" AND l."resourceId" = s."resourceId"`,
-      [LOCATION]
-    );
-  });
+    if (!findingIds.length) break;
+
+    // eslint-disable-next-line no-await-in-loop
+    await knex.transaction((tx) => splitBatch(tx, findingIds));
+    lastFindingId = findingIds[findingIds.length - 1];
+  }
 }
 
 const config = { transaction: false };
