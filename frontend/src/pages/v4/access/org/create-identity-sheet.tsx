@@ -126,7 +126,6 @@ const RootCreateIdentitySheet = ({
                     placeholder="Select role..."
                     value={selectedRole}
                     options={roleOptions(roles)}
-                    descriptionLayout="stacked"
                     onChange={setRole}
                   />
                 </Field>
@@ -284,7 +283,6 @@ const SubOrgAddIdentitySheet = ({
                     placeholder="Select role..."
                     value={role}
                     options={roleOptions(roles)}
-                    descriptionLayout="stacked"
                     onChange={(next) => update({ role: next })}
                   />
                 </Field>

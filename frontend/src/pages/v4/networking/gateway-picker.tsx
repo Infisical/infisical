@@ -63,13 +63,12 @@ export const GatewayPicker = ({
       invalid={invalid}
       disabled={disabled || gatewaysPending || (showPools && poolsPending)}
       placeholder="Select gateway"
-      descriptionLayout="stacked"
       options={[
         ...(required ? [] : [{ value: "internet", label: noGatewayLabel }]),
         ...(showPools ? (pools ?? []) : []).map((pool) => ({
           value: `pool:${pool.id}`,
           label: pool.name,
-          description:
+          meta:
             pool.memberCount === 0
               ? "No members"
               : `${pool.healthyMemberCount}/${pool.memberCount} healthy`,
@@ -81,7 +80,8 @@ export const GatewayPicker = ({
           return {
             value: `gateway:${gateway.id}`,
             label: gateway.name,
-            description: blocked ? POOL_REQUIRED_REASON : health,
+            description: blocked ? POOL_REQUIRED_REASON : undefined,
+            meta: blocked ? undefined : health,
             disabled: blocked,
             group: "Individual gateways"
           };

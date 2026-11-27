@@ -187,7 +187,9 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
               Requires setup
             </Badge>
           </Tooltip>
-        ) : null
+        ) : (
+          false
+        )
     }
   ];
 

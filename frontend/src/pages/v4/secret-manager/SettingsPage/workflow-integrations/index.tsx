@@ -81,7 +81,7 @@ const IntegrationSheet = ({
         options={Object.values(WorkflowIntegrationPlatform).map((value) => ({
           value,
           label: PLATFORM_LABELS[value],
-          description: configured[value] ? "Already configured" : undefined
+          meta: configured[value] ? "Already configured" : undefined
         }))}
         onChange={(value) => setChosen(value as WorkflowIntegrationPlatform)}
       />

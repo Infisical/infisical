@@ -290,13 +290,7 @@ const AddToProductDialog = ({
                     : undefined
                 }
               >
-                <Select
-                  label="Role"
-                  value={role}
-                  options={roleChoices}
-                  descriptionLayout="stacked"
-                  onChange={setRole}
-                />
+                <Select label="Role" value={role} options={roleChoices} onChange={setRole} />
               </Field>
             )}
           </Stack>

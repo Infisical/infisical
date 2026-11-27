@@ -202,7 +202,7 @@ const CertManagerInstances = () => {
       id: "status",
       header: "Status",
       width: 120,
-      render: (row) => (row.isActive ? <Badge tone="ok">Active</Badge> : null)
+      render: (row) => (row.isActive ? <Badge tone="ok">Active</Badge> : false)
     }
   ];
 
@@ -367,7 +367,7 @@ const SecretScanningInstances = () => {
       id: "status",
       header: "Status",
       width: 120,
-      render: (row) => (row.id === state?.activeProjectId ? <Badge tone="ok">Active</Badge> : null)
+      render: (row) => (row.id === state?.activeProjectId ? <Badge tone="ok">Active</Badge> : false)
     }
   ];
 

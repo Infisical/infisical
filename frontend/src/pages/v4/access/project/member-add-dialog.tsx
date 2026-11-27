@@ -104,11 +104,10 @@ export const AddMemberDialog = ({
     ...invited.map((email) => ({ value: email, label: email }))
   ];
 
-  let emptyText = `All organization members are already assigned to ${accessThis(scope.projectType)}.`;
-  if (available.length)
-    emptyText = canInvite
-      ? "Invite new users to your organization by typing out their email address."
-      : "No users match your search";
+  const emptyText = `All organization members are already assigned to ${accessThis(scope.projectType)}.`;
+  const noMatchText = canInvite
+    ? "Invite new users to your organization by typing out their email address."
+    : "No users match your search";
 
   const close = () => {
     setPicked(undefined);
@@ -193,6 +192,7 @@ export const AddMemberDialog = ({
               placeholder="Add one or more users..."
               disabled={availableUsers.isPending}
               emptyText={emptyText}
+              noMatchText={noMatchText}
               options={options}
               value={users}
               onChange={setUsers}

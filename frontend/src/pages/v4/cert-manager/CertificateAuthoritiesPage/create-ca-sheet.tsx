@@ -142,7 +142,7 @@ const KeySourceField = ({ draft, patch, plan }: StepProps & { plan?: CaPlan }) =
             value: CertKeySource.AwsKms,
             label: "AWS KMS",
             disabled: !plan?.pkiAwsKmsSigning,
-            description: plan?.pkiAwsKmsSigning ? undefined : "Enterprise plan"
+            meta: plan?.pkiAwsKmsSigning ? undefined : "Enterprise plan"
           }
         ]}
         onValueChange={(next) => {
@@ -284,7 +284,7 @@ const KeyAlgorithmField = ({ draft, errors, set, plan }: StepProps & { plan?: Ca
           .map(({ label, value }) => ({
             value,
             label,
-            description: isPqcAlgorithm(value) && pqcLocked ? "Enterprise plan" : undefined
+            meta: isPqcAlgorithm(value) && pqcLocked ? "Enterprise plan" : undefined
           }))}
         onValueChange={(next) => {
           if (isPqcAlgorithm(next) && pqcLocked) {

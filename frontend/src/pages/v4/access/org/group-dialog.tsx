@@ -86,7 +86,6 @@ const RoleField = ({
         placeholder="Select role..."
         value={value ?? defaultRole}
         options={roleOptions(roles)}
-        descriptionLayout="stacked"
         onChange={onChange}
       />
     </Field>

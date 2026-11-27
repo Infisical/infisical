@@ -266,7 +266,6 @@ export const InviteUsersSheet = ({
                     value={role ?? defaultRole}
                     onChange={setRole}
                     options={roleOptions(orgRoles)}
-                    descriptionLayout="stacked"
                   />
                 </Field>
                 <Field label="Assign users to a product" optional>
@@ -320,7 +319,6 @@ export const InviteUsersSheet = ({
                       value={projectRole}
                       onChange={setProjectRole}
                       options={projectRoleOptions}
-                      descriptionLayout="stacked"
                     />
                   </Field>
                 )}
