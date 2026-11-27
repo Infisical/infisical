@@ -152,6 +152,9 @@ const readStatusSetter = async (
   const { entries, complete } = history;
   const index = entries.findIndex((entry) => entry.toStateId && entry.toStateId !== entry.fromStateId);
   if (index === -1 && !complete) return fail(`Couldn't find who set the status of ${identifier} in its recent history`);
+  if (index !== -1 && (!issue.state?.id || entries[index].toStateId !== issue.state.id)) {
+    return fail(`${identifier}'s status changed while Infisical was checking it. Submit the request again.`);
+  }
 
   // An issue whose status never changed got it when it was created
   const setter = index === -1 ? issue.creator : entries[index].actor;

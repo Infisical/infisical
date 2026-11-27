@@ -127,7 +127,7 @@ describe("resolving a Linear issue", () => {
   const issue = (assignee: TLinearUser | null = null): TLinearIssue => ({
     id: "uuid-1",
     identifier: "ENG-123",
-    state: { name: "Approved", type: "started" },
+    state: { id: "approved", name: "Approved", type: "started" },
     team: { key: "ENG", name: "Engineering" },
     labels: { nodes: [{ name: "prod-access" }] },
     assignee
@@ -276,6 +276,12 @@ describe("resolving a Linear issue", () => {
       );
       expect((await setterOf([], false, lead))?.reason).toBe(
         "Couldn't find who set the status of ENG-123 in its recent history"
+      );
+    });
+
+    test("refuses a status change that doesn't match the status the checks read", async () => {
+      expect((await setterOf([moved(lead, 3, { fromStateId: "approved", toStateId: "rejected" })]))?.reason).toBe(
+        "ENG-123's status changed while Infisical was checking it. Submit the request again."
       );
     });
 

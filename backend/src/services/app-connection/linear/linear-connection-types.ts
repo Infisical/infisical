@@ -54,7 +54,7 @@ export type TLinearIssue = {
   priorityLabel?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
-  state?: { name: string; type?: string | null } | null;
+  state?: { id?: string | null; name: string; type?: string | null } | null;
   team?: { key: string; name: string } | null;
   project?: { name: string } | null;
   assignee?: TLinearUser | null;

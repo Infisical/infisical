@@ -172,7 +172,7 @@ const ISSUE_FIELDS = `
   updatedAt
   archivedAt
   trashed
-  state { name type }
+  state { id name type }
   team { key name }
   project { name }
   assignee { id name displayName email active }
