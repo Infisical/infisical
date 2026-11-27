@@ -11,7 +11,11 @@ import {
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
 import { DATA_EXPLORER_MAX_RESULT_BYTES, estimateRowBytes } from "../pam-web-access-fns";
-import { extractCommand, nextTransactionState, splitSnowflakeStatements } from "./pam-snowflake-data-explorer-fns";
+import {
+  extractCommand,
+  nextTransactionState,
+  splitSupportedSnowflakeStatements
+} from "./pam-snowflake-data-explorer-fns";
 import {
   COLUMNS_QUERY,
   showImportedKeysQuery,
@@ -150,9 +154,7 @@ export const createSnowflakeConnectionController = async (params: ControllerPara
     let lastCommand = "";
     let lastIsTruncated = false;
 
-    // Checked before any statement runs so a rejected one does not leave earlier ones applied
-    const statements = splitSnowflakeStatements(sql);
-    statements.forEach((statementSql) => assertSnowflakeStatementSupported(statementSql));
+    const statements = splitSupportedSnowflakeStatements(sql);
 
     try {
       for (const statementSql of statements) {

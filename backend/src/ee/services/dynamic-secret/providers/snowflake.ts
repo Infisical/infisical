@@ -39,20 +39,33 @@ const getDaysToExpiry = (expiryDate: Date) => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
+// Parses inputs and templates but skips the PUT and GET check, for revoke and renew, which check only their own statement
+export const parseSnowflakeProviderInputs = async (inputs: unknown) => {
+  const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
+  validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {
+    allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
+  });
+  if (providerInputs.renewStatement) {
+    validateHandlebarTemplate("Snowflake renew", providerInputs.renewStatement, {
+      allowedExpressions: (val) => ["username", "expiration"].includes(val)
+    });
+  }
+  validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
+    allowedExpressions: (val) => ["username"].includes(val)
+  });
+  return providerInputs;
+};
+
+export const renderSnowflakeStatement = (template: string, values: Record<string, unknown>) => {
+  const statement = handlebars.compile(template, { noEscape: true })(values);
+  assertSnowflakeStatementSupported(statement);
+  return statement;
+};
+
 export const SnowflakeProvider = (): TDynamicProviderFns => {
+  // Checks all three statements, so a lease is never created with a revoke statement that could not run
   const validateProviderInputs = async (inputs: unknown) => {
-    const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
-    validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {
-      allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
-    });
-    if (providerInputs.renewStatement) {
-      validateHandlebarTemplate("Snowflake renew", providerInputs.renewStatement, {
-        allowedExpressions: (val) => ["username", "expiration"].includes(val)
-      });
-    }
-    validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
-      allowedExpressions: (val) => ["username"].includes(val)
-    });
+    const providerInputs = await parseSnowflakeProviderInputs(inputs);
     if (
       [providerInputs.creationStatement, providerInputs.revocationStatement, providerInputs.renewStatement].some(
         (statement) => statement && isSnowflakeFileTransferStatement(statement)
@@ -128,12 +141,11 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
     try {
       const expiration = getDaysToExpiry(new Date(expireAt));
-      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+      const creationStatement = renderSnowflakeStatement(providerInputs.creationStatement, {
         username,
         password,
         expiration
       });
-      assertSnowflakeStatementSupported(creationStatement);
 
       await new Promise((resolve, reject) => {
         client.execute({
@@ -161,14 +173,12 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   };
 
   const revoke = async (inputs: unknown, username: string) => {
-    const providerInputs = await validateProviderInputs(inputs);
+    const providerInputs = await parseSnowflakeProviderInputs(inputs);
+    const revokeStatement = renderSnowflakeStatement(providerInputs.revocationStatement, { username });
 
     const client = await $getClient(providerInputs);
 
     try {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
-      assertSnowflakeStatementSupported(revokeStatement);
-
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: revokeStatement,
@@ -195,19 +205,16 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
   };
 
   const renew = async (inputs: unknown, entityId: string, expireAt: number) => {
-    const providerInputs = await validateProviderInputs(inputs);
+    const providerInputs = await parseSnowflakeProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
+    const renewStatement = renderSnowflakeStatement(providerInputs.renewStatement, {
+      username: entityId,
+      expiration: getDaysToExpiry(new Date(expireAt))
+    });
 
     const client = await $getClient(providerInputs);
 
     try {
-      const expiration = getDaysToExpiry(new Date(expireAt));
-      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
-        username: entityId,
-        expiration
-      });
-      assertSnowflakeStatementSupported(renewStatement);
-
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: renewStatement,

@@ -1,3 +1,5 @@
+import { assertSnowflakeStatementSupported } from "@app/services/app-connection/snowflake/snowflake-connection-fns";
+
 const skipQuoted = (sql: string, pos: number, quote: string): number => {
   // A backslash escapes inside a string literal, but not inside a quoted identifier
   const escapes = quote === "'";
@@ -73,6 +75,13 @@ export const splitSnowflakeStatements = (sql: string): string[] => {
   const tail = sql.slice(statementStart).trim();
   if (tail.length > 0) statements.push(tail);
 
+  return statements;
+};
+
+// Every statement is checked before any of them runs, so a refused query leaves nothing applied
+export const splitSupportedSnowflakeStatements = (sql: string): string[] => {
+  const statements = splitSnowflakeStatements(sql);
+  statements.forEach((statement) => assertSnowflakeStatementSupported(statement));
   return statements;
 };
 
