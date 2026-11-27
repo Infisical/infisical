@@ -2006,47 +2006,48 @@ export const secretV2BridgeServiceFactory = ({
       projectId
     });
 
-    const secret = await (version === undefined
-      ? secretDAL.findOneWithTags({
-          folderId,
-          type: secretType,
-          [`${TableName.SecretV2}.key` as "key"]: secretName,
-          [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actorId : null
-        })
-      : secretVersionDAL
-          .findOneWithTags({
-            folderId,
-            version,
-            type: secretType,
-            userId: secretType === SecretType.Personal ? actorId : null,
-            key: secretName
-          })
-          .then((el) =>
-            el
-              ? {
-                  ...SecretsV2Schema.extend({
-                    tags: z
-                      .object({
-                        slug: z.string(),
-                        name: z.string(),
-                        id: z.string(),
-                        color: z.string().nullable().optional()
-                      })
-                      .array()
-                      .default([])
-                      .optional()
-                  }).parse({
-                    ...el,
-                    id: el.secretId
-                  }),
-                  secretMetadata: undefined
-                }
-              : undefined
-          ));
+    const currentSecret = await secretDAL.findOneWithTags({
+      folderId,
+      type: secretType,
+      [`${TableName.SecretV2}.key` as "key"]: secretName,
+      [`${TableName.SecretV2}.userId` as "userId"]: secretType === SecretType.Personal ? actorId : null
+    });
+
+    const secret =
+      version === undefined
+        ? currentSecret
+        : currentSecret
+          ? await secretVersionDAL
+              .findOneWithTags({
+                secretId: currentSecret.id,
+                version
+              })
+              .then((el) =>
+                el
+                  ? {
+                      ...SecretsV2Schema.extend({
+                        tags: z
+                          .object({
+                            slug: z.string(),
+                            name: z.string(),
+                            id: z.string(),
+                            color: z.string().nullable().optional()
+                          })
+                          .array()
+                          .default([])
+                          .optional()
+                      }).parse({
+                        ...el,
+                        id: el.secretId
+                      }),
+                      secretMetadata: undefined
+                    }
+                  : undefined
+              )
+          : undefined;
 
     // a version keeps the name and tags it was written with, so reading one must also pass the secret as it is now
-    const currentSecret = version !== undefined && secret ? await secretDAL.findOne({ id: secret.id }) : undefined;
-    const secretsToCheck = currentSecret ? [secret, currentSecret] : [secret];
+    const secretsToCheck = version !== undefined && secret && currentSecret ? [secret, currentSecret] : [secret];
 
     secretsToCheck.forEach((el) =>
       throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {

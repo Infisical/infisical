@@ -952,6 +952,113 @@ describe.each([{ auth: AuthMode.JWT }, { auth: AuthMode.IDENTITY_ACCESS_TOKEN }]
       expect(secrets).toEqual([]);
     });
 
+    test("Get secret raw by version returns live generation after delete and recreate", async () => {
+      const secretKey = `RECREATED-VER-${crypto.nativeCrypto.randomUUID().slice(0, 8)}`;
+      trackSecret("/api/v3/secrets/raw", "/", secretKey);
+
+      // Create generation 1 (versions 1..3) then delete
+      await createRawSecret({ path: "/", key: secretKey, value: "gen1-v1", comment: "" });
+      for (const value of ["gen1-v2", "gen1-v3"]) {
+        const updateRes = await testServer.inject({
+          method: "PATCH",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: seedData1.project.id,
+            environment: seedData1.environment.slug,
+            type: SecretType.Shared,
+            secretPath: "/",
+            secretValue: value
+          }
+        });
+        expect(updateRes.statusCode).toBe(200);
+      }
+      const delRes = await testServer.inject({
+        method: "DELETE",
+        url: `/api/v3/secrets/raw/${secretKey}`,
+        headers: { authorization: `Bearer ${authToken}` },
+        body: {
+          workspaceId: seedData1.project.id,
+          environment: seedData1.environment.slug,
+          type: SecretType.Shared,
+          secretPath: "/"
+        }
+      });
+      expect(delRes.statusCode).toBe(200);
+
+      // Deleted key must return 404 even when fetching an earlier version number
+      const deletedVerRes = await testServer.inject({
+        method: "GET",
+        url: `/api/v3/secrets/raw/${secretKey}`,
+        headers: { authorization: `Bearer ${authToken}` },
+        query: {
+          workspaceId: seedData1.project.id,
+          environment: seedData1.environment.slug,
+          secretPath: "/",
+          version: "1"
+        }
+      });
+      expect(deletedVerRes.statusCode).toBe(404);
+
+      // Recreate generation 2 (versions 1..2)
+      await createRawSecret({ path: "/", key: secretKey, value: "gen2-v1", comment: "" });
+      try {
+        const gen2UpdateRes = await testServer.inject({
+          method: "PATCH",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: seedData1.project.id,
+            environment: seedData1.environment.slug,
+            type: SecretType.Shared,
+            secretPath: "/",
+            secretValue: "gen2-v2"
+          }
+        });
+        expect(gen2UpdateRes.statusCode).toBe(200);
+
+        const gen2V1Res = await testServer.inject({
+          method: "GET",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          query: {
+            workspaceId: seedData1.project.id,
+            environment: seedData1.environment.slug,
+            secretPath: "/",
+            version: "1"
+          }
+        });
+        expect(gen2V1Res.statusCode).toBe(200);
+        expect(JSON.parse(gen2V1Res.payload).secret.secretValue).toBe("gen2-v1");
+
+        // Version 3 only existed in deleted generation 1
+        const gen2V3Res = await testServer.inject({
+          method: "GET",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          query: {
+            workspaceId: seedData1.project.id,
+            environment: seedData1.environment.slug,
+            secretPath: "/",
+            version: "3"
+          }
+        });
+        expect(gen2V3Res.statusCode).toBe(404);
+      } finally {
+        await testServer.inject({
+          method: "DELETE",
+          url: `/api/v3/secrets/raw/${secretKey}`,
+          headers: { authorization: `Bearer ${authToken}` },
+          body: {
+            workspaceId: seedData1.project.id,
+            environment: seedData1.environment.slug,
+            type: SecretType.Shared,
+            secretPath: "/"
+          }
+        });
+      }
+    });
+
     test.each(testRawSecrets)("Bulk create secret raw in path $path", async ({ path, secret }) => {
       const createSecretReqBody = {
         projectSlug: seedData1.project.slug,
