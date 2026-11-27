@@ -546,7 +546,7 @@ const JobSheet = ({
           title: "Where to look",
           aside: stepAside(
             "Only certificate files are opened: .pem, .crt, .cer, .der, .p7b, .pfx, .p12, .jks and .keystore.",
-            "The SSH user needs read access to these folders. Give it access through a group or ACL, or let it run find, readlink, head and timeout with sudo without a password. Folders it still can't read are listed in the scan."
+            "The SSH user needs read access to these folders, such as through a group or ACL. Folders it can't read are listed in the scan."
           ),
           validate: check("folders"),
           content: <FoldersStep {...stepProps} />
