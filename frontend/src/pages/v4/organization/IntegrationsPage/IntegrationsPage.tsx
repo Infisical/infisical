@@ -8,6 +8,7 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { AppConnectionsTable } from "../../integrations/app-connections-table";
 import { orgHref, v4Path } from "../../links";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { ExternalMigrationsTab } from "./external-migrations";
 import { WorkflowIntegrationsTab } from "./workflow-integrations";
 
@@ -17,6 +18,7 @@ const migrationsTab = "external-migrations";
 const sections = [IntegrationsListPageTabs.AppConnections, workflowTab, migrationsTab] as string[];
 
 export const IntegrationsPage = () => {
+  const scope = useOrgPageScope();
   const navigate = useNavigate({ from: route });
   const { selectedTab } = useSearch({ from: route });
   const tab = sections.includes(selectedTab)
@@ -35,6 +37,7 @@ export const IntegrationsPage = () => {
     <Stack gap={24}>
       <PageTitle title="Integrations" />
       <PageHeader
+        scope={scope}
         title="Integrations"
         tabs={
           <Tabs

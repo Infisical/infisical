@@ -404,9 +404,7 @@ export const PoolsTable = ({
           >
             {resourcesLabel(pool.connectedResourcesCount)}
           </Button>
-        ) : (
-          <span aria-label="None">-</span>
-        )
+        ) : null
     },
     {
       id: "health",

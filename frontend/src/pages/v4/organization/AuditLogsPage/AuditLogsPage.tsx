@@ -56,6 +56,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useUpgradeGate } from "../../license";
 import { v4Path } from "../../links";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { EventClassesCard } from "./event-classes";
 import { AuditLogStreamsTab } from "./streams/streams";
 
@@ -713,6 +714,7 @@ const OrgAuditLogs = () => {
 };
 
 export const AuditLogsPage = () => {
+  const scope = useOrgPageScope();
   const { selectedTab } = useSearch({ from: "/v4/organizations/$orgId/audit-logs" });
   const { orgId } = useParams({ from: "/v4/organizations/$orgId/audit-logs" });
   const navigate = useNavigate();
@@ -721,6 +723,7 @@ export const AuditLogsPage = () => {
     <Stack gap={24}>
       <PageTitle title="Audit logs" />
       <PageHeader
+        scope={scope}
         title="Audit logs"
         description="Review who did what in this organization, and when."
         badges={

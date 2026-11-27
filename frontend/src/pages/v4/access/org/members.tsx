@@ -324,9 +324,7 @@ export const OrgMembersTab = () => {
               onOpenGroup={(id) => go(accessLinks.orgGroup(orgId, id))}
             />
           </span>
-        ) : (
-          <Muted>-</Muted>
-        )
+        ) : null
     },
     {
       id: "role",

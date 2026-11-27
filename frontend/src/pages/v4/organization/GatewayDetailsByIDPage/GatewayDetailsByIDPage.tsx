@@ -47,6 +47,7 @@ import { ConfirmDialog } from "../../networking/confirm-dialog";
 import { GatewayHealth, isGatewayRegistered } from "../../networking/health";
 import { NameDialog } from "../../networking/name-dialog";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { GatewayDeployCard } from "./deploy";
 import { ConnectedResourcesCard } from "./resources";
 
@@ -151,6 +152,7 @@ const AuthenticationCard = ({
 };
 
 export const GatewayDetailsByIDPage = () => {
+  const scope = useOrgPageScope();
   const { gatewayId } = useParams({
     from: v4Path("/organizations/$orgId/networking/gateways/$gatewayId")
   });
@@ -204,6 +206,7 @@ export const GatewayDetailsByIDPage = () => {
   return (
     <Stack gap={24}>
       <PageHeader
+        scope={scope}
         breadcrumb={[{ label: "Gateways", link: go.link(backHref(orgId)) }]}
         title={gateway.name}
         actions={
