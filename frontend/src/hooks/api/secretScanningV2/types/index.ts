@@ -221,7 +221,6 @@ export type TSecretScanningFindingResource = {
 
 export type TSecretScanningFinding = {
   id: string;
-  // never empty (a finding without locations lists the resource it names); the one a list was filtered by comes first
   resources: TSecretScanningFindingResource[];
   rule: string;
   severity: SecretScanningFindingSeverity;

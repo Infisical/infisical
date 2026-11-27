@@ -6150,7 +6150,6 @@ interface SecretScanningFindingLocationListEvent {
     findingRule: string;
     resourceId: string;
     resourceName: string;
-    // the resources whose locations were listed: the one filtered by, or every one the finding was found in
     resources?: { id: string; name: string }[];
     count: number;
   };

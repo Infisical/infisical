@@ -183,8 +183,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
   const configOrm = ormify(db, TableName.SecretScanningConfig);
 
-  // A finding's locations, optionally only those in one resource, data source or scan, as the subquery of a
-  // whereExists or whereNotExists on the finding.
   const findingLocationsQuery = (
     subQuery: Knex.QueryBuilder,
     { resourceId, dataSourceId, scanId }: { resourceId?: string; dataSourceId?: string; scanId?: string } = {}
@@ -205,7 +203,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     if (scanId) void subQuery.where(`${TableName.SecretScanningFindingLocation}.scanId`, scanId);
   };
 
-  // A finding is in a resource when it has a location there, or names the resource when it has no location at all.
   const whereFindingInResource = (
     query: Knex.QueryBuilder,
     scope: { resourceId: string } | { dataSourceId: string }
@@ -298,8 +295,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(projectId)]);
       }
 
-      // Earlier releases save a finding per resource or per location, so after a rollback a value can have several
-      // findings; the oldest one takes the new locations, as the merge of findings by value keeps the oldest.
+      // After a rollback a value can have several findings. The oldest takes the new locations, as the merge migration
+      // keeps the oldest.
       const findingByValue = new Map<string, Pick<TSecretScanningFindings, "id" | "status">>();
       for (const chunk of chunkArray(newBlindIndexes, FINDINGS_UPSERT_CHUNK_SIZE)) {
         // eslint-disable-next-line no-await-in-loop
@@ -555,7 +552,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
       const dataSourceIds = results.map(({ id }) => id);
 
-      // A finding counts in each data source it has a location in. One without any location counts where it names.
       const [resourceCounts, unresolvedFindingCounts, unresolvedUnlocatedFindingCounts] = await Promise.all([
         (tx || db.replicaNode())(TableName.SecretScanningResource)
           .whereIn("dataSourceId", dataSourceIds)
@@ -667,7 +663,6 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           `LEFT JOIN LATERAL (SELECT "startedAt" FROM ?? WHERE "resourceId" = ??.id AND "startedAt" IS NOT NULL ORDER BY "startedAt" DESC LIMIT 1) AS "lastStartedScan" ON TRUE`,
           [TableName.SecretScanningScan, TableName.SecretScanningResource]
         )
-        // a finding is in the resource when it has a location there, or names it when it has no location at all
         .joinRaw(
           `LEFT JOIN LATERAL (
              SELECT COUNT(*)::int AS "count" FROM ?? AS f
@@ -959,9 +954,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         `${TableName.SecretScanningResource}.dataSourceId`
       );
 
-  // `resources` lists every resource the finding has a location in, the one a list was filtered by (or its scan's)
-  // first, so a link from a resource's alert or pull request check opens on that resource. A finding without any
-  // location lists the resource it names.
+  // The filtered resource (or the scan's) comes first in `resources`, so a link from its alert or pull request check
+  // opens on it.
   const findingWithDetailsQuery = (
     tx?: Knex,
     { resourceId = null, dataSourceId = null, scanId = null }: TFindingResourceOrder = {}
@@ -1186,13 +1180,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * Counts the unresolved findings this scan created. A known value turning up somewhere new is no news. A finding's scanId is written
-   * once, by the scan that inserts it under the advisory locks, so it names the creating scan however many batches or
-   * attempts that scan took. Location timestamps can't tell: now() is when a transaction began, so a scan that began
-   * earlier but took the lock later would sort first on a finding it didn't create. A resource delete can point an
-   * older finding's scanId at a later scan (detachResources), so a finding found before the scan began is never its.
-   */
+  // detachResources can point an older finding's scanId at a later scan, so a finding created before the scan began
+  // is never one it created.
   const countNewUnresolvedByScanId = async (scanId: string, tx?: Knex) => {
     try {
       const [result] = (await (tx || db)(TableName.SecretScanningFinding)
@@ -1209,12 +1198,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * Locks, in id order, the findings a pull request check saved for this resource. The ids are finding ids, or location
-   * ids where the check ran before findings were merged by value, since those findings became locations under the
-   * same ids. Either way only a finding with a location in this resource is returned, or one with no location at all
-   * that names it.
-   */
+  // A pull request check that ran before findings were merged saved ids of findings that are now locations of another
+  // finding, under the same ids.
   const findFindingsByIdsOrLocationIdsForUpdate = async (resourceId: string, ids: string[], tx: Knex) => {
     try {
       return await tx(TableName.SecretScanningFinding)
@@ -1239,12 +1224,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * Takes resources' locations off their findings before the resources are deleted, which a resource or data source
-   * delete must call in its transaction first. A finding left with no location is deleted. One that still has
-   * locations elsewhere is pointed at the oldest of them, preferring one a completed scan saved, so the delete's cascade
-   * through a finding's resourceId and scanId never reaches it.
-   */
+  // Must run in a resource or data source delete's transaction before the delete: a finding still found elsewhere is
+  // pointed off the deleted resources, or the cascade through its resourceId and scanId would delete it.
   const detachFindingResources = async (
     scope: { projectId: string } & ({ resourceIds: string[] } | { dataSourceId: string }),
     tx: Knex

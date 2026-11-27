@@ -1258,7 +1258,6 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       : [];
 
     if (findingsToSkip.length) {
-      // the skip triages each finding in every resource it was found in, not only this repository
       const findingResources = await secretScanningV2DAL.locations.findResourcesByFindingIds(
         findingsToSkip.map((finding) => finding.id),
         primary

@@ -104,7 +104,6 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
 export const formatLocationCount = (count: number) =>
   count === 1 ? "1 location" : `${count} locations`;
 
-// Resources of different kinds, such as GitHub repositories and GitLab projects, are counted as repositories.
 export const formatResourceCount = (resources: { dataSourceType: SecretScanningDataSource }[]) => {
   const isOneKind =
     resources.length > 0 &&

@@ -38,13 +38,11 @@ const mergeBatch = async (tx: Knex, values: TValue[]) => {
 
   await tx.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
 
-  // The locks scans take, resources before projects. A scan of the release before this one takes only its resource's
-  // lock and only touches findings named after its resource, so the batch merges only findings named after the
-  // resources it locked; one created elsewhere while this runs is left to the rerun in a later release.
+  // Resources before projects, as scans take them. A scan of the previous release takes only its resource's lock, so
+  // the batch merges only findings named after resources it locked.
   await lockAll(tx, resourceIds.map(PgSqlLock.SecretScanningFindingLocations));
   await lockAll(tx, projectIds.map(PgSqlLock.SecretScanningFindingValues));
 
-  // Each value's findings merge into the oldest, which is also the one scans give new locations to.
   await tx.raw(
     `CREATE TEMPORARY TABLE finding_merge ON COMMIT DROP AS
      SELECT f.id, f.status, f."triagedAt", f."triagedByUserId", f."triageComment", f."resolvedAt", f."createdAt",
@@ -88,7 +86,6 @@ const mergeBatch = async (tx: Knex, values: TValue[]) => {
     [LOCATION]
   );
 
-  // The safest status wins, with the triage that set it; every other verdict is kept in the comment.
   await tx.raw(
     `WITH verdict AS (
        SELECT DISTINCT ON (m."winnerId") m."winnerId", m.id AS "sourceId", m.status, m."triagedAt", m."triagedByUserId",
@@ -121,10 +118,7 @@ const mergeBatch = async (tx: Knex, values: TValue[]) => {
   await tx.raw(`DELETE FROM ?? AS f USING finding_merge AS m WHERE f.id = m.id AND m.id <> m."winnerId"`, [FINDING]);
 };
 
-// A finding becomes one secret value in a project instead of in one resource: the findings of a value in different
-// resources merge into the oldest, with every location. Values are merged in batches of about BATCH_LOCATIONS
-// locations, one transaction each, so an interrupted run can start over, and a later release reruns this to fold in
-// findings the release before this one saved while it rolled out.
+// One transaction per batch, so an interrupted run can start over.
 export async function up(knex: Knex): Promise<void> {
   const { rows } = (await knex.raw(
     `WITH value AS (
@@ -161,8 +155,6 @@ export async function up(knex: Knex): Promise<void> {
   }
 }
 
-// Every finding becomes one per resource again: the locations in each resource other than the one a finding names move
-// to a copy of it, with the same triage, named after their oldest location there.
 export async function down(knex: Knex): Promise<void> {
   await knex.transaction(async (tx) => {
     await tx.raw(

@@ -714,9 +714,9 @@ export const completeDiffScan = async (
 
     const counts = await secretScanningV2DAL.findings.countByScanId(scanId, tx);
 
-    // Only a secret this scan found first, or a resolved one it brought back, is news, each counted once. A new location
-    // of a secret that's still unresolved has already been alerted on, and one of a false positive or an ignored finding
-    // needs no action.
+    // Only a secret this scan found first, or a resolved one it brought back, is news. A new location of a secret
+    // that's still unresolved has already been alerted on, and one of a false positive or an ignored finding needs
+    // no action.
     const newFindings =
       (await secretScanningV2DAL.findings.countNewUnresolvedByScanId(scanId, tx)) + persisted.reopenedFindings.length;
 

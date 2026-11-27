@@ -605,7 +605,6 @@ export const SecretScanningFindingsTable = ({
 
       <FindingDetailSheet
         finding={visibleOpenFinding}
-        // a list filtered by resource, or by a scan, lists that resource first
         focusResourceId={
           (resourceFilter || scanFilter) && visibleOpenFinding?.resources.length
             ? visibleOpenFinding.resources[0].id

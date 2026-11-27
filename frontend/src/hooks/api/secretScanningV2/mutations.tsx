@@ -194,7 +194,6 @@ export const useRemoveSecretScanningResource = () => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.findingCount(projectId)
       });
-      // a finding found elsewhere too loses only this resource's locations
       queryClient.invalidateQueries({
         queryKey: [...secretScanningV2Keys.finding(), "locations"]
       });

@@ -43,8 +43,6 @@ export const PgSqlLock = {
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   SecretScanningFindingLocations: (resourceId: string) =>
     pgAdvisoryLockHashText(`secret-scanning-finding-locations:${resourceId}`),
-  // Taken after a resource's lock, never before one, by every write that adds a location to a finding found by its
-  // value or removes a resource's locations.
   SecretScanningFindingValues: (projectId: string) =>
     pgAdvisoryLockHashText(`secret-scanning-finding-values:${projectId}`),
   OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),

@@ -39,7 +39,6 @@ import { FindingStatusBadge } from "./FindingStatusBadge";
 
 type Props = {
   finding?: TSecretScanningFinding;
-  // the resource the user came from, which the location list starts filtered to
   focusResourceId: string | null;
   position: { index: number; total: number } | null;
   onClose: () => void;
