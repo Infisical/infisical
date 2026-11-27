@@ -64,6 +64,7 @@ type EnrollmentSheetProps = {
 };
 
 type AddMenuProps = {
+  layout?: "trigger";
   methods: EnrollmentMethod[];
   locked: Partial<Record<EnrollmentMethod, boolean>>;
   unsupported: Partial<Record<EnrollmentMethod, string>>;
@@ -71,10 +72,10 @@ type AddMenuProps = {
   onAdd: (method: EnrollmentMethod) => void;
 };
 
-const AddMethodMenu = ({ methods, locked, unsupported, disabled, onAdd }: AddMenuProps) => (
+const AddMethodMenu = ({ layout, methods, locked, unsupported, disabled, onAdd }: AddMenuProps) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="outline" size="sm" icon="plus" layout="trigger" disabled={disabled}>
+      <Button variant="outline" size="sm" icon="plus" layout={layout} disabled={disabled}>
         Add method
       </Button>
     </DropdownMenuTrigger>
@@ -101,7 +102,8 @@ const EnrollmentHeader = ({
   active,
   unsaved,
   disabled,
-  onSelect
+  onSelect,
+  addMenu
 }: {
   profileSlug: string;
   tabsId: string;
@@ -110,8 +112,10 @@ const EnrollmentHeader = ({
   unsaved: ReadonlySet<EnrollmentMethod>;
   disabled: boolean;
   onSelect: (method: EnrollmentMethod) => void;
+  addMenu: AddMenuProps;
 }) => (
   <SheetHeader
+    actions={visible.length > 0 && addMenu.methods.length > 0 && <AddMethodMenu {...addMenu} />}
     tabs={
       visible.length > 0 && (
         <Tabs value={active} onChange={(next) => onSelect(next as EnrollmentMethod)}>
@@ -302,6 +306,7 @@ const EnrollmentView = ({
         new Set(visible.filter((method) => !configured.has(method) || drafts[method] !== undefined))
       }
       onSelect={setSelected}
+      addMenu={menu}
     />
   );
 
@@ -323,7 +328,7 @@ const EnrollmentView = ({
         icon="cert"
         title="No enrollment methods"
         description="Add a method to let clients request certificates from this profile."
-        actions={<AddMethodMenu {...menu} />}
+        actions={<AddMethodMenu {...menu} layout="trigger" />}
       />
     );
 
@@ -347,12 +352,7 @@ const EnrollmentView = ({
               body={{
                 role: "tabpanel",
                 id: `${tabsId}-panel`,
-                "aria-labelledby": `${tabsId}-${active}`,
-                lead: menu.methods.length > 0 && (
-                  <Inline justify="end">
-                    <AddMethodMenu {...menu} />
-                  </Inline>
-                )
+                "aria-labelledby": `${tabsId}-${active}`
               }}
               busy={busy}
               run={run}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
@@ -59,6 +59,11 @@ export const ProjectRolesTab = () => {
   const { permission } = useProjectPermission(projectId);
   const { data: roles = [], isPending } = access.useProjectRoles(projectId, scope.projectType);
   const deleteRole = access.useDeleteProjectRole();
+  const navigate = useNavigate();
+  const createRequested = useSearch({
+    strict: false,
+    select: (search) => Boolean((search as { createRole?: boolean }).createRole)
+  });
   const [sheet, setSheet] = useState<{ open: boolean; mode: RoleSheetMode; key: number }>({
     open: false,
     mode: { kind: "create" },
@@ -74,20 +79,16 @@ export const ProjectRolesTab = () => {
   const canEdit = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
   const canDelete = permission.can(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
 
-  const openSheet = (mode: RoleSheetMode) => {
-    if (subscription && !subscription.rbac) {
-      setUpgrade("rbac");
-      return;
-    }
-    setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
-  };
-  const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
-
-  const navigate = useNavigate();
-  const createRequested = useSearch({
-    strict: false,
-    select: (search) => Boolean((search as { createRole?: boolean }).createRole)
-  });
+  const openSheet = useCallback(
+    (mode: RoleSheetMode) => {
+      if (subscription && !subscription.rbac) {
+        setUpgrade("rbac");
+        return;
+      }
+      setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
+    },
+    [subscription]
+  );
   const hasRbac = subscription?.rbac;
   const createReady = canCreate && !isCertManager && hasRbac !== undefined;
   useEffect(() => {
@@ -101,6 +102,8 @@ export const ProjectRolesTab = () => {
       replace: true
     });
   }, [createRequested, createReady, hasRbac, navigate]);
+
+  const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
 
   const list = usePagedList<ProjectRoleRow>({
     table: "projectRolesTable",

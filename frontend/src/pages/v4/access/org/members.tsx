@@ -279,12 +279,10 @@ export const OrgMembersTab = () => {
             <span className={styles.linkBadges}>
               {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
               {member.user.superAdmin && (
-                <Tooltip content="Server admin">
-                  <Badge tone="info">
-                    <Icon icon={UserCogIcon} />
-                    Server admin
-                  </Badge>
-                </Tooltip>
+                <Badge tone="info">
+                  <Icon icon={UserCogIcon} />
+                  Server admin
+                </Badge>
               )}
             </span>
           )}
@@ -324,9 +322,7 @@ export const OrgMembersTab = () => {
               onOpenGroup={(id) => go(accessLinks.orgGroup(orgId, id))}
             />
           </span>
-        ) : (
-          <Muted>-</Muted>
-        )
+        ) : null
     },
     {
       id: "role",
@@ -623,9 +619,9 @@ export const OrgMembersTab = () => {
                   <li key={member.user.id} data-ignored={self || undefined}>
                     <span>{name ? `${name} (${email})` : email}</span>
                     {self && (
-                      <Tooltip content="You cannot remove yourself from this organization">
-                        <Badge tone="bad">Ignored</Badge>
-                      </Tooltip>
+                      <Badge reason="You cannot remove yourself from this organization" tone="bad">
+                        Ignored
+                      </Badge>
                     )}
                   </li>
                 );

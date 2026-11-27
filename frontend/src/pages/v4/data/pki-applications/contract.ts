@@ -68,7 +68,6 @@ export type PkiApplicationsAdapter = PkiApplicationsEnrollmentAdapter & {
   useApplications: (
     params: TListPkiApplicationsParams
   ) => V4QueryResult<TListPkiApplicationsResponse>;
-  useAllApplications: () => V4QueryResult<{ id: string; name: string }[]>;
   useApplicationByName: (name: string) => V4QueryResult<TPkiApplication>;
   useApplicationProfiles: (applicationId: string) => V4QueryResult<TPkiApplicationProfile[]>;
   useApplicationMembers: (applicationId: string) => V4QueryResult<TPkiApplicationMember[]>;

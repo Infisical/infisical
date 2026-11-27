@@ -57,6 +57,7 @@ import { ConfirmDialog } from "../../networking/confirm-dialog";
 import { DeployRestricted, siteUrl, useEnrollmentExpiry } from "../../networking/deploy-parts";
 import { isRelayHealthy, RelayHealth } from "../../networking/health";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
 
 const backHref = (orgId: string) => orgHref(orgId, "/networking?selectedTab=relays");
 
@@ -269,7 +270,7 @@ const ConnectedGatewaysCard = ({ relayId }: { relayId: string }) => {
     {
       id: "lastSeen",
       header: "Last seen",
-      render: (row) => (row.heartbeat ? relative(row.heartbeat) : <Dash />)
+      render: (row) => (row.heartbeat ? relative(row.heartbeat) : null)
     }
   ];
   return (
@@ -339,6 +340,7 @@ const AuthenticationCard = ({
 };
 
 export const RelayDetailsByIDPage = () => {
+  const scope = useOrgPageScope();
   const { relayId } = useParams({
     from: v4Path("/organizations/$orgId/networking/relays/$relayId")
   });
@@ -377,6 +379,7 @@ export const RelayDetailsByIDPage = () => {
   return (
     <Stack gap={24}>
       <PageHeader
+        scope={scope}
         breadcrumb={[{ label: "Relays", link: go.link(backHref(orgId)) }]}
         title={relay.name}
         actions={

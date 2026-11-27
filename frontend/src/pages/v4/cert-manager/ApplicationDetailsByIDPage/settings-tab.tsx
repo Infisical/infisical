@@ -55,6 +55,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  AlertChannelType,
   AlertRunStatus,
   CertificateAlertResourceType,
   CertificateApplicationAlertEventType,
@@ -62,7 +63,11 @@ import {
   type TCertificateAlertEventType
 } from "@app/hooks/api/alerts/types";
 import { ApprovalPolicyScope, type TApprovalPolicy } from "@app/hooks/api/approvalPolicies/types";
-import { PkiAlertEventTypeV2, type TPkiAlertV2 } from "@app/hooks/api/pkiAlertsV2/types";
+import {
+  PkiAlertChannelTypeV2,
+  PkiAlertEventTypeV2,
+  type TPkiAlertV2
+} from "@app/hooks/api/pkiAlertsV2/types";
 import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub,
@@ -84,6 +89,7 @@ import { PolicyProfileBadges } from "../ApprovalsPage/policies-tab";
 import { PolicySheet } from "../ApprovalsPage/policy-sheet";
 import { policyTypeLabel } from "../components/approval";
 import { canCreateAttachableProfile } from "../components/profile-model";
+import { ChannelTypeLabel } from "../SettingsPage/alert-channels";
 import {
   CertificateAlertScopeKind,
   getScopeEventTypes,
@@ -113,6 +119,13 @@ const alertEventLabel: Record<string, string> = {
   [CertificateApplicationAlertEventType.Revocation]: "Certificate revocation"
 };
 
+const legacyChannelType: Record<PkiAlertChannelTypeV2, AlertChannelType> = {
+  [PkiAlertChannelTypeV2.EMAIL]: AlertChannelType.Email,
+  [PkiAlertChannelTypeV2.WEBHOOK]: AlertChannelType.Webhook,
+  [PkiAlertChannelTypeV2.SLACK]: AlertChannelType.Slack,
+  [PkiAlertChannelTypeV2.PAGERDUTY]: AlertChannelType.PagerDuty
+};
+
 const legacyEventLabel: Record<PkiAlertEventTypeV2, string> = {
   [PkiAlertEventTypeV2.EXPIRATION]: "Certificate expiration",
   [PkiAlertEventTypeV2.RENEWAL]: "Certificate renewal",
@@ -120,8 +133,8 @@ const legacyEventLabel: Record<PkiAlertEventTypeV2, string> = {
   [PkiAlertEventTypeV2.REVOCATION]: "Certificate revocation"
 };
 
-const LastRun = ({ ok, at }: { ok: boolean; at: string }) => (
-  <Badge tone={ok ? "ok" : "bad"} dot>
+const LastRun = ({ ok, at, error }: { ok: boolean; at: string; error?: string | null }) => (
+  <Badge tone={ok ? "ok" : "bad"} dot reason={ok ? undefined : error || undefined}>
     {`${ok ? "Sent" : "Failed"} ${ago(at)}`}
   </Badge>
 );
@@ -936,9 +949,18 @@ const LegacyAlertSheet = ({ alert, onClose }: { alert?: TPkiAlertV2; onClose: ()
               ["Description", alert.description || "None"],
               [
                 "Channels",
-                alert.channels.length
-                  ? alert.channels.map((channel) => channel.channelType).join(", ")
-                  : "None"
+                alert.channels.length ? (
+                  <Stack key="channels" gap={4}>
+                    {alert.channels.map((channel) => (
+                      <ChannelTypeLabel
+                        key={channel.id}
+                        channelType={legacyChannelType[channel.channelType]}
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  "None"
+                )
               ],
               ["Filters", alert.filters.length ? `${alert.filters.length}` : "None"],
               [
@@ -1026,7 +1048,11 @@ const LegacyAlertsCard = ({
       width: 176,
       render: (alert) =>
         alert.lastRun ? (
-          <LastRun ok={alert.lastRun.status === "success"} at={alert.lastRun.timestamp} />
+          <LastRun
+            ok={alert.lastRun.status === "success"}
+            at={alert.lastRun.timestamp}
+            error={alert.lastRun.error}
+          />
         ) : (
           <Text muted>Never</Text>
         )

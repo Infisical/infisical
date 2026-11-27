@@ -43,10 +43,12 @@ import type { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
+import { ProviderLabel } from "../../components/provider-label";
 import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -246,6 +248,7 @@ const IdentityHeaderActions = ({
 );
 
 export const OrgIdentityDetail = () => {
+  const scope = useOrgPageScope();
   const { identityId } = useParams({ from: "/v4/organizations/$orgId/identities/$identityId" });
   const access = useV4Adapter("access");
   const orgId = useOrgId();
@@ -311,8 +314,7 @@ export const OrgIdentityDetail = () => {
       grow: true,
       render: (method) => (
         <Inline gap={8} wrap={false}>
-          <Icon name="key" />
-          <span>{authMethodName(method)}</span>
+          <ProviderLabel kind="identity-auth" value={method} />
           {locked.includes(method) && <LockBadge label="Auth method has active lockouts" />}
         </Inline>
       )
@@ -362,6 +364,7 @@ export const OrgIdentityDetail = () => {
     <div className={css.detailPage}>
       <Stack gap={24}>
         <PageHeader
+          scope={scope}
           breadcrumb={[
             { label: "Organization machine identities", link: go.link(backHref(orgId)) }
           ]}

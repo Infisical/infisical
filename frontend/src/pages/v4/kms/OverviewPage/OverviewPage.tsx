@@ -348,11 +348,9 @@ const columns: DataTableColumn<TCmek>[] = [
           </Badge>
         )}
         {isServed(r) && (
-          <Tooltip content={r.jwksUrl ?? "Public key published"} side="top">
-            <Badge tone="info" tabIndex={0}>
-              Public
-            </Badge>
-          </Tooltip>
+          <Badge reason={r.jwksUrl ?? "Public key published"} tone="info">
+            Public
+          </Badge>
         )}
       </Inline>
     )

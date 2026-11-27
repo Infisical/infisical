@@ -40,8 +40,16 @@ import {
 import { Switch } from "@infisical/cipher/ui/switch";
 import { StatusText } from "@infisical/cipher/ui/text";
 
+import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
+import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import type { Project } from "@app/hooks/api/projects/types";
-import type { TSecretValidationRule } from "@app/hooks/api/secretValidationRules/types";
+import type { SecretRotation } from "@app/hooks/api/secretRotationsV2";
+import {
+  DynamicSecretRuleProvider,
+  type TSecretValidationRule
+} from "@app/hooks/api/secretValidationRules/types";
+import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { saved } from "../../../access/toast";
 import { copyText } from "../../../clipboard";
@@ -302,8 +310,25 @@ const RuleForm = ({
                             placeholder="Select providers"
                             options={
                               enforcement.type === RuleType.DynamicSecrets
-                                ? DYNAMIC_SECRET_PROVIDER_OPTIONS
-                                : SECRET_ROTATION_PROVIDER_OPTIONS
+                                ? DYNAMIC_SECRET_PROVIDER_OPTIONS.map((option) => {
+                                    const logo =
+                                      option.value === DynamicSecretRuleProvider.Milvus
+                                        ? getDynamicSecretProviderRuntimeMetadata(
+                                            DynamicSecretProviders.Milvus
+                                          ).presentation.logoFileName
+                                        : undefined;
+                                    return {
+                                      ...option,
+                                      media: logo && <ProviderIcon icon={logo} alt="" size="sm" />
+                                    };
+                                  })
+                                : SECRET_ROTATION_PROVIDER_OPTIONS.map((option) => ({
+                                    ...option,
+                                    media: providerMedia(
+                                      "secret-rotation",
+                                      option.value as string as SecretRotation
+                                    )
+                                  }))
                             }
                             value={(field.value as string[] | undefined) ?? []}
                             invalid={Boolean(providersError)}

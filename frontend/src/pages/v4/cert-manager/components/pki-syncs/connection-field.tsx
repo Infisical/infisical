@@ -17,6 +17,7 @@ import {
   type CreatedConnection,
   useConnectionCreation
 } from "../../../components/connection-creation";
+import { providerMedia } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { startConnectionRedirect } from "../../../data/integrations/connection-redirect";
 import { errorOf, usePkiSyncForm, useWatchedValue } from "./fields";
@@ -109,6 +110,7 @@ export function PkiSyncConnectionField({ onChange }: { onChange?: () => void }) 
             options={options.map((connection) => ({
               value: connection.id,
               label: connection.name,
+              media: providerMedia("app-connection", connection.app),
               group: apps.length > 1 ? APP_CONNECTION_MAP[connection.app].name : undefined
             }))}
             creation={creation}

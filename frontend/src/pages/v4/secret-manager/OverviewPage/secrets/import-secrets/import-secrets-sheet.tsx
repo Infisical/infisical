@@ -973,17 +973,16 @@ function ImportSecretsContent({
                             <span className={`${styles.truncate} ${styles.mono}`}>{key}</span>
                           )}
                           {conflictEnvironments(id).length > 0 && (
-                            <Tooltip
-                              content={
+                            <Badge
+                              reason={
                                 shouldOverwrite
                                   ? `This key already exists in ${conflictEnvironments(id).join(", ")} and will be overwritten.`
                                   : `This key already exists in ${conflictEnvironments(id).join(", ")}. Choose whether to overwrite or skip it when you upload.`
                               }
+                              tone="warn"
                             >
-                              <Badge tone="warn">
-                                {shouldOverwrite ? "Overwrite" : "Conflict"}
-                              </Badge>
-                            </Tooltip>
+                              {shouldOverwrite ? "Overwrite" : "Conflict"}
+                            </Badge>
                           )}
                           {secretData.comments.some(Boolean) && (
                             <Tooltip

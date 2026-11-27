@@ -22,15 +22,11 @@ import {
 } from "./enrollment-model";
 
 export const EnrollmentBody = ({
-  lead,
   children,
   ...panel
 }: EnrollmentBodyProps & { children: ReactNode }) => (
   <SheetBody {...panel}>
-    <Stack gap={16}>
-      {lead}
-      {children}
-    </Stack>
+    <Stack gap={16}>{children}</Stack>
   </SheetBody>
 );
 

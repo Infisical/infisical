@@ -207,6 +207,7 @@ function InviteMembersDialog({
                   help="Select which role to assign to the invited members in this project."
                 >
                   <Select
+                    descriptionLayout="stacked"
                     aria-label="Project role"
                     placeholder="Select role..."
                     options={assignable.map((entry) => ({

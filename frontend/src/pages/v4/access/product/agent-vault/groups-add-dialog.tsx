@@ -122,7 +122,9 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
                   noMatchText="No groups match your search"
                   options={options}
                   value={group}
-                  loading={available.isPending}
+                  loading={
+                    available.isPending || available.isFetching || search.trim() !== debouncedSearch
+                  }
                   onSearch={setSearch}
                   onChange={setGroup}
                 />

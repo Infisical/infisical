@@ -3,7 +3,6 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
 import { Icon } from "@infisical/cipher/ui/icon";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { MaximizeIcon, MinimizeIcon } from "lucide-react";
 
 import {
@@ -97,18 +96,18 @@ const ChangeFlag = ({
   const isStale = (commit.secretVersion?.version || 1) < (commit.secret?.version || 0);
   if (!hasMerged && isStale)
     return (
-      <Tooltip content="This secret changed after the request was opened.">
-        <Badge tone="soft">Stale</Badge>
-      </Tooltip>
+      <Badge reason="This secret changed after the request was opened." tone="soft">
+        Stale
+      </Badge>
     );
   const hasConflict = conflicts?.some(
     (entry) => entry.op === commit.op && entry.secretId === commit.id
   );
   if (!hasMerged || !hasConflict) return null;
   return (
-    <Tooltip content="Merge conflict">
-      <Badge tone="bad">{conflictText(commit.op)}</Badge>
-    </Tooltip>
+    <Badge reason="Merge conflict" tone="bad">
+      {conflictText(commit.op)}
+    </Badge>
   );
 };
 

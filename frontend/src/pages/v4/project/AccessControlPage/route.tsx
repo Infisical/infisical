@@ -15,7 +15,7 @@ export const Route = createFileRoute(
     z.object({
       selectedTab: z.nativeEnum(ProjectAccessControlTabs).catch(ProjectAccessControlTabs.Member),
       requesterEmail: z.string().catch(""),
-      createRole: z.boolean().catch(false)
+      createRole: z.boolean().optional().catch(undefined)
     })
   ),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

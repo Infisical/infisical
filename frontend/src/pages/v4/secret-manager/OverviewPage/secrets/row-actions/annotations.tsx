@@ -40,7 +40,6 @@ import {
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Secret, SecretReminder } from "../../secrets-model";
 
-import flowStyles from "../flows/flows.module.css";
 import styles from "./row-actions.module.css";
 
 export function CommentForm({
@@ -693,7 +692,7 @@ export function ReminderSheet({
     <>
       <MultiStep
         variant="sheet"
-        className={flowStyles.secretSheet}
+        size="md"
         open={open}
         onOpenChange={(next) => {
           if (next) onOpenChange(true);

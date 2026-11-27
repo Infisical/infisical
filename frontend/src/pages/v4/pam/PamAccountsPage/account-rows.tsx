@@ -101,11 +101,9 @@ export const AccessState = ({ account }: { account: TPamAccountListItem }) => {
   const now = useSyncExternalStore(subscribeToTick, () => tickNow);
   if (account.accessStatus === PamAccessStatus.Pending)
     return (
-      <Tooltip content="Your access request is awaiting approval.">
-        <StatusText tone="warn" icon="clock" tabIndex={0}>
-          Request pending
-        </StatusText>
-      </Tooltip>
+      <StatusText reason="Your access request is awaiting approval." tone="warn" icon="clock">
+        Request pending
+      </StatusText>
     );
   if (launchState(account).needsApproval)
     return <StatusText icon="key">Approval required</StatusText>;
@@ -150,25 +148,25 @@ const AccountBadges = ({
         </Tooltip>
       )}
       {account.isStale && (
-        <Tooltip content="The latest discovery scan didn't find this account in the environment. It still works normally, including rotation and access, so delete it if it's really gone.">
-          <Badge tone="soft" tabIndex={0}>
-            Stale
-          </Badge>
-        </Tooltip>
+        <Badge
+          reason="The latest discovery scan didn't find this account in the environment. It still works normally, including rotation and access, so delete it if it's really gone."
+          tone="soft"
+        >
+          Stale
+        </Badge>
       )}
       {account.warnings.includes(PamAccountWarning.SessionLogMaskingDegraded) && (
-        <Tooltip content="This account's template enables built-in detection, but the gateway serving it runs a version that doesn't support it. Recordings are masked by the template's custom patterns only until the gateway is upgraded.">
-          <Badge tone="warn" tabIndex={0}>
-            Partial masking
-          </Badge>
-        </Tooltip>
+        <Badge
+          reason="This account's template enables built-in detection, but the gateway serving it runs a version that doesn't support it. Recordings are masked by the template's custom patterns only until the gateway is upgraded."
+          tone="warn"
+        >
+          Partial masking
+        </Badge>
       )}
       {health && (
-        <Tooltip content={health.tooltip}>
-          <Badge tone={health.tone} tabIndex={0}>
-            {health.label}
-          </Badge>
-        </Tooltip>
+        <Badge reason={health.tooltip} tone={health.tone}>
+          {health.label}
+        </Badge>
       )}
     </>
   );

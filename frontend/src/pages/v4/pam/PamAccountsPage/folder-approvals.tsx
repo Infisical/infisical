@@ -140,6 +140,7 @@ const ApproverCard = ({
         <Combobox
           label={`Add ${label}`}
           width="sm"
+          align="end"
           placeholder="Add user or group"
           emptyText="No users or groups left. Add them to this folder under Permissions first."
           options={options}
@@ -273,6 +274,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
       header: "Requester",
       primary: true,
       grow: true,
+      valign: "top",
       text: (request) => request.requesterName,
       secondary: (request) => requesterSubtitle(request) || undefined,
       render: (request) => request.requesterName
@@ -281,6 +283,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
       id: "account",
       header: "Account",
       width: 176,
+      valign: "top",
       text: (request) => request.accountName ?? "",
       render: (request) => {
         const meta = request.accountType ? typeMap.get(request.accountType) : undefined;
@@ -296,6 +299,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
       id: "requesting",
       header: "Requesting",
       width: 112,
+      valign: "top",
       render: (request) =>
         request.accessType === PamAccessType.Credential ? (
           <Badge tone="warn">Credentials</Badge>
@@ -306,7 +310,8 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
     {
       id: "status",
       header: "Status",
-      grow: true,
+      width: 176,
+      valign: "top",
       render: (request) => {
         const info = requestStatus(request);
         const rule = request.autoApproval?.rules.find(
@@ -327,13 +332,13 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
               label
             )}
             {request.isBreakGlass && (
-              <Tooltip
-                content={request.bypassReason ? `Reason: "${request.bypassReason}"` : undefined}
+              <Badge
+                reason={request.bypassReason ? `Reason: "${request.bypassReason}"` : undefined}
+                tone="bad"
+                icon="shield"
               >
-                <Badge tone="bad" icon="shield" tabIndex={0}>
-                  Break-glass
-                </Badge>
-              </Tooltip>
+                Break-glass
+              </Badge>
             )}
           </Stack>
         );
@@ -345,6 +350,7 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
             id: "revoke",
             header: "",
             width: 56,
+            valign: "top" as const,
             render: (request: TPamAccessRequest) =>
               isGrantActive(request) && request.grantId ? (
                 <Button
@@ -358,7 +364,9 @@ const FolderRequests = ({ folderId, canRevoke }: { folderId: string; canRevoke: 
                     setRevoking(request);
                   }}
                 />
-              ) : null
+              ) : (
+                false
+              )
           }
         ]
       : [])

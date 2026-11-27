@@ -62,7 +62,6 @@ const DuplicateGroups = ({
                   primary: true,
                   grow: true,
                   mono: true,
-                  wrap: true,
                   text: (entry) => entry.key,
                   render: (entry) => (
                     <RowLink
@@ -79,15 +78,15 @@ const DuplicateGroups = ({
                 {
                   id: "environment",
                   header: "Environment",
-                  minWidth: 140,
+                  width: 160,
                   text: (entry) => entry.environment.name,
                   render: (entry) => <Badge tone="info">{entry.environment.name}</Badge>
                 },
                 {
                   id: "path",
                   header: "Path",
+                  grow: true,
                   minWidth: 120,
-                  maxWidth: 240,
                   mono: true,
                   text: (entry) => entry.secretPath,
                   render: (entry) => entry.secretPath

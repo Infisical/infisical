@@ -12,7 +12,6 @@ import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { UserCogIcon } from "lucide-react";
 
 import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
@@ -232,12 +231,13 @@ export const UsersTab = () => {
               <li key={user.id}>
                 <span>{name ? `${name} (${email})` : email}</span>
                 {isSelf(user) && (
-                  <Tooltip content="Are you sure you want to remove yourself from this instance?">
-                    <Badge tone="bad">
-                      <Icon name="alert" />
-                      Deleting yourself
-                    </Badge>
-                  </Tooltip>
+                  <Badge
+                    reason="Are you sure you want to remove yourself from this instance?"
+                    tone="bad"
+                  >
+                    <Icon name="alert" />
+                    Deleting yourself
+                  </Badge>
                 )}
               </li>
             );

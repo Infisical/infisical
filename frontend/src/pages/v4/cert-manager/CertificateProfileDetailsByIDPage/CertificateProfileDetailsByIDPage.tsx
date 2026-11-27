@@ -26,7 +26,6 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { EXTERNAL_CA_TYPE_NAME_MAP } from "@app/hooks/api/ca/constants";
 import {
   IssuerType,
   type TCertificateProfileDefaults,
@@ -37,9 +36,11 @@ import { useProjectPermission } from "../../access/permissions";
 import { saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { externalCaProvider } from "../components/ca-providers";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeleteProfileDialog } from "../components/delete-dialogs";
 import { ExtensionName } from "../components/extension-name";
@@ -197,7 +198,10 @@ const issuerItemsOf = ({
         ["Source", ca?.isExternal ? "External CA" : "Internal CA"],
         ...(ca?.isExternal && ca.externalType
           ? ([
-              ["External type", EXTERNAL_CA_TYPE_NAME_MAP[ca.externalType] ?? ca.externalType]
+              [
+                "External type",
+                <ProviderLabel key="type" provider={externalCaProvider(ca.externalType)} />
+              ]
             ] as const)
           : []),
         [
