@@ -1184,7 +1184,8 @@ export const registerRoutes = async (
     alertChannelService,
     kmsDataKeyService,
     alertProviderRegistry,
-    alertHistoryDAL
+    alertHistoryDAL,
+    slackIntegrationService: domains.workflowIntegrations.slackIntegrationService
   });
   const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
     honeyTokenDAL,
@@ -1806,7 +1807,7 @@ export const registerRoutes = async (
     licenseService,
     usageMeteringService,
     kmsRootKeyService,
-    microsoftTeamsService,
+    microsoftTeamsIntegrationService: domains.workflowIntegrations.microsoftTeamsIntegrationService,
     invalidateCacheQueue,
     smtpService,
     tokenService,
@@ -5135,6 +5136,7 @@ export const registerRoutes = async (
   signerAutoRenewalQueue.start();
   signerIssuanceService.start();
   await microsoftTeamsService.start();
+  await domains.workflowIntegrations.start();
   await eventBusService.init();
 
   const memberPermissionAuditService = memberPermissionAuditServiceFactory({
@@ -5373,6 +5375,10 @@ export const registerRoutes = async (
     if (microsoftTeamsSyncJob) {
       cronJobs.push(microsoftTeamsSyncJob);
     }
+    const workflowIntegrationsSyncJob = domains.workflowIntegrations.startBackgroundSync();
+    if (workflowIntegrationsSyncJob) {
+      cronJobs.push(workflowIntegrationsSyncJob);
+    }
   }
 
   server.decorate<FastifyZodProvider["store"]>("store", {
@@ -5464,7 +5470,7 @@ export const registerRoutes = async (
     await server.register(
       async (v1Server) => {
         await v1Server.register(registerV1EERoutes);
-        await v1Server.register(registerV1Routes);
+        await v1Server.register(registerV1Routes, { domains });
       },
       { prefix: "/api/v1" }
     );

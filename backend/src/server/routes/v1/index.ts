@@ -1,3 +1,6 @@
+import type { TDomains } from "@app/domains/domains";
+import { registerWorkflowIntegrationsRouter } from "@app/domains/platform/workflow-integrations/ce/module";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
@@ -16,6 +19,7 @@ import {
 import { registerAccountRecoveryRouter } from "./account-recovery-router";
 import { registerAdminRouter } from "./admin-router";
 import { registerAlertRouter } from "./alert-router";
+import { registerAlertSlackIntegrationRouter } from "./alert-slack-integration-router";
 import { registerAnnouncementRouter } from "./announcement-router";
 import { APPROVAL_POLICY_REGISTER_ROUTER_MAP } from "./approval-policy-routers";
 import { registerAuthRoutes } from "./auth-router";
@@ -71,7 +75,6 @@ import { registerInstanceRouter } from "./instance-router";
 import { registerIntegrationAuthRouter } from "./integration-auth-router";
 import { registerIntegrationRouter } from "./integration-router";
 import { registerInviteOrgRouter } from "./invite-org-router";
-import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
 import { registerOAuthRouter } from "./oauth-router";
 import { registerOidcIssuerRouter } from "./oidc-issuer-router";
@@ -99,16 +102,14 @@ import { registerSecretSharingRouter } from "./secret-sharing-router";
 import { registerSecretTagRouter } from "./secret-tag-router";
 import { registerSignerMembershipRoutes } from "./signer-membership-routers";
 import { registerSignerRouter } from "./signer-routers";
-import { registerSlackRouter } from "./slack-router";
 import { registerSsoRouter } from "./sso-router";
 import { registerUserActionRouter } from "./user-action-router";
 import { registerUserActivationRouter } from "./user-activation-router";
 import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
-import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
 
-export const registerV1Routes = async (server: FastifyZodProvider) => {
+export const registerV1Routes = async (server: FastifyZodProvider, { domains }: { domains: TDomains }) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
   await server.register(
     async (authRouter) => {
@@ -161,9 +162,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (workflowIntegrationRouter) => {
-      await workflowIntegrationRouter.register(registerWorkflowIntegrationRouter);
-      await workflowIntegrationRouter.register(registerSlackRouter, { prefix: "/slack" });
-      await workflowIntegrationRouter.register(registerMicrosoftTeamsRouter, { prefix: "/microsoft-teams" });
+      const { workflowIntegrations } = domains;
+      await workflowIntegrationRouter.register(registerWorkflowIntegrationsRouter, {
+        workflowIntegrationService: workflowIntegrations.workflowIntegrationService,
+        slackIntegrationService: workflowIntegrations.slackIntegrationService,
+        microsoftTeamsIntegrationService: workflowIntegrations.microsoftTeamsIntegrationService,
+        siteUrl: getConfig().SITE_URL
+      });
+      await workflowIntegrationRouter.register(registerAlertSlackIntegrationRouter, { prefix: "/slack" });
     },
     { prefix: "/workflow-integrations" }
   );

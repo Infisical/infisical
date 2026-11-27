@@ -22,6 +22,7 @@ import { InstanceFeature, LicenseModule, PlanFeature, TLicenseServerBilling } fr
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsModule } from "./platform/organizations/ce/module";
 import { ProjectsModule, TProjectAccessListener } from "./platform/projects/ce/module";
+import { WorkflowIntegrationsModule } from "./platform/workflow-integrations/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 
 type TKmsCoreEnvConfig = Pick<
@@ -54,6 +55,8 @@ export type TDomainDeps = {
     | "isSecondaryInstance"
     | "isGeneralWorkerRunModeEnabled"
     | "OTEL_TELEMETRY_COLLECTION_ENABLED"
+    | "SITE_URL"
+    | "AUTH_SECRET"
   > &
     TKmsCoreEnvConfig;
   // Gets each actor's project access as it resolves, feeding the request's audit context.
@@ -198,6 +201,18 @@ export const createDomains = async (deps: TDomainDeps) => {
     processEnv: { ...process.env }
   });
 
+  const workflowIntegrations = new WorkflowIntegrationsModule({
+    db: deps.db,
+    orgPermissionService: organizations.orgPermissionService,
+    kmsDataKeyService: kmsCore.kmsDataKeyService,
+    instanceConfigService: instanceConfigCore.instanceConfigService,
+    siteUrl: deps.envConfig.SITE_URL,
+    authSecret: deps.envConfig.AUTH_SECRET,
+    isCloud: deps.envConfig.isCloud,
+    isProductionMode: deps.envConfig.isProductionMode,
+    startLocalRefresh
+  });
+
   // Products.
   const secrets = new SecretsModule({
     db: deps.db,
@@ -243,6 +258,7 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsCore,
     externalKms,
     instanceConfigCore,
+    workflowIntegrations,
     organizations,
     projects,
     secrets,

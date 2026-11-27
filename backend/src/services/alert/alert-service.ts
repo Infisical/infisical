@@ -4,6 +4,7 @@ import { z } from "zod";
 import { TableName, TAlertChannels, TAlerts, TAlertsInsert } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { TSlackIntegrationService } from "@app/domains/platform/workflow-integrations/ce/module";
 import { Event as TAuditEvent, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -59,7 +60,10 @@ import {
 
 export type TAlertServiceFactoryDep = {
   alertDAL: TAlertDALFactory;
-  alertChannelDAL: Pick<TAlertChannelDALFactory, "findByAlertId" | "findByAlertIds" | "delete" | "create">;
+  alertChannelDAL: Pick<
+    TAlertChannelDALFactory,
+    "findByAlertId" | "findByAlertIds" | "delete" | "create" | "countAlertsByWorkflowIntegrationId"
+  >;
   alertChannelMembershipDAL: Pick<TAlertChannelMembershipDALFactory, "insertMany">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "findByChannelIds" | "insertMany">;
   alertChannelService: Pick<
@@ -75,6 +79,7 @@ export type TAlertServiceFactoryDep = {
   kmsDataKeyService: TKmsDataKeyService;
   alertProviderRegistry: TAlertProviderRegistry;
   alertHistoryDAL: Pick<TAlertHistoryDALFactory, "findLatestByAlertIds">;
+  slackIntegrationService: TSlackIntegrationService;
 };
 
 export type TAlertServiceFactory = ReturnType<typeof alertServiceFactory>;
@@ -139,7 +144,8 @@ export const alertServiceFactory = ({
   alertChannelService,
   kmsDataKeyService,
   alertProviderRegistry,
-  alertHistoryDAL
+  alertHistoryDAL,
+  slackIntegrationService
 }: TAlertServiceFactoryDep) => {
   const $getProvider = (resourceType: string): IResourceAlertProvider => {
     const provider = alertProviderRegistry.get(resourceType);
@@ -1004,7 +1010,15 @@ export const alertServiceFactory = ({
       eventType: alert.eventType
     });
 
+  // For the Slack integration delete dialog: how many alerts would stop posting. The integration's read check (and its
+  // not-found message) comes from Workflow Integrations.
+  const countAlertsUsingSlackIntegration = async ({ actor, id }: { actor: TActorContext; id: string }) => {
+    await slackIntegrationService.assertCanRead({ actor, id });
+    return alertChannelDAL.countAlertsByWorkflowIntegrationId(id);
+  };
+
   return {
+    countAlertsUsingSlackIntegration,
     getTelemetryEvent,
     getAuditEvent,
     createAlert,

@@ -15,6 +15,7 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
+import { TMicrosoftTeamsIntegrationService } from "@app/domains/platform/workflow-integrations/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
@@ -48,7 +49,6 @@ import { TMembershipIdentityDALFactory } from "../membership-identity/membership
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
-import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { TOrgServiceFactory } from "../org/org-service";
@@ -97,7 +97,7 @@ type TSuperAdminServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
-  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
+  microsoftTeamsIntegrationService: TMicrosoftTeamsIntegrationService;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   tokenService: TAuthTokenServiceFactory;
@@ -120,7 +120,7 @@ export const superAdminServiceFactory = ({
   usageMeteringService,
   identityAccessTokenService,
   identityTokenAuthDAL,
-  microsoftTeamsService,
+  microsoftTeamsIntegrationService,
   invalidateCacheQueue,
   smtpService,
   tokenService,
@@ -191,10 +191,10 @@ export const superAdminServiceFactory = ({
         readFrom: ReadFrom.Primary
       });
       if (credentials.isComplete()) {
-        await microsoftTeamsService.initializeTeamsBot({
-          botAppId: credentials.appId,
-          botAppPassword: credentials.clientSecret,
-          lastUpdatedAt: configUpdatedAt
+        microsoftTeamsIntegrationService.reinitializeBot({
+          appId: credentials.appId,
+          clientSecret: credentials.clientSecret,
+          configUpdatedAt
         });
       }
     }
