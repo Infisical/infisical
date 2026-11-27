@@ -1,4 +1,4 @@
-package workflowintegration_test
+package teams_test
 
 import (
 	"encoding/json"
