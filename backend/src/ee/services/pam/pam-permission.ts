@@ -2,14 +2,14 @@ import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@ca
 import { PackRule, packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { isActiveRole } from "../permission/permission-fns";
+import { hasAnyGrant, isActiveRole } from "../permission/permission-fns";
 import { resolveResourceRoleRules } from "../permission/permission-service";
 import {
   ResourcePermissionPamResourceActions,
@@ -36,6 +36,7 @@ const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceAct
 
 type TPermissionDep = Pick<TPermissionServiceFactory, "getResourcePermission">;
 type TProjectPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
+type TOrgAndProjectPermissionDep = Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
 type TBatchMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
 type TMembershipRoleDep = Pick<TMembershipRoleDALFactory, "find">;
@@ -79,6 +80,36 @@ export const verifyProductMembership = async (
     actionProjectType: ActionProjectType.PAM
   });
   return { hasRole };
+};
+
+// Actors with any org grant may open PAM to join or request it; others must already belong to it.
+export const verifyPamProjectAccess = async (
+  permissionService: TOrgAndProjectPermissionDep,
+  projectId: string,
+  ctx: TActorContext
+) => {
+  const { permission } = await permissionService.getOrgPermission({
+    actor: ctx.actor,
+    actorId: ctx.actorId,
+    orgId: ctx.actorOrgId,
+    actorAuthMethod: ctx.actorAuthMethod,
+    actorOrgId: ctx.actorOrgId,
+    scope: OrganizationActionScope.Any
+  });
+  if (hasAnyGrant(permission)) return;
+
+  try {
+    await verifyProductMembership(permissionService, projectId, ctx);
+  } catch (err) {
+    if (err instanceof ForbiddenRequestError && err.name === "ProjectMembershipNotFound") {
+      // Keep the name the app's access page checks.
+      throw new ForbiddenRequestError({
+        name: "ProjectMembershipNotFound",
+        message: "You do not have access to Privileged Access Manager. Ask an organization admin to add you."
+      });
+    }
+    throw err;
+  }
 };
 
 export const checkFolderPermission = async (

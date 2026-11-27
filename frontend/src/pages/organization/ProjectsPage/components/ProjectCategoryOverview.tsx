@@ -134,7 +134,11 @@ export const ProjectCategoryOverview = () => {
   );
   const { data: projects = [], isPending: isProjectsLoading } = useGetUserProjects();
   const { data: certManagerInstance } = useCertManagerInstanceState();
-  const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
+  // Roles that grant nothing get no product stats, and no pamProjectId unless they belong to PAM.
+  const hasOrgGrant = permission.rules.some((rule) => !rule.inverted);
+  const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "", {
+    enabled: hasOrgGrant
+  });
   const orgAdminAccessProject = useOrgAdminAccessProject();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
@@ -176,7 +180,10 @@ export const ProjectCategoryOverview = () => {
     [currentOrg?.pamProjectId, projects]
   );
   const isPamAccessBlocked =
-    Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
+    (Boolean(currentOrg?.pamProjectId) || !hasOrgGrant) &&
+    !isOrgAdmin &&
+    !canRequestAccess &&
+    !isPamMember;
 
   const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg?.id ?? "");
   const activeSecretScanningProjectId = secretScanningInstance?.activeProjectId ?? null;

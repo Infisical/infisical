@@ -1,5 +1,10 @@
-import { ProjectType } from "@app/db/schemas";
+import { ForbiddenError } from "@casl/ability";
+
+import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { hasAnyGrant } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 
@@ -10,6 +15,7 @@ type TOrgProductStatsServiceFactoryDep = {
   orgProductStatsDAL: TOrgProductStatsDALFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
   kmsKeyService: TKmsKeyService;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
 export type TOrgProductStatsServiceFactory = ReturnType<typeof orgProductStatsServiceFactory>;
@@ -17,9 +23,30 @@ export type TOrgProductStatsServiceFactory = ReturnType<typeof orgProductStatsSe
 export const orgProductStatsServiceFactory = ({
   orgProductStatsDAL,
   keyStore,
-  kmsKeyService
+  kmsKeyService,
+  permissionService
 }: TOrgProductStatsServiceFactoryDep) => {
-  const getOrgProductStats = async ({ actorOrgId }: TOrgProductStatsDTO): Promise<TOrgProductStats> => {
+  const getOrgProductStats = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TOrgProductStatsDTO): Promise<TOrgProductStats> => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
+    if (!hasAnyGrant(permission)) {
+      // Thrown through CASL so the denial is audited.
+      ForbiddenError.from(permission)
+        .setMessage("Your organization role does not grant access to product statistics")
+        .throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    }
+
     const [
       secretsCount,
       environmentsCount,

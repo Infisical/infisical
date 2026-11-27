@@ -1,6 +1,6 @@
-export type TOrgProductStatsDTO = {
-  actorOrgId: string;
-};
+import { TOrgPermission } from "@app/lib/types";
+
+export type TOrgProductStatsDTO = Omit<TOrgPermission, "orgId">;
 
 export type TOrgProductStats = {
   secretManager: {

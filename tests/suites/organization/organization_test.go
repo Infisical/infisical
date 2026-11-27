@@ -297,6 +297,63 @@ func TestOrganization_Delete(t *testing.T) {
 	})
 }
 
+func TestOrganization_Get(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should hide org configuration from a no-access member", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		limit := new(float32(5))
+		updated, err := tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
+			api.UpdateOrganizationJSONRequestBody{MaxSharedSecretViewLimit: limit})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, updated.StatusCode(), updated.Body)
+		noAccess := tn.NewUser(t, harness.OrgRole("no-access"))
+
+		// Action
+		res, err := noAccess.API.GetOrganizationByIdWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Nil(t, res.JSON200.Organization.ScimEnabled)
+		require.Nil(t, res.JSON200.Organization.PamProjectId)
+		require.Equal(t, limit, res.JSON200.Organization.MaxSharedSecretViewLimit)
+	})
+
+	t.Run("should give a no-access member the PAM project they belong to", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		org, err := tn.Admin.API.GetOrganizationByIdWithResponse(t.Context(), tn.OrgID.String())
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, org.StatusCode(), org.Body)
+		require.NotNil(t, org.JSON200.Organization.PamProjectId)
+		noAccess := tn.NewUser(t, harness.OrgRole("no-access"))
+		granted, err := tn.Admin.API.InviteUsersToOrganizationWithResponse(t.Context(),
+			api.InviteUsersToOrganizationJSONRequestBody{
+				InviteeEmails:  []openapi_types.Email{openapi_types.Email(noAccess.Email)},
+				OrganizationId: tn.OrgID.String(),
+				GrantPamAccess: new(true),
+			})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, granted.StatusCode(), granted.Body)
+
+		// Action
+		res, err := noAccess.API.GetOrganizationByIdWithResponse(t.Context(), tn.OrgID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Equal(t, org.JSON200.Organization.PamProjectId, res.JSON200.Organization.PamProjectId)
+		require.Nil(t, res.JSON200.Organization.ScimEnabled)
+	})
+}
+
 // selectOrg scopes p's session to another organization p belongs to.
 func selectOrg(t *testing.T, tn *harness.Tenant, p *harness.Principal, orgID uuid.UUID) *api.ClientWithResponses {
 	t.Helper()
