@@ -34,6 +34,7 @@ import { readableFailure, saved } from "../../../access/toast";
 import { ProviderLabel } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { useUpgradeGate } from "../../../license/useUpgradeGate";
+import { stepAside } from "../step-aside";
 import { PkiSyncCertificatesFields } from "./certificates/certificates-fields";
 import { PkiSyncReviewFields } from "./certificates/review-fields";
 import { PkiSyncDestinationPicker } from "./destination-picker";
@@ -52,7 +53,6 @@ import {
   usePkiSyncOption,
   usePkiSyncScope
 } from "./shared";
-import { PkiSyncStepAbout } from "./step-about";
 import { pkiSyncDocsHref, pkiSyncSteps } from "./steps";
 
 const pkiSyncDefaults = (
@@ -261,7 +261,7 @@ const CreateSyncForm = ({
       : []),
     ...formSteps.map((entry, index) => ({
       title: entry.title,
-      aside: { description: <PkiSyncStepAbout paragraphs={entry.about} /> },
+      aside: stepAside(...entry.about),
       content: body(entry.key),
       validate: entry.key === "review" ? undefined : () => validateStep(index),
       disabledReason:
