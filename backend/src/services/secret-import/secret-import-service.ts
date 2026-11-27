@@ -460,18 +460,28 @@ export const secretImportServiceFactory = ({
     }
 
     const updatedSecImport = await secretImportDAL.transaction(async (tx) => {
-      if (isSourceChanging) {
-        await $assertSourceNotImported(
-          {
-            folderId: folder.id,
-            folderPath: secretPath,
-            sourceEnv: importedEnv,
-            sourcePath: data.path || secImpDoc.importPath,
-            isReplication: Boolean(secImpDoc.isReplication),
-            excludeImportId: secImpDoc.id
-          },
-          tx
-        );
+      if (data.environment || data.path) {
+        // The row read before the transaction can come from a lagging replica, and the write below keeps whichever of
+        // environment and path the request leaves out, so the source it will save is read here, after the lock.
+        await folderDAL.lockFoldersForUpdate([folder.id], tx);
+        const current = await secretImportDAL.findOne({ folderId: folder.id, id }, tx);
+        if (!current) throw ERR_SEC_IMP_NOT_FOUND;
+        const nextEnvId = data.environment ? importedEnv.id : current.importEnv;
+        const nextPath = data.path || current.importPath;
+        const nextEnv = nextEnvId === importedEnv.id ? importedEnv : await projectEnvDAL.findById(nextEnvId, tx);
+        if (nextEnv && (nextEnvId !== current.importEnv || nextPath !== current.importPath)) {
+          await $assertSourceNotImported(
+            {
+              folderId: folder.id,
+              folderPath: secretPath,
+              sourceEnv: nextEnv,
+              sourcePath: nextPath,
+              isReplication: Boolean(current.isReplication),
+              excludeImportId: id
+            },
+            tx
+          );
+        }
       }
       if (isSourceChanging && !secImpDoc.isReplication && importedEnv.projectId === projectId) {
         await $assertDirectImportAllowedInFolder(projectId, environment, folder.id, tx);

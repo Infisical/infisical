@@ -59,12 +59,14 @@ const resourceLimitsFromPlan = (plan: Plan | null): TResourceLimits => {
 
 export const NO_RESOURCE_LIMITS = resourceLimitsFromPlan(null);
 
+export const resourceLimitsForPlan = (plan: Plan): TResourceLimits =>
+  getConfig().INFISICAL_CLOUD ? resourceLimitsFromPlan(plan) : NO_RESOURCE_LIMITS;
+
 export const getResourceLimits = async (
   licenseService: Pick<TLicenseService, "getPlan">,
   orgId: string
 ): Promise<TResourceLimits> => {
   if (!getConfig().INFISICAL_CLOUD) return NO_RESOURCE_LIMITS;
-
   return resourceLimitsFromPlan(await licenseService.getPlan(orgId));
 };
 

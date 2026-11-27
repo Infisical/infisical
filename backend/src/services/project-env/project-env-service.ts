@@ -1,15 +1,21 @@
+import { Knex } from "knex";
+
 import { sealKnexTransaction } from "@app/domains/lib/transactions";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ResourceLimit, resourceLimitsForPlan, TResourceLimits } from "@app/lib/resource-limits";
 import { TApprovalPolicySecretEnvironmentDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { TProjectEnvDALFactory } from "./project-env-dal";
 import { SOFT_DELETE_GRACE_MS } from "./project-env-queue";
 import {
@@ -23,6 +29,9 @@ import {
 
 type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
+  webhookDAL: Pick<TWebhookDALFactory, "countByEnvId" | "countByProjectId">;
+  secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "countByEnvId" | "countByProject">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "countFromSourceEnvByFolder" | "countByFolderId">;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
   secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
@@ -34,6 +43,9 @@ export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFacto
 
 export const projectEnvServiceFactory = ({
   projectEnvDAL,
+  webhookDAL,
+  secretRotationV2DAL,
+  secretImportDAL,
   secretsPermissionService,
   licenseService,
   keyStore,
@@ -291,6 +303,54 @@ export const projectEnvServiceFactory = ({
     }
   };
 
+  const $assertRestoreWithinLimits = async (
+    {
+      resourceLimits,
+      projectId,
+      envId,
+      envSlug
+    }: { resourceLimits: TResourceLimits; projectId: string; envId: string; envSlug: string },
+    tx: Knex
+  ) => {
+    if (resourceLimits.max(ResourceLimit.WebhooksPerProject) !== null) {
+      const restoring = await webhookDAL.countByEnvId(envId, tx);
+      if (restoring) {
+        resourceLimits.assertWithin({
+          limit: ResourceLimit.WebhooksPerProject,
+          used: await webhookDAL.countByProjectId(projectId, tx),
+          adding: restoring,
+          describe: (max) =>
+            `Restoring environment '${envSlug}' would bring its ${restoring} webhooks back and the project past the maximum of ${max} webhooks. Delete webhooks you no longer use before restoring it.`
+        });
+      }
+    }
+    if (resourceLimits.max(ResourceLimit.SecretRotationsPerProject) !== null) {
+      const restoring = await secretRotationV2DAL.countByEnvId(envId, tx);
+      if (restoring) {
+        resourceLimits.assertWithin({
+          limit: ResourceLimit.SecretRotationsPerProject,
+          used: await secretRotationV2DAL.countByProject(projectId, tx),
+          adding: restoring,
+          describe: (max) =>
+            `Restoring environment '${envSlug}' would bring its ${restoring} secret rotations back and the project past the maximum of ${max} secret rotations. Delete rotations you no longer use before restoring it.`
+        });
+      }
+    }
+    if (resourceLimits.max(ResourceLimit.ImportsPerFolder) !== null) {
+      const importingFolders = await secretImportDAL.countFromSourceEnvByFolder(envId, tx);
+      for await (const { folderId, count } of importingFolders) {
+        const used = await secretImportDAL.countByFolderId(folderId, tx);
+        resourceLimits.assertWithin({
+          limit: ResourceLimit.ImportsPerFolder,
+          used,
+          adding: count,
+          describe: (max) =>
+            `Restoring environment '${envSlug}' would bring back imports that read from it and take a folder past the maximum of ${max} secret imports. Remove imports from folders that import '${envSlug}' before restoring it.`
+        });
+      }
+    }
+  };
+
   const restoreEnvironment = async ({ projectId, actor, id }: TRestoreEnvDTO) => {
     const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
     permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Environments });
@@ -317,6 +377,9 @@ export const projectEnvServiceFactory = ({
         "true"
       );
 
+      const plan = await licenseService.getPlan(actor.org.id);
+      const resourceLimits = resourceLimitsForPlan(plan);
+
       const env = await projectEnvDAL.transaction(async (tx) => {
         const target = await projectEnvDAL.findByIdIncludingExpired(id, tx);
         if (!target || target.projectId !== projectId || !target.deleteAfter) {
@@ -342,15 +405,13 @@ export const projectEnvServiceFactory = ({
         }
 
         const activeEnvs = await projectEnvDAL.find({ projectId }, { tx });
-        // getProjectPermission above guarantees project existence and org membership,
-        // so actor.org.id === project.orgId, so no separate project lookup is needed.
-        const plan = await licenseService.getPlan(actor.org.id);
         if (plan.exceeds(PlanLimit.Environments, activeEnvs.length)) {
           throw new BadRequestError({
             message:
               "Failed to restore environment due to environment limit reached. Upgrade plan or remove an existing environment."
           });
         }
+        await $assertRestoreWithinLimits({ resourceLimits, projectId, envId: id, envSlug: target.slug }, tx);
         const lastPos = await projectEnvDAL.findLastEnvPosition(projectId, tx);
         const doc = await projectEnvDAL.restoreById(id, projectId, lastPos + 1, tx);
         if (!doc)

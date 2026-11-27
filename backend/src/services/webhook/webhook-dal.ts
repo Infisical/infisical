@@ -122,5 +122,14 @@ export const webhookDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...webhookOrm, findById, findOne, find, findAllWebhooks, bulkUpdate, countByProjectId };
+  const countByEnvId = async (envId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db.replicaNode())(TableName.Webhook).where({ envId }).count({ count: "id" });
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count webhooks by environment" });
+    }
+  };
+
+  return { ...webhookOrm, findById, findOne, find, findAllWebhooks, bulkUpdate, countByProjectId, countByEnvId };
 };

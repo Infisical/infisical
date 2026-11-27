@@ -63,7 +63,8 @@ export const importDataIntoInfisicalFn = async ({
           actor: projectActor,
           projectName: project.name,
           createDefaultEnvs: false,
-          tx
+          tx,
+          plan
         })
         .catch((e) => {
           logger.error(e, `Failed to import to project [name:${project.name}]`);

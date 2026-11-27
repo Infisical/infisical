@@ -73,7 +73,7 @@ import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { getResourceLimits, ResourceLimit } from "@app/lib/resource-limits";
+import { getResourceLimits, ResourceLimit, resourceLimitsForPlan } from "@app/lib/resource-limits";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor, TActorInput } from "@app/lib/types";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -310,6 +310,7 @@ export const projectServiceFactory = ({
     slug: projectSlug,
     kmsKeyId,
     tx: trx,
+    plan: callerPlan,
     createDefaultEnvs = true,
     template = InfisicalProjectTemplate.Default,
     type = ProjectType.SecretManager,
@@ -335,8 +336,8 @@ export const projectServiceFactory = ({
     }
 
     // Before the transaction: a plan cache miss calls the License Server.
-    const plan = await licenseService.getPlan(organization.id);
-    const resourceLimits = await getResourceLimits(licenseService, organization.id);
+    const plan = callerPlan ?? (await licenseService.getPlan(organization.id));
+    const resourceLimits = resourceLimitsForPlan(plan);
 
     const results = await (trx || projectDAL).transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(organization.id)]);

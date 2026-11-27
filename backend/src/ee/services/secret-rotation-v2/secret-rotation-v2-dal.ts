@@ -661,6 +661,18 @@ export const secretRotationV2DALFactory = (
     }
   };
 
+  const countByEnvId = async (envId: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db.replicaNode())(TableName.SecretRotationV2)
+        .join(TableName.SecretFolder, `${TableName.SecretRotationV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .where(`${TableName.SecretFolder}.envId`, envId)
+        .count({ count: `${TableName.SecretRotationV2}.id` });
+      return Number(doc?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count secret rotations by environment" });
+    }
+  };
+
   const countByProject = async (projectId: string, tx?: Knex) => {
     try {
       const result = await (tx || db.replicaNode())(TableName.SecretRotationV2)
@@ -695,6 +707,7 @@ export const secretRotationV2DALFactory = (
     findByProjectAndDateRange,
     findByProject,
     countByProject,
+    countByEnvId,
     findSecretRotationsToQueue
   };
 };

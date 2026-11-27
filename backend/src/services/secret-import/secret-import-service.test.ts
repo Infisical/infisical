@@ -189,6 +189,35 @@ describe("one import per source in a folder", () => {
     expect(secretImportDAL.update).not.toHaveBeenCalled();
   });
 
+  test("checks the source the update will save, read inside the transaction, not a stale first read", async () => {
+    // Setup
+    const fresh = { id: "import-2", importEnv: "env-prod", importPath: "/other" };
+    const stale = { id: "import-2", importEnv: "env-dev", importPath: "/other" };
+    const { service, secretImportDAL } = createService([
+      { id: "import-1", importEnv: "env-prod", importPath: "/shared" },
+      fresh
+    ]);
+    secretImportDAL.findOne.mockImplementation(async (_filter: object, tx?: unknown) => (tx ? fresh : stale));
+
+    // Action
+    const result = service.updateImport({
+      actor: actor as never,
+      projectId: PROJECT_ID,
+      environment: "dev",
+      path: "/app",
+      id: "import-2",
+      data: { path: "/shared" }
+    });
+
+    // Assert
+    await expect(result).rejects.toMatchObject({
+      name: "Conflict",
+      message:
+        "Folder '/app' already imports secrets from '/shared' in environment 'prod'. Use the existing import instead of adding another."
+    });
+    expect(secretImportDAL.update).not.toHaveBeenCalled();
+  });
+
   test("keeps an older duplicate editable when its source does not change", async () => {
     // Setup
     const { service, secretImportDAL } = createService([
