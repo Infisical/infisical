@@ -1,11 +1,9 @@
 import AgentIntroNote from "/snippets/agent-vault/slots/AgentIntroNote.mdx";
 import AgentPrereqLine from "/snippets/agent-vault/slots/AgentPrereqLine.mdx";
 import AgentLaunchCommand from "/snippets/agent-vault/slots/AgentLaunchCommand.mdx";
-import ServiceVerifyIntro from "/snippets/agent-vault/slots/ServiceVerifyIntro.mdx";
-import ServiceVerifyProse from "/snippets/agent-vault/slots/ServiceVerifyProse.mdx";
-import ServiceVerifyCurl from "/snippets/agent-vault/slots/ServiceVerifyCurl.mdx";
-import ServiceCheckCallout from "/snippets/agent-vault/slots/ServiceCheckCallout.mdx";
-import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
+import AgentLaunchNote from "/snippets/agent-vault/slots/AgentLaunchNote.mdx";
+import AgentDockerfile from "/snippets/agent-vault/slots/AgentDockerfile.mdx";
+import AgentDockerRun from "/snippets/agent-vault/slots/AgentDockerRun.mdx";
 
 This guide walks you through using Agent Vault to launch an agent that calls HTTP APIs and MCP servers without having access to their credentials.
 
@@ -16,11 +14,13 @@ This guide walks you through using Agent Vault to launch an agent that calls HTT
 <ul>
   <li>An [Agent Vault project](/documentation/platform/agent-vault/projects) where you have the [**Admin** role](/documentation/platform/agent-vault/access-control#product-membership)</li>
   <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) in the project, with a service for each API the agent calls (see the [quickstart](/documentation/platform/agent-vault/quickstart))</li>
-  <li>The [Infisical CLI](/cli/install) installed on the host that will run the Agent Vault proxy and on the host that will run the agent</li>
+  <li>The [Infisical CLI](/cli/install) installed on the host that will run the Agent Vault proxy and on the machine that will run the agent</li>
   <AgentPrereqLine />
 </ul>
 
-<SeparateMachinesNote />
+<Note>
+  Run the proxy on a different machine from the agent, on the same private network. If they run on the same machine, the agent can read the proxy token and the private key of the proxy's certificate authority. If they're on different networks, every request the agent makes takes longer.
+</Note>
 
 ## Step 1: Set up in Infisical
 
@@ -87,40 +87,62 @@ Next, create a [session](/documentation/platform/agent-vault/sessions) with your
 
 ## Step 2: Launch your agent
 
-On the host where the agent runs, paste the command you copied in the previous step. Replace `<proxy-host>` with your host's actual domain or IP address, and `<agent-command>` with your agent's own command.
-
-<AgentLaunchCommand />
-
-<Tip>
-  Instead of passing `--session-token` and `--proxy`, you can set the [`INFISICAL_AGENT_VAULT_SESSION_TOKEN` and `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` environment variables](/cli/reference#agent-vault-run).
-</Tip>
-
-The CLI adds the proxy's certificate authority to the agent process' trusted CAs and starts the agent with its HTTP traffic routed through the proxy. Any calls to services in your access bundle leave the proxy with the real credential attached, while calls to any other host go out normally.
-
-<Note>
-  On macOS, you'll need to enter your user password when running your agent for the first time. This is because macOS needs your approval to add the proxy's certificate to your keychain.
-</Note>
-
-## Step 3: Verify it works
-
-<ServiceVerifyIntro />
+Start the agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), which sends the agent's HTTP traffic through the proxy. Calls to services in your access bundle leave the proxy with the real credential attached.
 
 <Tabs>
-  <Tab title="With your agent">
-    In your running agent's session, ask it to make the call. For example:
+  <Tab title="Shell">
+    <AgentLaunchCommand />
 
-    <ServiceVerifyProse />
+    If you run the agent on a server over SSH, start it inside a [`tmux`](https://github.com/tmux/tmux/wiki/Installing) session, so it keeps running after you disconnect.
   </Tab>
-  <Tab title="With `curl`">
-    Any HTTP client works the same way. Run it through the proxy in place of your agent's command:
+  <Tab title="Docker">
+    This tab needs [Docker](https://docs.docker.com/get-started/get-docker/) on the machine that runs the agent, and a service in your access bundle for your model provider's key. The image installs the Infisical CLI and the agent, so the machine doesn't need them.
+    <Steps>
+      <Step>
+        In a new directory, create a `Dockerfile` with the Infisical CLI and the agent. Replace `<cli-version>` with the latest version from the [CLI releases](https://github.com/Infisical/cli/releases).
 
-    <ServiceVerifyCurl />
+        <AgentDockerfile />
+      </Step>
+      <Step>
+        Build the image:
 
-    The proxy logs the request as `brokered`.
+        ```bash
+        docker build -t agent-vault-agent .
+        ```
+      </Step>
+      <Step>
+        <AgentDockerRun />
+      </Step>
+    </Steps>
+
+    The [Docker guide](/documentation/platform/agent-vault/guides/docker) starts a new container for each task instead, with no internet access except through the proxy.
   </Tab>
 </Tabs>
 
-<ServiceCheckCallout />
+<AgentLaunchNote />
+
+## Step 3: Verify it works
+
+To check that the proxy attaches credentials, call an authenticated endpoint of a service in your access bundle, such as an endpoint that returns your account. Make the call one of two ways:
+
+<Tabs>
+  <Tab title="With your agent">
+    In your agent's session, ask it to make the call. For example:
+
+    > Run `curl -sS <endpoint-url>` and show me the output.
+
+    The API responds, even though the agent has no API key for it. If you run the same command outside the agent, it fails with an authentication error.
+  </Tab>
+  <Tab title="With `curl`">
+    Run `curl` through the proxy in place of your agent's command:
+
+    ```bash
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- curl -sS <endpoint-url>
+    ```
+
+    The API responds, and the proxy logs the request as `brokered`.
+  </Tab>
+</Tabs>
 
 ## Troubleshooting
 

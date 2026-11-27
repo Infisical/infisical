@@ -1,0 +1,95 @@
+import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
+
+<AgentVaultBranch agent="claude-code">
+  Start Claude Code in a container. Replace `<session-token>` with the session token from the command you copied, and `<proxy-host>` with the address of the proxy's host:
+
+  ```bash
+  docker run -it --rm \
+    -v claude-code-home:/home/node \
+    -e INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token> \
+    -e INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323 \
+    -e ANTHROPIC_API_KEY=agent-vault \
+    agent-vault-agent
+  ```
+
+  `ANTHROPIC_API_KEY` holds a placeholder, which the proxy replaces with the key from your access bundle's Anthropic service. When Claude Code asks whether to use this API key, choose to use it. The `claude-code-home` volume keeps Claude Code's settings between runs.
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="codex">
+  Codex doesn't read an API key from the environment, so save a placeholder key in a volume first:
+
+  ```bash
+  echo agent-vault | docker run -i --rm \
+    -v codex-home:/home/node \
+    --entrypoint codex \
+    agent-vault-agent login --with-api-key
+  ```
+
+  The proxy replaces the placeholder with the key from your access bundle's OpenAI service.
+
+  Then start Codex in a container with the same volume. Replace `<session-token>` with the session token from the command you copied, and `<proxy-host>` with the address of the proxy's host:
+
+  ```bash
+  docker run -it --rm \
+    -v codex-home:/home/node \
+    -e INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token> \
+    -e INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323 \
+    agent-vault-agent
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="opencode">
+  Start OpenCode in a container. Replace `<session-token>` with the session token from the command you copied, and `<proxy-host>` with the address of the proxy's host:
+
+  ```bash
+  docker run -it --rm \
+    -v opencode-home:/home/node \
+    -e INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token> \
+    -e INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323 \
+    -e ANTHROPIC_API_KEY=agent-vault \
+    agent-vault-agent
+  ```
+
+  `ANTHROPIC_API_KEY` holds a placeholder, which the proxy replaces with the key from your access bundle's Anthropic service. If you use another model provider, set that provider's variable instead, such as `OPENAI_API_KEY`. The `opencode-home` volume keeps OpenCode's settings between runs.
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="openclaw">
+  OpenClaw needs a model provider before it starts, so onboard it first, with a placeholder as the provider's key. This example uses Anthropic. Replace `<session-token>` with the session token from the command you copied, and `<proxy-host>` with the address of the proxy's host:
+
+  ```bash
+  docker run -it --rm \
+    -v openclaw-home:/home/node \
+    -e INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token> \
+    -e INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323 \
+    agent-vault-agent openclaw onboard --non-interactive --accept-risk --mode local \
+      --auth-choice apiKey --anthropic-api-key agent-vault \
+      --skip-channels --skip-daemon --skip-health --skip-hooks
+  ```
+
+  The proxy replaces the placeholder with the key from your access bundle's Anthropic service. For another provider, `openclaw onboard --help` lists its `--auth-choice` value and key flag.
+
+  Then start OpenClaw with the same volume:
+
+  ```bash
+  docker run -it --rm \
+    -v openclaw-home:/home/node \
+    -e INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token> \
+    -e INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323 \
+    agent-vault-agent
+  ```
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="hermes">
+  Start Hermes in a container. This example uses Anthropic. Replace `<session-token>` with the session token from the command you copied, and `<proxy-host>` with the address of the proxy's host:
+
+  ```bash
+  docker run -it --rm \
+    -v hermes-home:/home/hermes/.hermes \
+    -e INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token> \
+    -e INFISICAL_AGENT_VAULT_PROXY_ADDRESS=<proxy-host>:17323 \
+    -e ANTHROPIC_API_KEY=agent-vault \
+    agent-vault-agent hermes --tui --provider anthropic
+  ```
+
+  `ANTHROPIC_API_KEY` holds a placeholder, which the proxy replaces with the key from your access bundle's Anthropic service. For another provider, set that provider's key variable and `--provider` instead. The `hermes-home` volume keeps Hermes's settings between runs.
+</AgentVaultBranch>
