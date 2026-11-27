@@ -115,6 +115,73 @@ export const formatResourceCount = (resources: { dataSourceType: SecretScanningD
   return `in ${resources.length} ${resources.length === 1 ? singularNoun : pluralNoun}`;
 };
 
+// Rule ids are lowercase slugs, so acronyms and brand names lose their casing; these words get it back.
+const RULE_WORDS: Record<string, string> = {
+  "1password": "1Password",
+  ad: "AD",
+  api: "API",
+  aws: "AWS",
+  ci: "CI",
+  circleci: "CircleCI",
+  clickhouse: "ClickHouse",
+  curl: "cURL",
+  digitalocean: "DigitalOcean",
+  droneci: "Drone CI",
+  easypost: "EasyPost",
+  frameio: "Frame.io",
+  freshbooks: "FreshBooks",
+  gcp: "GCP",
+  github: "GitHub",
+  gitlab: "GitLab",
+  gocardless: "GoCardless",
+  hashicorp: "HashiCorp",
+  hubspot: "HubSpot",
+  huggingface: "Hugging Face",
+  id: "ID",
+  jfrog: "JFrog",
+  jwt: "JWT",
+  launchdarkly: "LaunchDarkly",
+  linkedin: "LinkedIn",
+  messagebird: "MessageBird",
+  mongodb: "MongoDB",
+  npm: "npm",
+  nuget: "NuGet",
+  oauth: "OAuth",
+  openai: "OpenAI",
+  pat: "Personal Access Token",
+  pkcs12: "PKCS#12",
+  planetscale: "PlanetScale",
+  posthog: "PostHog",
+  privateai: "Private AI",
+  ptt: "Pipeline Trigger Token",
+  pypi: "PyPI",
+  rapidapi: "RapidAPI",
+  readme: "ReadMe",
+  rrt: "Runner Registration Token",
+  rubygems: "RubyGems",
+  sendgrid: "SendGrid",
+  settlemint: "SettleMint",
+  ssh: "SSH",
+  sumologic: "Sumo Logic",
+  tf: "Terraform",
+  travisci: "Travis CI",
+  uri: "URI",
+  url: "URL",
+  yaml: "YAML"
+};
+
+export const formatSecretScanningRule = (rule: string) =>
+  rule
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => {
+      const known = RULE_WORDS[word.toLowerCase()];
+      if (known) return known;
+      return word === word.toLowerCase() ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+    })
+    .join(" ")
+    .replace("Fine Grained", "Fine-Grained");
+
 export const SECRET_SCANNING_FINDING_STATUS_MAP: Record<
   SecretScanningFindingStatus,
   {

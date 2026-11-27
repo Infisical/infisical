@@ -126,7 +126,7 @@ const LocationDetails = ({
         <DetailValue>{formatDate(location.createdAt)}</DetailValue>
       </Detail>
       <Detail>
-        <DetailLabel>Rule</DetailLabel>
+        <DetailLabel>Rule ID</DetailLabel>
         <DetailValue>{location.rule}</DetailValue>
       </Detail>
       {details.tags?.length > 0 && (

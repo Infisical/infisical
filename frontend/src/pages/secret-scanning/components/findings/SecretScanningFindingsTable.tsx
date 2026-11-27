@@ -48,6 +48,7 @@ import {
 import {
   formatLocationCount,
   formatResourceCount,
+  formatSecretScanningRule,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_FINDING_STATUS_MAP,
   SECRET_SCANNING_FINDING_STATUS_ORDER
@@ -516,7 +517,7 @@ export const SecretScanningFindingsTable = ({
                       >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
-                            aria-label={`Select finding ${finding.rule}`}
+                            aria-label={`Select finding ${formatSecretScanningRule(finding.rule)}`}
                             isChecked={isSelected}
                             isDisabled={isPlaceholderData}
                             onCheckedChange={() =>
@@ -528,7 +529,9 @@ export const SecretScanningFindingsTable = ({
                             }
                           />
                         </TableCell>
-                        <TableCell isTruncatable>{finding.rule}</TableCell>
+                        <TableCell isTruncatable>
+                          {formatSecretScanningRule(finding.rule)}
+                        </TableCell>
                         <TableCell>
                           <p className="whitespace-nowrap">
                             {formatLocationCount(finding.locationCount)}

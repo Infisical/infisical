@@ -27,7 +27,7 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { formatLocationCount } from "@app/helpers/secretScanningV2";
+import { formatLocationCount, formatSecretScanningRule } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
@@ -143,7 +143,7 @@ export const FindingDetailSheet = ({
                 </IconButton>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle>{finding.rule}</SheetTitle>
+                <SheetTitle>{formatSecretScanningRule(finding.rule)}</SheetTitle>
                 <FindingStatusBadge status={finding.status} />
               </div>
               {latestLocation && (
