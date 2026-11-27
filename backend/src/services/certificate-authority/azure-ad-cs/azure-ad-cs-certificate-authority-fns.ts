@@ -41,6 +41,12 @@ import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-ut
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -670,7 +676,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
 
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(azureAdcsConnectionId, AppConnection.AzureADCS);
     }
 
     if (appConnection.app !== AppConnection.AzureADCS) {
@@ -711,16 +717,14 @@ export const AzureAdCsCertificateAuthorityFns = ({
       } catch (error) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAzureAdCsCertificateAuthority(caEntity);
@@ -745,7 +749,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
 
       if (!appConnection) {
-        throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(azureAdcsConnectionId, AppConnection.AzureADCS);
       }
 
       if (appConnection.app !== AppConnection.AzureADCS) {
@@ -757,7 +761,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
       const ca = await certificateAuthorityDAL.findById(id);
 
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await appConnectionService.validateAppConnectionUsageById(

@@ -10,7 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
-	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,9 +119,25 @@ func TestCertificate_Issue(t *testing.T) {
 		require.Zero(t, pki.Requests(t, p, profile))
 	})
 
-	t.Run("should refuse another organization issuing through the profile", func(t *testing.T) {
+	t.Run("should answer 404 naming the profile ID when the profile does not exist", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, crossOrgWhy)
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		missing := pki.Profile{ID: uuid.New()}
+
+		// Action
+		res := pki.Request(t, g.Operator, g.App, missing, pki.ServerCertificate(id.Short()+".missing.test"))
+
+		// Assert
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "Certificate profile with ID '"+missing.ID.String()+"' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID.", apierr.Message(res.Body))
+		require.Zero(t, pki.Requests(t, g.Project, g.Profile))
+	})
+
+	t.Run("should answer another organization's profile like a missing one", func(t *testing.T) {
+		t.Parallel()
 
 		// Setup
 		owner, other := h.NewTenant(t), h.NewTenant(t)
@@ -131,8 +147,8 @@ func TestCertificate_Issue(t *testing.T) {
 		res := pki.Request(t, other.Admin, g.App, g.Profile, pki.ServerCertificate(id.Short()+".cross.test"))
 
 		// Assert
-		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
-		require.Equal(t, "This project does not belong to your selected organization.", apierr.Message(res.Body))
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Equal(t, "Certificate profile with ID '"+g.Profile.ID.String()+"' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, g.Project, g.Profile))
 	})
 }

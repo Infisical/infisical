@@ -48,8 +48,11 @@ import {
   PKI_TEXT_COLUMN_MAX_LENGTH,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "../../certificate-common/certificate-constants";
+import { parseCsr } from "../../certificate-common/certificate-csr-utils";
+import { invalidCsrAltNameError } from "../../certificate-common/certificate-errors";
 import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
+import { assertPkiResourceInActorOrg } from "../../certificate-common/pki-org-scope-fns";
 import { TCertificateProfileDALFactory } from "../../certificate-profile/certificate-profile-dal";
 import { TCertificateTemplateDALFactory } from "../../certificate-template/certificate-template-dal";
 import { validateCertificateDetailsAgainstTemplate } from "../../certificate-template/certificate-template-fns";
@@ -74,7 +77,18 @@ import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-conf
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
-import { CaCrlRegenerationTrigger, CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
+import {
+  caCertNotInstalledError,
+  caExpiredError,
+  caNotActiveError,
+  caNotFoundError,
+  caTypeMismatchError,
+  certNotAfterAfterCaError,
+  duplicateCaNameError,
+  invalidAltNameError,
+  notBeforeBeforeCaError
+} from "../certificate-authority-errors";
 import {
   assertCaValidityDates,
   assertNoCertificateProfilesUsingCa,
@@ -205,6 +219,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
+
+  const $assertCaInActorOrg = (ca: { projectId: string }, caId: string, actorOrgId: string) =>
+    assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
 
   const $getProjectOrgId = async (projectId: string, tx?: Knex) => {
     const project = await projectDAL.findById(projectId, tx);
@@ -486,9 +508,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         if (name) {
           const existingCa = await certificateAuthorityDAL.findOne({ projectId, name });
           if (existingCa) {
-            throw new BadRequestError({
-              message: `A certificate authority named "${name}" already exists in this project.`
-            });
+            throw duplicateCaNameError(name);
           }
         }
 
@@ -604,9 +624,7 @@ export const internalCertificateAuthorityServiceFactory = ({
               error instanceof DatabaseError &&
               (error.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
             ) {
-              throw new BadRequestError({
-                message: `A certificate authority named "${resolvedCaName}" already exists.`
-              });
+              throw duplicateCaNameError(resolvedCaName);
             }
             throw error;
           });
@@ -690,7 +708,8 @@ export const internalCertificateAuthorityServiceFactory = ({
    */
   const getCaById = async ({ caId, actor }: TGetCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -721,9 +740,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     ...dto
   }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     if (!dto.isInternal) {
+      await $assertCaInActorOrg(ca, caId, dto.actor.org.id);
       const permission = await projectPermissionService.getProjectPermission({
         actor: dto.actor,
         projectId: ca.projectId,
@@ -736,6 +755,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         fields: { name: ca.name }
       });
     }
+
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     // Gating creation alone would let an org create a CA with no distribution points and patch them in.
     // Keyed on newly added URLs, so keeping, reordering, or clearing the existing set stays open, as does
@@ -815,7 +836,8 @@ export const internalCertificateAuthorityServiceFactory = ({
    */
   const deleteCaById = async ({ caId, actor }: TDeleteCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -848,10 +870,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     const { caId, maxPathLength } = params;
     const isInternal = "isInternal" in params && params.isInternal === true;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
-
     if (!isInternal) {
       const { actor } = params;
+      await $assertCaInActorOrg(ca, caId, actor.org.id);
       const permission = await projectPermissionService.getProjectPermission({
         actor,
         projectId: ca.projectId,
@@ -864,6 +885,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         fields: { name: ca.name }
       });
     }
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
@@ -910,7 +932,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     const isInternal = "isInternal" in rest && rest.isInternal === true;
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!isInternal) await $assertCaInActorOrg(ca, caId, actor!.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
@@ -1175,7 +1198,8 @@ export const internalCertificateAuthorityServiceFactory = ({
 
   const getCaCerts = async ({ caId, actor }: TGetCaCertsDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -1230,7 +1254,8 @@ export const internalCertificateAuthorityServiceFactory = ({
    */
   const getCaCert = async ({ caId, actor }: TGetCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
@@ -1321,7 +1346,8 @@ export const internalCertificateAuthorityServiceFactory = ({
 
   const getCaCertByIdWithAuth = async ({ caId, certId, actor }: TGetCaCertByIdDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -1449,10 +1475,10 @@ export const internalCertificateAuthorityServiceFactory = ({
     const isInternal = "isInternal" in params && params.isInternal === true;
     const appCfg = getConfig();
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: "CA not found" });
 
     if (!isInternal) {
       const { actor } = params;
+      await $assertCaInActorOrg(ca, caId, actor.org.id);
       const permission = await projectPermissionService.getProjectPermission({
         actor,
         projectId: ca.projectId,
@@ -1466,16 +1492,21 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
-    if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
-    if (!ca.internalCa.activeCaCertId)
-      throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
+
+    if (ca.status === CaStatus.DISABLED) {
+      throw new BadRequestError({
+        message: `Certificate authority '${ca.name}' is disabled. Enable it before signing an intermediate certificate.`
+      });
+    }
+    if (!ca.internalCa.activeCaCertId) throw caCertNotInstalledError(ca.name);
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
     if (ca.internalCa.notAfter && new Date() > new Date(ca.internalCa.notAfter)) {
-      throw new BadRequestError({ message: "CA is expired" });
+      throw caExpiredError(ca.name, ca.internalCa.notAfter);
     }
 
     const certificateManagerKmsId = await kmsDataKeyService.getProjectCertificateKmsKeyId(ca.projectId);
@@ -1488,18 +1519,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
-    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+    const csrObj = parseCsr(csr);
 
     // check path length constraint
     const caPathLength = caCertObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
     if (caPathLength !== undefined) {
       if (caPathLength === 0)
         throw new BadRequestError({
-          message: "Failed to issue intermediate certificate due to CA path length constraint"
+          message: `Certificate authority '${ca.name}' has a path length of 0, so it cannot sign intermediate certificates. Sign with a CA that allows a longer path.`
         });
       if (maxPathLength >= caPathLength || (maxPathLength === -1 && caPathLength !== -1))
         throw new BadRequestError({
-          message: "The requested path length constraint exceeds the CA's allowed path length"
+          message: `The requested maxPathLength (${maxPathLength}) must be less than the path length of certificate authority '${ca.name}' (${caPathLength}).`
         });
     }
 
@@ -1511,14 +1542,16 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check not before constraint
     if (notBeforeDate < caCertNotBeforeDate) {
-      throw new BadRequestError({ message: "notBefore date is before CA certificate's notBefore date" });
+      throw notBeforeBeforeCaError(notBeforeDate, caCertNotBeforeDate);
     }
 
     assertCaValidityDates(notAfter, notBefore);
 
     // check not after constraint
     if (notAfterDate > caCertNotAfterDate) {
-      throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
+      throw new BadRequestError({
+        message: `notAfter (${notAfterDate.toISOString()}) is after the CA certificate's notAfter (${caCertNotAfterDate.toISOString()}). Choose a notAfter on or before it.`
+      });
     }
 
     const { caSecret, signer } = await getCaSigner({
@@ -1589,10 +1622,9 @@ export const internalCertificateAuthorityServiceFactory = ({
         ? params.crlRegenerationTrigger
         : CaCrlRegenerationTrigger.CaCertificateImport;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
-
     if (!isInternal) {
       const { actor } = params;
+      await $assertCaInActorOrg(ca, caId, actor.org.id);
       const permission = await projectPermissionService.getProjectPermission({
         actor,
         projectId: ca.projectId,
@@ -1605,6 +1637,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         fields: { name: ca.name }
       });
     }
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     if (ca.internalCa.type === InternalCaType.ROOT) {
       throw new BadRequestError({
@@ -1750,9 +1783,13 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      await certificateAuthorityDAL.updateById(ca.id, {
-        status: CaStatus.ACTIVE
-      });
+      await certificateAuthorityDAL.updateById(
+        ca.id,
+        {
+          status: CaStatus.ACTIVE
+        },
+        tx
+      );
 
       await internalCertificateAuthorityDAL.update(
         {
@@ -1801,10 +1838,12 @@ export const internalCertificateAuthorityServiceFactory = ({
     actor: TActorContext;
   }) => {
     const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!intermediateCa.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(intermediateCa, caId, actor.org.id);
+    if (!intermediateCa.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId);
-    if (!parentCa.internalCa) throw new NotFoundError({ message: `Parent CA with ID '${parentCaId}' not found` });
+    await $assertCaInActorOrg(parentCa, parentCaId, actor.org.id);
+    if (!parentCa.internalCa?.id) throw caTypeMismatchError(parentCaId, CaType.INTERNAL);
 
     if (intermediateCa.projectId !== parentCa.projectId) {
       throw new ForbiddenRequestError({ message: "Intermediate and Parent CA must belong to the same project" });
@@ -1993,9 +2032,8 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const projectOrgId = !internal && actor ? actor.org.id : await $getProjectOrgId(ca.projectId);
 
-    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
-    if (!ca.internalCa.activeCaCertId)
-      throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (ca.status !== CaStatus.ACTIVE) throw caNotActiveError(ca.name, ca.status);
+    if (!ca.internalCa.activeCaCertId) throw caCertNotInstalledError(ca.name);
     if (!isFromProfile && !ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
@@ -2003,7 +2041,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
     if (ca.internalCa.notAfter && new Date() > new Date(ca.internalCa.notAfter)) {
-      throw new BadRequestError({ message: "CA is expired" });
+      throw caExpiredError(ca.name, ca.internalCa.notAfter);
     }
 
     // check PKI collection
@@ -2038,14 +2076,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check not before constraint
     if (notBeforeDate < caCertNotBeforeDate) {
-      throw new BadRequestError({ message: "notBefore date is before CA certificate's notBefore date" });
+      throw notBeforeBeforeCaError(notBeforeDate, caCertNotBeforeDate);
     }
 
     if (notBeforeDate > notAfterDate) throw new BadRequestError({ message: "notBefore date is after notAfter date" });
 
     // check not after constraint
     if (notAfterDate > caCertNotAfterDate) {
-      throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
+      throw certNotAfterAfterCaError(notAfterDate, caCertNotAfterDate);
     }
 
     const effectiveKeyAlgorithm =
@@ -2208,7 +2246,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         .map((altName): TAltNameMapping => {
           const altNameType = validateAndMapAltNameType(altName);
           if (!altNameType) {
-            throw new Error(`Invalid altName: ${altName}`);
+            throw invalidAltNameError(altName);
           }
           return altNameType;
         });
@@ -2432,9 +2470,8 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId) : dto.actor.org.id;
 
-    if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
-    if (!ca.internalCa.activeCaCertId)
-      throw new BadRequestError({ message: "CA does not have a certificate installed" });
+    if (ca.status !== CaStatus.ACTIVE) throw caNotActiveError(ca.name, ca.status);
+    if (!ca.internalCa.activeCaCertId) throw caCertNotInstalledError(ca.name);
     if (!dto.isFromProfile && !ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
@@ -2442,7 +2479,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId);
 
     if (ca.internalCa.notAfter && new Date() > new Date(ca.internalCa.notAfter)) {
-      throw new BadRequestError({ message: "CA is expired" });
+      throw caExpiredError(ca.name, ca.internalCa.notAfter);
     }
 
     // check PKI collection
@@ -2480,14 +2517,14 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check not before constraint
     if (notBeforeDate < caCertNotBeforeDate) {
-      throw new BadRequestError({ message: "notBefore date is before CA certificate's notBefore date" });
+      throw notBeforeBeforeCaError(notBeforeDate, caCertNotBeforeDate);
     }
 
     if (notBeforeDate > notAfterDate) throw new BadRequestError({ message: "notBefore date is after notAfter date" });
 
     // check not after constraint
     if (notAfterDate > caCertNotAfterDate) {
-      throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
+      throw certNotAfterAfterCaError(notAfterDate, caCertNotAfterDate);
     }
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
@@ -2666,7 +2703,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         .map((altName): TAltNameMapping => {
           const altNameType = validateAndMapAltNameType(altName);
           if (!altNameType) {
-            throw new Error(`Invalid altName: ${altName}`);
+            throw invalidAltNameError(altName);
           }
           return altNameType;
         });
@@ -2685,7 +2722,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
             const altNameType = validateAndMapAltNameType(name.value);
             if (!altNameType) {
-              throw new Error(`Invalid altName from CSR: ${name.value}`);
+              throw invalidCsrAltNameError(name.value);
             }
             return altNameType;
           });
@@ -2849,7 +2886,8 @@ export const internalCertificateAuthorityServiceFactory = ({
    */
   const getCaCertificateTemplates = async ({ caId, actor }: TGetCaCertificateTemplatesDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
 
     const permission = await projectPermissionService.getProjectPermission({
       actor,
@@ -2879,7 +2917,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     actor
   }: TGenerateRootCaCertificateDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    await $assertCaInActorOrg(ca, caId, actor.org.id);
+    if (!ca.internalCa?.id) throw caTypeMismatchError(caId, CaType.INTERNAL);
     if (ca.internalCa.type !== InternalCaType.ROOT) {
       throw new BadRequestError({ message: "Certificate generation is only available for root CAs" });
     }

@@ -66,14 +66,14 @@ const buildPolicySubjectSchema = (
   const domainComponentListSchema = maxSequences ? sequenceList.max(maxSequences) : sequenceList;
 
   const singleValuedSchema = z.object({
-    type: singleValuedAttributeTypeSchema,
-    allowed: z.array(valueSchema).optional(),
-    required: z.array(valueSchema).optional(),
-    denied: z.array(valueSchema).optional()
+    type: singleValuedAttributeTypeSchema.describe(CERTIFICATE_POLICIES.subjectType),
+    allowed: z.array(valueSchema).optional().describe(CERTIFICATE_POLICIES.subjectAllowed),
+    required: z.array(valueSchema).optional().describe(CERTIFICATE_POLICIES.subjectRequired),
+    denied: z.array(valueSchema).optional().describe(CERTIFICATE_POLICIES.subjectDenied)
   });
 
   const domainComponentSchemaShape = z.object({
-    type: z.literal(CertSubjectAttributeType.DOMAIN_COMPONENT),
+    type: z.literal(CertSubjectAttributeType.DOMAIN_COMPONENT).describe(CERTIFICATE_POLICIES.subjectType),
     allowed: domainComponentListSchema.optional().describe(CERTIFICATE_POLICIES.SUBJECT_DOMAIN_COMPONENT_RULE.allowed),
     required: domainComponentListSchema
       .optional()
@@ -132,9 +132,12 @@ const policyExtendedKeyUsagesSchema = z
 
 export const policyCustomExtensionSchema = z
   .object({
-    oid: certificateExtensionOidSchema,
-    label: customExtensionLabelSchema.optional(),
-    critical: z.nativeEnum(CertExtensionCriticality).optional(),
+    oid: certificateExtensionOidSchema.describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.oid),
+    label: customExtensionLabelSchema.optional().describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.label),
+    critical: z
+      .nativeEnum(CertExtensionCriticality)
+      .optional()
+      .describe(CERTIFICATE_POLICIES.CUSTOM_EXTENSION_RULE.critical),
     allowed: z
       .array(customExtensionValueSchema)
       .optional()

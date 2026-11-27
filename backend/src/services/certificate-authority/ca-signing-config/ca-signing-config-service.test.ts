@@ -47,7 +47,8 @@ const EXTERNAL_TYPES = [CaSigningConfigType.Venafi, CaSigningConfigType.AzureAdC
 const buildService = ({
   existing = null as null | { id: string; type: string },
   validatorThrows = false,
-  plan = { pkiEnterpriseCaIntegrations: true }
+  plan = { pkiEnterpriseCaIntegrations: true },
+  caProjectOrgId = ACTOR_ORG_ID
 } = {}) => {
   const caSigningConfigDAL = {
     create: vi.fn(async (data: Record<string, unknown>) => ({ id: "cfg-new", ...data })),
@@ -83,6 +84,9 @@ const buildService = ({
       findOne: vi.fn(async () => ({ id: "internal-ca-1", type: InternalCaType.INTERMEDIATE })),
       updateById: vi.fn()
     },
+    projectDAL: {
+      findById: vi.fn(async () => ({ id: CA_PROJECT_ID, orgId: caProjectOrgId }))
+    },
     projectPermissionService: {
       getProjectPermission: vi.fn(async () =>
         Permission.fromRules({
@@ -105,8 +109,32 @@ const buildService = ({
   };
 
   const service = caSigningConfigServiceFactory(deps as unknown as Parameters<typeof caSigningConfigServiceFactory>[0]);
-  return { service, caSigningConfigDAL, appConnectionService, licenseService };
+  return {
+    service,
+    caSigningConfigDAL,
+    appConnectionService,
+    licenseService,
+    projectPermissionService: deps.projectPermissionService
+  };
 };
+
+describe("CA in another organization", () => {
+  test("answers like a missing CA before checking permissions", async () => {
+    const { service, projectPermissionService, caSigningConfigDAL } = buildService({ caProjectOrgId: "org-2" });
+
+    await expect(
+      service.createSigningConfig({
+        caId: "ca-1",
+        type: CaSigningConfigType.Venafi,
+        appConnectionId: CONNECTION_ID,
+        destinationConfig: DESTINATION[CaSigningConfigType.Venafi] as never,
+        ...actorFields
+      })
+    ).rejects.toThrow("Certificate authority with ID 'ca-1' not found.");
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(caSigningConfigDAL.create).not.toHaveBeenCalled();
+  });
+});
 
 describe("createSigningConfig connection checks", () => {
   beforeEach(() => vi.clearAllMocks());

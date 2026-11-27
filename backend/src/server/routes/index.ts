@@ -1997,7 +1997,8 @@ export const registerRoutes = async (
   const certificatePolicyService = certificatePolicyServiceFactory({
     projectPermissionService,
     applicationPermissionService,
-    certificatePolicyDAL
+    certificatePolicyDAL,
+    projectDAL
   });
 
   const pkiApplicationService = pkiApplicationServiceFactory({
@@ -4077,6 +4078,7 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
+    projectDAL,
     licenseService,
     appConnectionService,
     caAutoRenewalQueue

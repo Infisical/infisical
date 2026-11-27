@@ -48,6 +48,7 @@ import {
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { joinPolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
@@ -1108,7 +1109,7 @@ export const pkiAcmeServiceFactory = ({
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
-      throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+      throw new AcmeBadCSRError({ message: `Invalid CSR: ${joinPolicyViolations(validationResult.errors)}` });
     }
     assertAcmeCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
@@ -1345,7 +1346,7 @@ export const pkiAcmeServiceFactory = ({
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
-              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${joinPolicyViolations(validationResult.errors)}` });
             }
             assertAcmeCaSupportsCustomExtensions(
               finalizeCaType,

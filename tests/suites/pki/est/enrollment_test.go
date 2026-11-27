@@ -221,7 +221,7 @@ func TestEstEnrollment_SimpleEnroll(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
-		require.Equal(t, "Certificate request validation failed: dns_name SAN value 'x.denied.test' does not match allowed patterns: *.allowed.test", apierr.Message(res.Body))
+		require.Equal(t, "Certificate request does not meet the certificate policy: dns_name SAN value 'x.denied.test' does not match allowed patterns: '*.allowed.test'.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, p.Project, p.Profile))
 	})
 }
