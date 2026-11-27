@@ -52,6 +52,10 @@ import { useProjectScope } from "./scope";
 
 import accessStyles from "../access.module.css";
 
+type RestrictedRow = { restrictedId: string };
+type IdentityRow = ProjectIdentityMembership | RestrictedRow;
+const isRestricted = (row: IdentityRow): row is RestrictedRow => "restrictedId" in row;
+
 const useDebounced = <T,>(value: T, delay = 300) => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -94,6 +98,15 @@ export const ProjectIdentitiesTab = () => {
   });
   const rows = data?.identityMemberships ?? [];
   const totalCount = data?.totalCount ?? 0;
+  const restrictedCount = isPending
+    ? 0
+    : Math.max(Math.min(perPage, totalCount - (page - 1) * perPage) - rows.length, 0);
+  const tableRows: IdentityRow[] = [
+    ...rows,
+    ...Array.from({ length: restrictedCount }, (_, index) => ({
+      restrictedId: `restricted-${index}`
+    }))
+  ];
 
   useEffect(() => {
     if (!isPending && page > 1 && (page - 1) * perPage >= totalCount)
@@ -122,13 +135,14 @@ export const ProjectIdentitiesTab = () => {
   const can = (action: ProjectPermissionIdentityActions, identityId: string) =>
     permission.can(action, identitySubject(identityId));
 
-  const columns: DataTableColumn<ProjectIdentityMembership>[] = [
+  const columns: DataTableColumn<IdentityRow>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
       grow: true,
       render: (row) => {
+        if (isRestricted(row)) return false;
         const lockout = lockoutText(row.identity);
         return (
           <RowLink
@@ -149,17 +163,18 @@ export const ProjectIdentitiesTab = () => {
       id: "role",
       header: `${accessLabel(scope.projectType, "role")}`,
       grow: true,
-      render: (row) => <RoleBadges roles={row.roles} />
+      render: (row) => !isRestricted(row) && <RoleBadges roles={row.roles} />
     },
     {
       id: "managed",
       header: "Managed by",
-      render: (row) => <ManagedByBadge identity={row.identity} />
+      render: (row) => !isRestricted(row) && <ManagedByBadge identity={row.identity} />
     }
   ];
 
-  const rowActions: DataTableRowActions<ProjectIdentityMembership> = {
+  const rowActions: DataTableRowActions<IdentityRow> = {
     renderMenu: (row) => {
+      if (isRestricted(row)) return null;
       const { identity } = row;
       let removeReason: string | undefined;
       if (!can(ProjectPermissionIdentityActions.Delete, identity.id)) removeReason = RESTRICTED;
@@ -281,11 +296,12 @@ export const ProjectIdentitiesTab = () => {
       <DataTable
         filtered={searching}
         label={`${accessLabel(scope.projectType, "machine identities")}`}
-        rows={rows}
+        rows={tableRows}
         columns={columns}
         rowActions={rowActions}
-        getRowId={(row) => row.identity.id}
-        rowLabel={(row) => row.identity.name}
+        getRowId={(row) => (isRestricted(row) ? row.restrictedId : row.identity.id)}
+        rowLabel={(row) => (isRestricted(row) ? "Restricted machine identity" : row.identity.name)}
+        getRowRestricted={(row) => (isRestricted(row) ? "Restricted machine identity" : undefined)}
         loading={isPending}
         loadingRows={10}
         sort={sort}

@@ -176,7 +176,7 @@ export const GatewaysPanel = ({
             dropFirst: true,
             render: (gateway: TGatewayV2) => {
               const memberOf = poolsByGateway.get(gateway.id) ?? [];
-              if (!memberOf.length) return <span aria-label="No pools">-</span>;
+              if (!memberOf.length) return null;
               return (
                 <Inline gap={4} wrap>
                   {memberOf.map((pool) => (
@@ -203,11 +203,7 @@ export const GatewaysPanel = ({
       width: 140,
       dropFirst: true,
       render: (gateway) =>
-        gateway.connectedResourcesCount > 0 ? (
-          resourcesLabel(gateway.connectedResourcesCount)
-        ) : (
-          <span aria-label="None">-</span>
-        )
+        gateway.connectedResourcesCount > 0 ? resourcesLabel(gateway.connectedResourcesCount) : null
     },
     {
       id: "health",

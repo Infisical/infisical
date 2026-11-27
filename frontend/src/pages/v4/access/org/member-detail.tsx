@@ -58,6 +58,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
 import { AuditLogsTab } from "../../organization/AuditLogsPage/AuditLogsPage";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -301,6 +302,7 @@ const MemberAuditLogs = ({ userId }: { userId: string }) => {
 };
 
 export const OrgMemberDetail = () => {
+  const scope = useOrgPageScope();
   const { membershipId } = useParams({ from: "/v4/organizations/$orgId/members/$membershipId" });
   const access = useV4Adapter("access");
   const orgId = useOrgId();
@@ -373,6 +375,7 @@ export const OrgMemberDetail = () => {
     <div className={css.detailPage}>
       <Stack gap={24}>
         <PageHeader
+          scope={scope}
           breadcrumb={[{ label: "Organization users", link: go.link(backHref) }]}
           title={name ?? user.username}
           actions={

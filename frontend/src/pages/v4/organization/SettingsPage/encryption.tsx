@@ -45,6 +45,7 @@ import { AccessRestricted, Gate, RESTRICTED } from "../../access/ui";
 import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { AwsKmsForm, GcpKmsForm, type KmsFormHandle, type KmsFormMode } from "./kms-forms";
 import { KMS_PROVIDERS } from "./kms-providers";
 
@@ -181,6 +182,7 @@ const KmsSheet = ({ state, onClose }: { state?: SheetState; onClose: () => void 
 };
 
 export const EncryptionTab = () => {
+  const scope = useOrgPageScope();
   const orgId = useOrgId();
   const { permission, isPending: permissionPending } = useOrgPermission();
   const adapter = useV4Adapter("orgSettings");
@@ -252,7 +254,7 @@ export const EncryptionTab = () => {
 
   return (
     <Stack gap={24}>
-      <PageHeader title="Encryption" />
+      <PageHeader scope={scope} title="Encryption" />
       {!permissionPending && !canRead && <AccessRestricted requirement="Read KMS" />}
       {canRead && (
         <Card
