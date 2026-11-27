@@ -1,8 +1,11 @@
 package est_test
 
 import (
+	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"testing"
@@ -12,6 +15,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,9 +38,10 @@ func TestEstCaCerts_Get(t *testing.T) {
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "cacerts: %s", apierr.Body(res.Body))
 		certs := certsOf(t, res.Body)
 		require.Len(t, certs, 2)
-		require.True(t, certs[0].IsCA)
-		require.Equal(t, certs[1].Subject.String(), certs[0].Issuer.String())
-		require.Equal(t, certs[1].Subject.String(), certs[1].Issuer.String())
+		require.Equal(t, pki.CACertificate(t, tn.Admin, p.CA.ID).Raw, certs[0].Raw, "the first certificate is not the profile's issuing CA")
+		require.Equal(t, pki.CACertificate(t, tn.Admin, p.Root.ID).Raw, certs[1].Raw, "the second certificate is not the profile's root CA")
+		require.NoError(t, certs[0].CheckSignatureFrom(certs[1]))
+		require.NoError(t, certs[1].CheckSignatureFrom(certs[1]))
 	})
 }
 
@@ -161,6 +166,27 @@ func TestEstEnrollment_SimpleEnroll(t *testing.T) {
 		require.Zero(t, pki.Requests(t, p.Project, p.Profile))
 	})
 
+	t.Run("should issue a leaf for the CSR's key when the client certificate chains to the bootstrap CA", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		trusted, trustedKey := selfSignedCA(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{CaChain: new(certPEM(trusted)), DisableBootstrapCaValidation: new(false)}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		bootstrap := leafFrom(t, trusted, trustedKey, newKey(t), name)
+
+		// Action
+		res := p.enroll(t, newCSR(t, key, name), enrollOpts{clientCert: bootstrap})
+
+		// Assert
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "enrolling: %s", apierr.Body(res.Body))
+		leaf := certsOf(t, res.Body)[0]
+		require.Equal(t, name, leaf.Subject.CommonName)
+		require.True(t, key.PublicKey.Equal(leaf.PublicKey))
+		require.NoError(t, leaf.CheckSignatureFrom(pki.CACertificate(t, tn.Admin, p.CA.ID)))
+	})
+
 	t.Run("should refuse a client certificate outside the bootstrap CA chain when validation is on", func(t *testing.T) {
 		t.Parallel()
 
@@ -261,4 +287,80 @@ func TestEstEnrollment_SimpleReenroll(t *testing.T) {
 		require.Equal(t, "Invalid client certificate: unable to build a valid certificate chain", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, p.Project, p.Profile))
 	})
+	t.Run("should refuse a revoked client certificate with 401 and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		issued := p.mustEnroll(t, key, name)
+		pki.Revoke(t, tn.Admin, pki.Certificate{ID: enrolledCertificateID(t, p)}, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
+		before := pki.Requests(t, p.Project, p.Profile)
+
+		// Action
+		res := p.reenroll(t, newCSR(t, key, name), enrollOpts{clientCert: issued})
+
+		// Assert
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
+		require.Equal(t, "Client certificate has been revoked", apierr.Message(res.Body))
+		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
+	})
+
+	t.Run("should refuse a CSR for another subject than the client certificate with 400 and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		issued := p.mustEnroll(t, key, name)
+		before := pki.Requests(t, p.Project, p.Profile)
+		csr, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{
+			Subject:  pkix.Name{CommonName: "other-" + name},
+			DNSNames: issued.DNSNames,
+		}, key)
+		require.NoError(t, err)
+
+		// Action
+		res := p.reenroll(t, csr, enrollOpts{clientCert: issued})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Subject mismatch", apierr.Message(res.Body))
+		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
+	})
+
+	t.Run("should refuse a deleted client certificate with 401 and issue nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		p := newEstProfile(t, tn, api.SetPkiApplicationEstEnrollmentJSONRequestBody{}, pki.AllowAll(t))
+		key, name := newKey(t), id.Short()+".est.test"
+		issued := p.mustEnroll(t, key, name)
+		del, err := tn.Admin.API.DeleteCertificateWithResponse(t.Context(), enrolledCertificateID(t, p))
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, del.StatusCode(), "deleting: %s", apierr.Body(del.Body))
+		before := pki.Requests(t, p.Project, p.Profile)
+
+		// Action
+		res := p.reenroll(t, newCSR(t, key, name), enrollOpts{clientCert: issued})
+
+		// Assert
+		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
+		require.Equal(t, "Client certificate with serial number '"+hex.EncodeToString(issued.SerialNumber.Bytes())+"' was deleted and can no longer be re-enrolled. Enroll a new certificate instead.", apierr.Message(res.Body))
+		require.Equal(t, before, pki.Requests(t, p.Project, p.Profile))
+	})
+}
+
+// enrolledCertificateID is the ID of the certificate the profile's only request issued.
+func enrolledCertificateID(t *testing.T, p estProfile) uuid.UUID {
+	t.Helper()
+	requests := pki.ProfileRequests(t, p.Project, p.Profile).JSON200.CertificateRequests
+	require.Len(t, requests, 1)
+	require.NotNil(t, requests[0].Certificate, "the enrollment issued no certificate")
+	certID, err := uuid.Parse(requests[0].Certificate.Id)
+	require.NoError(t, err)
+	return certID
 }

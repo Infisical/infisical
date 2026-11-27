@@ -122,7 +122,9 @@ func TestAwsElbPkiSync_Sync(t *testing.T) {
 		s.trigger(t, tn)
 		cloudSyncSucceeded(t, s.get, s.id, done.LastSyncedAt)
 		s.acct.ACM.ExpectEvent[aws.CertificateImported](t, func(e aws.CertificateImported) bool { return e.ARN == arn && e.Reimported })
-		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, s.acct.Certificates(t)[arn].Certificate).Raw)
+		got := s.acct.Certificates(t)[arn]
+		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, got.Certificate).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, got.Certificate, got.PrivateKey)
 		require.Equal(t, []string{arn}, s.acct.ELB.State(t).Listeners[s.listenerArn].Certificates)
 		s.acct.ELB.ExpectNoEvent[aws.ListenerCertificateAdded](t, nil, fakenet.Since(mark))
 	})

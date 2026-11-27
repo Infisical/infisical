@@ -20,6 +20,7 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import {
   agentVaultBootstrapLimit,
@@ -30,7 +31,6 @@ import {
   agentVaultUsageLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AgentVaultHostPatternSchema } from "./agent-vault-schemas";
@@ -118,7 +118,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         throw new UnauthorizedError({ message: "A proxy token is required" });
       }
       return server.services.agentVaultProxy.bootstrap({
-        proxyId: req.permission.id,
+        proxyId: req.actor.id,
         tokenVersion: req.auth.token.tokenVersion,
         servedCaCertificate: req.body.servedCaCertificate
       });
@@ -147,7 +147,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         throw new UnauthorizedError({ message: "A proxy token is required" });
       }
       const crossings = await server.services.agentVaultUsageService.recordProxyUsage({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.body
       });
       // Not awaited: the proxy's report is recorded either way, and a notice must never slow or fail it.
@@ -173,7 +173,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         throw new UnauthorizedError({ message: "A proxy token is required" });
       }
       return server.services.agentVaultProxy.heartbeat({
-        proxyId: req.permission.id,
+        proxyId: req.actor.id,
         tokenVersion: req.auth.token.tokenVersion
       });
     }
@@ -294,8 +294,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       // Deliberately unaudited: one row per poll per session is ~144k a day for a hundred sessions.
       return server.services.agentVaultProxy.resolveSession({
-        proxyId: req.permission.id,
-        orgId: req.permission.orgId,
+        proxyId: req.actor.id,
+        orgId: req.actor.orgId,
         sessionToken: req.headers[SESSION_HEADER],
         hasSessionLogKey: req.body ? req.body.hasSessionLogKey : true
       });
@@ -329,8 +329,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) =>
       server.services.agentVaultProxy.refreshCredential({
-        proxyId: req.permission.id,
-        orgId: req.permission.orgId,
+        proxyId: req.actor.id,
+        orgId: req.actor.orgId,
         sessionToken: req.headers[SESSION_HEADER],
         serviceId: req.params.serviceId,
         hostPattern: req.body.hostPattern,
@@ -373,8 +373,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       await server.services.agentVaultProxy.reportMissingScopes({
-        proxyId: req.permission.id,
-        orgId: req.permission.orgId,
+        proxyId: req.actor.id,
+        orgId: req.actor.orgId,
         sessionToken: req.headers[SESSION_HEADER],
         serviceId: req.params.serviceId,
         hostPattern: req.body.hostPattern,
@@ -402,7 +402,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { orgId, storageType, ...upload } = await server.services.agentVaultSessionLog.createChunkUploadUrl({
-        proxyId: req.permission.id,
+        proxyId: req.actor.id,
         sessionId: req.params.sessionId,
         chunk: req.body
       });
@@ -410,7 +410,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted,
-          distinctId: `agent-vault-proxy-${req.permission.id}`,
+          distinctId: `agent-vault-proxy-${req.actor.id}`,
           organizationId: orgId,
           properties: {
             orgId,

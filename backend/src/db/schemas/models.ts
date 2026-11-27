@@ -519,17 +519,6 @@ const ADMIN_MEMBER_ONLY_PRODUCT_LABELS: Partial<Record<ProjectType, string>> = {
 export const getAdminMemberOnlyProductLabel = (projectType?: string | null) =>
   projectType ? ADMIN_MEMBER_ONLY_PRODUCT_LABELS[projectType as ProjectType] : undefined;
 
-export enum ActionProjectType {
-  SecretManager = ProjectType.SecretManager,
-  CertificateManager = ProjectType.CertificateManager,
-  KMS = ProjectType.KMS,
-  SecretScanning = ProjectType.SecretScanning,
-  PAM = ProjectType.PAM,
-  AgentVault = ProjectType.AgentVault,
-  // project operations that happen on all types
-  Any = "any"
-}
-
 export enum OrganizationActionScope {
   ChildOrganization = "child-organization-only",
   ParentOrganization = "parent-organization-only",

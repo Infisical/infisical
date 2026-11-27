@@ -5,11 +5,11 @@ import { PkiCertificateProfilesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ApiDocsTags, CERTIFICATE_PROFILES, CERTIFICATES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsageType,
   certificateExtensionOidSchema,
@@ -298,10 +298,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.createProfile({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         data: req.body
       });
@@ -324,9 +321,9 @@ export const registerCertificateProfilesRouter = async (
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateProfileCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificateProfile.projectId,
           issuerType: certificateProfile.issuerType
         }
@@ -427,10 +424,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { profiles, totalCount } = await server.services.certificateProfile.listProfiles({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.query,
         projectId: req.internalCertManagerProjectId
       });
@@ -533,10 +527,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.getProfileByIdWithConfigs({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         profileId: req.params.id
       });
 
@@ -581,10 +572,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.getProfileBySlug({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         slug: req.params.slug
       });
@@ -708,10 +696,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.updateProfile({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         profileId: req.params.id,
         data: req.body
       });
@@ -731,9 +716,9 @@ export const registerCertificateProfilesRouter = async (
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateProfileUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificateProfile.projectId,
           profileId: certificateProfile.id
         }
@@ -768,10 +753,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateProfile = await server.services.certificateProfile.deleteProfile({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         profileId: req.params.id
       });
 
@@ -790,9 +772,9 @@ export const registerCertificateProfilesRouter = async (
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertificateProfileDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: certificateProfile.projectId
         }
       });
@@ -841,10 +823,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificates = await server.services.certificateProfile.getProfileCertificates({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         profileId: req.params.id,
         ...req.query
       });
@@ -879,10 +858,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const response = await server.services.certificateProfile.getLatestActiveCertificateBundle({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         profileId: req.params.id
       });
 
@@ -942,10 +918,7 @@ export const registerCertificateProfilesRouter = async (
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const { eabKid, eabSecret } = await server.services.certificateProfile.revealAcmeEabSecret({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         profileId: req.params.id
       });
       return { eabKid, eabSecret };

@@ -13,7 +13,7 @@ The same rule applies to [AI agents](/documentation/platform/pam/ai-agents/overv
 Approval adds to the access that a member already has. To use an account that requires approval, a member needs both of the following:
 
 - **A role on the account:** The Admin, Operator, or Connector [role](/documentation/platform/pam/concepts/access-control) on the account or its [folder](/documentation/platform/pam/folders/overview), which decides who can use the account at all
-- **An approved request:** A request that an approver has approved, which gives the member access for the duration they asked for
+- **An approved request:** A request that an approver has approved, which gives the member access for the duration they asked for, up to the template's **Max Access Duration**
 
 A member can only request access to an account they already have a role on. When the duration ends, the member loses access until they file another request.
 
@@ -64,7 +64,7 @@ On the **Accounts** page, an account that requires approval shows a key icon ins
     Enter a **Reason**, which approvers see and the audit log records. The reason is required if the template has **Require Reason** turned on.
   </Step>
   <Step>
-    Choose how long you need access, from 15 minutes to 1 week, and select **Request session access** or **Request credentials**.
+    Choose how long you need access, up to the template's **Max Access Duration** (1 week if it isn't set), and select **Request session access** or **Request credentials**.
   </Step>
 </Steps>
 
@@ -99,10 +99,10 @@ One approval from any of the folder's approvers is enough. You can't approve a r
 | **Pending Review** | The request is waiting for an approver |
 | **Approved** | An approver or an [auto-approval rule](/documentation/platform/pam/access-requests/auto-approval) approved the request, and the access is active |
 | **Rejected** | An approver denied the request |
-| **Expired** | The requested duration ended |
+| **Expired** | The access duration ended |
 | **Revoked** | An Admin of the folder ended the access before the duration ended |
 
-The duration starts when an approver approves the request, not when the member files it, so the member always gets the full duration they asked for.
+The duration starts when an approver approves the request, not when the member files it. If an Admin lowers the template's **Max Access Duration** below a waiting request's duration, approving it grants access only for the new maximum. Lowering the maximum doesn't shorten access that's already approved. To end it early, [revoke it](#revoke-access).
 
 To see every request for a folder's accounts, open the folder's **Approvals** tab and go to **Access Requests**.
 

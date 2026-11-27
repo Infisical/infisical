@@ -253,6 +253,7 @@
                 "group": "Integrations",
                 "pages": [
                   "integrations/overview",
+                  "documentation/platform/mcp-server",
                   {
                     "group": "Frameworks",
                     "pages": [
@@ -1126,6 +1127,7 @@
                   "integrations/app-connections/digital-ocean",
                   "integrations/app-connections/doppler",
                   "integrations/app-connections/dns-made-easy",
+                  "integrations/app-connections/rfc2136",
                   "integrations/app-connections/f5-big-ip",
                   "integrations/app-connections/fireworks",
                   "integrations/app-connections/flyio",
@@ -1523,7 +1525,8 @@
                     "pages": [
                       "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
                       "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
-                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
+                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config",
+                      "api-reference/endpoints/organizations/oidc-sso/delete-oidc-config"
                     ]
                   },
                   {
@@ -1540,6 +1543,22 @@
                       "api-reference/endpoints/organizations/saml-sso/get-saml-config",
                       "api-reference/endpoints/organizations/saml-sso/update-saml-config",
                       "api-reference/endpoints/organizations/saml-sso/create-saml-config"
+                    ]
+                  },
+                  {
+                    "group": "Email Domains",
+                    "pages": [
+                      "api-reference/endpoints/organizations/email-domains/list",
+                      "api-reference/endpoints/organizations/email-domains/create",
+                      "api-reference/endpoints/organizations/email-domains/verify",
+                      "api-reference/endpoints/organizations/email-domains/delete"
+                    ]
+                  },
+                  {
+                    "group": "SSO Settings",
+                    "pages": [
+                      "api-reference/endpoints/organizations/sso-settings/get",
+                      "api-reference/endpoints/organizations/sso-settings/update"
                     ]
                   },
                   {
@@ -2019,6 +2038,18 @@
                           "api-reference/endpoints/app-connections/digital-ocean/create",
                           "api-reference/endpoints/app-connections/digital-ocean/update",
                           "api-reference/endpoints/app-connections/digital-ocean/delete"
+                        ]
+                      },
+                      {
+                        "group": "DNS Server (RFC 2136)",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/rfc2136/list",
+                          "api-reference/endpoints/app-connections/rfc2136/available",
+                          "api-reference/endpoints/app-connections/rfc2136/get-by-id",
+                          "api-reference/endpoints/app-connections/rfc2136/get-by-name",
+                          "api-reference/endpoints/app-connections/rfc2136/create",
+                          "api-reference/endpoints/app-connections/rfc2136/update",
+                          "api-reference/endpoints/app-connections/rfc2136/delete"
                         ]
                       },
                       {

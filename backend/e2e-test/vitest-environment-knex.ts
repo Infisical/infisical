@@ -1,26 +1,26 @@
-import "@app/lib/config/disable-sdk-platform-detection";
 // knex loads the .ts migrations and seeds with require(), which bypasses vitest's transformer.
 import "tsx/cjs";
 
 import dotenv from "dotenv";
-import { crypto } from "@app/lib/crypto/cryptography";
 import path from "path";
 
-import { seedData1 } from "@app/db/seed-data";
-import { getDatabaseCredentials, initEnvConfig } from "@app/lib/config/env";
-import { initLogger } from "@app/lib/logger";
-import { main } from "@app/server/app";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
-
-import { buildClickHouseFromConfig } from "@app/lib/config/clickhouse";
-import { mockSmtpServer } from "./mocks/smtp";
+import "@app/lib/config/disable-sdk-platform-detection";
 import { initDbConnection } from "@app/db";
-import { queueServiceFactory } from "@app/queue";
-import { keyStoreFactory } from "@app/keystore/keystore";
-import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
-import { buildRedisFromConfig } from "@app/lib/config/redis";
+import { seedData1 } from "@app/db/seed-data";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
+import { keyStoreFactory } from "@app/keystore/keystore";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
+import { buildClickHouseFromConfig } from "@app/lib/config/clickhouse";
+import { getDatabaseCredentials, initEnvConfig } from "@app/lib/config/env";
+import { buildRedisFromConfig } from "@app/lib/config/redis";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { initLogger } from "@app/lib/logger";
+import { queueServiceFactory } from "@app/queue";
+import { main } from "@app/server/app";
 import { bootstrapCheck } from "@app/server/boot-strap-check";
+
+import { mockSmtpServer } from "./mocks/smtp";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
 process.env.ALLOW_INTERNAL_IP_CONNECTIONS = "true";

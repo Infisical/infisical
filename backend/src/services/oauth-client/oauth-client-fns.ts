@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 
+import { z } from "zod";
+
 import { TOauthClients } from "@app/db/schemas";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
 import { OauthGrantType } from "./oauth-client-types";
@@ -45,6 +48,9 @@ export const computePkceChallenge = (codeVerifier: string) => {
 
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
+const isLoopbackHttpUrl = (url: URL) =>
+  url.protocol === "http:" && LOOPBACK_HOSTNAMES.has(url.hostname.replace(/^\[|\]$/g, "")); // strip brackets from IPv6 literals
+
 // A redirect URI may use https:// for any host. Plaintext http:// is only permitted for loopback
 // addresses (local development), per RFC 8252 / the OAuth 2.0 security BCP. Allowing http:// to an
 // arbitrary host would expose authorization codes and tokens to network interception.
@@ -56,20 +62,16 @@ export const isAllowedRedirectUri = (uri: string) => {
     return false;
   }
 
-  if (parsed.protocol === "https:") return true;
-
-  if (parsed.protocol === "http:") {
-    const hostname = parsed.hostname.replace(/^\[|\]$/g, ""); // strip brackets from IPv6 literals
-    return LOOPBACK_HOSTNAMES.has(hostname);
-  }
-
-  return false;
+  return parsed.protocol === "https:" || isLoopbackHttpUrl(parsed);
 };
 
 // OAuth token sessions are tagged with this userAgent so they are distinguishable from first-party
 // browser sessions and from other clients. Deleting a client revokes its sessions by this exact value,
 // so the format must stay in sync between session creation and revocation.
 export const getOauthClientSessionUserAgent = (clientId: string) => `Infisical OAuth - ${clientId}`;
+
+// The longest client ID whose session label still fits auth_token_sessions.userAgent (varchar 255).
+export const MAX_OAUTH_CLIENT_ID_LENGTH = 255 - getOauthClientSessionUserAgent("").length;
 
 type TOauthClientAuthority = Pick<
   TOauthClients,
@@ -124,15 +126,74 @@ export const hasWithdrawnTokenExchangeTrust = (previous: TTokenExchangeTrust, ne
   return Boolean(previous.idpSatisfiesMfa) && !next.idpSatisfiesMfa;
 };
 
+// RFC 8252 section 7.3: a native app listens on whichever loopback port is free when it starts the flow, so a
+// loopback redirect URI matches on any port.
+const toComparableRedirectUri = (uri: string) => {
+  const url = new URL(uri);
+  if (isLoopbackHttpUrl(url)) url.port = "";
+  return url.toString();
+};
+
 export const isRegisteredRedirectUri = (registeredUris: string[], redirectUri: string) =>
   registeredUris.some((uri) => {
     if (uri === redirectUri) return true;
     try {
-      return new URL(uri).toString() === new URL(redirectUri).toString();
+      return toComparableRedirectUri(uri) === toComparableRedirectUri(redirectUri);
     } catch {
       return false;
     }
   });
+
+// A client with no registration here (an MCP client such as Claude) identifies itself with an https URL serving
+// its metadata (OAuth Client ID Metadata Documents). Generated client IDs never look like this.
+export const isClientMetadataDocumentUrl = (clientId: string) => {
+  try {
+    const url = new URL(clientId);
+    return url.protocol === "https:" && url.pathname !== "/";
+  } catch {
+    return false;
+  }
+};
+
+// We treat these clients as public (no client authentication at the token endpoint), so the client has to support that.
+// ChatGPT, for one, prefers private_key_jwt but also lists "none".
+export const OauthClientMetadataDocumentSchema = z
+  .object({
+    client_id: z.string(),
+    client_name: z.string().trim().min(1).max(255),
+    redirect_uris: z.string().refine(isAllowedRedirectUri).array().min(1).max(32),
+    token_endpoint_auth_method: z.string().max(64).optional(),
+    token_endpoint_auth_methods_supported: z.string().max(64).array().max(16).optional()
+  })
+  // The list of supported methods, when present, is the full answer; the single method is only read without it.
+  .refine(
+    (document) =>
+      document.token_endpoint_auth_methods_supported
+        ? document.token_endpoint_auth_methods_supported.includes("none")
+        : (document.token_endpoint_auth_method ?? "none") === "none",
+    "The client must support token_endpoint_auth_method 'none'."
+  );
+
+export const MCP_ENDPOINT_PATH = "/api/mcp";
+
+// The MCP endpoint is the only resource (RFC 8707) a token can be bound to. A bound token carries it as `aud`, and
+// is accepted there and nowhere else. Its address is MCP_SERVER_URL when a proxy serves it under another name; the
+// metadata stays on SITE_URL, because clients find it through the WWW-Authenticate header the endpoint sends.
+export const getMcpOauthUrls = () => {
+  const { SITE_URL, MCP_SERVER_URL } = getConfig();
+  if (!SITE_URL) {
+    throw new BadRequestError({
+      message:
+        "The Infisical MCP server is unavailable because SITE_URL is not set. Set it to this instance's public URL."
+    });
+  }
+
+  return {
+    issuer: `${SITE_URL}/api/v1/oauth`,
+    mcpResource: MCP_SERVER_URL ?? `${SITE_URL}${MCP_ENDPOINT_PATH}`,
+    mcpResourceMetadata: `${SITE_URL}/.well-known/oauth-protected-resource${MCP_ENDPOINT_PATH}`
+  };
+};
 
 type TOauthClientGrantConfig = {
   grantTypes: OauthGrantType[];

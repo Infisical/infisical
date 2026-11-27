@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -13,6 +14,11 @@ import {
   TLicenseService,
   TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -22,10 +28,9 @@ import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/ident
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -40,10 +45,10 @@ import {
   SsoConfigAction,
   SsoProvider
 } from "@app/lib/telemetry/metrics";
-import { OrgServiceActor } from "@app/lib/types";
 import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
+  normalizeAllowedEmailDomains,
   sanitizeEmail,
   validateEmail
 } from "@app/lib/validator";
@@ -52,10 +57,8 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
@@ -78,6 +81,7 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import {
+  assertOrgHasVerifiedEmailDomain,
   findOrgIdByVerifiedDomain,
   isIdpAuthoritativeForDomain,
   verifyEmailDomainOwnership
@@ -87,6 +91,7 @@ import { resolveOidcGroupMembershipChanges } from "./oidc-config-fns";
 import {
   OIDCConfigurationType,
   TCreateOidcCfgDTO,
+  TDeleteOidcCfgDTO,
   TGetOidcCfgDTO,
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
@@ -119,15 +124,15 @@ type TOidcConfigServiceFactoryDep = {
     | "lockActorsForOrgAccess"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   licenseService: TLicenseService;
   usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
+  oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create" | "deleteById" | "transaction">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId" | "findGroupOrgIds">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -165,14 +170,14 @@ export const oidcConfigServiceFactory = ({
   licenseService,
   usageMeteringService,
   additionalPrivilegeDAL,
-  permissionService,
+  orgPermissionService,
   tokenService,
   smtpService,
   oidcConfigDAL,
   userGroupMembershipDAL,
   groupDAL,
   membershipGroupDAL,
-  membershipDAL,
+  pamPermissionService,
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
@@ -201,15 +206,12 @@ export const oidcConfigServiceFactory = ({
     }
 
     if (dto.type === "external") {
-      const { permission } = await permissionService.getOrgPermission({
-        actorId: dto.actorId,
+      const permission = await orgPermissionService.getOrgPermission({
         actor: dto.actor,
         orgId: dto.organizationId,
-        actorOrgId: dto.actorOrgId,
-        actorAuthMethod: dto.actorAuthMethod,
         scope: OrganizationActionScope.ParentOrganization
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
+      permission.assert({ action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso });
     }
 
     const { decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
@@ -544,8 +546,7 @@ export const oidcConfigServiceFactory = ({
           usageMeteringService,
           alertChannelRecipientDAL,
           eventEmitter,
-          membershipDAL,
-          membershipRoleDAL,
+          pamPermissionService,
           pamAccountDAL,
           pamSessionDAL,
           gatewayV2Service
@@ -648,9 +649,6 @@ export const oidcConfigServiceFactory = ({
     configurationType,
     discoveryURL,
     actor,
-    actorOrgId,
-    actorAuthMethod,
-    actorId,
     issuer,
     isActive,
     authorizationEndpoint,
@@ -679,15 +677,19 @@ export const oidcConfigServiceFactory = ({
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
       orgId: org.id,
-      actorOrgId,
-      actorAuthMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+    permission.assert({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso });
+
+    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
+    if (!existingCfg) {
+      throw new NotFoundError({
+        message: `OIDC configuration for organization with ID '${org.id}' not found`
+      });
+    }
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
@@ -696,7 +698,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: org.id
     });
@@ -724,21 +726,32 @@ export const oidcConfigServiceFactory = ({
       await blockLocalAndPrivateIpAddresses(userinfoEndpoint);
     }
 
-    const isMfaSignalOnlyUpdate = [
-      allowedEmailDomains,
-      configurationType,
-      discoveryURL,
-      issuer,
-      authorizationEndpoint,
-      tokenEndpoint,
-      userinfoEndpoint,
-      jwksUri,
-      isActive,
-      clientId,
-      clientSecret,
-      manageGroupMemberships,
-      jwtSignatureAlgorithm
-    ].every((value) => value === undefined);
+    const hasChanged = (next: unknown, current: unknown) => next !== undefined && next !== (current ?? null);
+    const normalizeDomains = (domains?: string | null) =>
+      normalizeAllowedEmailDomains(domains ?? "")
+        .split(", ")
+        .sort()
+        .join(", ");
+    const decrypt = (cipherTextBlob?: Buffer | null) =>
+      cipherTextBlob ? decryptor({ cipherTextBlob }).toString() : "";
+
+    // Any change to OIDC config should not lock users out, if auth/scim is enforced prior to it
+    const isConnectionChanged =
+      hasChanged(configurationType, existingCfg.configurationType) ||
+      hasChanged(discoveryURL, existingCfg.discoveryURL) ||
+      hasChanged(issuer, existingCfg.issuer) ||
+      hasChanged(authorizationEndpoint, existingCfg.authorizationEndpoint) ||
+      hasChanged(tokenEndpoint, existingCfg.tokenEndpoint) ||
+      hasChanged(userinfoEndpoint, existingCfg.userinfoEndpoint) ||
+      hasChanged(jwksUri, existingCfg.jwksUri) ||
+      hasChanged(jwtSignatureAlgorithm, existingCfg.jwtSignatureAlgorithm) ||
+      (allowedEmailDomains !== undefined &&
+        normalizeDomains(allowedEmailDomains) !== normalizeDomains(existingCfg.allowedEmailDomains)) ||
+      (clientId !== undefined && clientId !== decrypt(existingCfg.encryptedOidcClientId)) ||
+      (clientSecret !== undefined && clientSecret !== decrypt(existingCfg.encryptedOidcClientSecret)) ||
+      hasChanged(isActive, existingCfg.isActive);
+
+    const shouldDisableEnforcement = isConnectionChanged && Boolean(org.authEnforced || org.scimEnabled);
 
     const updateQuery: TOidcConfigsUpdate = {
       allowedEmailDomains,
@@ -750,7 +763,7 @@ export const oidcConfigServiceFactory = ({
       userinfoEndpoint,
       jwksUri,
       isActive,
-      ...(!isMfaSignalOnlyUpdate && { lastUsed: null }),
+      ...(isConnectionChanged && { lastUsed: null }),
       manageGroupMemberships,
       jwtSignatureAlgorithm,
       mfaClaimName,
@@ -765,12 +778,15 @@ export const oidcConfigServiceFactory = ({
       updateQuery.encryptedOidcClientSecret = encryptor({ plainText: Buffer.from(clientSecret) }).cipherTextBlob;
     }
 
-    const [ssoConfig] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery);
-    if (!isMfaSignalOnlyUpdate) {
-      await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false });
-    }
+    const ssoConfig = await oidcConfigDAL.transaction(async (tx) => {
+      const [cfg] = await oidcConfigDAL.update({ orgId: org.id }, updateQuery, tx);
+      if (shouldDisableEnforcement) {
+        await orgDAL.updateById(org.id, { authEnforced: false, scimEnabled: false }, tx);
+      }
+      return cfg;
+    });
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Update, orgId: org.id });
-    return ssoConfig;
+    return { ...ssoConfig, organizationName: org.name, ssoEnforcementDisabled: shouldDisableEnforcement };
   };
 
   const createOidcCfg = async ({
@@ -779,9 +795,6 @@ export const oidcConfigServiceFactory = ({
     configurationType,
     discoveryURL,
     actor,
-    actorOrgId,
-    actorAuthMethod,
-    actorId,
     issuer,
     isActive,
     authorizationEndpoint,
@@ -809,15 +822,21 @@ export const oidcConfigServiceFactory = ({
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
+    const permission = await orgPermissionService.getOrgPermission({
       actor,
       orgId: org.id,
-      actorOrgId,
-      actorAuthMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
+    permission.assert({ action: OrgPermissionSsoActions.Create, subject: OrgPermissionSubjects.Sso });
+
+    const existingCfg = await oidcConfigDAL.findOne({ orgId: org.id });
+    if (existingCfg) {
+      throw new ConflictError({
+        message: `An OIDC configuration already exists for organization with ID '${org.id}'.`
+      });
+    }
+
+    await assertOrgHasVerifiedEmailDomain({ orgId: org.id, emailDomainDAL });
 
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
@@ -865,7 +884,34 @@ export const oidcConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Create, orgId: org.id });
 
-    return oidcCfg;
+    return { ...oidcCfg, organizationName: org.name };
+  };
+
+  const deleteOidcCfg = async ({ organizationId, actor }: TDeleteOidcCfgDTO) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
+      orgId: organizationId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    permission.assert({ action: OrgPermissionSsoActions.Delete, subject: OrgPermissionSubjects.Sso });
+
+    const oidcCfg = await oidcConfigDAL.findOne({ orgId: organizationId });
+    if (!oidcCfg) {
+      throw new NotFoundError({
+        message: `OIDC configuration for organization with ID '${organizationId}' not found`
+      });
+    }
+
+    const deletedCfg = await oidcConfigDAL.transaction(async (tx) => {
+      const deleted = await oidcConfigDAL.deleteById(oidcCfg.id, tx);
+      // SSO enforcement and SCIM both require an active SSO config; leaving them on would lock users out
+      const org = await orgDAL.updateById(organizationId, { authEnforced: false, scimEnabled: false }, tx);
+      return { ...deleted, organizationName: org.name };
+    });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Oidc, action: SsoConfigAction.Delete, orgId: organizationId });
+
+    return deletedCfg;
   };
 
   const getOrgAuthStrategy = async (
@@ -1046,15 +1092,8 @@ export const oidcConfigServiceFactory = ({
     return strategy;
   };
 
-  const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: OrgServiceActor) => {
-    await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: actor.id,
-      orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.ParentOrganization
-    });
+  const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: TActorContext) => {
+    await orgPermissionService.getOrgPermission({ actor, orgId, scope: OrganizationActionScope.ParentOrganization });
 
     const oidcConfig = await oidcConfigDAL.findOne({
       orgId,
@@ -1064,5 +1103,13 @@ export const oidcConfigServiceFactory = ({
     return Boolean(oidcConfig?.manageGroupMemberships);
   };
 
-  return { oidcLogin, getOrgAuthStrategy, getOidc, updateOidcCfg, createOidcCfg, isOidcManageGroupMembershipsEnabled };
+  return {
+    oidcLogin,
+    getOrgAuthStrategy,
+    getOidc,
+    updateOidcCfg,
+    createOidcCfg,
+    deleteOidcCfg,
+    isOidcManageGroupMembershipsEnabled
+  };
 };

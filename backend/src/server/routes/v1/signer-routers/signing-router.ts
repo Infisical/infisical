@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { MAX_SIGNING_COMMAND_LENGTH } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SignerIdParamsSchema } from "./schemas";
@@ -84,10 +84,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
         ...req.body,
         ipAddress: req.realIp,
         actorName,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -106,9 +103,9 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CodeSigningOperation,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: result.projectId,
           signerId: req.params.signerId
         }
@@ -139,10 +136,7 @@ export const registerSignerSigningRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const result = await server.services.pkiSigner.getPublicKey({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({

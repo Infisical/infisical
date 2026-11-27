@@ -1,26 +1,21 @@
-import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
 import { SecretType, TableName } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
-import {
-  hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
-import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -83,7 +78,7 @@ const once = <T>(build: () => T) => {
 };
 
 type TSecretReadActivityServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
@@ -107,7 +102,7 @@ type TSecretReadActivityServiceFactoryDep = {
 export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActivityServiceFactory>;
 
 export const secretReadActivityServiceFactory = ({
-  permissionService,
+  secretsPermissionService,
   licenseService,
   secretReadActivityDAL,
   secretReadActivityQueue,
@@ -354,7 +349,7 @@ export const secretReadActivityServiceFactory = ({
       adminActorIds,
       { trackingStartedAt }
     ] = await Promise.all([
-      permissionService.getProjectPermissions(projectId, orgId),
+      secretsPermissionService.getProjectMemberPermissions({ orgId, projectId }),
       secretReadActivityDAL.findAccessSourceDates(projectId),
       secretReadActivityDAL.findAdminActorIds(projectId),
       $getProjectTrackingStartedAt(projectId)
@@ -455,9 +450,7 @@ export const secretReadActivityServiceFactory = ({
             // grant restarts its folder and every folder below it.
             restartsReach: sourceDates.editedPrivilegeIds.has(grant.id) ? subtreeReach : undefined,
             permission: once(() =>
-              createMongoAbility<ProjectPermissionSet>(sourceRulesByGrantId().get(grant.id) ?? [], {
-                conditionsMatcher
-              })
+              Permission.fromRules<ProjectPermissionSet>({ rules: sourceRulesByGrantId().get(grant.id) ?? [] })
             )
           };
         });
@@ -503,9 +496,9 @@ export const secretReadActivityServiceFactory = ({
 
   const getSecretReadActivity = async (
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
+    const { permission } = await checkInsightsPermission(secretsPermissionService, licenseService, projectId, actor);
 
     // The secret is checked before the reach is built, which decrypts every secret that could reference it.
     const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
@@ -522,7 +515,7 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+    SecretReadAccess.assert(permission, ProjectPermissionSecretActions.DescribeSecret, {
       environment,
       secretPath,
       secretName,
@@ -532,7 +525,7 @@ export const secretReadActivityServiceFactory = ({
     const windowStart = getReadActivityWindowStart();
     const [[activity], access] = await Promise.all([
       $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName }, tree }),
-      $loadProjectAccess(projectId, actor.orgId, windowStart, tree)
+      $loadProjectAccess(projectId, actor.org.id, windowStart, tree)
     ]);
     if (!activity) {
       throw new NotFoundError({
@@ -699,12 +692,9 @@ export const secretReadActivityServiceFactory = ({
     return { ...summary, unusedAccessFrom, remainingTTL };
   };
 
-  const listUnusedAccess = async (
-    { projectId, offset, limit, search }: TListUnusedAccessDTO,
-    actor: OrgServiceActor
-  ) => {
-    await checkInsightsPermission(permissionService, licenseService, projectId, actor);
-    const { rows, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
+  const listUnusedAccess = async ({ projectId, offset, limit, search }: TListUnusedAccessDTO, actor: TActorContext) => {
+    await checkInsightsPermission(secretsPermissionService, licenseService, projectId, actor);
+    const { rows, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.org.id);
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
     return {
@@ -715,10 +705,10 @@ export const secretReadActivityServiceFactory = ({
 
   const getUnusedAccessActor = async (
     { projectId, actorType, actorId }: TGetUnusedAccessActorDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
-    const { rows, details, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
+    const { permission } = await checkInsightsPermission(secretsPermissionService, licenseService, projectId, actor);
+    const { rows, details, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.org.id);
     const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
     if (!unusedAccessActor) {
       throw new NotFoundError({
@@ -734,7 +724,7 @@ export const secretReadActivityServiceFactory = ({
         key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${actorType}:${actorId}`),
         ttlSeconds: Math.max(remainingTTL, 1),
         fetcher: async () =>
-          (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(actorId)?.unusedSecretIds ?? []
+          (await $tallyUnusedAccess(projectId, actor.org.id)).tallies.get(actorId)?.unusedSecretIds ?? []
       }));
 
     // The cache is shared by everyone in the project and can be a day old, so each listed secret is checked against
@@ -749,7 +739,7 @@ export const secretReadActivityServiceFactory = ({
         const location = tree.locationOf(secret.folderId);
         const canDescribe =
           location &&
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          SecretReadAccess.can(permission, ProjectPermissionSecretActions.DescribeSecret, {
             ...location,
             secretName: secret.key,
             secretTags: secret.tags?.map((tag) => tag.slug)

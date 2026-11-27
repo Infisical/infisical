@@ -3,10 +3,10 @@ import { z } from "zod";
 
 import { AuthTokenSessionsSchema } from "@app/db/schemas";
 import { USERS } from "@app/lib/api-docs";
+import { AuthMethod, AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMethod, AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 import { sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 
 import {
@@ -69,8 +69,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        orgId: req.permission.orgId,
+        userId: req.actor.id,
+        orgId: req.actor.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body.mfaSessionId,
@@ -78,7 +78,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       });
 
       const user = await server.services.user.setSelectedMfaMethod({
-        userId: req.permission.id,
+        userId: req.actor.id,
         selectedMfaMethod: req.body.selectedMfaMethod
       });
 
@@ -135,18 +135,18 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       await ensureFactorEnrollmentStepUpMfa(server, {
-        userId: req.permission.id,
+        userId: req.actor.id,
         tokenVersionId: getStepUpSessionId(req)
       });
 
       if (req.body.method === MfaMethod.TOTP) {
         await server.services.totp.verifyUserTotpConfig({
-          userId: req.permission.id,
+          userId: req.actor.id,
           totp: req.body.totp
         });
       } else {
         await server.services.webAuthn.verifyRegistrationResponse({
-          userId: req.permission.id,
+          userId: req.actor.id,
           registrationResponse: req.body.registrationResponse as RegistrationResponseJSON,
           name: req.body.name
         });
@@ -197,14 +197,14 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
         throw new UnauthorizedError({ message: "Invalid auth mode" });
       }
 
-      const me = await server.services.user.getMe(req.permission.id);
+      const me = await server.services.user.getMe(req.actor.id);
       const selectedMfaMethod =
         req.body.selectedMfaMethod ?? (me.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL;
 
       if (!req.auth.isMfaVerified) {
         await ensureStepUpMfa(server, {
-          userId: req.permission.id,
-          orgId: req.permission.orgId,
+          userId: req.actor.id,
+          orgId: req.actor.orgId,
           tokenVersionId: getStepUpSessionId(req),
           resourceId: MfaStepUpResource.MfaActivation,
           mfaMethod: selectedMfaMethod,
@@ -214,7 +214,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       }
 
       const { user, recoveryCodes } = await server.services.user.activateMfa({
-        userId: req.permission.id,
+        userId: req.actor.id,
         selectedMfaMethod
       });
 
@@ -249,11 +249,11 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       // Enforce the org-enforcement rule before the step-up challenge so a user in an
       // MFA-enforcing org gets a clean rejection instead of being made to complete an
       // MFA challenge only to be denied. deactivateMfa re-checks it authoritatively.
-      await server.services.user.assertMfaDisableAllowed(req.permission.id);
+      await server.services.user.assertMfaDisableAllowed(req.actor.id);
 
       await ensureStepUpMfa(server, {
-        userId: req.permission.id,
-        orgId: req.permission.orgId,
+        userId: req.actor.id,
+        orgId: req.actor.orgId,
         tokenVersionId: getStepUpSessionId(req),
         resourceId: MfaStepUpResource.MfaManagement,
         mfaSessionId: req.body?.mfaSessionId,
@@ -261,7 +261,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
       });
 
       const user = await server.services.user.deactivateMfa({
-        userId: req.permission.id
+        userId: req.actor.id
       });
 
       return { user };
@@ -288,7 +288,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.updateUserName(req.permission.id, req.body.firstName, req.body.lastName);
+      const user = await server.services.user.updateUserName(req.actor.id, req.body.firstName, req.body.lastName);
       return { user };
     }
   });
@@ -312,7 +312,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     preHandler: verifyAuth([AuthMode.JWT, AuthMode.API_KEY], { requireOrg: false }),
     handler: async (req) => {
-      const user = await server.services.user.updateAuthMethods(req.permission.id, req.body.authMethods);
+      const user = await server.services.user.updateAuthMethods(req.actor.id, req.body.authMethods);
       return { user };
     }
   });
@@ -322,7 +322,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     url: "/me/email-change/otp",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => req.permission.id
+        keyGenerator: (req) => req.actor.id
       })
     },
     schema: {
@@ -340,7 +340,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const result = await server.services.user.requestEmailChangeOTP({
-        userId: req.permission.id,
+        userId: req.actor.id,
         newEmail: req.body.newEmail
       });
       return result;
@@ -352,7 +352,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     url: "/me/email-change/verify-current",
     config: {
       rateLimit: smtpRateLimit({
-        keyGenerator: (req) => req.permission.id
+        keyGenerator: (req) => req.actor.id
       })
     },
     schema: {
@@ -370,7 +370,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const result = await server.services.user.verifyCurrentEmailOTP({
-        userId: req.permission.id,
+        userId: req.actor.id,
         otpCode: req.body.otpCode
       });
       return result;
@@ -398,7 +398,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     preHandler: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
       const user = await server.services.user.updateUserEmail({
-        userId: req.permission.id,
+        userId: req.actor.id,
         newEmail: req.body.newEmail,
         otpCode: req.body.otpCode
       });
@@ -423,7 +423,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
+      const organizations = await server.services.org.findAllOrganizationOfUser(req.actor.id);
       return { organizations };
     }
   });
@@ -442,7 +442,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const sessions = await server.services.authToken.getTokenSessionByUser(req.permission.id);
+      const sessions = await server.services.authToken.getTokenSessionByUser(req.actor.id);
       return sessions;
     }
   });
@@ -463,7 +463,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.authToken.revokeAllMySessions(req.permission.id);
+      await server.services.authToken.revokeAllMySessions(req.actor.id);
       return {
         message: "Successfully revoked all sessions"
       };
@@ -489,7 +489,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      await server.services.authToken.revokeMySessionById(req.permission.id, req.params.sessionId);
+      await server.services.authToken.revokeMySessionById(req.actor.id, req.params.sessionId);
       return {
         message: "Successfully revoked session"
       };
@@ -555,7 +555,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY]),
     handler: async (req) => {
-      const user = await server.services.user.getMe(req.permission.id);
+      const user = await server.services.user.getMe(req.actor.id);
       return { user };
     }
   });
@@ -585,7 +585,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const deletionEligibility = await server.services.user.getMyDeletionEligibility(req.permission.id);
+      const deletionEligibility = await server.services.user.getMyDeletionEligibility(req.actor.id);
       return { deletionEligibility };
     }
   });
@@ -615,8 +615,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.deleteUser(req.permission.id, {
-        actorAuthMethod: req.permission.authMethod,
+      const user = await server.services.user.deleteUser(req.actor.id, {
+        actor: req.actor,
         lastMemberOrganizationIds: req.query.lastMemberOrganizationIds
       });
       return { user };

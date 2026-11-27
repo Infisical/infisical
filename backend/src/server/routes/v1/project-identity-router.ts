@@ -3,11 +3,11 @@ import { z } from "zod";
 import { AccessScope, IdentitiesSchema, TemporaryPermissionMode } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, IDENTITIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 
 const metadataSchema = z.object({
@@ -87,10 +87,10 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.createIdentity({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -164,11 +164,11 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.updateIdentity({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
           projectId: req.params.projectId,
-          orgId: req.permission.orgId
+          orgId: req.actor.orgId
         },
         isActorSuperAdmin: isSuperAdmin(req.auth),
         selector: {
@@ -228,9 +228,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.deleteIdentity({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },
@@ -284,9 +284,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.getIdentityById({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },
@@ -333,9 +333,9 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { docs: identities, count: totalCount } = await server.services.identityV2.listIdentities({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           scope: AccessScope.Project,
           projectId: req.params.projectId
         },

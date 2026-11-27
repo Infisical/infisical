@@ -9,12 +9,12 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-project-types";
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
@@ -84,10 +84,10 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
       if (!role && !roles) throw new BadRequestError({ message: "You must provide either role or roles field" });
 
       const { membership } = await server.services.membershipIdentity.createMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         data: {
@@ -161,10 +161,10 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.updateMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -209,10 +209,10 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.deleteMembership({
-        permission: req.permission,
+        actor: req.actor,
         scopeData: {
           scope: AccessScope.Project,
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.params.projectId
         },
         selector: {
@@ -305,10 +305,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const { identityMemberships, totalCount } = await server.services.identityProject.listProjectIdentities({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.params.projectId,
         limit: req.query.limit,
         offset: req.query.offset,
@@ -372,10 +369,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const identityMembership = await server.services.identityProject.getProjectIdentityByIdentityId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.params.projectId,
         identityId: req.params.identityId
       });
@@ -427,10 +421,7 @@ export const registerDeprecatedIdentityProjectRouter = async (server: FastifyZod
     },
     handler: async (req) => {
       const identityMembership = await server.services.identityProject.getProjectIdentityByMembershipId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         identityMembershipId: req.params.identityMembershipId
       });
       return { identityMembership };

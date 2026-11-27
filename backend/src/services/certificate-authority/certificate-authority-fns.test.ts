@@ -8,10 +8,10 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto as appCrypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { ExecutionError, ResourceLockedError } from "@app/lib/red-lock";
-import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 

@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -9,7 +10,6 @@ import {
   SanitizedKeeperConnectionSchema,
   UpdateKeeperConnectionSchema
 } from "@app/services/app-connection/keeper";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -48,7 +48,7 @@ export const registerKeeperConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const sharedFolders = await server.services.appConnection.keeper.listSharedFolders(connectionId, req.permission);
+      const sharedFolders = await server.services.appConnection.keeper.listSharedFolders(connectionId, req.actor);
       return { sharedFolders };
     }
   });

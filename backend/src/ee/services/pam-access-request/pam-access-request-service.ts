@@ -1,19 +1,20 @@
 import { Knex } from "knex";
 
 import { TApprovalRequestGrants } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ResourcePermissionApprovalPolicyActions,
-  ResourcePermissionPamResourceActions
-} from "@app/ee/services/permission/resource-permission";
+import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PamResourcePermissionActions, TPamPermissionService } from "@app/domains/pam/pam/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
+import {
+  TApprovalPolicyServiceFactory,
+  toApprovalActorContext
+} from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TPamAccessPolicyInputs } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -23,7 +24,7 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamAccessType } from "../pam/pam-enums";
 import { resolveAccountByPath } from "../pam/pam-fns";
-import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { checkAccountAccess, verifyProductMembership } from "../pam/pam-permission";
 import { TPamAccessApprovalResource } from "./pam-access-approval-resource";
 import { parseNotificationChannels, parseNotificationEvents } from "./pam-access-request-fns";
 import {
@@ -58,7 +59,8 @@ type TPamAccessRequestServiceFactoryDep = {
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find" | "findOne">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find" | "findOne" | "updateById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectPermissionService: TProjectPermissionService;
+  pamPermissionService: TPamPermissionService;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   pamFolderNotificationConfigDAL: Pick<
@@ -110,7 +112,8 @@ export const pamAccessRequestServiceFactory = ({
   approvalRequestDAL,
   pamAccountDAL,
   pamFolderDAL,
-  permissionService,
+  projectPermissionService,
+  pamPermissionService,
   userDAL,
   identityDAL,
   pamFolderNotificationConfigDAL,
@@ -119,13 +122,6 @@ export const pamAccessRequestServiceFactory = ({
   pamAccessApprovalResource
 }: TPamAccessRequestServiceFactoryDep) => {
   const toSubjectActor = ({ actorId, actor }: TAccessRequestActor) => ({ id: actorId, type: actor });
-
-  const toApprovalActor = (ctx: TActorContext): TApprovalActor => ({
-    id: ctx.actorId,
-    type: ctx.actor,
-    authMethod: ctx.actorAuthMethod,
-    orgId: ctx.actorOrgId
-  });
 
   // Requests and grants attribute their actor to exactly one column: a user or a machine identity.
   // These build the matching filter so every lookup stays scoped to the calling actor's own rows.
@@ -158,8 +154,8 @@ export const pamAccessRequestServiceFactory = ({
     await pamAccessApprovalResource.assertCanManagePolicy?.({
       projectId,
       scopeId: folderId,
-      actor: toApprovalActor(ctx),
-      action: ResourcePermissionApprovalPolicyActions.Edit
+      actor: toApprovalActorContext(ctx),
+      action: ApplicationApprovalPolicyPermissionActions.Edit
     });
 
     const folder = await pamFolderDAL.findById(folderId);
@@ -171,8 +167,8 @@ export const pamAccessRequestServiceFactory = ({
 
   // Attach the access grant's expiry and status to each request. Requests themselves carry no expiry
   // or revocation state; the meaningful "expires"/"revoked" lives on the grant created on approval.
-  const getApprovalConfiguration = async ({ folderId, projectId, ...ctx }: TGetApprovalConfigurationDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+  const getApprovalConfiguration = async ({ folderId, projectId, actor }: TGetApprovalConfigurationDTO) => {
+    await verifyProductMembership(projectPermissionService, projectId, actor);
 
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {
@@ -183,7 +179,7 @@ export const pamAccessRequestServiceFactory = ({
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       folderId,
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     return {
@@ -203,10 +199,10 @@ export const pamAccessRequestServiceFactory = ({
     breakGlassUsers,
     autoApproval,
     emailApproversOnRequest,
-    ...ctx
+    actor
   }: TSetApprovalConfigurationDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
-    const folder = await assertFolderPolicyManagement(folderId, projectId, ctx);
+    await verifyProductMembership(projectPermissionService, projectId, actor);
+    const folder = await assertFolderPolicyManagement(folderId, projectId, actor);
 
     if (steps.length > 1) {
       throw new BadRequestError({ message: "Phase 1 only supports a single approval step" });
@@ -227,7 +223,7 @@ export const pamAccessRequestServiceFactory = ({
               ApprovalPolicyType.PamAccess,
               ApprovalPolicyScope.PamFolder,
               folderId,
-              toApprovalActor(ctx)
+              toApprovalActorContext(actor)
             )
           ).autoApproval.rules;
       if (!rules.length) {
@@ -253,7 +249,7 @@ export const pamAccessRequestServiceFactory = ({
 
         for (const config of notificationConfigs) {
           const integration = integrationById.get(config.workflowIntegrationId);
-          if (!integration || integration.orgId !== ctx.actorOrgId) {
+          if (!integration || integration.orgId !== actor.org.id) {
             throw new BadRequestError({ message: "Workflow integration not found in your organization" });
           }
           if (integration.integration !== WorkflowIntegration.SLACK) {
@@ -301,7 +297,7 @@ export const pamAccessRequestServiceFactory = ({
         conditions: [],
         constraints: { accessDuration: { min: "30s", max: "7d" } }
       },
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     // Removed only once the policy saves, so a failed save keeps the Slack configs.
@@ -324,8 +320,8 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
-  const breakGlassRequest = async ({ requestId, projectId, bypassReason, ...ctx }: TBreakGlassAccessRequestDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+  const breakGlassRequest = async ({ requestId, projectId, bypassReason, actor }: TBreakGlassAccessRequestDTO) => {
+    await verifyProductMembership(projectPermissionService, projectId, actor);
 
     const trimmedReason = bypassReason.trim();
     if (trimmedReason.length < 10) {
@@ -334,7 +330,7 @@ export const pamAccessRequestServiceFactory = ({
       });
     }
 
-    if (ctx.actor !== ActorType.USER) {
+    if (actor.principal.type !== ActorType.USER) {
       throw new ForbiddenRequestError({ message: "Only users can break glass on an access request" });
     }
 
@@ -343,7 +339,7 @@ export const pamAccessRequestServiceFactory = ({
       throw new NotFoundError({ message: "Request not found" });
     }
 
-    if (request.requesterId !== ctx.actorId) {
+    if (request.requesterId !== actor.principal.id) {
       throw new ForbiddenRequestError({ message: "You can only break glass on your own access request" });
     }
 
@@ -368,7 +364,7 @@ export const pamAccessRequestServiceFactory = ({
       accountId,
       folderId,
       accessType,
-      actor: toApprovalActor(ctx)
+      actor: toApprovalActorContext(actor)
     });
 
     const policy = request.policyId ? await approvalPolicyDAL.findById(request.policyId) : null;
@@ -376,7 +372,7 @@ export const pamAccessRequestServiceFactory = ({
     const { request: updatedRequest, bypassMetadata } = await approvalPolicyService.approveRequest(
       requestId,
       { bypassReason: trimmedReason },
-      toApprovalActor(ctx),
+      toApprovalActorContext(actor),
       ApprovalPolicyType.PamAccess
     );
 
@@ -412,7 +408,7 @@ export const pamAccessRequestServiceFactory = ({
     accessType = PamAccessType.Session,
     breakGlass = false,
     autoApprovalInputs,
-    ...ctx
+    actor
   }: TCreateAccessRequestDTO) => {
     const trimmedReason = reason?.trim() || undefined;
 
@@ -444,11 +440,11 @@ export const pamAccessRequestServiceFactory = ({
         accountId: account.id,
         folderId: account.folderId,
         accessType,
-        actor: toApprovalActor(ctx)
+        actor: toApprovalActorContext(actor)
       });
     }
 
-    const requester = await resolveRequesterDisplay(ctx);
+    const requester = await resolveRequesterDisplay({ actorId: actor.principal.id, actor: actor.principal.type });
 
     const { request } = await approvalPolicyService.createRequest(
       ApprovalPolicyType.PamAccess,
@@ -466,11 +462,11 @@ export const pamAccessRequestServiceFactory = ({
         skipApproverNotification: breakGlass,
         autoApprovalInputs,
         skipAutoApproval: breakGlass,
-        machineIdentityId: ctx.actor === ActorType.IDENTITY ? ctx.actorId : undefined,
+        machineIdentityId: actor.principal.type === ActorType.IDENTITY ? actor.principal.id : undefined,
         requesterName: requester.name,
         requesterEmail: requester.email
       },
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     if (breakGlass) {
@@ -478,7 +474,7 @@ export const pamAccessRequestServiceFactory = ({
         requestId: request.id,
         projectId,
         bypassReason: trimmedReason as string,
-        ...ctx
+        actor
       });
       return {
         request: result.request,
@@ -506,8 +502,8 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
-  const listRequests = async ({ projectId, folderId, status, offset, limit, ...ctx }: TListAccessRequestsDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+  const listRequests = async ({ projectId, folderId, status, offset, limit, actor }: TListAccessRequestsDTO) => {
+    await verifyProductMembership(projectPermissionService, projectId, actor);
 
     if (!folderId) {
       throw new BadRequestError({ message: "folderId is required" });
@@ -518,33 +514,33 @@ export const pamAccessRequestServiceFactory = ({
       ApprovalPolicyScope.PamFolder,
       folderId,
       { status, offset, limit },
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     return { requests: await pamAccessApprovalResource.decorateRequests(requests), totalCount };
   };
 
-  const listPendingMyApproval = async ({ projectId, folderId, ...ctx }: TListPendingMyApprovalDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+  const listPendingMyApproval = async ({ projectId, folderId, actor: ctx }: TListPendingMyApprovalDTO) => {
+    await verifyProductMembership(projectPermissionService, projectId, ctx);
 
     const { requests } = await approvalPolicyService.listPendingForApprover(
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       { projectId, scopeId: folderId },
-      toApprovalActor(ctx)
+      toApprovalActorContext(ctx)
     );
 
     return { requests: await pamAccessApprovalResource.decorateRequests(requests) };
   };
 
-  const getCount = async ({ projectId, ...ctx }: TGetAccessRequestCountDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+  const getCount = async ({ projectId, actor: ctx }: TGetAccessRequestCountDTO) => {
+    await verifyProductMembership(projectPermissionService, projectId, ctx);
 
     return approvalPolicyService.countPendingForApprover(
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       projectId,
-      toApprovalActor(ctx)
+      toApprovalActorContext(ctx)
     );
   };
 
@@ -634,9 +630,9 @@ export const pamAccessRequestServiceFactory = ({
     accountId,
     projectId,
     accessType = PamAccessType.Session,
-    ...ctx
+    actor: ctx
   }: TGetAccountApproversDTO) => {
-    await verifyProductMembership(permissionService, projectId, ctx);
+    await verifyProductMembership(projectPermissionService, projectId, ctx);
 
     const account = await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) {
@@ -644,13 +640,13 @@ export const pamAccessRequestServiceFactory = ({
     }
 
     await checkAccountAccess(
-      permissionService,
+      pamPermissionService,
       account.id,
       account.folderId,
       projectId,
       accessType === PamAccessType.Credential
-        ? ResourcePermissionPamResourceActions.ViewCredentials
-        : ResourcePermissionPamResourceActions.LaunchSessions,
+        ? PamResourcePermissionActions.ViewCredentials
+        : PamResourcePermissionActions.LaunchSessions,
       ctx
     );
 
@@ -664,7 +660,7 @@ export const pamAccessRequestServiceFactory = ({
         scopeId: account.folderId,
         inputs: { accountId: account.id, accessType } as TPamAccessPolicyInputs
       },
-      toSubjectActor(ctx)
+      { id: ctx.principal.id, type: ctx.principal.type }
     );
   };
 

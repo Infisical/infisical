@@ -1,0 +1,329 @@
+---
+title: "DNS server (RFC 2136) connection"
+sidebarTitle: "DNS server (RFC 2136)"
+description: "Learn how to configure a DNS server (RFC 2136) connection for Infisical."
+---
+
+{/* vale Vale.Spelling = NO */}
+
+A DNS Server (RFC 2136) connection lets an [ACME certificate authority](/documentation/platform/pki/ca/acme-ca) complete DNS-01 challenges on a DNS server you run, such as BIND, Knot DNS, PowerDNS, Infoblox, BlueCat, or Technitium. Infisical sends the server [RFC 2136](https://www.rfc-editor.org/rfc/rfc2136) dynamic updates that add a TXT record at `_acme-challenge.<domain>`, and removes the record after the certificate authority validates it.
+
+{/* vale Vale.Spelling = YES */}
+
+Each update is signed with a TSIG key, a shared secret that the DNS server uses to check that the update comes from a client it trusts.
+
+## Prerequisites
+
+- Admin access to the primary DNS server for the zone that holds your domains (secondary servers usually refuse updates)
+- A DNS server that accepts dynamic updates over TCP signed with a TSIG key
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the DNS server, if the server is on a private network
+- If you connect without a Gateway, a firewall rule that lets Infisical reach the DNS server over TCP on port 53 (or the port the server listens on)
+
+Infisical Cloud can't connect to private IP addresses without a Gateway. If you self-host Infisical, you can instead set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` on your instance.
+
+## Step 1: Create a TSIG key on your DNS server
+
+Create a TSIG key, then allow the key to change TXT records at the `_acme-challenge` name of each domain you request certificates for. Limit the key to those records, so the key can't change any other record in the zone.
+
+Use HMAC-SHA256 for the key if your server supports it. Infisical also accepts HMAC-SHA224, HMAC-SHA384, HMAC-SHA512, and HMAC-SHA1. Infisical doesn't accept HMAC-MD5 or truncated algorithms such as `hmac-sha256-128` in BIND, so if your server has one of those keys, create a new key.
+
+<Tabs>
+  <Tab title="BIND">
+    <Steps>
+      <Step>
+        Generate the key:
+
+        ```bash
+        tsig-keygen -a hmac-sha256 infisical-acme > /etc/bind/infisical-acme.key
+        ```
+
+        The file holds the key's name, algorithm, and secret:
+
+        ```
+        key "infisical-acme" {
+            algorithm hmac-sha256;
+            secret "<base64-secret>";
+        };
+        ```
+      </Step>
+      <Step>
+        In `named.conf`, include the key file, and add an `update-policy` to the zone that lets the key change the TXT record at the challenge name:
+
+        ```
+        include "/etc/bind/infisical-acme.key";
+
+        zone "example.com" {
+            type primary;
+            file "/var/lib/bind/example.com.zone";
+            update-policy {
+                grant infisical-acme name _acme-challenge.example.com. TXT;
+            };
+        };
+        ```
+
+        Add a `grant` line for each domain, such as `grant infisical-acme name _acme-challenge.www.example.com. TXT;` for `www.example.com`. A `subdomain` grant, such as `grant infisical-acme subdomain acme.example.com. TXT;`, covers every name in a zone, so use one only for a zone that holds nothing but challenge records.
+
+        BIND saves each update in a journal file next to the zone file, so `named` needs write access to the zone file's directory.
+
+        <Note>
+          BIND doesn't accept `allow-update` and `update-policy` on the same zone. If the zone has `allow-update { key dhcp-key; };`, replace it with a grant in the same `update-policy`: `grant dhcp-key zonesub ANY;`. If `allow-update` lists IP addresses instead of keys, put the challenge records in a separate zone and point each `_acme-challenge` name at it with a CNAME.
+        </Note>
+      </Step>
+      <Step>
+        Reload the configuration:
+
+        ```bash
+        rndc reload
+        ```
+      </Step>
+    </Steps>
+
+    When you create the connection, enter `infisical-acme` as the **Key Name**, `hmac-sha256` as the **Algorithm**, and the value between the quotes after `secret` as the **Secret**.
+  </Tab>
+  <Tab title="Knot DNS">
+    <Steps>
+      <Step>
+        Generate the key:
+
+        ```bash
+        keymgr -t infisical-acme hmac-sha256
+        ```
+
+        The command prints the key as a configuration block:
+
+        ```yaml
+        # hmac-sha256:infisical-acme:<base64-secret>
+        key:
+          - id: infisical-acme
+            algorithm: hmac-sha256
+            secret: <base64-secret>
+        ```
+      </Step>
+      <Step>
+        Add the `key` block to `knot.conf`, then add an ACL that lets the key change the TXT record at the challenge name, and attach the ACL to the zone:
+
+        ```yaml
+        acl:
+          - id: infisical-acme-update
+            key: infisical-acme
+            action: update
+            update-type: [TXT]
+            update-owner: name
+            update-owner-match: equal
+            update-owner-name: [_acme-challenge]
+
+        zone:
+          - domain: example.com
+            acl: infisical-acme-update
+        ```
+
+        Names in `update-owner-name` are relative to the zone. Add one for each domain, such as `_acme-challenge.www` for `www.example.com`.
+      </Step>
+      <Step>
+        Reload the configuration:
+
+        ```bash
+        knotc reload
+        ```
+      </Step>
+    </Steps>
+
+    When you create the connection, enter the key's `id` as the **Key Name**, its `algorithm` as the **Algorithm**, and its `secret` as the **Secret**.
+  </Tab>
+  <Tab title="PowerDNS">
+    PowerDNS accepts dynamic updates only for zones stored in a database backend (`gmysql`, `gpgsql`, `gsqlite3`) or the LMDB backend.
+
+    <Steps>
+      <Step>
+        Turn on dynamic updates in `pdns.conf`, then restart `pdns_server`:
+
+        ```ini
+        dnsupdate=yes
+        ```
+
+        Allow updates to the zone from the address that Infisical or your Gateway connects from:
+
+        ```bash
+        pdnsutil metadata add example.com ALLOW-DNSUPDATE-FROM <infisical-or-gateway-address>
+        ```
+
+        On older PowerDNS versions, run `pdnsutil add-meta example.com ALLOW-DNSUPDATE-FROM <infisical-or-gateway-address>` instead. Allow the address on this zone only, not with `allow-dnsupdate-from` in `pdns.conf`: that setting lets the address change every zone on the server that has no key list, without a key.
+      </Step>
+      <Step>
+        Generate the key:
+
+        ```bash
+        pdnsutil tsigkey generate infisical-acme hmac-sha256
+        ```
+
+        On older PowerDNS versions, run `pdnsutil generate-tsig-key infisical-acme hmac-sha256` instead. The command prints the key's name, algorithm, and secret.
+      </Step>
+      <Step>
+        Allow the key to update the zone:
+
+        ```bash
+        pdnsutil metadata add example.com TSIG-ALLOW-DNSUPDATE infisical-acme
+        ```
+
+        On older PowerDNS versions, run `pdnsutil add-meta example.com TSIG-ALLOW-DNSUPDATE infisical-acme` instead. Both add the key to the zone's list and keep any keys already on it.
+
+        <Warning>
+          If the list was empty, PowerDNS accepted updates signed with any key, and now only `infisical-acme` can update the zone. If other systems update this zone, add their keys too, for example `pdnsutil metadata add example.com TSIG-ALLOW-DNSUPDATE dhcp-key`.
+        </Warning>
+      </Step>
+    </Steps>
+
+    PowerDNS lets the key change any record in the zone. To limit the key to challenge records, use it on a zone that holds only challenge records, as the [Windows Server DNS](#windows-server-dns) tab sets up.
+  </Tab>
+  <Tab title="Windows Server DNS">
+    Windows Server DNS accepts secure dynamic updates only with Kerberos (GSS-TSIG), which Infisical doesn't support. Instead, add CNAME records in your Windows zone that point each challenge name to a zone on a BIND or Knot DNS server, and connect Infisical to that server:
+
+    <Steps>
+      <Step>
+        On a BIND or Knot DNS server, create a zone for the challenge records, such as `acme.example.com`, and a key that can update TXT records in it. In BIND, a `subdomain` grant fits here: `grant infisical-acme subdomain acme.example.com. TXT;`.
+      </Step>
+      <Step>
+        In your public `example.com` zone, add NS records that delegate `acme.example.com` to that server, so the certificate authority can look up records in it.
+      </Step>
+      <Step>
+        For each domain, add a CNAME record in the public `example.com` zone that points the domain's `_acme-challenge` name to a name in the new zone. For example, point `_acme-challenge.example.com` to `example.com.acme.example.com`.
+      </Step>
+      <Step>
+        When you create the connection, enter the BIND or Knot DNS server as the **Host**. Infisical follows each CNAME and adds the TXT record in `acme.example.com`.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Other servers">
+    {/* vale Vale.Spelling = NO */}
+
+    On Infoblox, BlueCat, Technitium, and other servers that support RFC 2136, create a TSIG key, then allow the key to update TXT records at the `_acme-challenge` names in your zone. Your server's documentation has the steps.
+
+    {/* vale Vale.Spelling = YES */}
+  </Tab>
+</Tabs>
+
+<Note>
+  If your DNS server answers internal and external clients from different views (split-horizon DNS), updates signed with the key have to reach the view that answers the internet. Otherwise the certificate authority can't find the TXT record. In BIND, start the `match-clients` list of each view above the external view with `!key infisical-acme;`, so BIND passes the updates to the external view.
+</Note>
+
+## Step 2: Create the app connection
+
+Next, create the connection in Infisical with the key from [Step 1](#step-1-create-a-tsig-key-on-your-dns-server).
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In **Certificate Manager**, go to **Settings** > **App Connections**.
+
+        ![App Connections Tab](/images/app-connections/general/cert-manager-app-connections.png)
+      </Step>
+      <Step>
+        Select **Add Connection** and choose **DNS Server (RFC 2136)**.
+      </Step>
+      <Step>
+        Fill out the form's fields:
+
+        - **Name**: A name for the connection, such as `bind-primary`
+        - **Description** (optional): A description of the connection
+        - **Host**: The hostname or IP address of the zone's primary DNS server, such as `ns1.example.com`, without a scheme or port
+        - **Port**: The TCP port the DNS server listens on (usually `53`)
+        - **Key Name**: The name of the TSIG key, as configured on the DNS server
+        - **Algorithm**: The algorithm of the TSIG key (`hmac-sha256` is recommended)
+        - **Secret**: The key's base64 secret, exactly as it appears in the key file
+        - **Gateway** (optional): The Gateway to connect through, if the DNS server is on a private network
+
+        Then, select **Connect to DNS Server**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create the connection with the API, call the [Create](/api-reference/endpoints/app-connections/rfc2136/create) endpoint for DNS Server (RFC 2136) connections.
+
+    ### Sample request
+
+    ```bash Request
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/app-connections/rfc2136 \
+      --header 'Authorization: Bearer <your-access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "bind-primary",
+        "method": "tsig-key",
+        "credentials": {
+          "host": "ns1.example.com",
+          "port": 53,
+          "tsigKeyName": "infisical-acme",
+          "tsigAlgorithm": "hmac-sha256",
+          "tsigSecret": "<base64-secret>"
+        }
+      }'
+    ```
+
+    To connect through a Gateway, add `"gatewayId": "<gateway-id>"` to the body.
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+        "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "name": "bind-primary",
+        "description": null,
+        "version": 1,
+        "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+        "createdAt": "2026-11-24T12:00:00.000Z",
+        "updatedAt": "2026-11-24T12:00:00.000Z",
+        "isPlatformManagedCredentials": false,
+        "gatewayId": null,
+        "app": "rfc2136",
+        "method": "tsig-key",
+        "credentials": {
+          "host": "ns1.example.com",
+          "port": 53,
+          "tsigKeyName": "infisical-acme",
+          "tsigAlgorithm": "hmac-sha256"
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+When you save the connection, Infisical sends a signed test query to the DNS server to check that it can reach the server and that the server accepts the key. Some servers, such as Knot DNS, don't sign their answer to this query, so Infisical can only check that they're reachable. On those servers, a wrong key shows up when the first certificate is requested. If the check fails, find the error message in [Troubleshooting](#troubleshooting).
+
+<Check>
+  Your DNS Server (RFC 2136) connection is ready to use.
+</Check>
+
+## Step 3: Use the connection with an ACME certificate authority
+
+When you [register an ACME certificate authority](/documentation/platform/pki/ca/acme-ca#guide-to-connecting-infisical-to-an-acme-compatible-ca), select **DNS Server (RFC 2136)** as the **DNS Provider** and your connection as the **DNS App Connection**. The **Zone** field is optional:
+
+- Enter the zone that holds your domains, such as `example.com`
+- Leave **Zone** empty, and Infisical looks up the zone for each challenge record on the DNS server
+
+If a domain's `_acme-challenge` name is a CNAME in public DNS, Infisical adds the TXT record at the CNAME's target. The connection then has to point at the primary server for the target's zone, and if you enter a zone, enter the target's zone.
+
+After adding a challenge record, Infisical waits up to 60 seconds for each of the zone's public nameservers to serve it before the certificate authority checks it. On Infisical Cloud, the order fails if a nameserver still doesn't serve the record after 60 seconds.
+
+## Troubleshooting
+
+If Infisical can't save the connection or add a challenge record, the error message names the problem. Find the message in the following table:
+
+| The error message contains | Fix |
+| --- | --- |
+| `the TSIG secret or algorithm does not match the key configured on the DNS server` | Copy the secret from the key file again, and check that **Algorithm** matches the key's algorithm. If the key file names a truncated algorithm such as `hmac-sha256-128`, create a new `hmac-sha256` key |
+| `rejected the TSIG key` | Check **Key Name**, **Algorithm** and the secret against the key on the DNS server, and sync the DNS server's clock with NTP |
+| `does not recognize the TSIG key name or its algorithm` | Check **Key Name** for typos, and check that the DNS server has loaded the key |
+| `its clock differs from Infisical's by more than 5 minutes` | Sync the DNS server's clock with NTP |
+| `refused the update` | Check **Key Name**, **Algorithm** and the secret, and sync the DNS server's clock with NTP. Check that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`), that the server accepts updates from the IP address of Infisical or your Gateway (PowerDNS `ALLOW-DNSUPDATE-FROM`), and that **Host** is the zone's primary server |
+| `did not accept the update for this zone` | Check the **Zone** on the certificate authority, **Key Name** and **Algorithm**, and that the key is allowed to update TXT records at the challenge name (BIND `update-policy`, Knot DNS ACL, or PowerDNS `TSIG-ALLOW-DNSUPDATE`) |
+| `does not accept dynamic updates` | Turn on dynamic updates on the DNS server, such as `dnsupdate=yes` in PowerDNS |
+| `reply was not signed with the TSIG key` | The DNS server doesn't support TSIG keys. Windows Server DNS is one such server, so follow the [Windows Server DNS](#windows-server-dns) setup and point **Host** at the BIND or Knot DNS server that holds the challenge zone |
+| `is not authoritative for any zone containing` | Point **Host** at the zone's primary server, or enter the **Zone** on the certificate authority |
+| `is not inside zone` | Correct the **Zone** on the certificate authority. If the challenge name is a CNAME to another zone, enter that zone or leave **Zone** empty |
+| `is an alias (CNAME)` | Publish the CNAME in public DNS so Infisical follows it, or remove the CNAME from the DNS server |
+| `but does not serve it` | Check that **Host** is the zone's primary server, and that the key's policy allows TXT records at the challenge name |
+| `serve the challenge record` | Check that the named nameserver receives updates from your primary server: the primary sends it NOTIFY messages, and it's allowed to transfer the zone |
+| `could not connect to the DNS server`, `did not answer in time`, or `closed the connection without answering` | Check that the DNS server accepts TCP connections on **Port** from Infisical or your Gateway (some firewalls allow only UDP on port 53), or connect through a Gateway |

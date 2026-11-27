@@ -59,6 +59,20 @@ export const runModesSchema = zpStr(z.string().optional())
       .nonempty("INFISICAL_RUN_MODES must name at least one run mode")
   );
 
+// The address MCP clients connect to, when a proxy serves the MCP server somewhere other than SITE_URL/api/mcp and
+// forwards it there. Tokens are bound to it byte for byte (RFC 8707), which rules out a fragment or query.
+export const mcpServerUrlSchema = zpStr(
+  z
+    .string()
+    .refine((val) => {
+      if (!URL.canParse(val)) return false;
+      const { protocol, search, hash } = new URL(val);
+      return (protocol === "https:" || protocol === "http:") && !search && !hash;
+    }, "MCP_SERVER_URL must be an absolute http or https URL without a query or fragment, such as https://mcp.example.com/mcp")
+    .transform(removeTrailingSlash)
+    .optional()
+);
+
 /**
  * Everything a secret scan spends outside the clone and the scan itself: measuring the clone
  * (30s ceiling), writing findings, notifications and audit logs, and queue/DB overhead. Used as
@@ -407,6 +421,7 @@ const envSchema = z
 
     // Ensure that the SITE_URL never ends with a trailing slash
     SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional(),
+    MCP_SERVER_URL: mcpServerUrlSchema,
     // Telemetry
     TELEMETRY_ENABLED: zodStrBool.default("true"),
     POSTHOG_HOST: zpStr(z.string().optional().default("https://app.posthog.com")),

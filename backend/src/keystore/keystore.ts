@@ -131,11 +131,6 @@ export const KeyStorePrefixes = {
   AlertChannelTestCooldown: (orgId: string, actorId: string, channelType: string) =>
     `alert-channel-test-cooldown:${orgId}:${actorId}:${channelType}` as const,
 
-  ProjectPermissionMarker: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
-    `project-permission-marker:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
-  ProjectPermissionData: (projectId: string, actorType: string, actorId: string, actionProjectType: string) =>
-    `project-permission-data:${projectId}:${actorType}:${actorId}:${actionProjectType}` as const,
-
   // Postgres key_value_store key (pgIncrementBy/pgGetIntItem), not a Redis key
   ProjectFolderPermissionVersion: (projectId: string) => `project-folder-permission-version:${projectId}` as const,
 
@@ -307,8 +302,6 @@ export const KeyStoreTtls = {
   IdentityRevocationVerdictJitterInSeconds: 120, // +/- 2 minutes
   IdentityRevocationVersionInSeconds: 604800, // 7 days
   IdentityTrustedIpsInSeconds: 300, // 5 minutes
-  ProjectPermissionMarkerTtlSeconds: 10, // 10 seconds - short-lived marker for fingerprint validation
-  ProjectPermissionDataTtlSeconds: 600, // 10 minutes - longer-lived data payload
   ProjectFolderAccessMarkerTtlSeconds: 20,
   ProjectFolderAccessDataTtlSeconds: 600, // 10 minutes
   ProjectFolderAccessRosterVersionTtlSeconds: 600, // 10 minutes, must outlive the marker

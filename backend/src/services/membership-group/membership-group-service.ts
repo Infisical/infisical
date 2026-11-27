@@ -7,7 +7,11 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TPamPermissionService } from "@app/domains/pam/pam/ce/module";
 import { Meter, PlanFeature, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
+import { TActorContextService, TOrgPermissionService } from "@app/domains/platform/organizations/ce/module";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -16,7 +20,6 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { terminatePamSessionsLosingGroupAccess } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -31,7 +34,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
-import { lockMembershipsById, TMembershipDALFactory } from "../membership/membership-dal";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -59,7 +62,10 @@ type TMembershipGroupServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  permissionService: TPermissionServiceFactory;
+  orgPermissionService: TOrgPermissionService;
+  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
+  actorContextService: TActorContextService;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   licenseService: TLicenseService;
@@ -75,7 +81,7 @@ type TMembershipGroupServiceFactoryDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   eventEmitter: TEventEmitter;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  pamPermissionService: Pick<TPamPermissionService, "within">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -91,7 +97,10 @@ export const membershipGroupServiceFactory = ({
   approvalRequestDAL,
   membershipRoleDAL,
   orgDAL,
-  permissionService,
+  orgPermissionService,
+  projectPermissionService,
+  secretsPermissionService,
+  actorContextService,
   groupDAL,
   licenseService,
   usageMeteringService,
@@ -103,7 +112,7 @@ export const membershipGroupServiceFactory = ({
   userGroupMembershipDAL,
   identityAccessTokenService,
   eventEmitter,
-  membershipDAL,
+  pamPermissionService,
   pamAccountDAL,
   pamSessionDAL,
   userDAL,
@@ -111,15 +120,15 @@ export const membershipGroupServiceFactory = ({
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
-      orgDAL,
-      permissionService,
+      orgPermissionService,
+      actorContextService,
       groupDAL,
       membershipGroupDAL
     }),
     [AccessScope.Project]: newProjectMembershipGroupFactory({
       membershipGroupDAL,
-      orgDAL,
-      permissionService,
+      projectPermissionService,
+      secretsPermissionService,
       groupDAL,
       projectDAL
     })
@@ -466,8 +475,7 @@ export const membershipGroupServiceFactory = ({
       userIds,
       identityIds,
       actorId,
-      membershipDAL,
-      membershipRoleDAL,
+      pamPermissionService,
       pamAccountDAL,
       pamSessionDAL,
       userDAL,
@@ -507,7 +515,7 @@ export const membershipGroupServiceFactory = ({
         message: "Group doesn't have membership"
       });
 
-    if (existingMembership.actorGroupId === dto.permission.id)
+    if (existingMembership.actorGroupId === dto.actor.principal.id)
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
@@ -609,7 +617,7 @@ export const membershipGroupServiceFactory = ({
             groupId: dto.selector.groupId,
             orgId: existingMembership.scopeOrgId,
             orgMembershipId: existingMembership.id,
-            actorId: dto.permission.id
+            actorId: dto.actor.principal.id
           },
           tx
         ));

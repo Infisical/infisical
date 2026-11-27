@@ -1,24 +1,19 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { AccessScope, ActionProjectType, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { AccessScope, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
 import {
   isCustomProjectRole,
   ProjectPermissionIdentityActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import {
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  resolveMembershipRoleSlugs,
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -27,16 +22,17 @@ import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TProjectMembershipIdentityScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-
+  projectPermissionService: TProjectPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
+  orgDAL: Pick<TOrgDALFactory, "findActorsWithActiveOrgAccess">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "getIdentityById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectMembershipIdentityFactory = ({
-  permissionService,
+  projectPermissionService,
+  secretsPermissionService,
   orgDAL,
   identityDAL,
   projectDAL,
@@ -73,18 +69,11 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+      actor: dto.actor,
+      projectId: scope.value
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Create,
-      ProjectPermissionSub.Identity
-    );
+    permission.assert({ action: ProjectPermissionIdentityActions.Create, subject: ProjectPermissionSub.Identity });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
@@ -107,7 +96,7 @@ export const newProjectMembershipIdentityFactory = ({
       }
     }
 
-    await assertOrgAccess(dto.data.identityId, dto.permission.orgId);
+    await assertOrgAccess(dto.data.identityId, dto.actor.org.id);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.data.identityId), () =>
       identityDAL.findById(dto.data.identityId)
@@ -116,37 +105,21 @@ export const newProjectMembershipIdentityFactory = ({
       throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
     }
 
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
-    const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
-      scope.value
-    );
+    const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
+      projectId: scope.value,
+      roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
+    });
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-        ProjectPermissionSub.Identity,
-        permission,
-        permissionRole.permission,
-        {
+      permission.assertBounds({
+        actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Identity,
+        fields: {
           identityId: identityDetails.id,
           assignableRole: permissionRole.role?.slug
-        }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to create identity project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.AssignRole,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+        },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to create identity project membership"
+      });
     }
   };
 
@@ -154,18 +127,15 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+      actor: dto.actor,
+      projectId: scope.value
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Edit,
-      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
-    );
+    permission.assert({
+      action: ProjectPermissionIdentityActions.Edit,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId }
+    });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
       projectDAL.findById(scope.value)
@@ -195,59 +165,42 @@ export const newProjectMembershipIdentityFactory = ({
       throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
     }
     if (!identityDetails.projectId) {
-      await assertOrgAccess(dto.selector.identityId, dto.permission.orgId);
+      await assertOrgAccess(dto.selector.identityId, dto.actor.org.id);
     }
-
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
 
     const targetMembership = await membershipIdentityDAL.getIdentityById({
       scopeData: dto.scopeData,
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+    const targetPermissions = await projectPermissionService.getProjectPermissionByRoles({
+      projectId: scope.value,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-      opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission,
-      targetPermissions,
-      baseMessage: "Failed to change the roles of a more privileged identity",
-      subjectFields: { identityId: dto.selector.identityId }
+    permission.assertBounds({
+      actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to change the roles of a more privileged identity"
     });
 
-    const permissionRoles = await permissionService.getProjectPermissionByRoles(
-      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
-      scope.value
-    );
+    const permissionRoles = await projectPermissionService.getProjectPermissionByRoles({
+      projectId: scope.value,
+      roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
+    });
     for (const permissionRole of permissionRoles) {
-      const permissionBoundary = validatePrivilegeChangeOperation(
-        shouldUseNewPrivilegeSystem,
-        [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
-        ProjectPermissionSub.Identity,
-        permission,
-        permissionRole.permission,
-        {
+      permission.assertBounds({
+        actions: [ProjectPermissionIdentityActions.AssignRole, ProjectPermissionIdentityActions.GrantPrivileges],
+        subject: ProjectPermissionSub.Identity,
+        fields: {
           identityId: identityDetails.id,
           assignableRole: permissionRole.role?.slug
-        }
-      );
-
-      if (!permissionBoundary.isValid)
-        throw new PermissionBoundaryError({
-          message: constructPermissionErrorMessage(
-            "Failed to update identity project membership",
-            shouldUseNewPrivilegeSystem,
-            ProjectPermissionIdentityActions.AssignRole,
-            ProjectPermissionSub.Identity
-          ),
-          details: { missingPermissions: permissionBoundary.missingPermissions }
-        });
+        },
+        targets: [{ permission: permissionRole.permission }],
+        message: "Failed to update identity project membership"
+      });
     }
   };
 
@@ -255,19 +208,16 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+      actor: dto.actor,
+      projectId: scope.value
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Delete,
-      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
-    );
+    permission.assert({
+      action: ProjectPermissionIdentityActions.Delete,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId }
+    });
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(dto.selector.identityId), () =>
       identityDAL.findById(dto.selector.identityId)
@@ -281,22 +231,18 @@ export const newProjectMembershipIdentityFactory = ({
       identityId: dto.selector.identityId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    const targetPermissions = await permissionService.getProjectPermissionByRoles(targetRoles, scope.value, {
+    const targetPermissions = await projectPermissionService.getProjectPermissionByRoles({
+      projectId: scope.value,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: ProjectPermissionIdentityActions.Delete,
-      opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission,
-      targetPermissions,
-      baseMessage: "Failed to remove a more privileged identity from the project",
-      subjectFields: { identityId: dto.selector.identityId }
+    permission.assertBounds({
+      actions: ProjectPermissionIdentityActions.Delete,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: dto.selector.identityId },
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove a more privileged identity from the project"
     });
   };
 
@@ -304,43 +250,34 @@ export const newProjectMembershipIdentityFactory = ({
     dto
   ) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
+    const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+      actor: dto.actor,
+      projectId: scope.value
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Read,
-      ProjectPermissionSub.Identity
-    );
+    permission.assert({ action: ProjectPermissionIdentityActions.Read, subject: ProjectPermissionSub.Identity });
 
     return (arg) =>
-      permission.can(
-        ProjectPermissionIdentityActions.Read,
-        subject(ProjectPermissionSub.Identity, { identityId: arg.identityId })
-      );
+      permission.can({
+        action: ProjectPermissionIdentityActions.Read,
+        subject: ProjectPermissionSub.Identity,
+        fields: { identityId: arg.identityId }
+      });
   };
 
   const onGetMembershipIdentityByIdentityIdGuard: TMembershipIdentityScopeFactory["onGetMembershipIdentityByIdentityIdGuard"] =
     async (dto) => {
       const scope = getScopeField(dto.scopeData);
-      const { permission } = await permissionService.getProjectPermission({
-        actor: dto.permission.type,
-        actorId: dto.permission.id,
-        actionProjectType: ActionProjectType.Any,
-        actorAuthMethod: dto.permission.authMethod,
-        projectId: scope.value,
-        actorOrgId: dto.permission.orgId
+      const permission = await secretsPermissionService.getProjectPermissionWithFolderGrants({
+        actor: dto.actor,
+        projectId: scope.value
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.Read,
-        subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
-      );
+      permission.assert({
+        action: ProjectPermissionIdentityActions.Read,
+        subject: ProjectPermissionSub.Identity,
+        fields: { identityId: dto.selector.identityId }
+      });
     };
 
   return {

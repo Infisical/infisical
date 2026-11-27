@@ -79,7 +79,8 @@ const createHarness = ({
 
   const service = auditLogServiceFactory({
     auditLogDAL: {} as never,
-    permissionService: {} as never,
+    orgPermissionService: {} as never,
+    projectPermissionService: {} as never,
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
     licenseService,

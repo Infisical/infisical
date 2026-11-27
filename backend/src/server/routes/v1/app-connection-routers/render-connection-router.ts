@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedRenderConnectionSchema,
   UpdateRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -45,7 +45,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const services = await server.services.appConnection.render.listServices(connectionId, req.permission);
+      const services = await server.services.appConnection.render.listServices(connectionId, req.actor);
 
       return services;
     }
@@ -74,7 +74,7 @@ export const registerRenderConnectionRouter = async (server: FastifyZodProvider)
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      const groups = await server.services.appConnection.render.listEnvironmentGroups(connectionId, req.permission);
+      const groups = await server.services.appConnection.render.listEnvironmentGroups(connectionId, req.actor);
 
       return groups;
     }

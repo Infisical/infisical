@@ -2,14 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TApplicationPermissionService } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import type { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
-import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
@@ -89,12 +91,12 @@ describe("CertificateProfileService", () => {
   } as unknown as TCertificatePolicyDALFactory;
 
   const mockActor = {
-    actor: ActorType.USER,
-    actorId: "user-123",
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: "org-123"
+    actor: {
+      principal: { type: ActorType.USER, id: "user-123", authMethod: AuthMethod.EMAIL },
+      org: { id: "org-123" }
+    } as unknown as TActorContext
   };
-  const inActorOrg = <T extends object>(profile: T) => ({ ...profile, ownerOrgId: mockActor.actorOrgId });
+  const inActorOrg = <T extends object>(profile: T) => ({ ...profile, ownerOrgId: mockActor.actor.org.id });
 
   const sampleProfile: TCertificateProfile = {
     id: "profile-123",
@@ -193,22 +195,14 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TScepEnrollmentConfigDALFactory;
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: {
-        can: vi.fn().mockReturnValue(true),
-        throwUnlessCan: vi.fn(),
-        rules: []
-      }
-    }),
-    getResourcePermission: vi.fn().mockResolvedValue({
-      permission: {
-        can: vi.fn().mockReturnValue(true),
-        throwUnlessCan: vi.fn(),
-        rules: []
-      }
-    })
-  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  const allowAll = Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] });
+  const getProjectPermissionMock = vi.fn().mockResolvedValue(allowAll);
+  const mockProjectPermissionService = {
+    getProjectPermission: getProjectPermissionMock
+  } as unknown as TProjectPermissionService;
+  const mockApplicationPermissionService = {
+    getApplicationPermission: vi.fn().mockResolvedValue(allowAll)
+  } as unknown as TApplicationPermissionService;
 
   const mockKmsService = {
     getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
@@ -277,10 +271,6 @@ describe("CertificateProfileService", () => {
   };
 
   beforeEach(() => {
-    vi.spyOn(ForbiddenError, "from").mockReturnValue({
-      throwUnlessCan: vi.fn()
-    } as any);
-
     // Mock the transaction method to execute the callback and return the result
     (mockCertificateProfileDAL.transaction as any).mockImplementation(async (fn: any) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
@@ -310,7 +300,8 @@ describe("CertificateProfileService", () => {
       certificateAuthorityCertDAL: { find: vi.fn() } as never,
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
-      permissionService: mockPermissionService,
+      projectPermissionService: mockProjectPermissionService,
+      applicationPermissionService: mockApplicationPermissionService,
       kmsDataKeyService: mockKmsService,
       kmsKeyService: mockKmsService,
       resourceMetadataDAL: mockResourceMetadataDAL,
@@ -794,7 +785,7 @@ describe("CertificateProfileService", () => {
     it("should return profile successfully", async () => {
       (mockCertificateProfileDAL.findByIdWithOwnerOrgId as any).mockResolvedValue({
         ...sampleProfile,
-        ownerOrgId: mockActor.actorOrgId
+        ownerOrgId: mockActor.actor.org.id
       });
 
       const result = await service.getProfileById({
@@ -815,7 +806,7 @@ describe("CertificateProfileService", () => {
       await expect(service.getProfileById({ ...mockActor, profileId: "profile-123" })).rejects.toThrow(
         "Certificate profile with ID 'profile-123' not found. List your organization's certificate profiles with GET /api/v1/cert-manager/certificate-profiles to find the right ID."
       );
-      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(getProjectPermissionMock).not.toHaveBeenCalled();
     });
 
     it("should throw NotFoundError when profile not found", async () => {
@@ -1412,7 +1403,7 @@ describe("CertificateProfileService", () => {
       });
 
       await expect(call()).rejects.toThrow(notFoundMessage);
-      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(getProjectPermissionMock).not.toHaveBeenCalled();
     });
 
     it.each([
@@ -1428,7 +1419,7 @@ describe("CertificateProfileService", () => {
       });
 
       await expect(call()).rejects.toThrow(notFoundMessage);
-      expect(mockPermissionService.getProjectPermission).not.toHaveBeenCalled();
+      expect(getProjectPermissionMock).not.toHaveBeenCalled();
     });
   });
 

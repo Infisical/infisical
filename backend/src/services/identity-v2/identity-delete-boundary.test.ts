@@ -2,15 +2,20 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
-import { projectAdminPermissions, projectNoAccessPermissions } from "@app/ee/services/permission/default-roles";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   orgAdminPermissions,
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { PermissionBoundaryError } from "@app/lib/errors";
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  projectAdminPermissions,
+  projectNoAccessPermissions
+} from "@app/domains/platform/projects/ce/module";
 
 import { newOrgIdentityFactory } from "./org/org-identity-factory";
 import { newProjectIdentityFactory } from "./project/project-identity-factory";
@@ -48,6 +53,10 @@ const projectIdentityDeleter = createMongoAbility<MongoAbility>([
   }
 ]);
 
+const toPermission = (ability: MongoAbility) => Permission.fromRules({ rules: ability.rules as never });
+const actorPermissionOf = (ability: MongoAbility, usesNewPrivilegeSystem: boolean) =>
+  ActorPermission.of({ rules: ability.rules as never, usesNewPrivilegeSystem });
+
 const createOrgGuard = ({
   actorPermission,
   shouldUseNewPrivilegeSystem,
@@ -58,19 +67,20 @@ const createOrgGuard = ({
   targetRole?: string;
 }) => {
   const factory = newOrgIdentityFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(actorPermissionOf(actorPermission, shouldUseNewPrivilegeSystem)),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: orgAbilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: toPermission(orgAbilityByRole[role]) }))
+        )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never
   });
 
   return () =>
     factory.onDeleteIdentityGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID, shouldUseNewPrivilegeSystem } },
       scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
       selector: { identityId: IDENTITY_ID }
     } as never);
@@ -86,19 +96,24 @@ const createProjectGuard = ({
   targetRole?: string;
 }) => {
   const factory = newProjectIdentityFactory({
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    secretsPermissionService: {
+      getProjectPermissionWithFolderGrants: vi
+        .fn()
+        .mockResolvedValue(actorPermissionOf(actorPermission, shouldUseNewPrivilegeSystem))
+    } as never,
+    projectPermissionService: {
       getProjectPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: projectAbilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: toPermission(projectAbilityByRole[role]) }))
+        )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     membershipIdentityDAL: { getIdentityById: vi.fn().mockResolvedValue({ roles: [{ role: targetRole }] }) } as never
   });
 
   return () =>
     factory.onDeleteIdentityGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID, shouldUseNewPrivilegeSystem } },
       scopeData: { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJECT_ID },
       selector: { identityId: IDENTITY_ID }
     } as never);
@@ -115,11 +130,11 @@ describe("identity v2 delete guards privilege boundary", () => {
   test("on the legacy system, a weaker actor cannot delete an Admin identity", async () => {
     await expect(
       createOrgGuard({ actorPermission: orgIdentityDeleter, shouldUseNewPrivilegeSystem: false })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
 
     await expect(
       createProjectGuard({ actorPermission: projectIdentityDeleter, shouldUseNewPrivilegeSystem: false })()
-    ).rejects.toThrow(PermissionBoundaryError);
+    ).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("an admin actor is unaffected", async () => {

@@ -64,4 +64,23 @@ func TestAcmeCA_KnownIssues(t *testing.T) {
 		require.Equal(t, "revoked", o.certificateStatus(t, certID))
 		require.NotNil(t, up.State(t).Issued[0].RevokedAt, "the upstream CA should hold the certificate revoked")
 	})
+
+	t.Run("should give a certificate ordered without an application its profile's auto-renewal window", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The ACME CA reads the profile with findById, which leaves out its API enrollment
+			config, so the window is never set; an order through an application is covered by the
+			issuance queue.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := pki.CertManager(t, tn)
+		ca, _, _ := pki.NewCloudflareAcmeCA(t, proj)
+		profile := pki.NewAutoRenewingProfile(t, proj, ca, pki.NewPolicy(t, proj, pki.AllowAll(t)), 10)
+
+		// Action
+		certID := orderWithoutApplication(t, tn, profile, pki.ServerCertificate(id.Short()+".order.test"))
+
+		// Assert
+		require.Equal(t, new(float32(10)), pki.ReadCertificate(t, tn.Admin, certID).JSON200.Certificate.RenewBeforeDays)
+	})
 }

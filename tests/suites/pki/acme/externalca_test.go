@@ -120,7 +120,9 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			require.Equal(t, []string{name}, cert.DNSNames)
 			dns.ExpectEvent[cloudflare.DNSRecordCreated](t, func(e cloudflare.DNSRecordCreated) bool { return e.Name == "_acme-challenge."+name })
 			dns.ExpectEvent[cloudflare.DNSRecordDeleted](t, func(e cloudflare.DNSRecordDeleted) bool { return e.Name == "_acme-challenge."+name })
-			require.Len(t, up.State(t).Issued, 1)
+			issued := up.State(t).Issued
+			require.Len(t, issued, 1)
+			require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
 		})
 
 		t.Run("should issue from the upstream CA after answering DNS-01 in DNS Made Easy "+subject.name, func(t *testing.T) {
@@ -145,7 +147,9 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 			require.Equal(t, []string{name}, cert.DNSNames)
 			dns.ExpectEvent[dnsmadeeasy.RecordCreated](t, func(e dnsmadeeasy.RecordCreated) bool { return e.Type == "TXT" && e.Name == "_acme-challenge" })
 			dns.ExpectEvent[dnsmadeeasy.RecordDeleted](t, func(e dnsmadeeasy.RecordDeleted) bool { return e.Type == "TXT" && e.Name == "_acme-challenge" })
-			require.Len(t, up.State(t).Issued, 1)
+			issued := up.State(t).Issued
+			require.Len(t, issued, 1)
+			require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
 		})
 	}
 
@@ -169,7 +173,9 @@ func TestAcmeExternalCA_Issue(t *testing.T) {
 		record := "_acme-challenge." + name + "."
 		acct.Route53.ExpectEvent[aws.RecordChanged](t, func(e aws.RecordChanged) bool { return e.Name == record && e.Type == "TXT" && e.Action == "UPSERT" })
 		acct.Route53.ExpectEvent[aws.RecordChanged](t, func(e aws.RecordChanged) bool { return e.Name == record && e.Type == "TXT" && e.Action == "DELETE" })
-		require.Len(t, up.State(t).Issued, 1)
+		issued := up.State(t).Issued
+		require.Len(t, issued, 1)
+		require.Equal(t, pki.ParseLeaf(t, issued[0].PEM).Raw, cert.Raw)
 	})
 
 	t.Run("should refuse a CSR whose names the policy does not allow, before ordering upstream", func(t *testing.T) {

@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedQoveryConnectionSchema,
   UpdateQoveryConnectionSchema
 } from "@app/services/app-connection/qovery";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -43,7 +43,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      return server.services.appConnection.qovery.listOrganizations(connectionId, req.permission);
+      return server.services.appConnection.qovery.listOrganizations(connectionId, req.actor);
     }
   });
 
@@ -67,7 +67,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
 
-      return server.services.appConnection.qovery.listProjects(connectionId, organizationId, req.permission);
+      return server.services.appConnection.qovery.listProjects(connectionId, organizationId, req.actor);
     }
   });
 
@@ -91,7 +91,7 @@ export const registerQoveryConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId, projectId } = req.params;
 
-      return server.services.appConnection.qovery.listEnvironments(connectionId, projectId, req.permission);
+      return server.services.appConnection.qovery.listEnvironments(connectionId, projectId, req.actor);
     }
   });
 };

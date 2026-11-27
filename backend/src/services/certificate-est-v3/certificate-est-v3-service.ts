@@ -3,9 +3,9 @@ import * as x509 from "@peculiar/x509";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import {
@@ -252,10 +252,7 @@ export const certificateEstV3ServiceFactory = ({
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.EST_ACCOUNT,
-      actorId: profileId,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.EST_ACCOUNT, id: profileId, orgId: project.orgId },
       profileId,
       csr,
       validity: { ttl },
@@ -437,10 +434,7 @@ export const certificateEstV3ServiceFactory = ({
     });
 
     const result = await certificateV3Service.signCertificateFromProfile({
-      actor: ActorType.EST_ACCOUNT,
-      actorId: profileId,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.EST_ACCOUNT, id: profileId, orgId: project.orgId },
       profileId,
       csr,
       validity: { ttl },
