@@ -17,6 +17,7 @@ import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { countReturnedSecrets, secretImportSearchSlot } from "@app/server/plugins/secrets-org-budget";
 import {
   booleanSchema,
@@ -2020,6 +2021,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       operationId: "getSecretImports",
       querystring: z.object({
@@ -2053,7 +2055,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const orgBudget = server.secretsOrgBudget(req, reply);
       const readSlot = server.secretReadSlot(req, reply);
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+      const { secrets: importedSecrets } = await server.services.secretImport.getRawSecretsFromImports({
         actor: req.actor,
         ...req.query,
         secretReadSlot: async (work, opts) => {

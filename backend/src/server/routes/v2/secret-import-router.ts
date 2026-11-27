@@ -8,6 +8,7 @@ import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { fastJsonSerializerCompiler } from "@app/server/plugins/fastify-zod";
 import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -467,6 +468,7 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     config: {
       rateLimit: secretsLimit
     },
+    serializerCompiler: fastJsonSerializerCompiler,
     schema: {
       hide: false,
       operationId: "getRawSecretsFromImports",
@@ -491,7 +493,8 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
               secrets: secretRawSchema.array()
             })
             .array()
-        })
+        }),
+        304: z.void()
       }
     },
     onRequest: verifyAuth([
@@ -504,16 +507,27 @@ export const registerSecretImportRouter = async (server: FastifyZodProvider) => 
     handler: async (req, reply) => {
       const orgBudget = server.secretsOrgBudget(req, reply);
       const readSlot = server.secretReadSlot(req, reply);
-      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+      const { secrets, etag, notModified } = await server.services.secretImport.getRawSecretsFromImports({
         actor: req.actor,
         ...req.query,
+        ifNoneMatch: req.headers["if-none-match"],
         secretReadSlot: async (work, opts) => {
           await orgBudget.check();
           return readSlot(work, opts);
         }
       });
-      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
-      return { secrets: importedSecrets };
+
+      if (etag) {
+        void reply.header("ETag", etag);
+      }
+
+      if (notModified) {
+        void reply.code(304).send();
+        return;
+      }
+
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: secrets }));
+      return { secrets };
     }
   });
 };

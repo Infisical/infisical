@@ -90,6 +90,8 @@ export type TServerConfig = {
   isPublicSecretSharingDisabled?: boolean;
   isClickhouseAuditLogEnabled?: boolean;
   isInstanceSetupTokenRequired?: boolean;
+  // The most secrets one batch request may include, null when the instance sets no limit
+  maxSecretsPerBatchRequest?: number | null;
   // populated on self-hosted instances when a newer release than the running version exists
   latestAvailableVersion?: string | null;
   // Super admin-only fields (omitted for non-super-admin callers)

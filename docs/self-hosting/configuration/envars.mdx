@@ -280,6 +280,10 @@ Example values:
   Number of credits each organization can spend on requests to list secrets each minute. A request costs one credit for every 100 secrets it returns, rounded up, including imported secrets. If a request for a single secret has to search the folder's [imports](/documentation/platform/secret-reference#secret-imports), it costs one credit for every 100 imported secrets Infisical loads. Only used when `SECRET_READ_ORG_BUDGET_MODE` is `observe` or `enforce`.
 </ParamField>
 
+<ParamField query="MAX_SECRETS_PER_BATCH_REQUEST" type="int" optional>
+  Maximum number of secrets in one batch create or batch update request. Infisical rejects a batch create or update that includes more secrets than this. Split the secrets into multiple requests. When unset, batch creates and updates have no limit. Batch deletes aren't limited.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.

@@ -250,12 +250,22 @@ export const createFolderResolver = ({
   };
 };
 
-// Splits one batch into consecutive requests that each serialize to at most maxBytes, measuring
-// the exact JSON body that is sent. A secret too large to fit on its own is left out and returned.
+// maxCount is the instance's MAX_SECRETS_PER_BATCH_REQUEST; without one, the batch stays one request
+export const chunkByCount = <T>(items: T[], maxCount?: number | null) => {
+  if (!maxCount) return items.length ? [items] : [];
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += maxCount) chunks.push(items.slice(i, i + maxCount));
+  return chunks;
+};
+
+// Splits one batch into consecutive requests that each serialize to at most maxBytes and hold at
+// most maxCount secrets, measuring the exact JSON body that is sent. A secret too large to fit on
+// its own is left out and returned.
 export const chunkSecretsByRequestSize = <T>(
   envelope: Record<string, unknown>,
   secrets: T[],
-  maxBytes: number
+  maxBytes: number,
+  maxCount?: number | null
 ) => {
   const encoder = new TextEncoder();
   const byteSize = (value: unknown) => encoder.encode(JSON.stringify(value)).length;
@@ -272,7 +282,10 @@ export const chunkSecretsByRequestSize = <T>(
       return;
     }
     // Every secret after the first in a request adds a separating comma
-    if (current.length && currentBytes + secretBytes + 1 > maxBytes) {
+    if (
+      current.length &&
+      ((maxCount && current.length >= maxCount) || currentBytes + secretBytes + 1 > maxBytes)
+    ) {
       chunks.push(current);
       current = [];
       currentBytes = emptyRequestBytes;

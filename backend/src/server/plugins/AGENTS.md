@@ -87,8 +87,8 @@ service takes no slot. A route that does neither is outside the budget. The slot
   A report that grows the read past the room other reads leave refuses it there, a 503 in enforce mode and
   `would_refuse` in observe mode, and the size is remembered so the next attempt is refused at admission. Admission
   runs on an estimate, so without this check a cold burst is admitted at the default weight and lands far past the
-  budget. A `catch` around `reportSize` must rethrow `ServerBusyError`, as the cache hit path of `getSecrets` does,
-  or a refusal turns into a cache miss and a full reload.
+  budget. A `catch` around `reportSize` must rethrow `ServerBusyError`, as the cache hit paths of `getSecrets` and
+  `getRawSecretsFromImports` do, or a refusal turns into a cache miss and a full reload.
 - Work that never calls `reportSize` holds its estimate until it finishes, so a large read is admitted at the default
   weight. The legacy V1 project path reports from `loadLegacySecrets` in `secret-service.ts`, which both `getSecrets`
   and the legacy branch of `getSecretsRaw` run.

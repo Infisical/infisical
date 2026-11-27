@@ -16,7 +16,6 @@ import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-chan
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { effectiveActorForProject } from "@app/lib/auth/principal";
 import { compressZstd, decompressZstd } from "@app/lib/compression";
 import { generateCacheKeyFromBuffer, generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { utcDayStamp } from "@app/lib/dates";
@@ -93,6 +92,7 @@ import {
   fnSecretBulkUpdate,
   fnSecretMoveInTransaction,
   fnUpdateSecretLinkedReferences,
+  getSecretEtagPermissionFingerprint,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
 } from "./secret-v2-bridge-fns";
@@ -1298,20 +1298,11 @@ export const secretV2BridgeServiceFactory = ({
     const actorId = principal.id;
     const actorOrgId = actor.org.id;
 
-    let permissionFingerprint = "";
-
-    if (principal.type === ActorType.USER || principal.type === ActorType.IDENTITY) {
-      const { actorType, actorId: grantActorId } = effectiveActorForProject(principal, projectId);
-      const grantActor = { type: actorType, id: grantActorId };
-      // The fingerprint of the permission this request is answered with, read from the permission cache's own
-      // marker. It gates only the ETag cache; the real check is still getSecretsPermission below. It includes the
-      // project's folder version, so folder grants are covered, at the cost of any folder change churning the ETag.
-      permissionFingerprint = await secretsPermissionService.getPermissionCacheFingerprint({
-        actor: grantActor,
-        orgId: actorOrgId,
-        projectId
-      });
-    }
+    const permissionFingerprint = await getSecretEtagPermissionFingerprint({
+      secretsPermissionService,
+      projectId,
+      actor
+    });
 
     const etagRedisKey = KeyStorePrefixes.SecretEtag(projectId, utcDayStamp());
     // Hash of only the request inputs that change the response body, shared by the ETag field and the

@@ -55,6 +55,10 @@ export type TGetSecretsFromImportDTO = {
   projectId: string;
 } & TActorInput;
 
+export type TGetRawSecretsFromImportDTO = TGetSecretsFromImportDTO & {
+  ifNoneMatch?: string;
+};
+
 export type FolderResult = {
   envName: string;
   folderName: string;

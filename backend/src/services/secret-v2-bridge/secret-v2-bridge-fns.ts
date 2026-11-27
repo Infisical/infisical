@@ -4,15 +4,17 @@ import { Knex } from "knex";
 import RE2 from "re2";
 
 import { SecretType, TableName, TSecretFolders, TSecretImports, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { SecretReadAccess } from "@app/domains/secrets-manager/secrets/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
 import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { ActorType } from "@app/lib/auth/actor-types";
+import { effectiveActorForProject } from "@app/lib/auth/principal";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -707,6 +709,29 @@ export const recursivelyGetSecretPaths = async ({
   const pathsInCurrentDirectory = paths.filter((folder) => !path.relative(currentPath, folder.path).startsWith(".."));
 
   return pathsInCurrentDirectory;
+};
+
+// The fingerprint of the permission a secret read is answered with, read from the permission cache's own marker.
+// It gates only the ETag; the real check is still getSecretsPermission. It includes the project's folder version, so
+// folder grants are covered, at the cost of any folder change churning the ETag.
+export const getSecretEtagPermissionFingerprint = async ({
+  secretsPermissionService,
+  projectId,
+  actor
+}: {
+  secretsPermissionService: Pick<TSecretsPermissionService, "getPermissionCacheFingerprint">;
+  projectId: string;
+  actor: TActorContext;
+}) => {
+  const { principal } = actor;
+  if (principal.type !== ActorType.USER && principal.type !== ActorType.IDENTITY) return "";
+
+  const { actorType, actorId } = effectiveActorForProject(principal, projectId);
+  return secretsPermissionService.getPermissionCacheFingerprint({
+    actor: { type: actorType, id: actorId },
+    orgId: actor.org.id,
+    projectId
+  });
 };
 
 export type TSecretReferenceTraceNode = {

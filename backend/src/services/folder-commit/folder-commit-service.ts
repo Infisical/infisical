@@ -1537,6 +1537,10 @@ export const folderCommitServiceFactory = ({
       tx
     );
 
+    const grantTargetProjectIds = folderChanges.some(({ changeType }) => changeType === "delete")
+      ? await secretV2BridgeDAL.findGrantTargetProjectIds(projectId, tx)
+      : [];
+
     // Process changes in parallel
     const [secretCommitChanges, folderCommitChanges] = await Promise.all([
       processSecretChanges(differences, secretVersions, actorInfo, folderId, repairBlindIndexes, tx),
@@ -1562,7 +1566,7 @@ export const folderCommitServiceFactory = ({
     );
 
     // Invalidate cache to reflect the changes
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx, { grantTargetProjectIds });
 
     return {
       secretChangesCount: secretChanges.length,

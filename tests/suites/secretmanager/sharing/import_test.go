@@ -87,6 +87,41 @@ func TestCrossProjectImport(t *testing.T) {
 		require.Empty(t, importedSecrets(t, tn.Admin, target))
 	})
 
+	t.Run("should stop serving a source folder's secrets through a warm import cache once the folder is deleted", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		source, target := sharingProjects(t, tn)
+		shared := secretmanager.Location{Env: "dev", Path: "/shared"}
+		secretmanager.CreateFolder(t, source, "dev", "/shared")
+		secretmanager.CreateSecret(t, source, "dev", "IN_FOLDER", "from-folder", secretmanager.WithPath("/shared"))
+		secretmanager.GrantFolder(t, source, target, shared)
+		secretmanager.CreateImport(t, target, "dev", shared, secretmanager.FromProject(source))
+		params := &api.GetRawSecretsFromImportsParams{ProjectId: target.ID, Environment: "dev", Path: new("/")}
+		warm, err := tn.Admin.API.GetRawSecretsFromImportsWithResponse(t.Context(), params)
+		require.NoError(t, err)
+		require.Containsf(t, string(warm.Body), "from-folder", "warming the import cache returned %d: %s",
+			warm.StatusCode(), apierr.Body(warm.Body))
+		require.Equal(t, []map[string]string{{"IN_FOLDER": "from-folder"}}, importedSecrets(t, tn.Admin, target))
+
+		// Action
+		res, err := tn.Admin.API.DeleteSecretFolderWithResponse(t.Context(), "shared", api.DeleteSecretFolderJSONRequestBody{
+			ProjectId: source.ID, Environment: "dev", Path: new("/"), ForceDelete: new(true),
+		})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting the folder returned %s", apierr.Body(res.Body))
+
+		// Assert
+		after, err := tn.Admin.API.GetRawSecretsFromImportsWithResponse(t.Context(), params)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, after.StatusCode(), "listing imports returned %s", apierr.Body(after.Body))
+		require.NotContains(t, string(after.Body), "from-folder")
+		for _, secrets := range importedSecrets(t, tn.Admin, target) {
+			require.NotContains(t, secrets, "IN_FOLDER")
+		}
+	})
+
 	t.Run("should check the importing folder's conditions, not the source path, for each source secret", func(t *testing.T) {
 		t.Parallel()
 
