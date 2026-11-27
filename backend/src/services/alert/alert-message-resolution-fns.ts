@@ -66,7 +66,12 @@ export const alertMessageResolutionFactory = ({
         destinationDecryptor = getAlertChannelCipher(kmsDataKeyService, {
           orgId,
           projectId: message.channelProjectId
-        }).then((cipher) => cipher.decryptor);
+        })
+          .then((cipher) => cipher.decryptor)
+          .catch((err: unknown) => {
+            destinationDecryptors.delete(key);
+            throw err;
+          });
         destinationDecryptors.set(key, destinationDecryptor);
       }
       const config = SlackAppChannelConfigSchema.safeParse(
@@ -82,11 +87,21 @@ export const alertMessageResolutionFactory = ({
     const errors: string[] = [];
     for (const message of messages) {
       const resolution = resolutions.get(message.targetId);
-      // eslint-disable-next-line no-await-in-loop
-      if (resolution && !(await $stillPostsHere(message).catch(() => false))) {
+      let postsHere: boolean | null = null;
+      if (resolution) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          postsHere = await $stillPostsHere(message);
+        } catch (err) {
+          logger.error(err, `Failed to check where a closed Slack alert message posts [messageId=${message.id}]`);
+          errors.push(`${message.slackChannelId}/${message.messageTs}: could not check the alert channel`);
+        }
+      }
+
+      if (resolution && postsHere === false) {
         // eslint-disable-next-line no-await-in-loop
         await alertSlackMessageDAL.deleteById(message.id);
-      } else if (resolution) {
+      } else if (resolution && postsHere) {
         let original: TSlackPayload | null = null;
         try {
           original = JSON.parse(decryptor({ cipherTextBlob: message.encryptedMessage }).toString()) as TSlackPayload;

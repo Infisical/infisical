@@ -60,6 +60,12 @@ const setup = ({
   resolutions = new Map([["request-1", approved]])
 }: { messages?: ReturnType<typeof storedMessage>[]; resolutions?: Map<string, TAlertMessageResolution> } = {}) => {
   const resolveTargets = vi.fn(async () => resolutions);
+  const kmsDataKeyService = {
+    createCipherPairWithDataKey: vi.fn(async () => ({
+      encryptor: vi.fn(),
+      decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
+    }))
+  };
   const deleteById = vi.fn(async () => ({}));
   const service = alertMessageResolutionFactory({
     alertProviderRegistry: {
@@ -67,12 +73,7 @@ const setup = ({
     },
     alertSlackMessageDAL: { findByTargets: vi.fn(async () => messages) as never, deleteById: deleteById as never },
     slackIntegrationDAL: { findByIdWithWorkflowIntegrationDetails: vi.fn() },
-    kmsDataKeyService: {
-      createCipherPairWithDataKey: vi.fn(async () => ({
-        encryptor: vi.fn(),
-        decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
-      }))
-    } as never
+    kmsDataKeyService: kmsDataKeyService as never
   });
   const resolve = () =>
     service.resolveMessages({
@@ -81,7 +82,7 @@ const setup = ({
       resourceType: "pam.folder",
       targetIds: ["request-1"]
     });
-  return { resolve, resolveTargets, deleteById };
+  return { resolve, resolveTargets, deleteById, kmsDataKeyService };
 };
 
 const updateMock = vi.mocked(updateSlackAppMessage);
@@ -229,6 +230,20 @@ describe("alertMessageResolution.resolveMessages", () => {
     await expect(resolve()).resolves.toEqual([]);
     expect(updateMock).not.toHaveBeenCalled();
     expect(deleteById).toHaveBeenCalledWith("msg-1");
+  });
+
+  test("keeps the message and asks for a retry when the alert channel can't be checked", async () => {
+    const { resolve, deleteById, kmsDataKeyService } = setup();
+    kmsDataKeyService.createCipherPairWithDataKey
+      .mockResolvedValueOnce({
+        encryptor: vi.fn(),
+        decryptor: (blob: { cipherTextBlob: Buffer }) => blob.cipherTextBlob
+      })
+      .mockRejectedValueOnce(new Error("kms unavailable"));
+
+    await expect(resolve()).resolves.toEqual(["C0123ABCD/1.1: could not check the alert channel"]);
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(deleteById).not.toHaveBeenCalled();
   });
 
   test("drops an unreadable message and still updates the others", async () => {
