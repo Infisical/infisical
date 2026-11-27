@@ -1,4 +1,3 @@
-import { Controller } from "react-hook-form";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
@@ -12,7 +11,7 @@ import {
   PkiSyncExportFormat
 } from "@app/hooks/api/pkiSyncs/enums";
 
-import { errorOf, TextField, usePkiSyncForm, useWatchedValue } from "../fields";
+import { TextField, useDraftField, useDraftValue } from "../fields";
 import { usePkiSyncOption } from "../shared";
 import { SyncSwitchField } from "./sync-switch-field";
 
@@ -22,9 +21,15 @@ const PEM_EXTENSION_OPTIONS = [
 ];
 
 export function ServerExportFormatFields({ isUpdate }: { isUpdate?: boolean }) {
-  const { control } = usePkiSyncForm();
-  const destination = useWatchedValue<PkiSync>("destination");
-  const exportFormat = useWatchedValue<PkiSyncExportFormat | undefined>("syncOptions.exportFormat");
+  const destination = useDraftValue<PkiSync>("destination");
+  const exportFormatField = useDraftField<PkiSyncExportFormat | undefined>(
+    "syncOptions.exportFormat"
+  );
+  const exportFormat = exportFormatField.value;
+  const pemExtension = useDraftField<PemCertificateExtension | undefined>(
+    "syncOptions.pemCertificateExtension"
+  );
+  const exportPassword = useDraftField<string | undefined>("credentials.exportPassword");
   const { syncOption } = usePkiSyncOption(destination);
   const isKeystore = isKeystoreExportFormat(exportFormat);
   const isJksBlockedByFips = Boolean(
@@ -35,32 +40,26 @@ export function ServerExportFormatFields({ isUpdate }: { isUpdate?: boolean }) {
 
   return (
     <>
-      <Controller
-        control={control}
-        name="syncOptions.exportFormat"
-        render={({ field, fieldState: { error } }) => (
-          <Field
-            label="Export format"
-            help="PEM writes separate certificate, chain, and key files. PKCS#12 writes a single password-protected .pfx bundle. Java KeyStore writes a password-protected .jks keystore for Java servers such as Tomcat and WebLogic."
-            error={errorOf(error)}
-          >
-            <Select
-              value={(field.value as PkiSyncExportFormat | undefined) ?? PkiSyncExportFormat.Pem}
-              onValueChange={(value) => field.onChange(value as PkiSyncExportFormat)}
-              options={Object.values(PkiSyncExportFormat).map((format) => {
-                const disabled = format === PkiSyncExportFormat.Jks && isJksBlockedByFips;
-                return {
-                  value: format,
-                  label: PKI_SYNC_EXPORT_FORMAT_LABELS[format],
-                  disabled,
-                  description: disabled ? "Not available in FIPS mode" : undefined
-                };
-              })}
-              invalid={Boolean(error)}
-            />
-          </Field>
-        )}
-      />
+      <Field
+        label="Export format"
+        help="PEM writes separate certificate, chain, and key files. PKCS#12 writes a single password-protected .pfx bundle. Java KeyStore writes a password-protected .jks keystore for Java servers such as Tomcat and WebLogic."
+        error={exportFormatField.error}
+      >
+        <Select
+          value={exportFormat ?? PkiSyncExportFormat.Pem}
+          onValueChange={(value) => exportFormatField.onChange(value as PkiSyncExportFormat)}
+          options={Object.values(PkiSyncExportFormat).map((format) => {
+            const disabled = format === PkiSyncExportFormat.Jks && isJksBlockedByFips;
+            return {
+              value: format,
+              label: PKI_SYNC_EXPORT_FORMAT_LABELS[format],
+              disabled,
+              description: disabled ? "Not available in FIPS mode" : undefined
+            };
+          })}
+          invalid={Boolean(exportFormatField.error)}
+        />
+      </Field>
       {exportFormat === PkiSyncExportFormat.Jks && isJksBlockedByFips && (
         <Alert tone="warn" title="JKS isn't available in FIPS mode">
           The format can only protect private keys with cryptography that is not FIPS-approved, so
@@ -69,27 +68,18 @@ export function ServerExportFormatFields({ isUpdate }: { isUpdate?: boolean }) {
       )}
       {exportFormat === PkiSyncExportFormat.Pem && (
         <>
-          <Controller
-            control={control}
-            name="syncOptions.pemCertificateExtension"
-            render={({ field, fieldState: { error } }) => (
-              <Field
-                label="Certificate file extension"
-                help="The extension for the certificate and chain files. Both hold the same PEM-encoded content; choose the one the consuming service expects."
-                error={errorOf(error)}
-              >
-                <Select
-                  value={
-                    (field.value as PemCertificateExtension | undefined) ??
-                    PemCertificateExtension.Pem
-                  }
-                  onValueChange={(value) => field.onChange(value as PemCertificateExtension)}
-                  options={PEM_EXTENSION_OPTIONS}
-                  invalid={Boolean(error)}
-                />
-              </Field>
-            )}
-          />
+          <Field
+            label="Certificate file extension"
+            help="The extension for the certificate and chain files. Both hold the same PEM-encoded content; choose the one the consuming service expects."
+            error={pemExtension.error}
+          >
+            <Select
+              value={pemExtension.value ?? PemCertificateExtension.Pem}
+              onValueChange={(value) => pemExtension.onChange(value as PemCertificateExtension)}
+              options={PEM_EXTENSION_OPTIONS}
+              invalid={Boolean(pemExtension.error)}
+            />
+          </Field>
           <SyncSwitchField
             name="syncOptions.combineCertificateChain"
             label="Combine certificate and chain"
@@ -99,33 +89,25 @@ export function ServerExportFormatFields({ isUpdate }: { isUpdate?: boolean }) {
       )}
       {isKeystore && (
         <>
-          <Controller
-            control={control}
-            name="credentials.exportPassword"
-            render={({ field, fieldState: { error } }) => (
-              <Field
-                label={`${keystoreLabel} password`}
-                help={
-                  isUpdate
-                    ? `Protects the ${keystoreFile}. Leave blank to keep the current password.`
-                    : `Protects the ${keystoreFile}.`
-                }
-                error={errorOf(error)}
-              >
-                <Input
-                  ref={field.ref}
-                  name={field.name}
-                  type="password"
-                  value={(field.value as string | undefined) ?? ""}
-                  onBlur={field.onBlur}
-                  onChange={(event) => field.onChange(event.target.value)}
-                  placeholder="Enter a password"
-                  autoComplete="new-password"
-                  invalid={Boolean(error)}
-                />
-              </Field>
-            )}
-          />
+          <Field
+            label={`${keystoreLabel} password`}
+            help={
+              isUpdate
+                ? `Protects the ${keystoreFile}. Leave blank to keep the current password.`
+                : `Protects the ${keystoreFile}.`
+            }
+            error={exportPassword.error}
+          >
+            <Input
+              name="credentials.exportPassword"
+              type="password"
+              value={exportPassword.value ?? ""}
+              onChange={(event) => exportPassword.onChange(event.target.value)}
+              placeholder="Enter a password"
+              autoComplete="new-password"
+              invalid={Boolean(exportPassword.error)}
+            />
+          </Field>
           <TextField
             name="syncOptions.keystoreAlias"
             label="Keystore alias"

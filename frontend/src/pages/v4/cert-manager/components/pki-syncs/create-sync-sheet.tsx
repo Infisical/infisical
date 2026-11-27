@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import { type FieldPath, FormProvider, useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Checkbox } from "@infisical/cipher/ui/checkbox";
@@ -28,6 +26,7 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { PkiSync, PkiSyncExportFormat } from "@app/hooks/api/pkiSyncs/enums";
 import type { TPkiSync, TPkiSyncOption } from "@app/hooks/api/pkiSyncs/types";
+import { GcpCertificateManagerScope } from "@app/hooks/api/pkiSyncs/types/gcp-certificate-manager-sync";
 
 import { useOrgId } from "../../../access/permissions";
 import { readableFailure, saved } from "../../../access/toast";
@@ -40,7 +39,13 @@ import { PkiSyncReviewFields } from "./certificates/review-fields";
 import { PkiSyncDestinationPicker } from "./destination-picker";
 import { PkiSyncDestinationFields } from "./destinations/destination-fields";
 import { PkiSyncTargetHostField } from "./destinations/target-host-field";
-import { SwitchField } from "./fields";
+import { hasErrors, schemaErrors } from "./draft-values";
+import {
+  PkiSyncDraftProvider,
+  type PkiSyncErrors,
+  SwitchField,
+  usePkiSyncDraftState
+} from "./fields";
 import { PkiSyncDetailsFields } from "./options/details-fields";
 import { PkiSyncFieldMappingsFields } from "./options/field-mappings-fields";
 import { PkiSyncHealthCheckCommandFields } from "./options/health-check-command-fields";
@@ -63,6 +68,9 @@ const pkiSyncDefaults = (
     destination,
     isAutoSyncEnabled: false,
     filters: null,
+    ...(destination === PkiSync.GcpCertificateManager && {
+      destinationConfig: { scope: GcpCertificateManagerScope.Default }
+    }),
     syncOptions: {
       canImportCertificates: false,
       canRemoveCertificates: false,
@@ -124,17 +132,19 @@ const CreateSyncForm = ({
   const canSetPostSyncCommand = useCanSetPostSyncCommand(applicationId);
   const canSetHealthCheckCommand = useCanSetHealthCheckCommand(applicationId);
   const destinationName = destinationNameOf(destination);
-  const form = useForm<TPkiSyncForm>({
-    resolver: zodResolver(PkiSyncFormSchema),
-    defaultValues: {
-      ...pkiSyncDefaults(destination, syncOption),
-      ...initialData
-    } as TPkiSyncForm,
-    reValidateMode: "onChange"
+  const [initial] = useState(() => {
+    const defaults = pkiSyncDefaults(destination, syncOption);
+    return {
+      ...defaults,
+      ...initialData,
+      destinationConfig: { ...defaults.destinationConfig, ...initialData?.destinationConfig }
+    } as TPkiSyncForm;
   });
-  const { trigger, getValues, setError, control, formState } = form;
-  const connection = useWatch({ control, name: "connection" });
-  const canRemoveCertificates = useWatch({ control, name: "syncOptions.canRemoveCertificates" });
+  const { draft, values, setErrors } = usePkiSyncDraftState(() => initial);
+  const isDirty = JSON.stringify(values) !== JSON.stringify(initial);
+  const connection = values.connection as { id?: string; app?: AppConnection } | undefined;
+  const canRemoveCertificates = (values.syncOptions as { canRemoveCertificates?: boolean })
+    ?.canRemoveCertificates;
   const detectsPaloAlto = isPaloAltoNetworksPkiSync(destination) && Boolean(connection?.id);
   const { data: paloAltoDevice, isPending: paloAltoPending } = adapter.usePaloAltoTemplates(
     connection?.id ?? "",
@@ -154,38 +164,35 @@ const CreateSyncForm = ({
     needsTargetHost: connection?.app === AppConnection.LDAP
   });
 
-  const validateStep = async (index: number) => {
+  const stepErrors = (index: number): PkiSyncErrors => {
     const current = formSteps[index];
-    if (!(await trigger(current.fields))) return false;
-    if (current.key === "targetHost") {
-      const { destinationConfig } = getValues() as { destinationConfig?: { host?: string } };
-      if (!destinationConfig?.host) {
-        setError("destinationConfig.host" as FieldPath<TPkiSyncForm>, {
-          type: "manual",
-          message: "A target host is required when using an LDAP connection"
-        });
-        return false;
-      }
-    }
+    const errors = schemaErrors(PkiSyncFormSchema, values, current.fields);
+    if (hasErrors(errors)) return errors;
+    const { destinationConfig } = values as { destinationConfig?: { host?: string } };
+    if (current.key === "targetHost" && !destinationConfig?.host)
+      return {
+        "destinationConfig.host": "A target host is required when using an LDAP connection"
+      };
     if (
       current.key === "destination" &&
       isPaloAltoNetworksPkiSync(destination) &&
-      isPaloAltoNetworksTemplateMissing(paloAltoDevice?.isPanorama, getValues("destinationConfig"))
-    ) {
-      setError("destinationConfig.template" as FieldPath<TPkiSyncForm>, {
-        type: "manual",
-        message: PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
-      });
-      return false;
-    }
-    if (current.key === "options") {
-      const issues = getKeystoreFieldIssues(getValues(), { requirePassword: true });
-      issues.forEach(({ path, message }) =>
-        setError(path.join(".") as FieldPath<TPkiSyncForm>, { type: "manual", message })
+      isPaloAltoNetworksTemplateMissing(paloAltoDevice?.isPanorama, values.destinationConfig)
+    )
+      return { "destinationConfig.template": PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE };
+    if (current.key === "options")
+      return Object.fromEntries(
+        getKeystoreFieldIssues(values, { requirePassword: true }).map(({ path, message }) => [
+          path.join("."),
+          message
+        ])
       );
-      if (issues.length) return false;
-    }
-    return true;
+    return {};
+  };
+
+  const validateStep = (index: number) => {
+    const errors = stepErrors(index);
+    setErrors(errors);
+    return !hasErrors(errors);
   };
 
   const body = (key: string) => {
@@ -280,7 +287,7 @@ const CreateSyncForm = ({
   };
 
   return (
-    <FormProvider {...form}>
+    <PkiSyncDraftProvider draft={draft}>
       <MultiStep
         variant="sheet"
         layout="aside"
@@ -299,7 +306,7 @@ const CreateSyncForm = ({
         step={step}
         onStepChange={(next) => {
           if (pickerStep && next === 0) {
-            if (formState.isDirty) {
+            if (isDirty) {
               setDiscarding(true);
               return;
             }
@@ -310,7 +317,7 @@ const CreateSyncForm = ({
         }}
         onOpenChange={(next) => {
           if (next) return;
-          if (completed.current || !formState.isDirty) {
+          if (completed.current || !isDirty) {
             close();
             return;
           }
@@ -318,16 +325,17 @@ const CreateSyncForm = ({
         }}
         completeLabel="Create sync"
         onComplete={async () => {
-          const valid = await trigger();
-          if (!valid) {
-            const errorKeys = new Set(Object.keys(form.formState.errors));
+          const errors = schemaErrors(PkiSyncFormSchema, values);
+          if (hasErrors(errors)) {
+            setErrors(errors);
+            const errorKeys = new Set(Object.keys(errors).map((key) => key.split(".")[0]));
             const index = formSteps.findIndex((entry) =>
-              entry.fields.some((field) => errorKeys.has(String(field).split(".")[0]))
+              entry.fields.some((field) => errorKeys.has(field.split(".")[0]))
             );
             if (index >= 0) setStep(index + offset);
             throw new Error("Some settings are invalid. Fix them and try again.");
           }
-          const { connection: picked, destinationConfig, ...data } = form.getValues();
+          const { connection: picked, destinationConfig, ...data } = values;
           const created: TPkiSync = await create
             .mutateAsync({
               ...removeUnusedKeystoreOptions(data),
@@ -353,7 +361,7 @@ const CreateSyncForm = ({
           else close();
         }}
       />
-    </FormProvider>
+    </PkiSyncDraftProvider>
   );
 };
 

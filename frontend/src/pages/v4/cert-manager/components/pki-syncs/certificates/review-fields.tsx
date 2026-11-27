@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import { useWatch } from "react-hook-form";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { CodeBlock } from "@infisical/cipher/ui/code-block";
 import { EmptyState } from "@infisical/cipher/ui/empty";
@@ -29,7 +28,7 @@ import type {
 
 import { ProviderLabel } from "../../../../components/provider-label";
 import { useV4Adapter } from "../../../../data/adapters";
-import { usePkiSyncForm } from "../fields";
+import { usePkiSyncDraft } from "../fields";
 import { usePkiSyncOption, usePkiSyncScope } from "../shared";
 import { buildPkiSyncFilterSummary, filterSummaryItems } from "./filter-badges";
 import { MATCHED_PAGE_SIZE, PkiSyncMatchedCertificatesTable } from "./matched-certificates-table";
@@ -91,7 +90,7 @@ const paloAltoItems = (config: TPaloAltoNetworksReviewConfig): [string, ReactNod
 ];
 
 export const PkiSyncReviewFields = ({ applicationId }: { applicationId?: string } = {}) => {
-  const { control } = usePkiSyncForm();
+  const { values } = usePkiSyncDraft();
   const { projectId } = usePkiSyncScope();
   const {
     name,
@@ -102,7 +101,7 @@ export const PkiSyncReviewFields = ({ applicationId }: { applicationId?: string 
     destination,
     destinationConfig,
     isAutoSyncEnabled
-  } = useWatch({ control });
+  } = values;
   const options = syncOptions as Record<string, unknown> | undefined;
   const config = destinationConfig as Record<string, unknown> | undefined;
   const typedFilters = (filters ?? null) as TPkiSyncFilters | null;

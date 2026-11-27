@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
-import { Controller, type FieldPath } from "react-hook-form";
 import { Combobox, type ComboboxOption } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
-
 import { errorMessage } from "../../../../access/toast";
-import { errorOf, type PkiSyncFieldName, usePkiSyncForm } from "../fields";
+import { type PkiSyncFieldName, useDraftField } from "../fields";
 
 export const fetchErrorOf = (
   query: { error: unknown },
@@ -56,40 +53,26 @@ export function ListField({
   currentLabel?: string;
   onSelect?: (value: string) => void;
 }) {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<unknown>(name);
+  const message = field.error ?? fetchError;
   return (
-    <Controller
-      control={control}
-      name={name as FieldPath<TPkiSyncForm>}
-      render={({ field, fieldState: { error } }) => {
-        const message = errorOf(error) ?? fetchError;
-        return (
-          <Field
-            label={label}
-            help={help}
-            description={description}
-            optional={optional}
-            error={message}
-          >
-            <Combobox
-              label={label}
-              value={typeof field.value === "string" ? field.value : ""}
-              onValueChange={(value) => {
-                if (value === field.value) return;
-                field.onChange(value);
-                onSelect?.(value);
-              }}
-              options={withCurrent(options, field.value, currentLabel)}
-              placeholder={placeholder}
-              emptyText={emptyText}
-              loading={loading}
-              clearable={clearable}
-              disabled={disabled}
-              invalid={Boolean(message)}
-            />
-          </Field>
-        );
-      }}
-    />
+    <Field label={label} help={help} description={description} optional={optional} error={message}>
+      <Combobox
+        label={label}
+        value={typeof field.value === "string" ? field.value : ""}
+        onValueChange={(value) => {
+          if (value === field.value) return;
+          field.onChange(value);
+          onSelect?.(value);
+        }}
+        options={withCurrent(options, field.value, currentLabel)}
+        placeholder={placeholder}
+        emptyText={emptyText}
+        loading={loading}
+        clearable={clearable}
+        disabled={disabled}
+        invalid={Boolean(message)}
+      />
+    </Field>
   );
 }

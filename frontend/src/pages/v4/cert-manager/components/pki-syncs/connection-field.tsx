@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Controller } from "react-hook-form";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
 
@@ -20,7 +19,7 @@ import {
 import { providerMedia } from "../../../components/provider-label";
 import { useV4Adapter } from "../../../data/adapters";
 import { startConnectionRedirect } from "../../../data/integrations/connection-redirect";
-import { errorOf, usePkiSyncForm, useWatchedValue } from "./fields";
+import { useDraftField, useDraftValue, usePkiSyncDraft } from "./fields";
 import { PKI_SYNC_DRAFT_STORAGE_KEY, usePkiSyncScope } from "./shared";
 
 const LDAP_TARGET_FIELDS = [
@@ -32,10 +31,13 @@ const LDAP_TARGET_FIELDS = [
 ];
 
 export function PkiSyncConnectionField({ onChange }: { onChange?: () => void }) {
-  const { control, getValues, setValue } = usePkiSyncForm();
+  const { values, setValue } = usePkiSyncDraft();
+  const field = useDraftField<{ id: string; name: string; app: AppConnection } | undefined>(
+    "connection"
+  );
   const { projectId, returnTo } = usePkiSyncScope();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
-  const destination = useWatchedValue<TPkiSyncDestination>("destination");
+  const destination = useDraftValue<TPkiSyncDestination>("destination");
   const app = PKI_SYNC_CONNECTION_MAP[destination];
   const apps = getPkiSyncConnectionApps(destination);
   const { connections, isPending } = useV4Adapter("pkiSyncs").useAvailableConnections(
@@ -46,9 +48,7 @@ export function PkiSyncConnectionField({ onChange }: { onChange?: () => void }) 
 
   const clearLdapTargetFields = (nextApp?: AppConnection) => {
     if (nextApp === AppConnection.LDAP) return;
-    LDAP_TARGET_FIELDS.forEach((field) =>
-      setValue(`destinationConfig.${field}` as never, undefined as never, { shouldDirty: true })
-    );
+    LDAP_TARGET_FIELDS.forEach((key) => setValue(`destinationConfig.${key}`, undefined));
   };
 
   const creation = useConnectionCreation(
@@ -56,7 +56,7 @@ export function PkiSyncConnectionField({ onChange }: { onChange?: () => void }) 
     projectId,
     (connection) => {
       setCreated((current) => [...current, connection]);
-      setValue("connection", connection, { shouldDirty: true, shouldValidate: true });
+      setValue("connection", connection);
       clearLdapTargetFields(connection.app);
       onChange?.();
     },
@@ -65,7 +65,7 @@ export function PkiSyncConnectionField({ onChange }: { onChange?: () => void }) 
           returnTo,
           projectId,
           start: (href, pending) => {
-            sessionStorage.setItem(PKI_SYNC_DRAFT_STORAGE_KEY, JSON.stringify(getValues()));
+            sessionStorage.setItem(PKI_SYNC_DRAFT_STORAGE_KEY, JSON.stringify(values));
             startConnectionRedirect(href, pending);
           }
         }
@@ -86,45 +86,39 @@ export function PkiSyncConnectionField({ onChange }: { onChange?: () => void }) 
     );
 
   return (
-    <Controller
-      control={control}
-      name="connection"
-      render={({ field, fieldState: { error } }) => (
-        <Field
-          label={label}
-          help="App connections can also be created from Cert Manager settings."
-          description={
-            !isPending && !options.length && !canCreate
-              ? `You don't have access to any ${appNames} connections. Ask an admin to create one.`
-              : undefined
-          }
-          error={errorOf(error)}
-        >
-          <Combobox
-            label={label}
-            value={field.value?.id ?? ""}
-            loading={isPending}
-            placeholder="Select a connection"
-            emptyText={`No ${appNames} connections yet.`}
-            invalid={Boolean(error)}
-            options={options.map((connection) => ({
-              value: connection.id,
-              label: connection.name,
-              media: providerMedia("app-connection", connection.app),
-              group: apps.length > 1 ? APP_CONNECTION_MAP[connection.app].name : undefined
-            }))}
-            creation={creation}
-            onValueChange={(id) => {
-              if (id === field.value?.id) return;
-              const next = options.find((connection) => connection.id === id);
-              if (!next) return;
-              field.onChange({ id: next.id, name: next.name, app: next.app });
-              clearLdapTargetFields(next.app);
-              onChange?.();
-            }}
-          />
-        </Field>
-      )}
-    />
+    <Field
+      label={label}
+      help="App connections can also be created from Cert Manager settings."
+      description={
+        !isPending && !options.length && !canCreate
+          ? `You don't have access to any ${appNames} connections. Ask an admin to create one.`
+          : undefined
+      }
+      error={field.error}
+    >
+      <Combobox
+        label={label}
+        value={field.value?.id ?? ""}
+        loading={isPending}
+        placeholder="Select a connection"
+        emptyText={`No ${appNames} connections yet.`}
+        invalid={Boolean(field.error)}
+        options={options.map((connection) => ({
+          value: connection.id,
+          label: connection.name,
+          media: providerMedia("app-connection", connection.app),
+          group: apps.length > 1 ? APP_CONNECTION_MAP[connection.app].name : undefined
+        }))}
+        creation={creation}
+        onValueChange={(id) => {
+          if (id === field.value?.id) return;
+          const next = options.find((connection) => connection.id === id);
+          if (!next) return;
+          field.onChange({ id: next.id, name: next.name, app: next.app });
+          clearLdapTargetFields(next.app);
+          onChange?.();
+        }}
+      />
+    </Field>
   );
 }

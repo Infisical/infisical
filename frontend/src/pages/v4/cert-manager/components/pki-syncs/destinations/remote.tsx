@@ -1,22 +1,18 @@
-import { useFormContext, useWatch } from "react-hook-form";
 import { Stack } from "@infisical/cipher/ui/layout";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
-import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 import type { TKempVirtualService } from "@app/hooks/api/pkiSyncs/types";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import { PkiSyncConnectionField } from "../connection-field";
+import { useConnectionId, useDraftValue, usePkiSyncDraft } from "../fields";
 import { fetchErrorOf, ListField } from "./list-field";
-
-type FormOf<D extends PkiSync> = TPkiSyncForm & { destination: D };
 
 const connectionPlaceholder = (connectionId: string | undefined, placeholder: string) =>
   connectionId ? placeholder : "Select a connection first";
 
 export function CloudflareCustomCertificateFields() {
-  const { control, setValue } = useFormContext<FormOf<PkiSync.CloudflareCustomCertificate>>();
-  const connectionId = useWatch({ control, name: "connection.id" });
+  const { setValue } = usePkiSyncDraft();
+  const connectionId = useConnectionId();
   const enabled = Boolean(connectionId);
   const zones = useV4Adapter("pkiSyncs").useCloudflareZones(connectionId ?? "", { enabled });
 
@@ -47,11 +43,11 @@ const virtualServiceLabel = (virtualService: TKempVirtualService) =>
     : `${virtualService.address}:${virtualService.port}`;
 
 export function KempLoadMasterFields() {
-  const { control, setValue } = useFormContext<FormOf<PkiSync.KempLoadMaster>>();
-  const connectionId = useWatch({ control, name: "connection.id" });
+  const { setValue } = usePkiSyncDraft();
+  const connectionId = useConnectionId();
   const enabled = Boolean(connectionId);
   const virtualServices = useV4Adapter("pkiSyncs").useKempVirtualServices(
-    { connectionId },
+    { connectionId: connectionId ?? "" },
     { enabled }
   );
 
@@ -84,11 +80,14 @@ export function KempLoadMasterFields() {
 }
 
 export function ImpervaFields() {
-  const { control, setValue } = useFormContext<FormOf<PkiSync.Imperva>>();
-  const connectionId = useWatch({ control, name: "connection.id" });
-  const siteName = useWatch({ control, name: "destinationConfig.siteName" });
+  const { setValue } = usePkiSyncDraft();
+  const connectionId = useConnectionId();
+  const siteName = useDraftValue<string | undefined>("destinationConfig.siteName");
   const enabled = Boolean(connectionId);
-  const sites = useV4Adapter("pkiSyncs").useImpervaSites({ connectionId }, { enabled });
+  const sites = useV4Adapter("pkiSyncs").useImpervaSites(
+    { connectionId: connectionId ?? "" },
+    { enabled }
+  );
 
   return (
     <Stack gap={16}>
@@ -129,11 +128,11 @@ export function ImpervaFields() {
 }
 
 export function NutanixPrismCentralFields() {
-  const { control, setValue } = useFormContext<FormOf<PkiSync.NutanixPrismCentral>>();
-  const connectionId = useWatch({ control, name: "connection.id" });
-  const clusterName = useWatch({ control, name: "destinationConfig.clusterName" });
+  const { setValue } = usePkiSyncDraft();
+  const connectionId = useConnectionId();
+  const clusterName = useDraftValue<string | undefined>("destinationConfig.clusterName");
   const enabled = Boolean(connectionId);
-  const clusters = useV4Adapter("pkiSyncs").useNutanixClusters(connectionId, { enabled });
+  const clusters = useV4Adapter("pkiSyncs").useNutanixClusters(connectionId ?? "", { enabled });
   const loading = clusters.isPending && enabled;
 
   return (

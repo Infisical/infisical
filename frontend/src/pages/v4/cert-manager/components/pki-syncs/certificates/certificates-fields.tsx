@@ -17,7 +17,7 @@ import type { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 import type { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { useV4Adapter } from "../../../../data/adapters";
-import { usePkiSyncForm, useWatchedValue } from "../fields";
+import { useDraftValue, usePkiSyncDraft } from "../fields";
 import { usePkiSyncScope } from "../shared";
 import { PkiSyncCertificateAddMenu } from "./add-menu";
 import { CertificateManagementDialog } from "./certificate-management-dialog";
@@ -35,11 +35,11 @@ export const PkiSyncCertificatesFields = ({
   applicationId?: string;
   pkiSyncId?: string;
 }) => {
-  const { setValue } = usePkiSyncForm();
+  const { setValue } = usePkiSyncDraft();
   const { projectId } = usePkiSyncScope();
   const adapter = useV4Adapter("pkiSyncs");
-  const filters = useWatchedValue<TPkiSyncFilters | null | undefined>("filters");
-  const destination = useWatchedValue<PkiSync>("destination");
+  const filters = useDraftValue<TPkiSyncFilters | null | undefined>("filters");
+  const destination = useDraftValue<PkiSync>("destination");
   const filtersKey = JSON.stringify(filters ?? null);
   const certificateCap = useFormCertificateCap();
 
@@ -96,10 +96,10 @@ export const PkiSyncCertificatesFields = ({
     if (certificateOrderIds.length === 0) {
       const remaining = { ...(filters ?? {}) };
       delete remaining.certificateOrderIds;
-      setValue("filters", Object.keys(remaining).length ? remaining : null, { shouldDirty: true });
+      setValue("filters", Object.keys(remaining).length ? remaining : null);
       return;
     }
-    setValue("filters", { ...(filters ?? {}), certificateOrderIds }, { shouldDirty: true });
+    setValue("filters", { ...(filters ?? {}), certificateOrderIds });
   };
 
   const openPicker = () => setIsPickerOpen(true);
@@ -170,7 +170,7 @@ export const PkiSyncCertificatesFields = ({
                   size="icon"
                   icon="trash"
                   iconOnly
-                  onClick={() => setValue("filters", null, { shouldDirty: true })}
+                  onClick={() => setValue("filters", null)}
                 >
                   Remove certificate order
                 </Button>

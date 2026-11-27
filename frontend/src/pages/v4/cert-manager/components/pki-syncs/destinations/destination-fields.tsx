@@ -2,7 +2,7 @@ import { Alert } from "@infisical/cipher/ui/alert";
 
 import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 
-import { useWatchedValue } from "../fields";
+import { useDraftValue } from "../fields";
 import { AwsElasticLoadBalancerFields, AwsRegionFields } from "./aws";
 import { GcpCertificateManagerFields } from "./gcp";
 import { PaloAltoNetworksFields } from "./palo-alto";
@@ -21,7 +21,7 @@ import {
 } from "./simple";
 
 export function PkiSyncDestinationFields({ isUpdate }: { isUpdate?: boolean }) {
-  const destination = useWatchedValue<PkiSync>("destination");
+  const destination = useDraftValue<PkiSync>("destination");
 
   switch (destination) {
     case PkiSync.AzureKeyVault:

@@ -1,7 +1,7 @@
 import { POST_SYNC_COMMAND_VARIABLE_DESCRIPTIONS } from "@app/helpers/pkiSyncs";
 import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 
-import { useWatchedValue } from "../fields";
+import { useDraftValue } from "../fields";
 import { HostCommandField } from "./host-command-field";
 
 const COMMAND_PLACEHOLDERS: Partial<Record<PkiSync, string>> = {
@@ -16,7 +16,7 @@ export function PkiSyncPostSyncCommandFields({
   destination?: PkiSync;
   canEditCommand?: boolean;
 }) {
-  const watchedDestination = useWatchedValue<PkiSync>("destination");
+  const watchedDestination = useDraftValue<PkiSync>("destination");
   return (
     <HostCommandField
       name="syncOptions.postSyncCommand"

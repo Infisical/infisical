@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Controller, useFormContext, useFormState, useWatch } from "react-hook-form";
 import { Alert } from "@infisical/cipher/ui/alert";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { Field } from "@infisical/cipher/ui/field";
@@ -7,17 +6,13 @@ import { Stack } from "@infisical/cipher/ui/layout";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText, StatusText } from "@infisical/cipher/ui/text";
 
-import type { TPkiSyncForm } from "@app/components/pki-syncs/forms/schemas/pki-sync-schema";
 import { getPaloAltoNetworksProfileLabel } from "@app/helpers/pkiSyncs";
 import type { TPaloAltoNetworksSslTlsServiceProfile } from "@app/hooks/api/appConnections/palo-alto-networks/queries";
-import { PkiSync } from "@app/hooks/api/pkiSyncs/enums";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import { PkiSyncConnectionField } from "../connection-field";
-import { errorOf } from "../fields";
+import { useDraftField, useDraftValue, usePkiSyncDraft } from "../fields";
 import { fetchErrorOf, withCurrent } from "./list-field";
-
-type TPaloAltoForm = TPkiSyncForm & { destination: PkiSync.PaloAltoNetworksSslTlsProfile };
 
 const profileValueOf = (profile: { name: string; vsys?: string | null }) =>
   `${profile.name}:${profile.vsys ?? ""}`;
@@ -27,17 +22,20 @@ export function PaloAltoNetworksFields({
 }: {
   withSslTlsServiceProfile?: boolean;
 }) {
-  const { control, setValue, clearErrors, getFieldState } = useFormContext<TPaloAltoForm>();
+  const { setValue, errors } = usePkiSyncDraft();
   const adapter = useV4Adapter("pkiSyncs");
 
-  const connectionId = useWatch({ control, name: "connection.id" });
-  const template = useWatch({ control, name: "destinationConfig.template" });
-  const profileName = useWatch({ control, name: "destinationConfig.sslTlsServiceProfileName" });
-  const profileVsys = useWatch({ control, name: "destinationConfig.sslTlsServiceProfileVsys" });
-  const profileNameError = getFieldState(
-    "destinationConfig.sslTlsServiceProfileName",
-    useFormState({ control, name: "destinationConfig.sslTlsServiceProfileName" })
-  ).error;
+  const connectionId = useDraftValue<string>("connection.id");
+  const templateField = useDraftField<string | undefined>("destinationConfig.template");
+  const template = templateField.value;
+  const profileName = useDraftValue<string | undefined>(
+    "destinationConfig.sslTlsServiceProfileName"
+  );
+  const profileVsys = useDraftValue<string | undefined>(
+    "destinationConfig.sslTlsServiceProfileVsys"
+  );
+  const pushToDevices = useDraftField<boolean | undefined>("destinationConfig.pushToDevices");
+  const profileNameError = errors["destinationConfig.sslTlsServiceProfileName"];
 
   const templates = adapter.usePaloAltoTemplates(connectionId);
   const templatesData = templates.data;
@@ -52,14 +50,13 @@ export function PaloAltoNetworksFields({
 
   useEffect(() => {
     if (templatesData && !templatesData.isPanorama && template) {
-      setValue("destinationConfig.template", "", { shouldDirty: true });
+      setValue("destinationConfig.template", "");
     }
   }, [templatesData, template, setValue]);
 
   const clearProfile = () => {
-    setValue("destinationConfig.sslTlsServiceProfileName", "", { shouldDirty: true });
-    setValue("destinationConfig.sslTlsServiceProfileVsys", "", { shouldDirty: true });
-    clearErrors("destinationConfig.sslTlsServiceProfileName");
+    setValue("destinationConfig.sslTlsServiceProfileName", "");
+    setValue("destinationConfig.sslTlsServiceProfileVsys", "");
   };
 
   let profilePlaceholder = "Select an SSL/TLS service profile";
@@ -73,7 +70,7 @@ export function PaloAltoNetworksFields({
     "Failed to read the device. Check the connection settings."
   );
   const profileError =
-    profileNameError?.message ??
+    profileNameError ??
     fetchErrorOf(
       profiles,
       Boolean(connectionId),
@@ -113,35 +110,28 @@ export function PaloAltoNetworksFields({
         </SmallText>
       )}
       {isPanorama && (
-        <Controller
-          control={control}
-          name="destinationConfig.template"
-          render={({ field, fieldState: { error } }) => (
-            <Field
-              label="Template"
-              help="Panorama delivers certificates to firewalls through templates. The sync stores certificates in this template."
-              error={errorOf(error)}
-            >
-              <Combobox
-                label="Template"
-                value={field.value ?? ""}
-                options={withCurrent(
-                  (templatesData?.templates ?? []).map((name) => ({ value: name, label: name })),
-                  field.value
-                )}
-                onValueChange={(value) => {
-                  if (!value || value === field.value) return;
-                  field.onChange(value);
-                  clearErrors("destinationConfig.template");
-                  clearProfile();
-                }}
-                placeholder="Select a template"
-                emptyText="No templates found."
-                invalid={Boolean(error)}
-              />
-            </Field>
-          )}
-        />
+        <Field
+          label="Template"
+          help="Panorama delivers certificates to firewalls through templates. The sync stores certificates in this template."
+          error={templateField.error}
+        >
+          <Combobox
+            label="Template"
+            value={template ?? ""}
+            options={withCurrent(
+              (templatesData?.templates ?? []).map((name) => ({ value: name, label: name })),
+              template
+            )}
+            onValueChange={(value) => {
+              if (!value || value === template) return;
+              templateField.onChange(value);
+              clearProfile();
+            }}
+            placeholder="Select a template"
+            emptyText="No templates found."
+            invalid={Boolean(templateField.error)}
+          />
+        </Field>
       )}
       {withSslTlsServiceProfile && (
         <Field
@@ -156,13 +146,8 @@ export function PaloAltoNetworksFields({
             onValueChange={(value) => {
               const profile = profileList.find((option) => profileValueOf(option) === value);
               if (!profile) return;
-              setValue("destinationConfig.sslTlsServiceProfileVsys", profile.vsys ?? "", {
-                shouldDirty: true
-              });
-              setValue("destinationConfig.sslTlsServiceProfileName", profile.name, {
-                shouldDirty: true,
-                shouldValidate: true
-              });
+              setValue("destinationConfig.sslTlsServiceProfileVsys", profile.vsys ?? "");
+              setValue("destinationConfig.sslTlsServiceProfileName", profile.name);
             }}
             disabled={!isProfileSelectReady}
             loading={profiles.isPending && profilesEnabled}
@@ -173,17 +158,11 @@ export function PaloAltoNetworksFields({
         </Field>
       )}
       {isPanorama && (
-        <Controller
-          control={control}
-          name="destinationConfig.pushToDevices"
-          render={({ field }) => (
-            <Switch
-              label="Push to devices"
-              description="Pushes every template stack that contains this template to its firewalls when a sync changes the template."
-              checked={field.value ?? true}
-              onCheckedChange={field.onChange}
-            />
-          )}
+        <Switch
+          label="Push to devices"
+          description="Pushes every template stack that contains this template to its firewalls when a sync changes the template."
+          checked={pushToDevices.value ?? true}
+          onCheckedChange={pushToDevices.onChange}
         />
       )}
     </Stack>

@@ -6,7 +6,7 @@ import type { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { toast } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
-import { useConnectionId, usePkiSyncForm, useWatchedValue } from "../fields";
+import { useConnectionId, useDraftValue, usePkiSyncDraft } from "../fields";
 import { notifyUnhandledHostCommandError } from "./host-command-errors";
 import { HostCommandField } from "./host-command-field";
 
@@ -27,10 +27,10 @@ export function PkiSyncHealthCheckCommandFields({
   syncId?: string;
   canEditCommand?: boolean;
 }) {
-  const { getValues } = usePkiSyncForm();
+  const { values } = usePkiSyncDraft();
   const testHealthCheck = useV4Adapter("pkiSyncs").useTestHealthCheck();
-  const watchedDestination = useWatchedValue<PkiSync>("destination");
-  const command = useWatchedValue<string | undefined>("syncOptions.healthCheckCommand");
+  const watchedDestination = useDraftValue<PkiSync>("destination");
+  const command = useDraftValue<string | undefined>("syncOptions.healthCheckCommand");
   const connectionId = useConnectionId();
   const effectiveDestination = destination ?? watchedDestination;
   let testBlock: string | undefined;
@@ -45,10 +45,10 @@ export function PkiSyncHealthCheckCommandFields({
         connectionId,
         applicationId: applicationId ?? undefined,
         syncId,
-        filters: syncId ? undefined : ((getValues("filters") ?? null) as TPkiSyncFilters | null),
-        destinationConfig: (getValues("destinationConfig") ?? {}) as Record<string, unknown>,
+        filters: syncId ? undefined : ((values.filters ?? null) as TPkiSyncFilters | null),
+        destinationConfig: (values.destinationConfig ?? {}) as Record<string, unknown>,
         syncOptions: {
-          ...((getValues("syncOptions") ?? {}) as Record<string, unknown>),
+          ...((values.syncOptions ?? {}) as Record<string, unknown>),
           healthCheckCommand: command
         }
       });

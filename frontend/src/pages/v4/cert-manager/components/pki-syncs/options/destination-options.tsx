@@ -1,4 +1,4 @@
-import { Controller, useFieldArray } from "react-hook-form";
+import { useState } from "react";
 import { Button } from "@infisical/cipher/ui/button";
 import { Code } from "@infisical/cipher/ui/code";
 import { Field, FieldError } from "@infisical/cipher/ui/field";
@@ -15,12 +15,43 @@ import {
   CloudflareBundleMethod
 } from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
-import { errorOf, TextField, usePkiSyncForm, useWatchedValue } from "../fields";
+import { valueAt } from "../draft-values";
+import { TextField, useDraftField, useDraftValue, usePkiSyncDraft } from "../fields";
 import { NameSchemaHelp } from "./name-schema-help";
 import { ServerExportFormatFields } from "./server-export-format-fields";
 import { PreserveArnField, PreserveItemOnRenewalField, SyncSwitchField } from "./sync-switch-field";
 
 const AUTOMATIC = "automatic";
+
+const toFieldError = (message?: string) => [message ? { message } : undefined];
+
+let lastRowKey = 0;
+const nextRowKey = () => {
+  lastRowKey += 1;
+  return lastRowKey;
+};
+
+const useDraftList = <T,>(name: string) => {
+  const field = useDraftField<T[] | undefined>(name);
+  const items = field.value ?? [];
+  const [keys, setKeys] = useState(() => items.map(() => nextRowKey()));
+  const rowKeys =
+    keys.length >= items.length
+      ? keys
+      : [...keys, ...items.slice(keys.length).map(() => nextRowKey())];
+  return {
+    items,
+    keys: rowKeys,
+    append: (item: T) => {
+      setKeys([...rowKeys.slice(0, items.length), nextRowKey()]);
+      field.onChange([...items, item]);
+    },
+    remove: (index: number) => {
+      setKeys(rowKeys.filter((_, position) => position !== index));
+      field.onChange(items.filter((_, position) => position !== index));
+    }
+  };
+};
 
 const WINDOWS_FILE_ACCESS_OPTIONS = [
   { value: WindowsFileAccess.Read, label: "Read" },
@@ -79,68 +110,59 @@ export const PaloAltoNetworksSyncOptions = () => (
 );
 
 export function CloudflareCustomCertificateSyncOptions() {
-  const { control } = usePkiSyncForm();
+  const field = useDraftField<CloudflareBundleMethod | null | undefined>(
+    "syncOptions.bundleMethod"
+  );
   return (
-    <Controller
-      control={control}
-      name="syncOptions.bundleMethod"
-      render={({ field, fieldState: { error } }) => (
-        <Field
-          label="Bundle method"
-          help="How Cloudflare builds the chain it serves. Compatible and Modern may replace or drop the intermediates you upload. User-defined serves the uploaded chain exactly, which is required for certificates from a CA that is not publicly trusted. Automatic uses User-defined for certificates from an Infisical CA and Compatible for all others."
-          error={errorOf(error)}
-        >
-          <Select
-            value={(field.value as CloudflareBundleMethod | null | undefined) ?? AUTOMATIC}
-            onValueChange={(value) =>
-              field.onChange(value === AUTOMATIC ? null : (value as CloudflareBundleMethod))
-            }
-            options={[
-              { value: AUTOMATIC, label: CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL },
-              ...Object.values(CloudflareBundleMethod).map((method) => ({
-                value: method,
-                label: CLOUDFLARE_BUNDLE_METHOD_LABELS[method]
-              }))
-            ]}
-            invalid={Boolean(error)}
-          />
-        </Field>
-      )}
-    />
+    <Field
+      label="Bundle method"
+      help="How Cloudflare builds the chain it serves. Compatible and Modern may replace or drop the intermediates you upload. User-defined serves the uploaded chain exactly, which is required for certificates from a CA that is not publicly trusted. Automatic uses User-defined for certificates from an Infisical CA and Compatible for all others."
+      error={field.error}
+    >
+      <Select
+        value={field.value ?? AUTOMATIC}
+        onValueChange={(value) =>
+          field.onChange(value === AUTOMATIC ? null : (value as CloudflareBundleMethod))
+        }
+        options={[
+          { value: AUTOMATIC, label: CLOUDFLARE_BUNDLE_METHOD_AUTOMATIC_LABEL },
+          ...Object.values(CloudflareBundleMethod).map((method) => ({
+            value: method,
+            label: CLOUDFLARE_BUNDLE_METHOD_LABELS[method]
+          }))
+        ]}
+        invalid={Boolean(field.error)}
+      />
+    </Field>
   );
 }
 
 function GcpLabelsEditor() {
-  const { control } = usePkiSyncForm();
-  const labelFields = useFieldArray({ control, name: "syncOptions.labels" as never });
+  const { values, errors, setValue } = usePkiSyncDraft();
+  const labels = useDraftList<{ key: string; value?: string }>("syncOptions.labels");
   return (
     <Stack gap={8}>
-      {labelFields.fields.map(({ id }, index) => (
-        <Inline key={id} gap={8} align="start" wrap={false}>
+      {labels.items.map((_, index) => (
+        <Inline key={labels.keys[index]} gap={8} align="start" wrap={false}>
           <InlineGrow>
             <Grid columns={2} gap={8}>
-              {(["key", "value"] as const).map((part) => (
-                <Controller
-                  key={part}
-                  control={control}
-                  name={`syncOptions.labels.${index}.${part}` as never}
-                  render={({ field, fieldState: { error } }) => (
-                    <Stack gap={4}>
-                      <Input
-                        ref={field.ref}
-                        name={field.name}
-                        value={(field.value as string | undefined) ?? ""}
-                        onBlur={field.onBlur}
-                        onChange={(event) => field.onChange(event.target.value)}
-                        placeholder={part === "key" ? "Key" : "Value (optional)"}
-                        aria-label={`Label ${index + 1} ${part === "key" ? "key" : "value"}`}
-                        invalid={Boolean(error)}
-                      />
-                      <FieldError errors={[error]} />
-                    </Stack>
-                  )}
-                />
-              ))}
+              {(["key", "value"] as const).map((part) => {
+                const name = `syncOptions.labels.${index}.${part}`;
+                const error = errors[name];
+                return (
+                  <Stack key={part} gap={4}>
+                    <Input
+                      name={name}
+                      value={(valueAt(values, name) as string | undefined) ?? ""}
+                      onChange={(event) => setValue(name, event.target.value)}
+                      placeholder={part === "key" ? "Key" : "Value (optional)"}
+                      aria-label={`Label ${index + 1} ${part === "key" ? "key" : "value"}`}
+                      invalid={Boolean(error)}
+                    />
+                    <FieldError errors={toFieldError(error)} />
+                  </Stack>
+                );
+              })}
             </Grid>
           </InlineGrow>
           <Button
@@ -150,7 +172,7 @@ function GcpLabelsEditor() {
             icon="trash"
             iconOnly
             aria-label={`Remove label ${index + 1}`}
-            onClick={() => labelFields.remove(index)}
+            onClick={() => labels.remove(index)}
           />
         </Inline>
       ))}
@@ -160,7 +182,7 @@ function GcpLabelsEditor() {
           variant="outline"
           size="sm"
           icon="plus"
-          onClick={() => labelFields.append({ key: "", value: "" } as never)}
+          onClick={() => labels.append({ key: "", value: "" })}
         >
           Add label
         </Button>
@@ -170,8 +192,8 @@ function GcpLabelsEditor() {
 }
 
 export function GcpCertificateManagerSyncOptions() {
-  const { setValue } = usePkiSyncForm();
-  const labels = useWatchedValue<unknown>("syncOptions.labels");
+  const { setValue } = usePkiSyncDraft();
+  const labels = useDraftValue<unknown>("syncOptions.labels");
   const isConfiguringLabels = Array.isArray(labels);
   return (
     <>
@@ -190,11 +212,7 @@ export function GcpCertificateManagerSyncOptions() {
         }
         checked={isConfiguringLabels}
         onCheckedChange={(checked) =>
-          setValue(
-            "syncOptions.labels" as never,
-            (checked ? [{ key: "", value: "" }] : undefined) as never,
-            { shouldDirty: true }
-          )
+          setValue("syncOptions.labels", checked ? [{ key: "", value: "" }] : undefined)
         }
       />
       {isConfiguringLabels && <GcpLabelsEditor />}
@@ -280,8 +298,10 @@ export function LinuxServerSyncOptions({ isUpdate }: { isUpdate?: boolean }) {
 }
 
 export function WindowsServerSyncOptions({ isUpdate }: { isUpdate?: boolean }) {
-  const { control } = usePkiSyncForm();
-  const accessRules = useFieldArray({ control, name: "syncOptions.fileAccessRules" as never });
+  const { values, errors, setValue } = usePkiSyncDraft();
+  const accessRules = useDraftList<{ identity: string; access: WindowsFileAccess }>(
+    "syncOptions.fileAccessRules"
+  );
   return (
     <>
       <ServerExportFormatFields isUpdate={isUpdate} />
@@ -292,68 +312,57 @@ export function WindowsServerSyncOptions({ isUpdate }: { isUpdate?: boolean }) {
         help="Grant Windows users or groups access to the delivered files (for example, restrict who can read the private key). Rules are added on top of the destination folder's inherited permissions."
       >
         <Stack gap={8}>
-          {accessRules.fields.map(({ id }, index) => (
-            <Inline key={id} gap={8} align="start" wrap={false}>
-              <InlineGrow>
-                <Controller
-                  control={control}
-                  name={`syncOptions.fileAccessRules.${index}.identity` as never}
-                  render={({ field, fieldState: { error } }) => (
-                    <Stack gap={4}>
-                      <Input
-                        ref={field.ref}
-                        name={field.name}
-                        value={(field.value as string | undefined) ?? ""}
-                        onBlur={field.onBlur}
-                        onChange={(event) => field.onChange(event.target.value)}
-                        placeholder="DOMAIN\svc-account"
-                        aria-label={`Rule ${index + 1} identity`}
-                        invalid={Boolean(error)}
-                      />
-                      <FieldError errors={[error]} />
-                    </Stack>
-                  )}
-                />
-              </InlineGrow>
-              <Controller
-                control={control}
-                name={`syncOptions.fileAccessRules.${index}.access` as never}
-                render={({ field, fieldState: { error } }) => (
+          {accessRules.items.map((_, index) => {
+            const identity = `syncOptions.fileAccessRules.${index}.identity`;
+            const access = `syncOptions.fileAccessRules.${index}.access`;
+            return (
+              <Inline key={accessRules.keys[index]} gap={8} align="start" wrap={false}>
+                <InlineGrow>
                   <Stack gap={4}>
-                    <Select
-                      aria-label={`Rule ${index + 1} access`}
-                      width="md"
-                      value={
-                        (field.value as WindowsFileAccess | undefined) ?? WindowsFileAccess.Read
-                      }
-                      onValueChange={field.onChange}
-                      options={WINDOWS_FILE_ACCESS_OPTIONS}
-                      invalid={Boolean(error)}
+                    <Input
+                      name={identity}
+                      value={(valueAt(values, identity) as string | undefined) ?? ""}
+                      onChange={(event) => setValue(identity, event.target.value)}
+                      placeholder="DOMAIN\svc-account"
+                      aria-label={`Rule ${index + 1} identity`}
+                      invalid={Boolean(errors[identity])}
                     />
-                    <FieldError errors={[error]} />
+                    <FieldError errors={toFieldError(errors[identity])} />
                   </Stack>
-                )}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                icon="trash"
-                iconOnly
-                aria-label={`Remove permission rule ${index + 1}`}
-                onClick={() => accessRules.remove(index)}
-              />
-            </Inline>
-          ))}
+                </InlineGrow>
+                <Stack gap={4}>
+                  <Select
+                    aria-label={`Rule ${index + 1} access`}
+                    width="md"
+                    value={
+                      (valueAt(values, access) as WindowsFileAccess | undefined) ??
+                      WindowsFileAccess.Read
+                    }
+                    onValueChange={(value) => setValue(access, value)}
+                    options={WINDOWS_FILE_ACCESS_OPTIONS}
+                    invalid={Boolean(errors[access])}
+                  />
+                  <FieldError errors={toFieldError(errors[access])} />
+                </Stack>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  icon="trash"
+                  iconOnly
+                  aria-label={`Remove permission rule ${index + 1}`}
+                  onClick={() => accessRules.remove(index)}
+                />
+              </Inline>
+            );
+          })}
           <div>
             <Button
               type="button"
               variant="outline"
               size="sm"
               icon="plus"
-              onClick={() =>
-                accessRules.append({ identity: "", access: WindowsFileAccess.Read } as never)
-              }
+              onClick={() => accessRules.append({ identity: "", access: WindowsFileAccess.Read })}
             >
               Add permission
             </Button>

@@ -1,6 +1,4 @@
 import { useRef, useState } from "react";
-import { type FieldErrors, type FieldPath, FormProvider, useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   AlertDialog,
@@ -46,7 +44,8 @@ import { stepAside } from "../step-aside";
 import { PkiSyncCertificatesFields } from "./certificates/certificates-fields";
 import { PkiSyncDestinationFields } from "./destinations/destination-fields";
 import { PkiSyncTargetHostField } from "./destinations/target-host-field";
-import { SwitchField } from "./fields";
+import { hasErrors, schemaErrors } from "./draft-values";
+import { PkiSyncDraftProvider, SwitchField, usePkiSyncDraftState } from "./fields";
 import { PkiSyncDetailsFields } from "./options/details-fields";
 import { PkiSyncFieldMappingsFields } from "./options/field-mappings-fields";
 import { PkiSyncHealthCheckCommandFields } from "./options/health-check-command-fields";
@@ -83,13 +82,6 @@ const LDAP_TARGET_DEFAULTS = {
   sslEnabled: undefined,
   sslRejectUnauthorized: undefined,
   sslCertificate: undefined
-};
-
-const firstError = (errors: FieldErrors): string | undefined => {
-  const entry = Object.values(errors)[0];
-  if (!entry) return undefined;
-  if (typeof entry.message === "string" && entry.message) return entry.message;
-  return firstError(entry as FieldErrors);
 };
 
 type PendingUnlink = { preview: TPkiSyncFilterPreview; data: TUpdatePkiSyncForm };
@@ -260,28 +252,26 @@ export const EditPkiSyncSheet = ({
   const canSetPostSyncCommand = useCanSetPostSyncCommand(sync.applicationId);
   const canSetHealthCheckCommand = useCanSetHealthCheckCommand(sync.applicationId);
   const destinationName = destinationNameOf(sync.destination);
-  const form = useForm<TUpdatePkiSyncForm>({
-    resolver: zodResolver(UpdatePkiSyncFormSchema),
-    reValidateMode: "onChange",
-    defaultValues: {
-      name: sync.name,
-      destination: sync.destination,
-      description: sync.description ?? "",
-      connection: {
-        id: sync.connectionId,
-        name: sync.appConnectionName ?? sync.connection.name,
-        app: sync.connection.app
-      },
-      syncOptions: sync.syncOptions,
-      destinationConfig: { ...LDAP_TARGET_DEFAULTS, ...sync.destinationConfig },
-      isAutoSyncEnabled: sync.isAutoSyncEnabled,
-      filters: sync.filters ?? null
-    } as Partial<TUpdatePkiSyncForm>
-  });
-  const { isDirty } = form.formState;
-  const connection = useWatch({ control: form.control, name: "connection" }) as
-    | { id?: string; app?: AppConnection }
-    | undefined;
+  const [initial] = useState(
+    () =>
+      ({
+        name: sync.name,
+        destination: sync.destination,
+        description: sync.description ?? "",
+        connection: {
+          id: sync.connectionId,
+          name: sync.appConnectionName ?? sync.connection.name,
+          app: sync.connection.app
+        },
+        syncOptions: sync.syncOptions,
+        destinationConfig: { ...LDAP_TARGET_DEFAULTS, ...sync.destinationConfig },
+        isAutoSyncEnabled: sync.isAutoSyncEnabled,
+        filters: sync.filters ?? null
+      }) as unknown as TPkiSyncForm
+  );
+  const { draft, values, setErrors } = usePkiSyncDraftState(() => initial);
+  const isDirty = JSON.stringify(values) !== JSON.stringify(initial);
+  const connection = values.connection as { id?: string; app?: AppConnection } | undefined;
   const detectsPaloAlto = isPaloAltoNetworksPkiSync(sync.destination) && Boolean(connection?.id);
   const { data: paloAltoDevice, isPending: paloAltoPending } = adapter.usePaloAltoTemplates(
     connection?.id ?? "",
@@ -326,10 +316,7 @@ export const EditPkiSyncSheet = ({
       isPaloAltoNetworksPkiSync(sync.destination) &&
       isPaloAltoNetworksTemplateMissing(paloAltoDevice?.isPanorama, data.destinationConfig)
     ) {
-      form.setError("destinationConfig.template" as FieldPath<TUpdatePkiSyncForm>, {
-        type: "manual",
-        message: PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE
-      });
+      setErrors({ "destinationConfig.template": PALO_ALTO_NETWORKS_TEMPLATE_REQUIRED_MESSAGE });
       return false;
     }
     if (JSON.stringify(data.filters ?? null) !== JSON.stringify(sync.filters ?? null)) {
@@ -353,21 +340,22 @@ export const EditPkiSyncSheet = ({
   };
 
   const save = async () => {
-    if (!(await form.trigger(SECTION[section].fields as FieldPath<TUpdatePkiSyncForm>[])))
+    const sectionErrors = schemaErrors(UpdatePkiSyncFormSchema, values, SECTION[section].fields);
+    setErrors(sectionErrors);
+    if (hasErrors(sectionErrors)) return false;
+    const result = UpdatePkiSyncFormSchema.safeParse(values);
+    if (!result.success) {
+      failed("Some sync settings are invalid", new Error(result.error.issues[0]?.message));
       return false;
-    await form.handleSubmit(
-      async (data) => {
-        completed.current = await submit(data);
-      },
-      (errors) => failed("Some sync settings are invalid", new Error(firstError(errors)))
-    )();
+    }
+    completed.current = await submit(result.data);
     return completed.current ? undefined : false;
   };
 
   const isLdap = connection?.app === AppConnection.LDAP;
 
   return (
-    <FormProvider {...(form as unknown as ReturnType<typeof useForm<TPkiSyncForm>>)}>
+    <PkiSyncDraftProvider draft={draft}>
       <MultiStep
         variant="sheet"
         layout="aside"
@@ -427,6 +415,6 @@ export const EditPkiSyncSheet = ({
           if (applied) onClose();
         }}
       />
-    </FormProvider>
+    </PkiSyncDraftProvider>
   );
 };
