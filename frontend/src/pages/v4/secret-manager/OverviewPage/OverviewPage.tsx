@@ -1312,6 +1312,15 @@ export const OverviewPage = () => {
     };
     return secrets.map((secret) => readThrough(secret, readFrom, valueStore.values));
   };
+  const sourceState = (entry: Of<"import">) => {
+    if (entry.source.project !== project) return imported.state(entry.environment);
+    if (
+      entry.source.path === path &&
+      visibleEnvironments.some((environment) => environment.value === entry.source.environment)
+    )
+      return "loaded";
+    return breadth.state(entry.source);
+  };
 
   const insert = (
     created: NewResource[],
@@ -2548,6 +2557,7 @@ export const OverviewPage = () => {
                                     entries={entries as Of<"import">[]}
                                     ctx={ctx}
                                     sourceSecrets={sourceSecrets}
+                                    sourceState={sourceState}
                                     projectId={project}
                                     sites={sitesOf(entries as Of<"import">[])}
                                     revealAll={single ? revealAll : showValues}

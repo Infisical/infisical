@@ -55,6 +55,7 @@ import {
 import { v4Path } from "../../../links";
 import { nameLabel } from "../../../shell/resource-name";
 import { withoutDefaults } from "../../search-defaults";
+import type { ScopeState } from "../bridge/scopes";
 import {
   environments,
   type Resource,
@@ -966,6 +967,7 @@ export function ImportRow({
   entries,
   ctx,
   sourceSecrets,
+  sourceState,
   projectId,
   sites,
   revealAll
@@ -974,6 +976,7 @@ export function ImportRow({
   entries: Of<"import">[];
   ctx: RowContext;
   sourceSecrets: (entry: Of<"import">) => Secret[];
+  sourceState: (entry: Of<"import">) => ScopeState;
   projectId: string;
   sites: EnvironmentOption[];
   revealAll: boolean;
@@ -1078,6 +1081,12 @@ export function ImportRow({
   };
   const keys = ctx.single && expanded ? sourceSecrets(first) : [];
   const nested = !ctx.single && expanded ? sourceSecrets(first) : [];
+  const state = sourceState(first);
+  const notice = {
+    loading: "Loading secrets…",
+    failed: "Couldn't load the secrets in this folder.",
+    loaded: "No secrets in this folder."
+  }[state];
   return (
     <>
       <RowContextMenu {...rowActions}>
@@ -1159,11 +1168,11 @@ export function ImportRow({
             </TableCell>
           </TableRow>
         ))}
-      {ctx.single && expanded && !first.revoked && keys.length === 0 && (
+      {ctx.single && expanded && !first.revoked && (keys.length === 0 || state === "failed") && (
         <TableRow className={styles.importedRow}>
           <TableCell pin="start" selection divider={false} />
           <TableCell colSpan={3} className={styles.subtle}>
-            No secrets in this folder.
+            {notice}
           </TableCell>
         </TableRow>
       )}
@@ -1191,13 +1200,13 @@ export function ImportRow({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {first.revoked || nested.length === 0 ? (
+                {first.revoked || nested.length === 0 || state === "failed" ? (
                   <TableRow>
                     <TableCell selection divider={false} />
                     <TableCell colSpan={2} className={styles.subtle}>
                       {first.revoked
                         ? "Access to this source was revoked, so its secrets are not shown."
-                        : "No secrets in this folder."}
+                        : notice}
                     </TableCell>
                   </TableRow>
                 ) : (
