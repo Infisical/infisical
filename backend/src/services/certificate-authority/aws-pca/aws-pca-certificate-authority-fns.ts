@@ -61,11 +61,13 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import {
   awsInstanceCredentialsMissingError,
+  awsTransientError,
   caAppConnectionNotFoundError,
   caNotFoundError,
   duplicateCaNameError,
   externalCaNotSavedError,
-  isAwsInstanceCredentialsMissing
+  isAwsInstanceCredentialsMissing,
+  isAwsTransientError
 } from "../certificate-authority-errors";
 import { createDistinguishedName, extractDnParts, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
@@ -324,8 +326,9 @@ const describeCaForIssuance = async (pcaClient: ACMPCAClient, certificateAuthori
 };
 
 // Setup checks the CA before saving it, so an error AWS returns (from STS AssumeRole or DescribeCertificateAuthority)
-// is the caller's configuration to fix and becomes a 400, as does a missing instance credential. Other errors
-// without AWS's response metadata come from Infisical itself and are rethrown.
+// is the caller's configuration to fix and becomes a 400, as does a missing instance credential, except throttling and
+// AWS-side faults, which become a 500 so the caller retries. Other errors without AWS's response metadata come from
+// Infisical itself and are rethrown.
 const assertPrivateCaActiveForSetup = async ({
   connection,
   certificateAuthorityArn,
@@ -353,6 +356,7 @@ const assertPrivateCaActiveForSetup = async ({
     }
     if (!(error instanceof Error) || !("$metadata" in error)) throw error;
     logger.warn(error, logMessage);
+    if (isAwsTransientError(error)) throw awsTransientError("AWS Private CA", error.name);
     if (error.name === "ResourceNotFoundException") {
       throw new BadRequestError({
         message: `AWS Private CA has no certificate authority '${certificateAuthorityArn}' in region '${region}'. Check the ARN and the region.`

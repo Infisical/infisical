@@ -2707,7 +2707,7 @@ const sanRuleValues = (rule: string, reference: string) =>
 
 export const CERTIFICATE_POLICIES = {
   CREATE_DESCRIPTION:
-    "Create a certificate policy. A policy sets the rules every certificate issued through a profile that uses it must meet. Omit a rule to leave that part unconstrained.",
+    "Create a certificate policy. A policy sets the rules every certificate issued through a profile that uses it must meet. Omit a rule to leave that part unconstrained, except basicConstraints: a policy without it denies CA certificates.",
   UPDATE_DESCRIPTION:
     "Update a certificate policy. Send only the fields to change; a rule you send replaces the existing one, and null removes it. The change applies to certificates issued or renewed afterwards.",
   id: "The ID of the certificate policy.",

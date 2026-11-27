@@ -1,4 +1,4 @@
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 
@@ -16,7 +16,7 @@ export const unsupportedCaTypeError = (type: unknown) =>
 
 export const caAppConnectionNotFoundError = (appConnectionId: string, app: AppConnection) =>
   new NotFoundError({
-    message: `App connection with ID '${appConnectionId}' not found in this organization. List the ${APP_CONNECTION_NAME_MAP[app]} connections you can use with GET /api/v1/app-connections/${app}/available to find the right ID.`
+    message: `App connection with ID '${appConnectionId}' not found in this organization. Check the ID of the ${APP_CONNECTION_NAME_MAP[app]} connection under App Connections in Certificate Manager and try again.`
   });
 
 // The AWS SDK's default credential chain throws this, with no AWS response metadata, when it cannot load the
@@ -27,6 +27,32 @@ export const isAwsInstanceCredentialsMissing = (error: unknown) =>
 export const awsInstanceCredentialsMissingError = (connectionLabel: string) =>
   new BadRequestError({
     message: `Infisical could not load its own AWS credentials to assume the ${connectionLabel}'s role. Ask your instance administrator to check the AWS credentials Infisical runs with (INF_APP_CONNECTION_AWS_ACCESS_KEY_ID and INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY, or its AWS role or session) and set or refresh them, then try again.`
+  });
+
+const AWS_THROTTLING_ERROR_NAMES = [
+  "Throttling",
+  "ThrottlingException",
+  "ThrottledException",
+  "TooManyRequestsException",
+  "RequestLimitExceeded",
+  "RequestThrottled",
+  "RequestThrottledException",
+  "PriorRequestNotComplete"
+];
+
+// Throttling and AWS-side faults are not the caller's configuration to fix, so setup checks answer them with a 5xx
+// that a client retries instead of a 400 it reads as its own mistake.
+export const isAwsTransientError = (error: unknown) => {
+  if (!(error instanceof Error) || !("$metadata" in error)) return false;
+  const { $fault, $metadata } = error as { $fault?: string; $metadata?: { httpStatusCode?: number } };
+  return (
+    $fault === "server" || ($metadata?.httpStatusCode ?? 0) >= 500 || AWS_THROTTLING_ERROR_NAMES.includes(error.name)
+  );
+};
+
+export const awsTransientError = (service: string, errorName: string) =>
+  new InternalServerError({
+    message: `${service} did not answer Infisical's check (${errorName}). This is a temporary problem on AWS's side, not your configuration. Try again shortly.`
   });
 
 export const duplicateCaNameError = (name: string) =>

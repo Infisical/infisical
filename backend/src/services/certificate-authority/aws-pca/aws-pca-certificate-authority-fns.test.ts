@@ -1,7 +1,7 @@
 import { RequestAlreadyProcessedException } from "@aws-sdk/client-acm-pca";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -81,18 +81,14 @@ describe("AWS PCA createCertificateAuthority setup check", () => {
     send.mockReset();
   });
 
-  it("answers a 400 naming the missing instance credentials when the role can't be assumed", async () => {
-    const missingCredentials = new Error("Could not load credentials from any providers");
-    missingCredentials.name = "CredentialsProviderError";
-    send.mockRejectedValue(missingCredentials);
-
+  const runSetup = () => {
     const fns = AwsPcaCertificateAuthorityFns({
       appConnectionDAL: { findById: vi.fn().mockResolvedValue({ id: "connection-1", app: "aws" }) },
       appConnectionService: { validateAppConnectionUsageById: vi.fn().mockResolvedValue({}) },
       certificateAuthorityDAL: {}
     } as unknown as Parameters<typeof AwsPcaCertificateAuthorityFns>[0]);
 
-    const setup = fns.createCertificateAuthority({
+    return fns.createCertificateAuthority({
       name: "private-aws",
       projectId: "project-1",
       status: CaStatus.ACTIVE,
@@ -103,8 +99,38 @@ describe("AWS PCA createCertificateAuthority setup check", () => {
       } as TCreateArgs["configuration"],
       actor: {} as TCreateArgs["actor"]
     });
+  };
 
+  const awsError = (name: string, extra: Record<string, unknown> = {}) =>
+    Object.assign(new Error(name), { name, $metadata: {}, ...extra });
+
+  it("answers a 400 naming the missing instance credentials when the role can't be assumed", async () => {
+    const missingCredentials = new Error("Could not load credentials from any providers");
+    missingCredentials.name = "CredentialsProviderError";
+    send.mockRejectedValue(missingCredentials);
+
+    const setup = runSetup();
     await expect(setup).rejects.toBeInstanceOf(BadRequestError);
     await expect(setup).rejects.toThrow("could not load its own AWS credentials to assume the AWS connection's role");
+  });
+
+  it.each([
+    ["throttling", awsError("ThrottlingException", { $fault: "client", $metadata: { httpStatusCode: 400 } })],
+    ["an AWS server fault", awsError("InternalFailure", { $fault: "server", $metadata: { httpStatusCode: 500 } })],
+    ["a 503 from AWS", awsError("ServiceUnavailable", { $metadata: { httpStatusCode: 503 } })]
+  ])("answers %s with a retryable 500 rather than a 400", async (_label, error) => {
+    send.mockRejectedValue(error);
+
+    const setup = runSetup();
+    await expect(setup).rejects.toBeInstanceOf(InternalServerError);
+    await expect(setup).rejects.toThrow(
+      `AWS Private CA did not answer Infisical's check (${error.name}). This is a temporary problem on AWS's side`
+    );
+  });
+
+  it("still answers a credential denial with a 400", async () => {
+    send.mockRejectedValue(awsError("AccessDeniedException", { $fault: "client", $metadata: { httpStatusCode: 403 } }));
+
+    await expect(runSetup()).rejects.toBeInstanceOf(BadRequestError);
   });
 });

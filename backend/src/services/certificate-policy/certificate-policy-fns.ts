@@ -15,7 +15,7 @@ export const parsePolicyTtl = (ttl: string): number => {
   const match = new RE2("^(\\d+)([dmyh])$").exec(ttl);
   if (!match) {
     throw new BadRequestError({
-      message: `TTL '${ttl}' is not in a supported format. Use a number followed by h, d, m or y, such as 90d or 1y.`
+      message: `TTL '${ttl}' is not in a supported format. Use a number followed by h, d or y, such as 24h, 90d or 1y.`
     });
   }
 

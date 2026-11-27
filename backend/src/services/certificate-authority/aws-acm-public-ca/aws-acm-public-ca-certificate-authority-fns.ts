@@ -49,11 +49,13 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import {
   awsInstanceCredentialsMissingError,
+  awsTransientError,
   caAppConnectionNotFoundError,
   caNotFoundError,
   duplicateCaNameError,
   externalCaNotSavedError,
-  isAwsInstanceCredentialsMissing
+  isAwsInstanceCredentialsMissing,
+  isAwsTransientError
 } from "../certificate-authority-errors";
 import { buildRoute53Client, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
@@ -225,6 +227,9 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       logger.warn(error, logMessage);
       // AWS denial text names the calling principal and the role ARN, so only the error name is returned.
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
+      if (isAwsTransientError(error)) {
+        throw awsTransientError(acmClient ? "AWS Certificate Manager" : "AWS STS", errorName);
+      }
       if (!acmClient) {
         throw new BadRequestError({
           message: `AWS refused to let Infisical assume the AWS connection's role (${errorName}). Check the connection's credentials and the role's trust policy, then try again.`
@@ -258,6 +263,9 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       if (!route53Client && !isAwsError) throw error;
       logger.warn(error, logMessage);
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
+      if (isAwsTransientError(error)) {
+        throw awsTransientError(route53Client ? "Route 53" : "AWS STS", errorName);
+      }
       if (!route53Client) {
         throw new BadRequestError({
           message: `AWS refused to let Infisical assume the Route 53 connection's role (${errorName}). Check the connection's credentials and the role's trust policy, then try again.`

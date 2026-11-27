@@ -944,16 +944,19 @@ Do not hand such a URL to a vendor SDK that makes its own requests; it follows r
 
 Certificate Manager errors are written for an agent fixing its own request: quote the value sent, give the allowed
 values or limit, and say the next step in product words (no projects, templates or subscribers). A not-found message
-names the list or search endpoint to call for the right ID (for an app connection, its `/available` endpoint, which
-needs only Connect); other messages name no API paths.
+names the list or search endpoint to call for the right ID; other messages name no API paths. An app connection
+not-found is the exception and names no endpoint, because `/api/v1/app-connections/<app>/available` sits outside the
+Certificate Manager routes and lists that product's connections only when given a project ID.
 - Throw the shared constructors instead of writing a new message for a case they cover:
   `certificate-authority/certificate-authority-errors.ts`, `certificate-common/certificate-errors.ts` and
   `certificate-profile/certificate-profile-errors.ts`.
 - Join policy violations with `joinPolicyViolations` or `describePolicyViolations` (`certificate-policy-fns.ts`), so
   every path that runs the policy check returns the same text, and quote literal policy values with
   `quotePolicyValues`.
-- A profile, or a CA or policy named in profile setup, that belongs to another organization answers the same 404 as a
-  missing one: check the org before the permission call, so the error never says whether the ID exists.
+- A certificate, CA, policy or profile that belongs to another organization answers the same 404 as a missing one,
+  whether it is looked up by ID or named in another request: call `assertPkiResourceInActorOrg`
+  (`certificate-common/pki-org-scope-fns.ts`) before the permission check, which would otherwise answer a foreign ID
+  with a 403 and so confirm that it exists.
 
 ### Certificate revocation: CRL and OCSP
 

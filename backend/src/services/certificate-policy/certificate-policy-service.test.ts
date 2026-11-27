@@ -1044,7 +1044,7 @@ describe("CertificatePolicyService", () => {
 
           if (testCase.shouldThrow) {
             await expect(service.validateCertificateRequest("template-123", request)).rejects.toThrow(
-              `TTL '${testCase.ttl}' is not in a supported format. Use a number followed by h, d, m or y, such as 90d or 1y.`
+              `TTL '${testCase.ttl}' is not in a supported format. Use a number followed by h, d or y, such as 24h, 90d or 1y.`
             );
           } else {
             const result = await service.validateCertificateRequest("template-123", request);
