@@ -61,6 +61,7 @@ export type TDomainDeps = {
     | "isGeneralWorkerRunModeEnabled"
     | "OTEL_TELEMETRY_COLLECTION_ENABLED"
     | "CLICKHOUSE_AUDIT_LOG_ENABLED"
+    | "DISABLE_AUDIT_LOG_GENERATION"
     | "CLICKHOUSE_AUDIT_LOG_TABLE_NAME"
     | "CLICKHOUSE_AUDIT_LOG_INSERT_SETTINGS"
   > &
@@ -140,7 +141,11 @@ export const createDomains = async (deps: TDomainDeps) => {
 
   // Built right after Events: any domain may record audit logs through it.
   const isClickHouseAuditLogEnabled = Boolean(deps.clickhouse && deps.envConfig.CLICKHOUSE_AUDIT_LOG_ENABLED);
-  const auditLog = new AuditLogModule({ keyStore: deps.keyStore, useTimeOrderedIds: isClickHouseAuditLogEnabled });
+  const auditLog = new AuditLogModule({
+    keyStore: deps.keyStore,
+    useTimeOrderedIds: isClickHouseAuditLogEnabled,
+    isGenerationDisabled: deps.envConfig.DISABLE_AUDIT_LOG_GENERATION
+  });
 
   const accessControl = new AccessControlModule({
     db: deps.db,

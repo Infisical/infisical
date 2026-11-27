@@ -23,7 +23,8 @@ describe("AuditLogIngestionService.drain on Postgres", () => {
 
   const build = () => {
     const keyStore = new InMemoryKeyStore();
-    const recorder = new AuditLogModule({ keyStore, useTimeOrderedIds: false }).auditLogRecorderService;
+    const recorder = new AuditLogModule({ keyStore, useTimeOrderedIds: false, isGenerationDisabled: false })
+      .auditLogRecorderService;
     const ingestion = new AuditLogEeModule({
       db: h.db,
       keyStore,
@@ -71,7 +72,8 @@ describe("AuditLogIngestionService.drain on Postgres", () => {
     // Setup
     const tn = await h.newTenant();
     const keyStore = new InMemoryKeyStore();
-    const recorder = new AuditLogModule({ keyStore, useTimeOrderedIds: false }).auditLogRecorderService;
+    const recorder = new AuditLogModule({ keyStore, useTimeOrderedIds: false, isGenerationDisabled: false })
+      .auditLogRecorderService;
     let transactions = 0;
     // The first transaction fails inside Postgres and rolls back, like a lost connection mid-batch.
     const transactionRunner = new TransactionRunner<TAuditLogStores>(h.db, (trx, locks) => {

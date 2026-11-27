@@ -483,7 +483,7 @@ interface TKeyStoreFactoryDTO extends TRedisConfigKeys {
 export const keyStoreFactory = (
   redisConfigKeys: TKeyStoreFactoryDTO,
   keyValueStoreDAL: TKeyValueStoreDALFactory
-): TKeyStoreFactory => {
+): TKeyStoreFactory & { close: () => Promise<void> } => {
   const primaryRedis = buildRedisFromConfig(redisConfigKeys, "keystore");
 
   const redisReadReplicas = redisConfigKeys.REDIS_READ_REPLICAS?.map((el) => {
@@ -986,6 +986,11 @@ export const keyStoreFactory = (
   };
 
   return {
+    // For a caller that builds its own key store and must release it, such as a test. The server's lives as long as
+    // the process.
+    async close() {
+      await Promise.all([primaryRedis, ...(redisReadReplicas ?? [])].map((client) => client.quit()));
+    },
     setItem,
     getItem,
     getItemBuffer,

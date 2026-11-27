@@ -46,10 +46,13 @@ export class AuditLogRecorderService implements TAuditLogRecorderService {
   constructor(
     private readonly auditLogBuffer: TAuditLogBuffer,
     private readonly idGenerator: TAuditLogIdGenerator,
-    private readonly metrics: TAuditLogMetrics
+    private readonly metrics: TAuditLogMetrics,
+    // An operator's DISABLE_AUDIT_LOG_GENERATION: nothing is recorded.
+    private readonly isGenerationDisabled: boolean
   ) {}
 
   async record(actor: TActorContext, input: TRecordAuditLogInput): Promise<void> {
+    if (this.isGenerationDisabled) return;
     try {
       await this.recordOrThrow(actor, input);
     } catch (error) {
@@ -69,6 +72,7 @@ export class AuditLogRecorderService implements TAuditLogRecorderService {
   }
 
   async recordOrThrow(actor: TActorContext, input: TRecordAuditLogInput): Promise<void> {
+    if (this.isGenerationDisabled) return;
     const { audit } = actor;
     const orgConfig = await audit.org();
     const project = input.projectId ? await audit.project(input.projectId) : null;
@@ -103,6 +107,7 @@ export class AuditLogRecorderService implements TAuditLogRecorderService {
   }
 
   async recordResolved({ orgId, project, policy, ...input }: TRecordResolvedAuditLogInput): Promise<void> {
+    if (this.isGenerationDisabled) return;
     const createdAt = new Date();
     const entry = AuditLogEntry.create({
       ...input,

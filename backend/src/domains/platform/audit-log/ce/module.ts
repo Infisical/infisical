@@ -56,6 +56,7 @@ export type TAuditLogDeps = {
   keyStore: TDomainKeyStore;
   // ClickHouse orders audit logs by id, so it needs time-ordered ids.
   useTimeOrderedIds: boolean;
+  isGenerationDisabled: boolean;
 };
 
 // The recorder every domain records audit logs through. Built right after Events, before anything that records.
@@ -67,7 +68,8 @@ export class AuditLogModule {
     this.auditLogRecorderService = new AuditLogRecorderService(
       new AuditLogBuffer(deps.keyStore),
       new AuditLogIdGenerator(deps.useTimeOrderedIds),
-      new OtelMetricsClient()
+      new OtelMetricsClient(),
+      deps.isGenerationDisabled
     );
   }
 }

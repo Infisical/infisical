@@ -16,10 +16,18 @@ class SequentialIdGenerator implements TAuditLogIdGenerator {
 }
 
 // The real recorder over a buffer on an in-memory key store. `appended()` reads back what was recorded, in order.
-export const buildAuditLog = ({ keyStore = new InMemoryKeyStore() }: { keyStore?: InMemoryKeyStore } = {}) => {
+export const buildAuditLog = ({
+  keyStore = new InMemoryKeyStore(),
+  isGenerationDisabled = false
+}: { keyStore?: InMemoryKeyStore; isGenerationDisabled?: boolean } = {}) => {
   const buffer = new AuditLogBuffer(keyStore);
   const metrics = new FakeAuditLogMetrics();
-  const auditLogRecorderService = new AuditLogRecorderService(buffer, new SequentialIdGenerator(), metrics);
+  const auditLogRecorderService = new AuditLogRecorderService(
+    buffer,
+    new SequentialIdGenerator(),
+    metrics,
+    isGenerationDisabled
+  );
 
   const appended = async (): Promise<TAuditLogEntryRecord[]> => {
     const { entries } = await buffer.collect({ batchSize: 1000, maxEntries: 1000 });

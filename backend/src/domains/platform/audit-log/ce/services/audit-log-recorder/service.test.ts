@@ -244,6 +244,31 @@ describe("AuditLogRecorderService.record for an unscoped context", () => {
   });
 });
 
+describe("AuditLogRecorderService when audit log generation is disabled", () => {
+  test("should record nothing through record, recordOrThrow or recordResolved", async () => {
+    // Setup
+    const { auditLogRecorderService, appended, metrics } = buildAuditLog({ isGenerationDisabled: true });
+    const actor: TActorContext = {
+      ...actorContext({ principal: userPrincipal(), org: actorOrg() }),
+      audit: new FakeActorAuditConfig()
+    };
+
+    // Action
+    await auditLogRecorderService.record(actor, { event: managementEvent() });
+    await auditLogRecorderService.recordOrThrow(actor, { event: managementEvent() });
+    await auditLogRecorderService.recordResolved({
+      orgId: "org-1",
+      policy: { retentionDays: 90 },
+      event: managementEvent(),
+      actor: platformActorRecord()
+    });
+
+    // Assert
+    expect(await appended()).toEqual([]);
+    expect(metrics.enqueued).toEqual([]);
+  });
+});
+
 describe("AuditLogRecorderService.recordOrThrow", () => {
   test("should throw when the buffer fails", async () => {
     // Setup
