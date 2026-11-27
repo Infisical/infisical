@@ -24,7 +24,8 @@ describe("formatSecretScanningRule", () => {
     ["1password-secret-key", "1Password Secret Key"],
     ["npm-access-token", "npm Access Token"],
     ["internal_service_token", "Internal Service Token"],
-    ["MyCompany-key", "MyCompany Key"]
+    ["MyCompany-key", "MyCompany Key"],
+    ["constructor-token", "Constructor Token"]
   ])("%s", (rule, expected) => {
     expect(formatSecretScanningRule(rule)).toBe(expected);
   });

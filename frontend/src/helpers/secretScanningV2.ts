@@ -175,8 +175,8 @@ export const formatSecretScanningRule = (rule: string) =>
     .split(/[-_\s]+/)
     .filter(Boolean)
     .map((word) => {
-      const known = RULE_WORDS[word.toLowerCase()];
-      if (known) return known;
+      const key = word.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(RULE_WORDS, key)) return RULE_WORDS[key];
       return word === word.toLowerCase() ? word.charAt(0).toUpperCase() + word.slice(1) : word;
     })
     .join(" ")

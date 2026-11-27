@@ -81,7 +81,7 @@ const FoundInList = ({ resources }: { resources: TSecretScanningFinding["resourc
             className="px-0"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            {isExpanded ? "Show less" : `+${hiddenCount} more`}
+            {isExpanded ? "Show Less" : `+${hiddenCount} More`}
           </Button>
         </li>
       )}

@@ -11,6 +11,10 @@ const RESOURCE = TableName.SecretScanningResource;
 const DATA_SOURCE = TableName.SecretScanningDataSource;
 
 const BATCH_LOCATIONS = 20_000;
+const BATCH_FINDINGS = 2_000;
+// Each resource takes an advisory lock, and they share Postgres's lock table with every other transaction.
+const BATCH_RESOURCES = 500;
+const BATCH_ATTEMPTS = 3;
 const SPLIT_BATCH_FINDINGS = 1_000;
 const STATEMENT_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -28,7 +32,13 @@ const STATUS_LABEL: Record<string, string> = {
   [SecretScanningFindingStatus.FalsePositive]: "false positive"
 };
 
-type TValue = { projectId: string; blindIndex: string; locationCount: number; resourceIds: string[] };
+type TValue = {
+  projectId: string;
+  blindIndex: string;
+  findingCount: number;
+  locationCount: number;
+  resourceIds: string[];
+};
 
 type TFinding = {
   id: string;
@@ -56,17 +66,30 @@ const mergeValue = async (tx: Knex, findings: TFinding[]) => {
   const [winner, ...losers] = findings;
   const loserIds = losers.map(({ id }) => id);
 
+  // A finding the release before locations saved during their migration can have none, so it gets one from its own
+  // columns, as that migration did, and its place outlives the merge.
+  await tx.raw(
+    `INSERT INTO ?? (id, "findingId", "resourceId", "scanId", fingerprint, rule, details, "createdAt")
+     SELECT f.id, f.id, f."resourceId", f."scanId", f.fingerprint, f.rule, f.details, f."createdAt"
+     FROM ?? AS f
+     WHERE f.id = ANY(?::uuid[]) AND NOT EXISTS (SELECT 1 FROM ?? AS l WHERE l."findingId" = f.id)
+     ON CONFLICT ("resourceId", fingerprint) DO NOTHING`,
+    [LOCATION, FINDING, findings.map(({ id }) => id), LOCATION]
+  );
+
   // A pull request check saved finding ids, so each merged-away finding's id lives on as the id of its oldest
   // location, which findings.findByIdsOrLocationIdsForUpdate resolves.
-  for (const loser of losers) {
-    /* eslint-disable no-await-in-loop */
-    const isTaken = await tx(LOCATION).where({ id: loser.id }).first("id");
-    if (!isTaken) {
-      const oldest = await tx(LOCATION).where({ findingId: loser.id }).orderBy(["createdAt", "id"]).first("id");
-      if (oldest) await tx(LOCATION).where({ id: oldest.id }).update("id", loser.id);
-    }
-    /* eslint-enable no-await-in-loop */
-  }
+  await tx.raw(
+    `UPDATE ?? AS l SET id = o."findingId"
+     FROM (
+       SELECT DISTINCT ON (x."findingId") x.id, x."findingId"
+       FROM ?? AS x
+       WHERE x."findingId" = ANY(?::uuid[]) AND NOT EXISTS (SELECT 1 FROM ?? AS t WHERE t.id = x."findingId")
+       ORDER BY x."findingId", x."createdAt", x.id
+     ) AS o
+     WHERE l.id = o.id`,
+    [LOCATION, LOCATION, loserIds, LOCATION]
+  );
 
   await tx(LOCATION).whereIn("findingId", loserIds).update({ findingId: winner.id });
 
@@ -114,14 +137,21 @@ const mergeBatch = async (tx: Knex, values: TValue[]) => {
   await lockAll(tx, resourceIds.map(PgSqlLock.SecretScanningFindingLocations));
   await lockAll(tx, projectIds.map(PgSqlLock.SecretScanningFindingValues));
 
-  const findings: TFinding[] = await tx(`${FINDING} as f`)
-    .join(`${RESOURCE} as r`, "r.id", "f.resourceId")
-    .join(`${DATA_SOURCE} as ds`, "ds.id", "r.dataSourceId")
-    .whereRaw(`(ds."projectId", f."secretFindingBlindIndex") IN (SELECT * FROM unnest(?::text[], ?::text[]))`, [
-      values.map(({ projectId }) => projectId),
-      values.map(({ blindIndex }) => blindIndex)
-    ])
-    .whereRaw(`f."resourceId" = ANY(?::uuid[])`, [resourceIds])
+  const batchFindings = () =>
+    tx(`${FINDING} as f`)
+      .join(`${RESOURCE} as r`, "r.id", "f.resourceId")
+      .join(`${DATA_SOURCE} as ds`, "ds.id", "r.dataSourceId")
+      .whereRaw(`(ds."projectId", f."secretFindingBlindIndex") IN (SELECT * FROM unnest(?::text[], ?::text[]))`, [
+        values.map(({ projectId }) => projectId),
+        values.map(({ blindIndex }) => blindIndex)
+      ])
+      .whereRaw(`f."resourceId" = ANY(?::uuid[])`, [resourceIds]);
+
+  // Triage takes no advisory lock, so the findings are locked before their triage is read, in id order as everything
+  // else that locks several findings does.
+  await batchFindings().orderBy("f.id").forUpdate("f").select("f.id");
+
+  const findings: TFinding[] = await batchFindings()
     .orderBy(["f.createdAt", "f.id"])
     .select(
       tx.raw(`ds."projectId" || ':' || f."secretFindingBlindIndex" AS "valueKey"`),
@@ -153,23 +183,47 @@ export async function up(knex: Knex): Promise<void> {
       "ds.projectId",
       "f.secretFindingBlindIndex as blindIndex",
       knex.raw(`array_agg(DISTINCT f."resourceId"::text) AS "resourceIds"`),
+      knex.raw(`count(DISTINCT f.id)::int AS "findingCount"`),
       knex.raw(`count(l.id)::int AS "locationCount"`)
     );
 
   const batches: TValue[][] = [];
   let batchLocations = 0;
+  let batchFindingCount = 0;
+  let batchResources = new Set<string>();
   for (const value of values) {
-    if (!batches.length || batchLocations + value.locationCount > BATCH_LOCATIONS) {
+    const resources = new Set([...batchResources, ...value.resourceIds]);
+    if (
+      !batches.length ||
+      batchLocations + value.locationCount > BATCH_LOCATIONS ||
+      batchFindingCount + value.findingCount > BATCH_FINDINGS ||
+      resources.size > BATCH_RESOURCES
+    ) {
       batches.push([]);
       batchLocations = 0;
+      batchFindingCount = 0;
+      batchResources = new Set(value.resourceIds);
+    } else {
+      batchResources = resources;
     }
     batches[batches.length - 1].push(value);
     batchLocations += value.locationCount;
+    batchFindingCount += value.findingCount;
   }
 
   for (const batch of batches) {
-    // eslint-disable-next-line no-await-in-loop
-    await knex.transaction((tx) => mergeBatch(tx, batch));
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await knex.transaction((tx) => mergeBatch(tx, batch));
+        break;
+      } catch (error) {
+        // The release before this one deletes resources and skips findings without the advisory locks, so it can
+        // deadlock with a batch. A batch is idempotent, so it is run again.
+        const { code } = error as { code?: string };
+        if (attempt >= BATCH_ATTEMPTS || (code !== "40P01" && code !== "55P03")) throw error;
+      }
+    }
   }
 }
 
