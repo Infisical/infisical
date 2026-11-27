@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TActorInput } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 
 import {
   TCodeSigningRequestScopeInput,
@@ -10,7 +10,7 @@ import {
 } from "../approval-policy/code-signing/code-signing-policy-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { CertKeyAlgorithm, CrlReason } from "../certificate/certificate-types";
-import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
+import { CertKeySource, SignerOrderBy, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
 type TActorPermission = TActorInput;
 
@@ -91,6 +91,8 @@ export type TListSignersDTO = {
   offset?: number;
   limit?: number;
   search?: string;
+  orderBy?: SignerOrderBy;
+  orderDirection?: OrderByDirection;
   projectId: string;
 } & TActorInput;
 

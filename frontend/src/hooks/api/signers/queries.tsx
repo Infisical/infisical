@@ -95,6 +95,8 @@ export const useListSigners = (dto: TListSignersDTO) => {
         limit: String(dto.limit ?? 25)
       });
       if (dto.search) params.set("search", dto.search);
+      if (dto.orderBy) params.set("orderBy", dto.orderBy);
+      if (dto.orderDirection) params.set("orderDirection", dto.orderDirection);
 
       const { data } = await apiRequest.get<TListSignersResponse>(
         `/api/v1/cert-manager/signers?${params.toString()}`

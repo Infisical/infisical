@@ -8,6 +8,13 @@ export enum SignerStatus {
   Revoked = "revoked"
 }
 
+export enum SignerOrderBy {
+  Name = "name",
+  CertificateNotAfter = "certificateNotAfter",
+  LastSignedAt = "lastSignedAt",
+  CreatedAt = "createdAt"
+}
+
 export const isSignerRevokedOrRevoking = (status: string | null | undefined) =>
   status === SignerStatus.Revoked || status === SignerStatus.RevocationPending;
 

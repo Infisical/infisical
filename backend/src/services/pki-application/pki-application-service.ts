@@ -198,6 +198,8 @@ export const pkiApplicationServiceFactory = ({
     search,
     limit,
     offset,
+    orderBy,
+    orderDirection,
     applicationIds,
     projectId,
     actor
@@ -208,7 +210,14 @@ export const pkiApplicationServiceFactory = ({
 
     if (permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       const [applications, total] = await Promise.all([
-        pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset, applicationIds }),
+        pkiApplicationDAL.findByProjectId(projectId, {
+          search,
+          limit,
+          offset,
+          orderBy,
+          orderDirection,
+          applicationIds
+        }),
         pkiApplicationDAL.countByProjectId(projectId, search, undefined, applicationIds)
       ]);
       return { applications, total };
@@ -236,6 +245,8 @@ export const pkiApplicationServiceFactory = ({
         search,
         limit,
         offset,
+        orderBy,
+        orderDirection,
         applicationIds: scopedIds
       }),
       pkiApplicationDAL.countByProjectId(projectId, search, undefined, scopedIds)

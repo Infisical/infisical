@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { AlertTriangleIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { AlertTriangleIcon, ChevronDownIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { CodeSigningUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -29,6 +30,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSortDirection,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -40,10 +42,12 @@ import {
   useSubscription
 } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   getSignerStatusBadgeVariant,
   hasFailedRenewal,
   SIGNER_TABLE_PAGE_SIZE,
+  SignerOrderBy,
   SignerStatus,
   signerStatusLabels,
   useListSigners
@@ -77,13 +81,46 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 300);
+  const [orderBy, setOrderBy] = useState(SignerOrderBy.CreatedAt);
+  const [orderDirection, setOrderDirection] = useState(OrderByDirection.DESC);
 
   const { data, isLoading } = useListSigners({
     projectId,
     offset: (page - 1) * perPage,
     limit: perPage,
-    search: debouncedSearch || undefined
+    search: debouncedSearch || undefined,
+    orderBy,
+    orderDirection
   });
+
+  const getSortDirection = (column: SignerOrderBy): TableSortDirection => {
+    if (orderBy !== column) return "none";
+    return orderDirection === OrderByDirection.ASC ? "ascending" : "descending";
+  };
+
+  const renderSortableHead = (column: SignerOrderBy, label: string, className: string) => (
+    <TableHead
+      isTruncatable
+      className={className}
+      sortDirection={getSortDirection(column)}
+      onSortChange={(direction) => {
+        setOrderBy(column);
+        setOrderDirection(
+          direction === "descending" ? OrderByDirection.DESC : OrderByDirection.ASC
+        );
+        setPage(1);
+      }}
+    >
+      {label}
+      <ChevronDownIcon
+        className={twMerge(
+          "size-3 transition-transform",
+          getSortDirection(column) === "descending" && "rotate-180",
+          orderBy !== column && "opacity-30"
+        )}
+      />
+    </TableHead>
+  );
 
   const signers = data?.signers ?? [];
   const totalCount = data?.totalCount ?? 0;
@@ -123,25 +160,30 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                 setPage(1);
               }}
               placeholder="Search signers by name..."
+              maxLength={255}
             />
           </InputGroup>
         </div>
         {isLoading || signers.length > 0 ? (
-          <Table>
+          <Table className="w-full table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Certificate CN</TableHead>
-                <TableHead>Certificate Expiry</TableHead>
-                <TableHead>Last Signed</TableHead>
+                {renderSortableHead(SignerOrderBy.Name, "Name", "w-1/4")}
+                <TableHead className="w-44">Status</TableHead>
+                <TableHead isTruncatable>Certificate CN</TableHead>
+                {renderSortableHead(
+                  SignerOrderBy.CertificateNotAfter,
+                  "Certificate Expiry",
+                  "w-40"
+                )}
+                {renderSortableHead(SignerOrderBy.LastSignedAt, "Last Signed", "w-44")}
               </TableRow>
             </TableHeader>
             <TableBody>
               {!isLoading &&
                 signers.map((signer) => (
                   <TableRow key={signer.id} className="hover:bg-surface-hover" linked>
-                    <TableCell>
+                    <TableCell isTruncatable>
                       <RowLink
                         {...getInstancePinningLink(
                           currentProject.orgId,
@@ -149,7 +191,9 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                           `code-signing/${signer.id}`
                         )!}
                       >
-                        {signer.name}
+                        <span className="relative z-[2]" title={signer.name}>
+                          {signer.name}
+                        </span>
                       </RowLink>
                     </TableCell>
                     <TableCell data-row-interactive className="cursor-default">
@@ -194,7 +238,7 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>{signer.certificateCommonName ?? "-"}</TableCell>
+                    <TableCell isTruncatable>{signer.certificateCommonName ?? "-"}</TableCell>
                     <TableCell>
                       {signer.certificateNotAfter
                         ? format(new Date(signer.certificateNotAfter), "MMM d, yyyy")
