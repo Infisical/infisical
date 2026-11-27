@@ -143,6 +143,15 @@ const HTTP_TEMPLATES: Omit<AgentVaultHttpTemplate, "serviceType">[] = [
     credential: { type: AgentVaultCredentialType.Bearer }
   },
   {
+    key: "runcrate",
+    name: "Runcrate",
+    image: "Runcrate.png",
+    category: AgentVaultTemplateCategory.Llm,
+    description: "Open-weight models on Runcrate, an AI cloud.",
+    hostPattern: "api.runcrate.ai",
+    credential: { type: AgentVaultCredentialType.Bearer }
+  },
+  {
     key: "deepseek",
     name: "DeepSeek",
     image: "DeepSeek.svg",
