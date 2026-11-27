@@ -80,7 +80,7 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | Stores bundle | A domain's stores plus `locks`, bound to one transaction: what `run` hands a service as `stores`. Built inline in `module.ts` and passed to `TransactionRunner` |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
 | Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsModule.organizationsService`, `LicenseModule.licenseService`). Never wraps a service method |
-| Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
+| Router | `register<Name>Router(server, services)` in `router/`: a plain async function taking the server and an object of the services it calls, typed beside it as `T<Name>RouterServices`. `routes/index.ts` registers it inside the matching `/api/v<N>` block under the legacy prefix and passes the module (`registerBillingRouter(orgServer, domains.billing)`), or an object it builds when the router needs services from more than one module (a CE and an EE one). A domain router never reads its own services from `server.services`, so they need no `server.services` entry or `@types/fastify.d.ts` type. Code outside the domains may import only a `ce/module` or `domains.ts`, so an `ee/`-only domain's routers are re-exported from `domains.ts` |
 | Helpers | Plain functions |
 
 Children: if there are a few and they're always read with the parent, the parent holds them (`Secret` holds
@@ -419,7 +419,7 @@ sets the pattern from the rules above, and its PR names it here.
 | Stores bundle passed to `TransactionRunner` | `platform/organizations/ce/module.ts` |
 | Entity with one method per change | `platform/events/ce/models/outbox-entry.ts` (`settle`, `expireClaim`) |
 | In-memory store, contract suite run on both stores | `platform/events/ce/testing/` (`InMemoryOutboxEntryStore`, `outbox-entry-store-contract.ts`) |
-| Router | `platform/billing/ee/router/` (`billing-router.ts`): schemas and telemetry in the router, one service call per route. An `ee/`-only domain's routers are re-exported from `domains.ts`, since code outside the domains may import only a `ce/module` or `domains.ts` |
+| Router | `platform/billing/ee/router/` (`billing-router.ts`, registered in `server/routes/index.ts`): schemas in the router, services passed in, one service call per route |
 | A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-event-emitter-service.ts` |
 | Workers, crons and a timer in `start()`, with a `stop()` | `platform/events/ce/module.ts` |
 | Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations/ce/data-access/billable-actor-store.ts` |
@@ -462,8 +462,8 @@ Where each legacy piece lands:
    `NotFoundError` into domain errors. A plan check reads the plan before `run` and refuses with
    `plan.assert(PlanFeature.X)`; never gate a read or a delete.
 5. Wire it: build the module in `domains.ts`, hand its services to legacy callers from `domains.<domain>` in
-   `routes/index.ts`, and replace the legacy factory everywhere. Delete the old service, DAL and types. Point the
-   `server.services` entry and its `@types/fastify.d.ts` type at the domain service (`<name>Service`).
+   `routes/index.ts`, and replace the legacy factory everywhere. Delete the old service, DAL and types. Routes move
+   to the domain's `router/` and get their services passed in (see Router); drop the legacy `server.services` entry.
 6. Test it: model and service unit tests on in-memory stores, the store contract suite, integration
    specs for SQL and locks, a `Fake<Name>Service` if anything else calls it, and a blackbox plan in `tests/` for
    every API change.

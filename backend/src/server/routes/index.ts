@@ -5,7 +5,7 @@ import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
-import { TDomains } from "@app/domains/domains";
+import { registerBillingRouter, registerOrgPlanRouter, TDomains } from "@app/domains/domains";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerMicrosoftAutoenrollmentRouter } from "@app/ee/routes/microsoft-autoenrollment/microsoft-autoenrollment-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
@@ -5265,10 +5265,6 @@ export const registerRoutes = async (
     actorContextService,
     orgPermissionService,
     memberPermissionAudit: memberPermissionAuditService,
-    billingOverviewService: domains.billing.billingOverviewService,
-    usageBreakdownService: domains.billing.usageBreakdownService,
-    subscriptionService: domains.billing.subscriptionService,
-    trialService: domains.billing.trialService,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
@@ -5453,6 +5449,13 @@ export const registerRoutes = async (
     // register routes for v1
     await server.register(
       async (v1Server) => {
+        await v1Server.register(
+          async (orgServer: FastifyZodProvider) => {
+            await registerOrgPlanRouter(orgServer, domains.billing);
+            await registerBillingRouter(orgServer, domains.billing);
+          },
+          { prefix: "/organizations" }
+        );
         await v1Server.register(registerV1EERoutes);
         await v1Server.register(registerV1Routes);
       },

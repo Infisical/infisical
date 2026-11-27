@@ -78,8 +78,7 @@ export class BillingOverviewService implements TBillingOverviewService {
     private readonly organizationsService: TOrganizationsService,
     private readonly licenseBilling: TLicenseServerBilling,
     private readonly licenseService: TLicenseService,
-    private readonly billingConfig: TBillingConfig,
-    private readonly now: () => Date
+    private readonly billingConfig: TBillingConfig
   ) {}
 
   async getOverview({ orgId, actor }: TBillingRequest): Promise<{ overview: TBillingOverview }> {
@@ -102,7 +101,7 @@ export class BillingOverviewService implements TBillingOverviewService {
     }
     const subscription = Subscription.restore(subscriptionRecord);
     const { isCloud } = this.billingConfig;
-    const now = this.now();
+    const now = new Date();
 
     const profile = isCloud ? await this.readBillingProfile(orgId) : null;
     const catalog = subscription.hasItems() ? await this.readCatalogForEntitlements(orgId) : null;
@@ -138,7 +137,7 @@ export class BillingOverviewService implements TBillingOverviewService {
 
     const catalog = await this.licenseBilling.getCatalog(orgId);
     if (!catalog) return { products: [] };
-    const now = this.now();
+    const now = new Date();
     return { products: catalog.products.map((product) => CatalogProduct.restore(product).toView(now)) };
   }
 
@@ -190,7 +189,8 @@ export class BillingOverviewService implements TBillingOverviewService {
   // Labels for the subscription's dimensions; without it they show their keys.
   private async readCatalogForEntitlements(orgId: string): Promise<TCatalogRecord | null> {
     try {
-      return await this.licenseBilling.getCatalog(orgId);
+      const catalog = await this.licenseBilling.getCatalog(orgId);
+      return catalog;
     } catch (error) {
       logger.error(error, `billing-v2: failed to read catalog for entitlement units [orgId=${orgId}]`);
       return null;
@@ -199,7 +199,8 @@ export class BillingOverviewService implements TBillingOverviewService {
 
   private async readEntitlements(organization: { id: string; name: string; slug: string }) {
     try {
-      return (await this.licenseBilling.getEntitlements(organization)) as TEntitlementsRecord | null;
+      const entitlements: TEntitlementsRecord | null = await this.licenseBilling.getEntitlements(organization);
+      return entitlements;
     } catch (error) {
       logger.error(error, `billing-v2: failed to read entitlements [orgId=${organization.id}]`);
       return null;
@@ -208,7 +209,8 @@ export class BillingOverviewService implements TBillingOverviewService {
 
   private async readTrials(orgId: string, now: Date): Promise<TrialHistory> {
     try {
-      return TrialHistory.fromServer(await this.licenseBilling.getTrials(orgId), now);
+      const trials = await this.licenseBilling.getTrials(orgId);
+      return TrialHistory.fromServer(trials, now);
     } catch (error) {
       logger.error(error, `billing-v2: failed to read trial history [orgId=${orgId}]`);
       return TrialHistory.empty();

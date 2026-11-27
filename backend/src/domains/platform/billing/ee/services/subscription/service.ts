@@ -100,8 +100,7 @@ export class SubscriptionService implements TSubscriptionService {
     private readonly licenseBilling: TLicenseServerBilling,
     private readonly licenseService: TLicenseService,
     private readonly usageMeteringService: TUsageMeteringService,
-    private readonly billingConfig: TBillingConfig,
-    private readonly now: () => Date
+    private readonly billingConfig: TBillingConfig
   ) {}
 
   // The Stripe customer portal, for payment methods and invoices.
@@ -126,7 +125,8 @@ export class SubscriptionService implements TSubscriptionService {
   }: TBuyProductInput): Promise<TBuyProductResult> {
     await assertManageBilling(this.orgPermissionService, { actor, orgId });
 
-    const product = CatalogProduct.findIn(await this.licenseBilling.getCatalog(orgId), productId);
+    const catalog = await this.licenseBilling.getCatalog(orgId);
+    const product = CatalogProduct.findIn(catalog, productId);
     if (!product) {
       throw new EntityNotFoundError({ message: `Product with ID '${productId}' not found` });
     }
@@ -154,10 +154,8 @@ export class SubscriptionService implements TSubscriptionService {
     const bought = { plan: lineItem.planTier, cadence: billedCadence };
 
     if (result.outcome === "payment_action_required") {
-      return {
-        ...(await settlePaymentAction(this.licenseService, { orgId, paymentUrl: result.paymentUrl })),
-        ...bought
-      };
+      const settled = await settlePaymentAction(this.licenseService, { orgId, paymentUrl: result.paymentUrl });
+      return { ...settled, ...bought };
     }
     if (result.outcome === "subscription_updated") {
       await this.licenseService.refreshPlan(orgId, { afterBillingChange: {} });
@@ -185,7 +183,8 @@ export class SubscriptionService implements TSubscriptionService {
     const payload: TSubscriptionPreviewPayload = {};
     if (request.upgrade) payload.upgrade = request.upgrade;
     if (request.addProductId) {
-      const product = CatalogProduct.findIn(await this.licenseBilling.getCatalog(orgId), request.addProductId);
+      const catalog = await this.licenseBilling.getCatalog(orgId);
+      const product = CatalogProduct.findIn(catalog, request.addProductId);
       if (!product) {
         throw new EntityNotFoundError({ message: `Product with ID '${request.addProductId}' not found` });
       }
@@ -245,7 +244,7 @@ export class SubscriptionService implements TSubscriptionService {
     prorationDate
   }: TUpgradeProductInput): Promise<TUpgradeProductResult> {
     await assertManageBilling(this.orgPermissionService, { actor, orgId });
-    ProrationQuote.of(prorationDate).assertCurrent(this.now());
+    ProrationQuote.of(prorationDate).assertCurrent(new Date());
 
     const result = await this.licenseBilling.upgradeProduct(orgId, {
       productId,

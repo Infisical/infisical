@@ -4,12 +4,6 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
-import type {
-  TBillingOverviewService,
-  TSubscriptionService,
-  TTrialService,
-  TUsageBreakdownService
-} from "@app/domains/domains";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
@@ -457,10 +451,6 @@ declare module "fastify" {
     actorContextService: TActorContextService;
     orgPermissionService: TOrgPermissionService;
     memberPermissionAudit: TMemberPermissionAuditServiceFactory;
-    billingOverviewService: TBillingOverviewService;
-    usageBreakdownService: TUsageBreakdownService;
-    subscriptionService: TSubscriptionService;
-    trialService: TTrialService;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;
     telemetry: TTelemetryServiceFactory;

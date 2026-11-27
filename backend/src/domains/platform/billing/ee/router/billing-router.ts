@@ -7,7 +7,10 @@ import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { BreakdownDimensionKey, BreakdownScope } from "../services/usage-breakdown/service";
+import { TBillingOverviewService } from "../services/billing-overview/service";
+import { TSubscriptionService } from "../services/subscription/service";
+import { TTrialService } from "../services/trial/service";
+import { BreakdownDimensionKey, BreakdownScope, TUsageBreakdownService } from "../services/usage-breakdown/service";
 
 // The license server joins this onto its configured portal origin, so it must be a single-rooted
 // relative path. Reject protocol-relative ("//host", "/\\host") values that browsers can normalize
@@ -312,7 +315,14 @@ const BillingV2CommitmentChangeSchema = z.object({
   quantity: z.number().int().min(0)
 });
 
-export const registerBillingRouter = async (server: FastifyZodProvider) => {
+export type TBillingRouterServices = {
+  billingOverviewService: TBillingOverviewService;
+  usageBreakdownService: TUsageBreakdownService;
+  subscriptionService: TSubscriptionService;
+  trialService: TTrialService;
+};
+
+export const registerBillingRouter = async (server: FastifyZodProvider, services: TBillingRouterServices) => {
   server.route({
     method: "GET",
     url: "/:organizationId/billing/v2/overview",
@@ -328,7 +338,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.billingOverviewService.getOverview({
+      return services.billingOverviewService.getOverview({
         orgId: req.params.organizationId,
         actor: req.actor
       });
@@ -371,7 +381,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.usageBreakdownService.getBillableOrganizations({
+      return services.usageBreakdownService.getBillableOrganizations({
         orgId: req.params.organizationId,
         actor: req.actor,
         search: req.query.search,
@@ -409,7 +419,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.usageBreakdownService.getUsageBreakdown({
+      return services.usageBreakdownService.getUsageBreakdown({
         orgId: req.params.organizationId,
         dimensionKey: req.params.dimensionKey,
         actor: req.actor,
@@ -433,7 +443,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.billingOverviewService.refreshEntitlements({
+      return services.billingOverviewService.refreshEntitlements({
         orgId: req.params.organizationId,
         actor: req.actor
       });
@@ -455,7 +465,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.billingOverviewService.getCatalog({
+      return services.billingOverviewService.getCatalog({
         orgId: req.params.organizationId,
         actor: req.actor
       });
@@ -478,7 +488,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.subscriptionService.openPortal({
+      return services.subscriptionService.openPortal({
         orgId: req.params.organizationId,
         actor: req.actor,
         returnPath: req.body.returnPath
@@ -502,7 +512,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.subscriptionService.openPortal({
+      return services.subscriptionService.openPortal({
         orgId: req.params.organizationId,
         actor: req.actor,
         returnPath: req.body.returnPath
@@ -547,7 +557,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.subscriptionService.previewChange({
+      return services.subscriptionService.previewChange({
         orgId: req.params.organizationId,
         actor: req.actor,
         addProductId: req.body.addProductId,
@@ -592,7 +602,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
       // authenticated user (JWT-only route) rather than trusting a client-supplied value.
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
-      const result = await server.services.subscriptionService.buyProduct({
+      const result = await services.subscriptionService.buyProduct({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId,
@@ -657,7 +667,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const result = await server.services.subscriptionService.upgradeProduct({
+      const result = await services.subscriptionService.upgradeProduct({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId,
@@ -704,7 +714,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.subscriptionService.removeProduct({
+      return services.subscriptionService.removeProduct({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.params.productId
@@ -738,7 +748,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.subscriptionService.changeCommitments({
+      return services.subscriptionService.changeCommitments({
         orgId: req.params.organizationId,
         actor: req.actor,
         changes: req.body.changes,
@@ -773,7 +783,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
       // user (this route is JWT-only) rather than trusting a client-supplied value.
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
-      const result = await server.services.trialService.startTrial({
+      const result = await services.trialService.startTrial({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId,
@@ -823,7 +833,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.trialService.cancelTrial({
+      return services.trialService.cancelTrial({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId
@@ -852,7 +862,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.trialService.confirmTrialPayment({
+      return services.trialService.confirmTrialPayment({
         orgId: req.params.organizationId,
         actor: req.actor,
         returnPath: req.body.returnPath

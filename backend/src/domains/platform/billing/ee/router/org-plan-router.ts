@@ -5,10 +5,14 @@ import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 
+import { TBillingOverviewService } from "../services/billing-overview/service";
+
 // Plan reads, for any member of the org. The rest of billing is in billing-router.
-export const registerOrgPlanRouter = async (server: FastifyZodProvider) => {
+export type TOrgPlanRouterServices = { billingOverviewService: TBillingOverviewService };
+
+export const registerOrgPlanRouter = async (server: FastifyZodProvider, services: TOrgPlanRouterServices) => {
   const readOrgPlan = (req: FastifyRequest, orgId: string, refreshCache: boolean) =>
-    server.services.billingOverviewService.getOrgPlan({ orgId, actor: req.actor, refreshCache });
+    services.billingOverviewService.getOrgPlan({ orgId, actor: req.actor, refreshCache });
 
   server.route({
     method: "GET",
@@ -52,7 +56,8 @@ export const registerOrgPlanRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return (await readOrgPlan(req, req.params.organizationId, false)).toJSON();
+      const plan = await readOrgPlan(req, req.params.organizationId, false);
+      return plan.toJSON();
     }
   });
 };

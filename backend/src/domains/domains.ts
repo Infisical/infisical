@@ -118,15 +118,9 @@ export const startStandaloneKmsCore = async ({
   return kmsCore;
 };
 
-// Billing is EE only, with no ce/module, so code outside the domains reaches its routers and service types here.
+// Billing is EE only, with no ce/module, so routes/index.ts reaches its routers here.
 export { registerBillingRouter } from "./platform/billing/ee/router/billing-router";
 export { registerOrgPlanRouter } from "./platform/billing/ee/router/org-plan-router";
-export type {
-  TBillingOverviewService,
-  TSubscriptionService,
-  TTrialService,
-  TUsageBreakdownService
-} from "./platform/billing/ee/module";
 
 // Only file outside a domain that imports ee/. Products build before License and hand it their counters;
 // a product that needs License builds after it, so its counters have to come from data access.

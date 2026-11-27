@@ -37,14 +37,12 @@ export class BillingEeModule {
   readonly trialService: TTrialService;
 
   constructor(deps: TBillingDeps) {
-    const now = () => new Date();
     this.billingOverviewService = new BillingOverviewService(
       deps.orgPermissionService,
       deps.organizationsService,
       deps.licenseBilling,
       deps.licenseService,
-      deps.config,
-      now
+      deps.config
     );
     this.usageBreakdownService = new UsageBreakdownService(
       deps.orgPermissionService,
@@ -58,8 +56,7 @@ export class BillingEeModule {
       deps.licenseBilling,
       deps.licenseService,
       deps.usageMeteringService,
-      deps.config,
-      now
+      deps.config
     );
     this.trialService = new TrialService(
       deps.orgPermissionService,

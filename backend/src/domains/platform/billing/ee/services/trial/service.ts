@@ -59,7 +59,8 @@ export class TrialService implements TTrialService {
 
     // Seeded with present usage, as checkout is. A trial converts to a monthly usage-based line, so it is counted
     // at the monthly cadence, and left out when the product or plan can't be resolved (the server floors it).
-    const product = CatalogProduct.findIn(await this.licenseBilling.getCatalog(orgId), productId);
+    const catalog = await this.licenseBilling.getCatalog(orgId);
+    const product = CatalogProduct.findIn(catalog, productId);
     const lineItem = product
       ? await resolveLineItem(this.usageMeteringService, { product, cadence: "monthly", orgId, planTier: plan })
       : null;

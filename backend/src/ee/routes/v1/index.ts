@@ -1,4 +1,3 @@
-import { registerBillingRouter, registerOrgPlanRouter } from "@app/domains/domains";
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
 import { injectCertManagerProjectId } from "@app/server/plugins/inject-cert-manager-project-id";
@@ -57,8 +56,6 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization
   await server.register(registerOrgRoleRouter, { prefix: "/organization" });
   await server.register(registerSubOrgRouter, { prefix: "/sub-organizations" });
-  await server.register(registerOrgPlanRouter, { prefix: "/organizations" });
-  await server.register(registerBillingRouter, { prefix: "/organizations" });
   await server.register(registerEmailDomainRouter, { prefix: "/email-domains" });
 
   // depreciated in favour of infisical workspace
