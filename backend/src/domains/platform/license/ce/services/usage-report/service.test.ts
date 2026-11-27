@@ -199,7 +199,7 @@ describe("UsageReportService.handleMeteringEvents", () => {
 });
 
 describe("UsageReportService.flushInstanceUsage", () => {
-  test("should report every meter once under the instance, counting the whole instance", async () => {
+  test("should report every count meter once under the instance, counting the whole instance", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.instance = {
@@ -223,7 +223,10 @@ describe("UsageReportService.flushInstanceUsage", () => {
       ["self-hosted", Meter.Identities.key, 7],
       ["self-hosted", Meter.UserIdentities.key, 5],
       ["self-hosted", Meter.SecretIdentities.key, 12],
-      ["self-hosted", Meter.ActiveCerts.key, 4]
+      ["self-hosted", Meter.PamIdentities.key, 0],
+      ["self-hosted", Meter.InternalCas.key, 0],
+      ["self-hosted", Meter.ActiveCerts.key, 4],
+      ["self-hosted", Meter.WildcardCerts.key, 0]
     ]);
   });
 });
@@ -250,16 +253,5 @@ describe("LicenseModule", () => {
       ["license-usage-flush:false"],
       ["license-usage-flush:false"]
     ]);
-  });
-
-  test("should refuse two counters for one dimension", async () => {
-    // Setup
-    const counters = [new FakeUsageCounter(Meter.SecretIdentities), new FakeUsageCounter(Meter.SecretIdentities)];
-
-    // Action
-    const result = buildLicense({ counters });
-
-    // Assert
-    await expect(result).rejects.toThrow("Two usage counters were given for 'secret_identities'");
   });
 });

@@ -31,7 +31,7 @@ Owns the `event_outbox` table (`OutboxEntryStore`). Depends on no other domain.
 ## Declared exceptions
 
 - **Consumers register after the module is built, and most are legacy code.** A consumer depends on services
-  that themselves emit, so it cannot arrive through the constructor the way License takes `usageCounters`.
+  that themselves emit, so it cannot arrive through the constructor.
   `routes/index.ts` calls `domains.events.registerConsumer(...)` while wiring and `domains.events.start()` once
   every consumer is in; `start()` seals the registry, so a late registration throws instead of silently missing
   the events emitted before it. `TEventConsumer` is this domain's type, which the consumer implements.

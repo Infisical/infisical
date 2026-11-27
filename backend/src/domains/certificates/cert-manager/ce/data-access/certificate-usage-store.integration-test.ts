@@ -6,7 +6,6 @@ import { poolStoreConnection, ReadFrom } from "@app/domains/lib/data-access";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { accessControlServices } from "@app/domains/platform/access-control/ce/testing/access-control-services";
 import { Meter } from "@app/domains/platform/license/ce/module";
-import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
 import { buildProjectsModule } from "@app/domains/platform/projects/ce/testing/projects-module";
 
@@ -23,8 +22,11 @@ describe("CertManagerModule usage counters", () => {
     return { module: new CertManagerModule({ db: h.db, organizationsService, projectResourcePermissionService }) };
   };
 
-  const count = ({ module }: ReturnType<typeof build>, meter: Meter, orgId: string | null) =>
-    usageCounter(module.usageCounters, meter).count(orgId);
+  const count = (
+    { module }: ReturnType<typeof build>,
+    meter: typeof Meter.InternalCas | typeof Meter.ActiveCerts | typeof Meter.WildcardCerts,
+    orgId: string | null
+  ) => module.usageCounters[meter.key](orgId);
 
   test("should count internal CAs across the root org's tree", async () => {
     // Setup

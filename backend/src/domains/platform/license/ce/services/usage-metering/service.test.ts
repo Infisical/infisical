@@ -12,11 +12,11 @@ const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
   licenseServer.snapshots.filter((s) => s.snapshot.dimensionKey === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
 describe("LicenseService.getPlan", () => {
-  test("should queue each seat meter once per interval when a paid plan is read, and nothing for a plan with no slug", async () => {
+  test("should queue every meter once per interval when a paid plan is read, and nothing for a plan with no slug", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(OTHER_ROOT.id, { ...enterprisePlan(), slug: null });
-    const { licenseService, queue } = await buildLicense({ licenseServer });
+    const { licenseService, queue, module } = await buildLicense({ licenseServer });
 
     // Action
     await licenseService.getPlan(ROOT.id);
@@ -28,7 +28,7 @@ describe("LicenseService.getPlan", () => {
 
     // Assert
     const orgsQueued = queue.jobs.map((j) => (j.data as { orgId: string }).orgId);
-    expect(orgsQueued).toEqual([ROOT.id, ROOT.id]);
+    expect(orgsQueued).toEqual(module.usageDimensions().map(() => ROOT.id));
   });
 });
 

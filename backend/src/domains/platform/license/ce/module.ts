@@ -9,7 +9,7 @@ import { InstanceEntitlementsCache } from "./data-access/instance-entitlements-c
 import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
 import { InstanceEntitlements } from "./models/instance-entitlements";
-import { TLicensePolicyService, TLicenseServer, TUsageCounter } from "./services/dependencies";
+import { TLicensePolicyService, TLicenseServer, TProductUsageCounters } from "./services/dependencies";
 import { CounterRegistry, seatUsageCounters } from "./services/helpers/usage-counters";
 import { UsageQueue, UsageQueues } from "./services/helpers/usage-queue";
 import { LicenseService, TLicenseService } from "./services/license/service";
@@ -32,7 +32,10 @@ export type {
 export type {
   TLicensePolicyService,
   TLicenseServer,
+  TCount,
   TPlanCache,
+  TProductCountMeterKey,
+  TProductUsageCounters,
   TUsageCounter,
   TUsageReportCache
 } from "./services/dependencies";
@@ -51,8 +54,6 @@ export type TLicenseDeps = {
   licenseServer: TLicenseServer;
   organizationsService: TOrganizationsService;
   projectsService: TProjectsService;
-  // One per product meter, from the domain that owns the data. Seat meters are built here.
-  usageCounters: TUsageCounter[];
 };
 
 export class LicenseModule {
@@ -76,7 +77,7 @@ export class LicenseModule {
   ) {
     const { keyStore, organizationsService, projectsService, licensePolicyService, licenseServer } = deps;
     const usageReportCache = new UsageReportCache(keyStore);
-    this.counterRegistry = new CounterRegistry([...seatUsageCounters(organizationsService), ...deps.usageCounters]);
+    this.counterRegistry = new CounterRegistry(seatUsageCounters(organizationsService));
 
     const usageQueue = new UsageQueue(deps.queueService, licenseServer, usageReportCache, this.counterRegistry);
 
@@ -105,12 +106,21 @@ export class LicenseModule {
     );
   }
 
+  // Products are built after License, so their counters arrive here, once, before start(). domains.ts names each meter's
+  // counter explicitly, so a meter added to the catalog without one does not compile.
+  registerUsageCounters(counters: TProductUsageCounters): void {
+    this.counterRegistry.register(counters);
+  }
+
   usageDimensions(): string[] {
     return this.counterRegistry.all().map((counter) => counter.meter.key);
   }
 
   // Call once at boot. Counts are DB-heavy, so the usage worker is rate limited to spare the read replica.
   start(): void {
+    if (!this.counterRegistry.isRegistered()) {
+      throw new Error("Usage counters were never registered. Call registerUsageCounters in createDomains.");
+    }
     this.deps.queueService.start(
       UsageQueues.usageEvent,
       (job) => this.usageReportService.handleUsageEvent(job.data.orgId, job.data.dimensionKey),

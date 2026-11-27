@@ -116,8 +116,8 @@ export const startStandaloneKmsCore = async ({
   return kmsCore;
 };
 
-// Only file outside a domain that imports ee/. Products build before License and hand it their counters;
-// a product that needs License builds after it, so its counters have to come from data access.
+// Only file outside a domain that imports ee/. Foundation domains are built first, products after them; products hand
+// License their usage counters through registerUsageCounters, which License requires before it starts.
 export const createDomains = async (deps: TDomainDeps) => {
   // Built first: any domain may emit through it.
   const events = new EventsModule({
@@ -155,23 +155,6 @@ export const createDomains = async (deps: TDomainDeps) => {
   });
   const { projectsService } = projects;
   const { projectPermissionService, projectResourcePermissionService } = projects;
-  const secrets = new SecretsModule({
-    db: deps.db,
-    keyStore: deps.keyStore,
-    projectPermissionService,
-    actorGrantsService: accessControl.actorGrantsService,
-    groupService: accessControl.groupService,
-    projectsService,
-    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
-  });
-  const pam = new PamModule({
-    projectsService,
-    projectResourcePermissionService,
-    actorGrantsService: accessControl.actorGrantsService
-  });
-  const certManager = new CertManagerModule({ db: deps.db, organizationsService, projectResourcePermissionService });
-  const codeSigning = new CodeSigningModule({ projectResourcePermissionService });
-  const kms = new KmsModule({ projectPermissionService });
 
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = await LicenseModule.create({
@@ -183,21 +166,11 @@ export const createDomains = async (deps: TDomainDeps) => {
     licensePolicyService: licenseEe.licensePolicyService,
     licenseServer: licenseEe.licenseServerClient,
     organizationsService,
-    projectsService,
-    usageCounters: [...secrets.usageCounters, ...pam.usageCounters, ...certManager.usageCounters]
+    projectsService
   });
 
   // Subscriptions are managed on the EE client itself; License never calls its billing methods.
   const licenseBilling: TLicenseServerBilling = licenseEe.licenseServerClient;
-
-  const agentVault = new AgentVaultEeModule({
-    keyStore: deps.keyStore,
-    licenseService: license.licenseService,
-    usageMeteringService: license.usageMeteringService,
-    organizationsService,
-    projectPermissionService,
-    actorGrantsService: accessControl.actorGrantsService
-  });
 
   // Before KMS Core writes the root key on a fresh instance: an unlicensed FIPS instance must refuse to boot before
   // anything gets wrapped with its FIPS-format key.
@@ -223,6 +196,42 @@ export const createDomains = async (deps: TDomainDeps) => {
     kmsRootKeyService: kmsCore.kmsRootKeyService,
     // A copy taken at boot: the values an admin can override are parsed from it, overrides on top.
     processEnv: { ...process.env }
+  });
+
+  // Products.
+  const secrets = new SecretsModule({
+    db: deps.db,
+    keyStore: deps.keyStore,
+    projectPermissionService,
+    actorGrantsService: accessControl.actorGrantsService,
+    groupService: accessControl.groupService,
+    projectsService,
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
+  });
+  const pam = new PamModule({
+    projectsService,
+    projectResourcePermissionService,
+    actorGrantsService: accessControl.actorGrantsService
+  });
+  const certManager = new CertManagerModule({ db: deps.db, organizationsService, projectResourcePermissionService });
+  const codeSigning = new CodeSigningModule({ projectResourcePermissionService });
+  const kms = new KmsModule({ projectPermissionService });
+  const agentVault = new AgentVaultEeModule({
+    keyStore: deps.keyStore,
+    licenseService: license.licenseService,
+    usageMeteringService: license.usageMeteringService,
+    organizationsService,
+    projectPermissionService,
+    actorGrantsService: accessControl.actorGrantsService
+  });
+
+  // One counter per metered product dimension, named explicitly: a meter added to the catalog without one fails here.
+  license.registerUsageCounters({
+    secret_identities: secrets.usageCounters.secret_identities,
+    pam_identities: pam.usageCounters.pam_identities,
+    internal_cas: certManager.usageCounters.internal_cas,
+    active_certs: certManager.usageCounters.active_certs,
+    wildcard_certs: certManager.usageCounters.wildcard_certs
   });
 
   return {

@@ -71,7 +71,7 @@ Rules:
   (SSO, SCIM, invites) read `getSeatUsage` before the transaction and call `seatUsage.assertAvailable(plan, via)`
   inside it. `syncSeats` runs after the commit and never throws; code already
   inside a caller's transaction (org/project create) leaves it to the caller.
-- **Name a meter with `Meter`, never its key.** `emit`, `countUsage`, `recordMeteringEvents` and `usageCounter` take a
+- **Name a meter with `Meter`, never its key.** `emit`, `countUsage` and `recordMeteringEvents` take a
   `Meter` (`Meter.SecretIdentities`). A key arrives as a string only from a queued job or a License Server catalog
   dimension; turn it into a meter once with `Meter.fromKey`, which returns null for a key no meter defines.
 - **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend a paid
@@ -82,11 +82,18 @@ Rules:
   the outbox retries; the License Server delete is idempotent.
 - **License knows no product.** It sits on `organizationsService` (roots, org reads, billable actors) and `projectsService`
   (workspaces), and builds the two seat meters
-  (`identities`, `user_identities`) itself (`seatUsageCounters` in `services/helpers/usage-counters.ts`). Every other meter comes in as a
-  `TUsageCounter` from the owning product domain. Organizations and Projects never import License. A meter's
+  (`identities`, `user_identities`) itself (`seatUsageCounters` in `services/helpers/usage-counters.ts`). Every other
+  `count` meter's counter comes from the owning product domain, through `registerUsageCounters`. Organizations and
+  Projects never import License. A meter's
   `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Metering events
   (`recordMeteringEvents`) follow the same rule, from their meter's scope. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
+- **Product counters are registered once, after the products are built.** License is a foundation domain, so
+  `domains.ts` builds it before the products and then calls `license.registerUsageCounters({ ... })` with one entry
+  per product `count` meter, each named by key. `TProductUsageCounters` is derived from `Meter.all()`, so a meter
+  added to the catalog without a counter is a compile error there. The call also checks at runtime (a missing meter,
+  an `events` meter, a seat meter, a second call), and `start()` refuses to run until it has happened, so a
+  forgotten call fails boot. Products expose `usageCounters` keyed by meter (`Pick<TProductUsageCounters, ...>`).
 - **The instance license lives in `InstanceEntitlementsCache`** (in memory, per process), not in a service.
   `LicenseService.refreshInstanceEntitlements` is its only writer, called by the module's background sync and by
   `refreshPlan` on self-hosted. Inside `LicenseService`, read it only through `this.getInstanceEntitlements()`: the
@@ -110,4 +117,5 @@ Rules:
 - **Tests:** `ce/testing/build-license.ts` builds the module on an in-memory key store and queue, with
   `FakeLicenseServer` (policy and License Server) `FakeOrganizationsService` and `FakeProjectsService`. `testFeatures()` is
   test data, not product defaults. Consumers use `FakeLicenseService` / `FakeUsageMeteringService`; product
-  domains read their counters with `usageCounter(module.usageCounters, Meter.X)`.
+  domains read their counters with `module.usageCounters[Meter.X.key]`. `buildLicense({ counters })` registers a
+  zero counter for every product meter the test does not fake.

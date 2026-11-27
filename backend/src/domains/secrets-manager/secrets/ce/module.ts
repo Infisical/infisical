@@ -3,7 +3,7 @@ import { ProjectType } from "@app/db/schemas";
 import { poolStoreConnection } from "@app/domains/lib/data-access";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TActorGrantsService, TGroupService } from "@app/domains/platform/access-control/ce/module";
-import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
+import { TProductUsageCounters } from "@app/domains/platform/license/ce/module";
 import { TProjectPermissionService, TProjectsService } from "@app/domains/platform/projects/ce/module";
 
 import { FolderGrantCache } from "./data-access/folder-grant-cache";
@@ -43,7 +43,7 @@ export type TSecretsDeps = {
 
 // Secret Manager permissions (project roles plus folder grants, service tokens) and its usage counter.
 export class SecretsModule {
-  readonly usageCounters: TUsageCounter[];
+  readonly usageCounters: Pick<TProductUsageCounters, "secret_identities">;
 
   readonly secretsPermissionService: TSecretsPermissionService;
 
@@ -67,11 +67,8 @@ export class SecretsModule {
       new MemberNameStore(connection),
       new FolderGrantCache(keyStore, cacheMarkerTtlSeconds)
     );
-    this.usageCounters = [
-      {
-        meter: Meter.SecretIdentities,
-        count: (orgId) => projectsService.countProjectIdentities(ProjectType.SecretManager, orgId)
-      }
-    ];
+    this.usageCounters = {
+      secret_identities: (orgId) => projectsService.countProjectIdentities(ProjectType.SecretManager, orgId)
+    };
   }
 }

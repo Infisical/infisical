@@ -370,8 +370,10 @@ in-memory stores and lets EE plug in without `ce/` importing it.
 - Other domains import only `ce/module.ts`. `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside.
 - Providers are built before the modules that take them. A provider needing the taker's service is a cycle,
   move the boundary.
-- A platform domain needing something from products built on it defines a type in its `dependencies.ts` and
-  takes implementations in its constructor (`usageCounters: TUsageCounter[]`). `domains.ts` builds products first.
+- A platform domain needing something from products built on it defines a type in its `dependencies.ts` and takes
+  the implementations through a register-once call that its `start()` requires (`license.registerUsageCounters`,
+  `events.registerConsumer`). `domains.ts` builds foundation domains first and products after them, so a product can
+  depend on any platform domain.
 - `ce/module.ts` and what it imports touch `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with
   `import type`; `domains.ts` passes the runtime pieces in. Those three are in an import cycle with
   `@app/lib/crypto` and break any test that loads them first. Take them as `TDomainQueue`, `TDomainCron` and
@@ -426,7 +428,7 @@ sets the pattern from the rules above, and its PR names it here.
 | Module with async setup, workers and crons | `platform/license/ce/module.ts` |
 | EE implementing a `ce/` type, external client | `platform/license/ee/` |
 | Fake for consumers | `platform/license/ce/testing/fake-license-service.ts` |
-| A product handing a platform domain its implementation | `secrets-manager/secrets/ce/module.ts` (`usageCounters`) |
+| A product handing a platform domain its implementation | `secrets-manager/secrets/ce/module.ts` (`usageCounters`), registered in `domains.ts` |
 | A product telling a platform domain what its data means | `pam/pam/ce/models/pam-project-roles.ts` (`TProjectRoles`, passed to Projects as `projectRoles` in `domains.ts`) |
 | Permission service built on another domain's | `secrets-manager/secrets/ce/services/secrets-permission/service.ts` |
 | Legacy code calling a domain | any `licenseService: TLicenseService` in `src/services/**` |

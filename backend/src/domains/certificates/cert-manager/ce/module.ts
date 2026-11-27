@@ -1,6 +1,6 @@
 import { TDbClient } from "@app/db";
 import { poolStoreConnection } from "@app/domains/lib/data-access";
-import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
+import { TProductUsageCounters } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { TProjectResourcePermissionService } from "@app/domains/platform/projects/ce/module";
 
@@ -29,24 +29,19 @@ export class CertManagerModule {
   readonly applicationPermissionService: TApplicationPermissionService;
 
   // These count the whole org tree, so report once at the root.
-  readonly usageCounters: TUsageCounter[];
+  readonly usageCounters: Pick<TProductUsageCounters, "internal_cas" | "active_certs" | "wildcard_certs">;
 
   constructor({ db, organizationsService, projectResourcePermissionService }: TCertManagerDeps) {
     const certificateUsageStore = new CertificateUsageStore(poolStoreConnection(db));
     this.certManagerService = new CertManagerService(certificateUsageStore, organizationsService);
     this.applicationPermissionService = new ApplicationPermissionService(projectResourcePermissionService);
 
-    this.usageCounters = [
-      { meter: Meter.InternalCas, count: (orgId) => certificateUsageStore.countInternalCas(orgId ?? undefined) },
-      {
-        meter: Meter.ActiveCerts,
-        count: async (orgId) => (await certificateUsageStore.countActiveCertificateQuotaKeys(orgId ?? undefined)).total
-      },
-      {
-        meter: Meter.WildcardCerts,
-        count: async (orgId) =>
-          (await certificateUsageStore.countActiveCertificateQuotaKeys(orgId ?? undefined)).wildcard
-      }
-    ];
+    this.usageCounters = {
+      internal_cas: (orgId) => certificateUsageStore.countInternalCas(orgId ?? undefined),
+      active_certs: async (orgId) =>
+        (await certificateUsageStore.countActiveCertificateQuotaKeys(orgId ?? undefined)).total,
+      wildcard_certs: async (orgId) =>
+        (await certificateUsageStore.countActiveCertificateQuotaKeys(orgId ?? undefined)).wildcard
+    };
   }
 }

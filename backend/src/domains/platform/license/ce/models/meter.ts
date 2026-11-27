@@ -5,30 +5,30 @@ export type TMeterScope = "org" | "org-tree";
 // each fact through recordMeteringEvents, so there is nothing to count.
 export type TMeterSource = "count" | "events";
 
-export class Meter<K extends string = string> {
+export class Meter<K extends string = string, S extends TMeterSource = TMeterSource> {
   private constructor(
     readonly key: K,
     readonly scope: TMeterScope,
-    readonly source: TMeterSource = "count"
+    readonly source: S
   ) {}
 
-  static readonly Identities = new Meter("identities", "org");
+  static readonly Identities = new Meter("identities", "org", "count");
 
   // Human users (org members), excluding machine identities. For legacy per-user plans that count seats.
-  static readonly UserIdentities = new Meter("user_identities", "org");
+  static readonly UserIdentities = new Meter("user_identities", "org", "count");
 
-  static readonly SecretIdentities = new Meter("secret_identities", "org");
+  static readonly SecretIdentities = new Meter("secret_identities", "org", "count");
 
-  static readonly PamIdentities = new Meter("pam_identities", "org");
+  static readonly PamIdentities = new Meter("pam_identities", "org", "count");
 
   // Billed to the root org, like the PKI meters.
   static readonly AgentVaultBrokeredRequests = new Meter("agent_vault_brokered_requests", "org-tree", "events");
 
-  static readonly InternalCas = new Meter("internal_cas", "org-tree");
+  static readonly InternalCas = new Meter("internal_cas", "org-tree", "count");
 
-  static readonly ActiveCerts = new Meter("active_certs", "org-tree");
+  static readonly ActiveCerts = new Meter("active_certs", "org-tree", "count");
 
-  static readonly WildcardCerts = new Meter("wildcard_certs", "org-tree");
+  static readonly WildcardCerts = new Meter("wildcard_certs", "org-tree", "count");
 
   static all() {
     return [
@@ -52,3 +52,6 @@ export class Meter<K extends string = string> {
 }
 
 export type TMeterKey = ReturnType<typeof Meter.all>[number]["key"];
+
+// The meters a domain must register a counter for; "events" meters are recorded, not counted.
+export type TCountMeterKey = Extract<ReturnType<typeof Meter.all>[number], Meter<string, "count">>["key"];

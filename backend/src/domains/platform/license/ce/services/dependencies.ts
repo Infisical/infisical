@@ -1,5 +1,5 @@
 import { InstanceEntitlements } from "../models/instance-entitlements";
-import { Meter } from "../models/meter";
+import { Meter, TCountMeterKey } from "../models/meter";
 import { Plan } from "../models/plan";
 import { TEntitlementOrg, TOrgDeletedResult } from "./helpers/license-server-types";
 
@@ -28,11 +28,18 @@ export type TUsageReportCache = {
   recordReported(reportOrgId: string, meterKey: string, value: number): Promise<void>;
 };
 
+// A null orgId counts the whole instance: a self-hosted license covers every org in the database.
+export type TCount = (orgId: string | null) => Promise<number>;
+
 export type TUsageCounter = {
   readonly meter: Meter;
-  // A null orgId counts the whole instance: a self-hosted license covers every org in the database.
-  count(orgId: string | null): Promise<number>;
+  count: TCount;
 };
+
+// License counts the seat meters itself; every other "count" meter needs a counter from the domain owning its data.
+type TSeatMeterKey = typeof Meter.Identities.key | typeof Meter.UserIdentities.key;
+export type TProductCountMeterKey = Exclude<TCountMeterKey, TSeatMeterKey>;
+export type TProductUsageCounters = { [K in TProductCountMeterKey]: TCount };
 
 // All licensing decisions go through EE. No CE fallback on purpose, so the free tier stays EE-licensed.
 export type TLicensePolicyService = {
