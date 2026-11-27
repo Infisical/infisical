@@ -2,13 +2,15 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
-import { DatabaseError, NotFoundError } from "@app/lib/errors";
+import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, orgTreeIds, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
 import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { DEFAULT_CRL_VALIDITY_DAYS } from "@app/services/certificate-common/certificate-constants";
+
+import { caNotFoundError } from "./certificate-authority-errors";
 
 export const MAX_CA_HIERARCHY_DEPTH = 32;
 
@@ -180,7 +182,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
       .first();
 
     // a missing row would otherwise surface as a cryptic schema parse error, so fail with a clean 404
-    if (!result) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (!result) throw caNotFoundError(caId);
 
     const data = {
       ...CertificateAuthoritiesSchema.parse(result),

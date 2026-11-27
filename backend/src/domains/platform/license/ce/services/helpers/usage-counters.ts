@@ -1,4 +1,4 @@
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 
 import { Meter } from "../../models/meter";
 import { TUsageCounter } from "../dependencies";
@@ -26,16 +26,16 @@ export class CounterRegistry {
 
 // The two seat meters, which License builds itself; every other counter comes from the product domain that owns it.
 // Counted the same way as getSeatUsage.
-export const seatUsageCounters = (organizationsProjectsService: TOrganizationsProjectsService): TUsageCounter[] => [
+export const seatUsageCounters = (organizationsService: TOrganizationsService): TUsageCounter[] => [
   {
     meter: Meter.Identities,
     count: async (orgId) => {
-      const { users, identities } = await organizationsProjectsService.countBillableOrgActors(orgId);
+      const { users, identities } = await organizationsService.countBillableOrgActors(orgId);
       return users + identities;
     }
   },
   {
     meter: Meter.UserIdentities,
-    count: async (orgId) => (await organizationsProjectsService.countBillableOrgActors(orgId)).users
+    count: async (orgId) => (await organizationsService.countBillableOrgActors(orgId)).users
   }
 ];

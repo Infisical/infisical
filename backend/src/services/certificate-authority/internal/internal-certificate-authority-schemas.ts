@@ -103,10 +103,15 @@ export const InternalCertificateAuthorityConfigurationSchema = z
     hsmConnectorName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.hsmConnectorName),
     region: z.nativeEnum(AWSRegion).optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.region),
     externalKeyId: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.externalKeyId),
-    dn: z.string().trim().max(PKI_TEXT_COLUMN_MAX_LENGTH).nullish(),
-    parentCaId: z.string().uuid().nullish(),
-    serialNumber: z.string().trim().nullish(),
-    activeCaCertId: z.string().uuid().nullish(),
+    dn: z
+      .string()
+      .trim()
+      .max(PKI_TEXT_COLUMN_MAX_LENGTH)
+      .nullish()
+      .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.dn),
+    parentCaId: z.string().uuid().nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.parentCaId),
+    serialNumber: z.string().trim().nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.serialNumber),
+    activeCaCertId: z.string().uuid().nullish().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.activeCaCertId),
     crlDistributionPointUrls: distributionPointUrlsSchema
       .optional()
       .describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.crlDistributionPointUrls),
@@ -151,7 +156,9 @@ export const UpdateInternalCertificateAuthorityResponseSchema = InternalCertific
 
 export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.INTERNAL)
   .extend({
-    configuration: InternalCertificateAuthorityConfigurationSchema
+    configuration: InternalCertificateAuthorityConfigurationSchema.describe(
+      CertificateAuthorities.CONFIGURATION(CaType.INTERNAL)
+    )
   })
   .refine(
     ({ configuration }) =>
@@ -178,7 +185,9 @@ export const UpdateInternalCertificateAuthorityConfigurationSchema = z.object({
 export const UpdateInternalCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
   CaType.INTERNAL
 ).extend({
-  configuration: UpdateInternalCertificateAuthorityConfigurationSchema.optional()
+  configuration: UpdateInternalCertificateAuthorityConfigurationSchema.optional().describe(
+    CertificateAuthorities.UPDATE_INTERNAL_CONFIGURATION
+  )
 }) as unknown as z.ZodType<{
   status?: CaStatus;
   configuration?: TInternalCertificateAuthorityConfiguration;

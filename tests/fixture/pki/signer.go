@@ -2,7 +2,10 @@ package pki
 
 import (
 	"context"
+	"crypto"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -114,15 +117,7 @@ func CreateSigner(tt *testing.T, p *Project, opts ...SignerOption) (Signer, stri
 // retried; any other refusal ends the wait at once.
 func WaitSigner(tt *testing.T, as *harness.Principal, signerID uuid.UUID, opts ...wait.Option) (string, string) {
 	tt.Helper()
-	res := Poll(tt, "reading the signer", func(ctx context.Context) (*api.GetSignerByIdResponse, int, []byte, error) {
-		res, status, body, err := ReadResponse(ctx, func(ctx context.Context) (*http.Response, error) {
-			return as.API.GetSignerById(ctx, signerID)
-		}, api.ParseGetSignerByIdResponse)
-		if err == nil && status == http.StatusOK && res.JSON200 == nil {
-			err = fmt.Errorf("content type %q", res.HTTPResponse.Header.Get("Content-Type"))
-		}
-		return res, status, body, err
-	}, func(res *api.GetSignerByIdResponse) bool {
+	res := PollSigner(tt, as, signerID, func(res *api.GetSignerByIdResponse) bool {
 		return res.JSON200.Status != nil && *res.JSON200.Status != "pending"
 	}, opts...)
 	var reason string
@@ -130,6 +125,50 @@ func WaitSigner(tt *testing.T, as *harness.Principal, signerID uuid.UUID, opts .
 		reason = *res.JSON200.CertificateFailureReason
 	}
 	return *res.JSON200.Status, reason
+}
+
+// PollSigner reads a signer as `as` until done accepts it. Transport errors, 429s and 5xx
+// responses are retried; any other refusal ends the wait at once.
+func PollSigner(tt *testing.T, as *harness.Principal, signerID uuid.UUID, done func(*api.GetSignerByIdResponse) bool, opts ...wait.Option) *api.GetSignerByIdResponse {
+	tt.Helper()
+	return Poll(tt, "reading the signer", func(ctx context.Context) (*api.GetSignerByIdResponse, int, []byte, error) {
+		res, status, body, err := ReadResponse(ctx, func(ctx context.Context) (*http.Response, error) {
+			return as.API.GetSignerById(ctx, signerID)
+		}, api.ParseGetSignerByIdResponse)
+		if err == nil && status == http.StatusOK && res.JSON200 == nil {
+			err = fmt.Errorf("content type %q", res.HTTPResponse.Header.Get("Content-Type"))
+		}
+		return res, status, body, err
+	}, done, opts...)
+}
+
+// SignerState is the signer as the tenant admin reads it.
+func SignerState(tt *testing.T, tn *harness.Tenant, signerID uuid.UUID) *api.GetSignerByIdResponse {
+	tt.Helper()
+	res, err := tn.Admin.API.GetSignerByIdWithResponse(tt.Context(), signerID)
+	require.NoError(tt, err)
+	require.NotNilf(tt, res.JSON200, "reading the signer returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return res
+}
+
+// SignerCertificate is the signer's current leaf certificate.
+func SignerCertificate(tt *testing.T, tn *harness.Tenant, signerID uuid.UUID) *x509.Certificate {
+	tt.Helper()
+	res, err := tn.Admin.API.ExportSignerCertificateWithResponse(tt.Context(), signerID)
+	require.NoError(tt, err)
+	require.NotNilf(tt, res.JSON200, "exporting the certificate returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return ParseLeaf(tt, res.JSON200.CertificatePem)
+}
+
+// RequireSigns signs as a principal and checks the signature against leaf, the
+// signer's certificate.
+func RequireSigns(tt *testing.T, leaf *x509.Certificate, as *harness.Principal, signerID uuid.UUID) {
+	tt.Helper()
+	res, sum := Sign(tt, as, signerID)
+	require.NotNilf(tt, res.JSON200, "signing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	sig, err := base64.StdEncoding.DecodeString(res.JSON200.Signature)
+	require.NoError(tt, err)
+	require.NoError(tt, rsa.VerifyPKCS1v15(leaf.PublicKey.(*rsa.PublicKey), crypto.SHA256, sum, sig))
 }
 
 // Sign asks the signer to sign the SHA-256 digest of a fresh artifact as `as`, and

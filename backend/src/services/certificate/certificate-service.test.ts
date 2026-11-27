@@ -1,13 +1,16 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub
+} from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import {
   ApprovalPolicyType,
@@ -15,7 +18,6 @@ import {
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
@@ -45,11 +47,11 @@ const liveCertificate = {
 };
 
 const actor = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: null,
-  actorOrgId: "org-1"
-} as const;
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+    org: { id: "org-1" }
+  } as unknown as TActorContext
+};
 
 const buildService = () => {
   const certificateDAL = {
@@ -66,19 +68,21 @@ const buildService = () => {
   const pkiCollectionItemDAL = { delete: vi.fn().mockResolvedValue([]) };
   const certificateSyncDAL = { find: vi.fn().mockResolvedValue([]) };
   const signerDAL = { findOne: vi.fn().mockResolvedValue(undefined) };
+  const projectDAL = { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) };
 
   const deps = {
     certificateDAL,
+    projectDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
     signerDAL,
     resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]) },
-    permissionService: {
+    projectPermissionService: {
       getProjectPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
     },
     pkiApplicationDAL: { findById: vi.fn() },
     pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
@@ -95,7 +99,8 @@ const buildService = () => {
     certificateSecretDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
-    signerDAL
+    signerDAL,
+    projectDAL
   };
 };
 
@@ -104,6 +109,15 @@ describe("certificateService.deleteCert", () => {
 
   beforeEach(() => {
     ctx = buildService();
+  });
+
+  it("answers a certificate in another organization like a missing one and deletes nothing", async () => {
+    ctx.projectDAL.findById.mockResolvedValue({ id: "project-1", orgId: "org-2" });
+
+    await expect(ctx.service.deleteCert({ id: "cert-1", ...actor })).rejects.toThrow(
+      "Certificate with ID 'cert-1' not found."
+    );
+    expect(ctx.certificateDAL.update).not.toHaveBeenCalled();
   });
 
   it("keeps the row and its sync links, stamps who deleted it, and removes its material and collection items", async () => {
@@ -206,10 +220,10 @@ describe("certificateService.importCert with a CSR", () => {
           certificateAuthority: { externalType: null, name: "my-root-ca" }
         })
       },
-      permissionService: {
+      projectPermissionService: {
         getProjectPermission: vi
           .fn()
-          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
       }
     } as unknown as TDeps;
 
@@ -340,10 +354,10 @@ describe("certificateService.importCert of a certificate deleted before", () => 
       projectDAL,
       licenseService: { getPlan: vi.fn().mockResolvedValue({ isLimited: () => false }) },
       usageMeteringService: { emit: vi.fn() },
-      permissionService: {
+      projectPermissionService: {
         getProjectPermission: vi
           .fn()
-          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
       }
     } as unknown as TDeps;
     return { service: certificateServiceFactory(deps), certificateDAL, projectDAL };
@@ -526,7 +540,7 @@ describe("certificateService.importCert of a deleted certificate into a profile 
   const originalPolicy = { id: "revocation-policy-1", name: "prod-revocations" };
 
   const buildReimportService = ({
-    originalPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[],
+    originalPermissions = [{ action: "manage", subject: "all" }] as { action: string | string[]; subject: string }[],
     isMemberOfOriginalApplication = true,
     policyByScope = {} as Record<string, typeof originalPolicy>,
     deletedRecords = [deletedOriginal] as Record<string, unknown>[],
@@ -594,19 +608,19 @@ describe("certificateService.importCert of a deleted certificate into a profile 
       projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) },
       licenseService: { getPlan: vi.fn().mockResolvedValue({ isLimited: () => false }) },
       usageMeteringService: { emit: vi.fn() },
-      permissionService: {
+      projectPermissionService: {
         getProjectPermission: vi
           .fn()
-          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-        getResourcePermission: vi.fn().mockImplementation(async ({ resourceId }: { resourceId: string }) => {
-          if (resourceId === "app-a" && !isMemberOfOriginalApplication) {
-            throw new ForbiddenRequestError({ message: "You are not a member of this certificate-application." });
+          .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
+      },
+      applicationPermissionService: {
+        getApplicationPermission: vi.fn().mockImplementation(async ({ applicationId }: { applicationId: string }) => {
+          if (applicationId === "app-a" && !isMemberOfOriginalApplication) {
+            throw new PermissionDeniedError({ message: "You are not a member of this certificate-application." });
           }
-          return {
-            permission: createMongoAbility(
-              resourceId === "app-a" ? originalPermissions : [{ action: "manage", subject: "all" }]
-            )
-          };
+          return Permission.fromRules({
+            rules: applicationId === "app-a" ? originalPermissions : [{ action: "manage", subject: "all" }]
+          });
         })
       }
     } as unknown as TDeps;
@@ -634,7 +648,10 @@ describe("certificateService.importCert of a deleted certificate into a profile 
   it("refuses an importer who can't revoke the deleted original directly when no approval policy covers it", async () => {
     const { service } = buildReimportService({
       originalPermissions: [
-        { action: ResourcePermissionCertificateActions.RequestRevocation, subject: ResourcePermissionSub.Certificates }
+        {
+          action: ApplicationCertificatePermissionActions.RequestRevocation,
+          subject: ApplicationPermissionSub.Certificates
+        }
       ]
     });
 
@@ -863,7 +880,7 @@ describe("certificate revocation behind an approval policy", () => {
 
   const buildRevocationService = ({
     ca = externalCa as object,
-    applicationPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[]
+    applicationPermissions = [{ action: "manage", subject: "all" }] as { action: string | string[]; subject: string }[]
   } = {}) => {
     let stored: Record<string, unknown> = { ...applicationCertificate };
     const otherRecordsUpdate = vi.fn().mockResolvedValue([]);
@@ -934,8 +951,8 @@ describe("certificate revocation behind an approval policy", () => {
       projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", orgId: "org-1" }) },
       licenseService,
       telemetryService: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
-      permissionService: {
-        getResourcePermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(applicationPermissions) })
+      applicationPermissionService: {
+        getApplicationPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: applicationPermissions }))
       }
     } as unknown as TDeps;
 
@@ -1441,7 +1458,15 @@ describe("certificate revocation behind an approval policy", () => {
     it("refuses a revocation request from an actor that is neither a user nor a machine identity", async () => {
       const ctx = buildRevocationService();
 
-      await expect(ctx.service.revokeCert({ ...revokeRequest, actor: ActorType.PLATFORM })).rejects.toThrow(
+      await expect(
+        ctx.service.revokeCert({
+          ...revokeRequest,
+          actor: {
+            ...actor.actor,
+            principal: { type: ActorType.PLATFORM, id: "platform" }
+          } as unknown as TActorContext
+        })
+      ).rejects.toThrow(
         new BadRequestError({ message: "Only users and machine identities can request a certificate revocation" })
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
@@ -1491,7 +1516,8 @@ describe("certificate revocation behind an approval policy", () => {
     const canRevoke = [{ action: "delete", subject: "certificates" }];
     const canNeither = [{ action: ["read", "list"], subject: "certificates" }];
 
-    const isForbidden = (error: unknown) => error instanceof ForbiddenError || error instanceof ForbiddenRequestError;
+    const isForbidden = (error: unknown) =>
+      error instanceof PermissionDeniedError || error instanceof ForbiddenRequestError;
 
     it("opens an approval request for an actor who can only request a revocation", async () => {
       const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });

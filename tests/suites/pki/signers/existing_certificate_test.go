@@ -59,8 +59,9 @@ func TestSigner_ExistingCertificate(t *testing.T) {
 		require.NotNilf(t, res.JSON200, "creating the signer returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 		status, reason := pki.WaitSigner(t, tn.Admin, res.JSON200.Id)
 		require.Equalf(t, "active", status, "reason: %s", reason)
-		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).SerialNumber, certificateOf(t, tn, res.JSON200.Id).SerialNumber)
-		requireSigns(t, tn, operator, res.JSON200.Id)
+		leaf := pki.SignerCertificate(t, tn, res.JSON200.Id)
+		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).SerialNumber, leaf.SerialNumber)
+		pki.RequireSigns(t, leaf, operator, res.JSON200.Id)
 	})
 
 	t.Run("should refuse a certificate without the code signing usage and create no signer", func(t *testing.T) {

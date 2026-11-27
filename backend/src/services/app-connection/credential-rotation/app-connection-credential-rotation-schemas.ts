@@ -20,3 +20,15 @@ export const UpdateAppConnectionCredentialRotationSchema = z.object({
     .describe("The interval in days between credential rotations."),
   rotateAtUtc: AppConnectionCredentialRotationRotateAtUtcSchema.optional()
 });
+
+export const refineCredentialRotationMethod =
+  (rotatingMethod: string) =>
+  (data: { method: string; isAutoRotationEnabled?: boolean | null }, ctx: z.RefinementCtx) => {
+    if (data.method !== rotatingMethod && data.isAutoRotationEnabled) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Credential rotation is only supported for the ${rotatingMethod} method`,
+        path: ["isAutoRotationEnabled"]
+      });
+    }
+  };

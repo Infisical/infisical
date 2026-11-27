@@ -1,21 +1,21 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  TProjectPermissionService,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { caNotFoundError } from "../certificate-authority-errors";
 import { assertPathLengthMatchesCa } from "../certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../internal/internal-certificate-authority-dal";
 import { TCaSigningConfigDALFactory } from "./ca-signing-config-dal";
@@ -48,7 +48,8 @@ type TCaSigningConfigServiceFactoryDep = {
   >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
@@ -63,11 +64,23 @@ export const caSigningConfigServiceFactory = ({
   caSigningConfigDAL,
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
-  permissionService,
+  projectDAL,
+  projectPermissionService,
   licenseService,
   appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
+  const $getCaInActorOrg = async (caId: string, actorOrgId: string) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: ca.projectId,
+      actorOrgId,
+      notFoundError: () => caNotFoundError(caId)
+    });
+    return ca;
+  };
+
   const getSigningConfigByCaId = async (internalCaId: string) => {
     const config = await caSigningConfigDAL.findByCaId(internalCaId);
     if (!config) {
@@ -80,7 +93,7 @@ export const caSigningConfigServiceFactory = ({
     type: CaSigningConfigType,
     connectionId: string | undefined,
     projectId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const app = CA_SIGNING_CONFIG_CONNECTION_MAP[type];
     if (!app || connectionId === undefined) return;
@@ -94,34 +107,23 @@ export const caSigningConfigServiceFactory = ({
     parentCaId,
     appConnectionId,
     destinationConfig,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    permissionActor
+    actor
   }: TCreateCaSigningConfigDTO & {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-    permissionActor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -168,14 +170,14 @@ export const caSigningConfigServiceFactory = ({
       AdcsDestinationConfigSchema.parse(destinationConfig);
     }
 
-    await validateSigningAppConnection(type, appConnectionId, ca.projectId, permissionActor);
+    await validateSigningAppConnection(type, appConnectionId, ca.projectId, actor);
 
     const isExternalCa = EXTERNAL_SIGNING_TYPES.includes(type);
 
     // An org already signing through a provider can re-save or switch between them; only introducing
     // one is refused. updateSigningConfig takes no type, so it cannot reach this.
     if (isExternalCa && !EXTERNAL_SIGNING_TYPES.includes(existing?.type ?? "")) {
-      const plan = await licenseService.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actor.org.id);
       if (!plan.has(PlanFeature.PkiEnterpriseCaIntegrations)) {
         throw new BadRequestError({
           message:
@@ -206,32 +208,23 @@ export const caSigningConfigServiceFactory = ({
 
   const getSigningConfig = async ({
     caId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TGetCaSigningConfigDTO & {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -251,34 +244,23 @@ export const caSigningConfigServiceFactory = ({
     appConnectionId,
     destinationConfig,
     lastExternalCertificateId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    permissionActor
+    actor
   }: TUpdateCaSigningConfigDTO & {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-    permissionActor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -294,12 +276,7 @@ export const caSigningConfigServiceFactory = ({
       lastExternalCertificateId?: string;
     } = {};
 
-    await validateSigningAppConnection(
-      existing.type as CaSigningConfigType,
-      appConnectionId,
-      ca.projectId,
-      permissionActor
-    );
+    await validateSigningAppConnection(existing.type as CaSigningConfigType, appConnectionId, ca.projectId, actor);
 
     if (existing.type === CaSigningConfigType.Internal && parentCaId !== undefined) {
       updateData.parentCaId = parentCaId;
@@ -346,32 +323,23 @@ export const caSigningConfigServiceFactory = ({
 
   const getAutoRenewalConfig = async ({
     caId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TGetCaSigningConfigDTO & {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -390,35 +358,26 @@ export const caSigningConfigServiceFactory = ({
     caId,
     autoRenewalEnabled,
     autoRenewalDaysBeforeExpiry,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     caId: string;
     autoRenewalEnabled?: boolean;
     autoRenewalDaysBeforeExpiry?: number;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -505,34 +464,25 @@ export const caSigningConfigServiceFactory = ({
   const installCertificateVenafi = async ({
     caId,
     maxPathLength,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     caId: string;
     maxPathLength?: number;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -566,34 +516,25 @@ export const caSigningConfigServiceFactory = ({
   const installCertificateAzureAdCs = async ({
     caId,
     maxPathLength,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     caId: string;
     maxPathLength?: number;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });
@@ -629,34 +570,25 @@ export const caSigningConfigServiceFactory = ({
   const installCertificateAdcsNative = async ({
     caId,
     maxPathLength,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: {
     caId: string;
     maxPathLength?: number;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
-    if (!ca) throw new NotFoundError({ message: `CA with ID ${caId} not found` });
+    const ca = await $getCaInActorOrg(caId, actor.org.id);
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const internalCa = await internalCertificateAuthorityDAL.findOne({ caId });
     if (!internalCa) throw new NotFoundError({ message: `Internal CA with caId ${caId} not found` });

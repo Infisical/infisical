@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import {
   BasePkiAlertV2Schema,
   PkiAlertEventType,
@@ -46,10 +46,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.listAlerts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         search: req.query.search,
@@ -81,10 +78,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.createAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         applicationId: req.params.applicationId,
         projectId: req.internalCertManagerProjectId,
         ...req.body
@@ -109,9 +103,9 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiAlertCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId,
           alertScope: PkiAlertScope.Application,
@@ -144,10 +138,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.updateAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         applicationId: req.params.applicationId,
         alertId: req.params.alertId,
         ...req.body
@@ -172,9 +163,9 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiAlertUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId,
           alertScope: PkiAlertScope.Application
@@ -205,10 +196,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.deleteAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         applicationId: req.params.applicationId,
         alertId: req.params.alertId
       });
@@ -229,9 +217,9 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiAlertDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId,
           alertScope: PkiAlertScope.Application

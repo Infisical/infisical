@@ -1,11 +1,11 @@
 import z from "zod";
 
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { RAW_SECRETS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const AccessListEntrySchema = z.object({
   allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
@@ -64,10 +64,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secretPath, environment, projectId, includeAllEntities } = req.query;
 
       return server.services.secret.getSecretAccessList({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         secretPath,
         environment,
         projectId,

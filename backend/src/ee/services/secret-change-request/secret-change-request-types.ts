@@ -10,9 +10,11 @@ import {
 } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput, TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
@@ -21,7 +23,6 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
@@ -47,7 +48,6 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSecretChangePolicyServiceFactory } from "../secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
 import { TFormattedSecretApprovalCommitV2Bridge } from "./secret-change-request-details-fns";
@@ -102,7 +102,8 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
     [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];
     [SecretOperations.Delete]?: { secretKey: string }[];
   };
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TSecretApprovalRequestCommitV2 = Omit<
   TSecretApprovalRequestsSecretsV2Insert,
@@ -133,20 +134,20 @@ export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
   bypassReason?: string;
   requireApprovals?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TStatusChangeDTO = {
   approvalId: string;
   status: RequestState;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TReviewRequestDTO = {
   approvalId: string;
   status: ApprovalStatus;
   comment?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TApprovalRequestCountDTO = TProjectPermission & { policyId?: string };
+export type TApprovalRequestCountDTO = { projectId: string; policyId?: string } & TActorInput;
 
 export type TListApprovalsDTO = {
   projectId: string;
@@ -158,11 +159,11 @@ export type TListApprovalsDTO = {
   search?: string;
   orderBy?: SecretApprovalRequestOrderBy;
   orderDirection?: OrderByDirection;
-} & TProjectPermission;
+} & TActorInput;
 
 export type TSecretApprovalDetailsDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSecretApprovalRequestListFilter = {
   projectId: string;
@@ -335,7 +336,7 @@ export type TSecretChangeRequestServiceFactoryDep = {
     TSecretChangePolicyServiceFactory,
     "findSecretChangePolicyById" | "getSecretApprovalPolicy"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds" | "lockFoldersForUpdate">;

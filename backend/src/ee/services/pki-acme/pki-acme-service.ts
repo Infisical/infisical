@@ -17,6 +17,7 @@ import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/m
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -24,7 +25,6 @@ import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -48,6 +48,7 @@ import {
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { validateCertificateRequestLicense } from "@app/services/certificate-common/certificate-utils";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
+import { joinPolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
@@ -1041,10 +1042,7 @@ export const pkiAcmeServiceFactory = ({
       const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
 
       const result = await certificateV3Service.signCertificateFromProfile({
-        actor: ActorType.ACME_ACCOUNT,
-        actorId: accountId,
-        actorAuthMethod: null,
-        actorOrgId,
+        enrollment: { type: ActorType.ACME_ACCOUNT, id: accountId, orgId: actorOrgId },
         profileId,
         csr,
         notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
@@ -1111,7 +1109,7 @@ export const pkiAcmeServiceFactory = ({
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
     if (!validationResult.isValid) {
-      throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+      throw new AcmeBadCSRError({ message: `Invalid CSR: ${joinPolicyViolations(validationResult.errors)}` });
     }
     assertAcmeCaSupportsCustomExtensions(caType, validationResult.resolvedCustomExtensions?.length ?? 0);
 
@@ -1125,10 +1123,7 @@ export const pkiAcmeServiceFactory = ({
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({
-      actor: ActorType.ACME_ACCOUNT,
-      actorId: accountId,
-      actorAuthMethod: null,
-      actorOrgId,
+      enrollment: { type: ActorType.ACME_ACCOUNT, id: accountId, orgId: actorOrgId },
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,
@@ -1351,7 +1346,7 @@ export const pkiAcmeServiceFactory = ({
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
-              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${joinPolicyViolations(validationResult.errors)}` });
             }
             assertAcmeCaSupportsCustomExtensions(
               finalizeCaType,

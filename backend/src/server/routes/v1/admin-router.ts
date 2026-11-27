@@ -11,6 +11,7 @@ import {
 import { LoginMethod, OVERRIDABLE_ENV_KEYS } from "@app/domains/platform/instance-config-core/ce/module";
 import { RootKeyEncryptionStrategy } from "@app/domains/platform/kms-core/ce/module";
 import { CRON_JOB_TRIGGER, ENCRYPTION_KEY_ROTATION } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -29,7 +30,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifySuperAdmin } from "@app/server/plugins/auth/superAdmin";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { CacheType, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -248,7 +248,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const config = await server.services.superAdmin.updateServerCfg(req.body, req.permission.id);
+      const config = await server.services.superAdmin.updateServerCfg(req.body, req.actor.id);
       return {
         config: {
           ...config,
@@ -383,8 +383,8 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const organizationMembership = await server.services.superAdmin.deleteOrganizationMembership(
         req.params.organizationId,
         req.params.membershipId,
-        req.permission.id,
-        req.permission.type
+        req.actor.id,
+        req.actor.type
       );
 
       return {
@@ -1168,7 +1168,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.InvalidateCache,
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         distinctId: getTelemetryDistinctId(req),
         properties: {
           ...req.auditLogInfo
@@ -1232,7 +1232,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organization = await server.services.superAdmin.createOrganization(req.body, req.permission);
+      const organization = await server.services.superAdmin.createOrganization(req.body, req.actor);
 
       void server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.OrganizationCreated,
@@ -1271,7 +1271,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.permission);
+      const organizationMembership = await server.services.superAdmin.resendOrgInvite(req.params, req.actor);
 
       return {
         organizationMembership: {
@@ -1307,7 +1307,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const organizationMembership = await server.services.superAdmin.joinOrganization(
         req.params.organizationId,
-        req.permission
+        req.actor
       );
       return {
         organizationMembership: {

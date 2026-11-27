@@ -108,12 +108,20 @@ type CertificateDeleted struct {
 }
 type CertificateTagged struct{ ACMCertificateDetail }
 
+// CertificateDescribed is a DescribeCertificate, with the status it reported, so a test
+// can wait for a caller to check on a certificate held in PENDING_VALIDATION.
+type CertificateDescribed struct {
+	ACMCertificateDetail
+	Status string `json:"status"`
+}
+
 func (CertificateImported) EventName() string  { return "aws.certificate-imported" }
 func (CertificateRequested) EventName() string { return "aws.certificate-requested" }
 func (CertificateIssued) EventName() string    { return "aws.certificate-issued" }
 func (CertificateExported) EventName() string  { return "aws.certificate-exported" }
 func (CertificateDeleted) EventName() string   { return "aws.certificate-deleted" }
 func (CertificateTagged) EventName() string    { return "aws.certificate-tagged" }
+func (CertificateDescribed) EventName() string { return "aws.certificate-described" }
 
 // PrivateCertificateIssued is an IssueCertificate on an AWS Private CA.
 type PrivateCertificateIssued struct {
@@ -122,6 +130,16 @@ type PrivateCertificateIssued struct {
 }
 
 func (PrivateCertificateIssued) EventName() string { return "aws.private-certificate-issued" }
+
+// PrivateCertificateFetched is a GetCertificate on an AWS Private CA. InProgress is set
+// when it answered RequestInProgressException because the certificate is held.
+type PrivateCertificateFetched struct {
+	CertificateAuthorityArn string `json:"certificateAuthorityArn"`
+	CertificateArn          string `json:"certificateArn"`
+	InProgress              bool   `json:"inProgress"`
+}
+
+func (PrivateCertificateFetched) EventName() string { return "aws.private-certificate-fetched" }
 
 // ListenerDetail names an Elastic Load Balancing listener.
 type ListenerDetail struct {

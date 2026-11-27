@@ -1,12 +1,12 @@
-import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { GROUP_MEMBERSHIP_REMOVED_EVENT } from "@app/services/org/org-membership-events";
 
 import { githubOrgSyncServiceFactory } from "./github-org-sync-service";
@@ -113,10 +113,10 @@ const createService = () => {
     githubOrgSyncDAL: {
       findOne: vi.fn().mockResolvedValue({ isActive: true, githubOrgName: "acme", encryptedGithubOrgAccessToken: "x" })
     } as never,
-    permissionService: {
+    orgPermissionService: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
     } as never,
     kmsDataKeyService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({ decryptor: () => Buffer.from("token") })
@@ -133,7 +133,7 @@ const createService = () => {
     userAliasDAL: userAliasDAL as never,
     alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn().mockResolvedValue(undefined) } as never,
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) } as never,
-    membershipDAL: {} as never,
+    pamPermissionService: {} as never,
     pamAccountDAL: {} as never,
     pamSessionDAL: { find: vi.fn().mockResolvedValue([]), update: vi.fn() } as never,
     userDAL: {} as never,
@@ -272,7 +272,7 @@ describe("GitHub org sync and org access reconcile", () => {
     ]);
 
     await service.syncAllTeams({
-      orgPermission: { type: ActorType.USER, id: "actor-1", orgId: ORG_ID, authMethod: null },
+      orgPermission: { principal: { type: ActorType.USER, id: "actor-1", authMethod: null }, org: { id: ORG_ID } },
       auditLogInfo
     } as never);
 

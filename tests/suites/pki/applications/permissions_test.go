@@ -48,7 +48,7 @@ func TestApplication_Permissions(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		admin := member(t, tn, g, "admin")
+		admin := member(t, g, "admin")
 
 		// Action
 		can, roles := permissions(t, admin, g)
@@ -82,7 +82,7 @@ func TestApplication_Permissions(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		can, roles := permissions(t, auditor, g)

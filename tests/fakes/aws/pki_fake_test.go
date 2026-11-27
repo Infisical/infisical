@@ -205,6 +205,58 @@ func TestAWSFake_CertificateManager(t *testing.T) {
 		require.Equal(t, http.StatusOK, status, exported)
 	})
 
+	t.Run("should hold a requested certificate in PENDING_VALIDATION and refuse its export until validation is released", func(t *testing.T) {
+		// Setup
+		a := r.account(t)
+		cp := a.cp(t)
+		cp.Seed(t, aws.HoldACMValidation(), aws.SeedHostedZone("ZH", "held.test"))
+		_, out := a.acm(t, "RequestCertificate", map[string]any{"DomainName": "www.held.test", "ValidationMethod": "DNS",
+			"Options": map[string]string{"Export": "ENABLED"}})
+		arn := out["CertificateArn"].(string)
+		_, described := a.acm(t, "DescribeCertificate", map[string]any{"CertificateArn": arn})
+		detail := described["Certificate"].(map[string]any)
+		require.Equal(t, "PENDING_VALIDATION", detail["Status"])
+		require.NotContains(t, detail, "Serial")
+		dvo := detail["DomainValidationOptions"].([]any)[0].(map[string]any)
+		require.Equal(t, "PENDING_VALIDATION", dvo["ValidationStatus"])
+		record := dvo["ResourceRecord"].(map[string]any)
+		status, raw := a.route53(t, http.MethodPost, "/2013-04-01/hostedzone/ZH/rrset", change("UPSERT", record["Name"].(string), "CNAME", record["Value"].(string)))
+		require.Equal(t, http.StatusOK, status, raw)
+		cp.ACM.ExpectEvent[aws.CertificateDescribed](t, func(e aws.CertificateDescribed) bool {
+			return e.ARN == arn && e.Status == "PENDING_VALIDATION"
+		})
+		status, refused := a.acm(t, "ExportCertificate", map[string]any{"CertificateArn": arn, "Passphrase": b64("correct horse")})
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "RequestInProgressException", refused["__type"])
+
+		// Action
+		cp.Seed(t, aws.ReleaseACMValidation())
+
+		// Assert
+		_, described = a.acm(t, "DescribeCertificate", map[string]any{"CertificateArn": arn})
+		require.Equal(t, "ISSUED", described["Certificate"].(map[string]any)["Status"])
+		status, exported := a.acm(t, "ExportCertificate", map[string]any{"CertificateArn": arn, "Passphrase": b64("correct horse")})
+		require.Equal(t, http.StatusOK, status, exported)
+		require.Equal(t, cp.Certificates(t)[arn].Certificate, exported["Certificate"])
+		cp.ACM.ExpectEvent[aws.CertificateIssued](t, func(e aws.CertificateIssued) bool { return e.ARN == arn })
+	})
+
+	t.Run("should issue only the next requested certificate for the seeded validity", func(t *testing.T) {
+		// Setup
+		a := r.account(t)
+		cp := a.cp(t)
+		cp.Seed(t, aws.ShortLivedNextACMCertificate(5))
+
+		// Action
+		_, short := a.acm(t, "RequestCertificate", map[string]any{"DomainName": "short.validity.test", "Options": map[string]string{"Export": "ENABLED"}})
+		_, usual := a.acm(t, "RequestCertificate", map[string]any{"DomainName": "usual.validity.test", "Options": map[string]string{"Export": "ENABLED"}})
+
+		// Assert
+		certs := cp.Certificates(t)
+		require.WithinDuration(t, time.Now().Add(5*24*time.Hour), certs[short["CertificateArn"].(string)].NotAfter, 5*time.Minute)
+		require.WithinDuration(t, time.Now().Add(aws.AmazonIssuedValidityDays*24*time.Hour), certs[usual["CertificateArn"].(string)].NotAfter, 5*time.Minute)
+	})
+
 	t.Run("should refuse to export an imported certificate", func(t *testing.T) {
 		// Setup
 		a := r.account(t)
@@ -282,20 +334,13 @@ func TestAWSFake_PrivateCA(t *testing.T) {
 		_, described := a.pca(t, "DescribeCertificateAuthority", map[string]any{"CertificateAuthorityArn": arn})
 		require.Equal(t, "ACTIVE", described["CertificateAuthority"].(map[string]any)["Status"])
 
-		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		require.NoError(t, err)
-		csrDER, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{Subject: pkix.Name{CommonName: "ignored"}}, key)
-		require.NoError(t, err)
-		csr := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})
+		body := pcaIssue(t, arn, 10)
+		body["TemplateArn"] = "arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1"
+		body["ApiPassthrough"] = map[string]any{"Subject": map[string]string{"CommonName": "svc.pca.test"},
+			"Extensions": map[string]any{"SubjectAlternativeNames": []map[string]string{{"DnsName": "svc.pca.test"}}}}
 
 		// Action
-		status, issued := a.pca(t, "IssueCertificate", map[string]any{
-			"CertificateAuthorityArn": arn, "Csr": base64.StdEncoding.EncodeToString(csr), "SigningAlgorithm": "SHA256WITHRSA",
-			"TemplateArn": "arn:aws:acm-pca:::template/BlankEndEntityCertificate_APICSRPassthrough/V1",
-			"Validity":    map[string]any{"Type": "DAYS", "Value": 10},
-			"ApiPassthrough": map[string]any{"Subject": map[string]string{"CommonName": "svc.pca.test"},
-				"Extensions": map[string]any{"SubjectAlternativeNames": []map[string]string{{"DnsName": "svc.pca.test"}}}},
-		})
+		status, issued := a.pca(t, "IssueCertificate", body)
 
 		// Assert
 		require.Equal(t, http.StatusOK, status, issued)
@@ -312,6 +357,52 @@ func TestAWSFake_PrivateCA(t *testing.T) {
 		cp.ACMPCA.ExpectEvent[aws.PrivateCertificateIssued](t, nil)
 	})
 
+	t.Run("should answer RequestInProgressException for a held certificate until it is released", func(t *testing.T) {
+		// Setup
+		a := r.account(t)
+		cp := a.cp(t)
+		arn := aws.PrivateCAARN(a.id)
+		cp.Seed(t, aws.SeedPrivateCA(arn, "ACTIVE"), aws.HoldPrivateCertificates())
+		status, issued := a.pca(t, "IssueCertificate", pcaIssue(t, arn, 10))
+		require.Equal(t, http.StatusOK, status, issued)
+		certARN := issued["CertificateArn"].(string)
+		status, refused := a.pca(t, "GetCertificate", map[string]any{"CertificateAuthorityArn": arn, "CertificateArn": certARN})
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "RequestInProgressException", refused["__type"])
+		cp.ACMPCA.ExpectEvent[aws.PrivateCertificateFetched](t, func(e aws.PrivateCertificateFetched) bool {
+			return e.CertificateArn == certARN && e.InProgress
+		})
+
+		// Action
+		cp.Seed(t, aws.ReleasePrivateCertificates())
+
+		// Assert
+		status, got := a.pca(t, "GetCertificate", map[string]any{"CertificateAuthorityArn": arn, "CertificateArn": certARN})
+		require.Equal(t, http.StatusOK, status, got)
+		require.Equal(t, cp.ACMPCA.State(t).Authorities[arn].Issued[certARN].Certificate, got["Certificate"])
+	})
+
+	t.Run("should issue only the next certificate for the seeded validity whatever was asked", func(t *testing.T) {
+		// Setup
+		a := r.account(t)
+		cp := a.cp(t)
+		arn := aws.PrivateCAARN(a.id)
+		cp.Seed(t, aws.SeedPrivateCA(arn, "ACTIVE"), aws.ShortLivedNextPrivateCertificate(5))
+
+		// Action
+		_, short := a.pca(t, "IssueCertificate", pcaIssue(t, arn, 30))
+		_, usual := a.pca(t, "IssueCertificate", pcaIssue(t, arn, 30))
+
+		// Assert
+		issued := cp.ACMPCA.State(t).Authorities[arn].Issued
+		shortLeaf, err := x509ParsePEM(issued[short["CertificateArn"].(string)].Certificate)
+		require.NoError(t, err)
+		require.WithinDuration(t, time.Now().Add(5*24*time.Hour), shortLeaf.NotAfter, 5*time.Minute)
+		usualLeaf, err := x509ParsePEM(issued[usual["CertificateArn"].(string)].Certificate)
+		require.NoError(t, err)
+		require.WithinDuration(t, time.Now().Add(30*24*time.Hour), usualLeaf.NotAfter, 5*time.Minute)
+	})
+
 	t.Run("should refuse to issue from a CA that is not active", func(t *testing.T) {
 		// Setup
 		a := r.account(t)
@@ -326,6 +417,22 @@ func TestAWSFake_PrivateCA(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, status)
 		require.Equal(t, "InvalidStateException", out["__type"])
 	})
+}
+
+// pcaIssue is an IssueCertificate body for a fresh P-256 CSR naming csr.pca.test, valid
+// for days.
+func pcaIssue(t *testing.T, arn string, days int) map[string]any {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	csrDER, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{Subject: pkix.Name{CommonName: "csr.pca.test"}}, key)
+	require.NoError(t, err)
+	return map[string]any{
+		"CertificateAuthorityArn": arn, "SigningAlgorithm": "SHA256WITHRSA",
+		"Csr":         base64.StdEncoding.EncodeToString(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})),
+		"TemplateArn": "arn:aws:acm-pca:::template/EndEntityCertificate/V1",
+		"Validity":    map[string]any{"Type": "DAYS", "Value": days},
+	}
 }
 
 func TestAWSFake_LoadBalancing(t *testing.T) {

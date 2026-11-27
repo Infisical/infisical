@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import {
   EntityNotFoundError,
   ExternalSystemError,
+  PermissionDeniedError,
   RuleViolationError,
   StateConflictError
 } from "@app/domains/lib/errors";
@@ -73,7 +74,12 @@ const getErrorCode = (err: unknown): string | undefined =>
 export const classifyError = (err: unknown): ErrorType => {
   if (err instanceof jwt.JsonWebTokenError) return "auth";
   if (err instanceof UnauthorizedError) return "auth";
-  if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError || err instanceof PermissionBoundaryError)
+  if (
+    err instanceof ForbiddenError ||
+    err instanceof PermissionDeniedError ||
+    err instanceof ForbiddenRequestError ||
+    err instanceof PermissionBoundaryError
+  )
     return "permission";
   if (err instanceof RateLimitError || err instanceof DailyQuotaExceededError) return "rate_limit";
   if (err instanceof NotFoundError || err instanceof EntityNotFoundError) return "not_found";

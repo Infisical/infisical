@@ -156,6 +156,7 @@ func TestAzureKeyVaultPkiSync_Sync(t *testing.T) {
 		require.NotNilf(t, certs[name], "the vault should still hold %s, got %v", name, certs)
 		require.GreaterOrEqual(t, certs[name].Versions, 2)
 		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, certs[name].Certificate).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, certs[name].Certificate, certs[name].Imported)
 	})
 
 	t.Run("should import a renewed certificate under its own name and delete the old object when versioning is off", func(t *testing.T) {
@@ -183,6 +184,7 @@ func TestAzureKeyVaultPkiSync_Sync(t *testing.T) {
 		require.Len(t, certs, 1)
 		require.NotNilf(t, certs[next], "the vault should hold %s, got %v", next, certs)
 		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, certs[next].Certificate).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, certs[next].Certificate, certs[next].Imported)
 	})
 
 	t.Run("should mark the sync and the certificate failed, with the vault's reason, when Key Vault refuses the import", func(t *testing.T) {

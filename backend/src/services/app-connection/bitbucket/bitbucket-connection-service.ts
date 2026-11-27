@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -15,11 +15,11 @@ import {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TBitbucketConnection>;
 
 export const bitbucketConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listWorkspaces = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listWorkspaces = async (connectionId: string, actor: TActorContext, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
     const workspaces = await listBitbucketWorkspaces(appConnection, search);
     return workspaces;
@@ -27,7 +27,7 @@ export const bitbucketConnectionService = (getAppConnection: TGetAppConnectionFu
 
   const listRepositories = async (
     { connectionId, workspaceSlug }: TGetBitbucketRepositoriesDTO,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     search?: string
   ) => {
     const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
@@ -37,7 +37,7 @@ export const bitbucketConnectionService = (getAppConnection: TGetAppConnectionFu
 
   const listEnvironments = async (
     { connectionId, workspaceSlug, repositorySlug }: TGetBitbucketEnvironmentsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.Bitbucket, connectionId, actor);
     const environments = await listBitbucketEnvironments(appConnection, workspaceSlug, repositorySlug);

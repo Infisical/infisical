@@ -1,4 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TLDAPConfig = {
   id: string;
@@ -35,7 +35,7 @@ export type TCreateLdapCfgDTO = {
   caCert: string;
   clientCertificate: string;
   clientKeyCertificate: string;
-} & TOrgPermission;
+} & TActorInput;
 
 export type TUpdateLdapCfgDTO = {
   orgId: string;
@@ -53,11 +53,11 @@ export type TUpdateLdapCfgDTO = {
   clientCertificate: string;
   clientKeyCertificate: string;
 }> &
-  TOrgPermission;
+  ({ orgId: string } & TActorInput);
 
 export type TGetLdapCfgDTO = {
   orgId: string;
-} & TOrgPermission;
+} & TActorInput;
 
 export type TLdapLoginDTO = {
   ldapConfigId: string;
@@ -78,17 +78,20 @@ export type TLdapLoginDTO = {
 
 export type TGetLdapGroupMapsDTO = {
   ldapConfigId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TCreateLdapGroupMapDTO = {
   ldapConfigId: string;
   ldapGroupCN: string;
   groupSlug: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TDeleteLdapGroupMapDTO = {
   ldapConfigId: string;
   ldapGroupMapId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
-export type TTestLdapConnectionDTO = TOrgPermission & TTestLDAPConfigDTO;
+export type TTestLdapConnectionDTO = ({ orgId: string } & TActorInput) & TTestLDAPConfigDTO;

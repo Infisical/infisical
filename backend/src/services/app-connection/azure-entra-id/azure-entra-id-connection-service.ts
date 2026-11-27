@@ -1,17 +1,18 @@
 import RE2 from "re2";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { getAzureEntraIdConnectionAccessToken, graphApiRequest } from "./azure-entra-id-connection-fns";
 
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAppConnection>;
 
 type TAzureSyncJob = {
@@ -41,14 +42,16 @@ const SCIM_SERVICE_PRINCIPALS_LIMIT = 5;
 export const azureEntraIdConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
-  kmsDataKeyService: TKmsDataKeyService
+  kmsDataKeyService: TKmsDataKeyService,
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const listScimServicePrincipals = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listScimServicePrincipals = async (connectionId: string, actor: TActorContext, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.AzureEntraId, connectionId, actor);
     const accessToken = await getAzureEntraIdConnectionAccessToken(
       appConnection.id,
       appConnectionDAL,
-      kmsDataKeyService
+      kmsDataKeyService,
+      oidcIssuerService
     );
 
     const headers = {

@@ -60,7 +60,7 @@ func (g gatedSigner) preApprove(t *testing.T, tn *harness.Tenant) uuid.UUID {
 func requireApprovalRequired(t *testing.T, tn *harness.Tenant, signerID uuid.UUID, res *api.SignDataResponse) {
 	t.Helper()
 	require.Equal(t, http.StatusForbidden, res.StatusCode())
-	name := signerState(t, tn, signerID).JSON200.Name
+	name := pki.SignerState(t, tn, signerID).JSON200.Name
 	require.Equal(t, "Signing with signer '"+name+"' requires approved access, but none is currently active. Access may not have been requested or approved yet, may have expired, or may have reached its signature limit. Request signing access for this signer and try again once it's approved.", apierr.Message(res.Body))
 }
 
@@ -111,7 +111,7 @@ func TestSignerRequest(t *testing.T) {
 		g.preApprove(t, tn)
 
 		// Assert
-		requireSigns(t, tn, g.operator, g.ID)
+		pki.RequireSigns(t, pki.SignerCertificate(t, tn, g.ID), g.operator, g.ID)
 	})
 
 	t.Run("should stop an operator signing once their approved request is revoked", func(t *testing.T) {
@@ -178,6 +178,6 @@ func TestSignerApprovalPolicy(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNilf(t, got.JSON200, "reading the approval policy returned %d: %s", got.StatusCode(), apierr.Body(got.Body))
 		require.False(t, got.JSON200.HasSteps)
-		requireSigns(t, tn, g.operator, g.ID)
+		pki.RequireSigns(t, pki.SignerCertificate(t, tn, g.ID), g.operator, g.ID)
 	})
 }

@@ -139,4 +139,5 @@ export interface TPolicyValidationResult {
   errors: string[];
   warnings: string[];
   resolvedCustomExtensions?: TResolvedCustomExtension[];
+  ttlExceedsMax?: boolean;
 }

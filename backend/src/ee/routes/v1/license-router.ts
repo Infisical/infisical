@@ -1,28 +1,20 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
 // lives on the License Server v2 routes in license-v2-router.
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   // Any member of the org can read its plan, which is always its root org's.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
-    await server.services.permission.getOrgPermission({
-      actorId: req.permission.id,
-      actor: req.permission.type,
-      orgId,
-      actorOrgId: req.permission.orgId,
-      actorAuthMethod: req.permission.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+    await server.services.orgPermissionService.getOrgPermission({ actor: req.actor, orgId });
     if (refreshCache) {
-      await server.services.licenseService.refreshPlan(req.permission.rootOrgId);
+      await server.services.licenseService.refreshPlan(req.actor.rootOrgId);
     }
-    const plan = await server.services.licenseService.getPlan(req.permission.rootOrgId);
+    const plan = await server.services.licenseService.getPlan(req.actor.rootOrgId);
     return plan.toJSON();
   };
 

@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { RemindersSchema } from "@app/db/schemas/reminders";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { MAX_CHANNELS_PER_ALERT, MAX_RECIPIENTS_PER_CHANNEL } from "@app/services/alert/alert-types";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { UpdateChannelInputSchema } from "../alert-channel-schemas";
@@ -50,10 +50,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.reminder.createReminder({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         reminder: {
           secretId: req.params.secretId,
           message: req.body.message,
@@ -67,7 +64,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_SECRET_REMINDER,
           metadata: {
@@ -83,7 +80,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretReminderCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           secretId: req.params.secretId,
           reminderRepeatDays: req.body.repeatDays,
@@ -120,16 +117,13 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const reminder = await server.services.reminder.getReminder({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         secretId: req.params.secretId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_SECRET_REMINDER,
           metadata: {
@@ -161,16 +155,13 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       await server.services.reminder.deleteReminder({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         secretId: req.params.secretId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_SECRET_REMINDER,
           metadata: {

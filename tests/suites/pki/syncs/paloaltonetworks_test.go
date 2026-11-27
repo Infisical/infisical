@@ -190,7 +190,9 @@ func TestPaloAltoNetworksPkiSync_Sync(t *testing.T) {
 		s.fw.ExpectEvent[panos.CertificateImported](t, func(e panos.CertificateImported) bool { return e.Name == name && e.Category == "keypair" }, fakenet.Since(mark))
 		state := s.fw.State(t)
 		require.Equal(t, name, paloAltoKeyPair(t, state, pki.Certificate{Certificate: renewed.JSON200.Certificate}))
-		require.Contains(t, state.Committed.Certificates, name)
+		require.NotEqual(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, pki.ParseLeaf(t, renewed.JSON200.Certificate).PublicKey, "the renewed certificate kept the key the renewal replaced")
+		committed := s.fw.ExpectEvent[panos.Committed](t, nil, fakenet.Since(mark))
+		require.Contains(t, committed.Certificates, name)
 		s.fw.ExpectNoEvent[panos.CertificateDeleted](t, nil, fakenet.Since(mark))
 	})
 
@@ -216,6 +218,7 @@ func TestPaloAltoNetworksPkiSync_Sync(t *testing.T) {
 		state := s.fw.State(t)
 		fresh := paloAltoKeyPair(t, state, pki.Certificate{Certificate: renewed.JSON200.Certificate})
 		require.NotEqual(t, old, fresh)
+		require.NotEqual(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, pki.ParseLeaf(t, renewed.JSON200.Certificate).PublicKey, "the renewed certificate kept the key the renewal replaced")
 		require.NotContains(t, state.Certificates, old)
 		require.Contains(t, state.Committed.Certificates, fresh)
 		require.NotContains(t, state.Committed.Certificates, old)
@@ -363,8 +366,10 @@ func TestPaloAltoNetworksSslTlsProfilePkiSync_Sync(t *testing.T) {
 		s.fw.ExpectEvent[panos.CertificateImported](t, func(e panos.CertificateImported) bool { return e.Name == name && e.Category == "keypair" }, fakenet.Since(mark))
 		state := s.fw.State(t)
 		require.Equal(t, name, paloAltoKeyPair(t, state, pki.Certificate{Certificate: renewed.JSON200.Certificate}))
+		require.NotEqual(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, pki.ParseLeaf(t, renewed.JSON200.Certificate).PublicKey, "the renewed certificate kept the key the renewal replaced")
 		require.Equal(t, name, state.Profiles["portal"])
-		require.Equal(t, name, state.Committed.Profiles["portal"])
+		committed := s.fw.ExpectEvent[panos.Committed](t, nil, fakenet.Since(mark))
+		require.Equal(t, name, committed.Profiles["portal"])
 	})
 
 	t.Run("should mark the certificate failed and import nothing when the SSL/TLS service profile does not exist", func(t *testing.T) {

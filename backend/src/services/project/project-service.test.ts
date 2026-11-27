@@ -1,15 +1,14 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import { applicationAuditorPermissions } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { applicationAuditorPermissions } from "@app/ee/services/permission/default-roles";
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionCertificateActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
@@ -38,18 +37,18 @@ const setup = () => {
     find: vi.fn().mockResolvedValue([]),
     transaction: vi.fn(<T>(cb: (trx: unknown) => Promise<T>) => cb(tx))
   };
-  const permissionService = {
-    getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
+  const orgPermissionService = {
+    getOrgPermission: vi.fn().mockResolvedValue({ cannot: () => false })
   };
   const licenseService = new FakeLicenseService();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,
-    permissionService,
+    orgPermissionService,
     licenseService
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, orgDAL, projectDAL, permissionService, licenseService, memberships, tx };
+  return { service, orgDAL, projectDAL, orgPermissionService, licenseService, memberships, tx };
 };
 
 describe("project navigation across sub-organizations", () => {
@@ -157,10 +156,7 @@ describe("project navigation across sub-organizations", () => {
 describe("secret scanning project uniqueness", () => {
   const createSecretScanningProject = (service: ReturnType<typeof setup>["service"]) =>
     service.createProject({
-      actor: ActorType.USER,
-      actorId: "user",
-      actorOrgId: "root",
-      actorAuthMethod: null,
+      actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
       projectName: "Scanning",
       type: ProjectType.SecretScanning
     });
@@ -194,10 +190,7 @@ describe("org-scoped product projects", () => {
 
     await expect(
       service.createProject({
-        actor: ActorType.USER,
-        actorId: "user",
-        actorOrgId: "root",
-        actorAuthMethod: null,
+        actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
         projectName: "Managed",
         type: ProjectType.PAM
       })
@@ -211,10 +204,7 @@ describe("org-scoped product projects", () => {
 
     await expect(
       service.createProject({
-        actor: ActorType.USER,
-        actorId: "user",
-        actorOrgId: "root",
-        actorAuthMethod: null,
+        actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
         projectName: "Apollo",
         type: ProjectType.AgentVault,
         template: "my-template"
@@ -225,6 +215,9 @@ describe("org-scoped product projects", () => {
   });
 });
 
+const actorContext = (type: ActorType.USER | ActorType.IDENTITY, id: string) =>
+  ({ principal: { type, id }, org: { id: "org" } }) as TActorContext;
+
 const setupCertificateSearch = ({
   memberOf = [],
   readableApplications = [],
@@ -232,7 +225,7 @@ const setupCertificateSearch = ({
 }: {
   memberOf?: string[];
   readableApplications?: string[];
-  productRules: Parameters<typeof createMongoAbility>[0];
+  productRules: Parameters<typeof Permission.fromRules>[0]["rules"];
 }) => {
   const certificateDAL = {
     findWithPrivateKeyInfo: vi.fn<TCertificateDALFactory["findWithPrivateKeyInfo"]>().mockResolvedValue([]),
@@ -243,21 +236,26 @@ const setupCertificateSearch = ({
       .fn()
       .mockResolvedValue(memberOf.map((scopeResourceId) => ({ scopeResourceId, isActive: true })))
   };
-  const permissionService = {
-    getResourcePermission: vi.fn(async ({ resourceId }: { resourceId: string }) => ({
-      permission: createMongoAbility(readableApplications.includes(resourceId) ? applicationAuditorPermissions : [])
-    })),
-    getProjectPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(productRules) })
+  const applicationPermissionService = {
+    getApplicationPermission: vi.fn(async ({ applicationId }: { applicationId: string }) =>
+      Permission.fromRules({
+        rules: readableApplications.includes(applicationId) ? applicationAuditorPermissions : []
+      })
+    )
+  };
+  const projectPermissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: productRules }))
   };
   const service = projectServiceFactory({
     projectDAL: { findProjectByFilter: vi.fn().mockResolvedValue({ id: "project" }) },
-    permissionService,
+    applicationPermissionService,
+    projectPermissionService,
     membershipDAL,
     certificateDAL,
     licenseService: new FakeLicenseService()
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, certificateDAL, membershipDAL, permissionService };
+  return { service, certificateDAL, membershipDAL, applicationPermissionService, projectPermissionService };
 };
 
 describe("certificate search with current status", () => {
@@ -278,10 +276,7 @@ describe("certificate search with current status", () => {
       filter: { type: ProjectFilterType.ID, projectId: "project" },
       offset: 0,
       limit: 25,
-      actor: ActorType.USER,
-      actorId: "user",
-      actorOrgId: "org",
-      actorAuthMethod: null,
+      actor: actorContext(ActorType.USER, "user"),
       sortBy: "status",
       authorizeByApplicationRoles: true
     });
@@ -306,16 +301,14 @@ describe("certificate search scoped to applications", () => {
   ];
 
   const setupSearch = (options: Parameters<typeof setupCertificateSearch>[0]) => {
-    const { service, certificateDAL, membershipDAL, permissionService } = setupCertificateSearch(options);
+    const { service, certificateDAL, membershipDAL, applicationPermissionService, projectPermissionService } =
+      setupCertificateSearch(options);
 
     const request = (applicationIds?: string[]): TListProjectCertsDTO => ({
       filter: { type: ProjectFilterType.ID, projectId: "project" },
       offset: 0,
       limit: 25,
-      actor: ActorType.IDENTITY,
-      actorId: "identity",
-      actorOrgId: "org",
-      actorAuthMethod: null,
+      actor: actorContext(ActorType.IDENTITY, "identity"),
       applicationIds
     });
     const search = (applicationIds?: string[]) =>
@@ -326,11 +319,19 @@ describe("certificate search scoped to applications", () => {
       return { applicationIds: filters.applicationIds, permissionFilters };
     };
 
-    return { search, list, searchedWith, certificateDAL, membershipDAL, permissionService };
+    return {
+      search,
+      list,
+      searchedWith,
+      certificateDAL,
+      membershipDAL,
+      applicationPermissionService,
+      projectPermissionService
+    };
   };
 
   test("allows a caller who can read certificates in every listed application without product-level Read", async () => {
-    const { search, searchedWith, permissionService } = setupSearch({
+    const { search, searchedWith, applicationPermissionService, projectPermissionService } = setupSearch({
       memberOf: ["app-a", "app-b"],
       readableApplications: ["app-a", "app-b"],
       productRules: []
@@ -338,21 +339,21 @@ describe("certificate search scoped to applications", () => {
 
     await search(["app-a", "app-b"]);
 
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
-    expect(permissionService.getResourcePermission).toHaveBeenCalledTimes(2);
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalledTimes(2);
     expect(searchedWith()).toEqual({ applicationIds: ["app-a", "app-b"], permissionFilters: undefined });
   });
 
   test("checks one application's permission at a time", async () => {
-    const { search, permissionService } = setupSearch({
+    const { search, applicationPermissionService } = setupSearch({
       memberOf: ["app-a", "app-b"],
       readableApplications: ["app-a", "app-b"],
       productRules: []
     });
-    const check = permissionService.getResourcePermission.getMockImplementation()!;
+    const check = applicationPermissionService.getApplicationPermission.getMockImplementation()!;
     let firstDone = false;
     let secondStartedAfterFirst = false;
-    permissionService.getResourcePermission
+    applicationPermissionService.getApplicationPermission
       .mockImplementationOnce(async (args) => {
         const result = await check(args);
         firstDone = true;
@@ -365,12 +366,12 @@ describe("certificate search scoped to applications", () => {
 
     await search(["app-a", "app-b"]);
 
-    expect(permissionService.getResourcePermission).toHaveBeenCalledTimes(2);
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalledTimes(2);
     expect(secondStartedAfterFirst).toBe(true);
   });
 
   test("matches application IDs in any case", async () => {
-    const { search, permissionService } = setupSearch({
+    const { search, applicationPermissionService, projectPermissionService } = setupSearch({
       memberOf: ["app-a"],
       readableApplications: ["app-a"],
       productRules: []
@@ -378,12 +379,12 @@ describe("certificate search scoped to applications", () => {
 
     await search(["APP-A", "app-a"]);
 
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
-    expect(permissionService.getResourcePermission).toHaveBeenCalledOnce();
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).toHaveBeenCalledOnce();
   });
 
   test("lets application Read take precedence over a product role limited by conditions", async () => {
-    const { search, searchedWith, permissionService } = setupSearch({
+    const { search, searchedWith, projectPermissionService } = setupSearch({
       memberOf: ["app-a"],
       readableApplications: ["app-a"],
       productRules: [{ ...readCertificates[0], conditions: { commonName: "a.example.com" } }]
@@ -391,7 +392,7 @@ describe("certificate search scoped to applications", () => {
 
     await search(["app-a"]);
 
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(projectPermissionService.getProjectPermission).not.toHaveBeenCalled();
     expect(searchedWith().permissionFilters).toBeUndefined();
   });
 
@@ -402,24 +403,24 @@ describe("certificate search scoped to applications", () => {
       productRules: []
     });
 
-    await expect(search(["app-a", "app-b"])).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(search(["app-a", "app-b"])).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(certificateDAL.findWithPrivateKeyInfo).not.toHaveBeenCalled();
   });
 
   test("rejects without per-application checks when the caller isn't a member of a listed application", async () => {
-    const { search, certificateDAL, permissionService } = setupSearch({
+    const { search, certificateDAL, applicationPermissionService } = setupSearch({
       memberOf: ["app-a"],
       readableApplications: ["app-a"],
       productRules: []
     });
 
-    await expect(search(["app-a", "app-b"])).rejects.toBeInstanceOf(ForbiddenError);
-    expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
+    await expect(search(["app-a", "app-b"])).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
     expect(certificateDAL.findWithPrivateKeyInfo).not.toHaveBeenCalled();
   });
 
   test("falls back to product-level Read for applications the caller can't read", async () => {
-    const { search, searchedWith, permissionService } = setupSearch({
+    const { search, searchedWith, projectPermissionService } = setupSearch({
       memberOf: [],
       readableApplications: [],
       productRules: readCertificates
@@ -427,28 +428,28 @@ describe("certificate search scoped to applications", () => {
 
     await search(["app-a", "app-b"]);
 
-    expect(permissionService.getProjectPermission).toHaveBeenCalledOnce();
+    expect(projectPermissionService.getProjectPermission).toHaveBeenCalledOnce();
     const { applicationIds, permissionFilters } = searchedWith();
     expect(applicationIds).toEqual(["app-a", "app-b"]);
     expect(permissionFilters).toBeDefined();
   });
 
   test("keeps product-level Read on the project certificate listing, which doesn't bound applicationIds", async () => {
-    const { list, membershipDAL, permissionService } = setupSearch({
+    const { list, membershipDAL, applicationPermissionService } = setupSearch({
       memberOf: ["app-a"],
       readableApplications: ["app-a"],
       productRules: []
     });
 
-    await expect(list(["app-a"])).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(list(["app-a"])).rejects.toBeInstanceOf(PermissionDeniedError);
     expect(membershipDAL.findResourceMembershipsForActor).not.toHaveBeenCalled();
-    expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
+    expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
   });
 
   test.each([{ productRead: true }, { productRead: false }])(
     "uses only product-level Read without applicationIds (product Read: $productRead)",
     async ({ productRead }) => {
-      const { search, membershipDAL, permissionService } = setupSearch({
+      const { search, membershipDAL, applicationPermissionService } = setupSearch({
         memberOf: ["app-a"],
         readableApplications: ["app-a"],
         productRules: productRead ? readCertificates : []
@@ -457,10 +458,10 @@ describe("certificate search scoped to applications", () => {
       if (productRead) {
         await expect(search()).resolves.toEqual({ certificates: [], totalCount: 0 });
       } else {
-        await expect(search()).rejects.toBeInstanceOf(ForbiddenError);
+        await expect(search()).rejects.toBeInstanceOf(PermissionDeniedError);
       }
       expect(membershipDAL.findResourceMembershipsForActor).not.toHaveBeenCalled();
-      expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
+      expect(applicationPermissionService.getApplicationPermission).not.toHaveBeenCalled();
     }
   );
 });

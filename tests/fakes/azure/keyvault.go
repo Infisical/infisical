@@ -28,7 +28,11 @@ type vaultService struct{}
 
 func (vaultService) Host() string { return "*.vault.azure.net" }
 
-func (vaultService) Scope(r *http.Request) (string, bool) {
+func (vaultService) Scope(r *http.Request) (string, bool) { return clientOf(r) }
+
+// clientOf reads the client id from the access token the tenant's token endpoint
+// minted ("azure-<client id>").
+func clientOf(r *http.Request) (string, bool) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer azure-")
 	return token, ok && token != ""
 }

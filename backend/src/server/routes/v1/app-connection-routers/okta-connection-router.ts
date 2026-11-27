@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedOktaConnectionSchema,
   UpdateOktaConnectionSchema
 } from "@app/services/app-connection/okta";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -46,7 +46,7 @@ export const registerOktaConnectionRouter = async (server: FastifyZodProvider) =
         params: { connectionId }
       } = req;
 
-      const apps = await server.services.appConnection.okta.listApps(connectionId, req.permission);
+      const apps = await server.services.appConnection.okta.listApps(connectionId, req.actor);
       return { apps };
     }
   });

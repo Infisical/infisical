@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { SignerMemberKind } from "@app/services/signer-membership";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -34,10 +34,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.signerMembership.listMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.Identity
@@ -62,10 +59,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.addMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         identityId: req.body.identityId,
@@ -89,9 +83,9 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerMemberAdded,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           signerId: req.params.signerId,
           memberType: "identity",
@@ -119,10 +113,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.signerMembership.updateMemberRole({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.Identity,
@@ -147,9 +138,9 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerMemberUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           signerId: req.params.signerId,
           memberType: "identity",
@@ -176,10 +167,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.signerMembership.removeMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: SignerMemberKind.Identity,
@@ -198,9 +186,9 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SignerMemberRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           signerId: req.params.signerId,
           memberType: "identity"
@@ -227,10 +215,7 @@ export const registerSignerIdentityMembershipRouter = async (server: FastifyZodP
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const members = await server.services.signerMembership.listEffectiveMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         signerId: req.params.signerId,
         kind: "identity"

@@ -1,8 +1,60 @@
-import { TEmailDomains } from "@app/db/schemas";
+import { z } from "zod";
+
+import { EmailDomainsSchema, TEmailDomains } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
-import { EmailDomainStatus } from "./email-domain-types";
+import { EmailDomainStatus, SsoEmailDomainError } from "./email-domain-types";
+
+const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
+
+export const getEmailDomainVerificationRecordValue = (verificationCode: string) =>
+  `${DNS_TXT_VALUE_PREFIX}=${verificationCode}`;
+
+export const EmailDomainResponseSchema = EmailDomainsSchema.omit({
+  verificationMethod: true,
+  verificationCode: true,
+  verificationRecordName: true
+}).extend({
+  verificationRecord: z.object({
+    type: z.literal("TXT"),
+    name: z.string(),
+    value: z.string()
+  })
+});
+
+export type TEmailDomainResponse = z.infer<typeof EmailDomainResponseSchema>;
+
+export const toEmailDomainResponse = ({
+  verificationMethod,
+  verificationCode,
+  verificationRecordName,
+  ...emailDomain
+}: TEmailDomains): TEmailDomainResponse => ({
+  ...emailDomain,
+  verificationRecord: {
+    type: "TXT",
+    name: verificationRecordName,
+    value: getEmailDomainVerificationRecordValue(verificationCode)
+  }
+});
+
+// SSO login only admits users from the org's verified domains, so a config created without one can never sign anyone in.
+export const assertOrgHasVerifiedEmailDomain = async ({
+  orgId,
+  emailDomainDAL
+}: {
+  orgId: string;
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
+}) => {
+  const verifiedDomain = await emailDomainDAL.findOne({ orgId, status: EmailDomainStatus.Verified });
+  if (!verifiedDomain) {
+    throw new BadRequestError({
+      name: SsoEmailDomainError.NotVerified,
+      message: "Verify an email domain for this organization before adding an SSO configuration."
+    });
+  }
+};
 
 /**
  * Given an email and orgId, verifies the org is allowed to manage a user with this email and

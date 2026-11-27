@@ -68,7 +68,7 @@ func TestApplicationAccess_Auditor(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".app.test"))
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		res, err := auditor.API.GetCertificateWithResponse(t.Context(), cert.ID, nil)
@@ -86,7 +86,7 @@ func TestApplicationAccess_Auditor(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".app.test"))
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		key, err := auditor.API.GetCertificatePrivateKeyWithResponse(t.Context(), cert.ID)
@@ -120,7 +120,7 @@ func TestApplicationAccess_Auditor(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		res := pki.Request(t, auditor, g.App, g.Profile, pki.ServerCertificate(id.Short()+".app.test"))
@@ -138,7 +138,7 @@ func TestApplicationAccess_Auditor(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".app.test"))
-		auditor := member(t, tn, g, "auditor")
+		auditor := member(t, g, "auditor")
 
 		// Action
 		res := pki.RevokeRequest(t, auditor, cert.ID, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)
@@ -160,7 +160,7 @@ func TestApplicationAccess_NonMember(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
-		outsider := member(t, tn, g, "")
+		outsider := member(t, g, "")
 
 		// Action
 		res := pki.Request(t, outsider, g.App, g.Profile, pki.ServerCertificate(id.Short()+".app.test"))
@@ -178,7 +178,7 @@ func TestApplicationAccess_NonMember(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := pki.NewGraph(t, tn)
 		cert := g.Issue(t, pki.ServerCertificate(id.Short()+".app.test"))
-		outsider := member(t, tn, g, "")
+		outsider := member(t, g, "")
 
 		// Action
 		res, err := outsider.API.GetCertificateWithResponse(t.Context(), cert.ID, nil)

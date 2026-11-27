@@ -2,10 +2,7 @@ package syncs_test
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"net/http"
 	"strings"
 	"testing"
@@ -97,7 +94,7 @@ func TestAwsCertificateManagerPkiSync_Sync(t *testing.T) {
 		require.NotNil(t, got, "ACM should hold the certificate")
 		require.Equal(t, "IMPORTED", got.Type)
 		require.Equal(t, pki.ParseLeaf(t, cert.Chain).Raw, pki.ParseLeaf(t, got.CertificateChain).Raw)
-		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, acmPublicKey(t, got.PrivateKey))
+		require.Equal(t, pki.ParseLeaf(t, cert.Certificate).PublicKey, pki.ParsePrivateKey(t, got.PrivateKey).Public())
 		require.Equal(t, s.id, got.Tags["InfisicalPkiSyncId"])
 		require.NotEmpty(t, got.Tags["InfisicalCertificate"])
 	})
@@ -145,6 +142,7 @@ func TestAwsCertificateManagerPkiSync_Sync(t *testing.T) {
 		got := s.acct.Certificates(t)[arn]
 		require.NotNil(t, got, "the ARN should still exist")
 		require.Equal(t, pki.ParseLeaf(t, renewed.JSON200.Certificate).Raw, pki.ParseLeaf(t, got.Certificate).Raw)
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, got.Certificate, got.PrivateKey)
 	})
 
 	t.Run("should import the certificate again when a manual sync finds it deleted at the destination", func(t *testing.T) {
@@ -251,15 +249,6 @@ func acmExternalID(t *testing.T, tn *harness.Tenant, syncID string, certID uuid.
 		}
 	}
 	return ""
-}
-
-func acmPublicKey(t *testing.T, keyPEM string) crypto.PublicKey {
-	t.Helper()
-	block, _ := pem.Decode([]byte(keyPEM))
-	require.NotNil(t, block, "not PEM: %q", keyPEM)
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	require.NoError(t, err)
-	return key.(crypto.Signer).Public()
 }
 
 func TestAwsCertificateManagerPkiSync_Update(t *testing.T) {
