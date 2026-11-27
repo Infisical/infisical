@@ -33,7 +33,6 @@ import {
   projectHome,
   projectSections,
   scanningSections,
-  settingsSections,
   type ShellNavSection
 } from "./navigation";
 import { useBlockedProducts } from "./product-access";
@@ -65,12 +64,12 @@ export const CommandPalette = ({
     )
   });
   const base = orgHref(orgId);
-  const go = (path: string, search?: Record<string, string>) =>
-    navigate({ to: resolve(`${base}${path}`) as never, search: search as never });
   const project = session.projects.find((entry) => entry.id === projectId);
   const blocked = useBlockedProducts(orgId);
 
   const groups = useMemo(() => {
+    const go = (path: string, search?: Record<string, string>) =>
+      navigate({ to: resolve(`${base}${path}`) as never, search: search as never });
     const pageItems = (
       prefix: string,
       sections: readonly ShellNavSection[],
@@ -78,15 +77,22 @@ export const CommandPalette = ({
       aliases: readonly string[] = []
     ) =>
       sections.flatMap((section) =>
-        section.items.map((item): CommandMenuItem => ({
-          id: `${prefix}:${item.id}`,
-          label: item.label,
-          icon: item.icon,
-          kind: "page",
-          description: scope,
-          keywords: [item.id, ...(section.label ? [section.label] : []), ...aliases],
-          onSelect: () => go(item.path, item.search)
-        }))
+        section.items.flatMap((item) =>
+          [item, ...(item.children ?? [])].map((page): CommandMenuItem => ({
+            id: `${prefix}:${page === item ? item.id : `${item.id}:${page.id}`}`,
+            label: page.label,
+            icon: page.icon,
+            kind: "page",
+            description: page === item ? scope : [scope, item.label].filter(Boolean).join(" "),
+            keywords: [
+              page.id,
+              ...(page === item ? [] : [item.label]),
+              ...(section.label ? [section.label] : []),
+              ...aliases
+            ],
+            onSelect: () => go(page.path, page.search)
+          }))
+        )
       );
     const projectSectionsOf = (type: ProjectType, id: string) => {
       const projectPath = projectBase(type, id);
@@ -119,14 +125,7 @@ export const CommandPalette = ({
     }
     result.push({
       label: "Organization",
-      items: [
-        ...pageItems("org", orgSections(session.organization.isSubOrganization)),
-        ...pageItems(
-          "settings",
-          settingsSections(session.organization.isSubOrganization),
-          "Settings"
-        )
-      ]
+      items: pageItems("org", orgSections(session.organization.isSubOrganization))
     });
     result.push({
       label: "Products",

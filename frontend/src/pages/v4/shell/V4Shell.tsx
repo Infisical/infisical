@@ -311,12 +311,9 @@ export const V4Shell = ({
     ? [orgCrumb, ...nav.crumbs]
     : [
         orgCrumb,
-        ...(at.level === "settings"
-          ? [{ label: "Settings", href: resolve(`${base}/settings`) }]
-          : []),
         ...(productCrumb ? [productCrumb] : []),
         ...(projectCrumb ? [projectCrumb] : []),
-        ...(at.inSettings ? [{ label: "Settings", href: resolve(location.pathname) }] : []),
+        ...(at.group ? [{ label: at.group.label, href: resolve(`${base}${at.group.path}`) }] : []),
         ...(at.current ? [{ label: at.current.label }] : [])
       ];
 

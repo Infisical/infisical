@@ -10,9 +10,7 @@ import {
   productOf,
   productSections,
   projectSections,
-  projectSettingsSections,
   scanningSections,
-  settingsSections,
   type ShellLevel,
   type ShellNavItem,
   type ShellNavSection
@@ -22,23 +20,29 @@ export type ShellLocation = {
   level: ShellLevel;
   sections: readonly ShellNavSection[];
   current?: ShellNavItem;
-  settings?: readonly ShellNavSection[];
-  inSettings?: boolean;
+  /** The expandable row that holds current, such as Settings. */
+  group?: ShellNavItem;
   product?: ProjectType;
   projectId?: string;
 };
 
-export const withoutNavItem = (location: ShellLocation, itemId: string): ShellLocation => ({
-  ...location,
-  sections: location.sections.map((section) => ({
+export const withoutNavItem = (location: ShellLocation, itemId: string): ShellLocation => {
+  const sections = location.sections.map((section) => ({
     ...section,
-    items: section.items.filter((item) => item.id !== itemId)
-  })),
-  settings: location.settings?.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => item.id !== itemId)
-  }))
-});
+    items: section.items
+      .filter((item) => item.id !== itemId)
+      .map((item) => {
+        if (!item.children) return item;
+        const children = item.children.filter((child) => child.id !== itemId);
+        return { ...item, children: children.length > 1 ? children : undefined };
+      })
+  }));
+  const group = sections
+    .flatMap((section) => section.items)
+    .find((item) => item.id === location.group?.id);
+  if (!location.group || group?.children) return { ...location, sections, group };
+  return { ...location, sections, current: group, group: undefined };
+};
 
 const productResources = new Set([
   "insights",
@@ -51,7 +55,7 @@ const detailOwners: [RegExp, string][] = [
   [/^\/cert-manager\/certificates\//, "inventory"],
   [/^\/cert-manager\/approvals\//, "requests"],
   [/^\/cert-manager\/ca\//, "authorities"],
-  [/^\/cert-manager\/hsm-connectors\//, "settings"]
+  [/^\/cert-manager\/hsm-connectors\//, "hsm-connectors"]
 ];
 
 const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "current"> => {
@@ -87,9 +91,6 @@ const locate = (path: string, isSubOrganization: boolean): Omit<ShellLocation, "
   if (product) {
     return { level: "product", sections: productSections(productOf(product)), product };
   }
-  if (/^\/(settings|sso|oauth-applications|networking)(\/|$)/.test(path)) {
-    return { level: "settings", sections: settingsSections(isSubOrganization) };
-  }
   return { level: "org", sections: orgSections(isSubOrganization) };
 };
 
@@ -99,25 +100,20 @@ export const resolveShellLocation = (
   isSubOrganization: boolean
 ): ShellLocation => {
   const at = locate(path, isSubOrganization);
-  const settingsPath = at.sections
-    .flatMap((section) => section.items)
-    .find((item) => item.id === "settings")?.path;
-  const settings = settingsPath ? projectSettingsSections(at.level, settingsPath) : undefined;
-  if (settings && settingsPath === path) {
-    const tabs = settings.flatMap((section) => section.items);
-    const current = tabs.find((item) => item.search?.selectedTab === selectedTab) ?? tabs[0];
-    return { ...at, settings, inSettings: true, current };
-  }
-  const items = at.sections.flatMap((section) => section.items);
-  const matches = items.filter(
-    (item) =>
-      (path === item.path || path.startsWith(`${item.path}/`)) &&
-      (!item.search || item.search.selectedTab === (selectedTab ?? "tab-org-general"))
+  const rows = at.sections.flatMap((section) =>
+    section.items.flatMap((item) =>
+      (item.children ?? [item]).map((row) => ({ row, group: item.children && item }))
+    )
   );
-  const current =
-    matches.sort((a, b) => b.path.length - a.path.length)[0] ??
-    items.find(
-      (item) => item.id === detailOwners.find(([pattern]) => pattern.test(`${path}/`))?.[1]
+  const longest = rows
+    .filter(({ row }) => path === row.path || path.startsWith(`${row.path}/`))
+    .sort((a, b) => b.row.path.length - a.row.path.length)[0]?.row.path;
+  const onPath = rows.filter(({ row }) => row.path === longest);
+  const match =
+    onPath.find(({ row }) => row.search?.selectedTab === selectedTab) ??
+    onPath[0] ??
+    rows.find(
+      ({ row }) => row.id === detailOwners.find(([pattern]) => pattern.test(`${path}/`))?.[1]
     );
-  return { ...at, settings, current };
+  return { ...at, current: match?.row, group: match?.group };
 };

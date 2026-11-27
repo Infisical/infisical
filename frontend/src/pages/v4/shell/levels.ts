@@ -11,7 +11,6 @@ import {
   productNavItems,
   productOf,
   productSections,
-  settingsSections,
   type ShellNavItem,
   type ShellNavSection
 } from "./navigation";
@@ -39,7 +38,6 @@ const shellLevel = (
   id: string,
   label: string,
   sections: readonly ShellNavSection[],
-  opens: Record<string, V4ShellLevel> = {},
   counts: Record<string, number> = {},
   badges: Record<string, ReactNode> = {}
 ): V4ShellLevel => {
@@ -56,8 +54,16 @@ const shellLevel = (
         icon: item.icon,
         count: counts[item.id] || item.count,
         badge: badges[item.id],
-        ...(opens[item.id]
-          ? { drillIn: true, link: opens[item.id].landing }
+        ...(item.children
+          ? {
+              children: item.children.map((child) => ({
+                id: `${id}:${child.id}`,
+                label: child.label,
+                count: counts[child.id] || child.count,
+                badge: badges[child.id],
+                link: navLink(linkTo, child)
+              }))
+            }
           : { link: navLink(linkTo, item) })
       }))
     }))
@@ -134,28 +140,16 @@ export const shellTrail = ({
   productCounts?: Record<string, number>;
 }): V4ShellLevel[] => {
   const product = at.product ? productOf(at.product) : undefined;
-  const orgSettings = shellLevel(
-    linkTo,
-    "settings",
-    "Settings",
-    settingsSections(isSubOrganization)
-  );
   const trail = [
     withProducts(
-      shellLevel(linkTo, "org", "Home", orgSections(isSubOrganization), {
-        settings: orgSettings
-      }),
+      shellLevel(linkTo, "org", "Home", orgSections(isSubOrganization)),
       linkTo,
       blocked
     ),
     ...nested
   ];
-  if (at.level === "settings") trail.push(orgSettings);
   if (product && at.projectId)
     trail.push(shellLevel(linkTo, "product", product.label, productSections(product)));
-  const projectSettings =
-    at.settings && shellLevel(linkTo, "project-settings", "Settings", at.settings);
-  const opens = projectSettings ? { settings: projectSettings } : undefined;
   if (at.projectId)
     trail.push(
       shellLevel(
@@ -163,15 +157,13 @@ export const shellTrail = ({
         at.level,
         projectName ?? "Project",
         at.sections,
-        opens,
         projectCounts,
         projectBadges
       )
     );
   else if (at.level === "pki" || at.level === "scanning" || at.level === "pam")
     trail.push(
-      shellLevel(linkTo, at.level, product?.label ?? at.level, at.sections, opens, productCounts)
+      shellLevel(linkTo, at.level, product?.label ?? at.level, at.sections, productCounts)
     );
-  if (projectSettings && at.inSettings) trail.push(projectSettings);
   return trail;
 };
