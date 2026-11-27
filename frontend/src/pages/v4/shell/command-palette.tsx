@@ -19,6 +19,7 @@ import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
 import { useResolveV4Href } from "../resolveV4Href";
 import { useV4ThemeChoice } from "../useV4Theme";
+import { withoutNavItems } from "./location";
 import {
   agentVaultSections,
   kmsSections,
@@ -40,11 +41,14 @@ import { useBlockedProducts } from "./product-access";
 export const CommandPalette = ({
   orgId,
   projectId,
+  hidden,
   open,
   onOpenChange
 }: {
   orgId: string;
   projectId?: string;
+  /** Project nav items the sidebar hides from this person, by id. */
+  hidden: readonly string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
@@ -120,7 +124,11 @@ export const CommandPalette = ({
     ) {
       result.push({
         label: project.name,
-        items: pageItems("project", projectSectionsOf(project.type, project.id), project.name)
+        items: pageItems(
+          "project",
+          withoutNavItems(projectSectionsOf(project.type, project.id), hidden),
+          project.name
+        )
       });
     }
     result.push({
@@ -218,7 +226,7 @@ export const CommandPalette = ({
       ]
     });
     return result;
-  }, [base, blocked, groupData, project, session, orgId, navigate, resolve, setTheme]);
+  }, [base, blocked, groupData, project, hidden, session, orgId, navigate, resolve, setTheme]);
 
   return (
     <CommandMenu

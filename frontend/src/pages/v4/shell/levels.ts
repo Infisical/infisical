@@ -100,7 +100,6 @@ const withProducts = (
             : undefined,
         ...(product.children
           ? {
-              defaultOpen: product.id === "secret-management",
               children: product.children.map((page) => ({
                 id: productNavId(product.id, page.id),
                 label: page.label,

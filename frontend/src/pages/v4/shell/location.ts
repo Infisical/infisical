@@ -26,17 +26,25 @@ export type ShellLocation = {
   projectId?: string;
 };
 
-export const withoutNavItem = (location: ShellLocation, itemId: string): ShellLocation => {
-  const sections = location.sections.map((section) => ({
+export const withoutNavItems = (
+  sections: readonly ShellNavSection[],
+  itemIds: readonly string[]
+): ShellNavSection[] => {
+  const hidden = new Set(itemIds);
+  return sections.map((section) => ({
     ...section,
     items: section.items
-      .filter((item) => item.id !== itemId)
+      .filter((item) => !hidden.has(item.id))
       .map((item) => {
         if (!item.children) return item;
-        const children = item.children.filter((child) => child.id !== itemId);
+        const children = item.children.filter((child) => !hidden.has(child.id));
         return { ...item, children: children.length > 1 ? children : undefined };
       })
   }));
+};
+
+export const withoutNavItem = (location: ShellLocation, itemId: string): ShellLocation => {
+  const sections = withoutNavItems(location.sections, [itemId]);
   const group = sections
     .flatMap((section) => section.items)
     .find((item) => item.id === location.group?.id);

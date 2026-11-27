@@ -385,6 +385,7 @@ export const V4Shell = ({
         <CommandPalette
           orgId={orgId}
           projectId={at.projectId}
+          hidden={agentVaultNav.hidden}
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
         />
