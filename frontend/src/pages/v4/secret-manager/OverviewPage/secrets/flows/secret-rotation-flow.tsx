@@ -1,36 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Controller, type FieldValues, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { useScheme } from "@infisical/cipher/scope";
 import { Alert } from "@infisical/cipher/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from "@infisical/cipher/ui/alert-dialog";
-import { Button } from "@infisical/cipher/ui/button";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Combobox } from "@infisical/cipher/ui/combobox";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { Input } from "@infisical/cipher/ui/input";
 import { Media } from "@infisical/cipher/ui/item";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
-import { Steps } from "@infisical/cipher/ui/multi-step";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@infisical/cipher/ui/sheet";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 import { Switch } from "@infisical/cipher/ui/switch";
-import { Heading, SmallText } from "@infisical/cipher/ui/text";
+import { SmallText } from "@infisical/cipher/ui/text";
 
 import {
   ProjectPermissionSecretRotationActions,
@@ -81,7 +63,6 @@ import {
   SecretRotation,
   SecretRotationV2FormSchema
 } from "./secret-rotation/schemas";
-import { Gate } from "./shared";
 
 export type { RotationResource };
 
@@ -452,6 +433,63 @@ function ReviewFields({ project, alert }: { project: string; alert: AlertProps }
   );
 }
 
+function RotationStep({
+  index,
+  type,
+  isUpdate,
+  project,
+  environments,
+  addedConnections,
+  onCreateConnection,
+  alert
+}: {
+  index: number;
+  type: SecretRotation;
+  isUpdate: boolean;
+  project: string;
+  environments: RotationEnvironment[];
+  addedConnections: RotationConnection[];
+  onCreateConnection: (connection: RotationConnection) => void;
+  alert: AlertProps;
+}) {
+  const Views = ROTATION_VIEWS[type];
+  if (index === 0)
+    return (
+      <ConfigurationFields
+        isUpdate={isUpdate}
+        environments={environments}
+        project={project}
+        addedConnections={addedConnections}
+        onCreateConnection={onCreateConnection}
+      />
+    );
+  if (index === 1)
+    return (
+      <Stack gap={16}>
+        <Views.Parameters />
+      </Stack>
+    );
+  if (index === 2)
+    return (
+      <Stack gap={16}>
+        <Views.Mappings />
+      </Stack>
+    );
+  if (index === 3) return <DetailsFields />;
+  if (index === 4)
+    return (
+      <FailureAlertFields
+        projectId={project}
+        resourceId={alert.rotationId}
+        alertId={alert.alertId}
+        canManage={alert.canManage}
+        unavailable={alert.unavailable}
+        target={ROTATION_FAILURE_ALERT}
+      />
+    );
+  return <ReviewFields project={project} alert={alert} />;
+}
+
 const defaultsFor = (
   type: SecretRotation,
   secretPath: string,
@@ -466,97 +504,6 @@ const defaultsFor = (
   parameters: ROTATION_TEMPLATES[type].parameters,
   secretsMapping: { ...ROTATION_TEMPLATES[type].secretsMapping }
 });
-
-function RotationSteps({
-  isUpdate,
-  type,
-  step,
-  onStep,
-  onCancel,
-  project,
-  environments,
-  addedConnections,
-  onCreateConnection,
-  alert
-}: {
-  alert: AlertProps;
-  isUpdate: boolean;
-  type: SecretRotation;
-  step: number;
-  onStep: (step: number) => void;
-  onCancel: () => void;
-  project: string;
-  environments: RotationEnvironment[];
-  addedConnections: RotationConnection[];
-  onCreateConnection: (connection: RotationConnection) => void;
-}) {
-  const Views = ROTATION_VIEWS[type];
-  const current = FORM_STEPS[step];
-  const offset = isUpdate ? 0 : 1;
-  return (
-    <div className="flex min-h-0 flex-1">
-      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--cipher-line-soft)] px-5 py-6 max-md:hidden">
-        <SmallText muted>Setup steps</SmallText>
-        <Steps
-          orientation="vertical"
-          label="Setup steps"
-          current={step + offset}
-          steps={[
-            ...(isUpdate ? [] : [{ title: "Provider", summary: SECRET_ROTATION_MAP[type].name }]),
-            ...FORM_STEPS.map((entry) => ({ title: entry.name }))
-          ]}
-          onStepClick={(index) => {
-            if (!isUpdate && index === 0) {
-              onCancel();
-              return;
-            }
-            if (index - offset < step) onStep(index - offset);
-          }}
-        />
-      </aside>
-      <form
-        data-scroll-fade="y"
-        className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6 max-md:px-5"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <Heading level={2} size="subsection">
-          {current.title}
-        </Heading>
-        {step === 0 && (
-          <ConfigurationFields
-            isUpdate={isUpdate}
-            environments={environments}
-            project={project}
-            addedConnections={addedConnections}
-            onCreateConnection={onCreateConnection}
-          />
-        )}
-        {step === 1 && (
-          <Stack gap={16}>
-            <Views.Parameters />
-          </Stack>
-        )}
-        {step === 2 && (
-          <Stack gap={16}>
-            <Views.Mappings />
-          </Stack>
-        )}
-        {step === 3 && <DetailsFields />}
-        {step === 4 && (
-          <FailureAlertFields
-            projectId={project}
-            resourceId={alert.rotationId}
-            alertId={alert.alertId}
-            canManage={alert.canManage}
-            unavailable={alert.unavailable}
-            target={ROTATION_FAILURE_ALERT}
-          />
-        )}
-        {step === 5 && <ReviewFields project={project} alert={alert} />}
-      </form>
-    </div>
-  );
-}
 
 export function SecretRotationFlow({
   open,
@@ -585,6 +532,7 @@ export function SecretRotationFlow({
     rotation ? rotationTypeOf(rotation) : null
   );
   const [step, setStep] = useState(0);
+  const closing = useRef(false);
   const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
   const [addedConnections, setAddedConnections] = useState<RotationConnection[]>([]);
   const form = useForm<FieldValues>({
@@ -623,6 +571,7 @@ export function SecretRotationFlow({
   const reset = () => setType(null);
   const close = () => {
     if (!isUpdate) reset();
+    setStep(0);
     onOpenChange(false);
   };
   const request = (target: "close" | "provider") => {
@@ -633,10 +582,10 @@ export function SecretRotationFlow({
     if (target === "close") close();
     else reset();
   };
-  const conflict = (values: FieldValues) => {
+  const conflict = (values: FieldValues, index: number) => {
     const path = values.secretPath as string;
     const env = values.environment as RotationEnvironment;
-    const { fields } = FORM_STEPS[step];
+    const { fields } = FORM_STEPS[index];
     const scoped = resources.filter(
       (entry) => entry.project === project && entry.environment === env.slug && entry.path === path
     );
@@ -744,7 +693,6 @@ export function SecretRotationFlow({
     });
     close();
   };
-  const isFinalStep = step === FORM_STEPS.length - 1;
   const formEnvironment = form.watch("environment") as RotationEnvironment | undefined;
   let submitEnvironments = rotationEnvironments.map((entry) => entry.slug);
   if (formEnvironment) submitEnvironments = [formEnvironment.slug];
@@ -759,150 +707,108 @@ export function SecretRotationFlow({
     rotation?.path ?? secretPath,
     isUpdate ? "edit this rotation" : "create secret rotations here"
   );
-  const handleNext = async () => {
-    if (isFinalStep) {
-      await form.handleSubmit(submit)();
-      return;
-    }
-    if (!(await form.trigger(FORM_STEPS[step].fields))) return;
-    const error = conflict(form.getValues());
-    if (error) {
-      form.setError(error.field, { message: error.message }, { shouldFocus: true });
-      return;
-    }
-    setStep(step + 1);
+  const validateStep = async (index: number) => {
+    if (!(await form.trigger(FORM_STEPS[index].fields))) return false;
+    const error = conflict(form.getValues(), index);
+    if (!error) return true;
+    form.setError(error.field, { message: error.message }, { shouldFocus: true });
+    return false;
   };
-  const handlePrev = () => {
-    if (step === 0) request(isUpdate ? "close" : "provider");
-    else setStep(step - 1);
+  const alert: AlertProps = {
+    canManage: alertManageable(form.getValues()),
+    unavailable: failureAlertUnavailable,
+    rotationId: rotation?.id,
+    alertId: savedAlert?.id
   };
+  const formSteps: MultiStepStep[] = type
+    ? FORM_STEPS.map((entry, index) => ({
+        title: entry.name,
+        heading: entry.title,
+        validate: index === FORM_STEPS.length - 1 ? undefined : () => validateStep(index),
+        disabledReason: index === FORM_STEPS.length - 1 ? submitBlock : undefined,
+        content: (
+          <RotationStep
+            index={index}
+            type={type}
+            isUpdate={isUpdate}
+            project={project}
+            environments={rotationEnvironments}
+            addedConnections={addedConnections}
+            onCreateConnection={(connection) =>
+              setAddedConnections([...addedConnections, connection])
+            }
+            alert={alert}
+          />
+        )
+      }))
+    : [];
+  const steps: MultiStepStep[] = isUpdate
+    ? formSteps
+    : [
+        {
+          title: "Provider",
+          summary: type ? SECRET_ROTATION_MAP[type].name : undefined,
+          footer: false,
+          content: <ProviderSelect onSelect={select} />
+        },
+        ...formSteps
+      ];
+  const offset = isUpdate ? 0 : 1;
   return (
-    <>
-      <Sheet
+    <FormProvider {...form}>
+      <MultiStep
+        variant="sheet"
+        layout="aside"
         open={open}
+        onCancel={() => {
+          closing.current = true;
+        }}
         onOpenChange={(next) => {
+          closing.current = false;
           if (next) onOpenChange(true);
           else request("close");
         }}
-      >
-        <FormProvider {...form}>
-          <SheetContent size="xl">
-            {type ? (
-              <SheetHeader>
-                <Inline gap={12} wrap={false} align="start">
-                  <ProviderLogo type={type} />
-                  <Stack gap={4}>
-                    <SheetTitle
-                      badges={
-                        <DocumentationLink
-                          href={docsHref(type)}
-                          subject={`${SECRET_ROTATION_MAP[type].name} secret rotation`}
-                        />
-                      }
-                    >
-                      {/* v4-check-ignore bare-provider-name -- ProviderLogo already leads this header */}
-                      {SECRET_ROTATION_MAP[type].name} secret rotation
-                    </SheetTitle>
-                    {!isUpdate && (
-                      <SheetDescription>
-                        Infisical replaces these credentials on a schedule and writes each new value
-                        to the secrets you map.
-                      </SheetDescription>
-                    )}
-                  </Stack>
-                </Inline>
-              </SheetHeader>
-            ) : (
-              <SheetHeader>
-                <SheetTitle>Choose a rotation provider</SheetTitle>
-              </SheetHeader>
-            )}
-            {type ? (
-              <RotationSteps
-                isUpdate={isUpdate}
-                type={type}
-                step={step}
-                onStep={setStep}
-                onCancel={() => request("provider")}
-                environments={rotationEnvironments}
-                project={project}
-                addedConnections={addedConnections}
-                onCreateConnection={(connection) =>
-                  setAddedConnections([...addedConnections, connection])
-                }
-                alert={{
-                  canManage: alertManageable(form.getValues()),
-                  unavailable: failureAlertUnavailable,
-                  rotationId: rotation?.id,
-                  alertId: savedAlert?.id
-                }}
-              />
-            ) : (
-              <div
-                data-scroll-fade="y"
-                className="min-h-0 flex-1 overflow-y-auto p-[var(--cipher-space-overlay-inset)]"
-              >
-                <ProviderSelect onSelect={select} />
-              </div>
-            )}
-            {type && (
-              <SheetFooter>
-                <Inline justify="between" wrap={false}>
-                  <SmallText muted className="max-md:hidden">
-                    {isDirty ? "Unsaved changes" : ""}
-                  </SmallText>
-                  <Inline gap={12} wrap={false}>
-                    <SmallText muted className="whitespace-nowrap">
-                      Step {step + (isUpdate ? 1 : 2)} of {FORM_STEPS.length + (isUpdate ? 0 : 1)}
-                    </SmallText>
-                    <Button variant="outline" onClick={handlePrev}>
-                      Back
-                    </Button>
-                    <Gate reason={isFinalStep ? submitBlock : undefined}>
-                      <Button
-                        variant="primary"
-                        disabled={isFinalStep && Boolean(submitBlock)}
-                        onClick={handleNext}
-                      >
-                        {isFinalStep
-                          ? `${isUpdate ? "Update" : "Create"} secret rotation`
-                          : "Continue"}
-                      </Button>
-                    </Gate>
-                  </Inline>
-                </Inline>
-              </SheetFooter>
-            )}
-          </SheetContent>
-        </FormProvider>
-      </Sheet>
-      <AlertDialog open={discard !== null} onOpenChange={(next) => !next && setDiscard(null)}>
-        <AlertDialogContent icon="alert">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isUpdate ? "Discard changes?" : "Discard Secret Rotation Setup?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isUpdate
-                ? "Your unsaved changes to this secret rotation will be lost."
-                : "Your progress configuring this secret rotation will be lost."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep editing</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (discard === "close") close();
-                else reset();
-                setDiscard(null);
-              }}
-            >
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        step={type ? step + offset : 0}
+        onStepChange={(next) => {
+          if (closing.current) return;
+          if (next < offset) request("provider");
+          else setStep(next - offset);
+        }}
+        media={type ? <ProviderLogo type={type} /> : undefined}
+        title={
+          type ? `${SECRET_ROTATION_MAP[type].name} secret rotation` : "Choose a rotation provider"
+        }
+        badges={
+          type ? (
+            <DocumentationLink
+              href={docsHref(type)}
+              subject={`${SECRET_ROTATION_MAP[type].name} secret rotation`}
+            />
+          ) : undefined
+        }
+        footerStart={isDirty ? <SmallText muted>Unsaved changes</SmallText> : undefined}
+        completeLabel={`${isUpdate ? "Update" : "Create"} secret rotation`}
+        onComplete={async () => {
+          await form.handleSubmit(submit)();
+          return false;
+        }}
+        steps={steps}
+      />
+      <DiscardChangesAlertDialog
+        open={discard !== null}
+        onOpenChange={(next) => !next && setDiscard(null)}
+        title={isUpdate ? "Discard changes?" : "Discard Secret Rotation Setup?"}
+        description={
+          isUpdate
+            ? "Your unsaved changes to this secret rotation will be lost."
+            : "Your progress configuring this secret rotation will be lost."
+        }
+        onDiscard={() => {
+          if (discard === "close") close();
+          else reset();
+          setDiscard(null);
+        }}
+      />
+    </FormProvider>
   );
 }
