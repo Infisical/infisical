@@ -309,7 +309,7 @@ describe("secretReadConcurrencyLimit", () => {
     held[1].finish();
     expect((await secondRun).statusCode).toBe(200);
     expect(vi.mocked(recordSecretReadSizeMetric).mock.calls).toEqual([
-      [{ secretCount: 950, estimate: 100, estimateSource: "default", planSlug: "pro" }]
+      [{ secretCount: 950, estimate: 100, estimateSource: "default" }]
     ]);
   });
 
@@ -354,8 +354,8 @@ describe("secretReadConcurrencyLimit", () => {
     expect((await secondRun).statusCode).toBe(500);
 
     expect(vi.mocked(recordSecretReadSizeMetric).mock.calls).toEqual([
-      [{ secretCount: 30, estimate: 100, estimateSource: "default", planSlug: "pro" }],
-      [{ secretCount: 45, estimate: 30, estimateSource: "last_known", planSlug: "pro" }]
+      [{ secretCount: 30, estimate: 100, estimateSource: "default" }],
+      [{ secretCount: 45, estimate: 30, estimateSource: "last_known" }]
     ]);
   });
 
@@ -409,7 +409,7 @@ describe("secretReadConcurrencyLimit", () => {
     expect((await Promise.all(requests)).map((res) => res.statusCode)).toEqual([200, 200]);
     expect(gauges?.getUsed()).toBe(0);
     expect(vi.mocked(recordSecretReadSizeMetric).mock.calls).toEqual([
-      [{ secretCount: 950, estimate: 100, estimateSource: "default", planSlug: "pro" }]
+      [{ secretCount: 950, estimate: 100, estimateSource: "default" }]
     ]);
   });
 

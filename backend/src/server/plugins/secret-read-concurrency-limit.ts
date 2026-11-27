@@ -18,7 +18,7 @@ import {
 
 const REFUSAL_LOG_INTERVAL_MS = 10_000;
 const MAX_REMEMBERED_SIZES = 10_000;
-const REFUSAL_MESSAGE = "Infisical is handling too many secret list requests right now. Please try again in a second";
+const REFUSAL_MESSAGE = "This request could not be completed. Please retry";
 
 const unlimitedSlot: TConcurrencySlot = (work) => work(() => {});
 
@@ -138,8 +138,7 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
               secretCount: reportedSize,
               estimate,
               estimateSource:
-                lastKnownSize === undefined ? SecretReadEstimateSource.Default : SecretReadEstimateSource.LastKnown,
-              planSlug: req.rateLimitPlanSlug
+                lastKnownSize === undefined ? SecretReadEstimateSource.Default : SecretReadEstimateSource.LastKnown
             });
           }
         }

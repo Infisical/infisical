@@ -1304,11 +1304,10 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{secret}`
 
-    **Description**: Number of secrets a request to list secrets held in memory, including imported secrets, recorded once per request. Use the p75 of this metric as the value of `SECRET_READ_DEFAULT_SECRET_WEIGHT`. Group it by `plan.slug` to see how many secrets the organizations on each license plan hold.
+    **Description**: Number of secrets a request to list secrets held in memory, including imported secrets, recorded once per request. Use the p75 of this metric as the value of `SECRET_READ_DEFAULT_SECRET_WEIGHT`.
 
     **Attributes**:
       - `estimate.source` (string): `last_known` (the instance had handled the same request before) or `default` (the instance used `SECRET_READ_DEFAULT_SECRET_WEIGHT`)
-      - `plan.slug` (string): the slug of the organization's license plan, or `none`
   </Accordion>
 
   <Accordion title="Secret Read Estimate Error">

@@ -644,7 +644,7 @@ const SECRET_COUNT_BUCKET_BOUNDARIES = [0, 10, 50, 100, 250, 500, 1000, 2500, 50
 
 export const secretReadSizeHistogram = infisicalCoreMeter.createHistogram("infisical.secret.read.size", {
   description:
-    "Secrets a list request held in memory, recorded once per request from its last known count, by plan and by where its admission estimate came from.",
+    "Secrets a list request held in memory, recorded once per request from its last known count, by where its admission estimate came from.",
   unit: "{secret}",
   advice: { explicitBucketBoundaries: SECRET_COUNT_BUCKET_BOUNDARIES }
 });
@@ -663,14 +663,10 @@ export const recordSecretReadSizeMetric = (params: {
   secretCount: number;
   estimate: number;
   estimateSource: SecretReadEstimateSource;
-  planSlug?: string | null;
 }) => {
   if (!isTelemetryEnabled()) return;
   const attributes = { "estimate.source": params.estimateSource };
-  secretReadSizeHistogram.record(params.secretCount, {
-    ...attributes,
-    "plan.slug": planSlugAttribute(params.planSlug)
-  });
+  secretReadSizeHistogram.record(params.secretCount, attributes);
   secretReadEstimateErrorHistogram.record(Math.max(0, params.secretCount - params.estimate), attributes);
 };
 

@@ -1160,7 +1160,7 @@ service takes no slot. A route that does neither is outside the budget. The slot
 
 A refusal records `infisical.secret.rate_limit.exceeded.count` with bucket `read_budget`. The instance also reports
 `infisical.secret.read_budget.capacity` and `.used` (gauges), and once per read `infisical.secret.read.size` (by
-`plan.slug`) and `infisical.secret.read.estimate.error`. Do not label any of them with the organization: a histogram per
+`estimate.source`) and `infisical.secret.read.estimate.error`. Do not label any of them with the organization: a histogram per
 organization is one set of bucket series per customer per instance, which the `InfisicalCore` rules below forbid. The
 throttled warning the plugin logs carries the `orgId` instead.
 
