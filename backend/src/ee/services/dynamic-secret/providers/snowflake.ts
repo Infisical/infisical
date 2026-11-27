@@ -9,6 +9,7 @@ import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import {
   assertSnowflakeStatementSupported,
+  isSnowflakeFileTransferStatement,
   SNOWFLAKE_ARRAY_BINDING_THRESHOLD
 } from "@app/services/app-connection/snowflake/snowflake-connection-fns";
 
@@ -18,6 +19,12 @@ import { generateUsername } from "./templateUtils";
 
 // destroy client requires callback...
 const noop = () => {};
+
+export class SnowflakeUnsupportedStatementError extends BadRequestError {
+  constructor({ message }: { message: string }) {
+    super({ message });
+  }
+}
 
 const generatePassword = (size = 48) => {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~!*";
@@ -46,11 +53,13 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
       allowedExpressions: (val) => ["username"].includes(val)
     });
-    [providerInputs.creationStatement, providerInputs.revocationStatement, providerInputs.renewStatement].forEach(
-      (statement) => {
-        if (statement) assertSnowflakeStatementSupported(statement);
-      }
-    );
+    if (
+      [providerInputs.creationStatement, providerInputs.revocationStatement, providerInputs.renewStatement].some(
+        (statement) => statement && isSnowflakeFileTransferStatement(statement)
+      )
+    ) {
+      throw new SnowflakeUnsupportedStatementError({ message: "PUT and GET statements are not supported" });
+    }
 
     return providerInputs;
   };

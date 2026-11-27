@@ -25,10 +25,10 @@ import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TDynamicSecretDALFactory } from "./dynamic-secret-dal";
 import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-secret-types";
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
-import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
 import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
 import { redactStoredInputs, restoreOmittedSecretFields } from "./providers/redact";
+import { validateStoredProviderInputs } from "./providers/stored-inputs";
 
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
@@ -337,16 +337,7 @@ export const dynamicSecretServiceFactory = ({
       else if ((inputs as Record<string, unknown>).gatewayPoolId)
         (newInput as Record<string, unknown>).gatewayId = undefined;
     }
-    let oldInput: unknown;
-    try {
-      oldInput = await selectedProvider.validateProviderInputs(decryptedStoredInput, { projectId });
-    } catch (error) {
-      if (error instanceof GcpIamServiceAccountSuffixError) {
-        oldInput = decryptedStoredInput;
-      } else {
-        throw error;
-      }
-    }
+    const oldInput = await validateStoredProviderInputs(selectedProvider, decryptedStoredInput, projectId);
     const activeLeaseCount = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
     const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
       projectId,
@@ -625,18 +616,11 @@ export const dynamicSecretServiceFactory = ({
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
-    let providerInputs: object;
-    try {
-      providerInputs = (await selectedProvider.validateProviderInputs(decryptedStoredInput, {
-        projectId
-      })) as object;
-    } catch (error) {
-      if (error instanceof GcpIamServiceAccountSuffixError) {
-        providerInputs = decryptedStoredInput;
-      } else {
-        throw error;
-      }
-    }
+    const providerInputs = (await validateStoredProviderInputs(
+      selectedProvider,
+      decryptedStoredInput,
+      projectId
+    )) as object;
 
     return {
       ...dynamicSecretCfg,
