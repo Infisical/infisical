@@ -53,8 +53,14 @@ export type TSlackOAuthInstall = {
 
 export type TSlackChannel = { id: string; name: string; isArchived: boolean };
 
-// Bounds the SDK's retries for callers that cannot wait (alert dispatch). Without them the SDK defaults apply.
+// For callers that cannot wait (alert dispatch): the call times out after timeoutMs, retries at most `retries` times
+// within that time, and a rate-limited call fails at once as RateLimited instead of waiting. Without limits the
+// provider SDK's defaults apply.
 export type TChatPostLimits = { timeoutMs: number; retries: number };
+
+// Why a channel did not get the message. providerError is the provider's own code when it gave one (Slack's
+// `data.error`), for callers that word their own message.
+export type TChatPostRefusal = { failure: ChatPostFailure; providerError?: string };
 
 export type TSlackClient = {
   generateInstallUrl(input: {
@@ -80,7 +86,7 @@ export type TSlackClient = {
     channelId: string;
     message: TSlackMessage;
     limits?: TChatPostLimits;
-  }): Promise<ChatPostFailure | null>;
+  }): Promise<TChatPostRefusal | null>;
 };
 
 export type TMicrosoftTeamsAppCredentials = { appId: string; clientSecret: string; botId: string };
@@ -93,15 +99,22 @@ export type TMicrosoftTeamsTeam = {
   channels: { channelId: string; channelName: string }[];
 };
 
+export type TTenantConsentOutcome =
+  | { verified: true }
+  // Entra answered AADSTS65001: no admin consent for the app in the tenant.
+  | { verified: false; reason: "consent-required" }
+  // A token was issued by another tenant. `token` says which exchange: client credentials or the consent code.
+  | { verified: false; reason: "tenant-mismatch"; token: "application" | "authorization"; issuedByTenantId: string };
+
 export type TMicrosoftTeamsClient = {
-  // Exchanges the admin-consent code and checks both tokens were issued by `tenantId`. Throws RuleViolationError with
-  // the reason when the tenant does not match or consent was not granted.
+  // Exchanges an app token and the admin-consent code, and checks both were issued by `tenantId`. Any other failure
+  // is an ExternalSystemError.
   verifyTenantConsent(input: {
     credentials: TMicrosoftTeamsAppCredentials;
     tenantId: string;
     code: string;
     redirectUri: string;
-  }): Promise<void>;
+  }): Promise<TTenantConsentOutcome>;
   issueToken(input: {
     credentials: TMicrosoftTeamsAppCredentials;
     tenantId: string;
@@ -117,7 +130,7 @@ export type TMicrosoftTeamsClient = {
     teamId: string;
     channelId: string;
     adaptiveCard: Record<string, unknown>;
-  }): Promise<ChatPostFailure | null>;
+  }): Promise<TChatPostRefusal | null>;
 };
 
 // An inbound Bot Framework call, as the route received it.
