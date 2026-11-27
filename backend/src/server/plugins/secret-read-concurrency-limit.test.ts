@@ -207,6 +207,19 @@ describe("secretReadConcurrencyLimit", () => {
     expect(gauges?.getUsed()).toBe(0);
   });
 
+  test("reports the peak held since the previous read of the peak gauge, even after the reads finished", async () => {
+    const { held, list, gauges } = await buildServer({ budget: 300 });
+
+    const requests = [list("org-a"), list("org-a"), list("org-a")];
+    await flush();
+    held.forEach((request) => request.finish());
+    await Promise.all(requests);
+
+    expect(gauges?.getUsed()).toBe(0);
+    expect(gauges?.takePeakUsed()).toBe(300);
+    expect(gauges?.takePeakUsed()).toBe(0);
+  });
+
   test("answers a request that needs no slot while the instance has no room", async () => {
     const { app, held, list } = await buildServer({ budget: 150 });
 

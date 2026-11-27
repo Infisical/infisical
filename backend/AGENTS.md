@@ -1179,13 +1179,14 @@ service takes no slot. A route that does neither is outside the budget. The slot
   runs on an estimate, so without this check a cold burst is admitted at the default weight and lands far past the
   budget. A `catch` around `reportSize` must rethrow `ServerBusyError`, as the cache hit path of `getSecrets` does,
   or a refusal turns into a cache miss and a full reload.
-- Work that never calls `reportSize` holds its estimate until it finishes. The legacy V1 project path of
-  `getSecretsRaw` does this today.
+- Work that never calls `reportSize` holds its estimate until it finishes, so a large read is admitted at the default
+  weight. The legacy V1 project path reports from `loadLegacySecrets` in `secret-service.ts`, which both `getSecrets`
+  and the legacy branch of `getSecretsRaw` run.
 - A read larger than the whole budget is admitted only when the instance holds nothing, so it runs alone.
 
 A refusal records `infisical.secret.rate_limit.exceeded.count` with bucket `read_budget`, or `read_budget_org_share`
 when the organization's share is what had no room. The instance also reports
-`infisical.secret.read_budget.capacity` and `.used` (gauges), and once per read `infisical.secret.read.size` (by
+`infisical.secret.read_budget.capacity`, `.used` and `.peak_used` (gauges; `.peak_used` is the highest `used` since the last export and resets on each read, so never read it from anywhere but the exporter), and once per read `infisical.secret.read.size` (by
 `estimate.source`) and `infisical.secret.read.estimate.error`. Do not label any of them with the organization: a histogram per
 organization is one set of bucket series per customer per instance, which the `InfisicalCore` rules below forbid. The
 throttled warning the plugin logs carries the `orgId` instead.

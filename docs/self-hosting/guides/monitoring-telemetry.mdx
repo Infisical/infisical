@@ -1297,6 +1297,16 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
     **Description**: Number of secrets that the requests to list secrets running on this instance hold in memory. Divide it by `infisical.secret.read_budget.capacity` to get how full the instance is. The value can pass the capacity if a request returns more secrets than Infisical estimated. In `observe` mode, the value can stay above the capacity, because Infisical refuses no request.
   </Accordion>
 
+  <Accordion title="Secret Read Budget Peak Used">
+    **Metric Name**: `infisical.secret.read_budget.peak_used`
+
+    **Type**: Observable Gauge
+
+    **Unit**: `{secret}`
+
+    **Description**: Highest number of secrets that requests to list secrets held in memory on this instance at any moment since the previous export. `infisical.secret.read_budget.used` shows only the moment of the export, so it can miss a burst that fills the instance and ends between two exports. Use this metric to alert when an instance runs close to `infisical.secret.read_budget.capacity`.
+  </Accordion>
+
   <Accordion title="Secret Read Size">
     **Metric Name**: `infisical.secret.read.size`
 

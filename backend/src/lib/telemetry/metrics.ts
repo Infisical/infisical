@@ -627,7 +627,11 @@ export const recordSecretOrgBudgetExceededMetric = (params: { exceededCredits: n
   });
 };
 
-export const registerSecretReadBudgetGauges = (budget: { getCapacity: () => number; getUsed: () => number }) => {
+export const registerSecretReadBudgetGauges = (budget: {
+  getCapacity: () => number;
+  getUsed: () => number;
+  takePeakUsed: () => number;
+}) => {
   const meter = resolveCoreMeter();
   const gauges = [
     {
@@ -641,6 +645,12 @@ export const registerSecretReadBudgetGauges = (budget: { getCapacity: () => numb
       description:
         "Secrets held by list requests running on this instance. Above the capacity when a request turned out larger than its estimate, or while the limit only observes and refuses nothing.",
       read: budget.getUsed
+    },
+    {
+      name: "infisical.secret.read_budget.peak_used",
+      description:
+        "Most secrets held by list requests on this instance at any moment since the previous export, so a burst that fills the budget between exports still shows.",
+      read: budget.takePeakUsed
     }
   ];
 

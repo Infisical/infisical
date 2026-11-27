@@ -73,13 +73,22 @@ export const secretReadConcurrencyLimit = fp(async (server) => {
   const isMultiTenant = server.hasDecorator("createRateLimit");
   const orgCapacity = isMultiTenant && budget > 0 ? Math.max(1, Math.floor(budget * ORG_SHARE_OF_BUDGET)) : 0;
   let used = 0;
+  let peakUsed = 0;
   const usedByOrg = new Map<string, number>();
-  registerSecretReadBudgetGauges({ getCapacity: () => budget, getUsed: () => used });
+  // The peak resets on each read so the gauge shows the fullest moment between two exports, which the instant `used`
+  // misses when a burst fills and drains the budget between scrapes.
+  const takePeakUsed = () => {
+    const peak = peakUsed;
+    peakUsed = used;
+    return peak;
+  };
+  registerSecretReadBudgetGauges({ getCapacity: () => budget, getUsed: () => used, takePeakUsed });
 
   const getOrgUsed = (orgId?: string) => (orgId ? (usedByOrg.get(orgId) ?? 0) : 0);
 
   const hold = (orgId: string | undefined, delta: number) => {
     used += delta;
+    peakUsed = Math.max(peakUsed, used);
     if (!orgId || orgCapacity === 0) return;
     const orgUsed = getOrgUsed(orgId) + delta;
     if (orgUsed > 0) usedByOrg.set(orgId, orgUsed);
