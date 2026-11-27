@@ -253,9 +253,16 @@ export const secretImportDALFactory = (db: TDbClient) => {
   // empty. They stay bounded: replication adds one reserved row per import, and importEnv cascades on hard delete.
   // Per destination folder, the imports that read from one environment (reserved replication rows left out). While
   // that environment is soft-deleted these are the rows countByFolderId hides, so restoring it adds them back.
+  // Folders in a soft-deleted environment or project are left out: they can't be opened or edited, so a refusal naming
+  // them would leave nothing to fix, and restoring them adds no imports they did not already hold.
   const countFromSourceEnvByFolder = async (importEnvId: string, tx?: Knex) => {
     try {
       const rows = (await (tx || db.replicaNode())(TableName.SecretImport)
+        .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.SecretImport}.importEnv`, importEnvId)
         .where(
           (bd) =>
