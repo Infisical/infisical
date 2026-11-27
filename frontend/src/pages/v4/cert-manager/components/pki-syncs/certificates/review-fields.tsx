@@ -27,9 +27,10 @@ import type {
   TPkiSyncFilters
 } from "@app/hooks/api/pkiSyncs/types";
 
+import { ProviderLabel } from "../../../../components/provider-label";
 import { useV4Adapter } from "../../../../data/adapters";
 import { usePkiSyncForm } from "../fields";
-import { destinationNameOf, usePkiSyncOption, usePkiSyncScope } from "../shared";
+import { usePkiSyncOption, usePkiSyncScope } from "../shared";
 import { buildPkiSyncFilterSummary, filterSummaryItems } from "./filter-badges";
 import { MATCHED_PAGE_SIZE, PkiSyncMatchedCertificatesTable } from "./matched-certificates-table";
 
@@ -152,7 +153,10 @@ export const PkiSyncReviewFields = ({ applicationId }: { applicationId?: string 
   const host = config?.host as string | undefined;
   const destinationItems: [string, ReactNode][] = [
     ["Connection", connection?.name],
-    ["Service", destination ? destinationNameOf(destination) : undefined],
+    [
+      "Service",
+      destination ? <ProviderLabel key="service" kind="pki-sync" value={destination} /> : undefined
+    ],
     ...(config && "vaultBaseUrl" in config
       ? ([["Vault URL", config.vaultBaseUrl as string]] as [string, ReactNode][])
       : []),

@@ -43,7 +43,7 @@ const PasswordPrompt = ({
       }}
     >
       <Stack gap={16}>
-        <Field label="Password" wide error={invalid ? "Incorrect password" : undefined}>
+        <Field label="Password" error={invalid ? "Incorrect password" : undefined}>
           <Input
             autoFocus
             type="password"
@@ -56,7 +56,14 @@ const PasswordPrompt = ({
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
-        <Button type="submit" size="lg" loading={pending} disabled={!password}>
+        <Button
+          type="submit"
+          variant="accent"
+          size="lg"
+          className="w-full"
+          loading={pending}
+          disabled={!password}
+        >
           View secret
         </Button>
       </Stack>
@@ -85,7 +92,9 @@ const SecretView = ({ secret }: { secret: TAccessSharedSecretResponse }) => {
         </Button>
       </div>
       <Button
+        variant="accent"
         size="lg"
+        className="w-full"
         icon="copy"
         onClick={async () => {
           if (
@@ -230,7 +239,6 @@ export const ViewSharedSecretPage = () => {
   return (
     <AuthPage
       variant="focused"
-      wide
       pageTitle="Securely Share Secrets"
       title="View shared secret"
       bottom={

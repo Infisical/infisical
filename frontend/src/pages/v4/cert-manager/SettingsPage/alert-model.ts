@@ -513,6 +513,12 @@ export const CHANNEL_ICONS: Record<AlertChannelType, IconName | typeof MailIcon>
   [AlertChannelType.PagerDuty]: "alert"
 };
 
+export const CHANNEL_LOGOS: Partial<Record<AlertChannelType, string>> = {
+  [AlertChannelType.SlackApp]: "Slack.svg",
+  [AlertChannelType.Slack]: "Slack.svg",
+  [AlertChannelType.PagerDuty]: "PagerDuty.svg"
+};
+
 export const buildNextChannel = (
   existing: { name: string }[],
   channelType: AlertChannelType
@@ -557,26 +563,25 @@ export const KEEP_PLACEHOLDER = "Leave blank to keep the saved value";
 
 export type TRecipientScope = { noun: string; title: string };
 
-export const recipientScopeFor = (resourceType?: string): TRecipientScope =>
+const PROJECT_SCOPE: TRecipientScope = { noun: "project", title: "Project" };
+
+export const recipientScopeFor = (resourceType: string): TRecipientScope =>
   resourceType === AlertResourceType.SecretScanning
     ? { noun: "Secret Scanning", title: "Secret Scanning" }
-    : { noun: "project", title: "Project" };
+    : PROJECT_SCOPE;
 
-export const projectRecipientLabels = ({
-  noun,
-  title
-}: TRecipientScope): Record<string, string> => ({
-  [AlertPrincipalType.ProjectMembers]: `All ${noun} members`,
-  [AlertPrincipalType.ProjectAdmins]: `${title} admins`
+export const projectRecipientLabels = (scope = PROJECT_SCOPE): Record<string, string> => ({
+  [AlertPrincipalType.ProjectMembers]: `All ${scope.noun} members`,
+  [AlertPrincipalType.ProjectAdmins]: `${scope.title} admins`
 });
 
 export const describeChannel = (channel: TChannelForm, members: TMemberEmails): string => {
-  const labels = projectRecipientLabels(recipientScopeFor());
   switch (channel.channelType) {
     case AlertChannelType.Email: {
       const groupCount = channel.recipients.filter(
         (recipient) => recipient.principalType === AlertPrincipalType.Group
       ).length;
+      const labels = projectRecipientLabels();
       return [
         ...channel.recipients.flatMap(({ principalType }) =>
           labels[principalType] ? [labels[principalType]] : []

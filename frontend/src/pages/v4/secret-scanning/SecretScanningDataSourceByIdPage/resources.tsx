@@ -38,7 +38,6 @@ import {
 } from "@infisical/cipher/ui/sheet";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Meta, StatusText } from "@infisical/cipher/ui/text";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useParams } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 
@@ -79,11 +78,9 @@ const ResourceStatus = ({ resource }: { resource: TSecretScanningResourceWithDet
   const { lastScanStatus, lastScanStatusMessage, lastScannedAt, unresolvedFindings } = resource;
   if (lastScanStatus === SecretScanningScanStatus.Failed)
     return (
-      <Tooltip content={lastScanStatusMessage ?? "The scan failed."} side="left">
-        <StatusText tone="bad" icon="x" tabIndex={0}>
-          Scan error
-        </StatusText>
-      </Tooltip>
+      <StatusText reason={lastScanStatusMessage ?? "The scan failed."} tone="bad" icon="x">
+        Scan error
+      </StatusText>
     );
   if (lastScanStatus === SecretScanningScanStatus.Queued)
     return <StatusText icon="clock">Queued</StatusText>;
@@ -202,7 +199,7 @@ const AddResourceSheet = ({
         />
       );
     return (
-      <List label={`Available ${resource.pluralNoun}`} variant="divided">
+      <List label={`Available ${resource.pluralNoun}`} variant="flush">
         {available.map(({ externalId, name }) => (
           <ListRow
             key={externalId}
@@ -235,7 +232,7 @@ const AddResourceSheet = ({
         onClose();
       }}
     >
-      <SheetContent onOpenAutoFocus={(event) => event.preventDefault()}>
+      <SheetContent size="md" onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Add {resource.singularNoun}</SheetTitle>
           <SheetDescription>

@@ -85,12 +85,10 @@ export const DurationBadge = ({ grant }: { grant: GrantDraft }) => {
   const { text, tooltip, expired } = durationOf(grant);
   if (!grant.isTemporary) return <NoExpiry />;
   return (
-    <Tooltip content={tooltip}>
-      <Badge tone={expired ? "bad" : "warn"}>
-        {expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />}
-        {text}
-      </Badge>
-    </Tooltip>
+    <Badge reason={tooltip} tone={expired ? "bad" : "warn"}>
+      {expired ? <Icon icon={ClockAlertIcon} /> : <Icon name="clock" />}
+      {text}
+    </Badge>
   );
 };
 

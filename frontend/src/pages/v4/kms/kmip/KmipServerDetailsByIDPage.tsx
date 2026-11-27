@@ -1,6 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Alert } from "@infisical/cipher/ui/alert";
-import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
 import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
@@ -24,6 +23,7 @@ import {
   OrgKmipServerPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { TKmipServerWithAuthMethod } from "@app/hooks/api/kmipServers/types";
 
 import { Dash } from "../../access/org/detail-parts";
@@ -32,6 +32,7 @@ import { formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { AccessRestricted, EditDetailsButton, RESTRICTED } from "../../access/ui";
 import { copyText } from "../../clipboard";
+import { ProviderLabel, providerOf } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import type { KmipEnrollment } from "../../data/kmip/contract";
 import { useGo } from "../../links";
@@ -123,9 +124,16 @@ export const KmipServerDetailsByIDPage = () => {
   if (!isIdentity)
     authItems.push([
       "Method",
-      <Badge key="method" tone="soft">
-        {methodLabel[authMethod.method]}
-      </Badge>
+      <ProviderLabel
+        key="method"
+        provider={{
+          name: methodLabel[authMethod.method],
+          image:
+            authMethod.method === "aws"
+              ? providerOf("identity-auth", IdentityAuthMethod.AWS_AUTH)?.image
+              : undefined
+        }}
+      />
     ]);
   if (authMethod.method === "aws")
     authItems.push(

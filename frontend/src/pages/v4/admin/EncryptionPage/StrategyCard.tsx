@@ -4,7 +4,6 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Field } from "@infisical/cipher/ui/field";
 import { Select } from "@infisical/cipher/ui/select";
 import { SettingsCard } from "@infisical/cipher/ui/settings-card";
-import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { InstanceHsmUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { RootKeyEncryptionStrategy } from "@app/hooks/api/admin/types";
@@ -41,9 +40,12 @@ export const StrategyCard = () => {
       description="How the KMS root key is protected. HSM is supported on Enterprise plans."
       action={
         config?.fipsEnabled && (
-          <Tooltip content="Cryptographic operations within the FIPS boundaries are validated as FIPS compliant.">
-            <Badge tone="info">FIPS mode enabled</Badge>
-          </Tooltip>
+          <Badge
+            reason="Cryptographic operations within the FIPS boundaries are validated as FIPS compliant."
+            tone="info"
+          >
+            FIPS mode enabled
+          </Badge>
         )
       }
       loading={isPending || subscriptionPending}

@@ -1059,7 +1059,7 @@ const vercelReview = (config: FieldValues): ReviewItems => {
   if (config.scope === "team") {
     return [
       ["Scope", "Team"],
-      ["Vercel team", config.teamName],
+      ["Team", config.teamName],
       [
         "Target environments",
         (config.targetEnvironments as string[] | undefined)
@@ -1079,7 +1079,7 @@ const vercelReview = (config: FieldValues): ReviewItems => {
   }
   return [
     ["Scope", "Project"],
-    ["Vercel project", config.appName],
+    ["Project", config.appName],
     ["Environment", config.env],
     ...(config.env === "preview" && config.branch
       ? [["Preview branch", config.branch] as const]

@@ -14,6 +14,7 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { NameLine } from "@infisical/cipher/ui/name-line";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
 import { Select } from "@infisical/cipher/ui/select";
 import { Switch } from "@infisical/cipher/ui/switch";
@@ -47,11 +48,13 @@ import {
 
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
+import { ProviderIcon } from "../../components/provider-icon";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
 import {
   buildNextChannel,
   CHANNEL_ICONS,
+  CHANNEL_LOGOS,
   ENTERPRISE_CHANNEL_TYPES,
   KEEP_PLACEHOLDER,
   MAX_CHANNELS,
@@ -59,6 +62,7 @@ import {
   pluralize,
   projectRecipientLabels,
   recipientScopeFor,
+  type TRecipientScope,
   type TDraftChannel,
   type TFieldErrors,
   type TMemberEmails,
@@ -81,6 +85,25 @@ const CERTIFICATE_CHANNEL_UPGRADE: TUpgradeGateRequest = {
   intent: CertificateEnterpriseAlertingUpgradeIntent,
   paywallKey: "cert-manager.application-alert-channels"
 };
+
+const ChannelGlyph = ({
+  channelType,
+  size
+}: {
+  channelType: AlertChannelType;
+  size: "sm" | "md";
+}) => {
+  const logo = CHANNEL_LOGOS[channelType];
+  if (logo) return <ProviderIcon icon={logo} alt="" size={size} />;
+  const glyph = CHANNEL_ICONS[channelType];
+  return typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />;
+};
+
+export const ChannelTypeLabel = ({ channelType }: { channelType: AlertChannelType }) => (
+  <NameLine media={<ChannelGlyph channelType={channelType} size="md" />}>
+    {ALERT_CHANNEL_TYPE_LABELS[channelType]}
+  </NameLine>
+);
 
 export const AddChannelMenu = ({
   channelCount,
@@ -127,13 +150,12 @@ export const AddChannelMenu = ({
         <DropdownMenuContent align="end">
           {ADD_MENU_CHANNEL_TYPES.map((channelType) => {
             const isLocked = !hasEnterprise && ENTERPRISE_CHANNEL_TYPES.includes(channelType);
-            const glyph = CHANNEL_ICONS[channelType];
             return (
               <DropdownMenuItem
                 key={channelType}
                 onSelect={() => (isLocked ? openUpgradeGate(upgrade) : addChannel(channelType))}
               >
-                {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
+                <ChannelGlyph channelType={channelType} size="sm" />
                 {ALERT_CHANNEL_TYPE_LABELS[channelType]}
                 {isLocked && <Badge tone="soft">Enterprise</Badge>}
               </DropdownMenuItem>
@@ -164,7 +186,7 @@ const EmailRecipientsField = ({
   projectRecipients,
   allowEmailAddresses = true,
   groupOptions,
-  resourceType
+  scope
 }: {
   value: TAlertChannelRecipient[];
   onChange: (recipients: TAlertChannelRecipient[]) => void;
@@ -174,10 +196,9 @@ const EmailRecipientsField = ({
   projectRecipients?: boolean;
   allowEmailAddresses?: boolean;
   groupOptions?: TRecipientGroup[];
-  resourceType: string;
+  scope: TRecipientScope;
 }) => {
-  const recipientScope = recipientScopeFor(resourceType);
-  const projectLabels = projectRecipientLabels(recipientScope);
+  const recipientLabels = projectRecipientLabels(scope);
   const groupNames = new Map(groupOptions?.map((group) => [group.id, group.name]));
   const projectValues = value
     .filter((recipient) => PROJECT_PRINCIPALS.includes(recipient.principalType))
@@ -201,8 +222,8 @@ const EmailRecipientsField = ({
   const projectOptions = (projectRecipients ? PROJECT_PRINCIPALS : projectValues).map(
     (principalType) => ({
       value: principalType,
-      label: projectLabels[principalType],
-      group: recipientScope.title
+      label: recipientLabels[principalType],
+      group: scope.title
     })
   );
   const grouped = projectOptions.length > 0 || Boolean(groupOptions?.length);
@@ -249,8 +270,8 @@ const EmailRecipientsField = ({
     unlistedUsers.length ? pluralize(unlistedUsers.length, "more member") : undefined,
     unlistedGroups.length ? pluralize(unlistedGroups.length, "group") : undefined
   ].filter(Boolean);
-  const scope = projectId ? recipientScope.noun : "organization";
-  const pickable = groupOptions ? `${scope} members or groups` : `${scope} members`;
+  const pickableScope = projectId ? scope.noun : "organization";
+  const pickable = groupOptions ? `${pickableScope} members or groups` : `${pickableScope} members`;
 
   return (
     <Field
@@ -743,7 +764,6 @@ const ChannelCard = ({
   const { channelType } = channel;
   const label = ALERT_CHANNEL_TYPE_LABELS[channelType];
   const isExisting = Boolean(channel.id);
-  const glyph = CHANNEL_ICONS[channelType];
   const fieldProps = { channel, error, onChange };
 
   const onTest = async () => {
@@ -784,12 +804,7 @@ const ChannelCard = ({
 
   return (
     <Card
-      title={
-        <Inline gap={8} align="center" wrap={false}>
-          {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
-          {label}
-        </Inline>
-      }
+      title={<ChannelTypeLabel channelType={channelType} />}
       action={
         <Inline gap={8} align="center" wrap={false}>
           <Button type="button" variant="outline" loading={testChannel.isPending} onClick={onTest}>
@@ -817,7 +832,7 @@ const ChannelCard = ({
             projectRecipients={projectRecipients}
             allowEmailAddresses={allowEmailAddresses}
             groupOptions={groupOptions}
-            resourceType={resource.resourceType}
+            scope={recipientScopeFor(resource.resourceType)}
           />
         )}
         {SLACK_CHANNEL_TYPES.includes(channelType) && <SlackMethodSwitch {...fieldProps} />}

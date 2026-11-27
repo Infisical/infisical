@@ -25,6 +25,7 @@ import type { TCaSigningConfig } from "@app/hooks/api/ca/queries";
 import type { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 
 import { failed, saved } from "../../access/toast";
+import { ProviderLabel, providerOf } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { ConnectionField } from "../CertificateAuthoritiesPage/install/forms";
 import { caBlock, useCaScope } from "../CertificateAuthoritiesPage/scope";
@@ -376,13 +377,26 @@ export const SigningConfigCard = ({
         items={[
           [
             "Signing method",
-            <Badge
-              key="method"
-              size="sm"
-              tone={config.type === CaSigningConfigType.INTERNAL ? "info" : "outline"}
-            >
-              {SIGNING_LABELS[config.type] ?? config.type}
-            </Badge>
+            EDITABLE.has(config.type) ? (
+              <ProviderLabel
+                key="method"
+                provider={{
+                  name: SIGNING_LABELS[config.type],
+                  image: providerOf(
+                    "app-connection",
+                    (CONNECTIONS[config.type] ?? ADCS_CONNECTION).app
+                  )?.image
+                }}
+              />
+            ) : (
+              <Badge
+                key="method"
+                size="sm"
+                tone={config.type === CaSigningConfigType.INTERNAL ? "info" : "outline"}
+              >
+                {SIGNING_LABELS[config.type] ?? config.type}
+              </Badge>
+            )
           ],
           ...items
         ]}

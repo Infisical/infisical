@@ -61,6 +61,7 @@ import type {
   TSecretScanningFindingLocation
 } from "@app/hooks/api/secretScanningV2/types";
 import { ProviderIcon } from "@app/pages/v4/components/provider-icon";
+import { providerMedia } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../access/permissions";
 import { failed, toast } from "../../access/toast";
@@ -678,7 +679,11 @@ export const FindingsTable = ({
                   key: "dataSource",
                   label: "Data source",
                   type: "select" as const,
-                  options: dataSources.map((item) => ({ value: item.id, label: item.name }))
+                  options: dataSources.map((item) => ({
+                    value: item.id,
+                    label: item.name,
+                    media: providerMedia("secret-scanning", item.type)
+                  }))
                 }
               ]),
           ...(dataSource

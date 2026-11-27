@@ -42,6 +42,7 @@ import {
 import { useDebounced } from "../../access/org/use-debounced";
 import { errorMessage, failed, saved } from "../../access/toast";
 import { connectionCreation } from "../../components/app-connection-form";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
 import { useRotationConfirmation } from "../../integrations/app-connection-extras";
@@ -188,6 +189,7 @@ const LdapConnectionField = ({
         options={(connections.data ?? []).map((connection) => ({
           value: connection.id,
           label: connection.name,
+          media: providerMedia("app-connection", AppConnection.LDAP),
           meta: connection.projectId ? undefined : "Organization"
         }))}
         value={value}

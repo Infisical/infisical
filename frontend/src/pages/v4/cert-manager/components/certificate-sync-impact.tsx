@@ -14,6 +14,7 @@ import type { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
 import { isRemovedFromSyncDestination } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
 import { useProjectPermission } from "../../access/permissions";
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { destinationNameOf } from "./pki-syncs/shared";
 
@@ -71,7 +72,7 @@ const columns: DataTableColumn<TPkiSync>[] = [
     width: 130,
     wrap: true,
     text: (sync) => destinationNameOf(sync.destination),
-    render: (sync) => destinationNameOf(sync.destination)
+    render: (sync) => <ProviderLabel kind="pki-sync" value={sync.destination} size="sm" />
   },
   {
     id: "removal",

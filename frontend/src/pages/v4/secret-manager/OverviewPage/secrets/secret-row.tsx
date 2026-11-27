@@ -176,7 +176,7 @@ const copy = async (
   if (await copyText(value, failure)) report(done, "ok");
 };
 
-function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
+export function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
   const [focused, setFocused] = useState(false);
   const loader = useValueLoader();
   const shown = visible || focused;
@@ -189,7 +189,13 @@ function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean })
   if (value === undefined)
     return (
       <span className={styles.nameLine}>
-        <Tooltip content="You do not have access to view the current value.">
+        <Tooltip
+          content={
+            secret.value.status === "failed"
+              ? secret.value.message
+              : "You do not have access to view the current value."
+          }
+        >
           <span className={styles.hint}>
             <Icon icon={EyeOffIcon} label="Value hidden" />
           </span>

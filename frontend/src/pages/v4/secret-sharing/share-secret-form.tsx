@@ -6,7 +6,7 @@ import {
   AccordionTrigger
 } from "@infisical/cipher/ui/accordion";
 import { Button } from "@infisical/cipher/ui/button";
-import { Field } from "@infisical/cipher/ui/field";
+import { Field, FieldLabel } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { SecretInput } from "@infisical/cipher/ui/secret-input";
@@ -280,11 +280,16 @@ export const useShareSecretForm = ({
           <AccordionContent className={styles.accordionBody}>
             <div className={styles.form}>
               {!isViewLimitEnforced && (
-                <Switch
-                  label="Limit how many times it can be viewed"
-                  checked={form.shouldLimitView}
-                  onCheckedChange={(shouldLimitView) => patch({ shouldLimitView })}
-                />
+                <span className={styles.toggle}>
+                  <Switch
+                    id={`${formId}-limit-views`}
+                    checked={form.shouldLimitView}
+                    onCheckedChange={(shouldLimitView) => patch({ shouldLimitView })}
+                  />
+                  <FieldLabel htmlFor={`${formId}-limit-views`}>
+                    Limit how many times it can be viewed
+                  </FieldLabel>
+                </span>
               )}
               {form.shouldLimitView && (
                 <Field
@@ -334,29 +339,52 @@ export const useShareSecretForm = ({
               {!isPublic && (
                 <>
                   <div className={styles.groupLabel}>Delivery</div>
-                  <Switch
-                    label="Limit access to people within organization"
-                    checked={isOrgAccess}
-                    disabledReason={
-                      allowSecretSharingOutsideOrganization
-                        ? undefined
-                        : "Enforced by your organization"
-                    }
-                    onCheckedChange={(orgOnly) =>
-                      patch(orgOnly ? { orgOnly, allowExternalEmails: false } : { orgOnly })
-                    }
-                  />
-                  <Switch
-                    label="Allow recipients without an Infisical account"
-                    checked={!isOrgAccess && form.allowExternalEmails}
-                    disabled={isOrgAccess}
-                    disabledReason={
-                      allowSecretSharingOutsideOrganization
-                        ? undefined
-                        : "External sharing is disabled by your organization"
-                    }
-                    onCheckedChange={(allowExternalEmails) => patch({ allowExternalEmails })}
-                  />
+                  <span className={styles.toggle}>
+                    <Switch
+                      id={`${formId}-org-only`}
+                      checked={isOrgAccess}
+                      disabled={!allowSecretSharingOutsideOrganization}
+                      onCheckedChange={(orgOnly) =>
+                        patch(orgOnly ? { orgOnly, allowExternalEmails: false } : { orgOnly })
+                      }
+                    />
+                    <FieldLabel htmlFor={`${formId}-org-only`}>
+                      Limit access to people within organization
+                    </FieldLabel>
+                    {!allowSecretSharingOutsideOrganization && (
+                      <Tooltip content="Enforced by your organization">
+                        <span className={styles.hint}>
+                          <Icon
+                            name="lock"
+                            size="var(--cipher-size-icon-small)"
+                            label="Enforced by your organization"
+                          />
+                        </span>
+                      </Tooltip>
+                    )}
+                  </span>
+                  <span className={styles.toggle}>
+                    <Switch
+                      id={`${formId}-allow-external`}
+                      checked={!isOrgAccess && form.allowExternalEmails}
+                      disabled={isOrgAccess}
+                      onCheckedChange={(allowExternalEmails) => patch({ allowExternalEmails })}
+                    />
+                    <FieldLabel htmlFor={`${formId}-allow-external`}>
+                      Allow recipients without an Infisical account
+                    </FieldLabel>
+                    {!allowSecretSharingOutsideOrganization && (
+                      <Tooltip content="External sharing is disabled by your organization">
+                        <span className={styles.hint}>
+                          <Icon
+                            name="lock"
+                            size="var(--cipher-size-icon-small)"
+                            label="External sharing is disabled"
+                          />
+                        </span>
+                      </Tooltip>
+                    )}
+                  </span>
                   <Field
                     label="Email recipients"
                     optional
@@ -394,12 +422,15 @@ export const useShareSecretForm = ({
     </form>
   );
 
+  const pageAction = isPublic
+    ? ({ variant: "accent", size: "lg", className: "w-full" } as const)
+    : undefined;
   const submitButton = result ? (
-    <Button size={isPublic ? "lg" : undefined} onClick={reset}>
+    <Button {...pageAction} onClick={reset}>
       Share another secret
     </Button>
   ) : (
-    <Button type="submit" form={formId} size={isPublic ? "lg" : undefined} loading={pending}>
+    <Button {...pageAction} type="submit" form={formId} loading={pending}>
       Create secret link
     </Button>
   );

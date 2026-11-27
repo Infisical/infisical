@@ -360,6 +360,7 @@ export const ConditionsFields = ({
                     )}
                     <div className={styles.grow}>
                       <Select
+                        descriptionLayout="stacked"
                         size="sm"
                         label={`Condition ${index + 1} property for ${scopeLabel}`}
                         value={condition.lhs}
