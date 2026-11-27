@@ -1,6 +1,9 @@
 package saml_test
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"testing"
@@ -35,7 +38,7 @@ func TestSAMLConfig_Create(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.NotContains(t, string(res.Body), "BEGIN CERTIFICATE")
-		stored := readConfig(t, tn, tn.Admin)
+		stored := readConfig(t, tn.Admin)
 		require.Equal(t, body.EntryPoint, stored.EntryPoint)
 		require.Equal(t, body.Issuer, stored.Issuer)
 		require.Equal(t, strings.TrimSpace(body.Cert), stored.Cert)
@@ -137,7 +140,7 @@ func TestSAMLConfig_Read(t *testing.T) {
 		tn := h.NewTenant(t)
 
 		// Action
-		res, err := tn.Admin.API.GetSamlConfigWithResponse(t.Context(), &api.GetSamlConfigParams{OrganizationId: tn.OrgID.String()})
+		res, err := tn.Admin.API.GetSamlConfigWithResponse(t.Context())
 
 		// Assert
 		require.NoError(t, err)
@@ -156,7 +159,7 @@ func TestSAMLConfig_Read(t *testing.T) {
 		identity := tn.NewMachineIdentity(t, harness.OrgRole("admin"))
 
 		// Action
-		stored := readConfig(t, tn, identity)
+		stored := readConfig(t, identity)
 
 		// Assert
 		require.Equal(t, body.EntryPoint, stored.EntryPoint)
@@ -175,15 +178,14 @@ func TestSAMLConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.Tenant.OrgID.String(),
-			EntryPoint:     new(replacement.EntryPoint),
-			Cert:           new(replacement.CertPEM()),
+			EntryPoint: new(replacement.EntryPoint),
+			Cert:       new(replacement.CertPEM()),
 		})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		stored := readConfig(t, s.Tenant, s.Tenant.Admin)
+		stored := readConfig(t, s.Tenant.Admin)
 		require.Equal(t, replacement.EntryPoint, stored.EntryPoint)
 		require.Equal(t, strings.TrimSpace(replacement.CertPEM()), stored.Cert)
 		require.Equal(t, s.Issuer, stored.Issuer)
@@ -200,8 +202,7 @@ func TestSAMLConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			OrganizationId: s.Tenant.OrgID.String(),
-			Cert:           new(s.IdP.CertPEM()),
+			Cert: new(s.IdP.CertPEM()),
 		})
 
 		// Assert
@@ -214,14 +215,114 @@ func TestSAMLConfig_Update(t *testing.T) {
 	})
 }
 
+func TestSAMLConfig_LegacyPath(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should return the same config on the legacy path as on the new path", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+
+		// Action
+		current, err := s.Tenant.Admin.API.GetSamlConfigWithResponse(t.Context())
+		require.NoError(t, err)
+		legacy, err := s.Tenant.Admin.API.GetSamlConfigWithResponse(t.Context(), legacyPath)
+		require.NoError(t, err)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, current.StatusCode(), "%s", apierr.Body(current.Body))
+		require.Equalf(t, http.StatusOK, legacy.StatusCode(), "%s", apierr.Body(legacy.Body))
+		require.JSONEq(t, string(current.Body), string(legacy.Body))
+	})
+
+	t.Run("should create a config on the legacy path when the body still sends organizationId", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
+		body := sso.SAMLConfigBody(tn, samlidp.New(t), sso.Okta)
+
+		// Action
+		res, err := tn.Admin.API.CreateSamlConfigWithBodyWithResponse(t.Context(), "application/json",
+			legacyBody(t, body, tn.OrgID.String()), legacyPath)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, body.EntryPoint, readConfig(t, tn.Admin).EntryPoint)
+	})
+
+	t.Run("should update a config on the legacy path when the body still sends organizationId", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		replacement := samlidp.New(t)
+
+		// Action
+		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithBodyWithResponse(t.Context(), "application/json",
+			legacyBody(t, api.UpdateSamlConfigJSONRequestBody{EntryPoint: new(replacement.EntryPoint)}, s.Tenant.OrgID.String()),
+			legacyPath)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, replacement.EntryPoint, readConfig(t, s.Tenant.Admin).EntryPoint)
+	})
+
+	t.Run("should act on the token's organization when a legacy body names another organization", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "The organization now comes from the token. A legacy caller's organizationId is ignored, "+
+			"so naming another organization can neither read nor change that organization's config.")
+
+		// Setup
+		mine, theirs := h.NewTenant(t), h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, theirs)
+		body := sso.SAMLConfigBody(theirs, samlidp.New(t), sso.Okta)
+
+		// Action
+		res, err := theirs.Admin.API.CreateSamlConfigWithBodyWithResponse(t.Context(), "application/json",
+			legacyBody(t, body, mine.OrgID.String()), legacyPath)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, theirs.OrgID, res.JSON200.OrgId)
+		requireNoConfig(t, mine)
+	})
+}
+
+// legacyPath sends a request for /api/v1/sso/saml/config to the old /api/v1/sso/config mount.
+// The legacy routes have no operationId, so the generated client has no methods of its own for them.
+func legacyPath(_ context.Context, req *http.Request) error {
+	req.URL.Path = strings.Replace(req.URL.Path, "/api/v1/sso/saml/config", "/api/v1/sso/config", 1)
+	return nil
+}
+
+// legacyBody adds the organizationId that callers of the legacy path still send.
+func legacyBody(t *testing.T, body any, organizationID string) *bytes.Reader {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+	fields := map[string]any{}
+	require.NoError(t, json.Unmarshal(raw, &fields))
+	fields["organizationId"] = organizationID
+	raw, err = json.Marshal(fields)
+	require.NoError(t, err)
+	return bytes.NewReader(raw)
+}
+
 type storedConfig struct {
 	EntryPoint, Issuer, Cert string
 	IsActive                 bool
 }
 
-func readConfig(t *testing.T, tn *harness.Tenant, actor *harness.Principal) storedConfig {
+func readConfig(t *testing.T, actor *harness.Principal) storedConfig {
 	t.Helper()
-	res, err := actor.API.GetSamlConfigWithResponse(t.Context(), &api.GetSamlConfigParams{OrganizationId: tn.OrgID.String()})
+	res, err := actor.API.GetSamlConfigWithResponse(t.Context())
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "reading SAML config: %s", apierr.Body(res.Body))
 	return storedConfig{
@@ -234,7 +335,7 @@ func readConfig(t *testing.T, tn *harness.Tenant, actor *harness.Principal) stor
 
 func requireNoConfig(t *testing.T, tn *harness.Tenant) {
 	t.Helper()
-	res, err := tn.Admin.API.GetSamlConfigWithResponse(t.Context(), &api.GetSamlConfigParams{OrganizationId: tn.OrgID.String()})
+	res, err := tn.Admin.API.GetSamlConfigWithResponse(t.Context())
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusNotFound, res.StatusCode(), "a SAML config exists: %s", apierr.Body(res.Body))
 }

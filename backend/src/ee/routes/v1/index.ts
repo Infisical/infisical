@@ -44,7 +44,7 @@ import { registerProjectRouter } from "./project-router";
 import { registerProxiedServiceRouter } from "./proxied-service-router";
 import { registerRelayRouter } from "./relay-router";
 import { registerRemovedProductTombstoneRouter } from "./removed-product-tombstone-router";
-import { registerSamlRouter } from "./saml-router";
+import { registerSamlConfigRouter, registerSamlRouter } from "./saml-router";
 import { registerScimRouter } from "./scim-router";
 import { registerSecretApprovalRequestRouter } from "./secret-approval-request-router";
 import { registerSecretRouter } from "./secret-router";
@@ -140,6 +140,10 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (ssoRouter) => {
       await ssoRouter.register(registerSamlRouter);
+      await ssoRouter.register(registerSamlConfigRouter, { prefix: "/saml" });
+      await ssoRouter.register(async (legacySamlConfigRouter) => {
+        await registerSamlConfigRouter(legacySamlConfigRouter as unknown as FastifyZodProvider, { isLegacyPath: true });
+      });
       await ssoRouter.register(registerOidcRouter, { prefix: "/oidc" });
     },
     { prefix: "/sso" }

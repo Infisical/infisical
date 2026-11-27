@@ -4590,11 +4590,7 @@ export const EMAIL_DOMAINS = {
 };
 
 export const SamlSso = {
-  GET_CONFIG: {
-    organizationId: "The ID of the organization to get the SAML config for."
-  },
   UPDATE_CONFIG: {
-    organizationId: "The ID of the organization to update the SAML config for.",
     authProvider: "Authentication provider to use for SAML authentication.",
     isActive: "Whether to enable or disable this SAML configuration.",
     entryPoint:
@@ -4611,7 +4607,6 @@ export const SamlSso = {
       "Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey."
   },
   CREATE_CONFIG: {
-    organizationId: "The ID of the organization to create the SAML config for.",
     authProvider: "Authentication provider to use for SAML authentication.",
     isActive: "Whether to enable or disable this SAML configuration.",
     entryPoint:

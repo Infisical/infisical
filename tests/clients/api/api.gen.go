@@ -12204,6 +12204,81 @@ func (e ListAppConnections200JSONResponseBodyAppConnections118RotationRotationSt
 	}
 }
 
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections119App.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections119AppRfc2136 ListAppConnections200JSONResponseBodyAppConnections119App = "rfc2136"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections119App enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections119App) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections119AppRfc2136:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm.
+const (
+	HmacSha1   ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm = "hmac-sha1"
+	HmacSha224 ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm = "hmac-sha224"
+	HmacSha256 ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm = "hmac-sha256"
+	HmacSha384 ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm = "hmac-sha384"
+	HmacSha512 ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm = "hmac-sha512"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm) Valid() bool {
+	switch e {
+	case HmacSha1:
+		return true
+	case HmacSha224:
+		return true
+	case HmacSha256:
+		return true
+	case HmacSha384:
+		return true
+	case HmacSha512:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections119Method.
+const (
+	TsigKey ListAppConnections200JSONResponseBodyAppConnections119Method = "tsig-key"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections119Method enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections119Method) Valid() bool {
+	switch e {
+	case TsigKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus.
+const (
+	ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatusFailed  ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus = "failed"
+	ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatusSuccess ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus enum.
+func (e ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus) Valid() bool {
+	switch e {
+	case ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatusFailed:
+		return true
+	case ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAppConnections400JSONResponseBodyStatusCode.
 const (
 	ListAppConnections400JSONResponseBodyStatusCodeN400 ListAppConnections400JSONResponseBodyStatusCode = 400
@@ -42106,6 +42181,7 @@ const (
 	ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderDnsMadeEasy ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProvider = "dns-made-easy"
 	ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderGcpCloudDns ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProvider = "gcp-cloud-dns"
 	ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderPowerdns    ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProvider = "powerdns"
+	ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderRfc2136     ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProvider = "rfc2136"
 	ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderRoute53     ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProvider = "route53"
 	ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderUltradns    ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProvider = "ultradns"
 )
@@ -42122,6 +42198,8 @@ func (e ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthori
 	case ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderGcpCloudDns:
 		return true
 	case ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderPowerdns:
+		return true
+	case ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderRfc2136:
 		return true
 	case ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthorities1ConfigurationDnsProviderConfigProviderRoute53:
 		return true
@@ -42748,6 +42826,7 @@ const (
 	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderDnsMadeEasy CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "dns-made-easy"
 	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderGcpCloudDns CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "gcp-cloud-dns"
 	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderPowerdns    CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "powerdns"
+	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRfc2136     CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "rfc2136"
 	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRoute53     CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "route53"
 	CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderUltradns    CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProvider = "ultradns"
 )
@@ -42764,6 +42843,8 @@ func (e CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigPr
 	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderGcpCloudDns:
 		return true
 	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderPowerdns:
+		return true
+	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRfc2136:
 		return true
 	case CreateAcmeCertificateAuthorityV1JSONBodyConfigurationDnsProviderConfigProviderRoute53:
 		return true
@@ -42802,6 +42883,7 @@ const (
 	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderDnsMadeEasy CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "dns-made-easy"
 	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderGcpCloudDns CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "gcp-cloud-dns"
 	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderPowerdns    CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "powerdns"
+	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderRfc2136     CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "rfc2136"
 	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderRoute53     CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "route53"
 	CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderUltradns    CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProvider = "ultradns"
 )
@@ -42818,6 +42900,8 @@ func (e CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProvi
 	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderGcpCloudDns:
 		return true
 	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderPowerdns:
+		return true
+	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderRfc2136:
 		return true
 	case CreateAcmeCertificateAuthorityV1200JSONResponseBodyConfigurationDnsProviderConfigProviderRoute53:
 		return true
@@ -59225,6 +59309,7 @@ const (
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRailway               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "railway"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRedis                 ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "redis"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRender                ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "render"
+	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRfc2136               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "rfc2136"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRundeck               ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "rundeck"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppS3Compatible          ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "s3-compatible"
 	ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppSalesforce            ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp = "salesforce"
@@ -59406,6 +59491,8 @@ func (e ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsApp) Valid() 
 	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRedis:
 		return true
 	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRender:
+		return true
+	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRfc2136:
 		return true
 	case ListPkiDiscoveries200JSONResponseBodyDiscoveriesConnectionsAppRundeck:
 		return true
@@ -59852,6 +59939,7 @@ const (
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppRailway               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "railway"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppRedis                 GetPkiDiscovery200JSONResponseBodyConnectionsApp = "redis"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppRender                GetPkiDiscovery200JSONResponseBodyConnectionsApp = "render"
+	GetPkiDiscovery200JSONResponseBodyConnectionsAppRfc2136               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "rfc2136"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppRundeck               GetPkiDiscovery200JSONResponseBodyConnectionsApp = "rundeck"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppS3Compatible          GetPkiDiscovery200JSONResponseBodyConnectionsApp = "s3-compatible"
 	GetPkiDiscovery200JSONResponseBodyConnectionsAppSalesforce            GetPkiDiscovery200JSONResponseBodyConnectionsApp = "salesforce"
@@ -60033,6 +60121,8 @@ func (e GetPkiDiscovery200JSONResponseBodyConnectionsApp) Valid() bool {
 	case GetPkiDiscovery200JSONResponseBodyConnectionsAppRedis:
 		return true
 	case GetPkiDiscovery200JSONResponseBodyConnectionsAppRender:
+		return true
+	case GetPkiDiscovery200JSONResponseBodyConnectionsAppRfc2136:
 		return true
 	case GetPkiDiscovery200JSONResponseBodyConnectionsAppRundeck:
 		return true
@@ -71768,6 +71858,7 @@ const (
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRailway               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "railway"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRedis                 ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "redis"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRender                ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "render"
+	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRfc2136               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "rfc2136"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRundeck               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "rundeck"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsS3Compatible          ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "s3-compatible"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsSalesforce            ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections = "salesforce"
@@ -71950,6 +72041,8 @@ func (e ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnections
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRender:
 		return true
+	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRfc2136:
+		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsRundeck:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsAdditionalConnectionsS3Compatible:
@@ -72077,6 +72170,7 @@ const (
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRailway               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "railway"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRedis                 ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "redis"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRender                ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "render"
+	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRfc2136               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "rfc2136"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRundeck               ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "rundeck"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionS3Compatible          ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "s3-compatible"
 	ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionSalesforce            ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection = "salesforce"
@@ -72258,6 +72352,8 @@ func (e ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnection) Valid() b
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRedis:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRender:
+		return true
+	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRfc2136:
 		return true
 	case ListPkiSyncOptions200JSONResponseBodyPkiSyncOptionsConnectionRundeck:
 		return true
@@ -87315,6 +87411,114 @@ func (e GetHoneyTokenLimits500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken400JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken400JSONResponseBodyStatusCodeN400 DeleteHoneyToken400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken400JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken401JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken401JSONResponseBodyStatusCodeN401 DeleteHoneyToken401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken401JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken403JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken403JSONResponseBodyStatusCodeN403 DeleteHoneyToken403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken403JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken404JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken404JSONResponseBodyStatusCodeN404 DeleteHoneyToken404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken404JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken422JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken422JSONResponseBodyStatusCodeN422 DeleteHoneyToken422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken422JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteHoneyToken500JSONResponseBodyStatusCode.
+const (
+	DeleteHoneyToken500JSONResponseBodyStatusCodeN500 DeleteHoneyToken500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteHoneyToken500JSONResponseBodyStatusCode enum.
+func (e DeleteHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
 const (
 	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
@@ -97855,6 +98059,7 @@ const (
 	ListOrganizationAuditLogsParamsUserAgentTypeInfisicalPythonSDK ListOrganizationAuditLogsParamsUserAgentType = "InfisicalPythonSDK"
 	ListOrganizationAuditLogsParamsUserAgentTypeK8Operator         ListOrganizationAuditLogsParamsUserAgentType = "k8-operator"
 	ListOrganizationAuditLogsParamsUserAgentTypeOther              ListOrganizationAuditLogsParamsUserAgentType = "other"
+	ListOrganizationAuditLogsParamsUserAgentTypeRemoteMcp          ListOrganizationAuditLogsParamsUserAgentType = "remote-mcp"
 	ListOrganizationAuditLogsParamsUserAgentTypeTerraform          ListOrganizationAuditLogsParamsUserAgentType = "terraform"
 	ListOrganizationAuditLogsParamsUserAgentTypeWeb                ListOrganizationAuditLogsParamsUserAgentType = "web"
 )
@@ -97871,6 +98076,8 @@ func (e ListOrganizationAuditLogsParamsUserAgentType) Valid() bool {
 	case ListOrganizationAuditLogsParamsUserAgentTypeK8Operator:
 		return true
 	case ListOrganizationAuditLogsParamsUserAgentTypeOther:
+		return true
+	case ListOrganizationAuditLogsParamsUserAgentTypeRemoteMcp:
 		return true
 	case ListOrganizationAuditLogsParamsUserAgentTypeTerraform:
 		return true
@@ -110144,44 +110351,6 @@ const (
 	DeleteIdentityFolderAccess400JSONResponseBodyStatusCodeN400 DeleteIdentityFolderAccess400JSONResponseBodyStatusCode = 400
 )
 
-// Defines values for DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
-const (
-	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
-	DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
-func (e DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
-	switch e {
-	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
-		return true
-	case DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken400JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken400JSONResponseBodyStatusCodeN400 DeleteHoneyToken400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken400JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken401JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken401JSONResponseBodyStatusCodeN401 DeleteHoneyToken401JSONResponseBodyStatusCode = 401
-)
-
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess400JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -110195,21 +110364,6 @@ func (e DeleteIdentityFolderAccess400JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess401JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess401JSONResponseBodyStatusCodeN401 DeleteIdentityFolderAccess401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken401JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken403JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken403JSONResponseBodyStatusCodeN403 DeleteHoneyToken403JSONResponseBodyStatusCode = 403
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess401JSONResponseBodyStatusCode enum.
@@ -110227,21 +110381,6 @@ const (
 	DeleteIdentityFolderAccess403JSONResponseBodyStatusCodeN403 DeleteIdentityFolderAccess403JSONResponseBodyStatusCode = 403
 )
 
-// Valid indicates whether the value is a known member of the DeleteHoneyToken403JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken404JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken404JSONResponseBodyStatusCodeN404 DeleteHoneyToken404JSONResponseBodyStatusCode = 404
-)
-
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess403JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -110255,21 +110394,6 @@ func (e DeleteIdentityFolderAccess403JSONResponseBodyStatusCode) Valid() bool {
 // Defines values for DeleteIdentityFolderAccess404JSONResponseBodyStatusCode.
 const (
 	DeleteIdentityFolderAccess404JSONResponseBodyStatusCodeN404 DeleteIdentityFolderAccess404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken404JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken422JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken422JSONResponseBodyStatusCodeN422 DeleteHoneyToken422JSONResponseBodyStatusCode = 422
 )
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess404JSONResponseBodyStatusCode enum.
@@ -110287,21 +110411,6 @@ const (
 	DeleteIdentityFolderAccess422JSONResponseBodyStatusCodeN422 DeleteIdentityFolderAccess422JSONResponseBodyStatusCode = 422
 )
 
-// Valid indicates whether the value is a known member of the DeleteHoneyToken422JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteHoneyToken500JSONResponseBodyStatusCode.
-const (
-	DeleteHoneyToken500JSONResponseBodyStatusCodeN500 DeleteHoneyToken500JSONResponseBodyStatusCode = 500
-)
-
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess422JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
@@ -110316,19 +110425,6 @@ func (e DeleteIdentityFolderAccess422JSONResponseBodyStatusCode) Valid() bool {
 const (
 	DeleteIdentityFolderAccess500JSONResponseBodyStatusCodeN500 DeleteIdentityFolderAccess500JSONResponseBodyStatusCode = 500
 )
-
-// Valid indicates whether the value is a known member of the DeleteHoneyToken500JSONResponseBodyStatusCode enum.
-func (e DeleteHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case DeleteHoneyToken500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // Valid indicates whether the value is a known member of the DeleteIdentityFolderAccess500JSONResponseBodyStatusCode enum.
 func (e DeleteIdentityFolderAccess500JSONResponseBodyStatusCode) Valid() bool {
@@ -128589,336 +128685,6 @@ func (e AccessSharedSecret500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
-// Defines values for GetSamlConfig400JSONResponseBodyStatusCode.
-const (
-	GetSamlConfig400JSONResponseBodyStatusCodeN400 GetSamlConfig400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the GetSamlConfig400JSONResponseBodyStatusCode enum.
-func (e GetSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetSamlConfig400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetSamlConfig401JSONResponseBodyStatusCode.
-const (
-	GetSamlConfig401JSONResponseBodyStatusCodeN401 GetSamlConfig401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the GetSamlConfig401JSONResponseBodyStatusCode enum.
-func (e GetSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetSamlConfig401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetSamlConfig403JSONResponseBodyStatusCode.
-const (
-	GetSamlConfig403JSONResponseBodyStatusCodeN403 GetSamlConfig403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the GetSamlConfig403JSONResponseBodyStatusCode enum.
-func (e GetSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetSamlConfig403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetSamlConfig404JSONResponseBodyStatusCode.
-const (
-	GetSamlConfig404JSONResponseBodyStatusCodeN404 GetSamlConfig404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the GetSamlConfig404JSONResponseBodyStatusCode enum.
-func (e GetSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetSamlConfig404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetSamlConfig422JSONResponseBodyStatusCode.
-const (
-	GetSamlConfig422JSONResponseBodyStatusCodeN422 GetSamlConfig422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the GetSamlConfig422JSONResponseBodyStatusCode enum.
-func (e GetSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetSamlConfig422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetSamlConfig500JSONResponseBodyStatusCode.
-const (
-	GetSamlConfig500JSONResponseBodyStatusCodeN500 GetSamlConfig500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the GetSamlConfig500JSONResponseBodyStatusCode enum.
-func (e GetSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case GetSamlConfig500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfigJSONBodyAuthProvider.
-const (
-	UpdateSamlConfigJSONBodyAuthProviderAuth0Saml     UpdateSamlConfigJSONBodyAuthProvider = "auth0-saml"
-	UpdateSamlConfigJSONBodyAuthProviderAzureSaml     UpdateSamlConfigJSONBodyAuthProvider = "azure-saml"
-	UpdateSamlConfigJSONBodyAuthProviderGoogleSaml    UpdateSamlConfigJSONBodyAuthProvider = "google-saml"
-	UpdateSamlConfigJSONBodyAuthProviderJumpcloudSaml UpdateSamlConfigJSONBodyAuthProvider = "jumpcloud-saml"
-	UpdateSamlConfigJSONBodyAuthProviderKeycloakSaml  UpdateSamlConfigJSONBodyAuthProvider = "keycloak-saml"
-	UpdateSamlConfigJSONBodyAuthProviderOktaSaml      UpdateSamlConfigJSONBodyAuthProvider = "okta-saml"
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfigJSONBodyAuthProvider enum.
-func (e UpdateSamlConfigJSONBodyAuthProvider) Valid() bool {
-	switch e {
-	case UpdateSamlConfigJSONBodyAuthProviderAuth0Saml:
-		return true
-	case UpdateSamlConfigJSONBodyAuthProviderAzureSaml:
-		return true
-	case UpdateSamlConfigJSONBodyAuthProviderGoogleSaml:
-		return true
-	case UpdateSamlConfigJSONBodyAuthProviderJumpcloudSaml:
-		return true
-	case UpdateSamlConfigJSONBodyAuthProviderKeycloakSaml:
-		return true
-	case UpdateSamlConfigJSONBodyAuthProviderOktaSaml:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfig400JSONResponseBodyStatusCode.
-const (
-	UpdateSamlConfig400JSONResponseBodyStatusCodeN400 UpdateSamlConfig400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfig400JSONResponseBodyStatusCode enum.
-func (e UpdateSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateSamlConfig400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfig401JSONResponseBodyStatusCode.
-const (
-	UpdateSamlConfig401JSONResponseBodyStatusCodeN401 UpdateSamlConfig401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfig401JSONResponseBodyStatusCode enum.
-func (e UpdateSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateSamlConfig401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfig403JSONResponseBodyStatusCode.
-const (
-	UpdateSamlConfig403JSONResponseBodyStatusCodeN403 UpdateSamlConfig403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfig403JSONResponseBodyStatusCode enum.
-func (e UpdateSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateSamlConfig403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfig404JSONResponseBodyStatusCode.
-const (
-	UpdateSamlConfig404JSONResponseBodyStatusCodeN404 UpdateSamlConfig404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfig404JSONResponseBodyStatusCode enum.
-func (e UpdateSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateSamlConfig404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfig422JSONResponseBodyStatusCode.
-const (
-	UpdateSamlConfig422JSONResponseBodyStatusCodeN422 UpdateSamlConfig422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfig422JSONResponseBodyStatusCode enum.
-func (e UpdateSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateSamlConfig422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateSamlConfig500JSONResponseBodyStatusCode.
-const (
-	UpdateSamlConfig500JSONResponseBodyStatusCodeN500 UpdateSamlConfig500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the UpdateSamlConfig500JSONResponseBodyStatusCode enum.
-func (e UpdateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case UpdateSamlConfig500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfigJSONBodyAuthProvider.
-const (
-	CreateSamlConfigJSONBodyAuthProviderAuth0Saml     CreateSamlConfigJSONBodyAuthProvider = "auth0-saml"
-	CreateSamlConfigJSONBodyAuthProviderAzureSaml     CreateSamlConfigJSONBodyAuthProvider = "azure-saml"
-	CreateSamlConfigJSONBodyAuthProviderGoogleSaml    CreateSamlConfigJSONBodyAuthProvider = "google-saml"
-	CreateSamlConfigJSONBodyAuthProviderJumpcloudSaml CreateSamlConfigJSONBodyAuthProvider = "jumpcloud-saml"
-	CreateSamlConfigJSONBodyAuthProviderKeycloakSaml  CreateSamlConfigJSONBodyAuthProvider = "keycloak-saml"
-	CreateSamlConfigJSONBodyAuthProviderOktaSaml      CreateSamlConfigJSONBodyAuthProvider = "okta-saml"
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfigJSONBodyAuthProvider enum.
-func (e CreateSamlConfigJSONBodyAuthProvider) Valid() bool {
-	switch e {
-	case CreateSamlConfigJSONBodyAuthProviderAuth0Saml:
-		return true
-	case CreateSamlConfigJSONBodyAuthProviderAzureSaml:
-		return true
-	case CreateSamlConfigJSONBodyAuthProviderGoogleSaml:
-		return true
-	case CreateSamlConfigJSONBodyAuthProviderJumpcloudSaml:
-		return true
-	case CreateSamlConfigJSONBodyAuthProviderKeycloakSaml:
-		return true
-	case CreateSamlConfigJSONBodyAuthProviderOktaSaml:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfig400JSONResponseBodyStatusCode.
-const (
-	CreateSamlConfig400JSONResponseBodyStatusCodeN400 CreateSamlConfig400JSONResponseBodyStatusCode = 400
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfig400JSONResponseBodyStatusCode enum.
-func (e CreateSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateSamlConfig400JSONResponseBodyStatusCodeN400:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfig401JSONResponseBodyStatusCode.
-const (
-	CreateSamlConfig401JSONResponseBodyStatusCodeN401 CreateSamlConfig401JSONResponseBodyStatusCode = 401
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfig401JSONResponseBodyStatusCode enum.
-func (e CreateSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateSamlConfig401JSONResponseBodyStatusCodeN401:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfig403JSONResponseBodyStatusCode.
-const (
-	CreateSamlConfig403JSONResponseBodyStatusCodeN403 CreateSamlConfig403JSONResponseBodyStatusCode = 403
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfig403JSONResponseBodyStatusCode enum.
-func (e CreateSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateSamlConfig403JSONResponseBodyStatusCodeN403:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfig404JSONResponseBodyStatusCode.
-const (
-	CreateSamlConfig404JSONResponseBodyStatusCodeN404 CreateSamlConfig404JSONResponseBodyStatusCode = 404
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfig404JSONResponseBodyStatusCode enum.
-func (e CreateSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateSamlConfig404JSONResponseBodyStatusCodeN404:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfig422JSONResponseBodyStatusCode.
-const (
-	CreateSamlConfig422JSONResponseBodyStatusCodeN422 CreateSamlConfig422JSONResponseBodyStatusCode = 422
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfig422JSONResponseBodyStatusCode enum.
-func (e CreateSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateSamlConfig422JSONResponseBodyStatusCodeN422:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for CreateSamlConfig500JSONResponseBodyStatusCode.
-const (
-	CreateSamlConfig500JSONResponseBodyStatusCodeN500 CreateSamlConfig500JSONResponseBodyStatusCode = 500
-)
-
-// Valid indicates whether the value is a known member of the CreateSamlConfig500JSONResponseBodyStatusCode enum.
-func (e CreateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
-	switch e {
-	case CreateSamlConfig500JSONResponseBodyStatusCodeN500:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DeleteOidcConfig400JSONResponseBodyStatusCode.
 const (
 	DeleteOidcConfig400JSONResponseBodyStatusCodeN400 DeleteOidcConfig400JSONResponseBodyStatusCode = 400
@@ -129357,6 +129123,336 @@ const (
 func (e CreateOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateOidcConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig400JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig400JSONResponseBodyStatusCodeN400 GetSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig400JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig401JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig401JSONResponseBodyStatusCodeN401 GetSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig401JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig403JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig403JSONResponseBodyStatusCodeN403 GetSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig403JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig404JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig404JSONResponseBodyStatusCodeN404 GetSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig404JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig422JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig422JSONResponseBodyStatusCodeN422 GetSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig422JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSamlConfig500JSONResponseBodyStatusCode.
+const (
+	GetSamlConfig500JSONResponseBodyStatusCodeN500 GetSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSamlConfig500JSONResponseBodyStatusCode enum.
+func (e GetSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfigJSONBodyAuthProvider.
+const (
+	UpdateSamlConfigJSONBodyAuthProviderAuth0Saml     UpdateSamlConfigJSONBodyAuthProvider = "auth0-saml"
+	UpdateSamlConfigJSONBodyAuthProviderAzureSaml     UpdateSamlConfigJSONBodyAuthProvider = "azure-saml"
+	UpdateSamlConfigJSONBodyAuthProviderGoogleSaml    UpdateSamlConfigJSONBodyAuthProvider = "google-saml"
+	UpdateSamlConfigJSONBodyAuthProviderJumpcloudSaml UpdateSamlConfigJSONBodyAuthProvider = "jumpcloud-saml"
+	UpdateSamlConfigJSONBodyAuthProviderKeycloakSaml  UpdateSamlConfigJSONBodyAuthProvider = "keycloak-saml"
+	UpdateSamlConfigJSONBodyAuthProviderOktaSaml      UpdateSamlConfigJSONBodyAuthProvider = "okta-saml"
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfigJSONBodyAuthProvider enum.
+func (e UpdateSamlConfigJSONBodyAuthProvider) Valid() bool {
+	switch e {
+	case UpdateSamlConfigJSONBodyAuthProviderAuth0Saml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderAzureSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderGoogleSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderJumpcloudSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderKeycloakSaml:
+		return true
+	case UpdateSamlConfigJSONBodyAuthProviderOktaSaml:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig400JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig400JSONResponseBodyStatusCodeN400 UpdateSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig400JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig401JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig401JSONResponseBodyStatusCodeN401 UpdateSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig401JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig403JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig403JSONResponseBodyStatusCodeN403 UpdateSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig403JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig404JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig404JSONResponseBodyStatusCodeN404 UpdateSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig404JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig422JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig422JSONResponseBodyStatusCodeN422 UpdateSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig422JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSamlConfig500JSONResponseBodyStatusCode.
+const (
+	UpdateSamlConfig500JSONResponseBodyStatusCodeN500 UpdateSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateSamlConfig500JSONResponseBodyStatusCode enum.
+func (e UpdateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfigJSONBodyAuthProvider.
+const (
+	CreateSamlConfigJSONBodyAuthProviderAuth0Saml     CreateSamlConfigJSONBodyAuthProvider = "auth0-saml"
+	CreateSamlConfigJSONBodyAuthProviderAzureSaml     CreateSamlConfigJSONBodyAuthProvider = "azure-saml"
+	CreateSamlConfigJSONBodyAuthProviderGoogleSaml    CreateSamlConfigJSONBodyAuthProvider = "google-saml"
+	CreateSamlConfigJSONBodyAuthProviderJumpcloudSaml CreateSamlConfigJSONBodyAuthProvider = "jumpcloud-saml"
+	CreateSamlConfigJSONBodyAuthProviderKeycloakSaml  CreateSamlConfigJSONBodyAuthProvider = "keycloak-saml"
+	CreateSamlConfigJSONBodyAuthProviderOktaSaml      CreateSamlConfigJSONBodyAuthProvider = "okta-saml"
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfigJSONBodyAuthProvider enum.
+func (e CreateSamlConfigJSONBodyAuthProvider) Valid() bool {
+	switch e {
+	case CreateSamlConfigJSONBodyAuthProviderAuth0Saml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderAzureSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderGoogleSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderJumpcloudSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderKeycloakSaml:
+		return true
+	case CreateSamlConfigJSONBodyAuthProviderOktaSaml:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig400JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig400JSONResponseBodyStatusCodeN400 CreateSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig400JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig401JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig401JSONResponseBodyStatusCodeN401 CreateSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig401JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig403JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig403JSONResponseBodyStatusCodeN403 CreateSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig403JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig404JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig404JSONResponseBodyStatusCodeN404 CreateSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig404JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig422JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig422JSONResponseBodyStatusCodeN422 CreateSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig422JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateSamlConfig500JSONResponseBodyStatusCode.
+const (
+	CreateSamlConfig500JSONResponseBodyStatusCodeN500 CreateSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateSamlConfig500JSONResponseBodyStatusCode enum.
+func (e CreateSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateSamlConfig500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -149577,7 +149673,6 @@ type ResendAdminOrganizationInvite500JSONResponseBodyStatusCode float32
 
 // AdminSignUpJSONBody defines parameters for AdminSignUp.
 type AdminSignUpJSONBody struct {
-	ActivationToken  *string             `json:"activationToken,omitempty"`
 	Email            openapi_types.Email `json:"email"`
 	FirstName        string              `json:"firstName"`
 	LastName         *string             `json:"lastName,omitempty"`
@@ -157592,6 +157687,80 @@ type ListAppConnections200JSONResponseBodyAppConnections118Method string
 
 // ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBodyAppConnections118RotationRotationStatus string
+
+// ListAppConnections200JSONResponseBodyAppConnections119 defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections119 struct {
+	App         ListAppConnections200JSONResponseBodyAppConnections119App `json:"app"`
+	CreatedAt   time.Time                                                 `json:"createdAt"`
+	Credentials struct {
+		// Host The hostname or IP address of the primary DNS server that accepts dynamic updates.
+		Host string `json:"host"`
+
+		// Port The TCP port the DNS server listens on, usually 53.
+		Port int `json:"port"`
+
+		// TsigAlgorithm The algorithm of the TSIG key. hmac-sha256 is recommended.
+		TsigAlgorithm ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm `json:"tsigAlgorithm"`
+
+		// TsigKeyName The name of the TSIG key, as configured on the DNS server.
+		TsigKeyName string `json:"tsigKeyName"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                      `json:"credentialsHash,omitempty"`
+	Description                  *string                                                      `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                          `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                          `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                           `json:"id"`
+	IsAutoRotationEnabled        *bool                                                        `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                        `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       ListAppConnections200JSONResponseBodyAppConnections119Method `json:"method"`
+	Name                         string                                                       `json:"name"`
+	OrgId                        openapi_types.UUID                                           `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// ListAppConnections200JSONResponseBodyAppConnections119App defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections119App string
+
+// ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections119CredentialsTsigAlgorithm string
+
+// ListAppConnections200JSONResponseBodyAppConnections119Method defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections119Method string
+
+// ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus defines parameters for ListAppConnections.
+type ListAppConnections200JSONResponseBodyAppConnections119RotationRotationStatus string
 
 // ListAppConnections200JSONResponseBody_AppConnections_Item defines parameters for ListAppConnections.
 type ListAppConnections200JSONResponseBody_AppConnections_Item struct {
@@ -172642,7 +172811,7 @@ type ListCertificateAuthoritiesV1General200JSONResponseBodyCertificateAuthoritie
 		// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
 		DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
 		DnsProviderConfig  struct {
-			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.
 			HostedZoneId string `json:"hostedZoneId"`
 
 			// Provider The DNS provider for the ACME Certificate Authority.
@@ -172901,7 +173070,7 @@ type CreateAcmeCertificateAuthorityV1JSONBody struct {
 		// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
 		DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
 		DnsProviderConfig  struct {
-			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.
 			HostedZoneId string `json:"hostedZoneId"`
 
 			// Provider The DNS provider for the ACME Certificate Authority.
@@ -190590,6 +190759,27 @@ type GetHoneyTokenLimits422JSONResponseBodyStatusCode float32
 // GetHoneyTokenLimits500JSONResponseBodyStatusCode defines parameters for GetHoneyTokenLimits.
 type GetHoneyTokenLimits500JSONResponseBodyStatusCode float32
 
+// DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
+
+// DeleteHoneyToken400JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken400JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken401JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken401JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken403JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken403JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken404JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken404JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken422JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken422JSONResponseBodyStatusCode float32
+
+// DeleteHoneyToken500JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
+type DeleteHoneyToken500JSONResponseBodyStatusCode float32
+
 // GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for GetHoneyToken.
 type GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
@@ -198251,38 +198441,20 @@ type DeleteIdentityFolderAccessJSONBody struct {
 // DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess200JSONResponseBodyFolderAccessPermission string
 
-// DeleteHoneyToken400JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken400JSONResponseBodyStatusCode float32
-
 // DeleteIdentityFolderAccess400JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess400JSONResponseBodyStatusCode float32
-
-// DeleteHoneyToken401JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken401JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess401JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess401JSONResponseBodyStatusCode float32
 
-// DeleteHoneyToken403JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken403JSONResponseBodyStatusCode float32
-
 // DeleteIdentityFolderAccess403JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess403JSONResponseBodyStatusCode float32
-
-// DeleteHoneyToken404JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken404JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess404JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess404JSONResponseBodyStatusCode float32
 
-// DeleteHoneyToken422JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken422JSONResponseBodyStatusCode float32
-
 // DeleteIdentityFolderAccess422JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess422JSONResponseBodyStatusCode float32
-
-// DeleteHoneyToken500JSONResponseBodyStatusCode defines parameters for DeleteHoneyToken.
-type DeleteHoneyToken500JSONResponseBodyStatusCode float32
 
 // DeleteIdentityFolderAccess500JSONResponseBodyStatusCode defines parameters for DeleteIdentityFolderAccess.
 type DeleteIdentityFolderAccess500JSONResponseBodyStatusCode float32
@@ -200365,6 +200537,9 @@ type CreateAwsParameterStoreSecretSyncJSONBody struct {
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 		KeySchema *string `json:"keySchema,omitempty"`
 
+		// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -200617,6 +200792,9 @@ type UpdateAwsParameterStoreSecretSyncJSONBody struct {
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 		KeySchema *string `json:"keySchema,omitempty"`
 
+		// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -200868,6 +201046,9 @@ type CreateAwsSecretsManagerSecretSyncJSONBody struct {
 
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 		KeySchema *string `json:"keySchema,omitempty"`
+
+		// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -201254,6 +201435,9 @@ type UpdateAwsSecretsManagerSecretSyncJSONBody struct {
 
 		// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 		KeySchema *string `json:"keySchema,omitempty"`
+
+		// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+		PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 		// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 		SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -204093,132 +204277,6 @@ type AccessSharedSecret422JSONResponseBodyStatusCode float32
 // AccessSharedSecret500JSONResponseBodyStatusCode defines parameters for AccessSharedSecret.
 type AccessSharedSecret500JSONResponseBodyStatusCode float32
 
-// GetSamlConfigParams defines parameters for GetSamlConfig.
-type GetSamlConfigParams struct {
-	// OrganizationId The ID of the organization to get the SAML config for.
-	OrganizationId string `form:"organizationId" json:"organizationId"`
-}
-
-// GetSamlConfig400JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
-type GetSamlConfig400JSONResponseBodyStatusCode float32
-
-// GetSamlConfig401JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
-type GetSamlConfig401JSONResponseBodyStatusCode float32
-
-// GetSamlConfig403JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
-type GetSamlConfig403JSONResponseBodyStatusCode float32
-
-// GetSamlConfig404JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
-type GetSamlConfig404JSONResponseBodyStatusCode float32
-
-// GetSamlConfig422JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
-type GetSamlConfig422JSONResponseBodyStatusCode float32
-
-// GetSamlConfig500JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
-type GetSamlConfig500JSONResponseBodyStatusCode float32
-
-// UpdateSamlConfigJSONBody defines parameters for UpdateSamlConfig.
-type UpdateSamlConfigJSONBody struct {
-	// AuthProvider Authentication provider to use for SAML authentication.
-	AuthProvider *UpdateSamlConfigJSONBodyAuthProvider `json:"authProvider,omitempty"`
-
-	// Cert The certificate to use for SAML authentication.
-	Cert *string `json:"cert,omitempty"`
-
-	// EnableGroupSync Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.
-	EnableGroupSync *bool `json:"enableGroupSync,omitempty"`
-
-	// EntryPoint The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.
-	EntryPoint *string `json:"entryPoint,omitempty"`
-
-	// IsActive Whether to enable or disable this SAML configuration.
-	IsActive *bool `json:"isActive,omitempty"`
-
-	// Issuer The SAML provider issuer URL or entity ID.
-	Issuer *string `json:"issuer,omitempty"`
-
-	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
-	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
-
-	// MfaSignalAttribute The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.
-	MfaSignalAttribute *string `json:"mfaSignalAttribute,omitempty"`
-
-	// OrganizationId The ID of the organization to update the SAML config for.
-	OrganizationId string `json:"organizationId"`
-}
-
-// UpdateSamlConfigJSONBodyAuthProvider defines parameters for UpdateSamlConfig.
-type UpdateSamlConfigJSONBodyAuthProvider string
-
-// UpdateSamlConfig400JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
-type UpdateSamlConfig400JSONResponseBodyStatusCode float32
-
-// UpdateSamlConfig401JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
-type UpdateSamlConfig401JSONResponseBodyStatusCode float32
-
-// UpdateSamlConfig403JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
-type UpdateSamlConfig403JSONResponseBodyStatusCode float32
-
-// UpdateSamlConfig404JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
-type UpdateSamlConfig404JSONResponseBodyStatusCode float32
-
-// UpdateSamlConfig422JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
-type UpdateSamlConfig422JSONResponseBodyStatusCode float32
-
-// UpdateSamlConfig500JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
-type UpdateSamlConfig500JSONResponseBodyStatusCode float32
-
-// CreateSamlConfigJSONBody defines parameters for CreateSamlConfig.
-type CreateSamlConfigJSONBody struct {
-	// AuthProvider Authentication provider to use for SAML authentication.
-	AuthProvider CreateSamlConfigJSONBodyAuthProvider `json:"authProvider"`
-
-	// Cert The certificate to use for SAML authentication.
-	Cert string `json:"cert"`
-
-	// EnableGroupSync Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.
-	EnableGroupSync *bool `json:"enableGroupSync,omitempty"`
-
-	// EntryPoint The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.
-	EntryPoint string `json:"entryPoint"`
-
-	// IsActive Whether to enable or disable this SAML configuration.
-	IsActive bool `json:"isActive"`
-
-	// Issuer The SAML provider issuer URL or entity ID.
-	Issuer string `json:"issuer"`
-
-	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
-	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
-
-	// MfaSignalAttribute The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.
-	MfaSignalAttribute *string `json:"mfaSignalAttribute,omitempty"`
-
-	// OrganizationId The ID of the organization to create the SAML config for.
-	OrganizationId string `json:"organizationId"`
-}
-
-// CreateSamlConfigJSONBodyAuthProvider defines parameters for CreateSamlConfig.
-type CreateSamlConfigJSONBodyAuthProvider string
-
-// CreateSamlConfig400JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
-type CreateSamlConfig400JSONResponseBodyStatusCode float32
-
-// CreateSamlConfig401JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
-type CreateSamlConfig401JSONResponseBodyStatusCode float32
-
-// CreateSamlConfig403JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
-type CreateSamlConfig403JSONResponseBodyStatusCode float32
-
-// CreateSamlConfig404JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
-type CreateSamlConfig404JSONResponseBodyStatusCode float32
-
-// CreateSamlConfig422JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
-type CreateSamlConfig422JSONResponseBodyStatusCode float32
-
-// CreateSamlConfig500JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
-type CreateSamlConfig500JSONResponseBodyStatusCode float32
-
 // GithubLoginCallbackParams defines parameters for GithubLoginCallback.
 type GithubLoginCallbackParams struct {
 	Code  *string `form:"code,omitempty" json:"code,omitempty"`
@@ -204471,6 +204529,126 @@ type RedirectSamlByOrgSlugParams struct {
 type RedirectSamlByConfigIdParams struct {
 	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
 }
+
+// GetSamlConfig400JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig400JSONResponseBodyStatusCode float32
+
+// GetSamlConfig401JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig401JSONResponseBodyStatusCode float32
+
+// GetSamlConfig403JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig403JSONResponseBodyStatusCode float32
+
+// GetSamlConfig404JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig404JSONResponseBodyStatusCode float32
+
+// GetSamlConfig422JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig422JSONResponseBodyStatusCode float32
+
+// GetSamlConfig500JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
+type GetSamlConfig500JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfigJSONBody defines parameters for UpdateSamlConfig.
+type UpdateSamlConfigJSONBody struct {
+	// AuthProvider Authentication provider to use for SAML authentication.
+	AuthProvider *UpdateSamlConfigJSONBodyAuthProvider `json:"authProvider,omitempty"`
+
+	// Cert The certificate to use for SAML authentication.
+	Cert *string `json:"cert,omitempty"`
+
+	// EnableGroupSync Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.
+	EnableGroupSync *bool `json:"enableGroupSync,omitempty"`
+
+	// EntryPoint The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.
+	EntryPoint *string `json:"entryPoint,omitempty"`
+
+	// IsActive Whether to enable or disable this SAML configuration.
+	IsActive *bool `json:"isActive,omitempty"`
+
+	// Issuer The SAML provider issuer URL or entity ID.
+	Issuer *string `json:"issuer,omitempty"`
+
+	// MfaAttributeValues Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey.
+	MfaAttributeValues *[]string `json:"mfaAttributeValues,omitempty"`
+
+	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
+	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
+
+	// MfaSignalAttribute The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.
+	MfaSignalAttribute *string `json:"mfaSignalAttribute,omitempty"`
+}
+
+// UpdateSamlConfigJSONBodyAuthProvider defines parameters for UpdateSamlConfig.
+type UpdateSamlConfigJSONBodyAuthProvider string
+
+// UpdateSamlConfig400JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig400JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig401JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig401JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig403JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig403JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig404JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig404JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig422JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig422JSONResponseBodyStatusCode float32
+
+// UpdateSamlConfig500JSONResponseBodyStatusCode defines parameters for UpdateSamlConfig.
+type UpdateSamlConfig500JSONResponseBodyStatusCode float32
+
+// CreateSamlConfigJSONBody defines parameters for CreateSamlConfig.
+type CreateSamlConfigJSONBody struct {
+	// AuthProvider Authentication provider to use for SAML authentication.
+	AuthProvider CreateSamlConfigJSONBodyAuthProvider `json:"authProvider"`
+
+	// Cert The certificate to use for SAML authentication.
+	Cert string `json:"cert"`
+
+	// EnableGroupSync Whether to enable automatic synchronization of group memberships from the SAML provider to Infisical groups.
+	EnableGroupSync *bool `json:"enableGroupSync,omitempty"`
+
+	// EntryPoint The entry point for the SAML authentication. This is the URL that the user will be redirected to after they have authenticated with the SAML provider.
+	EntryPoint string `json:"entryPoint"`
+
+	// IsActive Whether to enable or disable this SAML configuration.
+	IsActive bool `json:"isActive"`
+
+	// Issuer The SAML provider issuer URL or entity ID.
+	Issuer string `json:"issuer"`
+
+	// MfaAttributeValues Additional values of the MFA attribute, besides 'mfa' and 'http://schemas.microsoft.com/claims/multipleauthn', that prove the identity provider completed MFA, such as 'swk' for an Okta login whose second factor was a passkey.
+	MfaAttributeValues *[]string `json:"mfaAttributeValues,omitempty"`
+
+	// MfaAuthnContexts Additional AuthnContextClassRef values, besides the built-in two-factor classes, that prove the identity provider completed MFA.
+	MfaAuthnContexts *[]string `json:"mfaAuthnContexts,omitempty"`
+
+	// MfaSignalAttribute The SAML attribute that lists the authentication methods the user completed, such as an Okta attribute with value session.amr. Set to null to use the provider's default: http://schemas.microsoft.com/claims/authnmethodsreferences for Azure / Entra ID, amr for every other provider.
+	MfaSignalAttribute *string `json:"mfaSignalAttribute,omitempty"`
+}
+
+// CreateSamlConfigJSONBodyAuthProvider defines parameters for CreateSamlConfig.
+type CreateSamlConfigJSONBodyAuthProvider string
+
+// CreateSamlConfig400JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig400JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig401JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig401JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig403JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig403JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig404JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig404JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig422JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig422JSONResponseBodyStatusCode float32
+
+// CreateSamlConfig500JSONResponseBodyStatusCode defines parameters for CreateSamlConfig.
+type CreateSamlConfig500JSONResponseBodyStatusCode float32
 
 // SamlAcsFormdataBody defines parameters for SamlAcs.
 type SamlAcsFormdataBody struct {
@@ -210071,7 +210249,7 @@ type ListSecretsV4Params struct {
 	// IncludePersonalOverrides Whether or not to include personal secrets in the response. When enabled, personal secrets will be included in the response. Shared secrets will still be included, but personal secrets will take priority, and the corresponding shared secrets will be replaced with the personal secrets.
 	IncludePersonalOverrides *ListSecretsV4ParamsIncludePersonalOverrides `form:"includePersonalOverrides,omitempty" json:"includePersonalOverrides,omitempty"`
 
-	// IncludeImports Weather to include imported secrets or not.
+	// IncludeImports Whether or not to include imported secrets.
 	IncludeImports *ListSecretsV4ParamsIncludeImports `form:"includeImports,omitempty" json:"includeImports,omitempty"`
 
 	// TagSlugs The comma separated tag slugs to filter secrets.
@@ -210245,7 +210423,7 @@ type UpdateManySecretsV4JSONBody struct {
 		// NewSecretName The new name for the secret.
 		NewSecretName *string `json:"newSecretName,omitempty"`
 
-		// SecretComment Update comment to the secret.
+		// SecretComment The new comment for the secret.
 		SecretComment *string `json:"secretComment,omitempty"`
 
 		// SecretKey The name of the secret to update.
@@ -210718,7 +210896,7 @@ type GetSecretByNameV4Params struct {
 	// ExpandSecretReferences Whether or not to expand secret references.
 	ExpandSecretReferences *GetSecretByNameV4ParamsExpandSecretReferences `form:"expandSecretReferences,omitempty" json:"expandSecretReferences,omitempty"`
 
-	// IncludeImports Weather to include imported secrets or not.
+	// IncludeImports Whether or not to include imported secrets.
 	IncludeImports *GetSecretByNameV4ParamsIncludeImports `form:"includeImports,omitempty" json:"includeImports,omitempty"`
 }
 
@@ -210764,7 +210942,7 @@ type UpdateSecretV4JSONBody struct {
 	// ProjectId The ID of the project to update the secret in.
 	ProjectId string `json:"projectId"`
 
-	// SecretComment Update comment to the secret.
+	// SecretComment The new comment for the secret.
 	SecretComment  *string `json:"secretComment,omitempty"`
 	SecretMetadata *[]struct {
 		IsEncrypted *bool   `json:"isEncrypted,omitempty"`
@@ -212189,17 +212367,17 @@ type SetSecretRequestValueJSONRequestBody SetSecretRequestValueJSONBody
 // AccessSharedSecretJSONRequestBody defines body for AccessSharedSecret for application/json ContentType.
 type AccessSharedSecretJSONRequestBody AccessSharedSecretJSONBody
 
-// UpdateSamlConfigJSONRequestBody defines body for UpdateSamlConfig for application/json ContentType.
-type UpdateSamlConfigJSONRequestBody UpdateSamlConfigJSONBody
-
-// CreateSamlConfigJSONRequestBody defines body for CreateSamlConfig for application/json ContentType.
-type CreateSamlConfigJSONRequestBody CreateSamlConfigJSONBody
-
 // UpdateOidcConfigJSONRequestBody defines body for UpdateOidcConfig for application/json ContentType.
 type UpdateOidcConfigJSONRequestBody UpdateOidcConfigJSONBody
 
 // CreateOidcConfigJSONRequestBody defines body for CreateOidcConfig for application/json ContentType.
 type CreateOidcConfigJSONRequestBody CreateOidcConfigJSONBody
+
+// UpdateSamlConfigJSONRequestBody defines body for UpdateSamlConfig for application/json ContentType.
+type UpdateSamlConfigJSONRequestBody UpdateSamlConfigJSONBody
+
+// CreateSamlConfigJSONRequestBody defines body for CreateSamlConfig for application/json ContentType.
+type CreateSamlConfigJSONRequestBody CreateSamlConfigJSONBody
 
 // SamlAcsFormdataRequestBody defines body for SamlAcs for application/x-www-form-urlencoded ContentType.
 type SamlAcsFormdataRequestBody SamlAcsFormdataBody
@@ -217009,6 +217187,32 @@ func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) FromListAppC
 
 // MergeListAppConnections200JSONResponseBodyAppConnections118 performs a merge with any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item, using the provided ListAppConnections200JSONResponseBodyAppConnections118
 func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) MergeListAppConnections200JSONResponseBodyAppConnections118(v ListAppConnections200JSONResponseBodyAppConnections118) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListAppConnections200JSONResponseBodyAppConnections119 returns the union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item as a ListAppConnections200JSONResponseBodyAppConnections119
+func (t ListAppConnections200JSONResponseBody_AppConnections_Item) AsListAppConnections200JSONResponseBodyAppConnections119() (ListAppConnections200JSONResponseBodyAppConnections119, error) {
+	var body ListAppConnections200JSONResponseBodyAppConnections119
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListAppConnections200JSONResponseBodyAppConnections119 overwrites any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item as the provided ListAppConnections200JSONResponseBodyAppConnections119
+func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) FromListAppConnections200JSONResponseBodyAppConnections119(v ListAppConnections200JSONResponseBodyAppConnections119) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListAppConnections200JSONResponseBodyAppConnections119 performs a merge with any union data inside the ListAppConnections200JSONResponseBody_AppConnections_Item, using the provided ListAppConnections200JSONResponseBodyAppConnections119
+func (t *ListAppConnections200JSONResponseBody_AppConnections_Item) MergeListAppConnections200JSONResponseBodyAppConnections119(v ListAppConnections200JSONResponseBodyAppConnections119) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -258383,6 +258587,9 @@ type ClientInterface interface {
 	// GetHoneyTokenLimits performs a GET /api/v1/honey-tokens/limits (the `GetHoneyTokenLimits` operationId) request.
 	GetHoneyTokenLimits(ctx context.Context, params *GetHoneyTokenLimitsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetHoneyToken performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
 	GetHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -259848,9 +260055,6 @@ type ClientInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembership(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-	DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteIdentityFolderAccessWithBody performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -260696,35 +260900,6 @@ type ClientInterface interface {
 	// Access a shared secret by its ID. If the secret is password protected, you must provide the password in the request body. Returns the secret value if access is granted, or an error if access is denied. The endpoint requires authentication if the shared secret is scoped to an organization.
 	AccessSharedSecret(ctx context.Context, id string, body AccessSharedSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetSamlConfig performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
-	//
-	// Get SAML config.
-	GetSamlConfig(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateSamlConfigWithBody performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Update SAML config.
-	UpdateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateSamlConfig performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Update SAML config.
-	UpdateSamlConfig(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateSamlConfigWithBody performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Create SAML config.
-	CreateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateSamlConfig performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
-	// Takes a body of the `application/json` content type.
-	//
-	// Create SAML config.
-	CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GithubLoginCallback performs a GET /api/v1/sso/github (the `GithubLoginCallback` operationId) request.
 	GithubLoginCallback(ctx context.Context, params *GithubLoginCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -260794,6 +260969,35 @@ type ClientInterface interface {
 
 	// RedirectSamlByConfigId performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
 	RedirectSamlByConfigId(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSamlConfig performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
+	//
+	// Get SAML config.
+	GetSamlConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSamlConfigWithBody performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update SAML config.
+	UpdateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSamlConfig performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update SAML config.
+	UpdateSamlConfig(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSamlConfigWithBody performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create SAML config.
+	CreateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSamlConfig performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create SAML config.
+	CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SamlAcsWithBody performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
 	// with any type of body and a specified content type.
@@ -273435,6 +273639,19 @@ func (c *Client) GetHoneyTokenLimits(ctx context.Context, params *GetHoneyTokenL
 	return c.Client.Do(req)
 }
 
+// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+func (c *Client) DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteHoneyTokenRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetHoneyToken performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
 func (c *Client) GetHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetHoneyTokenRequest(c.Server, id)
@@ -277855,19 +278072,6 @@ func (c *Client) DeleteIdentityFolderAccessWithBody(ctx context.Context, project
 	return c.Client.Do(req)
 }
 
-// DeleteHoneyToken performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-func (c *Client) DeleteHoneyToken(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteHoneyTokenRequest(c.Server, id)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 // DeleteIdentityFolderAccess performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request.
 // Takes a body of the `application/json` content type.
 //
@@ -280567,85 +280771,6 @@ func (c *Client) AccessSharedSecret(ctx context.Context, id string, body AccessS
 	return c.Client.Do(req)
 }
 
-// GetSamlConfig performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
-//
-// Get SAML config.
-func (c *Client) GetSamlConfig(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSamlConfigRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateSamlConfigWithBody performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Update SAML config.
-func (c *Client) UpdateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateSamlConfigRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// UpdateSamlConfig performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Update SAML config.
-func (c *Client) UpdateSamlConfig(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateSamlConfigRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateSamlConfigWithBody performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Create SAML config.
-func (c *Client) CreateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateSamlConfigRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// CreateSamlConfig performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
-// Takes a body of the `application/json` content type.
-//
-// Create SAML config.
-func (c *Client) CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateSamlConfigRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 // GithubLoginCallback performs a GET /api/v1/sso/github (the `GithubLoginCallback` operationId) request.
 func (c *Client) GithubLoginCallback(ctx context.Context, params *GithubLoginCallbackParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubLoginCallbackRequest(c.Server, params)
@@ -280886,6 +281011,85 @@ func (c *Client) RedirectSamlByOrgSlug(ctx context.Context, orgSlug string, para
 // RedirectSamlByConfigId performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
 func (c *Client) RedirectSamlByConfigId(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRedirectSamlByConfigIdRequest(c.Server, samlConfigId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSamlConfig performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
+//
+// Get SAML config.
+func (c *Client) GetSamlConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSamlConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateSamlConfigWithBody performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update SAML config.
+func (c *Client) UpdateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSamlConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateSamlConfig performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update SAML config.
+func (c *Client) UpdateSamlConfig(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSamlConfigRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSamlConfigWithBody performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create SAML config.
+func (c *Client) CreateSamlConfigWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSamlConfigRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSamlConfig performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create SAML config.
+func (c *Client) CreateSamlConfig(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSamlConfigRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -307401,6 +307605,40 @@ func NewGetHoneyTokenLimitsRequest(server string, params *GetHoneyTokenLimitsPar
 	return req, nil
 }
 
+// NewDeleteHoneyTokenRequest constructs an http.Request for the DeleteHoneyToken method
+func NewDeleteHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/honey-tokens/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetHoneyTokenRequest constructs an http.Request for the GetHoneyToken method
 func NewGetHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -317381,40 +317619,6 @@ func NewCreateProjectIdentityMembershipRequestWithBody(server string, projectId 
 	return req, nil
 }
 
-// NewDeleteHoneyTokenRequest constructs an http.Request for the DeleteHoneyToken method
-func NewDeleteHoneyTokenRequest(server string, id openapi_types.UUID) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/honey-tokens/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewDeleteIdentityFolderAccessRequest calls the generic DeleteIdentityFolderAccess builder with application/json body
 func NewDeleteIdentityFolderAccessRequest(server string, projectId string, identityId openapi_types.UUID, body DeleteIdentityFolderAccessJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -323545,136 +323749,6 @@ func NewAccessSharedSecretRequestWithBody(server string, id string, contentType 
 	return req, nil
 }
 
-// NewGetSamlConfigRequest constructs an http.Request for the GetSamlConfig method
-func NewGetSamlConfigRequest(server string, params *GetSamlConfigParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/sso/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateSamlConfigRequest calls the generic UpdateSamlConfig builder with application/json body
-func NewUpdateSamlConfigRequest(server string, body UpdateSamlConfigJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateSamlConfigRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewUpdateSamlConfigRequestWithBody constructs an http.Request for the UpdateSamlConfig method, with any body, and a specified content type
-func NewUpdateSamlConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/sso/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCreateSamlConfigRequest calls the generic CreateSamlConfig builder with application/json body
-func NewCreateSamlConfigRequest(server string, body CreateSamlConfigJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateSamlConfigRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCreateSamlConfigRequestWithBody constructs an http.Request for the CreateSamlConfig method, with any body, and a specified content type
-func NewCreateSamlConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/v1/sso/config")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewGithubLoginCallbackRequest constructs an http.Request for the GithubLoginCallback method
 func NewGithubLoginCallbackRequest(server string, params *GithubLoginCallbackParams) (*http.Request, error) {
 	var err error
@@ -324637,6 +324711,113 @@ func NewRedirectSamlByConfigIdRequest(server string, samlConfigId string, params
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGetSamlConfigRequest constructs an http.Request for the GetSamlConfig method
+func NewGetSamlConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/saml/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateSamlConfigRequest calls the generic UpdateSamlConfig builder with application/json body
+func NewUpdateSamlConfigRequest(server string, body UpdateSamlConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSamlConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateSamlConfigRequestWithBody constructs an http.Request for the UpdateSamlConfig method, with any body, and a specified content type
+func NewUpdateSamlConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/saml/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateSamlConfigRequest calls the generic CreateSamlConfig builder with application/json body
+func NewCreateSamlConfigRequest(server string, body CreateSamlConfigJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSamlConfigRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateSamlConfigRequestWithBody constructs an http.Request for the CreateSamlConfig method, with any body, and a specified content type
+func NewCreateSamlConfigRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/saml/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -337441,6 +337622,11 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetHoneyTokenLimitsWithResponse(ctx context.Context, params *GetHoneyTokenLimitsParams, reqEditors ...RequestEditorFn) (*GetHoneyTokenLimitsResponse, error)
 
+	// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error)
+
 	// GetHoneyTokenWithResponse performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -339336,11 +339522,6 @@ type ClientWithResponsesInterface interface {
 	// Create project identity membership.
 	CreateProjectIdentityMembershipWithResponse(ctx context.Context, projectId string, identityId string, body CreateProjectIdentityMembershipJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateProjectIdentityMembershipResponse, error)
 
-	// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error)
-
 	// DeleteIdentityFolderAccessWithBodyWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -340450,41 +340631,6 @@ type ClientWithResponsesInterface interface {
 	// Access a shared secret by its ID. If the secret is password protected, you must provide the password in the request body. Returns the secret value if access is granted, or an error if access is denied. The endpoint requires authentication if the shared secret is scoped to an organization.
 	AccessSharedSecretWithResponse(ctx context.Context, id string, body AccessSharedSecretJSONRequestBody, reqEditors ...RequestEditorFn) (*AccessSharedSecretResponse, error)
 
-	// GetSamlConfigWithResponse performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
-	//
-	// Get SAML config.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	GetSamlConfigWithResponse(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*GetSamlConfigResponse, error)
-
-	// UpdateSamlConfigWithBodyWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Update SAML config.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	UpdateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error)
-
-	// UpdateSamlConfigWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Update SAML config.
-	UpdateSamlConfigWithResponse(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error)
-
-	// CreateSamlConfigWithBodyWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
-	// with any type of body and a specified content type.
-	//
-	// Create SAML config.
-	//
-	// Returns a wrapper object for the known response body format(s).
-	CreateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
-
-	// CreateSamlConfigWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
-	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	//
-	// Create SAML config.
-	CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
-
 	// GithubLoginCallbackWithResponse performs a GET /api/v1/sso/github (the `GithubLoginCallback` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -340586,6 +340732,41 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	RedirectSamlByConfigIdWithResponse(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*RedirectSamlByConfigIdResponse, error)
+
+	// GetSamlConfigWithResponse performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
+	//
+	// Get SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSamlConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSamlConfigResponse, error)
+
+	// UpdateSamlConfigWithBodyWithResponse performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error)
+
+	// UpdateSamlConfigWithResponse performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update SAML config.
+	UpdateSamlConfigWithResponse(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error)
+
+	// CreateSamlConfigWithBodyWithResponse performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
+
+	// CreateSamlConfigWithResponse performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create SAML config.
+	CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error)
 
 	// SamlAcsWithBodyWithResponse performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
 	// with any type of body and a specified content type.
@@ -390188,7 +390369,7 @@ type CreateAcmeCertificateAuthorityV1Response struct {
 			// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
 			DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
 			DnsProviderConfig  struct {
-				// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+				// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.
 				HostedZoneId string `json:"hostedZoneId"`
 
 				// Provider The DNS provider for the ACME Certificate Authority.
@@ -390266,7 +390447,7 @@ func (r CreateAcmeCertificateAuthorityV1Response) GetJSON200() *struct {
 		// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
 		DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
 		DnsProviderConfig  struct {
-			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+			// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.
 			HostedZoneId string `json:"hostedZoneId"`
 
 			// Provider The DNS provider for the ACME Certificate Authority.
@@ -438744,6 +438925,187 @@ func (r GetHoneyTokenLimitsResponse) ContentType() string {
 	return ""
 }
 
+type DeleteHoneyTokenResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
+			CreatedAt      time.Time          `json:"createdAt"`
+			Description    *string            `json:"description,omitempty"`
+			Id             openapi_types.UUID `json:"id"`
+			Name           string             `json:"name"`
+			ProjectId      string             `json:"projectId"`
+			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+			Status         *string            `json:"status,omitempty"`
+			Type           string             `json:"type"`
+			UpdatedAt      time.Time          `json:"updatedAt"`
+		} `json:"honeyToken"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON200() *struct {
+	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
+		CreatedAt      time.Time          `json:"createdAt"`
+		Description    *string            `json:"description,omitempty"`
+		Id             openapi_types.UUID `json:"id"`
+		Name           string             `json:"name"`
+		ProjectId      string             `json:"projectId"`
+		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+		Status         *string            `json:"status,omitempty"`
+		Type           string             `json:"type"`
+		UpdatedAt      time.Time          `json:"updatedAt"`
+	} `json:"honeyToken"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteHoneyTokenResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteHoneyTokenResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteHoneyTokenResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteHoneyTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteHoneyTokenResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetHoneyTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -476705,74 +477067,6 @@ func (r CreateProjectIdentityMembershipResponse) ContentType() string {
 	return ""
 }
 
-type DeleteHoneyTokenResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		HoneyToken struct {
-			// Config Settings that depend on the honey token's type.
-			Config struct {
-				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
-				ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
-			} `json:"config"`
-			CreatedAt      time.Time          `json:"createdAt"`
-			Description    *string            `json:"description,omitempty"`
-			Id             openapi_types.UUID `json:"id"`
-			Name           string             `json:"name"`
-			ProjectId      string             `json:"projectId"`
-			SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
-			Status         *string            `json:"status,omitempty"`
-			Type           string             `json:"type"`
-			UpdatedAt      time.Time          `json:"updatedAt"`
-		} `json:"honeyToken"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
 type DeleteIdentityFolderAccessResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -476843,28 +477137,6 @@ type DeleteIdentityFolderAccessResponse struct {
 }
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON200() *struct {
-	HoneyToken struct {
-		// Config Settings that depend on the honey token's type.
-		Config struct {
-			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
-			ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
-		} `json:"config"`
-		CreatedAt      time.Time          `json:"createdAt"`
-		Description    *string            `json:"description,omitempty"`
-		Id             openapi_types.UUID `json:"id"`
-		Name           string             `json:"name"`
-		ProjectId      string             `json:"projectId"`
-		SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
-		Status         *string            `json:"status,omitempty"`
-		Type           string             `json:"type"`
-		UpdatedAt      time.Time          `json:"updatedAt"`
-	} `json:"honeyToken"`
-} {
-	return r.JSON200
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 	FolderAccess struct {
 		CreatedAt                time.Time                                                           `json:"createdAt"`
@@ -476888,17 +477160,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON200() *struct {
 }
 
 // GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 	Details    interface{}                                             `json:"details,omitempty"`
 	Error      string                                                  `json:"error"`
@@ -476910,16 +477171,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON400() *struct {
 }
 
 // GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -476927,17 +477178,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON401() *struct {
 	StatusCode DeleteIdentityFolderAccess401JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
 }
 
 // GetJSON403 returns the response for an HTTP 403 `application/json` response
@@ -476952,16 +477192,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON403() *struct {
 }
 
 // GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -476969,16 +477199,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON404() *struct {
 	StatusCode DeleteIdentityFolderAccess404JSONResponseBodyStatusCode `json:"statusCode"`
 } {
 	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
 }
 
 // GetJSON422 returns the response for an HTTP 422 `application/json` response
@@ -476992,16 +477212,6 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON422() *struct {
 }
 
 // GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r DeleteHoneyTokenResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
 func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 	Error      string                                                  `json:"error"`
 	Message    string                                                  `json:"message"`
@@ -477012,21 +477222,8 @@ func (r DeleteIdentityFolderAccessResponse) GetJSON500() *struct {
 }
 
 // GetBody returns the raw response body bytes
-func (r DeleteHoneyTokenResponse) GetBody() []byte {
-	return r.Body
-}
-
-// GetBody returns the raw response body bytes
 func (r DeleteIdentityFolderAccessResponse) GetBody() []byte {
 	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteHoneyTokenResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
 }
 
 // Status returns HTTPResponse.Status
@@ -477038,27 +477235,11 @@ func (r DeleteIdentityFolderAccessResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteHoneyTokenResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// StatusCode returns HTTPResponse.StatusCode
 func (r DeleteIdentityFolderAccessResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteHoneyTokenResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
@@ -489143,6 +489324,9 @@ type ListAwsParameterStoreSecretSyncsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -489264,6 +489448,9 @@ func (r ListAwsParameterStoreSecretSyncsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -489438,6 +489625,9 @@ type CreateAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -489559,6 +489749,9 @@ func (r CreateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -489830,6 +490023,15 @@ type CheckAwsParameterStoreSecretSyncRecursiveConflictsResponse struct {
 			Key   string   `json:"key"`
 			Paths []string `json:"paths"`
 		} `json:"conflicts"`
+
+		// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+		Folders []struct {
+			// Path The folder's path.
+			Path string `json:"path"`
+
+			// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+			SecretCount float32 `json:"secretCount"`
+		} `json:"folders"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -489883,6 +490085,15 @@ func (r CheckAwsParameterStoreSecretSyncRecursiveConflictsResponse) GetJSON200()
 		Key   string   `json:"key"`
 		Paths []string `json:"paths"`
 	} `json:"conflicts"`
+
+	// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+	Folders []struct {
+		// Path The folder's path.
+		Path string `json:"path"`
+
+		// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+		SecretCount float32 `json:"secretCount"`
+	} `json:"folders"`
 } {
 	return r.JSON200
 }
@@ -490043,6 +490254,9 @@ type GetAwsParameterStoreSecretSyncByNameResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -490164,6 +490378,9 @@ func (r GetAwsParameterStoreSecretSyncByNameResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -490338,6 +490555,9 @@ type DeleteAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -490459,6 +490679,9 @@ func (r DeleteAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -490633,6 +490856,9 @@ type GetAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -490754,6 +490980,9 @@ func (r GetAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -490928,6 +491157,9 @@ type UpdateAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -491049,6 +491281,9 @@ func (r UpdateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -491223,6 +491458,9 @@ type ImportAwsParameterStoreSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -491344,6 +491582,9 @@ func (r ImportAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -491518,6 +491759,9 @@ type RemoveAwsParameterStoreSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -491639,6 +491883,9 @@ func (r RemoveAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -491813,6 +492060,9 @@ type SyncAwsParameterStoreSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -491934,6 +492184,9 @@ func (r SyncAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -492102,6 +492355,9 @@ type ListAwsSecretsManagerSecretSyncsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -492217,6 +492473,9 @@ func (r ListAwsSecretsManagerSecretSyncsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -492385,6 +492644,9 @@ type CreateAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -492500,6 +492762,9 @@ func (r CreateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -492771,6 +493036,15 @@ type CheckAwsSecretsManagerSecretSyncRecursiveConflictsResponse struct {
 			Key   string   `json:"key"`
 			Paths []string `json:"paths"`
 		} `json:"conflicts"`
+
+		// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+		Folders []struct {
+			// Path The folder's path.
+			Path string `json:"path"`
+
+			// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+			SecretCount float32 `json:"secretCount"`
+		} `json:"folders"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -492824,6 +493098,15 @@ func (r CheckAwsSecretsManagerSecretSyncRecursiveConflictsResponse) GetJSON200()
 		Key   string   `json:"key"`
 		Paths []string `json:"paths"`
 	} `json:"conflicts"`
+
+	// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+	Folders []struct {
+		// Path The folder's path.
+		Path string `json:"path"`
+
+		// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+		SecretCount float32 `json:"secretCount"`
+	} `json:"folders"`
 } {
 	return r.JSON200
 }
@@ -492978,6 +493261,9 @@ type GetAwsSecretsManagerSecretSyncByNameResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -493093,6 +493379,9 @@ func (r GetAwsSecretsManagerSecretSyncByNameResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -493261,6 +493550,9 @@ type DeleteAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -493376,6 +493668,9 @@ func (r DeleteAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -493544,6 +493839,9 @@ type GetAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -493659,6 +493957,9 @@ func (r GetAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -493827,6 +494128,9 @@ type UpdateAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -493942,6 +494246,9 @@ func (r UpdateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -494110,6 +494417,9 @@ type ImportAwsSecretsManagerSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -494225,6 +494535,9 @@ func (r ImportAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -494393,6 +494706,9 @@ type RemoveAwsSecretsManagerSecretSyncSecretsResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -494508,6 +494824,9 @@ func (r RemoveAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -494676,6 +494995,9 @@ type SyncAwsSecretsManagerSecretSyncResponse struct {
 				// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 				KeySchema *string `json:"keySchema,omitempty"`
 
+				// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+				PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 				// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 				SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -494791,6 +495113,9 @@ func (r SyncAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 
 			// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 			KeySchema *string `json:"keySchema,omitempty"`
+
+			// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+			PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 			// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 			SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -495857,6 +496182,15 @@ type CheckGitHubSecretSyncRecursiveConflictsResponse struct {
 			Key   string   `json:"key"`
 			Paths []string `json:"paths"`
 		} `json:"conflicts"`
+
+		// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+		Folders []struct {
+			// Path The folder's path.
+			Path string `json:"path"`
+
+			// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+			SecretCount float32 `json:"secretCount"`
+		} `json:"folders"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -495910,6 +496244,15 @@ func (r CheckGitHubSecretSyncRecursiveConflictsResponse) GetJSON200() *struct {
 		Key   string   `json:"key"`
 		Paths []string `json:"paths"`
 	} `json:"conflicts"`
+
+	// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+	Folders []struct {
+		// Path The folder's path.
+		Path string `json:"path"`
+
+		// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+		SecretCount float32 `json:"secretCount"`
+	} `json:"folders"`
 } {
 	return r.JSON200
 }
@@ -502920,513 +503263,6 @@ func (r AccessSharedSecretResponse) ContentType() string {
 	return ""
 }
 
-type GetSamlConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		AuthProvider       string     `json:"authProvider"`
-		Cert               string     `json:"cert"`
-		EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
-		EntryPoint         string     `json:"entryPoint"`
-		Id                 string     `json:"id"`
-		IsActive           bool       `json:"isActive"`
-		Issuer             string     `json:"issuer"`
-		LastUsed           *time.Time `json:"lastUsed,omitempty"`
-		MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
-		MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
-		OrgId              string     `json:"orgId"`
-		Organization       string     `json:"organization"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                `json:"details,omitempty"`
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                `json:"details,omitempty"`
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                     `json:"error"`
-		Message    interface{}                                `json:"message,omitempty"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                     `json:"error"`
-		Message    string                                     `json:"message"`
-		ReqId      string                                     `json:"reqId"`
-		StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r GetSamlConfigResponse) GetJSON200() *struct {
-	AuthProvider       string     `json:"authProvider"`
-	Cert               string     `json:"cert"`
-	EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
-	EntryPoint         string     `json:"entryPoint"`
-	Id                 string     `json:"id"`
-	IsActive           bool       `json:"isActive"`
-	Issuer             string     `json:"issuer"`
-	LastUsed           *time.Time `json:"lastUsed,omitempty"`
-	MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
-	MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
-	OrgId              string     `json:"orgId"`
-	Organization       string     `json:"organization"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r GetSamlConfigResponse) GetJSON400() *struct {
-	Details    interface{}                                `json:"details,omitempty"`
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r GetSamlConfigResponse) GetJSON401() *struct {
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r GetSamlConfigResponse) GetJSON403() *struct {
-	Details    interface{}                                `json:"details,omitempty"`
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r GetSamlConfigResponse) GetJSON404() *struct {
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r GetSamlConfigResponse) GetJSON422() *struct {
-	Error      string                                     `json:"error"`
-	Message    interface{}                                `json:"message,omitempty"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r GetSamlConfigResponse) GetJSON500() *struct {
-	Error      string                                     `json:"error"`
-	Message    string                                     `json:"message"`
-	ReqId      string                                     `json:"reqId"`
-	StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r GetSamlConfigResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r GetSamlConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetSamlConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetSamlConfigResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type UpdateSamlConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		AuthProvider       string             `json:"authProvider"`
-		CreatedAt          time.Time          `json:"createdAt"`
-		Id                 openapi_types.UUID `json:"id"`
-		IsActive           bool               `json:"isActive"`
-		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
-		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
-		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
-		OrgId              openapi_types.UUID `json:"orgId"`
-		UpdatedAt          time.Time          `json:"updatedAt"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON200() *struct {
-	AuthProvider       string             `json:"authProvider"`
-	CreatedAt          time.Time          `json:"createdAt"`
-	Id                 openapi_types.UUID `json:"id"`
-	IsActive           bool               `json:"isActive"`
-	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
-	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
-	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
-	OrgId              openapi_types.UUID `json:"orgId"`
-	UpdatedAt          time.Time          `json:"updatedAt"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r UpdateSamlConfigResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r UpdateSamlConfigResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateSamlConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateSamlConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateSamlConfigResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateSamlConfigResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	// JSON200 the response for an HTTP 200 `application/json` response
-	JSON200 *struct {
-		AuthProvider       string             `json:"authProvider"`
-		CreatedAt          time.Time          `json:"createdAt"`
-		Id                 openapi_types.UUID `json:"id"`
-		IsActive           bool               `json:"isActive"`
-		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
-		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
-		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
-		OrgId              openapi_types.UUID `json:"orgId"`
-		UpdatedAt          time.Time          `json:"updatedAt"`
-	}
-	// JSON400 the response for an HTTP 400 `application/json` response
-	JSON400 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON401 the response for an HTTP 401 `application/json` response
-	JSON401 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON403 the response for an HTTP 403 `application/json` response
-	JSON403 *struct {
-		Details    interface{}                                   `json:"details,omitempty"`
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON404 the response for an HTTP 404 `application/json` response
-	JSON404 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON422 the response for an HTTP 422 `application/json` response
-	JSON422 *struct {
-		Error      string                                        `json:"error"`
-		Message    interface{}                                   `json:"message,omitempty"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-	// JSON500 the response for an HTTP 500 `application/json` response
-	JSON500 *struct {
-		Error      string                                        `json:"error"`
-		Message    string                                        `json:"message"`
-		ReqId      string                                        `json:"reqId"`
-		StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-	}
-}
-
-// GetJSON200 returns the response for an HTTP 200 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON200() *struct {
-	AuthProvider       string             `json:"authProvider"`
-	CreatedAt          time.Time          `json:"createdAt"`
-	Id                 openapi_types.UUID `json:"id"`
-	IsActive           bool               `json:"isActive"`
-	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
-	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
-	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
-	OrgId              openapi_types.UUID `json:"orgId"`
-	UpdatedAt          time.Time          `json:"updatedAt"`
-} {
-	return r.JSON200
-}
-
-// GetJSON400 returns the response for an HTTP 400 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON400() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON400
-}
-
-// GetJSON401 returns the response for an HTTP 401 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON401() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON401
-}
-
-// GetJSON403 returns the response for an HTTP 403 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON403() *struct {
-	Details    interface{}                                   `json:"details,omitempty"`
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON403
-}
-
-// GetJSON404 returns the response for an HTTP 404 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON404() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON404
-}
-
-// GetJSON422 returns the response for an HTTP 422 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON422() *struct {
-	Error      string                                        `json:"error"`
-	Message    interface{}                                   `json:"message,omitempty"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON422
-}
-
-// GetJSON500 returns the response for an HTTP 500 `application/json` response
-func (r CreateSamlConfigResponse) GetJSON500() *struct {
-	Error      string                                        `json:"error"`
-	Message    string                                        `json:"message"`
-	ReqId      string                                        `json:"reqId"`
-	StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-} {
-	return r.JSON500
-}
-
-// GetBody returns the raw response body bytes
-func (r CreateSamlConfigResponse) GetBody() []byte {
-	return r.Body
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateSamlConfigResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateSamlConfigResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateSamlConfigResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type GithubLoginCallbackResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -504549,6 +504385,519 @@ func (r RedirectSamlByConfigIdResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r RedirectSamlByConfigIdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider       string     `json:"authProvider"`
+		Cert               string     `json:"cert"`
+		EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
+		EntryPoint         string     `json:"entryPoint"`
+		Id                 string     `json:"id"`
+		IsActive           bool       `json:"isActive"`
+		Issuer             string     `json:"issuer"`
+		LastUsed           *time.Time `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string  `json:"mfaAttributeValues,omitempty"`
+		MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
+		OrgId              string     `json:"orgId"`
+		Organization       string     `json:"organization"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                `json:"details,omitempty"`
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                     `json:"error"`
+		Message    interface{}                                `json:"message,omitempty"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                     `json:"error"`
+		Message    string                                     `json:"message"`
+		ReqId      string                                     `json:"reqId"`
+		StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider       string     `json:"authProvider"`
+	Cert               string     `json:"cert"`
+	EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
+	EntryPoint         string     `json:"entryPoint"`
+	Id                 string     `json:"id"`
+	IsActive           bool       `json:"isActive"`
+	Issuer             string     `json:"issuer"`
+	LastUsed           *time.Time `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string  `json:"mfaAttributeValues,omitempty"`
+	MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
+	OrgId              string     `json:"orgId"`
+	Organization       string     `json:"organization"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                `json:"details,omitempty"`
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                     `json:"error"`
+	Message    interface{}                                `json:"message,omitempty"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                     `json:"error"`
+	Message    string                                     `json:"message"`
+	ReqId      string                                     `json:"reqId"`
+	StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSamlConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider       string             `json:"authProvider"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Id                 openapi_types.UUID `json:"id"`
+		IsActive           bool               `json:"isActive"`
+		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider       string             `json:"authProvider"`
+	CreatedAt          time.Time          `json:"createdAt"`
+	Id                 openapi_types.UUID `json:"id"`
+	IsActive           bool               `json:"isActive"`
+	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+	OrgId              openapi_types.UUID `json:"orgId"`
+	UpdatedAt          time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateSamlConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider       string             `json:"authProvider"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Id                 openapi_types.UUID `json:"id"`
+		IsActive           bool               `json:"isActive"`
+		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider       string             `json:"authProvider"`
+	CreatedAt          time.Time          `json:"createdAt"`
+	Id                 openapi_types.UUID `json:"id"`
+	IsActive           bool               `json:"isActive"`
+	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+	OrgId              openapi_types.UUID `json:"orgId"`
+	UpdatedAt          time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSamlConfigResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -544955,6 +545304,17 @@ func (c *ClientWithResponses) GetHoneyTokenLimitsWithResponse(ctx context.Contex
 	return ParseGetHoneyTokenLimitsResponse(rsp)
 }
 
+// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error) {
+	rsp, err := c.DeleteHoneyToken(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteHoneyTokenResponse(rsp)
+}
+
 // GetHoneyTokenWithResponse performs a GET /api/v1/honey-tokens/{id} (the `GetHoneyToken` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -548631,17 +548991,6 @@ func (c *ClientWithResponses) DeleteIdentityFolderAccessWithBodyWithResponse(ctx
 	return ParseDeleteIdentityFolderAccessResponse(rsp)
 }
 
-// DeleteHoneyTokenWithResponse performs a DELETE /api/v1/honey-tokens/{id} (the `DeleteHoneyToken` operationId) request.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteHoneyTokenWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteHoneyTokenResponse, error) {
-	rsp, err := c.DeleteHoneyToken(ctx, id, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteHoneyTokenResponse(rsp)
-}
-
 // DeleteIdentityFolderAccessWithResponse performs a DELETE /api/v1/projects/{projectId}/memberships/identities/{identityId}/secret-folder-access (the `DeleteIdentityFolderAccess` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
@@ -550859,71 +551208,6 @@ func (c *ClientWithResponses) AccessSharedSecretWithResponse(ctx context.Context
 	return ParseAccessSharedSecretResponse(rsp)
 }
 
-// GetSamlConfigWithResponse performs a GET /api/v1/sso/config (the `GetSamlConfig` operationId) request.
-//
-// Get SAML config.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetSamlConfigWithResponse(ctx context.Context, params *GetSamlConfigParams, reqEditors ...RequestEditorFn) (*GetSamlConfigResponse, error) {
-	rsp, err := c.GetSamlConfig(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetSamlConfigResponse(rsp)
-}
-
-// UpdateSamlConfigWithBodyWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Update SAML config.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) UpdateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error) {
-	rsp, err := c.UpdateSamlConfigWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateSamlConfigResponse(rsp)
-}
-
-// UpdateSamlConfigWithResponse performs a PATCH /api/v1/sso/config (the `UpdateSamlConfig` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Update SAML config.
-func (c *ClientWithResponses) UpdateSamlConfigWithResponse(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error) {
-	rsp, err := c.UpdateSamlConfig(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateSamlConfigResponse(rsp)
-}
-
-// CreateSamlConfigWithBodyWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request,
-// with any type of body and a specified content type.
-//
-// Create SAML config.
-//
-// Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error) {
-	rsp, err := c.CreateSamlConfigWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateSamlConfigResponse(rsp)
-}
-
-// CreateSamlConfigWithResponse performs a POST /api/v1/sso/config (the `CreateSamlConfig` operationId) request.
-// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-//
-// Create SAML config.
-func (c *ClientWithResponses) CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error) {
-	rsp, err := c.CreateSamlConfig(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateSamlConfigResponse(rsp)
-}
-
 // GithubLoginCallbackWithResponse performs a GET /api/v1/sso/github (the `GithubLoginCallback` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -551132,6 +551416,71 @@ func (c *ClientWithResponses) RedirectSamlByConfigIdWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseRedirectSamlByConfigIdResponse(rsp)
+}
+
+// GetSamlConfigWithResponse performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
+//
+// Get SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSamlConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSamlConfigResponse, error) {
+	rsp, err := c.GetSamlConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSamlConfigResponse(rsp)
+}
+
+// UpdateSamlConfigWithBodyWithResponse performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error) {
+	rsp, err := c.UpdateSamlConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSamlConfigResponse(rsp)
+}
+
+// UpdateSamlConfigWithResponse performs a PATCH /api/v1/sso/saml/config (the `UpdateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update SAML config.
+func (c *ClientWithResponses) UpdateSamlConfigWithResponse(ctx context.Context, body UpdateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSamlConfigResponse, error) {
+	rsp, err := c.UpdateSamlConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSamlConfigResponse(rsp)
+}
+
+// CreateSamlConfigWithBodyWithResponse performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateSamlConfigWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error) {
+	rsp, err := c.CreateSamlConfigWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSamlConfigResponse(rsp)
+}
+
+// CreateSamlConfigWithResponse performs a POST /api/v1/sso/saml/config (the `CreateSamlConfig` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create SAML config.
+func (c *ClientWithResponses) CreateSamlConfigWithResponse(ctx context.Context, body CreateSamlConfigJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSamlConfigResponse, error) {
+	rsp, err := c.CreateSamlConfig(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSamlConfigResponse(rsp)
 }
 
 // SamlAcsWithBodyWithResponse performs a POST /api/v1/sso/saml2/{samlConfigId} (the `SamlAcs` operationId) request,
@@ -585089,7 +585438,7 @@ func ParseCreateAcmeCertificateAuthorityV1Response(rsp *http.Response) (*CreateA
 				// DnsAppConnectionId The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.
 				DnsAppConnectionId openapi_types.UUID `json:"dnsAppConnectionId"`
 				DnsProviderConfig  struct {
-					// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}.
+					// HostedZoneId The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.
 					HostedZoneId string `json:"hostedZoneId"`
 
 					// Provider The DNS provider for the ACME Certificate Authority.
@@ -615993,6 +616342,123 @@ func ParseGetHoneyTokenLimitsResponse(rsp *http.Response) (*GetHoneyTokenLimitsR
 	return response, nil
 }
 
+// ParseDeleteHoneyTokenResponse parses an HTTP response from a DeleteHoneyTokenWithResponse call
+func ParseDeleteHoneyTokenResponse(rsp *http.Response) (*DeleteHoneyTokenResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteHoneyTokenResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
+				CreatedAt      time.Time          `json:"createdAt"`
+				Description    *string            `json:"description,omitempty"`
+				Id             openapi_types.UUID `json:"id"`
+				Name           string             `json:"name"`
+				ProjectId      string             `json:"projectId"`
+				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
+				Status         *string            `json:"status,omitempty"`
+				Type           string             `json:"type"`
+				UpdatedAt      time.Time          `json:"updatedAt"`
+			} `json:"honeyToken"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetHoneyTokenResponse parses an HTTP response from a GetHoneyTokenWithResponse call
 func ParseGetHoneyTokenResponse(rsp *http.Response) (*GetHoneyTokenResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -640616,123 +641082,6 @@ func ParseCreateProjectIdentityMembershipResponse(rsp *http.Response) (*CreatePr
 	return response, nil
 }
 
-// ParseDeleteHoneyTokenResponse parses an HTTP response from a DeleteHoneyTokenWithResponse call
-func ParseDeleteHoneyTokenResponse(rsp *http.Response) (*DeleteHoneyTokenResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteHoneyTokenResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			HoneyToken struct {
-				// Config Settings that depend on the honey token's type.
-				Config struct {
-					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
-					ManagedBy DeleteHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
-				} `json:"config"`
-				CreatedAt      time.Time          `json:"createdAt"`
-				Description    *string            `json:"description,omitempty"`
-				Id             openapi_types.UUID `json:"id"`
-				Name           string             `json:"name"`
-				ProjectId      string             `json:"projectId"`
-				SecretsMapping interface{}        `json:"secretsMapping,omitempty"`
-				Status         *string            `json:"status,omitempty"`
-				Type           string             `json:"type"`
-				UpdatedAt      time.Time          `json:"updatedAt"`
-			} `json:"honeyToken"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode DeleteHoneyToken500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseDeleteIdentityFolderAccessResponse parses an HTTP response from a DeleteIdentityFolderAccessWithResponse call
 func ParseDeleteIdentityFolderAccessResponse(rsp *http.Response) (*DeleteIdentityFolderAccessResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -648614,6 +648963,9 @@ func ParseListAwsParameterStoreSecretSyncsResponse(rsp *http.Response) (*ListAws
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -648787,6 +649139,9 @@ func ParseCreateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Create
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -649009,6 +649364,15 @@ func ParseCheckAwsParameterStoreSecretSyncRecursiveConflictsResponse(rsp *http.R
 				Key   string   `json:"key"`
 				Paths []string `json:"paths"`
 			} `json:"conflicts"`
+
+			// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+			Folders []struct {
+				// Path The folder's path.
+				Path string `json:"path"`
+
+				// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+				SecretCount float32 `json:"secretCount"`
+			} `json:"folders"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -649169,6 +649533,9 @@ func ParseGetAwsParameterStoreSecretSyncByNameResponse(rsp *http.Response) (*Get
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -649344,6 +649711,9 @@ func ParseDeleteAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Delete
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -649517,6 +649887,9 @@ func ParseGetAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*GetAwsPar
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -649692,6 +650065,9 @@ func ParseUpdateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Update
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -649865,6 +650241,9 @@ func ParseImportAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -650040,6 +650419,9 @@ func ParseRemoveAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -650214,6 +650596,9 @@ func ParseSyncAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*SyncAwsP
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Parameter Store destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should keep each secret's folder, relative to the source path, in the parameter's path (for example, "/backend/api/API_KEY" synced from "/backend" to "/prod/" becomes "/prod/api/API_KEY") instead of writing every secret directly under the parameter store path. Requires includeAllSubFolders.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as resource tags to parameters synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -650382,6 +650767,9 @@ func ParseListAwsSecretsManagerSecretSyncsResponse(rsp *http.Response) (*ListAws
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -650549,6 +650937,9 @@ func ParseCreateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Create
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -650771,6 +651162,15 @@ func ParseCheckAwsSecretsManagerSecretSyncRecursiveConflictsResponse(rsp *http.R
 				Key   string   `json:"key"`
 				Paths []string `json:"paths"`
 			} `json:"conflicts"`
+
+			// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+			Folders []struct {
+				// Path The folder's path.
+				Path string `json:"path"`
+
+				// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+				SecretCount float32 `json:"secretCount"`
+			} `json:"folders"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -650925,6 +651325,9 @@ func ParseGetAwsSecretsManagerSecretSyncByNameResponse(rsp *http.Response) (*Get
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -651094,6 +651497,9 @@ func ParseDeleteAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Delete
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -651261,6 +651667,9 @@ func ParseGetAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*GetAwsSec
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -651430,6 +651839,9 @@ func ParseUpdateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Update
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -651597,6 +652009,9 @@ func ParseImportAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -651766,6 +652181,9 @@ func ParseRemoveAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
 
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
+
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
 
@@ -651933,6 +652351,9 @@ func ParseSyncAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*SyncAwsS
 
 					// KeySchema Specify the format to use for structuring secret keys in the AWS Secrets Manager destination.
 					KeySchema *string `json:"keySchema,omitempty"`
+
+					// PreserveFolderStructure Whether a sync that includes subfolders should prefix each secret's name with its folder, relative to the source path (for example, "/backend/api/API_KEY" synced from "/backend" becomes "/api/API_KEY", and "/backend/API_KEY" stays "API_KEY"), instead of using the secret's name alone. Requires includeAllSubFolders and the "One-to-One" mapping behavior.
+					PreserveFolderStructure *bool `json:"preserveFolderStructure,omitempty"`
 
 					// SyncSecretMetadataAsTags Whether Infisical secret metadata should be added as tags to secrets synced by Infisical.
 					SyncSecretMetadataAsTags *bool `json:"syncSecretMetadataAsTags,omitempty"`
@@ -652632,6 +653053,15 @@ func ParseCheckGitHubSecretSyncRecursiveConflictsResponse(rsp *http.Response) (*
 				Key   string   `json:"key"`
 				Paths []string `json:"paths"`
 			} `json:"conflicts"`
+
+			// Folders Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.
+			Folders []struct {
+				// Path The folder's path.
+				Path string `json:"path"`
+
+				// SecretCount The number of secrets in the folder the sync would include, counting imported secrets.
+				SecretCount float32 `json:"secretCount"`
+			} `json:"folders"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -656996,339 +657426,6 @@ func ParseAccessSharedSecretResponse(rsp *http.Response) (*AccessSharedSecretRes
 	return response, nil
 }
 
-// ParseGetSamlConfigResponse parses an HTTP response from a GetSamlConfigWithResponse call
-func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetSamlConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			AuthProvider       string     `json:"authProvider"`
-			Cert               string     `json:"cert"`
-			EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
-			EntryPoint         string     `json:"entryPoint"`
-			Id                 string     `json:"id"`
-			IsActive           bool       `json:"isActive"`
-			Issuer             string     `json:"issuer"`
-			LastUsed           *time.Time `json:"lastUsed,omitempty"`
-			MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
-			MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
-			OrgId              string     `json:"orgId"`
-			Organization       string     `json:"organization"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                `json:"details,omitempty"`
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                `json:"details,omitempty"`
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    interface{}                                `json:"message,omitempty"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                     `json:"error"`
-			Message    string                                     `json:"message"`
-			ReqId      string                                     `json:"reqId"`
-			StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateSamlConfigResponse parses an HTTP response from a UpdateSamlConfigWithResponse call
-func ParseUpdateSamlConfigResponse(rsp *http.Response) (*UpdateSamlConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateSamlConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			AuthProvider       string             `json:"authProvider"`
-			CreatedAt          time.Time          `json:"createdAt"`
-			Id                 openapi_types.UUID `json:"id"`
-			IsActive           bool               `json:"isActive"`
-			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
-			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
-			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
-			OrgId              openapi_types.UUID `json:"orgId"`
-			UpdatedAt          time.Time          `json:"updatedAt"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateSamlConfigResponse parses an HTTP response from a CreateSamlConfigWithResponse call
-func ParseCreateSamlConfigResponse(rsp *http.Response) (*CreateSamlConfigResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateSamlConfigResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest struct {
-			AuthProvider       string             `json:"authProvider"`
-			CreatedAt          time.Time          `json:"createdAt"`
-			Id                 openapi_types.UUID `json:"id"`
-			IsActive           bool               `json:"isActive"`
-			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
-			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
-			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
-			OrgId              openapi_types.UUID `json:"orgId"`
-			UpdatedAt          time.Time          `json:"updatedAt"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest struct {
-			Details    interface{}                                   `json:"details,omitempty"`
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    interface{}                                   `json:"message,omitempty"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest struct {
-			Error      string                                        `json:"error"`
-			Message    string                                        `json:"message"`
-			ReqId      string                                        `json:"reqId"`
-			StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
-		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGithubLoginCallbackResponse parses an HTTP response from a GithubLoginCallbackWithResponse call
 func ParseGithubLoginCallbackResponse(rsp *http.Response) (*GithubLoginCallbackResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -657982,6 +658079,342 @@ func ParseRedirectSamlByConfigIdResponse(rsp *http.Response) (*RedirectSamlByCon
 	response := &RedirectSamlByConfigIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParseGetSamlConfigResponse parses an HTTP response from a GetSamlConfigWithResponse call
+func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider       string     `json:"authProvider"`
+			Cert               string     `json:"cert"`
+			EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
+			EntryPoint         string     `json:"entryPoint"`
+			Id                 string     `json:"id"`
+			IsActive           bool       `json:"isActive"`
+			Issuer             string     `json:"issuer"`
+			LastUsed           *time.Time `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string  `json:"mfaAttributeValues,omitempty"`
+			MfaAuthnContexts   *[]string  `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
+			OrgId              string     `json:"orgId"`
+			Organization       string     `json:"organization"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                `json:"details,omitempty"`
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    interface{}                                `json:"message,omitempty"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                     `json:"error"`
+			Message    string                                     `json:"message"`
+			ReqId      string                                     `json:"reqId"`
+			StatusCode GetSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSamlConfigResponse parses an HTTP response from a UpdateSamlConfigWithResponse call
+func ParseUpdateSamlConfigResponse(rsp *http.Response) (*UpdateSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider       string             `json:"authProvider"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Id                 openapi_types.UUID `json:"id"`
+			IsActive           bool               `json:"isActive"`
+			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode UpdateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSamlConfigResponse parses an HTTP response from a CreateSamlConfigWithResponse call
+func ParseCreateSamlConfigResponse(rsp *http.Response) (*CreateSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider       string             `json:"authProvider"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Id                 openapi_types.UUID `json:"id"`
+			IsActive           bool               `json:"isActive"`
+			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode CreateSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
 	}
 
 	return response, nil

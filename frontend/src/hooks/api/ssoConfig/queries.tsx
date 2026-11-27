@@ -14,9 +14,7 @@ export const useGetSSOConfig = (organizationId: string) => {
     queryKey: ssoConfigKeys.getSSOConfig(organizationId),
     queryFn: async () => {
       try {
-        const { data } = await apiRequest.get(
-          `/api/v1/sso/config?organizationId=${organizationId}`
-        );
+        const { data } = await apiRequest.get("/api/v1/sso/saml/config");
 
         return data;
       } catch {
@@ -31,7 +29,6 @@ export const useCreateSSOConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      organizationId,
       authProvider,
       isActive,
       entryPoint,
@@ -53,8 +50,7 @@ export const useCreateSSOConfig = () => {
       mfaAuthnContexts?: string[] | null;
       mfaAttributeValues?: string[] | null;
     }) => {
-      const { data } = await apiRequest.post("/api/v1/sso/config", {
-        organizationId,
+      const { data } = await apiRequest.post("/api/v1/sso/saml/config", {
         authProvider,
         isActive,
         entryPoint,
@@ -80,7 +76,6 @@ export const useUpdateSSOConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      organizationId,
       authProvider,
       isActive,
       entryPoint,
@@ -102,8 +97,7 @@ export const useUpdateSSOConfig = () => {
       mfaAuthnContexts?: string[] | null;
       mfaAttributeValues?: string[] | null;
     }) => {
-      const { data } = await apiRequest.patch("/api/v1/sso/config", {
-        organizationId,
+      const { data } = await apiRequest.patch("/api/v1/sso/saml/config", {
         ...(authProvider !== undefined ? { authProvider } : {}),
         ...(isActive !== undefined ? { isActive } : {}),
         ...(entryPoint !== undefined ? { entryPoint } : {}),

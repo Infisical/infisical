@@ -68,12 +68,11 @@ func CreateSAMLConfig(tt *testing.T, tn *harness.Tenant, body api.CreateSamlConf
 
 func SAMLConfigBody(tn *harness.Tenant, idp *samlidp.IdP, provider api.CreateSamlConfigJSONBodyAuthProvider) api.CreateSamlConfigJSONRequestBody {
 	return api.CreateSamlConfigJSONRequestBody{
-		OrganizationId: tn.OrgID.String(),
-		AuthProvider:   provider,
-		IsActive:       true,
-		EntryPoint:     idp.EntryPoint,
-		Issuer:         "infisical-" + id.Short(),
-		Cert:           idp.CertPEM(),
+		AuthProvider: provider,
+		IsActive:     true,
+		EntryPoint:   idp.EntryPoint,
+		Issuer:       "infisical-" + id.Short(),
+		Cert:         idp.CertPEM(),
 	}
 }
 
