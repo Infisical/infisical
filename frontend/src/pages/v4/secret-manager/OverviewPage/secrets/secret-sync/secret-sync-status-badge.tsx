@@ -22,7 +22,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 import { useV4Session } from "../../../../data/session/contract";
 import { useGo } from "../../../../links";
 import { syncHref } from "../../../IntegrationsPage/secret-syncs/model";
-import { ProviderLogo } from "../flows/wizard-sheet";
+import { ProviderLogo } from "../flows/provider-logo";
 import type { LocalSecretSync } from "./sync-model";
 
 import styles from "./secret-sync.module.css";
