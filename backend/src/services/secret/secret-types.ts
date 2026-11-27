@@ -126,6 +126,7 @@ export type TGetSecretsDTO = {
   limit?: number;
   offset?: number;
   abortSignal?: AbortSignal;
+  secretReadSlot?: TConcurrencySlot;
 } & TProjectPermission;
 
 export type TGetASecretDTO = {

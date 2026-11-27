@@ -31,6 +31,7 @@ import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-chang
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, throwIfClientDisconnected } from "@app/lib/errors";
 import { canonicalizeSecretPath, groupBy, pick } from "@app/lib/fn";
@@ -150,6 +151,17 @@ type TSecretServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
 };
+
+const getLegacySecretsSizeKey = (
+  kind: "legacy-secrets" | "legacy-secrets-raw",
+  {
+    projectId,
+    environment,
+    path,
+    recursive,
+    includeImports
+  }: Pick<TGetSecretsDTO, "projectId" | "environment" | "path" | "recursive" | "includeImports">
+) => `${projectId}:${generateCacheKeyFromData({ kind, environment, path, recursive, includeImports })}`;
 
 export type TSecretServiceFactory = ReturnType<typeof secretServiceFactory>;
 export const secretServiceFactory = ({
@@ -653,18 +665,21 @@ export const secretServiceFactory = ({
     };
   };
 
-  const getSecrets = async ({
-    actorId,
-    path,
-    environment,
-    projectId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    includeImports,
-    recursive,
-    abortSignal
-  }: TGetSecretsDTO) => {
+  const loadLegacySecrets = async (
+    {
+      actorId,
+      path,
+      environment,
+      projectId,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      includeImports,
+      recursive,
+      abortSignal
+    }: Omit<TGetSecretsDTO, "secretReadSlot">,
+    reportSize: (secretCount: number) => void = () => {}
+  ) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -728,6 +743,7 @@ export const secretServiceFactory = ({
       paths.map((p) => p.folderId),
       actorId
     );
+    reportSize(secrets.length);
 
     if (includeImports) {
       throwIfClientDisconnected(abortSignal);
@@ -747,8 +763,10 @@ export const secretServiceFactory = ({
         secretDAL,
         folderDAL,
         secretImportDAL,
-        abortSignal
+        abortSignal,
+        onSecretsLoaded: (importedSecretCount) => reportSize(secrets.length + importedSecretCount)
       });
+      reportSize(secrets.length + countImportedSecrets(importedSecrets));
 
       return {
         secrets: secrets.map((secret) => ({
@@ -770,6 +788,13 @@ export const secretServiceFactory = ({
       }))
     };
   };
+
+  const getSecrets = async ({ secretReadSlot, ...dto }: TGetSecretsDTO) =>
+    secretReadSlot
+      ? secretReadSlot((reportSize) => loadLegacySecrets(dto, reportSize), {
+          sizeKey: getLegacySecretsSizeKey("legacy-secrets", dto)
+        })
+      : loadLegacySecrets(dto);
 
   const getSecretByName = async ({
     actorId,
@@ -1549,19 +1574,21 @@ export const secretServiceFactory = ({
       });
     }
 
-    const loadSecrets = async () => {
-      const { secrets, imports } = await getSecrets({
-        actorId,
-        projectId,
-        environment,
-        actor,
-        actorOrgId,
-        actorAuthMethod,
-        path,
-        includeImports,
-        recursive,
-        abortSignal
-      });
+    const legacyDto = {
+      actorId,
+      projectId,
+      environment,
+      actor,
+      actorOrgId,
+      actorAuthMethod,
+      path,
+      includeImports,
+      recursive,
+      abortSignal
+    };
+
+    const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+      const { secrets, imports } = await loadLegacySecrets(legacyDto, reportSize);
 
       throwIfClientDisconnected(abortSignal);
 
@@ -1674,7 +1701,9 @@ export const secretServiceFactory = ({
       };
     };
 
-    const legacySecrets = await (secretReadSlot ? secretReadSlot(loadSecrets) : loadSecrets());
+    const legacySecrets = await (secretReadSlot
+      ? secretReadSlot(loadSecrets, { sizeKey: getLegacySecretsSizeKey("legacy-secrets-raw", legacyDto) })
+      : loadSecrets());
     return { secrets: legacySecrets.secrets, imports: legacySecrets.imports };
   };
 

@@ -1134,20 +1134,18 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
     handler: async (req, reply) => {
       const orgBudget = server.secretsOrgBudget(req, reply);
       await orgBudget.check();
-      const readSlot = server.secretReadSlot(req, reply);
-      const { secrets, imports } = await readSlot(() =>
-        server.services.secret.getSecrets({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          environment: req.query.environment,
-          projectId: req.query.workspaceId,
-          path: req.query.secretPath,
-          includeImports: req.query.include_imports,
-          recursive: req.query.recursive
-        })
-      );
+      const { secrets, imports } = await server.services.secret.getSecrets({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        environment: req.query.environment,
+        projectId: req.query.workspaceId,
+        path: req.query.secretPath,
+        includeImports: req.query.include_imports,
+        recursive: req.query.recursive,
+        secretReadSlot: server.secretReadSlot(req, reply)
+      });
       orgBudget.charge(countReturnedSecrets({ secrets, imports }));
 
       await server.services.auditLog.createAuditLog({
