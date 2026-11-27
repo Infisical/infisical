@@ -18,6 +18,7 @@ import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
+  ApprovalRequestClosure,
   ApproverType,
   EnforcementLevel
 } from "./approval-policy-enums";
@@ -310,7 +311,10 @@ export type TApprovalResource<
     failureReason?: string;
   }) => Promise<TApprovalNotification | null>;
   // The domain event a lifecycle event owes; called inside the transaction, so it must not touch the database.
-  buildEvent?: (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }) => TEventInput | null;
+  buildEvent?: (args: {
+    event: ApprovalNotificationEvent | ApprovalRequestClosure;
+    request: TApprovalRequests;
+  }) => TEventInput | null;
   // Narrows the notified approvers to those still eligible, for a type where an approver row can
   // outlive the membership behind it.
   filterActiveApprovers?: (

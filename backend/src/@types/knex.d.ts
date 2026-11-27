@@ -104,6 +104,9 @@ import {
   TAlertHistoryTargetInsert,
   TAlertHistoryTargetUpdate,
   TAlertHistoryUpdate,
+  TAlertSlackMessages,
+  TAlertSlackMessagesInsert,
+  TAlertSlackMessagesUpdate,
   TAlerts,
   TAlertsInsert,
   TAlertsUpdate,
@@ -1628,6 +1631,11 @@ declare module "knex/types/tables" {
       TAlertHistoryTarget,
       TAlertHistoryTargetInsert,
       TAlertHistoryTargetUpdate
+    >;
+    [TableName.AlertSlackMessage]: KnexOriginal.CompositeTableType<
+      TAlertSlackMessages,
+      TAlertSlackMessagesInsert,
+      TAlertSlackMessagesUpdate
     >;
     [TableName.AppConnection]: KnexOriginal.CompositeTableType<
       TAppConnections,

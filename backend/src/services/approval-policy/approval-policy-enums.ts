@@ -7,6 +7,11 @@ export enum ApprovalNotificationEvent {
   ApprovedActionFailed = "approved-action-failed"
 }
 
+export enum ApprovalRequestClosure {
+  Cancelled = "cancelled",
+  Expired = "expired"
+}
+
 export enum ApprovalAuditAction {
   RequestCreated = "request-created",
   RequestReviewed = "request-reviewed",

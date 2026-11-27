@@ -1,3 +1,5 @@
+import RE2 from "re2";
+
 import { TSlackBlock, TSlackPayload } from "@app/lib/slack/slack-webhook";
 import { safeRequest } from "@app/lib/validator";
 
@@ -9,11 +11,12 @@ import {
   TAlertSeverity,
   TChannelResult
 } from "../alert-channel-types";
+import { AlertMessageOutcome, TAlertMessageResolution } from "../alert-types";
 
 const MAX_ITEMS_DISPLAYED = 2;
 
-const escapeSlackText = (value: string): string =>
-  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export const escapeSlackText = (value: string): string =>
+  value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
 const SEVERITY_COLOR: Record<TAlertSeverity, string> = {
   critical: "#da3633",
@@ -73,6 +76,64 @@ export const buildSlackPayload = (payload: TAlertPayload): TSlackPayload => {
     text: escapeSlackText(`${headerText} - ${payload.summary}`),
     blocks: [{ type: "header", text: { type: "plain_text", text: headerText, emoji: true } }],
     attachments: [{ color, blocks: attachmentBlocks }]
+  };
+};
+
+const OUTCOME_DISPLAY: Record<AlertMessageOutcome, { label: string; color: string; commentLabel?: string }> = {
+  [AlertMessageOutcome.Approved]: { label: "✅ Approved", color: "#2eb67d", commentLabel: "Reviewer Comment" },
+  [AlertMessageOutcome.Denied]: { label: "❌ Denied", color: "#da3633", commentLabel: "Reviewer Comment" },
+  [AlertMessageOutcome.BreakGlass]: {
+    label: "⚠️ Approved with break-glass",
+    color: "#f0b429",
+    commentLabel: "Break-Glass Reason"
+  },
+  [AlertMessageOutcome.Cancelled]: { label: "🚫 Cancelled", color: "#8b949e" },
+  [AlertMessageOutcome.Expired]: { label: "⌛ Expired", color: "#8b949e" }
+};
+
+const MAX_ACTOR_LENGTH = 200;
+const MAX_COMMENT_LENGTH = 1000;
+
+const WHITESPACE_RUN = new RE2("\\s+", "g");
+
+// Collapses user text to one line so it can't add lines that look like part of the message.
+const toSingleLine = (value: string, maxLength: number): string => {
+  const line = value.replace(WHITESPACE_RUN, " ").trim();
+  return line.length > maxLength ? `${line.slice(0, maxLength - 1)}…` : line;
+};
+
+const stripSlackFormatting = (value: string): string =>
+  ["*", "_", "~", "`"].reduce((text, marker) => text.replaceAll(marker, ""), value);
+
+export const buildResolvedSlackPayload = (
+  message: TSlackPayload,
+  resolution: TAlertMessageResolution
+): TSlackPayload => {
+  const display = OUTCOME_DISPLAY[resolution.outcome];
+  const actor = resolution.actorName
+    ? ` by ${escapeSlackText(stripSlackFormatting(toSingleLine(resolution.actorName, MAX_ACTOR_LENGTH)))}`
+    : "";
+  const unixSeconds = Math.floor(resolution.resolvedAt.getTime() / 1000);
+  const when = `<!date^${unixSeconds}^{date_short_pretty} at {time}|${resolution.resolvedAt.toUTCString()}>`;
+
+  const blocks: TSlackBlock[] = [
+    ...message.blocks,
+    { type: "section", text: { type: "mrkdwn", text: `*${display.label}*${actor} · ${when}` } }
+  ];
+  if (resolution.comment && display.commentLabel) {
+    blocks.push({
+      type: "context",
+      elements: [
+        { type: "plain_text", text: `${display.commentLabel}: ${toSingleLine(resolution.comment, MAX_COMMENT_LENGTH)}` }
+      ]
+    });
+  }
+
+  return {
+    ...message,
+    text: `${display.label}: ${message.text}`,
+    blocks,
+    attachments: (message.attachments ?? []).map((attachment) => ({ ...attachment, color: display.color }))
   };
 };
 

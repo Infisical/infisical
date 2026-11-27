@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 import { TEventInput } from "@app/domains/platform/events/ce/module";
-import { ApprovalNotificationEvent } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalNotificationEvent, ApprovalRequestClosure } from "@app/services/approval-policy/approval-policy-enums";
 
 export const PAM_FOLDER_RESOURCE_TYPE = "pam.folder";
 
@@ -12,11 +12,19 @@ export enum PamAccessRequestEvent {
   Bypassed = "pam.folder.access-request-bypassed"
 }
 
+// Not alert events: they exist only to mark an earlier Slack request message as closed.
+export enum PamAccessRequestClosedEvent {
+  Cancelled = "pam.folder.access-request-cancelled",
+  Expired = "pam.folder.access-request-expired"
+}
+
 // A failed post-approval action has no PAM domain event; every other approval event must map to one.
 const EVENT_BY_APPROVAL_EVENT: Record<
-  Exclude<ApprovalNotificationEvent, ApprovalNotificationEvent.ApprovedActionFailed>,
-  PamAccessRequestEvent
+  Exclude<ApprovalNotificationEvent, ApprovalNotificationEvent.ApprovedActionFailed> | ApprovalRequestClosure,
+  PamAccessRequestEvent | PamAccessRequestClosedEvent
 > = {
+  [ApprovalRequestClosure.Cancelled]: PamAccessRequestClosedEvent.Cancelled,
+  [ApprovalRequestClosure.Expired]: PamAccessRequestClosedEvent.Expired,
   [ApprovalNotificationEvent.Requested]: PamAccessRequestEvent.Requested,
   [ApprovalNotificationEvent.Approved]: PamAccessRequestEvent.Approved,
   [ApprovalNotificationEvent.Rejected]: PamAccessRequestEvent.Denied,
@@ -31,7 +39,7 @@ export const buildPamAccessRequestEvent = ({
   projectId,
   folderId
 }: {
-  event: ApprovalNotificationEvent;
+  event: ApprovalNotificationEvent | ApprovalRequestClosure;
   requestId: string;
   orgId: string;
   projectId: string;

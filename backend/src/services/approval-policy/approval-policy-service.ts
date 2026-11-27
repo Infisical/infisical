@@ -53,6 +53,7 @@ import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
+  ApprovalRequestClosure,
   ApprovalRequestGrantStatus,
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
@@ -214,6 +215,13 @@ export const approvalPolicyServiceFactory = ({
   const $emitEvent = async (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }, tx: Knex) => {
     const event = resources[args.request.type as ApprovalPolicyType]?.buildEvent?.(args);
     if (event) await eventEmitter.emit([event], tx);
+  };
+
+  const $emitClosures = async (closure: ApprovalRequestClosure, requests: TApprovalRequests[], tx?: Knex) => {
+    const events = requests.flatMap(
+      (request) => resources[request.type as ApprovalPolicyType]?.buildEvent?.({ event: closure, request }) ?? []
+    );
+    if (events.length > 0) await eventEmitter.emit(events, tx);
   };
 
   const $buildDecorationContext = (actor: TApprovalActor): TDecorationContext => {
@@ -1132,6 +1140,7 @@ export const approvalPolicyServiceFactory = ({
       );
 
       await approvalPolicyDAL.deleteById(policyId, tx);
+      await $emitClosures(ApprovalRequestClosure.Cancelled, rows, tx);
       return rows;
     });
 
@@ -1684,10 +1693,14 @@ export const approvalPolicyServiceFactory = ({
     }
 
     if (isApprovalRequestExpired(request)) {
-      await approvalRequestDAL.update(
-        { id: requestId, status: ApprovalRequestStatus.Pending },
-        { status: ApprovalRequestStatus.Expired }
-      );
+      await approvalRequestDAL.transaction(async (tx) => {
+        const expired = await approvalRequestDAL.update(
+          { id: requestId, status: ApprovalRequestStatus.Pending },
+          { status: ApprovalRequestStatus.Expired },
+          tx
+        );
+        await $emitClosures(ApprovalRequestClosure.Expired, expired, tx);
+      });
       throw new BadRequestError({ message: "Request has expired" });
     }
 
@@ -1904,10 +1917,14 @@ export const approvalPolicyServiceFactory = ({
     }
 
     if (isApprovalRequestExpired(request)) {
-      await approvalRequestDAL.update(
-        { id: requestId, status: ApprovalRequestStatus.Pending },
-        { status: ApprovalRequestStatus.Expired }
-      );
+      await approvalRequestDAL.transaction(async (tx) => {
+        const expired = await approvalRequestDAL.update(
+          { id: requestId, status: ApprovalRequestStatus.Pending },
+          { status: ApprovalRequestStatus.Expired },
+          tx
+        );
+        await $emitClosures(ApprovalRequestClosure.Expired, expired, tx);
+      });
       throw new BadRequestError({ message: "Request has expired" });
     }
 
@@ -2164,10 +2181,15 @@ export const approvalPolicyServiceFactory = ({
       });
     }
 
-    const [updatedRequest] = await approvalRequestDAL.update(
-      { id: requestId, status: ApprovalRequestStatus.Pending },
-      { status: ApprovalRequestStatus.Cancelled }
-    );
+    const updatedRequest = await approvalRequestDAL.transaction(async (tx) => {
+      const [cancelled] = await approvalRequestDAL.update(
+        { id: requestId, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Cancelled },
+        tx
+      );
+      if (cancelled) await $emitClosures(ApprovalRequestClosure.Cancelled, [cancelled], tx);
+      return cancelled;
+    });
     if (!updatedRequest) {
       throw new BadRequestError({ message: "Request is not pending" });
     }
@@ -2590,11 +2612,12 @@ export const approvalPolicyServiceFactory = ({
     const policy = await approvalPolicyDAL.findOne({ type: policyType, scopeType, scopeId }, tx);
     if (policy) await approvalPolicyDAL.deleteById(policy.id, tx);
 
-    await approvalRequestDAL.update(
+    const cancelled = await approvalRequestDAL.update(
       { type: policyType, scopeType, scopeId, status: ApprovalRequestStatus.Pending },
       { status: ApprovalRequestStatus.Cancelled },
       tx
     );
+    await $emitClosures(ApprovalRequestClosure.Cancelled, cancelled, tx);
   };
 
   const reapSubject = async (
@@ -2618,7 +2641,12 @@ export const approvalPolicyServiceFactory = ({
       .filter((request) => matches((request.requestData as { requestData?: unknown } | null)?.requestData))
       .map((request) => request.id);
     if (staleIds.length > 0) {
-      await approvalRequestDAL.update({ $in: { id: staleIds } }, { status: ApprovalRequestStatus.Cancelled }, tx);
+      const cancelled = await approvalRequestDAL.update(
+        { $in: { id: staleIds }, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Cancelled },
+        tx
+      );
+      await $emitClosures(ApprovalRequestClosure.Cancelled, cancelled, tx);
     }
 
     const activeGrants = await approvalRequestGrantsDAL.find(
@@ -2951,6 +2979,13 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
+  const expireOverdueRequests = async () =>
+    approvalRequestDAL.transaction(async (tx) => {
+      const expired = await approvalRequestDAL.markExpiredRequests(tx);
+      await $emitClosures(ApprovalRequestClosure.Expired, expired, tx);
+      return expired.length;
+    });
+
   const buildTelemetryEvent = async (args: {
     action: ApprovalAuditAction;
     request: TApprovalRequests;
@@ -2988,6 +3023,7 @@ export const approvalPolicyServiceFactory = ({
     approveRequest,
     rejectRequest,
     cancelRequest,
+    expireOverdueRequests,
     notifyApprovedActionFailed,
     listGrants,
     getGrantById,

@@ -34,6 +34,7 @@ export type TAlertProviderRegistry = ReturnType<typeof alertProviderRegistryFact
 export const alertProviderRegistryFactory = () => {
   const providers = new Map<string, IResourceAlertProvider>();
   let eventTriggeredKeyCache: Set<string> | undefined;
+  let messageClosingKeyCache: Set<string> | undefined;
 
   const register = (provider: IResourceAlertProvider) => {
     if (providers.has(provider.resourceType)) {
@@ -55,6 +56,7 @@ export const alertProviderRegistryFactory = () => {
 
     providers.set(provider.resourceType, provider);
     eventTriggeredKeyCache = undefined;
+    messageClosingKeyCache = undefined;
   };
 
   const get = (resourceType: string): IResourceAlertProvider | undefined => providers.get(resourceType);
@@ -70,6 +72,13 @@ export const alertProviderRegistryFactory = () => {
     return eventTriggeredKeyCache;
   };
 
+  const messageClosingKeys = (): Set<string> => {
+    messageClosingKeyCache ??= new Set(
+      [...providers.values()].flatMap((provider) => provider.messageResolver?.closingEvents ?? [])
+    );
+    return messageClosingKeyCache;
+  };
+
   const findEventsBySource = (source: TAlertEventRef): TAlertEventRef[] =>
     [...providers.values()].flatMap((provider) =>
       provider.events
@@ -82,5 +91,5 @@ export const alertProviderRegistryFactory = () => {
         .map((event) => ({ resourceType: provider.resourceType, eventKey: event.key }))
     );
 
-  return { register, get, resourceTypes, eventTriggeredKeys, findEventsBySource };
+  return { register, get, resourceTypes, eventTriggeredKeys, messageClosingKeys, findEventsBySource };
 };

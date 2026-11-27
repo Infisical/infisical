@@ -679,3 +679,110 @@ describe("approvalPolicyService flags a pending request its saved approvers can 
     );
   });
 });
+
+describe("approvalPolicyService closure events", () => {
+  const TX = { isTransaction: true };
+  const pamRequest = (id: string, status = ApprovalRequestStatus.Pending) =>
+    ({
+      id,
+      type: ApprovalPolicyType.PamAccess,
+      organizationId: "org-1",
+      projectId: "project-1",
+      requesterId: "carol",
+      status,
+      requestData: { requestData: { accountId: "account-1" } }
+    }) as unknown as TApprovalRequests;
+
+  const buildService = (approvalRequestDAL: Record<string, unknown>) => {
+    const eventEmitter = { emit: vi.fn().mockResolvedValue(undefined) };
+    const buildEvent = vi.fn(({ event, request }: { event: string; request: TApprovalRequests }) => ({
+      type: `pam.${event}`,
+      data: { targetIds: [request.id] }
+    }));
+    const service = approvalPolicyServiceFactory({
+      approvalRequestDAL: {
+        transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(TX)),
+        ...approvalRequestDAL
+      },
+      approvalRequestGrantsDAL: { find: vi.fn().mockResolvedValue([]) },
+      eventEmitter,
+      resources: {
+        [ApprovalPolicyType.PamAccess]: { buildEvent, matchesInputs: () => true }
+      }
+    } as unknown as TDeps);
+    return { service, eventEmitter, buildEvent };
+  };
+
+  it("emits an expired event for each request the cron expires, in the expiry's transaction", async () => {
+    const markExpiredRequests = vi.fn().mockResolvedValue([pamRequest("r1"), pamRequest("r2")]);
+    const { service, eventEmitter } = buildService({ markExpiredRequests });
+
+    await expect(service.expireOverdueRequests()).resolves.toBe(2);
+
+    expect(markExpiredRequests).toHaveBeenCalledWith(TX);
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      [
+        { type: "pam.expired", data: { targetIds: ["r1"] } },
+        { type: "pam.expired", data: { targetIds: ["r2"] } }
+      ],
+      TX
+    );
+  });
+
+  it("emits nothing when no request expired", async () => {
+    const { service, eventEmitter } = buildService({ markExpiredRequests: vi.fn().mockResolvedValue([]) });
+
+    await expect(service.expireOverdueRequests()).resolves.toBe(0);
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it("fails the expiry when its events can't be written, so the next run retries both", async () => {
+    const { service, eventEmitter } = buildService({
+      markExpiredRequests: vi.fn().mockResolvedValue([pamRequest("r1")])
+    });
+    eventEmitter.emit.mockRejectedValue(new Error("outbox unavailable"));
+
+    await expect(service.expireOverdueRequests()).rejects.toThrow("outbox unavailable");
+  });
+
+  it("emits a cancelled event when the requester cancels, in the cancel's transaction", async () => {
+    const update = vi.fn().mockResolvedValue([pamRequest("r1", ApprovalRequestStatus.Cancelled)]);
+    const { service, eventEmitter } = buildService({
+      findById: vi.fn().mockResolvedValue(pamRequest("r1")),
+      update,
+      findStepsByRequestId: vi.fn().mockResolvedValue([])
+    });
+
+    await service
+      .cancelRequest("r1", { id: "carol", type: "user", orgId: "org-1", authMethod: null } as never)
+      .catch(() => undefined);
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "r1", status: ApprovalRequestStatus.Pending },
+      { status: ApprovalRequestStatus.Cancelled },
+      TX
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith([{ type: "pam.cancelled", data: { targetIds: ["r1"] } }], TX);
+  });
+
+  it("cancels only still-pending requests for a removed subject and emits for each", async () => {
+    const update = vi.fn().mockResolvedValue([pamRequest("r1", ApprovalRequestStatus.Cancelled)]);
+    const { service, eventEmitter } = buildService({
+      find: vi.fn().mockResolvedValue([pamRequest("r1")]),
+      update
+    });
+
+    await service.reapSubject(
+      ApprovalPolicyType.PamAccess,
+      { projectId: "project-1", inputs: {} as never, actorId: "admin", reason: "account deleted" },
+      TX as never
+    );
+
+    expect(update).toHaveBeenCalledWith(
+      { $in: { id: ["r1"] }, status: ApprovalRequestStatus.Pending },
+      { status: ApprovalRequestStatus.Cancelled },
+      TX
+    );
+    expect(eventEmitter.emit).toHaveBeenCalledWith([{ type: "pam.cancelled", data: { targetIds: ["r1"] } }], TX);
+  });
+});

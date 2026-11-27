@@ -9,6 +9,8 @@ import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@
 import { TSlackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
+import { TAlertSlackMessageDALFactory } from "./alert-slack-message-dal";
+
 export const ALERT_CHANNEL_HTTP_TIMEOUT = 7 * 1000;
 
 export enum AlertChannelType {
@@ -57,6 +59,7 @@ export type TAlertPayload = {
   severity: TAlertSeverity;
   summary: string; // one-line human summary
   items: TAlertItem[];
+  resolvableTargetId?: string; // set when a later event may update this message in place
 };
 
 export type TChannelTargetResult = { targetId: string; success: boolean; error?: string };
@@ -76,6 +79,7 @@ export type TAlertChannelScopeDeps = {
 export type TAlertChannelDeps = TAlertChannelScopeDeps & {
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsDataKeyService: Pick<TKmsDataKeyService, "createCipherPairWithDataKey">;
+  alertSlackMessageDAL?: Pick<TAlertSlackMessageDALFactory, "create">;
 };
 
 export type TAlertChannelSendContext = {

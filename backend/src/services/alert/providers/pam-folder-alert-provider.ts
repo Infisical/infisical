@@ -10,20 +10,27 @@ import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/m
 import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
+  PamAccessRequestClosedEvent,
   PamAccessRequestEvent
 } from "@app/ee/services/pam-access-request/pam-access-request-events";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { formatDuration, ms } from "@app/lib/ms";
-import { ApprovalRequestApprovalDecision } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalRequestApprovalDecision,
+  ApprovalRequestStatus
+} from "@app/services/approval-policy/approval-policy-enums";
 
 import { AlertChannelType, TAlertPayload, TAlertSeverity } from "../alert-channel-types";
 import {
+  AlertMessageOutcome,
   AlertPermissionAction,
   AlertTriggerType,
   IEventAlertProvider,
   TAlertContext,
+  TAlertMessageResolution,
+  TAlertMessageResolver,
   TAlertPermissionInput,
   TFindEventTargetsInput
 } from "../alert-types";
@@ -59,6 +66,23 @@ const DECISION_BY_EVENT: Partial<Record<PamAccessRequestEvent, ApprovalRequestAp
   [PamAccessRequestEvent.Approved]: ApprovalRequestApprovalDecision.Approved,
   [PamAccessRequestEvent.Denied]: ApprovalRequestApprovalDecision.Rejected
 };
+
+const OUTCOME_BY_STATUS: Partial<Record<ApprovalRequestStatus, AlertMessageOutcome>> = {
+  [ApprovalRequestStatus.Approved]: AlertMessageOutcome.Approved,
+  [ApprovalRequestStatus.Rejected]: AlertMessageOutcome.Denied,
+  [ApprovalRequestStatus.Cancelled]: AlertMessageOutcome.Cancelled,
+  [ApprovalRequestStatus.Expired]: AlertMessageOutcome.Expired
+};
+
+const toDisplayName = ({
+  firstName,
+  lastName,
+  email
+}: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+}) => [firstName, lastName].filter(Boolean).join(" ") || email || null;
 
 type TPamAccessRequestTarget = {
   requestId: string;
@@ -242,6 +266,75 @@ export const pamFolderAlertProviderFactory = ({
     };
   };
 
+  const messageResolver: TAlertMessageResolver = {
+    openingEvents: [PamAccessRequestEvent.Requested],
+    closingEvents: [
+      PamAccessRequestEvent.Approved,
+      PamAccessRequestEvent.Denied,
+      PamAccessRequestEvent.Bypassed,
+      PamAccessRequestClosedEvent.Cancelled,
+      PamAccessRequestClosedEvent.Expired
+    ],
+    resolveTargets: async ({ orgId, projectId, targetIds }) => {
+      const resolutions = new Map<string, TAlertMessageResolution>();
+      if (!projectId) return resolutions;
+
+      const closed = (
+        await pamFolderAlertDAL.findAccessRequestsByIds({ orgId, projectId, requestIds: targetIds })
+      ).filter((request) => OUTCOME_BY_STATUS[request.status as ApprovalRequestStatus]);
+      if (closed.length === 0) return resolutions;
+
+      const idsWithStatus = (status: ApprovalRequestStatus) =>
+        closed.filter((request) => request.status === status).map((request) => request.id);
+      const approvedIds = idsWithStatus(ApprovalRequestStatus.Approved);
+      const rejectedIds = idsWithStatus(ApprovalRequestStatus.Rejected);
+      const [approvals, rejections, grants] = await Promise.all([
+        approvedIds.length
+          ? pamFolderAlertDAL.findDecisionCommentsByRequestIds({
+              requestIds: approvedIds,
+              decision: ApprovalRequestApprovalDecision.Approved
+            })
+          : [],
+        rejectedIds.length
+          ? pamFolderAlertDAL.findDecisionCommentsByRequestIds({
+              requestIds: rejectedIds,
+              decision: ApprovalRequestApprovalDecision.Rejected
+            })
+          : [],
+        approvedIds.length ? pamFolderAlertDAL.findBypassReasonsByRequestIds(approvedIds) : []
+      ]);
+      // Rows come back oldest first, so the last decision per request wins.
+      const deciderByRequestId = new Map([...approvals, ...rejections].map((row) => [row.requestId, row]));
+      const bypassReasonByRequestId = new Map(grants.map((row) => [row.requestId, row.bypassReason]));
+
+      closed.forEach((request) => {
+        const status = request.status as ApprovalRequestStatus;
+        const resolvedAt =
+          status === ApprovalRequestStatus.Expired && request.expiresAt
+            ? new Date(request.expiresAt)
+            : new Date(request.updatedAt);
+        const bypassReason = bypassReasonByRequestId.get(request.id);
+        if (bypassReason) {
+          resolutions.set(request.id, {
+            outcome: AlertMessageOutcome.BreakGlass,
+            resolvedAt,
+            actorName: request.requesterName,
+            comment: bypassReason
+          });
+          return;
+        }
+        const decider = deciderByRequestId.get(request.id);
+        resolutions.set(request.id, {
+          outcome: OUTCOME_BY_STATUS[status] as AlertMessageOutcome,
+          resolvedAt,
+          actorName: decider ? toDisplayName(decider) : null,
+          comment: decider?.comment ?? null
+        });
+      });
+      return resolutions;
+    }
+  };
+
   const assertResourceInScope = async ({
     orgId,
     projectId,
@@ -332,6 +425,7 @@ export const pamFolderAlertProviderFactory = ({
     assertChannelTypesAllowed,
     recipientPolicy: { allowEmailAddresses: true },
     resolveProjectId,
+    messageResolver,
     getResourceNames: async ({ orgId, resourceIds }) =>
       new Map(
         (await pamFolderAlertDAL.findFolderNamesByIds(resourceIds, orgId)).map((folder) => [folder.id, folder.name])

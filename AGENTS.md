@@ -156,6 +156,8 @@ for product vocabulary only: resolving the resource a request names, notificatio
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
 
+Every path in `approval-policy-service.ts` that commits a pending request as cancelled or expired calls `$emitClosures` in the same transaction, or the request's Slack message keeps showing it as pending. Code outside the service closes requests through its methods (`cancelRequest`, `reapScope`, `reapSubject`, `expireOverdueRequests`), never by updating `approval_requests` directly.
+
 A new approval type's `postApprovalRoutine` must never throw, because it runs after the approval has committed. Throwing
 can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
 requester. `approveRequest` runs it once, for the approval that completes the request. When the approved

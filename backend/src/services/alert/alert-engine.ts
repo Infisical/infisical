@@ -11,6 +11,7 @@ import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetResult } from "./alert-channel-types";
 import { getDedupCutoff, TAlertHistoryDALFactory } from "./alert-history-dal";
+import { TAlertMessageResolutionService } from "./alert-message-resolution-fns";
 import { getRecipientScope } from "./alert-principal-scope-fns";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
@@ -54,6 +55,8 @@ export type TAlertEngineDep = {
   kmsDataKeyService: TKmsDataKeyService;
   smtpService: Pick<TSmtpService, "sendMail">;
   slackIntegrationDAL: TAlertChannelDeps["slackIntegrationDAL"];
+  alertSlackMessageDAL: NonNullable<TAlertChannelDeps["alertSlackMessageDAL"]>;
+  alertMessageResolution: Pick<TAlertMessageResolutionService, "resolveMessages">;
 };
 
 export type TAlertEngine = ReturnType<typeof alertEngineFactory>;
@@ -66,7 +69,9 @@ export const alertEngineFactory = ({
   alertRecipientResolver,
   kmsDataKeyService,
   smtpService,
-  slackIntegrationDAL
+  slackIntegrationDAL,
+  alertSlackMessageDAL,
+  alertMessageResolution
 }: TAlertEngineDep) => {
   const $dispatchChannelWork = async (
     alert: TAlerts,
@@ -109,7 +114,7 @@ export const alertEngineFactory = ({
       });
     }
 
-    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL };
+    const deps: TAlertChannelDeps = { smtpService, kmsDataKeyService, slackIntegrationDAL, alertSlackMessageDAL };
 
     const sendLimit = pLimit(ALERT_DELIVERY_CONCURRENCY);
 
@@ -128,11 +133,15 @@ export const alertEngineFactory = ({
           return { ...base, success: false, error: "Failed to decrypt channel config" };
         }
 
-        const payload = provider.buildPayload(
+        const builtPayload = provider.buildPayload(
           alertContext,
           due.map((target) => target.target),
           viewUrl
         );
+        const payload =
+          builtPayload.items.length === 1 && provider.messageResolver?.openingEvents.includes(alert.eventType)
+            ? { ...builtPayload, resolvableTargetId: builtPayload.items[0].id }
+            : builtPayload;
 
         try {
           if (definition.directed) {
@@ -337,7 +346,27 @@ export const alertEngineFactory = ({
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
 
-    return $dispatchChannelWork(alert, provider, $buildChannelWork(alert, channels, targets), input.eventId);
+    const outcome = await $dispatchChannelWork(
+      alert,
+      provider,
+      $buildChannelWork(alert, channels, targets),
+      input.eventId
+    );
+
+    // The request may have closed before its message was stored, when the closing event found nothing to edit.
+    if (provider.messageResolver?.openingEvents.includes(alert.eventType)) {
+      try {
+        await alertMessageResolution.resolveMessages({
+          orgId: alert.orgId,
+          projectId: alert.projectId,
+          resourceType: alert.resourceType,
+          targetIds: targets.map((target) => target.id)
+        });
+      } catch (err) {
+        logger.error(err, `Failed to update closed alert messages [alertId=${alert.id}]`);
+      }
+    }
+    return outcome;
   };
 
   return { runAlert, runAlertForEvent };

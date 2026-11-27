@@ -32,6 +32,7 @@ export * from "./alert-channel-recipients";
 export * from "./alert-channels";
 export * from "./alert-history";
 export * from "./alert-history-target";
+export * from "./alert-slack-messages";
 export * from "./alerts";
 export * from "./app-connection-credential-rotations";
 export * from "./app-connections";

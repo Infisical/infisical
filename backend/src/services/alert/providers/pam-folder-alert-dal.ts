@@ -40,7 +40,17 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
       const requests = (await (tx || db)(TableName.ApprovalRequests)
         .whereIn("id", requestIds)
         .where({ organizationId: orgId, projectId, type: ApprovalPolicyType.PamAccess })
-        .select("id", "requesterId", "requesterName", "requesterEmail", "machineIdentityId", "requestData")
+        .select(
+          "id",
+          "requesterId",
+          "requesterName",
+          "requesterEmail",
+          "machineIdentityId",
+          "requestData",
+          "status",
+          "updatedAt",
+          "expiresAt"
+        )
         .orderBy("createdAt", "asc")) as {
         id: string;
         requesterId: string | null;
@@ -48,6 +58,9 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
         requesterEmail: string;
         machineIdentityId: string | null;
         requestData: unknown;
+        status: string;
+        updatedAt: Date;
+        expiresAt: Date | null;
       }[];
 
       return requests;
@@ -84,12 +97,22 @@ export const pamFolderAlertDALFactory = (db: TDbClient) => {
           `${TableName.ApprovalRequestApprovals}.stepId`,
           `${TableName.ApprovalRequestSteps}.id`
         )
+        .leftJoin(TableName.Users, `${TableName.ApprovalRequestApprovals}.approverUserId`, `${TableName.Users}.id`)
         .whereIn(`${TableName.ApprovalRequestSteps}.requestId`, requestIds)
         .where(`${TableName.ApprovalRequestApprovals}.decision`, decision)
-        .select(`${TableName.ApprovalRequestSteps}.requestId`, `${TableName.ApprovalRequestApprovals}.comment`)
+        .select(
+          `${TableName.ApprovalRequestSteps}.requestId`,
+          `${TableName.ApprovalRequestApprovals}.comment`,
+          `${TableName.Users}.firstName`,
+          `${TableName.Users}.lastName`,
+          `${TableName.Users}.email`
+        )
         .orderBy(`${TableName.ApprovalRequestApprovals}.createdAt`, "asc")) as {
         requestId: string;
         comment: string | null;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
       }[];
 
       return decisions;
