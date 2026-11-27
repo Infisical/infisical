@@ -21,6 +21,19 @@ export type TTestLDAPConfigDTO = Omit<
   "organization" | "id" | "groupSearchBase" | "groupSearchFilter" | "isActive" | "uniqueUserAttribute" | "searchBase"
 >;
 
+export const LDAP_CONFIG_AUDIT_FIELDS = [
+  "isActive",
+  "url",
+  "bindDN",
+  "searchBase",
+  "searchFilter",
+  "uniqueUserAttribute",
+  "groupSearchBase",
+  "groupSearchFilter"
+] as const;
+
+export type TLdapConfigAuditFields = Pick<TCreateLdapCfgDTO, (typeof LDAP_CONFIG_AUDIT_FIELDS)[number]>;
+
 export type TCreateLdapCfgDTO = {
   orgId: string;
   isActive: boolean;

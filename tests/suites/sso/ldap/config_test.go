@@ -13,6 +13,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -302,7 +303,7 @@ func TestLDAPConfig_StatusCodes(t *testing.T) {
 		configID := storedConfig(t, tn).JSON200.Id
 
 		// Action
-		res, err := tn.Admin.API.DeleteLdapGroupMapWithResponse(t.Context(), configID, "7c1f0c58-6f0e-4d57-9a55-3a1d3f6f9b11")
+		res, err := tn.Admin.API.DeleteLdapGroupMapWithResponse(t.Context(), uuid.MustParse(configID), uuid.New())
 
 		// Assert
 		require.NoError(t, err)
@@ -397,5 +398,78 @@ func TestLDAPConfig_Delete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusNotFound, res.StatusCode())
 		require.NotNil(t, storedConfig(t, tn).JSON200)
+	})
+}
+
+func TestLDAPConfig_AuditLog(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should record a readable event without the bind password when an admin creates a config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
+		d := newDirectory(t, tn)
+		body := d.configBody()
+
+		// Action
+		res := createConfig(t, tn.Admin.API, body)
+
+		// Assert
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		event := fixture.RequireAuditedBy(t, tn, tn.Admin, "create-ldap-config", "ldapConfigId", res.JSON200.Id.String())
+		require.NotEmpty(t, event["organizationName"])
+		require.Equal(t, body.BindDN, event["bindDN"])
+		require.Equal(t, body.SearchBase, event["searchBase"])
+		require.NotEmpty(t, event["url"])
+		require.NotContains(t, event, "bindPass")
+		require.NotContains(t, event, "caCert")
+		require.NotContains(t, event, "clientKeyCertificate")
+	})
+
+	t.Run("should record what changed without secrets when an admin updates the config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		d := configured(t, tn)
+		configID := storedConfig(t, tn).JSON200.Id
+
+		// Action
+		res, err := tn.Admin.API.UpdateLdapConfigWithResponse(t.Context(), api.UpdateLdapConfigJSONRequestBody{
+			BindPass:   new(d.BindPassword),
+			SearchBase: new("ou=people," + d.BaseDN),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		event := fixture.RequireAuditedBy(t, tn, tn.Admin, "update-ldap-config", "ldapConfigId", configID)
+		require.Equal(t, "ou=people,"+d.BaseDN, event["searchBase"])
+		require.Equal(t, true, event["bindPassUpdated"])
+		require.Equal(t, false, event["caCertUpdated"])
+		require.Equal(t, false, event["clientCertificateUpdated"])
+		require.NotContains(t, event, "bindPass")
+		require.NotContains(t, event, "url")
+	})
+
+	t.Run("should record the delete when an admin deletes the config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		configured(t, tn)
+		configID := storedConfig(t, tn).JSON200.Id
+
+		// Action
+		res, err := tn.Admin.API.DeleteLdapConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		event := fixture.RequireAuditedBy(t, tn, tn.Admin, "delete-ldap-config", "ldapConfigId", configID)
+		require.NotEmpty(t, event["organizationName"])
 	})
 }

@@ -204438,7 +204438,10 @@ type ListLdapGroupMaps500JSONResponseBodyStatusCode float32
 
 // CreateLdapGroupMapJSONBody defines parameters for CreateLdapGroupMap.
 type CreateLdapGroupMapJSONBody struct {
-	GroupSlug   string `json:"groupSlug"`
+	// GroupSlug The slug of the Infisical group that members of the LDAP group are added to.
+	GroupSlug string `json:"groupSlug"`
+
+	// LdapGroupCN The common name (CN) of the LDAP group to map, such as `engineering`.
 	LdapGroupCN string `json:"ldapGroupCN"`
 }
 
@@ -261097,18 +261100,26 @@ type ClientInterface interface {
 	TestLdapConnection(ctx context.Context, body TestLdapConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListLdapGroupMaps performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
-	ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	//
+	// List LDAP group mappings.
+	ListLdapGroupMaps(ctx context.Context, configId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateLdapGroupMapWithBody performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
 	// with any type of body and a specified content type.
-	CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	//
+	// Create LDAP group mapping.
+	CreateLdapGroupMapWithBody(ctx context.Context, configId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateLdapGroupMap performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
 	// Takes a body of the `application/json` content type.
-	CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	//
+	// Create LDAP group mapping.
+	CreateLdapGroupMap(ctx context.Context, configId openapi_types.UUID, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteLdapGroupMap performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
-	DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	//
+	// Delete LDAP group mapping.
+	DeleteLdapGroupMap(ctx context.Context, configId openapi_types.UUID, groupMapId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginWithLdapSsoWithBody performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request,
 	// with any type of body and a specified content type.
@@ -280958,7 +280969,9 @@ func (c *Client) TestLdapConnection(ctx context.Context, body TestLdapConnection
 }
 
 // ListLdapGroupMaps performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
-func (c *Client) ListLdapGroupMaps(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+//
+// List LDAP group mappings.
+func (c *Client) ListLdapGroupMaps(ctx context.Context, configId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListLdapGroupMapsRequest(c.Server, configId)
 	if err != nil {
 		return nil, err
@@ -280972,7 +280985,9 @@ func (c *Client) ListLdapGroupMaps(ctx context.Context, configId string, reqEdit
 
 // CreateLdapGroupMapWithBody performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
 // with any type of body and a specified content type.
-func (c *Client) CreateLdapGroupMapWithBody(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+//
+// Create LDAP group mapping.
+func (c *Client) CreateLdapGroupMapWithBody(ctx context.Context, configId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateLdapGroupMapRequestWithBody(c.Server, configId, contentType, body)
 	if err != nil {
 		return nil, err
@@ -280986,7 +281001,9 @@ func (c *Client) CreateLdapGroupMapWithBody(ctx context.Context, configId string
 
 // CreateLdapGroupMap performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
 // Takes a body of the `application/json` content type.
-func (c *Client) CreateLdapGroupMap(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+//
+// Create LDAP group mapping.
+func (c *Client) CreateLdapGroupMap(ctx context.Context, configId openapi_types.UUID, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateLdapGroupMapRequest(c.Server, configId, body)
 	if err != nil {
 		return nil, err
@@ -280999,7 +281016,9 @@ func (c *Client) CreateLdapGroupMap(ctx context.Context, configId string, body C
 }
 
 // DeleteLdapGroupMap performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
-func (c *Client) DeleteLdapGroupMap(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+//
+// Delete LDAP group mapping.
+func (c *Client) DeleteLdapGroupMap(ctx context.Context, configId openapi_types.UUID, groupMapId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteLdapGroupMapRequest(c.Server, configId, groupMapId)
 	if err != nil {
 		return nil, err
@@ -324070,12 +324089,12 @@ func NewTestLdapConnectionRequestWithBody(server string, contentType string, bod
 }
 
 // NewListLdapGroupMapsRequest constructs an http.Request for the ListLdapGroupMaps method
-func NewListLdapGroupMapsRequest(server string, configId string) (*http.Request, error) {
+func NewListLdapGroupMapsRequest(server string, configId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -324104,7 +324123,7 @@ func NewListLdapGroupMapsRequest(server string, configId string) (*http.Request,
 }
 
 // NewCreateLdapGroupMapRequest calls the generic CreateLdapGroupMap builder with application/json body
-func NewCreateLdapGroupMapRequest(server string, configId string, body CreateLdapGroupMapJSONRequestBody) (*http.Request, error) {
+func NewCreateLdapGroupMapRequest(server string, configId openapi_types.UUID, body CreateLdapGroupMapJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -324115,12 +324134,12 @@ func NewCreateLdapGroupMapRequest(server string, configId string, body CreateLda
 }
 
 // NewCreateLdapGroupMapRequestWithBody constructs an http.Request for the CreateLdapGroupMap method, with any body, and a specified content type
-func NewCreateLdapGroupMapRequestWithBody(server string, configId string, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateLdapGroupMapRequestWithBody(server string, configId openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -324151,19 +324170,19 @@ func NewCreateLdapGroupMapRequestWithBody(server string, configId string, conten
 }
 
 // NewDeleteLdapGroupMapRequest constructs an http.Request for the DeleteLdapGroupMap method
-func NewDeleteLdapGroupMapRequest(server string, configId string, groupMapId string) (*http.Request, error) {
+func NewDeleteLdapGroupMapRequest(server string, configId openapi_types.UUID, groupMapId openapi_types.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "configId", configId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
 
 	var pathParam1 string
 
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupMapId", groupMapId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "groupMapId", groupMapId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
 	if err != nil {
 		return nil, err
 	}
@@ -340900,23 +340919,31 @@ type ClientWithResponsesInterface interface {
 
 	// ListLdapGroupMapsWithResponse performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
 	//
+	// List LDAP group mappings.
+	//
 	// Returns a wrapper object for the known response body format(s).
-	ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error)
+	ListLdapGroupMapsWithResponse(ctx context.Context, configId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error)
 
 	// CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
 	// with any type of body and a specified content type.
 	//
+	// Create LDAP group mapping.
+	//
 	// Returns a wrapper object for the known response body format(s).
-	CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
+	CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
 
 	// CreateLdapGroupMapWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-	CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
+	//
+	// Create LDAP group mapping.
+	CreateLdapGroupMapWithResponse(ctx context.Context, configId openapi_types.UUID, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error)
 
 	// DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
 	//
+	// Delete LDAP group mapping.
+	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error)
+	DeleteLdapGroupMapWithResponse(ctx context.Context, configId openapi_types.UUID, groupMapId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error)
 
 	// LoginWithLdapSsoWithBodyWithResponse performs a POST /api/v1/sso/ldap/login (the `LoginWithLdapSso` operationId) request,
 	// with any type of body and a specified content type.
@@ -503317,14 +503344,21 @@ type ListLdapGroupMapsResponse struct {
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *[]struct {
+		// Group The Infisical group the LDAP group is mapped to.
 		Group struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
 		} `json:"group"`
-		Id           string `json:"id"`
+
+		// Id The ID of the LDAP group mapping.
+		Id string `json:"id"`
+
+		// LdapConfigId The ID of the LDAP config the group mapping belongs to.
 		LdapConfigId string `json:"ldapConfigId"`
-		LdapGroupCN  string `json:"ldapGroupCN"`
+
+		// LdapGroupCN The common name (CN) of the LDAP group to map, such as `engineering`.
+		LdapGroupCN string `json:"ldapGroupCN"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -503374,14 +503408,21 @@ type ListLdapGroupMapsResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListLdapGroupMapsResponse) GetJSON200() *[]struct {
+	// Group The Infisical group the LDAP group is mapped to.
 	Group struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
 		Slug string `json:"slug"`
 	} `json:"group"`
-	Id           string `json:"id"`
+
+	// Id The ID of the LDAP group mapping.
+	Id string `json:"id"`
+
+	// LdapConfigId The ID of the LDAP config the group mapping belongs to.
 	LdapConfigId string `json:"ldapConfigId"`
-	LdapGroupCN  string `json:"ldapGroupCN"`
+
+	// LdapGroupCN The common name (CN) of the LDAP group to map, such as `engineering`.
+	LdapGroupCN string `json:"ldapGroupCN"`
 } {
 	return r.JSON200
 }
@@ -551829,8 +551870,10 @@ func (c *ClientWithResponses) TestLdapConnectionWithResponse(ctx context.Context
 
 // ListLdapGroupMapsWithResponse performs a GET /api/v1/sso/ldap/config/{configId}/group-maps (the `ListLdapGroupMaps` operationId) request.
 //
+// List LDAP group mappings.
+//
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) ListLdapGroupMapsWithResponse(ctx context.Context, configId string, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error) {
+func (c *ClientWithResponses) ListLdapGroupMapsWithResponse(ctx context.Context, configId openapi_types.UUID, reqEditors ...RequestEditorFn) (*ListLdapGroupMapsResponse, error) {
 	rsp, err := c.ListLdapGroupMaps(ctx, configId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -551841,8 +551884,10 @@ func (c *ClientWithResponses) ListLdapGroupMapsWithResponse(ctx context.Context,
 // CreateLdapGroupMapWithBodyWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request,
 // with any type of body and a specified content type.
 //
+// Create LDAP group mapping.
+//
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
+func (c *ClientWithResponses) CreateLdapGroupMapWithBodyWithResponse(ctx context.Context, configId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
 	rsp, err := c.CreateLdapGroupMapWithBody(ctx, configId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -551852,7 +551897,9 @@ func (c *ClientWithResponses) CreateLdapGroupMapWithBodyWithResponse(ctx context
 
 // CreateLdapGroupMapWithResponse performs a POST /api/v1/sso/ldap/config/{configId}/group-maps (the `CreateLdapGroupMap` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) CreateLdapGroupMapWithResponse(ctx context.Context, configId string, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
+//
+// Create LDAP group mapping.
+func (c *ClientWithResponses) CreateLdapGroupMapWithResponse(ctx context.Context, configId openapi_types.UUID, body CreateLdapGroupMapJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLdapGroupMapResponse, error) {
 	rsp, err := c.CreateLdapGroupMap(ctx, configId, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -551862,8 +551909,10 @@ func (c *ClientWithResponses) CreateLdapGroupMapWithResponse(ctx context.Context
 
 // DeleteLdapGroupMapWithResponse performs a DELETE /api/v1/sso/ldap/config/{configId}/group-maps/{groupMapId} (the `DeleteLdapGroupMap` operationId) request.
 //
+// Delete LDAP group mapping.
+//
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteLdapGroupMapWithResponse(ctx context.Context, configId string, groupMapId string, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error) {
+func (c *ClientWithResponses) DeleteLdapGroupMapWithResponse(ctx context.Context, configId openapi_types.UUID, groupMapId openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteLdapGroupMapResponse, error) {
 	rsp, err := c.DeleteLdapGroupMap(ctx, configId, groupMapId, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -657932,14 +657981,21 @@ func ParseListLdapGroupMapsResponse(rsp *http.Response) (*ListLdapGroupMapsRespo
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []struct {
+			// Group The Infisical group the LDAP group is mapped to.
 			Group struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
 			} `json:"group"`
-			Id           string `json:"id"`
+
+			// Id The ID of the LDAP group mapping.
+			Id string `json:"id"`
+
+			// LdapConfigId The ID of the LDAP config the group mapping belongs to.
 			LdapConfigId string `json:"ldapConfigId"`
-			LdapGroupCN  string `json:"ldapGroupCN"`
+
+			// LdapGroupCN The common name (CN) of the LDAP group to map, such as `engineering`.
+			LdapGroupCN string `json:"ldapGroupCN"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -14,11 +14,17 @@ import LdapStrategy from "passport-ldapauth";
 import { z } from "zod";
 
 import { LdapGroupMapsSchema } from "@app/db/schemas";
-import { TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
-import { isValidLdapFilter, searchGroups } from "@app/ee/services/ldap-config/ldap-fns";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { LDAP_CONFIG_AUDIT_FIELDS, TLDAPConfig } from "@app/ee/services/ldap-config/ldap-config-types";
+import {
+  isValidLdapFilter,
+  sanitizeLdapConfigAuditFields,
+  searchGroups
+} from "@app/ee/services/ldap-config/ldap-fns";
 import { ApiDocsTags, LdapSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
+import { pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -262,6 +268,19 @@ export const registerLdapRouter = async (
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_LDAP_CONFIG,
+          metadata: {
+            ldapConfigId: ldap.id,
+            organizationName: ldap.organizationName,
+            ...sanitizeLdapConfigAuditFields(pick(req.body, [...LDAP_CONFIG_AUDIT_FIELDS]))
+          }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
@@ -326,6 +345,23 @@ export const registerLdapRouter = async (
         ...req.body
       });
 
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_LDAP_CONFIG,
+          metadata: {
+            ldapConfigId: ldap.id,
+            organizationName: ldap.organizationName,
+            ...sanitizeLdapConfigAuditFields(pick(req.body, [...LDAP_CONFIG_AUDIT_FIELDS])),
+            bindPassUpdated: req.body.bindPass !== undefined,
+            caCertUpdated: req.body.caCert !== undefined,
+            clientCertificateUpdated:
+              req.body.clientCertificate !== undefined || req.body.clientKeyCertificate !== undefined
+          }
+        }
+      });
+
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
@@ -374,6 +410,18 @@ export const registerLdapRouter = async (
           actorOrgId: req.permission.orgId
         });
 
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          event: {
+            type: EventType.DELETE_LDAP_CONFIG,
+            metadata: {
+              ldapConfigId: ldap.id,
+              organizationName: ldap.organizationName
+            }
+          }
+        });
+
         return ldap;
       }
     });
@@ -385,23 +433,33 @@ export const registerLdapRouter = async (
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     schema: {
       ...(isLegacyPath ? {} : { operationId: "listLdapGroupMaps" }),
+      hide: false,
+      tags: [ApiDocsTags.LdapSso],
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      description: describeRoute("List LDAP group mappings"),
       params: z.object({
-        configId: z.string().trim()
+        configId: z.string().uuid().describe(LdapSso.GROUP_MAP.configId)
       }),
       response: {
         200: z.array(
           z.object({
-            id: z.string(),
-            ldapConfigId: z.string(),
-            ldapGroupCN: z.string(),
-            group: z.object({
-              id: z.string(),
-              name: z.string(),
-              slug: z.string()
-            })
+            id: z.string().describe(LdapSso.GROUP_MAP.groupMapId),
+            ldapConfigId: z.string().describe(LdapSso.GROUP_MAP.ldapConfigId),
+            ldapGroupCN: z.string().describe(LdapSso.GROUP_MAP.ldapGroupCN),
+            group: z
+              .object({
+                id: z.string(),
+                name: z.string(),
+                slug: z.string()
+              })
+              .describe(LdapSso.GROUP_MAP.group)
           })
         )
       }
@@ -423,17 +481,25 @@ export const registerLdapRouter = async (
     method: "POST",
     url: "/config/:configId/group-maps",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       ...(isLegacyPath ? {} : { operationId: "createLdapGroupMap" }),
+      hide: false,
+      tags: [ApiDocsTags.LdapSso],
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      description: describeRoute("Create LDAP group mapping"),
       params: z.object({
-        configId: z.string().trim()
+        configId: z.string().uuid().describe(LdapSso.GROUP_MAP.configId)
       }),
       body: z.object({
-        ldapGroupCN: z.string().trim(),
-        groupSlug: z.string().trim()
+        ldapGroupCN: z.string().trim().min(1).describe(LdapSso.GROUP_MAP.ldapGroupCN),
+        groupSlug: z.string().trim().min(1).describe(LdapSso.GROUP_MAP.groupSlug)
       }),
       response: {
         200: LdapGroupMapsSchema
@@ -449,6 +515,21 @@ export const registerLdapRouter = async (
         ldapConfigId: req.params.configId,
         ...req.body
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.CREATE_LDAP_GROUP_MAP,
+          metadata: {
+            ldapConfigId: ldapGroupMap.ldapConfigId,
+            ldapGroupMapId: ldapGroupMap.id,
+            ldapGroupCN: ldapGroupMap.ldapGroupCN,
+            groupSlug: ldapGroupMap.groupSlug
+          }
+        }
+      });
+
       return ldapGroupMap;
     }
   });
@@ -457,14 +538,22 @@ export const registerLdapRouter = async (
     method: "DELETE",
     url: "/config/:configId/group-maps/:groupMapId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       ...(isLegacyPath ? {} : { operationId: "deleteLdapGroupMap" }),
+      hide: false,
+      tags: [ApiDocsTags.LdapSso],
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      description: describeRoute("Delete LDAP group mapping"),
       params: z.object({
-        configId: z.string().trim(),
-        groupMapId: z.string().trim()
+        configId: z.string().uuid().describe(LdapSso.GROUP_MAP.configId),
+        groupMapId: z.string().uuid().describe(LdapSso.GROUP_MAP.groupMapId)
       }),
       response: {
         200: LdapGroupMapsSchema
@@ -480,6 +569,21 @@ export const registerLdapRouter = async (
         ldapConfigId: req.params.configId,
         ldapGroupMapId: req.params.groupMapId
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.DELETE_LDAP_GROUP_MAP,
+          metadata: {
+            ldapConfigId: ldapGroupMap.ldapConfigId,
+            ldapGroupMapId: ldapGroupMap.id,
+            ldapGroupCN: ldapGroupMap.ldapGroupCN,
+            groupSlug: ldapGroupMap.groupSlug
+          }
+        }
+      });
+
       return ldapGroupMap;
     }
   });

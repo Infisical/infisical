@@ -309,7 +309,7 @@ export const ldapConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Create, orgId });
 
-    return ldapConfig;
+    return { ...ldapConfig, organizationName: org.name };
   };
 
   const getLdapCfg = async (filter: { orgId: string; isActive?: boolean; id?: string }, tx?: Knex) => {
@@ -490,7 +490,7 @@ export const ldapConfigServiceFactory = ({
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Update, orgId });
 
-    return config;
+    return { ...config, organizationName: org.name };
   };
 
   const deleteLdapCfg = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TDeleteLdapCfgDTO) => {
@@ -509,11 +509,12 @@ export const ldapConfigServiceFactory = ({
       throw new NotFoundError({ message: `LDAP configuration for organization with ID '${orgId}' not found` });
     }
 
+    const org = await requestMemoize(requestMemoKeys.orgFindOrgById(orgId), () => orgDAL.findOrgById(orgId));
     const deletedCfg = await ldapConfigDAL.deleteById(ldapConfig.id);
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Ldap, action: SsoConfigAction.Delete, orgId });
 
-    return deletedCfg;
+    return { ...deletedCfg, organizationName: org.name };
   };
 
   const getLdapCfgWithPermissionCheck = async ({
@@ -1079,7 +1080,7 @@ export const ldapConfigServiceFactory = ({
         throw err;
       });
 
-    return groupMap;
+    return { ...groupMap, groupSlug: group.slug };
   };
 
   const deleteLdapGroupMap = async ({
@@ -1123,7 +1124,9 @@ export const ldapConfigServiceFactory = ({
       });
     }
 
-    return deletedGroupMap;
+    const group = await groupDAL.findOne({ id: deletedGroupMap.groupId, orgId });
+
+    return { ...deletedGroupMap, groupSlug: group?.slug ?? "" };
   };
 
   const testLDAPConnection = async ({

@@ -6,10 +6,15 @@ import ldapjs from "@infisical/ldapjs";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 import { stripIpv6Brackets } from "@app/lib/tls";
 import { buildSsrfSafeUrl, PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 
-import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
+import { TLDAPConfig, TLdapConfigAuditFields, TTestLDAPConfigDTO } from "./ldap-config-types";
+
+// The server URL can carry credentials in its userinfo or query
+export const sanitizeLdapConfigAuditFields = <T extends Partial<TLdapConfigAuditFields>>(fields: T): T =>
+  fields.url ? { ...fields, url: sanitizeUrlForLog(fields.url) } : fields;
 
 export const isValidLdapFilter = (filter: string) => {
   try {

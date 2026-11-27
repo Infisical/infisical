@@ -4675,6 +4675,14 @@ export const LdapSso = {
       "PEM-encoded client certificate presented during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientKeyCertificate.",
     clientKeyCertificate:
       "PEM-encoded private key matching the client certificate, used during the TLS handshake for mutual TLS (mTLS). Must be provided together with clientCertificate."
+  },
+  GROUP_MAP: {
+    configId: "The ID of the LDAP config the group mapping belongs to.",
+    groupMapId: "The ID of the LDAP group mapping.",
+    ldapGroupCN: "The common name (CN) of the LDAP group to map, such as `engineering`.",
+    groupSlug: "The slug of the Infisical group that members of the LDAP group are added to.",
+    ldapConfigId: "The ID of the LDAP config the group mapping belongs to.",
+    group: "The Infisical group the LDAP group is mapped to."
   }
 };
 

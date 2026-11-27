@@ -18,6 +18,7 @@ import {
   ResourceAuthMethodType,
   TSettableAuthMethod
 } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
+import { TLdapConfigAuditFields } from "@app/ee/services/ldap-config/ldap-config-types";
 import { TSamlConfigAuditFields } from "@app/ee/services/saml-config/saml-config-types";
 import { SecretRotation, SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import {
@@ -757,6 +758,11 @@ export enum EventType {
   CREATE_SAML_CONFIG = "create-saml-config",
   UPDATE_SAML_CONFIG = "update-saml-config",
   DELETE_SAML_CONFIG = "delete-saml-config",
+  CREATE_LDAP_CONFIG = "create-ldap-config",
+  UPDATE_LDAP_CONFIG = "update-ldap-config",
+  DELETE_LDAP_CONFIG = "delete-ldap-config",
+  CREATE_LDAP_GROUP_MAP = "create-ldap-group-map",
+  DELETE_LDAP_GROUP_MAP = "delete-ldap-group-map",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -6270,6 +6276,53 @@ interface DeleteSamlConfigEvent {
   };
 }
 
+interface CreateLdapConfigEvent {
+  type: EventType.CREATE_LDAP_CONFIG;
+  metadata: {
+    ldapConfigId: string;
+    organizationName: string;
+  } & TLdapConfigAuditFields;
+}
+
+interface UpdateLdapConfigEvent {
+  type: EventType.UPDATE_LDAP_CONFIG;
+  metadata: {
+    ldapConfigId: string;
+    organizationName: string;
+    bindPassUpdated: boolean;
+    caCertUpdated: boolean;
+    clientCertificateUpdated: boolean;
+  } & Partial<TLdapConfigAuditFields>;
+}
+
+interface DeleteLdapConfigEvent {
+  type: EventType.DELETE_LDAP_CONFIG;
+  metadata: {
+    ldapConfigId: string;
+    organizationName: string;
+  };
+}
+
+interface CreateLdapGroupMapEvent {
+  type: EventType.CREATE_LDAP_GROUP_MAP;
+  metadata: {
+    ldapConfigId: string;
+    ldapGroupMapId: string;
+    ldapGroupCN: string;
+    groupSlug: string;
+  };
+}
+
+interface DeleteLdapGroupMapEvent {
+  type: EventType.DELETE_LDAP_GROUP_MAP;
+  metadata: {
+    ldapConfigId: string;
+    ldapGroupMapId: string;
+    ldapGroupCN: string;
+    groupSlug: string;
+  };
+}
+
 interface OrgAiConfigUpdateEvent {
   type: EventType.UPDATE_ORG_AI_CONFIG;
   metadata: {
@@ -9611,6 +9664,11 @@ export type Event =
   | CreateSamlConfigEvent
   | UpdateSamlConfigEvent
   | DeleteSamlConfigEvent
+  | CreateLdapConfigEvent
+  | UpdateLdapConfigEvent
+  | DeleteLdapConfigEvent
+  | CreateLdapGroupMapEvent
+  | DeleteLdapGroupMapEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent

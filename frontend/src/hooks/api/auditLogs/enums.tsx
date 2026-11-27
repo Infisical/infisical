@@ -303,6 +303,11 @@ export enum EventType {
   CREATE_SAML_CONFIG = "create-saml-config",
   UPDATE_SAML_CONFIG = "update-saml-config",
   DELETE_SAML_CONFIG = "delete-saml-config",
+  CREATE_LDAP_CONFIG = "create-ldap-config",
+  UPDATE_LDAP_CONFIG = "update-ldap-config",
+  DELETE_LDAP_CONFIG = "delete-ldap-config",
+  CREATE_LDAP_GROUP_MAP = "create-ldap-group-map",
+  DELETE_LDAP_GROUP_MAP = "delete-ldap-group-map",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
