@@ -98,7 +98,7 @@ const DuplicateGroups = ({ groups }: { groups: TOrgDuplicatedSecretGroup[] }) =>
             <AccordionTrigger>
               <Inline gap={12} wrap={false}>
                 <InlineGrow>
-                  <Text>{`${group.secrets.length} secrets share a value`}</Text>
+                  <Text>{`${group.secrets.length} secrets share an identical value`}</Text>
                 </InlineGrow>
                 <Badge tone="soft">
                   {isCrossProject
