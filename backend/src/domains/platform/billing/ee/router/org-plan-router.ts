@@ -43,6 +43,7 @@ export const registerOrgPlanRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listOrganizationPlans",
       params: z.object({ organizationId: z.string().trim() }),
       querystring: z.object({ workspaceId: z.string().trim().optional() }),
       response: {

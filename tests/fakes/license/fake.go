@@ -64,6 +64,9 @@ type State struct {
 
 	// License key exchanges.
 	Logins int `json:"logins"`
+
+	// What the billing endpoints answer and what the instance asked them to change.
+	Billing BillingState `json:"billing"`
 }
 
 type EntitlementFetch struct {
@@ -180,7 +183,10 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, http.StatusOK, map[string]any{"token": issueToken(key, time.Now().Add(time.Hour))})
 	})
 
-	// Nothing asserts on these, but unanswered they'd fail requests and spam the logs.
+	o.billingRoutes(mux)
+
+	// Self-hosted reads these without an org. Nothing asserts on them, but unanswered they'd
+	// fail requests and spam the logs.
 	for _, p := range []string{"GET /v1/products", "GET /v1/subscription"} {
 		mux.HandleFunc(p, func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, http.StatusOK, map[string]any{})
@@ -205,15 +211,40 @@ func (o *Org) Snapshot() ([]byte, error) {
 	return json.Marshal(o.state)
 }
 
-// Seed replaces the plan instead of merging, otherwise you couldn't test a downgrade.
+// Seed replaces the plan instead of merging, otherwise you couldn't test a downgrade. A
+// BillingSeed fragment sets only the billing fields it carries and leaves the plan alone.
 func (o *Org) Seed(raw []byte) error {
-	var p Plan
-	if err := json.Unmarshal(raw, &p); err != nil {
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &keys); err != nil {
 		return err
 	}
+	_, isBilling := keys["billing"]
+
+	var billing BillingSeed
+	if isBilling {
+		if err := json.Unmarshal(raw, &billing); err != nil {
+			return err
+		}
+	}
+	var p Plan
+	_, hasSlug := keys["Slug"]
+	_, hasFeatures := keys["Features"]
+	_, hasProducts := keys["Products"]
+	isPlan := hasSlug || hasFeatures || hasProducts || !isBilling
+	if isPlan {
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return err
+		}
+	}
+
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	o.state.Plan = p
+	if isPlan {
+		o.state.Plan = p
+	}
+	if isBilling {
+		o.state.Billing.merge(billing.Billing)
+	}
 	return nil
 }
 

@@ -320,6 +320,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getBillingOverview",
       params: z.object({ organizationId: z.string().trim() }),
       response: {
         200: z.object({ overview: BillingV2OverviewSchema })
@@ -424,6 +425,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "refreshBillingOverview",
       params: z.object({ organizationId: z.string().trim() }),
       response: {
         200: z.object({ success: z.boolean() })
@@ -445,6 +447,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getBillingCatalog",
       params: z.object({ organizationId: z.string().trim() }),
       response: {
         200: z.object({ products: BillingV2CatalogProductSchema.array() })
@@ -466,6 +469,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createBillingPortalSession",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({ returnPath: ReturnPathSchema }),
       response: {
@@ -489,6 +493,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createBillingPaymentMethodSession",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({ returnPath: ReturnPathSchema }),
       response: {
@@ -512,6 +517,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "previewBillingSubscriptionChange",
       params: z.object({ organizationId: z.string().trim() }),
       body: z
         .object({
@@ -563,6 +569,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "buyBillingProduct",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         productId: z.string().trim(),
@@ -630,6 +637,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "upgradeBillingProduct",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         productId: BillingV2KeySchema,
@@ -688,6 +696,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "removeBillingProduct",
       params: z.object({ organizationId: z.string().trim(), productId: z.string().trim() }),
       response: {
         200: BillingV2MutationResultSchema
@@ -712,6 +721,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "changeBillingCommitments",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         changes: BillingV2CommitmentChangeSchema.array().min(1).max(20),
@@ -744,6 +754,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "startBillingTrial",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         productId: z.string().trim().min(1).max(255),
@@ -799,6 +810,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "cancelBillingTrial",
       params: z.object({ organizationId: z.string().trim() }),
       body: z.object({
         productId: z.string().trim()

@@ -23,6 +23,20 @@ output-options:
     - importCertificate
     - listBillableOrganizations
     - getBillingUsageBreakdown
+    - getBillingOverview
+    - refreshBillingOverview
+    - getBillingCatalog
+    - createBillingPortalSession
+    - createBillingPaymentMethodSession
+    - previewBillingSubscriptionChange
+    - buyBillingProduct
+    - upgradeBillingProduct
+    - removeBillingProduct
+    - changeBillingCommitments
+    - startBillingTrial
+    - cancelBillingTrial
+    - confirmBillingTrialPayment
+    - listOrganizationPlans
     - adminBootstrap
     - updateAdminConfig
     - getInstanceStatus
