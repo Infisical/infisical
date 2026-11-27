@@ -229,12 +229,13 @@ const snapshotPolicy = {
     constraints: {
       allowedSelfApprovals: true,
       requestExpirationTime: "1h",
-      maxTimePeriod: null
+      maxTimePeriod: null,
+      requireJustification: false
     }
   }
 };
 
-const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {}) => {
+const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt, requireJustification = false } = {}) => {
   const findByIdForShare = vi.fn().mockResolvedValue({ id: "policy-1", updatedAt: lockedUpdatedAt });
   const create = vi.fn().mockResolvedValue({ id: "req-1" });
   const createRequest = vi.fn().mockResolvedValue({ id: "delegated-1" });
@@ -255,7 +256,13 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
       createRequest
     },
     secretAccessApprovalGlobalResource: {
-      matchPolicy: vi.fn().mockResolvedValue(snapshotPolicy),
+      matchPolicy: vi.fn().mockResolvedValue({
+        ...snapshotPolicy,
+        constraints: {
+          ...snapshotPolicy.constraints,
+          constraints: { ...snapshotPolicy.constraints.constraints, requireJustification }
+        }
+      }),
       validateConstraints: vi.fn().mockReturnValue({ valid: true }),
       canAccess: vi.fn().mockResolvedValue(null)
     },
@@ -336,6 +343,39 @@ describe("secretAccessApprovalRequestService.createAccessApprovalRequest", () =>
     );
     expect(create).not.toHaveBeenCalled();
     expect(createRequest).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["no note", {}],
+    ["an empty note", { note: "" }],
+    ["a whitespace-only note", { note: "   " }]
+  ])("refuses a request with %s when the policy requires a justification", async (_, overrides) => {
+    const { service, findByIdForShare, create } = createRequestService({ requireJustification: true });
+
+    await expect(submitAccessRequest(service, overrides)).rejects.toThrow(
+      "Policy 'Prod access' requires a note explaining why you need access. Add a note and submit the request again."
+    );
+    expect(findByIdForShare).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  test("creates a request with a note when the policy requires a justification", async () => {
+    const { service, create } = createRequestService({ requireJustification: true });
+
+    await submitAccessRequest(service, { note: "Investigating the billing outage" });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ justification: "Investigating the billing outage" }),
+      "tx"
+    );
+  });
+
+  test("creates a request without a note when the policy does not require a justification", async () => {
+    const { service, create } = createRequestService();
+
+    await submitAccessRequest(service);
+
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ justification: null }), "tx");
   });
 });
 

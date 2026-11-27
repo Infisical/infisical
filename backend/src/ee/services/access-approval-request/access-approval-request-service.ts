@@ -428,6 +428,12 @@ export const secretAccessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: constraintValidation.errors?.join("; ") ?? "Policy constraints not met" });
     }
 
+    if (policy.constraints.constraints.requireJustification && !note?.trim()) {
+      throw new BadRequestError({
+        message: `Policy '${policy.name}' requires a note explaining why you need access. Add a note and submit the request again.`
+      });
+    }
+
     const activeGrant = await secretAccessApprovalGlobalResource.canAccess(projectId, requestedByUserId, {
       envId,
       secretPath,

@@ -136,6 +136,28 @@ func TestAccessApprovalRequest_Create(t *testing.T) {
 		require.Equal(t, "pending", statusOf(t, g.proj, requestID))
 	})
 
+	t.Run("should refuse a request without a note when the policy requires justification, and open nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := newGuarded(t, func(b policyBody) {
+			b["name"] = "needs-a-note"
+			b["requireJustification"] = true
+		})
+
+		// Action
+		missing := openAs(t, g.requester, g.proj, guardedPath, nil)
+		blank := openAs(t, g.requester, g.proj, guardedPath, map[string]any{"note": "   "})
+
+		// Assert
+		want := "Policy 'needs-a-note' requires a note explaining why you need access. Add a note and submit the request again."
+		require.Equal(t, http.StatusBadRequest, missing.status)
+		require.Equal(t, want, missing.message(t))
+		require.Equal(t, http.StatusBadRequest, blank.status)
+		require.Equal(t, want, blank.message(t))
+		require.Empty(t, listRequests(t, g.proj))
+	})
+
 	t.Run("should refuse a second pending request for the same access", func(t *testing.T) {
 		t.Parallel()
 

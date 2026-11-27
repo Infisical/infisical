@@ -28,6 +28,7 @@ export type TAccessApprovalPolicy = {
   enforceOnSecretImports?: boolean;
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  requireJustification?: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;
 };
 
@@ -135,6 +136,7 @@ export type TAccessApprovalRequest = {
     allowedSelfApprovals: boolean;
     maxTimePeriod?: string | null;
     requestExpirationTime?: string | null;
+    requireJustification?: boolean;
     delegatedApproval?: { type: DelegatedApprovalPolicyType } | null;
   };
 
@@ -242,6 +244,7 @@ export type TCreateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  requireJustification?: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
 };
 
@@ -260,6 +263,7 @@ export type TUpdateAccessPolicyDTO = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  requireJustification?: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;
 };
 

@@ -115,6 +115,7 @@ const policy = (overrides: Partial<TPolicy> = {}): TPolicy =>
     maxTimePeriod: null,
     allowedSelfApprovals: true,
     requestExpirationTime: null,
+    requireJustification: false,
     approvals: 1,
     approvers: [{ id: "approver-a", type: ApproverType.User, name: "approver-a", sequence: 1, approvalsRequired: 1 }],
     bypassers: [],
@@ -506,6 +507,7 @@ describe("toSecretAccessRequestListItem", () => {
       deletedAt: updatedAt,
       maxTimePeriod: null,
       requestExpirationTime: null,
+      requireJustification: false,
       approvers: [],
       bypassers: [],
       delegatedApproval: null

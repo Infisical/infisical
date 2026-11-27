@@ -88,6 +88,8 @@ import { AccessRequestPathInput } from "./AccessRequestPathInput";
 import { AccessRequestScope } from "./AccessRequestScope";
 
 const INVALID_DURATION_MESSAGE = "Enter a duration greater than 0.";
+const NOTE_REQUIRED_MESSAGE = "Add a justification explaining why you need access";
+
 const policyMaxDurationMessage = (maxTimePeriod: string) =>
   `Requested access duration is limited to ${maxTimePeriod} by policy`;
 
@@ -358,6 +360,30 @@ const requestAccessSchema = z.object({
 
 type TRequestAccessForm = z.infer<typeof requestAccessSchema>;
 
+// Watches the note here so typing in it re-renders only the button, not the whole form.
+const RequestAccessSubmitButton = ({
+  form,
+  isNoteRequired,
+  isPending
+}: {
+  form: UseFormReturn<TRequestAccessForm>;
+  isNoteRequired: boolean;
+  isPending: boolean;
+}) => {
+  const note = useWatch({ control: form.control, name: "note" });
+
+  return (
+    <Button
+      type="submit"
+      variant="project"
+      isPending={isPending}
+      isDisabled={isNoteRequired && !note?.trim()}
+    >
+      Request Access
+    </Button>
+  );
+};
+
 // Self-contained so keystrokes in the Validity input only re-render this field,
 // not the whole form (resource cards, selects, note) above it.
 const DurationField = ({
@@ -625,6 +651,15 @@ export const RequestAccessForm = ({
 
     if (pathIssue) return;
 
+    if (matchedPolicy?.requireJustification && !data.note?.trim()) {
+      form.setError(
+        "note",
+        { type: "custom", message: NOTE_REQUIRED_MESSAGE },
+        { shouldFocus: true }
+      );
+      return;
+    }
+
     const { isTemporary, temporaryRange } = data.duration;
 
     if (
@@ -883,15 +918,22 @@ export const RequestAccessForm = ({
         <Controller
           control={form.control}
           name="note"
-          render={({ field }) => (
+          render={({ field, fieldState: { error } }) => (
             <Field>
-              <FieldLabel htmlFor="note">Note</FieldLabel>
+              <FieldLabel htmlFor="note">Justification</FieldLabel>
               <TextArea
                 id="note"
                 {...field}
                 maxLength={255}
                 placeholder="Add the reason for this access request..."
               />
+              {matchedPolicy?.requireJustification && (
+                <FieldDescription>
+                  This path&apos;s access policy requires a justification explaining why you need
+                  access.
+                </FieldDescription>
+              )}
+              <FieldError errors={[error]} />
             </Field>
           )}
         />
@@ -900,13 +942,11 @@ export const RequestAccessForm = ({
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>
-        <Button
-          type="submit"
-          variant="project"
+        <RequestAccessSubmitButton
+          form={form}
+          isNoteRequired={Boolean(matchedPolicy?.requireJustification)}
           isPending={form.formState.isSubmitting || requestAccess.isPending}
-        >
-          Request Access
-        </Button>
+        />
       </SheetFooter>
     </form>
   );

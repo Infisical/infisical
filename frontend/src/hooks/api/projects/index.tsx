@@ -17,6 +17,7 @@ export {
   useGetDeletedProjects,
   useGetMembershipPermissionAudit,
   useGetMyPendingProjectAccessRequests,
+  useGetProjectAccessRequests,
   useGetUpgradeProjectStatus,
   useGetUserProjects,
   useGetUserProjectsByType,

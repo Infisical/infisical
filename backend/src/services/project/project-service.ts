@@ -136,6 +136,7 @@ import {
   TListProjectPkiSubscribersDTO,
   TListProjectsDTO,
   TLoadProjectKmsBackupDTO,
+  TListProjectAccessRequestsDTO,
   TProjectAccessRequestDTO,
   TSearchProjectsDTO,
   TToggleProjectAutoCapitalizationDTO,
@@ -212,7 +213,7 @@ type TProjectServiceFactoryDep = {
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   projectAccessRequestDAL: Pick<
     TProjectAccessRequestDALFactory,
-    "upsertPendingRequest" | "findPendingForRequesterInOrg"
+    "upsertPendingRequest" | "findPendingForRequesterInOrg" | "findPendingForProject"
   >;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
@@ -2646,6 +2647,37 @@ export const projectServiceFactory = ({
     return { requests };
   };
 
+  const listProjectAccessRequests = async ({
+    permission: actor,
+    projectId,
+    requesterUserId
+  }: TListProjectAccessRequestsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.Any
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ProjectPermissionSub.Member);
+
+    const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
+      projectDAL.findById(projectId)
+    );
+    if (!project) {
+      throw new NotFoundError({ message: `Project with ID ${projectId} not found` });
+    }
+    if (project.type !== ProjectType.SecretManager) {
+      throw new BadRequestError({
+        message: "Access requests can only be listed for Secrets Management projects"
+      });
+    }
+
+    const requests = await projectAccessRequestDAL.findPendingForProject(projectId, requesterUserId);
+    return { requests };
+  };
+
   const enableSecretBlindIndex = async (dto: TEnableSecretBlindIndexDTO) =>
     secretValueTrackingService.enableForProject(dto);
 
@@ -2697,6 +2729,7 @@ export const projectServiceFactory = ({
     deleteProjectWorkflowIntegration,
     requestProjectAccess,
     getMyPendingProjectAccessRequests,
+    listProjectAccessRequests,
     searchProjects,
     extractProjectIdFromSlug,
     enableSecretBlindIndex,

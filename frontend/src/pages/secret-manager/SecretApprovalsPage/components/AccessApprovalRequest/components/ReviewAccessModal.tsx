@@ -918,7 +918,7 @@ export const ReviewAccessRequestModal = ({
                 </Detail>
                 {request.note && (
                   <Detail className="w-full flex-none">
-                    <DetailLabel>Note</DetailLabel>
+                    <DetailLabel>Justification</DetailLabel>
                     <DetailValue>{request.note}</DetailValue>
                   </Detail>
                 )}

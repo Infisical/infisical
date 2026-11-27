@@ -109,6 +109,7 @@ export const approvalPolicyFormSchema = z
       .optional(),
     maxTimePeriod: durationSchema,
     requestExpirationTime: durationSchema,
+    requireJustification: z.boolean().default(false),
     isDelegated: z.boolean().default(false),
     delegatedApproval: z
       .object({

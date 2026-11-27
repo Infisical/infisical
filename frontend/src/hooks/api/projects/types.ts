@@ -256,6 +256,17 @@ export type TMyPendingProjectAccessRequestsResponse = {
   requests: { projectId: string; createdAt: string }[];
 };
 
+export type TProjectAccessRequest = {
+  id: string;
+  requesterUserId: string;
+  comment: string | null;
+  createdAt: string;
+};
+
+export type TListProjectAccessRequestsResponse = {
+  requests: TProjectAccessRequest[];
+};
+
 export type TListActorProjectMembershipsParams = {
   limit?: number;
   offset?: number;

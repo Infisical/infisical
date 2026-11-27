@@ -21,6 +21,28 @@ export const projectAccessRequestDALFactory = (db: TDbClient) => {
       );
   };
 
+  const findPendingForProject = async (projectId: string, requesterUserId?: string) => {
+    try {
+      const query = db
+        .replicaNode()(TableName.ProjectAccessRequest)
+        .where(`${TableName.ProjectAccessRequest}.projectId`, projectId)
+        .where(`${TableName.ProjectAccessRequest}.status`, "pending");
+      if (requesterUserId) {
+        void query.where(`${TableName.ProjectAccessRequest}.requesterUserId`, requesterUserId);
+      }
+      return await query
+        .select<{ id: string; requesterUserId: string; comment: string | null; createdAt: Date }[]>(
+          `${TableName.ProjectAccessRequest}.id`,
+          `${TableName.ProjectAccessRequest}.requesterUserId`,
+          `${TableName.ProjectAccessRequest}.comment`,
+          `${TableName.ProjectAccessRequest}.createdAt`
+        )
+        .orderBy(`${TableName.ProjectAccessRequest}.createdAt`, "desc");
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindPendingProjectAccessRequestsForProject" });
+    }
+  };
+
   const upsertPendingRequest = async ({
     projectId,
     requesterUserId,
@@ -42,5 +64,5 @@ export const projectAccessRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findPendingForRequesterInOrg, upsertPendingRequest };
+  return { ...orm, findPendingForRequesterInOrg, findPendingForProject, upsertPendingRequest };
 };

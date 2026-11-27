@@ -6,6 +6,7 @@ import {
   resolveSecretAccessPolicyForPath,
   validateSecretAccessConstraints
 } from "./secret-access-policy-fns";
+import { SecretAccessPolicyConstraintsSchema } from "./secret-access-policy-schemas";
 import { TSecretAccessRequestData } from "./secret-access-policy-types";
 
 const storedRequest: TSecretAccessRequestData = {
@@ -255,5 +256,13 @@ describe("resolveSecretAccessPolicyForPath", () => {
     const policies = [policy("newer", "/apps/*/db/**", "2026-01-01"), policy("older", "/apps/*/*/cache", "2025-01-01")];
 
     expect(resolveSecretAccessPolicyForPath(policies, "/apps/api/db/cache")?.id).toBe("older");
+  });
+});
+
+describe("SecretAccessPolicyConstraintsSchema", () => {
+  test("reads a policy stored before requireJustification existed as not requiring one", () => {
+    expect(
+      SecretAccessPolicyConstraintsSchema.parse({ allowedSelfApprovals: true, requestExpirationTime: null })
+    ).toMatchObject({ requireJustification: false });
   });
 });

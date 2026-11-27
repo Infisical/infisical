@@ -17,6 +17,8 @@ export const projectKeys = {
     [...projectKeys.getAllUserProjects(), "with-sub-orgs", { orgId }] as const,
   getMyPendingProjectAccessRequests: () =>
     [...projectKeys.allProjectQueries(), "my-pending-access-requests"] as const,
+  getProjectAccessRequests: (projectId: string, requesterUserId?: string) =>
+    [{ projectId, requesterUserId }, "project-access-requests"] as const,
   getDeletedProjects: (type?: ProjectType) =>
     [...projectKeys.allProjectQueries(), "deleted", { type }] as const,
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,

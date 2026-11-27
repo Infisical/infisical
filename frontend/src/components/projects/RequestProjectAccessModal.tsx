@@ -15,16 +15,18 @@ import {
   TextArea
 } from "@app/components/v3";
 import { useRequestProjectAccess } from "@app/hooks/api";
-import { Project } from "@app/hooks/api/projects/types";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 
 type ContentProps = {
   projectId: string;
+  isNoteRequired: boolean;
   onComplete: () => void;
 };
 
-const Content = ({ projectId, onComplete }: ContentProps) => {
+const Content = ({ projectId, isNoteRequired, onComplete }: ContentProps) => {
   const form = useForm<{ note: string }>();
   const requestProjectAccess = useRequestProjectAccess();
+  const noteValue = form.watch("note");
 
   const onFormSubmit = ({ note }: { note: string }) => {
     if (requestProjectAccess.isPending) return;
@@ -49,12 +51,18 @@ const Content = ({ projectId, onComplete }: ContentProps) => {
   return (
     <form onSubmit={form.handleSubmit(onFormSubmit)} className="flex flex-col gap-4">
       <Field>
-        <FieldLabel htmlFor="note">Note</FieldLabel>
+        <FieldLabel htmlFor="note">Justification</FieldLabel>
         <TextArea id="note" rows={3} {...form.register("note")} />
       </Field>
       <AlertDialogFooter>
         <AlertDialogCancel>Cancel</AlertDialogCancel>
-        <Button type="submit" size="sm" variant="project" isPending={form.formState.isSubmitting}>
+        <Button
+          type="submit"
+          size="sm"
+          variant="project"
+          isPending={form.formState.isSubmitting}
+          isDisabled={isNoteRequired && !noteValue?.trim()}
+        >
           Submit Request
         </Button>
       </AlertDialogFooter>
@@ -81,6 +89,8 @@ export const RequestProjectAccessModal = ({
 }: RequestProjectAccessModalProps) => {
   if (!project) return null;
 
+  const isNoteRequired = project.type === ProjectType.SecretManager;
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-xl!">
@@ -88,11 +98,14 @@ export const RequestProjectAccessModal = ({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
             {subTitle ??
-              `Requesting access to project ${project.name}. You may include an optional note for project admins to review your request.`}
+              (isNoteRequired
+                ? `Requesting access to project ${project.name}. Include a justification for project admins to review your request.`
+                : `Requesting access to project ${project.name}. You may include an optional justification for project admins to review your request.`)}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <Content
           projectId={project.id}
+          isNoteRequired={isNoteRequired}
           onComplete={() => {
             onOpenChange(false);
             if (onComplete) onComplete();

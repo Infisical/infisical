@@ -226,6 +226,7 @@ const Form = ({
             enforceOnSecretImports: editValues.enforceOnSecretImports ?? false,
             maxTimePeriod: editValues.maxTimePeriod,
             requestExpirationTime: editValues.requestExpirationTime,
+            requireJustification: editValues.requireJustification ?? false,
             sequenceApprovers: withFallbackApprovalStep(
               groupApproversBySequence(editValues.approvers, editValues.approvals)
             ),
@@ -753,6 +754,30 @@ const Form = ({
     />
   );
 
+  const requireJustificationField = (
+    <Controller
+      control={control}
+      name="requireJustification"
+      render={({ field: { value, onChange } }) => (
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldTitle>Require Justification</FieldTitle>
+            <FieldDescription>
+              Requesters must add a justification explaining why they need access
+            </FieldDescription>
+          </FieldContent>
+          <Toggle
+            id="require-justification"
+            aria-label="Require justification"
+            variant="project"
+            checked={value ?? false}
+            onCheckedChange={onChange}
+          />
+        </Field>
+      )}
+    />
+  );
+
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit)}
@@ -1016,7 +1041,10 @@ const Form = ({
           </>
         )}
         {isDelegatedMode ? (
-          <DelegatedApprovalFields control={control} watch={watch} setValue={setValue} />
+          <>
+            {requireJustificationField}
+            <DelegatedApprovalFields control={control} watch={watch} setValue={setValue} />
+          </>
         ) : (
           <>
             <div>
@@ -1321,6 +1349,7 @@ const Form = ({
                 )}
               </>
             )}
+            {isAccessPolicyType && requireJustificationField}
           </>
         )}
       </div>

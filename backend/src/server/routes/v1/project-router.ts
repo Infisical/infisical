@@ -1400,6 +1400,45 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:projectId/project-access-requests",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listProjectAccessRequests",
+      description: "List the pending requests to access a project. Only Secrets Management projects are supported.",
+      params: z.object({
+        projectId: z.string().trim().min(1).max(36).describe(PROJECTS.LIST_ACCESS_REQUESTS.projectId)
+      }),
+      querystring: z.object({
+        requesterUserId: z.string().uuid().optional().describe(PROJECTS.LIST_ACCESS_REQUESTS.requesterUserId)
+      }),
+      response: {
+        200: z.object({
+          requests: z
+            .object({
+              id: z.string().uuid().describe(PROJECTS.LIST_ACCESS_REQUESTS.id),
+              requesterUserId: z.string().uuid().describe(PROJECTS.LIST_ACCESS_REQUESTS.requestRequesterUserId),
+              comment: z.string().nullable().describe(PROJECTS.LIST_ACCESS_REQUESTS.comment),
+              createdAt: z.date().describe(PROJECTS.LIST_ACCESS_REQUESTS.createdAt)
+            })
+            .array()
+            .describe(PROJECTS.LIST_ACCESS_REQUESTS.requests)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      return server.services.project.listProjectAccessRequests({
+        permission: req.permission,
+        projectId: req.params.projectId,
+        requesterUserId: req.query.requesterUserId
+      });
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:projectId/project-access",
     config: {

@@ -16,7 +16,7 @@ const StoredConstraintsSchema = z.object({ version: z.literal(1), constraints: S
 const parseConstraints = (constraints: unknown) => {
   const parsed = StoredConstraintsSchema.safeParse(constraints);
   if (parsed.success) return parsed.data.constraints;
-  return { allowedSelfApprovals: true, requestExpirationTime: null, maxTimePeriod: null };
+  return { allowedSelfApprovals: true, requestExpirationTime: null, maxTimePeriod: null, requireJustification: false };
 };
 
 export type TSecretAccessApprovalPolicyDALFactory = ReturnType<typeof secretAccessApprovalPolicyDALFactory>;
@@ -104,7 +104,9 @@ export const secretAccessApprovalPolicyDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (data) => {
-          const { allowedSelfApprovals, requestExpirationTime, maxTimePeriod } = parseConstraints(data.constraints);
+          const { allowedSelfApprovals, requestExpirationTime, maxTimePeriod, requireJustification } = parseConstraints(
+            data.constraints
+          );
           return {
             id: data.id,
             name: data.name,
@@ -119,6 +121,7 @@ export const secretAccessApprovalPolicyDALFactory = (db: TDbClient) => {
             maxTimePeriod,
             allowedSelfApprovals,
             requestExpirationTime,
+            requireJustification,
             delegatedApproval: data.delegatedApprovalType
               ? {
                   type: data.delegatedApprovalType as DelegatedApprovalPolicyType,

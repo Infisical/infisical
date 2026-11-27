@@ -54,6 +54,7 @@ export type TCreateAccessApprovalPolicy = {
   approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  requireJustification?: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
   orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
@@ -77,6 +78,7 @@ export type TUpdateAccessApprovalPolicy = {
   environments?: string[];
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
+  requireJustification?: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;
   orgActor: OrgServiceActor;
 } & Omit<TProjectPermission, "projectId">;
