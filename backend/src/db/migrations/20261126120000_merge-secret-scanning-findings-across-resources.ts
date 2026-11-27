@@ -35,10 +35,7 @@ type TFinding = {
   valueKey: string;
   status: SecretScanningFindingStatus;
   triagedAt: Date | null;
-  triagedByUserId: string | null;
   triageComment: string | null;
-  resolvedAt: Date | null;
-  lastDetectedAt: Date;
   resourceName: string;
 };
 
@@ -84,16 +81,24 @@ const mergeValue = async (tx: Knex, findings: TFinding[]) => {
         }`
     );
 
-  await tx(FINDING)
-    .where({ id: winner.id })
-    .update({
-      status: verdict.status,
-      resolvedAt: verdict.resolvedAt,
-      triagedAt: verdict.triagedAt,
-      triagedByUserId: verdict.triagedByUserId,
-      triageComment: [verdict.triageComment, notes.join("\n")].filter(Boolean).join("\n\n") || null,
-      lastDetectedAt: new Date(Math.max(...findings.map(({ lastDetectedAt }) => lastDetectedAt.getTime())))
-    });
+  // The verdict's timestamps are copied in SQL, since a JS Date would drop their microseconds.
+  await tx.raw(
+    `UPDATE ?? AS w
+     SET status = v.status, "resolvedAt" = v."resolvedAt", "triagedAt" = v."triagedAt",
+       "triagedByUserId" = v."triagedByUserId", "triageComment" = ?,
+       "lastDetectedAt" = (SELECT max("lastDetectedAt") FROM ?? WHERE id = ANY(?::uuid[]))
+     FROM ?? AS v
+     WHERE w.id = ? AND v.id = ?`,
+    [
+      FINDING,
+      [verdict.triageComment, notes.join("\n")].filter(Boolean).join("\n\n") || null,
+      FINDING,
+      findings.map(({ id }) => id),
+      FINDING,
+      winner.id,
+      verdict.id
+    ]
+  );
 
   await tx(FINDING).whereIn("id", loserIds).delete();
 };
@@ -123,10 +128,7 @@ const mergeBatch = async (tx: Knex, values: TValue[]) => {
       "f.id",
       "f.status",
       "f.triagedAt",
-      "f.triagedByUserId",
       "f.triageComment",
-      "f.resolvedAt",
-      "f.lastDetectedAt",
       "r.name as resourceName"
     );
 
