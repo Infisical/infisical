@@ -1,6 +1,8 @@
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import {
+  TSecretsChatNotificationService,
+  TSecretsPermissionService
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TActorInput } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
@@ -15,12 +17,9 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
-import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -113,10 +112,7 @@ export type TSecretAccessApprovalRequestServiceFactoryDep = {
   >;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  kmsDataKeyService: TKmsDataKeyService;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
-  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
+  secretsChatNotificationService: TSecretsChatNotificationService;
   queueService: Pick<TQueueServiceFactory, "queue">;
   secretAccessApprovalGlobalResource: Pick<
     TSecretAccessApprovalGlobalResource,

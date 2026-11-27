@@ -8,6 +8,8 @@ import {
   SortDirection
 } from "@app/db/schemas";
 import { ProjectMicrosoftTeamsConfigsSchema } from "@app/db/schemas/project-microsoft-teams-configs";
+import { WorkflowIntegrationProvider } from "@app/domains/platform/workflow-integrations/ce/module";
+import { microsoftTeamsChannelsSchema, slackChannelsSchema } from "@app/domains/secrets-manager/secrets/ce/module";
 import { MAX_PROJECT_AUDIT_LOG_RETENTION_DAYS } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECTS } from "@app/lib/api-docs";
@@ -16,10 +18,7 @@ import { CharacterType, characterValidator } from "@app/lib/validator/validate-s
 import { re2Validator } from "@app/lib/zod";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
 import { ProjectFilterType, SearchProjectSortBy } from "@app/services/project/project-types";
-import { validateSlackChannelsField } from "@app/services/slack/slack-auth-validators";
-import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { integrationAuthPubSchema, SanitizedProjectSchema } from "../sanitizedSchemas";
 
@@ -388,7 +387,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     schema: {
       params: z.object({
         workspaceId: z.string().trim(),
-        integration: z.nativeEnum(WorkflowIntegration)
+        integration: z.nativeEnum(WorkflowIntegrationProvider)
       }),
       response: {
         200: z.discriminatedUnion("integration", [
@@ -400,7 +399,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
             secretRequestChannels: true
           }).merge(
             z.object({
-              integration: z.literal(WorkflowIntegration.SLACK),
+              integration: z.literal(WorkflowIntegrationProvider.Slack),
               integrationId: z.string()
             })
           ),
@@ -412,7 +411,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
             secretRequestChannels: true
           }).merge(
             z.object({
-              integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+              integration: z.literal(WorkflowIntegrationProvider.MicrosoftTeams),
               integrationId: z.string()
             })
           )
@@ -452,7 +451,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
     schema: {
       params: z.object({
         projectId: z.string().trim(),
-        integration: z.nativeEnum(WorkflowIntegration),
+        integration: z.nativeEnum(WorkflowIntegrationProvider),
         integrationId: z.string()
       }),
       response: {
@@ -491,20 +490,20 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
 
       body: z.discriminatedUnion("integration", [
         z.object({
-          integration: z.literal(WorkflowIntegration.SLACK),
+          integration: z.literal(WorkflowIntegrationProvider.Slack),
           integrationId: z.string(),
-          accessRequestChannels: validateSlackChannelsField,
-          secretRequestChannels: validateSlackChannelsField,
-          secretSyncErrorChannels: validateSlackChannelsField,
+          accessRequestChannels: slackChannelsSchema,
+          secretRequestChannels: slackChannelsSchema,
+          secretSyncErrorChannels: slackChannelsSchema,
           isAccessRequestNotificationEnabled: z.boolean(),
           isSecretRequestNotificationEnabled: z.boolean(),
           isSecretSyncErrorNotificationEnabled: z.boolean()
         }),
         z.object({
-          integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+          integration: z.literal(WorkflowIntegrationProvider.MicrosoftTeams),
           integrationId: z.string(),
-          accessRequestChannels: validateMicrosoftTeamsChannelsSchema,
-          secretRequestChannels: validateMicrosoftTeamsChannelsSchema,
+          accessRequestChannels: microsoftTeamsChannelsSchema,
+          secretRequestChannels: microsoftTeamsChannelsSchema,
           isAccessRequestNotificationEnabled: z.boolean(),
           isSecretRequestNotificationEnabled: z.boolean()
         })
@@ -521,7 +520,7 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
             secretSyncErrorChannels: true
           }).merge(
             z.object({
-              integration: z.literal(WorkflowIntegration.SLACK),
+              integration: z.literal(WorkflowIntegrationProvider.Slack),
               integrationId: z.string()
             })
           ),
@@ -531,10 +530,10 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
             isSecretRequestNotificationEnabled: true
           }).merge(
             z.object({
-              integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
+              integration: z.literal(WorkflowIntegrationProvider.MicrosoftTeams),
               integrationId: z.string(),
-              accessRequestChannels: validateMicrosoftTeamsChannelsSchema,
-              secretRequestChannels: validateMicrosoftTeamsChannelsSchema
+              accessRequestChannels: microsoftTeamsChannelsSchema,
+              secretRequestChannels: microsoftTeamsChannelsSchema
             })
           )
         ])

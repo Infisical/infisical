@@ -2,10 +2,9 @@ import { Knex } from "knex";
 
 import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { WorkflowIntegrationProvider } from "@app/domains/platform/workflow-integrations/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { TActorInput } from "@app/lib/types";
-
-import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 
 type TProjectActorInput = { projectId: string } & TActorInput;
 
@@ -201,13 +200,13 @@ export type TListProjectCertificateTemplatesDTO = TProjectActorInput;
 export type TListProjectPkiSubscribersDTO = TProjectActorInput;
 
 export type TGetProjectWorkflowIntegrationConfig = TProjectActorInput & {
-  integration: WorkflowIntegration;
+  integration: WorkflowIntegrationProvider;
 };
 
 export type TUpdateProjectWorkflowIntegration = (
   | {
       integrationId: string;
-      integration: WorkflowIntegration.SLACK;
+      integration: WorkflowIntegrationProvider.Slack;
       isAccessRequestNotificationEnabled: boolean;
       isSecretRequestNotificationEnabled: boolean;
       isSecretSyncErrorNotificationEnabled: boolean;
@@ -217,7 +216,7 @@ export type TUpdateProjectWorkflowIntegration = (
     }
   | {
       integrationId: string;
-      integration: WorkflowIntegration.MICROSOFT_TEAMS;
+      integration: WorkflowIntegrationProvider.MicrosoftTeams;
       isAccessRequestNotificationEnabled: boolean;
       isSecretRequestNotificationEnabled: boolean;
       accessRequestChannels?: { teamId: string; channelIds: string[] };
@@ -228,7 +227,7 @@ export type TUpdateProjectWorkflowIntegration = (
 
 export type TDeleteProjectWorkflowIntegration = {
   integrationId: string;
-  integration: WorkflowIntegration;
+  integration: WorkflowIntegrationProvider;
 } & TProjectActorInput;
 
 export enum SearchProjectSortBy {

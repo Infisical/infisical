@@ -221,6 +221,9 @@ export const createDomains = async (deps: TDomainDeps) => {
     actorGrantsService: accessControl.actorGrantsService,
     groupService: accessControl.groupService,
     projectsService,
+    workflowIntegrationService: workflowIntegrations.workflowIntegrationService,
+    chatDeliveryService: workflowIntegrations.chatDeliveryService,
+    siteUrl: deps.envConfig.SITE_URL,
     cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
   const pam = new PamModule({

@@ -163,7 +163,6 @@ import { TMembershipIdentityServiceFactory } from "@app/services/membership-iden
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
 import { TMfaRecoveryCodeServiceFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-service";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
-import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
@@ -204,7 +203,6 @@ import { TServiceTokenServiceFactory } from "@app/services/service-token/service
 import { TSignerMembershipServiceFactory } from "@app/services/signer-membership";
 import { TSignerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
 import { TSignerServiceFactory } from "@app/services/signer/signer-service";
-import { TSlackServiceFactory } from "@app/services/slack/slack-service";
 import { TSuperAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";
@@ -215,7 +213,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
 import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
-import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 declare module "@fastify/request-context" {
   interface RequestContextData {
@@ -465,8 +462,6 @@ declare module "fastify" {
     userEngagement: TUserEngagementServiceFactory;
     externalKms: TExternalKmsServiceFactory;
     orgAdmin: TOrgAdminServiceFactory;
-    slack: TSlackServiceFactory;
-    workflowIntegration: TWorkflowIntegrationServiceFactory;
     cmek: TCmekServiceFactory;
     migration: TExternalMigrationServiceFactory;
     externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
@@ -481,7 +476,6 @@ declare module "fastify" {
     kmipOperation: TKmipOperationServiceFactory;
     kmipServer: TKmipServerServiceFactory;
     secretRotationV2: TSecretRotationV2ServiceFactory;
-    microsoftTeams: TMicrosoftTeamsServiceFactory;
     assumePrivileges: TAssumePrivilegeServiceFactory;
     insights: TInsightsServiceFactory;
     secretReadActivity: TSecretReadActivityServiceFactory;

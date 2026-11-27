@@ -1,3 +1,4 @@
+import { WorkflowIntegrationProvider } from "../models/enums";
 import { WorkflowIntegration } from "../models/workflow-integration";
 import { TFindInOrgInput, TWorkflowIntegrationService } from "../services/workflow-integration/service";
 
@@ -20,6 +21,12 @@ export class FakeWorkflowIntegrationService implements TWorkflowIntegrationServi
     const integration = this.integrations.get(id);
     if (!integration || integration.orgId !== orgId) return null;
     if (provider && !integration.isProvider(provider)) return null;
+    return integration;
+  };
+
+  findById = async ({ id, provider }: { id: string; provider?: WorkflowIntegrationProvider }) => {
+    const integration = this.integrations.get(id);
+    if (!integration || (provider && !integration.isProvider(provider))) return null;
     return integration;
   };
 

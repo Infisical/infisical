@@ -8,6 +8,8 @@ import { PamProjectRoles } from "@app/domains/pam/pam/ce/module";
 import { AccessControlModule } from "@app/domains/platform/access-control/ce/module";
 import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
 import { ProjectsModule } from "@app/domains/platform/projects/ce/module";
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
 import { SecretsModule } from "@app/domains/secrets-manager/secrets/ce/module";
 
 // Permission domains on the test server's DB and key store, wired like createDomains but with cache markers off,
@@ -36,6 +38,10 @@ export const buildPermissionDomains = (db: Knex, keyStore: TDomainKeyStore) => {
     actorGrantsService: accessControl.actorGrantsService,
     groupService: accessControl.groupService,
     projectsService: projects.projectsService,
+    // Only permissions are used here, so chat settings and notifications run on fakes.
+    workflowIntegrationService: new FakeWorkflowIntegrationService(),
+    chatDeliveryService: new FakeChatDeliveryService(),
+    siteUrl: undefined,
     cacheMarkerTtlSeconds: 0
   });
 

@@ -8,6 +8,8 @@ import { accessControlServices } from "@app/domains/platform/access-control/ce/t
 import { KnexGrantSeeder } from "@app/domains/platform/access-control/ce/testing/knex-grant-seeder";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { buildProjectsModule } from "@app/domains/platform/projects/ce/testing/projects-module";
+import { FakeChatDeliveryService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-chat-delivery-service";
+import { FakeWorkflowIntegrationService } from "@app/domains/platform/workflow-integrations/ce/testing/fake-workflow-integration-service";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import type { TPrincipal } from "@app/lib/auth/principal";
 
@@ -29,6 +31,9 @@ describe("SecretsPermissionService.getSecretsPermission", () => {
       ...accessControlServices(h.db),
       projectPermissionService: buildProjectsModule(h.db).projectPermissionService,
       projectsService: buildProjectsModule(h.db).projectsService,
+      workflowIntegrationService: new FakeWorkflowIntegrationService(),
+      chatDeliveryService: new FakeChatDeliveryService(),
+      siteUrl: undefined,
       cacheMarkerTtlSeconds: 0
     }).secretsPermissionService;
 
@@ -136,6 +141,9 @@ describe("SecretsPermissionService.getProjectMemberPermissions", () => {
       ...accessControlServices(h.db),
       projectPermissionService: buildProjectsModule(h.db).projectPermissionService,
       projectsService: buildProjectsModule(h.db).projectsService,
+      workflowIntegrationService: new FakeWorkflowIntegrationService(),
+      chatDeliveryService: new FakeChatDeliveryService(),
+      siteUrl: undefined,
       cacheMarkerTtlSeconds: 0
     }).secretsPermissionService;
 

@@ -1,12 +1,11 @@
 import msFn from "ms";
 
 import { TAdditionalPrivileges, TApprovalRequestGrants, TApprovalRequests, TUsers } from "@app/db/schemas";
+import { SecretsChatNotificationType } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
-import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import {
   ApprovalRequestApprovalDecision,
   ApprovalRequestGrantStatus,
@@ -124,15 +123,7 @@ export const toLegacyAccessApprovalRequest = (
 
 type TNotifySecretAccessStepApproversDep = Pick<
   TSecretAccessApprovalRequestServiceFactoryDep,
-  | "userDAL"
-  | "userGroupMembershipDAL"
-  | "projectDAL"
-  | "projectSlackConfigDAL"
-  | "kmsDataKeyService"
-  | "microsoftTeamsService"
-  | "projectMicrosoftTeamsConfigDAL"
-  | "notificationService"
-  | "smtpService"
+  "userDAL" | "userGroupMembershipDAL" | "secretsChatNotificationService" | "notificationService" | "smtpService"
 >;
 
 export const notifySecretAccessStepApprovers = async (
@@ -156,11 +147,7 @@ export const notifySecretAccessStepApprovers = async (
   {
     userDAL,
     userGroupMembershipDAL,
-    projectDAL,
-    projectSlackConfigDAL,
-    kmsDataKeyService,
-    microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL,
+    secretsChatNotificationService,
     notificationService,
     smtpService
   }: TNotifySecretAccessStepApproversDep
@@ -178,31 +165,22 @@ export const notifySecretAccessStepApprovers = async (
     : [];
 
   try {
-    await triggerWorkflowIntegrationNotification({
-      input: {
-        notification: {
-          type: TriggerFeature.ACCESS_REQUEST,
-          payload: {
-            projectName: project.name,
-            projectPath,
-            requesterFullName,
-            isTemporary: data.isTemporary,
-            requesterEmail: request.requesterEmail,
-            secretPath,
-            environment: environment.slug,
-            permissions: accessTypes,
-            approvalUrl,
-            note: request.justification ?? undefined
-          }
-        },
-        projectId: project.id
-      },
-      dependencies: {
-        projectDAL,
-        projectSlackConfigDAL,
-        kmsDataKeyService,
-        microsoftTeamsService,
-        projectMicrosoftTeamsConfigDAL
+    await secretsChatNotificationService.notify({
+      projectId: project.id,
+      notification: {
+        type: SecretsChatNotificationType.AccessRequest,
+        payload: {
+          projectName: project.name,
+          projectPath,
+          requesterFullName,
+          isTemporary: data.isTemporary,
+          requesterEmail: request.requesterEmail,
+          secretPath,
+          environment: environment.slug,
+          permissions: accessTypes,
+          approvalUrl,
+          note: request.justification ?? undefined
+        }
       }
     });
 

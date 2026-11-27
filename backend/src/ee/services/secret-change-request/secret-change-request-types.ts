@@ -10,7 +10,10 @@ import {
 } from "@app/db/schemas";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import {
+  TSecretsChatNotificationService,
+  TSecretsPermissionService
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { Actor, Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
@@ -26,8 +29,6 @@ import {
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
-import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
-import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -42,7 +43,6 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
-import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -368,9 +368,7 @@ export type TSecretChangeRequestServiceFactoryDep = {
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   userDAL: Pick<TUserDALFactory, "findById" | "find" | "findOne">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
-  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  secretsChatNotificationService: TSecretsChatNotificationService;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   queueService: Pick<TQueueServiceFactory, "queue">;

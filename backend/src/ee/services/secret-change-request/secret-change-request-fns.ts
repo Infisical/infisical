@@ -8,7 +8,10 @@ import {
   TSecretChangeRequests,
   TUsers
 } from "@app/db/schemas";
-import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import {
+  SecretsChatNotificationType,
+  TSecretsChatNotificationService
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -18,18 +21,13 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { EnforcementLevel } from "@app/lib/types";
-import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
-import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
-import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
-import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -83,10 +81,7 @@ type TSecretChangeRequestFnsFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
-  kmsDataKeyService: TKmsDataKeyService;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
-  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  secretsChatNotificationService: TSecretsChatNotificationService;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   queueService: Pick<TQueueServiceFactory, "queue">;
@@ -187,10 +182,7 @@ export const secretChangeRequestFnsFactory = ({
   identityDAL,
   projectDAL,
   projectEnvDAL,
-  kmsDataKeyService,
-  projectSlackConfigDAL,
-  projectMicrosoftTeamsConfigDAL,
-  microsoftTeamsService,
+  secretsChatNotificationService,
   smtpService,
   notificationService,
   queueService,
@@ -353,30 +345,21 @@ export const secretChangeRequestFnsFactory = ({
         : await (tx ? findUser() : requestMemoize(requestMemoKeys.userFindById(actorId), findUser));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id }, tx);
 
-    await triggerWorkflowIntegrationNotification({
-      input: {
-        projectId: project.id,
-        notification: {
-          type: TriggerFeature.SECRET_APPROVAL,
-          payload: {
-            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
-            userEmail: user?.email ?? undefined,
-            environment: env.name,
-            secretPath,
-            projectId: project.id,
-            projectName: project.name,
-            requestId: approvalRequest.id,
-            secretKeys,
-            approvalUrl: buildApprovalUrl(actorOrgId, project.id, approvalRequest.id)
-          }
+    await secretsChatNotificationService.notify({
+      projectId: project.id,
+      notification: {
+        type: SecretsChatNotificationType.SecretApproval,
+        payload: {
+          machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
+          userEmail: user?.email ?? undefined,
+          environment: env.name,
+          secretPath,
+          projectId: project.id,
+          projectName: project.name,
+          requestId: approvalRequest.id,
+          secretKeys,
+          approvalUrl: buildApprovalUrl(actorOrgId, project.id, approvalRequest.id)
         }
-      },
-      dependencies: {
-        projectDAL,
-        kmsDataKeyService,
-        projectSlackConfigDAL,
-        microsoftTeamsService,
-        projectMicrosoftTeamsConfigDAL
       }
     });
 

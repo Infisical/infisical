@@ -25,6 +25,9 @@ export type TWorkflowIntegrationService = {
   findInOrg(input: TFindInOrgInput): Promise<WorkflowIntegration | null>;
   // The org's integrations among `ids`; ids of other orgs or of nothing are left out.
   listInOrg(input: { orgId: string; ids: string[] }): Promise<WorkflowIntegration[]>;
+  // Any org's integration (of this provider, when given). Only for a caller whose existing API answers another org's
+  // integration differently from a missing one; everything else uses findInOrg.
+  findById(input: { id: string; provider?: WorkflowIntegrationProvider }): Promise<WorkflowIntegration | null>;
 };
 
 export class WorkflowIntegrationService implements TWorkflowIntegrationService {
@@ -43,6 +46,18 @@ export class WorkflowIntegrationService implements TWorkflowIntegrationService {
     const integration = await this.workflowIntegrationStore.findById(id, { readFrom });
     if (!integration || integration.orgId !== orgId) return null;
     if (provider && !integration.isProvider(provider)) return null;
+    return integration;
+  }
+
+  async findById({
+    id,
+    provider
+  }: {
+    id: string;
+    provider?: WorkflowIntegrationProvider;
+  }): Promise<WorkflowIntegration | null> {
+    const integration = await this.workflowIntegrationStore.findById(id);
+    if (!integration || (provider && !integration.isProvider(provider))) return null;
     return integration;
   }
 

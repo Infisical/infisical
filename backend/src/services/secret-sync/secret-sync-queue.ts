@@ -7,6 +7,10 @@ import { SecretType, TableName } from "@app/db/schemas";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  SecretsChatNotificationType,
+  TSecretsChatNotificationService
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -21,8 +25,6 @@ import {
   recordSecretSyncOutcomeMetric,
   recordSecretSyncStatusChangeMetric
 } from "@app/lib/telemetry/metrics";
-import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
-import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { findProjectAdminUserIds } from "@app/services/alert/alert-principal-scope-fns";
@@ -85,11 +87,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TGitHubAppDALFactory } from "../github-app/github-app-dal";
-import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
-import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 
 const ORPHAN_REAP_BATCH_SIZE = 500;
 const MAX_ORPHAN_REAP_BATCHES = 20;
@@ -154,9 +153,7 @@ type TSecretSyncQueueFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
-  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  secretsChatNotificationService: TSecretsChatNotificationService;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findMembership" | "findActorsWithActiveOrgAccess">;
@@ -212,9 +209,7 @@ export const secretSyncQueueFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   notificationService,
-  projectSlackConfigDAL,
-  projectMicrosoftTeamsConfigDAL,
-  microsoftTeamsService,
+  secretsChatNotificationService,
   telemetryService,
   projectFolderGrantDAL,
   orgDAL,
@@ -1116,30 +1111,21 @@ export const secretSyncQueueFactory = ({
     const syncPath = `${baseProjectPath}/integrations/secret-syncs/${destination}/${secretSync.id}`;
 
     const notifications = [
-      triggerWorkflowIntegrationNotification({
-        input: {
-          notification: {
-            type: TriggerFeature.SECRET_SYNC_ERROR,
-            payload: {
-              syncName: name,
-              syncDestination,
-              failureMessage: failureMessage || "An unknown error occurred",
-              syncUrl: `${appCfg.SITE_URL}${syncPath}`,
-              syncActionLabel: actionLabel,
-              environment: environment?.name || "-",
-              secretPath: folder?.path || "-",
-              projectName: project.name,
-              projectPath: overviewPath
-            }
-          },
-          projectId
-        },
-        dependencies: {
-          projectDAL,
-          projectSlackConfigDAL,
-          kmsDataKeyService,
-          microsoftTeamsService,
-          projectMicrosoftTeamsConfigDAL
+      secretsChatNotificationService.notify({
+        projectId,
+        notification: {
+          type: SecretsChatNotificationType.SecretSyncError,
+          payload: {
+            syncName: name,
+            syncDestination,
+            failureMessage: failureMessage || "An unknown error occurred",
+            syncUrl: `${appCfg.SITE_URL}${syncPath}`,
+            syncActionLabel: actionLabel,
+            environment: environment?.name || "-",
+            secretPath: folder?.path || "-",
+            projectName: project.name,
+            projectPath: overviewPath
+          }
         }
       }),
       notificationService.createUserNotifications(

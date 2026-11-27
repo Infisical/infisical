@@ -1,11 +1,11 @@
 import { Knex } from "knex";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { TApprovalRequestApprovals, TApprovalRequests, TSecretChangeRequests } from "@app/db/schemas";
+import { FakeSecretsChatNotificationService } from "@app/domains/secrets-manager/secrets/ce/testing/fake-secrets-chat-notification-service";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
-import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { QueueJobs, QueueName } from "@app/queue";
 import {
   ApprovalPolicyType,
@@ -26,9 +26,6 @@ import { ApprovalStatus, RequestState } from "./secret-change-request-types";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
-vi.mock("@app/lib/workflow-integrations/trigger-notification", () => ({
-  triggerWorkflowIntegrationNotification: vi.fn().mockResolvedValue(undefined)
-}));
 
 const TX = { isTx: true } as unknown as Knex;
 const CREATED_AT = new Date("2026-01-01T00:00:00.000Z");
@@ -191,10 +188,7 @@ const buildFns = ({
         .mockResolvedValue({ id: "project-1", name: "Project", orgId: "org-1", organization: { name: "Org" } })
     },
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", name: "Development", slug: "dev" }) },
-    kmsDataKeyService: { createCipherPairWithDataKey: vi.fn() },
-    projectSlackConfigDAL: { getIntegrationDetailsByProject: vi.fn() },
-    projectMicrosoftTeamsConfigDAL: { getIntegrationDetailsByProject: vi.fn() },
-    microsoftTeamsService: { sendNotification: vi.fn() },
+    secretsChatNotificationService: new FakeSecretsChatNotificationService(),
     smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) },
     notificationService: { createUserNotifications: vi.fn().mockResolvedValue(undefined) },
     queueService: { queue: vi.fn().mockResolvedValue(undefined) },
@@ -310,34 +304,28 @@ describe("runSecretChangeRequestSideEffects", () => {
     actorOrgId: "org-1"
   };
 
-  beforeEach(() => {
-    vi.mocked(triggerWorkflowIntegrationNotification).mockClear();
-  });
-
   test("notifies workflow integrations, approvers, the webhook queue and telemetry", async () => {
     const { fns, deps } = buildFns();
 
     await fns.runSecretChangeRequestSideEffects(input);
 
-    expect(triggerWorkflowIntegrationNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: {
-          projectId: "project-1",
-          notification: {
-            type: "secret-approval",
-            payload: expect.objectContaining({
-              userEmail: "alice@example.com",
-              machineIdentityId: undefined,
-              environment: "Development",
-              requestId: "request-1",
-              secretKeys: ["KEY"],
-              approvalUrl:
-                "https://app.test/organizations/org-1/projects/secret-management/project-1/approval?requestId=request-1"
-            }) as object
-          }
+    expect(deps.secretsChatNotificationService.notifications).toEqual([
+      {
+        projectId: "project-1",
+        notification: {
+          type: "secret-approval",
+          payload: expect.objectContaining({
+            userEmail: "alice@example.com",
+            machineIdentityId: undefined,
+            environment: "Development",
+            requestId: "request-1",
+            secretKeys: ["KEY"],
+            approvalUrl:
+              "https://app.test/organizations/org-1/projects/secret-management/project-1/approval?requestId=request-1"
+          }) as object
         }
-      })
-    );
+      }
+    ]);
 
     expect(deps.userDAL.find).toHaveBeenCalledWith({ $in: { id: ["user-2", "user-3"] } }, { tx: undefined });
     expect(deps.notificationService.createUserNotifications).toHaveBeenCalledWith([

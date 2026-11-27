@@ -1,7 +1,7 @@
 # Secrets domain
 
-Holds Secret Manager's permissions and the `secret_identities` usage counter for now; it grows as Secret Manager moves
-into domains.
+Holds Secret Manager's permissions, the `secret_identities` usage counter and a project's chat settings for now; it
+grows as Secret Manager moves into domains.
 
 - **Every Secret Manager check goes through `secretsPermissionService.getSecretsPermission({ actor, projectId })`**,
   never `projectPermissionService.getProjectPermission`: folder grants and service tokens live only here. It takes
@@ -35,3 +35,24 @@ into domains.
 - The usage counter counts through Projects (`countProjectIdentities`), which owns the membership queries.
 - Tests build the service with `testing/build-secrets-permission.ts`; other code's tests use
   `FakeSecretsPermissionService`.
+
+## Project chat settings
+
+A project's Slack and Microsoft Teams settings (`project_slack_configs`, `project_microsoft_teams_configs`) and the
+posting of Secret Manager events to them. Workflow Integrations owns the installs and the posting; this domain owns
+which events go to which channels of a project.
+
+- `ProjectChatConfigService` (`get`, `update`, `delete`) backs the project routers' workflow-integration routes through
+  `projectService`, which keeps their response shapes. It checks Settings read, edit and delete on the project through
+  `projectPermissionService.getProjectPermission` with no project type, as the legacy code did: this is the one
+  exception to the rule above, since a project's Settings are shared by every project type. Another org's integration
+  reads as not found (`workflowIntegrationService.findInOrg` cannot tell it from a missing one).
+- `SlackProjectChatConfig` and `MicrosoftTeamsProjectChatConfig` hold the channel rules (the 20 channel limit, Teams
+  needing channels for an enabled event) and `channelsFor(SecretsChatEvent)`, which answers null when the event is
+  off or has no channels. Slack channels stay the sanitized ", "-joined string. Teams has no sync error channel.
+- `SecretsChatNotificationService.notify` is what legacy code calls (`secretsChatNotificationService`): it renders the
+  four notifications in `services/chat-notification/` (`slack-message.ts`, `teams-message.ts`) and posts through
+  `chatDeliveryService`. It never throws. A new Secret Manager notification adds a member to `TSecretsChatNotification`,
+  an arm in both renderers (return null for Teams when it has none) and a mapping to a `SecretsChatEvent`.
+- Tests that need Slack or Teams integration rows on Postgres use `testing/seed-workflow-integrations.ts`, which
+  installs them through Workflow Integrations' own services.

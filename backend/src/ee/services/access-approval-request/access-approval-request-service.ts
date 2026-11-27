@@ -80,10 +80,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
   delegatedApprovalService,
   smtpService,
   notificationService,
-  kmsDataKeyService,
-  projectSlackConfigDAL,
-  microsoftTeamsService,
-  projectMicrosoftTeamsConfigDAL,
+  secretsChatNotificationService,
   queueService,
   secretAccessApprovalGlobalResource,
   licenseService
@@ -469,11 +466,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
         {
           userDAL,
           userGroupMembershipDAL,
-          projectDAL,
-          projectSlackConfigDAL,
-          kmsDataKeyService,
-          microsoftTeamsService,
-          projectMicrosoftTeamsConfigDAL,
+          secretsChatNotificationService,
           notificationService,
           smtpService
         }
@@ -808,11 +801,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
           {
             userDAL,
             userGroupMembershipDAL,
-            projectDAL,
-            projectSlackConfigDAL,
-            kmsDataKeyService,
-            microsoftTeamsService,
-            projectMicrosoftTeamsConfigDAL,
+            secretsChatNotificationService,
             notificationService,
             smtpService
           }

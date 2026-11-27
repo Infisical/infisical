@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import { WorkflowIntegrationProvider } from "@app/domains/platform/workflow-integrations/ce/module";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
@@ -88,7 +89,6 @@ import { TDuplicateSecretAttributes } from "@app/services/secret-v2-bridge/secre
 import { CertKeySource } from "@app/services/signer/signer-enums";
 import { TSignerExternalConfigurationInput } from "@app/services/signer/signer-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
-import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
@@ -4561,7 +4561,7 @@ interface UpdateProjectWorkflowIntegrationConfig {
   metadata: {
     id: string;
     integrationId: string;
-    integration: WorkflowIntegration;
+    integration: WorkflowIntegrationProvider;
     isAccessRequestNotificationEnabled: boolean;
     accessRequestChannels?: string | { teamId: string; channelIds: string[] };
     isSecretRequestNotificationEnabled: boolean;
@@ -4573,7 +4573,7 @@ interface GetProjectWorkflowIntegrationConfig {
   type: EventType.GET_PROJECT_WORKFLOW_INTEGRATION_CONFIG;
   metadata: {
     id: string;
-    integration: WorkflowIntegration;
+    integration: WorkflowIntegrationProvider;
   };
 }
 

@@ -471,9 +471,6 @@ import { projectAccessRevokeServiceFactory } from "@app/services/membership/proj
 import { mfaRecoveryCodeDALFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-dal";
 import { mfaRecoveryCodeServiceFactory } from "@app/services/mfa-recovery-code/mfa-recovery-code-service";
 import { mfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
-import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
-import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
-import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { notificationQueueServiceFactory } from "@app/services/notification/notification-queue";
 import { notificationServiceFactory } from "@app/services/notification/notification-service";
 import { userNotificationDALFactory } from "@app/services/notification/user-notification-dal";
@@ -588,9 +585,6 @@ import { signerIssuanceJobDALFactory } from "@app/services/signer/signer-issuanc
 import { signerIssuanceServiceFactory } from "@app/services/signer/signer-issuance-service";
 import { signerPolicyServiceFactory } from "@app/services/signer/signer-policy-service";
 import { signerRevocationDALFactory } from "@app/services/signer/signer-revocation-dal";
-import { projectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
-import { slackIntegrationDALFactory } from "@app/services/slack/slack-integration-dal";
-import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
@@ -610,8 +604,6 @@ import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-cr
 import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
-import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
-import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectPermissionDeniedAuditLog } from "../plugins/audit-log-permission-denied";
@@ -805,9 +797,6 @@ export const registerRoutes = async (
   const dynamicSecretLeaseDAL = dynamicSecretLeaseDALFactory(db);
   const emailDomainDAL = emailDomainDALFactory(db);
 
-  const slackIntegrationDAL = slackIntegrationDALFactory(db);
-  const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
-  const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
   const totpConfigDAL = totpConfigDALFactory(db);
   const webAuthnCredentialDAL = webAuthnCredentialDALFactory(db);
   const mfaRecoveryCodeDAL = mfaRecoveryCodeDALFactory(db);
@@ -836,8 +825,6 @@ export const registerRoutes = async (
   const orgAgentProxyConfigDAL = orgAgentProxyConfigDALFactory(db);
 
   const secretRotationV2DAL = secretRotationV2DALFactory(db, folderDAL);
-  const microsoftTeamsIntegrationDAL = microsoftTeamsIntegrationDALFactory(db);
-  const projectMicrosoftTeamsConfigDAL = projectMicrosoftTeamsConfigDALFactory(db);
   const secretScanningV2DAL = secretScanningV2DALFactory(db);
   const keyValueStoreDAL = keyValueStoreDALFactory(db);
 
@@ -1786,14 +1773,6 @@ export const registerRoutes = async (
     usageMeteringService
   });
 
-  const microsoftTeamsService = microsoftTeamsServiceFactory({
-    orgPermissionService,
-    microsoftTeamsIntegrationDAL,
-    workflowIntegrationDAL,
-    kmsDataKeyService,
-    instanceConfigService
-  });
-
   const superAdminService = superAdminServiceFactory({
     userDAL,
     identityDAL,
@@ -2473,9 +2452,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     notificationService,
-    projectSlackConfigDAL,
-    projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsService,
+    secretsChatNotificationService: domains.secrets.secretsChatNotificationService,
     telemetryService,
     projectFolderGrantDAL,
     orgDAL,
@@ -2591,10 +2568,7 @@ export const registerRoutes = async (
     kmsDataKeyService,
     kmsKeyService,
     certificateTemplateDAL,
-    projectSlackConfigDAL,
-    slackIntegrationDAL,
-    projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsIntegrationDAL,
+    projectChatConfigService: domains.secrets.projectChatConfigService,
     projectTemplateService,
     smtpService,
     notificationService,
@@ -2701,9 +2675,7 @@ export const registerRoutes = async (
     secretValidationRuleService,
     userDAL,
     identityDAL,
-    projectSlackConfigDAL,
-    projectMicrosoftTeamsConfigDAL,
-    microsoftTeamsService,
+    secretsChatNotificationService: domains.secrets.secretsChatNotificationService,
     smtpService,
     notificationService,
     queueService,
@@ -3385,20 +3357,6 @@ export const registerRoutes = async (
     orgDAL
   });
 
-  const slackService = slackServiceFactory({
-    orgPermissionService,
-    instanceConfigService,
-    kmsDataKeyService,
-    slackIntegrationDAL,
-    workflowIntegrationDAL,
-    alertChannelDAL
-  });
-
-  const workflowIntegrationService = workflowIntegrationServiceFactory({
-    orgPermissionService,
-    workflowIntegrationDAL
-  });
-
   const cmekService = cmekServiceFactory({
     kmsPermissionService,
     kmsKeyService,
@@ -3516,10 +3474,7 @@ export const registerRoutes = async (
     delegatedApprovalService,
     smtpService,
     notificationService,
-    kmsDataKeyService,
-    projectSlackConfigDAL,
-    microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL,
+    secretsChatNotificationService: domains.secrets.secretsChatNotificationService,
     queueService,
     secretAccessApprovalGlobalResource,
     licenseService
@@ -5136,7 +5091,6 @@ export const registerRoutes = async (
   caAutoRenewalQueue.startDailyAutoRenewalJob();
   signerAutoRenewalQueue.start();
   signerIssuanceService.start();
-  await microsoftTeamsService.start();
   await domains.workflowIntegrations.start();
   await eventBusService.init();
 
@@ -5296,8 +5250,6 @@ export const registerRoutes = async (
     externalKms: externalKmsService,
     cmek: cmekService,
     orgAdmin: orgAdminService,
-    slack: slackService,
-    workflowIntegration: workflowIntegrationService,
     migration: migrationService,
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
@@ -5315,7 +5267,6 @@ export const registerRoutes = async (
     gatewayPool: gatewayPoolService,
     resourceAuthMethod: resourceAuthMethodService,
     secretRotationV2: secretRotationV2Service,
-    microsoftTeams: microsoftTeamsService,
     assumePrivileges: assumePrivilegeService,
     insights: insightsService,
     secretReadActivity: secretReadActivityService,
@@ -5372,10 +5323,6 @@ export const registerRoutes = async (
       cronJobs.push(licenseSyncJob);
     }
 
-    const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
-    if (microsoftTeamsSyncJob) {
-      cronJobs.push(microsoftTeamsSyncJob);
-    }
     const workflowIntegrationsSyncJob = domains.workflowIntegrations.startBackgroundSync();
     if (workflowIntegrationsSyncJob) {
       cronJobs.push(workflowIntegrationsSyncJob);
