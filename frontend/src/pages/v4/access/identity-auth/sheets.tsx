@@ -261,6 +261,7 @@ const AuthMethodForm = ({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open
         title={isUpdate && method ? `Edit ${authMethodName(method)}` : "Add auth method"}
         completeLabel={copy.complete}

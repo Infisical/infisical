@@ -291,7 +291,7 @@ const InstallFlow = ({
   return (
     <>
       <Sheet open={open} onOpenChange={(next) => !next && !pending && requestDiscard()}>
-        <SheetContent pending={pending}>
+        <SheetContent size="md" pending={pending}>
           <SheetHeader>
             <SheetTitle>
               {step === "integration"

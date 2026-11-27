@@ -689,7 +689,7 @@ export function SecretRotationFlow({
         }}
       >
         <FormProvider {...form}>
-          <SheetContent className="data-[side=right]:w-full data-[side=right]:sm:w-3/4 data-[side=right]:sm:max-w-none">
+          <SheetContent size="xl">
             {type ? (
               <SheetHeader>
                 <Inline gap={12} wrap={false} align="start">

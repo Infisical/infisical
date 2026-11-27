@@ -511,7 +511,7 @@ function CopySecretsSession({
           if (!open) onClose();
         }}
       >
-        <SheetContent className={styles.sheet}>
+        <SheetContent size="xl">
           <SheetHeader>
             <SheetTitle
               badges={<DocumentationLink href={DOCUMENTATION_URL} subject="copying secrets" />}

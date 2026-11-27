@@ -1299,7 +1299,7 @@ export const ExternalCaSheet = ({
   return (
     <>
       <Sheet open={open} onOpenChange={(next) => !next && !pending && guarded(close)}>
-        <SheetContent pending={pending || codeSigning.checking}>
+        <SheetContent size="md" pending={pending || codeSigning.checking}>
           <SheetHeader>
             <SheetTitle>{sheetTitle(draft, editing)}</SheetTitle>
           </SheetHeader>
