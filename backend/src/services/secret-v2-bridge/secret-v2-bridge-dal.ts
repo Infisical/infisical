@@ -43,26 +43,48 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
   const secretOrm = ormify(db, TableName.SecretV2);
 
   const invalidateSecretCacheByProjectId = async (projectId: string, tx?: Knex) => {
-    const secretDalVersionKey = KeyStorePrefixes.SecretDalVersion(projectId);
-    await keyStore.pgIncrementBy(secretDalVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
-    await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(projectId, utcDayStamp()));
-
     // When a source project's secrets change, target projects that consume them
     // via cross-project grants must also be invalidated so they don't serve
     // stale source values from cache.
-    const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
-      .where("sourceProjectId", projectId)
-      .select("targetProjectId")
-      .groupBy("targetProjectId");
+    let targetProjectIds: string[] = [];
+    let lookupError: unknown;
+    try {
+      const targetGrants = await (tx || db.replicaNode())(TableName.ProjectFolderGrant)
+        .where("sourceProjectId", projectId)
+        .select("targetProjectId")
+        .groupBy("targetProjectId");
+      targetProjectIds = targetGrants.map(({ targetProjectId }) => targetProjectId);
+    } catch (err) {
+      if (tx) throw err;
+      lookupError = err;
+    }
+
+    // Acquire cache-version locks in deterministic order across all affected
+    // projects (source and targets) to prevent deadlocks when concurrent
+    // transactions involve reciprocal cross-project grants.
+    const allProjectIds = Array.from(
+      new Set([projectId, ...targetProjectIds])
+    ).sort();
 
     const stamp = utcDayStamp();
-    await Promise.all(
-      targetGrants.map(async ({ targetProjectId }) => {
-        const targetVersionKey = KeyStorePrefixes.SecretDalVersion(targetProjectId);
-        await keyStore.pgIncrementBy(targetVersionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
-        await keyStore.deleteItem(KeyStorePrefixes.SecretEtag(targetProjectId, stamp));
-      })
-    );
+    const updatedProjectIds: string[] = [];
+    try {
+      for (const id of allProjectIds) {
+        const versionKey = KeyStorePrefixes.SecretDalVersion(id);
+        /* oxlint-disable-next-line eslint(no-await-in-loop) */
+        // eslint-disable-next-line no-await-in-loop
+        await keyStore.pgIncrementBy(versionKey, { incr: 1, tx, expiry: SECRET_DAL_VERSION_TTL });
+        updatedProjectIds.push(id);
+      }
+    } finally {
+      if (updatedProjectIds.length > 0) {
+        await Promise.all(updatedProjectIds.map((id) => keyStore.deleteItem(KeyStorePrefixes.SecretEtag(id, stamp))));
+      }
+    }
+
+    if (lookupError) {
+      throw lookupError;
+    }
   };
 
   const findOne = async (filter: Partial<TSecretsV2>, tx?: Knex) => {
