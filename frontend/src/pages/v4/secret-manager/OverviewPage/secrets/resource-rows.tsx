@@ -990,7 +990,6 @@ export function ImportRow({
   const expanded = ctx.expanded.includes(rowKey);
   const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
   const first = entries[0];
-  const nestedSecrets = expanded && !first.revoked ? sourceSecrets(first) : [];
   const crossProject = first.source.project !== projectId;
   const sourceProject = nameLabel(
     { id: first.source.project, name: first.sourceProjectName, pending: false },
@@ -1086,7 +1085,8 @@ export function ImportRow({
       </>
     ) : undefined
   };
-  const keys = ctx.single && expanded ? sourceSecrets(first) : [];
+  const keys = expanded && !first.revoked ? sourceSecrets(first) : [];
+  const emptyMessage = keys.length === 0 ? EMPTY_IMPORT_MESSAGES[sourceState(first)] : undefined;
   return (
     <>
       <RowContextMenu {...rowActions}>
@@ -1166,6 +1166,14 @@ export function ImportRow({
             </TableCell>
           </TableRow>
         ))}
+      {ctx.single && expanded && !first.revoked && emptyMessage && (
+        <TableRow className={styles.importedRow}>
+          <TableCell pin="start" selection divider={false} />
+          <TableCell colSpan={3} className={styles.subtle}>
+            {emptyMessage}
+          </TableCell>
+        </TableRow>
+      )}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
           <TableCell pin="start" selection divider={false} />
@@ -1199,7 +1207,7 @@ export function ImportRow({
                   </TableRow>
                 ) : (
                   <>
-                    {nestedSecrets.map((secret) => (
+                    {keys.map((secret) => (
                       <TableRow key={secret.id} className={styles.row}>
                         <TableCell selection divider={false} />
                         <TableCell className={styles.envName}>
@@ -1210,11 +1218,11 @@ export function ImportRow({
                         </TableCell>
                       </TableRow>
                     ))}
-                    {nestedSecrets.length === 0 && (
+                    {emptyMessage && (
                       <TableRow>
                         <TableCell selection divider={false} />
                         <TableCell colSpan={2} className={styles.subtle}>
-                          {EMPTY_IMPORT_MESSAGES[sourceState(first)]}
+                          {emptyMessage}
                         </TableCell>
                       </TableRow>
                     )}
