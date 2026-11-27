@@ -190,11 +190,14 @@ export function QueryPanel({
           {!isRunning && result && !error && (
             <div className="flex shrink-0 items-center justify-between border-t border-border px-3 py-1">
               <span className="text-xs text-muted">
-                {result.rowCount != null
-                  ? getRowLabel(result.rowCount, result.rows.length, result.isTruncated)
-                  : result.command || "Commands completed successfully"}
-                {" · "}
-                {result.executionTimeMs}ms
+                {[
+                  result.rowCount != null
+                    ? getRowLabel(result.rowCount, result.rows.length, result.isTruncated)
+                    : result.command,
+                  `${result.executionTimeMs}ms`
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
               {result.rows.length > 0 && (
                 <ExportDropdown

@@ -286,7 +286,54 @@ describe("runScript server errors", () => {
   });
 });
 
+describe("runScript messages", () => {
+  test("lists server errors collected before a timeout", async () => {
+    const conn = createConnection([
+      (req, c) => {
+        c.emit("errorMessage", { message: "Violation of PRIMARY KEY constraint", number: 2627, class: 14, state: 1 });
+      }
+    ]);
+    const error = await runScript(asConn(conn), "INSERT t VALUES (1); WAITFOR DELAY '00:00:40'", 10).catch(
+      (e: unknown) => e
+    );
+    expect((error as MssqlScriptError).message).toBe(QUERY_TIMEOUT_MESSAGE);
+    expect((error as MssqlScriptError).messages).toEqual([
+      "Msg 2627, Level 14, State 1: Violation of PRIMARY KEY constraint"
+    ]);
+  });
+
+  test("keeps errors and PRINT output in the order they arrived", async () => {
+    const conn = createConnection([
+      (req, c) => {
+        c.emit("infoMessage", { message: "step 1" });
+        c.emit("errorMessage", { message: "step 1 failed", number: 50000, class: 16, state: 1 });
+        c.emit("infoMessage", { message: "step 2" });
+        return selectRows(MAX_ROWS + 1)(req, c);
+      }
+    ]);
+    const result = await runScript(asConn(conn), "PRINT 'step 1'; RAISERROR('step 1 failed', 16, 1); PRINT 'step 2'");
+    expect(result.messages.slice(0, 3)).toEqual(["step 1", "Msg 50000, Level 16, State 1: step 1 failed", "step 2"]);
+  });
+});
+
 describe("runBatch procedures", () => {
+  test("shows the rows of a SELECT that follows a trigger's result set", async () => {
+    const conn = createConnection([
+      (req) => {
+        req.emit("columnMetadata", columns("fromTrigger"));
+        req.emit("row", [{ value: 1 }]);
+        req.emit("doneInProc", 1);
+        req.emit("done", 1);
+        req.emit("columnMetadata", columns("n"));
+        req.emit("row", [{ value: 7 }]);
+        req.emit("done", 1);
+        req.callback();
+      }
+    ]);
+    const run = await runBatch(asConn(conn), "INSERT t VALUES (1); SELECT n FROM t", { kind: "none" }, 30_000);
+    expect(run.outcome).toMatchObject({ kind: "rows", fields: [{ name: "n" }], rows: [{ n: 7 }] });
+  });
+
   test("skips the rows of a procedure's later result sets instead of capping them", async () => {
     const conn = createConnection([
       (req) => {
@@ -321,6 +368,31 @@ describe("runScript size limit", () => {
     expect(result.messages).toEqual([
       "Stopped after 3 rows because the result reached the 16 MB limit. Statements after this query in the same batch may still have run."
     ]);
+  });
+});
+
+describe("runBatch row size", () => {
+  test("stops before formatting a row whose cells together pass the byte cap", async () => {
+    const cell = Buffer.alloc(Math.ceil(DATA_EXPLORER_MAX_RESULT_BYTES / 8));
+    const conn = createConnection([
+      (req, c) => {
+        req.emit("columnMetadata", [
+          { colName: "a", type: { name: "VarBinary" } },
+          { colName: "b", type: { name: "VarBinary" } },
+          { colName: "c", type: { name: "VarBinary" } },
+          { colName: "d", type: { name: "VarBinary" } },
+          { colName: "e", type: { name: "VarBinary" } }
+        ]);
+        if (!c.isCancelled())
+          req.emit(
+            "row",
+            [cell, cell, cell, cell, cell].map((value) => ({ value }))
+          );
+      }
+    ]);
+    const run = await runBatch(asConn(conn), "SELECT", { kind: "none" }, 30_000);
+    expect(run.stoppedAtLimit).toBe("bytes");
+    expect(run.outcome.kind === "rows" && run.outcome.rows.length).toBe(0);
   });
 });
 

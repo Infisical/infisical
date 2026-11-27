@@ -183,6 +183,23 @@ describe("mssql typed columns", () => {
       "SELECT CONVERT(varchar(34), [__src].[seen], 121) AS [seen] FROM [dbo].[t] AS [__src] ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY"
     );
   });
+
+  test("reads xml as nvarchar(max) so the size cap applies", () => {
+    expect(
+      buildSelectQuery({
+        schema: "dbo",
+        table: "t",
+        filters: [],
+        sorts: [],
+        limit: 1,
+        offset: 0,
+        columns: [{ name: "doc", type: "xml" }],
+        dialect: "mssql"
+      })
+    ).toBe(
+      "SELECT CONVERT(nvarchar(max), [__src].[doc]) AS [doc] FROM [dbo].[t] AS [__src] ORDER BY (SELECT NULL) OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY"
+    );
+  });
 });
 
 describe("other dialects", () => {
@@ -213,6 +230,18 @@ describe("mssql literal edge cases", () => {
     ).toBe(
       "DELETE FROM [dbo].[t] WHERE [label] = CAST(N'C:\\dir\\' AS nvarchar(max)) + N'\r\nnext' AND [code] = CAST('a\\' AS varchar(max)) + '\nb'"
     );
+  });
+
+  test("keeps a backslash before a lone carriage return", () => {
+    expect(
+      buildDeleteQuery({
+        schema: "dbo",
+        table: "t",
+        primaryKeyMatch: { label: "p\\\rq" },
+        columnTypes: { label: "nvarchar(20)" },
+        dialect: "mssql"
+      })
+    ).toBe("DELETE FROM [dbo].[t] WHERE [label] = CAST(N'p\\' AS nvarchar(max)) + N'\rq'");
   });
 
   test("matches hierarchyid keys with an unquoted binary literal", () => {

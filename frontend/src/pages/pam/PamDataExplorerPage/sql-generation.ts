@@ -61,7 +61,7 @@ function splitAfterLineEndingBackslashes(str: string): string[] {
   const parts: string[] = [];
   let start = 0;
   for (let i = 0; i < str.length; i += 1) {
-    if (str[i] === "\\" && (str[i + 1] === "\n" || (str[i + 1] === "\r" && str[i + 2] === "\n"))) {
+    if (str[i] === "\\" && (str[i + 1] === "\n" || str[i + 1] === "\r")) {
       parts.push(str.slice(start, i + 1));
       start = i + 1;
     }
@@ -198,6 +198,9 @@ function buildMssqlSelectList(columns?: { name: string; type: string }[]): strin
       }
       if (type === "datetimeoffset") {
         return `CONVERT(varchar(34), ${MSSQL_SOURCE_ALIAS}.${id}, 121) AS ${id}`;
+      }
+      if (type === "xml") {
+        return `CONVERT(nvarchar(max), ${MSSQL_SOURCE_ALIAS}.${id}) AS ${id}`;
       }
       return `${MSSQL_SOURCE_ALIAS}.${id}`;
     })

@@ -60,6 +60,13 @@ export class MssqlScriptError extends Error {
   }
 }
 
+const estimateRawRowBytes = (columns: { value: unknown }[]) =>
+  columns.reduce((sum, { value }) => {
+    if (typeof value === "string") return sum + value.length;
+    if (Buffer.isBuffer(value)) return sum + value.length * 2;
+    return sum;
+  }, 0);
+
 // No SELECT-only row limit exists, so hitting the cap cancels the batch; tedious's requestTimeout ends at the first packet
 export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOutcome, timeoutMs: number) =>
   new Promise<TBatchRun>((resolve, reject) => {
@@ -133,6 +140,11 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
         stopAtLimit("rows");
         return;
       }
+      // Checked before formatting, since a row of several large cells can outgrow a JS string once formatted
+      if (rs.bytes + estimateRawRowBytes(columns) > DATA_EXPLORER_MAX_RESULT_BYTES) {
+        stopAtLimit("bytes");
+        return;
+      }
       const row: Record<string, unknown> = {};
       columns.forEach((col, i) => {
         if (isLossyDecimal(col.value, rs.typeNames[i], rs.scales[i])) rs.lossyColumns.add(rs.names[i]);
@@ -146,7 +158,9 @@ export const runBatch = (conn: TBatchConnection, sql: string, previous: TBatchOu
       rs.rows.push(row);
     });
 
+    // A trigger's result set ends without a doneProc, so a finished top-level statement also ends any procedure
     request.on("done", (rowCount: number | undefined) => {
+      procResultKept = false;
       if (current) {
         replaceOutcome(toRowsOutcome(current));
         current = null;
@@ -206,23 +220,31 @@ export const runScript = async (
 ): Promise<TScriptResult> => {
   const batches = splitMssqlBatches(sql);
   const deadline = Date.now() + timeoutMs;
-  const infoMessages: string[] = [];
-  const serverErrors: TServerError[] = [];
+  const log: { text: string; isError: boolean }[] = [];
+  const infoMessages = () => log.filter((m) => !m.isError).map((m) => m.text);
+  const allMessages = () => log.map((m) => m.text);
+  let infoCount = 0;
+  let firstError: TServerError | undefined;
+  let errorCount = 0;
   let tooManyErrors = false;
   const onInfo = (info: { message?: string }) => {
-    if (infoMessages.length < MAX_INFO_MESSAGES && info.message) {
-      infoMessages.push(info.message.slice(0, MAX_MESSAGE_LENGTH));
+    if (infoCount < MAX_INFO_MESSAGES && info.message) {
+      infoCount += 1;
+      log.push({ text: info.message.slice(0, MAX_MESSAGE_LENGTH), isError: false });
     }
   };
   // T-SQL keeps going after most errors and tedious rebuilds its AggregateError on each one, so a loop of them is cut off
   const onError = (token: TServerError) => {
     if (tooManyErrors) return;
-    if (serverErrors.length === MAX_SERVER_ERRORS) {
+    if (errorCount === MAX_SERVER_ERRORS) {
       tooManyErrors = true;
       conn.cancel();
       return;
     }
-    serverErrors.push({ ...token, message: (token.message ?? "").slice(0, MAX_MESSAGE_LENGTH) });
+    const error = { ...token, message: (token.message ?? "").slice(0, MAX_MESSAGE_LENGTH) };
+    firstError ??= error;
+    errorCount += 1;
+    log.push({ text: describeServerError(error), isError: true });
   };
   conn.on("infoMessage", onInfo);
   conn.on("errorMessage", onError);
@@ -238,7 +260,7 @@ export const runScript = async (
         throw new MssqlScriptError(
           new Error(QUERY_TIMEOUT_MESSAGE),
           describeBatchStop(i, batches.length, "was not started"),
-          [...infoMessages]
+          allMessages()
         );
       }
       try {
@@ -255,15 +277,17 @@ export const runScript = async (
         if (tooManyErrors) {
           const context = describeBatchStop(i, batches.length, "failed");
           throw new MssqlScriptError(
-            toRequestError(serverErrors[0]),
+            toRequestError(firstError as TServerError),
             [`Stopped after ${MAX_SERVER_ERRORS} errors.`, context].filter(Boolean).join(" "),
-            [...infoMessages]
+            allMessages()
           );
         }
+        // A cancel or timeout is reported in place of the server errors, so those are listed with the messages
+        const cancelled = isCancellation(err);
         throw new MssqlScriptError(
           err,
-          describeBatchStop(i, batches.length, isCancellation(err) ? "was cancelled" : "failed"),
-          [...infoMessages]
+          describeBatchStop(i, batches.length, cancelled ? "was cancelled" : "failed"),
+          cancelled ? allMessages() : infoMessages()
         );
       }
     }
@@ -272,8 +296,8 @@ export const runScript = async (
     conn.removeListener("errorMessage", onError);
   }
 
-  // A batch stopped at a limit resolves without its errors, since tedious reports only the cancel
-  const messages = [...serverErrors.map(describeServerError), ...infoMessages];
+  // runBatch ignores the request error once a limit stops a batch, so its server errors are only listed here
+  const messages = allMessages();
   if (hiddenResultSets > 0) {
     messages.push(
       `${hiddenResultSets} other result ${hiddenResultSets === 1 ? "set is" : "sets are"} not shown. The SQL editor shows one result set per run.`
