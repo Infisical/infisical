@@ -1078,3 +1078,13 @@ output-options:
     - deleteCaCrossSignedCertificate
     - getCaSigningConfig
     - updateCaSigningConfig
+    - getOcspRequest
+    - generateScepDynamicChallenge
+    - postScepOperation
+    - generateScepApplicationDynamicChallenge
+    - getSignerPublicKey
+    - updateCertificate
+    - previewPkiAlertCertificatesV1
+    - createAzureDnsAppConnection
+    - createPowerdnsAppConnection
+    - createUltradnsAppConnection

@@ -130,6 +130,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "generateScepDynamicChallenge",
       params: z.object({
         profileId: z.string().uuid()
       })
@@ -171,6 +172,7 @@ export const registerPkiScepRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "generateScepApplicationDynamicChallenge",
       params: z.object({
         applicationId: z.string().uuid(),
         profileId: z.string().uuid()

@@ -28,31 +28,8 @@ type acmRig struct {
 func newAcmRig(t *testing.T, tn *harness.Tenant) acmRig {
 	t.Helper()
 	proj := pki.CertManager(t, tn)
-	conn := fixture.NewAppConnection(t, tn, fixture.AWSAccessKeyAppConnection)
-	acct := aws.Open(t, conn.FakenetAdmin(t), conn.Nonce())
-	zoneName := id.Short() + ".acm.test"
-	zone := "Z" + id.Short()
-	acct.Seed(t, aws.SeedHostedZone(zone, zoneName))
-	body := api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONRequestBody{
-		ProjectId: &proj.ID,
-		Name:      "acm-" + id.Short(),
-		Status:    api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONBodyStatusActive,
-	}
-	body.Configuration.AppConnectionId = conn.ID
-	body.Configuration.DnsAppConnectionId = conn.ID
-	body.Configuration.HostedZoneId = zone
-	body.Configuration.Region = api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1
-	res, err := tn.Admin.API.CreateAwsAcmPublicCaCertificateAuthorityV1WithResponse(t.Context(), body)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	ca := pki.CA{ID: res.JSON200.Id}
-	return acmRig{o: newOrderIssuer(t, proj, ca), acct: acct, conn: conn, ca: ca, zone: zone, zoneName: zoneName}
-}
-
-func (r acmRig) request(name string) api.CreateCertificateJSONRequestBody {
-	body := pki.ServerCertificate(name)
-	body.Attributes.Ttl = new("198d")
-	return body
+	acm := pki.NewAwsAcmPublicCA(t, proj)
+	return acmRig{o: newOrderIssuer(t, proj, acm.CA), acct: acm.Acct, conn: acm.Conn, ca: acm.CA, zone: acm.Zone, zoneName: acm.ZoneName}
 }
 
 // onlyCertificate is the one certificate ACM holds for the account.
@@ -77,7 +54,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		r := newAcmRig(t, tn)
-		certID, first := r.o.issue(t, r.request("www."+r.zoneName))
+		certID, first := r.o.issue(t, pki.AcmCertificate("www."+r.zoneName))
 		issued := r.onlyCertificate(t)
 
 		// Action
@@ -99,7 +76,7 @@ func TestAwsAcmPublicCA_Lifecycle(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		r := newAcmRig(t, tn)
-		certID, _ := r.o.issue(t, r.request("www."+r.zoneName))
+		certID, _ := r.o.issue(t, pki.AcmCertificate("www."+r.zoneName))
 
 		// Action
 		res := pki.RevokeRequest(t, tn.Admin, certID, api.RevokeCertificateJSONBodyRevocationReasonKEYCOMPROMISE)

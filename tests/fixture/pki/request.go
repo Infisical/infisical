@@ -19,10 +19,17 @@ import (
 // admin sees them, so a refusal can show that nothing was issued.
 func Requests(tt *testing.T, p *Project, profile Profile) int {
 	tt.Helper()
+	return int(ProfileRequests(tt, p, profile).JSON200.TotalCount)
+}
+
+// ProfileRequests is the certificate requests the profile has received, as the tenant
+// admin finds them.
+func ProfileRequests(tt *testing.T, p *Project, profile Profile) *api.SearchCertificateRequestsResponse {
+	tt.Helper()
 	res, err := p.tn.Admin.API.SearchCertificateRequestsWithResponse(tt.Context(), api.SearchCertificateRequestsJSONRequestBody{ProfileIds: &[]uuid.UUID{profile.ID}})
 	require.NoError(tt, err, "searching certificate requests")
 	require.NotNilf(tt, res.JSON200, "searching certificate requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return int(res.JSON200.TotalCount)
+	return res
 }
 
 var finalRequestStatuses = []api.GetCertificateRequest200JSONResponseBodyStatus{

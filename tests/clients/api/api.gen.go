@@ -13683,6 +13683,174 @@ func (e CreateAzureAdcsAppConnection500JSONResponseBodyStatusCode) Valid() bool 
 	}
 }
 
+// Defines values for CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnectionJSONBody0Method.
+const (
+	CreateAzureDnsAppConnectionJSONBody0MethodClientSecret CreateAzureDnsAppConnectionJSONBody0Method = "client-secret"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnectionJSONBody0Method enum.
+func (e CreateAzureDnsAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnectionJSONBody0MethodClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0AppAzureDns CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App = "azure-dns"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0AppAzureDns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0MethodClientSecret CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method = "client-secret"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0MethodClientSecret:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateAzureDnsAppConnection400JSONResponseBodyStatusCodeN400 CreateAzureDnsAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateAzureDnsAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateAzureDnsAppConnection401JSONResponseBodyStatusCodeN401 CreateAzureDnsAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateAzureDnsAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateAzureDnsAppConnection403JSONResponseBodyStatusCodeN403 CreateAzureDnsAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateAzureDnsAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateAzureDnsAppConnection404JSONResponseBodyStatusCodeN404 CreateAzureDnsAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateAzureDnsAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateAzureDnsAppConnection422JSONResponseBodyStatusCodeN422 CreateAzureDnsAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateAzureDnsAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAzureDnsAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateAzureDnsAppConnection500JSONResponseBodyStatusCodeN500 CreateAzureDnsAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateAzureDnsAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateAzureDnsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateAzureDnsAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials.
 const (
 	CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateAzureKeyVaultAppConnectionJSONBodyIsPlatformManagedCredentials = false
@@ -20997,6 +21165,189 @@ func (e UpdatePostgresAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabledFalse CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnectionJSONBody0Method.
+const (
+	CreatePowerdnsAppConnectionJSONBody0MethodApiKey CreatePowerdnsAppConnectionJSONBody0Method = "api-key"
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnectionJSONBody0Method enum.
+func (e CreatePowerdnsAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnectionJSONBody0MethodApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0AppPowerdns CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App = "powerdns"
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0AppPowerdns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0MethodApiKey CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method = "api-key"
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0MethodApiKey:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreatePowerdnsAppConnection400JSONResponseBodyStatusCodeN400 CreatePowerdnsAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreatePowerdnsAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreatePowerdnsAppConnection401JSONResponseBodyStatusCodeN401 CreatePowerdnsAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreatePowerdnsAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreatePowerdnsAppConnection403JSONResponseBodyStatusCodeN403 CreatePowerdnsAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreatePowerdnsAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreatePowerdnsAppConnection404JSONResponseBodyStatusCodeN404 CreatePowerdnsAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreatePowerdnsAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreatePowerdnsAppConnection422JSONResponseBodyStatusCodeN422 CreatePowerdnsAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreatePowerdnsAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreatePowerdnsAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreatePowerdnsAppConnection500JSONResponseBodyStatusCodeN500 CreatePowerdnsAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreatePowerdnsAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreatePowerdnsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreatePowerdnsAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled.
 const (
 	CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled = false
@@ -21420,6 +21771,225 @@ const (
 func (e CreateSshAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case CreateSshAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment.
+const (
+	CreateUltradnsAppConnectionJSONBody0CredentialsEnvironmentProduction CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment = "production"
+	CreateUltradnsAppConnectionJSONBody0CredentialsEnvironmentTest       CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment = "test"
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment enum.
+func (e CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnectionJSONBody0CredentialsEnvironmentProduction:
+		return true
+	case CreateUltradnsAppConnectionJSONBody0CredentialsEnvironmentTest:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnectionJSONBody0Method.
+const (
+	CreateUltradnsAppConnectionJSONBody0MethodUsernamePassword CreateUltradnsAppConnectionJSONBody0Method = "username-password"
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnectionJSONBody0Method enum.
+func (e CreateUltradnsAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnectionJSONBody0MethodUsernamePassword:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateUltradnsAppConnection200JSONResponseBodyAppConnection0AppUltradns CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App = "ultradns"
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection200JSONResponseBodyAppConnection0AppUltradns:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment.
+const (
+	CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironmentProduction CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment = "production"
+	CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironmentTest       CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment = "test"
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment enum.
+func (e CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironmentProduction:
+		return true
+	case CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironmentTest:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateUltradnsAppConnection200JSONResponseBodyAppConnection0MethodUsernamePassword CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method = "username-password"
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection200JSONResponseBodyAppConnection0MethodUsernamePassword:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateUltradnsAppConnection400JSONResponseBodyStatusCodeN400 CreateUltradnsAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateUltradnsAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateUltradnsAppConnection401JSONResponseBodyStatusCodeN401 CreateUltradnsAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateUltradnsAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateUltradnsAppConnection403JSONResponseBodyStatusCodeN403 CreateUltradnsAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateUltradnsAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateUltradnsAppConnection404JSONResponseBodyStatusCodeN404 CreateUltradnsAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateUltradnsAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateUltradnsAppConnection422JSONResponseBodyStatusCodeN422 CreateUltradnsAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateUltradnsAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateUltradnsAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateUltradnsAppConnection500JSONResponseBodyStatusCodeN500 CreateUltradnsAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateUltradnsAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateUltradnsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateUltradnsAppConnection500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -38310,6 +38880,147 @@ func (e FinalizeAcmeOrder200JSONResponseBodyStatus) Valid() bool {
 	case FinalizeAcmeOrder200JSONResponseBodyStatusReady:
 		return true
 	case FinalizeAcmeOrder200JSONResponseBodyStatusValid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1JSONBodyFiltersField.
+const (
+	PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldCommonName  PreviewPkiAlertCertificatesV1JSONBodyFiltersField = "common_name"
+	PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldIncludeCas  PreviewPkiAlertCertificatesV1JSONBodyFiltersField = "include_cas"
+	PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldProfileName PreviewPkiAlertCertificatesV1JSONBodyFiltersField = "profile_name"
+	PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldSan         PreviewPkiAlertCertificatesV1JSONBodyFiltersField = "san"
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1JSONBodyFiltersField enum.
+func (e PreviewPkiAlertCertificatesV1JSONBodyFiltersField) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldCommonName:
+		return true
+	case PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldIncludeCas:
+		return true
+	case PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldProfileName:
+		return true
+	case PreviewPkiAlertCertificatesV1JSONBodyFiltersFieldSan:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator.
+const (
+	Contains   PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator = "contains"
+	EndsWith   PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator = "ends_with"
+	Equals     PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator = "equals"
+	Matches    PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator = "matches"
+	StartsWith PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator = "starts_with"
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator enum.
+func (e PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator) Valid() bool {
+	switch e {
+	case Contains:
+		return true
+	case EndsWith:
+		return true
+	case Equals:
+		return true
+	case Matches:
+		return true
+	case StartsWith:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode.
+const (
+	PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCodeN400 PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode enum.
+func (e PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode.
+const (
+	PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCodeN401 PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode enum.
+func (e PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode.
+const (
+	PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCodeN403 PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode enum.
+func (e PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode.
+const (
+	PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCodeN404 PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode enum.
+func (e PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode.
+const (
+	PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCodeN422 PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode enum.
+func (e PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode.
+const (
+	PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCodeN500 PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode enum.
+func (e PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -57252,6 +57963,96 @@ func (e GetCertificate500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for UpdateCertificate400JSONResponseBodyStatusCode.
+const (
+	UpdateCertificate400JSONResponseBodyStatusCodeN400 UpdateCertificate400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the UpdateCertificate400JSONResponseBodyStatusCode enum.
+func (e UpdateCertificate400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCertificate400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCertificate401JSONResponseBodyStatusCode.
+const (
+	UpdateCertificate401JSONResponseBodyStatusCodeN401 UpdateCertificate401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the UpdateCertificate401JSONResponseBodyStatusCode enum.
+func (e UpdateCertificate401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCertificate401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCertificate403JSONResponseBodyStatusCode.
+const (
+	UpdateCertificate403JSONResponseBodyStatusCodeN403 UpdateCertificate403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the UpdateCertificate403JSONResponseBodyStatusCode enum.
+func (e UpdateCertificate403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCertificate403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCertificate404JSONResponseBodyStatusCode.
+const (
+	UpdateCertificate404JSONResponseBodyStatusCodeN404 UpdateCertificate404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the UpdateCertificate404JSONResponseBodyStatusCode enum.
+func (e UpdateCertificate404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCertificate404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCertificate422JSONResponseBodyStatusCode.
+const (
+	UpdateCertificate422JSONResponseBodyStatusCodeN422 UpdateCertificate422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the UpdateCertificate422JSONResponseBodyStatusCode enum.
+func (e UpdateCertificate422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCertificate422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateCertificate500JSONResponseBodyStatusCode.
+const (
+	UpdateCertificate500JSONResponseBodyStatusCodeN500 UpdateCertificate500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the UpdateCertificate500JSONResponseBodyStatusCode enum.
+func (e UpdateCertificate500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case UpdateCertificate500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetCertificateBundle400JSONResponseBodyStatusCode.
 const (
 	GetCertificateBundle400JSONResponseBodyStatusCodeN400 GetCertificateBundle400JSONResponseBodyStatusCode = 400
@@ -62373,6 +63174,96 @@ const (
 func (e ListSigningOperations500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListSigningOperations500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSignerPublicKey400JSONResponseBodyStatusCode.
+const (
+	GetSignerPublicKey400JSONResponseBodyStatusCodeN400 GetSignerPublicKey400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetSignerPublicKey400JSONResponseBodyStatusCode enum.
+func (e GetSignerPublicKey400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSignerPublicKey400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSignerPublicKey401JSONResponseBodyStatusCode.
+const (
+	GetSignerPublicKey401JSONResponseBodyStatusCodeN401 GetSignerPublicKey401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetSignerPublicKey401JSONResponseBodyStatusCode enum.
+func (e GetSignerPublicKey401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSignerPublicKey401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSignerPublicKey403JSONResponseBodyStatusCode.
+const (
+	GetSignerPublicKey403JSONResponseBodyStatusCodeN403 GetSignerPublicKey403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetSignerPublicKey403JSONResponseBodyStatusCode enum.
+func (e GetSignerPublicKey403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSignerPublicKey403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSignerPublicKey404JSONResponseBodyStatusCode.
+const (
+	GetSignerPublicKey404JSONResponseBodyStatusCodeN404 GetSignerPublicKey404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetSignerPublicKey404JSONResponseBodyStatusCode enum.
+func (e GetSignerPublicKey404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSignerPublicKey404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSignerPublicKey422JSONResponseBodyStatusCode.
+const (
+	GetSignerPublicKey422JSONResponseBodyStatusCodeN422 GetSignerPublicKey422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetSignerPublicKey422JSONResponseBodyStatusCode enum.
+func (e GetSignerPublicKey422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSignerPublicKey422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetSignerPublicKey500JSONResponseBodyStatusCode.
+const (
+	GetSignerPublicKey500JSONResponseBodyStatusCodeN500 GetSignerPublicKey500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetSignerPublicKey500JSONResponseBodyStatusCode enum.
+func (e GetSignerPublicKey500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetSignerPublicKey500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -148320,6 +149211,7 @@ type ResendAdminOrganizationInvite500JSONResponseBodyStatusCode float32
 
 // AdminSignUpJSONBody defines parameters for AdminSignUp.
 type AdminSignUpJSONBody struct {
+	ActivationToken  *string             `json:"activationToken,omitempty"`
 	Email            openapi_types.Email `json:"email"`
 	FirstName        string              `json:"firstName"`
 	LastName         *string             `json:"lastName,omitempty"`
@@ -157618,6 +158510,183 @@ type CreateAzureAdcsAppConnection422JSONResponseBodyStatusCode float32
 // CreateAzureAdcsAppConnection500JSONResponseBodyStatusCode defines parameters for CreateAzureAdcsAppConnection.
 type CreateAzureAdcsAppConnection500JSONResponseBodyStatusCode float32
 
+// CreateAzureDnsAppConnectionJSONBody defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBody struct {
+	// Description An optional description for the Azure DNS Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for Azure DNS Connections.
+	GatewayId *CreateAzureDnsAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for Azure DNS Connections.
+	GatewayPoolId *CreateAzureDnsAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Whether or not automatic credential rotation is enabled for the Azure DNS Connection.
+	IsAutoRotationEnabled *bool `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for Azure DNS Connections.
+	IsPlatformManagedCredentials *CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the Azure DNS Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the Azure DNS Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration for the Azure DNS Connection.
+	Rotation *struct {
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate (UTC timezone).
+			Hours int `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate (UTC timezone).
+			Minutes int `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval int `json:"rotationInterval"`
+	} `json:"rotation,omitempty"`
+	union json.RawMessage
+}
+
+// CreateAzureDnsAppConnectionJSONBodyGatewayId0 defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateAzureDnsAppConnectionJSONBodyGatewayId1 defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateAzureDnsAppConnectionJSONBody_GatewayId defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateAzureDnsAppConnectionJSONBody_GatewayPoolId defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateAzureDnsAppConnectionJSONBody0 defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with Azure DNS.
+	Credentials struct {
+		// ClientId Client ID must be a valid GUID
+		ClientId     string `json:"clientId"`
+		ClientSecret string `json:"clientSecret"`
+
+		// ClientSecretKeyId The Key ID of the client secret in Azure AD. Required when enabling credential rotation so the original secret can be revoked.
+		ClientSecretKeyId *string `json:"clientSecretKeyId,omitempty"`
+
+		// SubscriptionId Subscription ID must be a valid GUID
+		SubscriptionId string `json:"subscriptionId"`
+
+		// TenantId Tenant ID must be a valid GUID
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Azure DNS.
+	Method CreateAzureDnsAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateAzureDnsAppConnectionJSONBody0Method defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnectionJSONBody0Method string
+
+// CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                       `json:"createdAt"`
+	Credentials struct {
+		// SubscriptionId Subscription ID must be a valid GUID
+		SubscriptionId string `json:"subscriptionId"`
+
+		// TenantId Tenant ID must be a valid GUID
+		TenantId string `json:"tenantId"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                            `json:"credentialsHash,omitempty"`
+	Description                  *string                                                            `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                 `json:"id"`
+	IsAutoRotationEnabled        *bool                                                              `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                              `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                             `json:"name"`
+	OrgId                        openapi_types.UUID                                                 `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateAzureDnsAppConnection200JSONResponseBody_AppConnection defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateAzureDnsAppConnection400JSONResponseBodyStatusCode defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateAzureDnsAppConnection401JSONResponseBodyStatusCode defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateAzureDnsAppConnection403JSONResponseBodyStatusCode defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateAzureDnsAppConnection404JSONResponseBodyStatusCode defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateAzureDnsAppConnection422JSONResponseBodyStatusCode defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateAzureDnsAppConnection500JSONResponseBodyStatusCode defines parameters for CreateAzureDnsAppConnection.
+type CreateAzureDnsAppConnection500JSONResponseBodyStatusCode float32
+
 // CreateAzureKeyVaultAppConnectionJSONBody defines parameters for CreateAzureKeyVaultAppConnection.
 type CreateAzureKeyVaultAppConnectionJSONBody struct {
 	// Description An optional description for the Azure Key Vault Connection.
@@ -164005,6 +165074,172 @@ type UpdatePostgresAppConnection422JSONResponseBodyStatusCode float32
 // UpdatePostgresAppConnection500JSONResponseBodyStatusCode defines parameters for UpdatePostgresAppConnection.
 type UpdatePostgresAppConnection500JSONResponseBodyStatusCode float32
 
+// CreatePowerdnsAppConnectionJSONBody defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBody struct {
+	// Description An optional description for the PowerDNS Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId The Gateway ID to use for this connection.
+	GatewayId *openapi_types.UUID `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId The Gateway Pool ID to use for this connection.
+	GatewayPoolId *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for PowerDNS Connections.
+	IsAutoRotationEnabled *CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for PowerDNS Connections.
+	IsPlatformManagedCredentials *CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the PowerDNS Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the PowerDNS Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for PowerDNS Connections.
+	Rotation *CreatePowerdnsAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreatePowerdnsAppConnectionJSONBodyRotation0 defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBodyRotation0 = interface{}
+
+// CreatePowerdnsAppConnectionJSONBodyRotation1 defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBodyRotation1 = interface{}
+
+// CreatePowerdnsAppConnectionJSONBody_Rotation defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreatePowerdnsAppConnectionJSONBody0 defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with PowerDNS.
+	Credentials struct {
+		// ApiKey The value of the PowerDNS api-key setting.
+		ApiKey string `json:"apiKey"`
+
+		// ApiUrl The base URL of the PowerDNS web server, excluding the /api/v1 path.
+		ApiUrl string `json:"apiUrl"`
+
+		// ServerId The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'.
+		ServerId *string `json:"serverId,omitempty"`
+
+		// SslCertificate A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with PowerDNS.
+	Method CreatePowerdnsAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreatePowerdnsAppConnectionJSONBody0Method defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnectionJSONBody0Method string
+
+// CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                       `json:"createdAt"`
+	Credentials struct {
+		// ApiUrl The base URL of the PowerDNS web server, excluding the /api/v1 path.
+		ApiUrl string `json:"apiUrl"`
+
+		// ServerId The PowerDNS API server ID. Leave unset unless you connect through a proxy fronting several servers; the Authoritative Server always reports 'localhost'.
+		ServerId *string `json:"serverId,omitempty"`
+
+		// SslCertificate A PEM-encoded CA certificate to trust when connecting to PowerDNS over HTTPS.
+		SslCertificate *string `json:"sslCertificate,omitempty"`
+
+		// SslRejectUnauthorized Whether to reject PowerDNS TLS certificates that are not trusted. Defaults to true.
+		SslRejectUnauthorized *bool `json:"sslRejectUnauthorized,omitempty"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                            `json:"credentialsHash,omitempty"`
+	Description                  *string                                                            `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                 `json:"id"`
+	IsAutoRotationEnabled        *bool                                                              `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                              `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                             `json:"name"`
+	OrgId                        openapi_types.UUID                                                 `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreatePowerdnsAppConnection200JSONResponseBody_AppConnection defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreatePowerdnsAppConnection400JSONResponseBodyStatusCode defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection400JSONResponseBodyStatusCode float32
+
+// CreatePowerdnsAppConnection401JSONResponseBodyStatusCode defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection401JSONResponseBodyStatusCode float32
+
+// CreatePowerdnsAppConnection403JSONResponseBodyStatusCode defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection403JSONResponseBodyStatusCode float32
+
+// CreatePowerdnsAppConnection404JSONResponseBodyStatusCode defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection404JSONResponseBodyStatusCode float32
+
+// CreatePowerdnsAppConnection422JSONResponseBodyStatusCode defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection422JSONResponseBodyStatusCode float32
+
+// CreatePowerdnsAppConnection500JSONResponseBodyStatusCode defines parameters for CreatePowerdnsAppConnection.
+type CreatePowerdnsAppConnection500JSONResponseBodyStatusCode float32
+
 // CreateServiceNowAppConnectionJSONBody defines parameters for CreateServiceNowAppConnection.
 type CreateServiceNowAppConnectionJSONBody struct {
 	// Description An optional description for the ServiceNow Connection.
@@ -164443,6 +165678,188 @@ type CreateSshAppConnection422JSONResponseBodyStatusCode float32
 
 // CreateSshAppConnection500JSONResponseBodyStatusCode defines parameters for CreateSshAppConnection.
 type CreateSshAppConnection500JSONResponseBodyStatusCode float32
+
+// CreateUltradnsAppConnectionJSONBody defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody struct {
+	// Description An optional description for the UltraDNS Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for UltraDNS Connections.
+	GatewayId *CreateUltradnsAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for UltraDNS Connections.
+	GatewayPoolId *CreateUltradnsAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for UltraDNS Connections.
+	IsAutoRotationEnabled *CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for UltraDNS Connections.
+	IsPlatformManagedCredentials *CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the UltraDNS Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the UltraDNS Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for UltraDNS Connections.
+	Rotation *CreateUltradnsAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateUltradnsAppConnectionJSONBodyGatewayId0 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateUltradnsAppConnectionJSONBodyGatewayId1 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateUltradnsAppConnectionJSONBody_GatewayId defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateUltradnsAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateUltradnsAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateUltradnsAppConnectionJSONBody_GatewayPoolId defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateUltradnsAppConnectionJSONBodyRotation0 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateUltradnsAppConnectionJSONBodyRotation1 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateUltradnsAppConnectionJSONBody_Rotation defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateUltradnsAppConnectionJSONBody0 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with UltraDNS.
+	Credentials struct {
+		// Environment The UltraDNS API to connect to: production (api.ultradns.com) or test (the UltraDNS customer test environment at test-api.ultradns.com).
+		Environment CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment `json:"environment"`
+
+		// Password The password of the UltraDNS user.
+		Password string `json:"password"`
+
+		// Username The username of the UltraDNS user. The user can't have Two Factor Mobile Authentication enabled.
+		Username string `json:"username"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with UltraDNS.
+	Method CreateUltradnsAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody0CredentialsEnvironment string
+
+// CreateUltradnsAppConnectionJSONBody0Method defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnectionJSONBody0Method string
+
+// CreateUltradnsAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                       `json:"createdAt"`
+	Credentials struct {
+		// Environment The UltraDNS API to connect to: production (api.ultradns.com) or test (the UltraDNS customer test environment at test-api.ultradns.com).
+		Environment CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment `json:"environment"`
+
+		// Username The username of the UltraDNS user. The user can't have Two Factor Mobile Authentication enabled.
+		Username string `json:"username"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                            `json:"credentialsHash,omitempty"`
+	Description                  *string                                                            `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                 `json:"id"`
+	IsAutoRotationEnabled        *bool                                                              `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                              `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                             `json:"name"`
+	OrgId                        openapi_types.UUID                                                 `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection200JSONResponseBodyAppConnection0CredentialsEnvironment string
+
+// CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateUltradnsAppConnection200JSONResponseBody_AppConnection defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateUltradnsAppConnection400JSONResponseBodyStatusCode defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateUltradnsAppConnection401JSONResponseBodyStatusCode defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateUltradnsAppConnection403JSONResponseBodyStatusCode defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateUltradnsAppConnection404JSONResponseBodyStatusCode defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateUltradnsAppConnection422JSONResponseBodyStatusCode defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateUltradnsAppConnection500JSONResponseBodyStatusCode defines parameters for CreateUltradnsAppConnection.
+type CreateUltradnsAppConnection500JSONResponseBodyStatusCode float32
 
 // CreateVenafiAppConnectionJSONBody defines parameters for CreateVenafiAppConnection.
 type CreateVenafiAppConnectionJSONBody struct {
@@ -170025,6 +171442,58 @@ type FinalizeAcmeOrderJSONBody struct {
 // FinalizeAcmeOrder200JSONResponseBodyStatus defines parameters for FinalizeAcmeOrder.
 type FinalizeAcmeOrder200JSONResponseBodyStatus string
 
+// PreviewPkiAlertCertificatesV1JSONBody defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBody struct {
+	// AlertBefore Alert timing (e.g., '30d', '1w'). Required for expiration previews, omit for other event types.
+	AlertBefore *string `json:"alertBefore,omitempty"`
+	Filters     []struct {
+		Field    PreviewPkiAlertCertificatesV1JSONBodyFiltersField    `json:"field"`
+		Operator PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator `json:"operator"`
+		Value    PreviewPkiAlertCertificatesV1JSONBody_Filters_Value  `json:"value"`
+	} `json:"filters"`
+	Limit     *float32            `json:"limit,omitempty"`
+	Offset    *float32            `json:"offset,omitempty"`
+	ProjectId *openapi_types.UUID `json:"projectId,omitempty"`
+}
+
+// PreviewPkiAlertCertificatesV1JSONBodyFiltersField defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBodyFiltersField string
+
+// PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBodyFiltersOperator string
+
+// PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0 defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0 = string
+
+// PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1 defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1 = []string
+
+// PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2 defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2 = bool
+
+// PreviewPkiAlertCertificatesV1JSONBody_Filters_Value defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1JSONBody_Filters_Value struct {
+	union json.RawMessage
+}
+
+// PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode float32
+
+// PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode float32
+
+// PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode float32
+
+// PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode float32
+
+// PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode float32
+
+// PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode defines parameters for PreviewPkiAlertCertificatesV1.
+type PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode float32
+
 // ListPkiApplicationsParams defines parameters for ListPkiApplications.
 type ListPkiApplicationsParams struct {
 	Search         *string `form:"search,omitempty" json:"search,omitempty"`
@@ -174626,6 +176095,32 @@ type GetCertificate422JSONResponseBodyStatusCode float32
 // GetCertificate500JSONResponseBodyStatusCode defines parameters for GetCertificate.
 type GetCertificate500JSONResponseBodyStatusCode float32
 
+// UpdateCertificateJSONBody defines parameters for UpdateCertificate.
+type UpdateCertificateJSONBody struct {
+	Metadata *[]struct {
+		Key   string  `json:"key"`
+		Value *string `json:"value,omitempty"`
+	} `json:"metadata,omitempty"`
+}
+
+// UpdateCertificate400JSONResponseBodyStatusCode defines parameters for UpdateCertificate.
+type UpdateCertificate400JSONResponseBodyStatusCode float32
+
+// UpdateCertificate401JSONResponseBodyStatusCode defines parameters for UpdateCertificate.
+type UpdateCertificate401JSONResponseBodyStatusCode float32
+
+// UpdateCertificate403JSONResponseBodyStatusCode defines parameters for UpdateCertificate.
+type UpdateCertificate403JSONResponseBodyStatusCode float32
+
+// UpdateCertificate404JSONResponseBodyStatusCode defines parameters for UpdateCertificate.
+type UpdateCertificate404JSONResponseBodyStatusCode float32
+
+// UpdateCertificate422JSONResponseBodyStatusCode defines parameters for UpdateCertificate.
+type UpdateCertificate422JSONResponseBodyStatusCode float32
+
+// UpdateCertificate500JSONResponseBodyStatusCode defines parameters for UpdateCertificate.
+type UpdateCertificate500JSONResponseBodyStatusCode float32
+
 // GetCertificateBundle400JSONResponseBodyStatusCode defines parameters for GetCertificateBundle.
 type GetCertificateBundle400JSONResponseBodyStatusCode float32
 
@@ -175845,6 +177340,24 @@ type ListSigningOperations422JSONResponseBodyStatusCode float32
 
 // ListSigningOperations500JSONResponseBodyStatusCode defines parameters for ListSigningOperations.
 type ListSigningOperations500JSONResponseBodyStatusCode float32
+
+// GetSignerPublicKey400JSONResponseBodyStatusCode defines parameters for GetSignerPublicKey.
+type GetSignerPublicKey400JSONResponseBodyStatusCode float32
+
+// GetSignerPublicKey401JSONResponseBodyStatusCode defines parameters for GetSignerPublicKey.
+type GetSignerPublicKey401JSONResponseBodyStatusCode float32
+
+// GetSignerPublicKey403JSONResponseBodyStatusCode defines parameters for GetSignerPublicKey.
+type GetSignerPublicKey403JSONResponseBodyStatusCode float32
+
+// GetSignerPublicKey404JSONResponseBodyStatusCode defines parameters for GetSignerPublicKey.
+type GetSignerPublicKey404JSONResponseBodyStatusCode float32
+
+// GetSignerPublicKey422JSONResponseBodyStatusCode defines parameters for GetSignerPublicKey.
+type GetSignerPublicKey422JSONResponseBodyStatusCode float32
+
+// GetSignerPublicKey500JSONResponseBodyStatusCode defines parameters for GetSignerPublicKey.
+type GetSignerPublicKey500JSONResponseBodyStatusCode float32
 
 // ListSignerRequestsParams defines parameters for ListSignerRequests.
 type ListSignerRequestsParams struct {
@@ -209115,6 +210628,11 @@ type GetScepOperationParams struct {
 	Message   *string `form:"message,omitempty" json:"message,omitempty"`
 }
 
+// PostScepOperationParams defines parameters for PostScepOperation.
+type PostScepOperationParams struct {
+	Operation *string `form:"operation,omitempty" json:"operation,omitempty"`
+}
+
 // CreateAccessApprovalPolicyJSONRequestBody defines body for CreateAccessApprovalPolicy for application/json ContentType.
 type CreateAccessApprovalPolicyJSONRequestBody CreateAccessApprovalPolicyJSONBody
 
@@ -209184,6 +210702,9 @@ type UpdateAwsAppConnectionJSONRequestBody UpdateAwsAppConnectionJSONBody
 // CreateAzureAdcsAppConnectionJSONRequestBody defines body for CreateAzureAdcsAppConnection for application/json ContentType.
 type CreateAzureAdcsAppConnectionJSONRequestBody CreateAzureAdcsAppConnectionJSONBody
 
+// CreateAzureDnsAppConnectionJSONRequestBody defines body for CreateAzureDnsAppConnection for application/json ContentType.
+type CreateAzureDnsAppConnectionJSONRequestBody CreateAzureDnsAppConnectionJSONBody
+
 // CreateAzureKeyVaultAppConnectionJSONRequestBody defines body for CreateAzureKeyVaultAppConnection for application/json ContentType.
 type CreateAzureKeyVaultAppConnectionJSONRequestBody CreateAzureKeyVaultAppConnectionJSONBody
 
@@ -209244,11 +210765,17 @@ type CreatePostgresAppConnectionJSONRequestBody CreatePostgresAppConnectionJSONB
 // UpdatePostgresAppConnectionJSONRequestBody defines body for UpdatePostgresAppConnection for application/json ContentType.
 type UpdatePostgresAppConnectionJSONRequestBody UpdatePostgresAppConnectionJSONBody
 
+// CreatePowerdnsAppConnectionJSONRequestBody defines body for CreatePowerdnsAppConnection for application/json ContentType.
+type CreatePowerdnsAppConnectionJSONRequestBody CreatePowerdnsAppConnectionJSONBody
+
 // CreateServiceNowAppConnectionJSONRequestBody defines body for CreateServiceNowAppConnection for application/json ContentType.
 type CreateServiceNowAppConnectionJSONRequestBody CreateServiceNowAppConnectionJSONBody
 
 // CreateSshAppConnectionJSONRequestBody defines body for CreateSshAppConnection for application/json ContentType.
 type CreateSshAppConnectionJSONRequestBody CreateSshAppConnectionJSONBody
+
+// CreateUltradnsAppConnectionJSONRequestBody defines body for CreateUltradnsAppConnection for application/json ContentType.
+type CreateUltradnsAppConnectionJSONRequestBody CreateUltradnsAppConnectionJSONBody
 
 // CreateVenafiAppConnectionJSONRequestBody defines body for CreateVenafiAppConnection for application/json ContentType.
 type CreateVenafiAppConnectionJSONRequestBody CreateVenafiAppConnectionJSONBody
@@ -209469,6 +210996,9 @@ type DownloadAcmeCertificateJSONRequestBody DownloadAcmeCertificateJSONBody
 // FinalizeAcmeOrderJSONRequestBody defines body for FinalizeAcmeOrder for application/json ContentType.
 type FinalizeAcmeOrderJSONRequestBody FinalizeAcmeOrderJSONBody
 
+// PreviewPkiAlertCertificatesV1JSONRequestBody defines body for PreviewPkiAlertCertificatesV1 for application/json ContentType.
+type PreviewPkiAlertCertificatesV1JSONRequestBody PreviewPkiAlertCertificatesV1JSONBody
+
 // CreatePkiApplicationJSONRequestBody defines body for CreatePkiApplication for application/json ContentType.
 type CreatePkiApplicationJSONRequestBody CreatePkiApplicationJSONBody
 
@@ -209603,6 +211133,9 @@ type SearchCertificateRequestsJSONRequestBody SearchCertificateRequestsJSONBody
 
 // ImportCertificateJSONRequestBody defines body for ImportCertificate for application/json ContentType.
 type ImportCertificateJSONRequestBody ImportCertificateJSONBody
+
+// UpdateCertificateJSONRequestBody defines body for UpdateCertificate for application/json ContentType.
+type UpdateCertificateJSONRequestBody UpdateCertificateJSONBody
 
 // UpdateCertificateRenewalConfigJSONRequestBody defines body for UpdateCertificateRenewalConfig for application/json ContentType.
 type UpdateCertificateRenewalConfigJSONRequestBody UpdateCertificateRenewalConfigJSONBody
@@ -216438,6 +217971,332 @@ func (t CreateAzureAdcsAppConnection200JSONResponseBody_AppConnection) MarshalJS
 }
 
 func (t *CreateAzureAdcsAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAzureDnsAppConnectionJSONBody0 returns the union data inside the CreateAzureDnsAppConnectionJSONBody as a CreateAzureDnsAppConnectionJSONBody0
+func (t CreateAzureDnsAppConnectionJSONBody) AsCreateAzureDnsAppConnectionJSONBody0() (CreateAzureDnsAppConnectionJSONBody0, error) {
+	var body CreateAzureDnsAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureDnsAppConnectionJSONBody0 overwrites any union data inside the CreateAzureDnsAppConnectionJSONBody as the provided CreateAzureDnsAppConnectionJSONBody0
+func (t *CreateAzureDnsAppConnectionJSONBody) FromCreateAzureDnsAppConnectionJSONBody0(v CreateAzureDnsAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureDnsAppConnectionJSONBody0 performs a merge with any union data inside the CreateAzureDnsAppConnectionJSONBody, using the provided CreateAzureDnsAppConnectionJSONBody0
+func (t *CreateAzureDnsAppConnectionJSONBody) MergeCreateAzureDnsAppConnectionJSONBody0(v CreateAzureDnsAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAzureDnsAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateAzureDnsAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateAzureDnsAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayId as a CreateAzureDnsAppConnectionJSONBodyGatewayId0
+func (t CreateAzureDnsAppConnectionJSONBody_GatewayId) AsCreateAzureDnsAppConnectionJSONBodyGatewayId0() (CreateAzureDnsAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateAzureDnsAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureDnsAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayId as the provided CreateAzureDnsAppConnectionJSONBodyGatewayId0
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayId) FromCreateAzureDnsAppConnectionJSONBodyGatewayId0(v CreateAzureDnsAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureDnsAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayId, using the provided CreateAzureDnsAppConnectionJSONBodyGatewayId0
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayId) MergeCreateAzureDnsAppConnectionJSONBodyGatewayId0(v CreateAzureDnsAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureDnsAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayId as a CreateAzureDnsAppConnectionJSONBodyGatewayId1
+func (t CreateAzureDnsAppConnectionJSONBody_GatewayId) AsCreateAzureDnsAppConnectionJSONBodyGatewayId1() (CreateAzureDnsAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateAzureDnsAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureDnsAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayId as the provided CreateAzureDnsAppConnectionJSONBodyGatewayId1
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayId) FromCreateAzureDnsAppConnectionJSONBodyGatewayId1(v CreateAzureDnsAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureDnsAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayId, using the provided CreateAzureDnsAppConnectionJSONBodyGatewayId1
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayId) MergeCreateAzureDnsAppConnectionJSONBodyGatewayId1(v CreateAzureDnsAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAzureDnsAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAzureDnsAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayPoolId as a CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0
+func (t CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) AsCreateAzureDnsAppConnectionJSONBodyGatewayPoolId0() (CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureDnsAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayPoolId as the provided CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) FromCreateAzureDnsAppConnectionJSONBodyGatewayPoolId0(v CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureDnsAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayPoolId, using the provided CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) MergeCreateAzureDnsAppConnectionJSONBodyGatewayPoolId0(v CreateAzureDnsAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateAzureDnsAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayPoolId as a CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1
+func (t CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) AsCreateAzureDnsAppConnectionJSONBodyGatewayPoolId1() (CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureDnsAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayPoolId as the provided CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) FromCreateAzureDnsAppConnectionJSONBodyGatewayPoolId1(v CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureDnsAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateAzureDnsAppConnectionJSONBody_GatewayPoolId, using the provided CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) MergeCreateAzureDnsAppConnectionJSONBodyGatewayPoolId1(v CreateAzureDnsAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAzureDnsAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateAzureDnsAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateAzureDnsAppConnection200JSONResponseBody_AppConnection as a CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0
+func (t CreateAzureDnsAppConnection200JSONResponseBody_AppConnection) AsCreateAzureDnsAppConnection200JSONResponseBodyAppConnection0() (CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateAzureDnsAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateAzureDnsAppConnection200JSONResponseBody_AppConnection as the provided CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateAzureDnsAppConnection200JSONResponseBody_AppConnection) FromCreateAzureDnsAppConnection200JSONResponseBodyAppConnection0(v CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateAzureDnsAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateAzureDnsAppConnection200JSONResponseBody_AppConnection, using the provided CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateAzureDnsAppConnection200JSONResponseBody_AppConnection) MergeCreateAzureDnsAppConnection200JSONResponseBodyAppConnection0(v CreateAzureDnsAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateAzureDnsAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateAzureDnsAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -224652,6 +226511,270 @@ func (t *UpdatePostgresAppConnection200JSONResponseBody_AppConnection) Unmarshal
 	return err
 }
 
+// AsCreatePowerdnsAppConnectionJSONBody0 returns the union data inside the CreatePowerdnsAppConnectionJSONBody as a CreatePowerdnsAppConnectionJSONBody0
+func (t CreatePowerdnsAppConnectionJSONBody) AsCreatePowerdnsAppConnectionJSONBody0() (CreatePowerdnsAppConnectionJSONBody0, error) {
+	var body CreatePowerdnsAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreatePowerdnsAppConnectionJSONBody0 overwrites any union data inside the CreatePowerdnsAppConnectionJSONBody as the provided CreatePowerdnsAppConnectionJSONBody0
+func (t *CreatePowerdnsAppConnectionJSONBody) FromCreatePowerdnsAppConnectionJSONBody0(v CreatePowerdnsAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreatePowerdnsAppConnectionJSONBody0 performs a merge with any union data inside the CreatePowerdnsAppConnectionJSONBody, using the provided CreatePowerdnsAppConnectionJSONBody0
+func (t *CreatePowerdnsAppConnectionJSONBody) MergeCreatePowerdnsAppConnectionJSONBody0(v CreatePowerdnsAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreatePowerdnsAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreatePowerdnsAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreatePowerdnsAppConnectionJSONBodyRotation0 returns the union data inside the CreatePowerdnsAppConnectionJSONBody_Rotation as a CreatePowerdnsAppConnectionJSONBodyRotation0
+func (t CreatePowerdnsAppConnectionJSONBody_Rotation) AsCreatePowerdnsAppConnectionJSONBodyRotation0() (CreatePowerdnsAppConnectionJSONBodyRotation0, error) {
+	var body CreatePowerdnsAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreatePowerdnsAppConnectionJSONBodyRotation0 overwrites any union data inside the CreatePowerdnsAppConnectionJSONBody_Rotation as the provided CreatePowerdnsAppConnectionJSONBodyRotation0
+func (t *CreatePowerdnsAppConnectionJSONBody_Rotation) FromCreatePowerdnsAppConnectionJSONBodyRotation0(v CreatePowerdnsAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreatePowerdnsAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreatePowerdnsAppConnectionJSONBody_Rotation, using the provided CreatePowerdnsAppConnectionJSONBodyRotation0
+func (t *CreatePowerdnsAppConnectionJSONBody_Rotation) MergeCreatePowerdnsAppConnectionJSONBodyRotation0(v CreatePowerdnsAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreatePowerdnsAppConnectionJSONBodyRotation1 returns the union data inside the CreatePowerdnsAppConnectionJSONBody_Rotation as a CreatePowerdnsAppConnectionJSONBodyRotation1
+func (t CreatePowerdnsAppConnectionJSONBody_Rotation) AsCreatePowerdnsAppConnectionJSONBodyRotation1() (CreatePowerdnsAppConnectionJSONBodyRotation1, error) {
+	var body CreatePowerdnsAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreatePowerdnsAppConnectionJSONBodyRotation1 overwrites any union data inside the CreatePowerdnsAppConnectionJSONBody_Rotation as the provided CreatePowerdnsAppConnectionJSONBodyRotation1
+func (t *CreatePowerdnsAppConnectionJSONBody_Rotation) FromCreatePowerdnsAppConnectionJSONBodyRotation1(v CreatePowerdnsAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreatePowerdnsAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreatePowerdnsAppConnectionJSONBody_Rotation, using the provided CreatePowerdnsAppConnectionJSONBodyRotation1
+func (t *CreatePowerdnsAppConnectionJSONBody_Rotation) MergeCreatePowerdnsAppConnectionJSONBodyRotation1(v CreatePowerdnsAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreatePowerdnsAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreatePowerdnsAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreatePowerdnsAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreatePowerdnsAppConnection200JSONResponseBody_AppConnection as a CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0
+func (t CreatePowerdnsAppConnection200JSONResponseBody_AppConnection) AsCreatePowerdnsAppConnection200JSONResponseBodyAppConnection0() (CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreatePowerdnsAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreatePowerdnsAppConnection200JSONResponseBody_AppConnection as the provided CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0
+func (t *CreatePowerdnsAppConnection200JSONResponseBody_AppConnection) FromCreatePowerdnsAppConnection200JSONResponseBodyAppConnection0(v CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreatePowerdnsAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreatePowerdnsAppConnection200JSONResponseBody_AppConnection, using the provided CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0
+func (t *CreatePowerdnsAppConnection200JSONResponseBody_AppConnection) MergeCreatePowerdnsAppConnection200JSONResponseBodyAppConnection0(v CreatePowerdnsAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreatePowerdnsAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreatePowerdnsAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsCreateServiceNowAppConnectionJSONBody0 returns the union data inside the CreateServiceNowAppConnectionJSONBody as a CreateServiceNowAppConnectionJSONBody0
 func (t CreateServiceNowAppConnectionJSONBody) AsCreateServiceNowAppConnectionJSONBody0() (CreateServiceNowAppConnectionJSONBody0, error) {
 	var body CreateServiceNowAppConnectionJSONBody0
@@ -225352,6 +227475,394 @@ func (t CreateSshAppConnection200JSONResponseBody_AppConnection) MarshalJSON() (
 }
 
 func (t *CreateSshAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBody0 returns the union data inside the CreateUltradnsAppConnectionJSONBody as a CreateUltradnsAppConnectionJSONBody0
+func (t CreateUltradnsAppConnectionJSONBody) AsCreateUltradnsAppConnectionJSONBody0() (CreateUltradnsAppConnectionJSONBody0, error) {
+	var body CreateUltradnsAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBody0 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody as the provided CreateUltradnsAppConnectionJSONBody0
+func (t *CreateUltradnsAppConnectionJSONBody) FromCreateUltradnsAppConnectionJSONBody0(v CreateUltradnsAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBody0 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody, using the provided CreateUltradnsAppConnectionJSONBody0
+func (t *CreateUltradnsAppConnectionJSONBody) MergeCreateUltradnsAppConnectionJSONBody0(v CreateUltradnsAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateUltradnsAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateUltradnsAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateUltradnsAppConnectionJSONBody_GatewayId as a CreateUltradnsAppConnectionJSONBodyGatewayId0
+func (t CreateUltradnsAppConnectionJSONBody_GatewayId) AsCreateUltradnsAppConnectionJSONBodyGatewayId0() (CreateUltradnsAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateUltradnsAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayId as the provided CreateUltradnsAppConnectionJSONBodyGatewayId0
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayId) FromCreateUltradnsAppConnectionJSONBodyGatewayId0(v CreateUltradnsAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayId, using the provided CreateUltradnsAppConnectionJSONBodyGatewayId0
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayId) MergeCreateUltradnsAppConnectionJSONBodyGatewayId0(v CreateUltradnsAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateUltradnsAppConnectionJSONBody_GatewayId as a CreateUltradnsAppConnectionJSONBodyGatewayId1
+func (t CreateUltradnsAppConnectionJSONBody_GatewayId) AsCreateUltradnsAppConnectionJSONBodyGatewayId1() (CreateUltradnsAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateUltradnsAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayId as the provided CreateUltradnsAppConnectionJSONBodyGatewayId1
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayId) FromCreateUltradnsAppConnectionJSONBodyGatewayId1(v CreateUltradnsAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayId, using the provided CreateUltradnsAppConnectionJSONBodyGatewayId1
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayId) MergeCreateUltradnsAppConnectionJSONBodyGatewayId1(v CreateUltradnsAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateUltradnsAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateUltradnsAppConnectionJSONBody_GatewayPoolId as a CreateUltradnsAppConnectionJSONBodyGatewayPoolId0
+func (t CreateUltradnsAppConnectionJSONBody_GatewayPoolId) AsCreateUltradnsAppConnectionJSONBodyGatewayPoolId0() (CreateUltradnsAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateUltradnsAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayPoolId as the provided CreateUltradnsAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayPoolId) FromCreateUltradnsAppConnectionJSONBodyGatewayPoolId0(v CreateUltradnsAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayPoolId, using the provided CreateUltradnsAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayPoolId) MergeCreateUltradnsAppConnectionJSONBodyGatewayPoolId0(v CreateUltradnsAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateUltradnsAppConnectionJSONBody_GatewayPoolId as a CreateUltradnsAppConnectionJSONBodyGatewayPoolId1
+func (t CreateUltradnsAppConnectionJSONBody_GatewayPoolId) AsCreateUltradnsAppConnectionJSONBodyGatewayPoolId1() (CreateUltradnsAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateUltradnsAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayPoolId as the provided CreateUltradnsAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayPoolId) FromCreateUltradnsAppConnectionJSONBodyGatewayPoolId1(v CreateUltradnsAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody_GatewayPoolId, using the provided CreateUltradnsAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayPoolId) MergeCreateUltradnsAppConnectionJSONBodyGatewayPoolId1(v CreateUltradnsAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateUltradnsAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateUltradnsAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBodyRotation0 returns the union data inside the CreateUltradnsAppConnectionJSONBody_Rotation as a CreateUltradnsAppConnectionJSONBodyRotation0
+func (t CreateUltradnsAppConnectionJSONBody_Rotation) AsCreateUltradnsAppConnectionJSONBodyRotation0() (CreateUltradnsAppConnectionJSONBodyRotation0, error) {
+	var body CreateUltradnsAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody_Rotation as the provided CreateUltradnsAppConnectionJSONBodyRotation0
+func (t *CreateUltradnsAppConnectionJSONBody_Rotation) FromCreateUltradnsAppConnectionJSONBodyRotation0(v CreateUltradnsAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody_Rotation, using the provided CreateUltradnsAppConnectionJSONBodyRotation0
+func (t *CreateUltradnsAppConnectionJSONBody_Rotation) MergeCreateUltradnsAppConnectionJSONBodyRotation0(v CreateUltradnsAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateUltradnsAppConnectionJSONBodyRotation1 returns the union data inside the CreateUltradnsAppConnectionJSONBody_Rotation as a CreateUltradnsAppConnectionJSONBodyRotation1
+func (t CreateUltradnsAppConnectionJSONBody_Rotation) AsCreateUltradnsAppConnectionJSONBodyRotation1() (CreateUltradnsAppConnectionJSONBodyRotation1, error) {
+	var body CreateUltradnsAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateUltradnsAppConnectionJSONBody_Rotation as the provided CreateUltradnsAppConnectionJSONBodyRotation1
+func (t *CreateUltradnsAppConnectionJSONBody_Rotation) FromCreateUltradnsAppConnectionJSONBodyRotation1(v CreateUltradnsAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateUltradnsAppConnectionJSONBody_Rotation, using the provided CreateUltradnsAppConnectionJSONBodyRotation1
+func (t *CreateUltradnsAppConnectionJSONBody_Rotation) MergeCreateUltradnsAppConnectionJSONBodyRotation1(v CreateUltradnsAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateUltradnsAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateUltradnsAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateUltradnsAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateUltradnsAppConnection200JSONResponseBody_AppConnection as a CreateUltradnsAppConnection200JSONResponseBodyAppConnection0
+func (t CreateUltradnsAppConnection200JSONResponseBody_AppConnection) AsCreateUltradnsAppConnection200JSONResponseBodyAppConnection0() (CreateUltradnsAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateUltradnsAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateUltradnsAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateUltradnsAppConnection200JSONResponseBody_AppConnection as the provided CreateUltradnsAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateUltradnsAppConnection200JSONResponseBody_AppConnection) FromCreateUltradnsAppConnection200JSONResponseBodyAppConnection0(v CreateUltradnsAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateUltradnsAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateUltradnsAppConnection200JSONResponseBody_AppConnection, using the provided CreateUltradnsAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateUltradnsAppConnection200JSONResponseBody_AppConnection) MergeCreateUltradnsAppConnection200JSONResponseBodyAppConnection0(v CreateUltradnsAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateUltradnsAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateUltradnsAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -228150,6 +230661,94 @@ func (t UpdateCertManagerUserJSONBody_Roles_Item) MarshalJSON() ([]byte, error) 
 }
 
 func (t *UpdateCertManagerUserJSONBody_Roles_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsPreviewPkiAlertCertificatesV1JSONBodyFiltersValue0 returns the union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value as a PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0
+func (t PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) AsPreviewPkiAlertCertificatesV1JSONBodyFiltersValue0() (PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0, error) {
+	var body PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPreviewPkiAlertCertificatesV1JSONBodyFiltersValue0 overwrites any union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value as the provided PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) FromPreviewPkiAlertCertificatesV1JSONBodyFiltersValue0(v PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePreviewPkiAlertCertificatesV1JSONBodyFiltersValue0 performs a merge with any union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value, using the provided PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) MergePreviewPkiAlertCertificatesV1JSONBodyFiltersValue0(v PreviewPkiAlertCertificatesV1JSONBodyFiltersValue0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPreviewPkiAlertCertificatesV1JSONBodyFiltersValue1 returns the union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value as a PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1
+func (t PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) AsPreviewPkiAlertCertificatesV1JSONBodyFiltersValue1() (PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1, error) {
+	var body PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPreviewPkiAlertCertificatesV1JSONBodyFiltersValue1 overwrites any union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value as the provided PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) FromPreviewPkiAlertCertificatesV1JSONBodyFiltersValue1(v PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePreviewPkiAlertCertificatesV1JSONBodyFiltersValue1 performs a merge with any union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value, using the provided PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) MergePreviewPkiAlertCertificatesV1JSONBodyFiltersValue1(v PreviewPkiAlertCertificatesV1JSONBodyFiltersValue1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsPreviewPkiAlertCertificatesV1JSONBodyFiltersValue2 returns the union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value as a PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2
+func (t PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) AsPreviewPkiAlertCertificatesV1JSONBodyFiltersValue2() (PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2, error) {
+	var body PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromPreviewPkiAlertCertificatesV1JSONBodyFiltersValue2 overwrites any union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value as the provided PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) FromPreviewPkiAlertCertificatesV1JSONBodyFiltersValue2(v PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergePreviewPkiAlertCertificatesV1JSONBodyFiltersValue2 performs a merge with any union data inside the PreviewPkiAlertCertificatesV1JSONBody_Filters_Value, using the provided PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) MergePreviewPkiAlertCertificatesV1JSONBodyFiltersValue2(v PreviewPkiAlertCertificatesV1JSONBodyFiltersValue2) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *PreviewPkiAlertCertificatesV1JSONBody_Filters_Value) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -251860,6 +254459,18 @@ type ClientInterface interface {
 	// Create an Azure ADCS (Web Enrollment) Connection.
 	CreateAzureAdcsAppConnection(ctx context.Context, body CreateAzureAdcsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateAzureDnsAppConnectionWithBody performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an Azure DNS Connection.
+	CreateAzureDnsAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateAzureDnsAppConnection performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create an Azure DNS Connection.
+	CreateAzureDnsAppConnection(ctx context.Context, body CreateAzureDnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateAzureKeyVaultAppConnectionWithBody performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -252160,6 +254771,18 @@ type ClientInterface interface {
 	// Update the specified PostgreSQL Connection.
 	UpdatePostgresAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreatePowerdnsAppConnectionWithBody performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a PowerDNS Connection.
+	CreatePowerdnsAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePowerdnsAppConnection performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a PowerDNS Connection.
+	CreatePowerdnsAppConnection(ctx context.Context, body CreatePowerdnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateServiceNowAppConnectionWithBody performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -252183,6 +254806,18 @@ type ClientInterface interface {
 	//
 	// Create a SSH Connection.
 	CreateSshAppConnection(ctx context.Context, body CreateSshAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUltradnsAppConnectionWithBody performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an UltraDNS Connection.
+	CreateUltradnsAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUltradnsAppConnection performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create an UltraDNS Connection.
+	CreateUltradnsAppConnection(ctx context.Context, body CreateUltradnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateVenafiAppConnectionWithBody performs a POST /api/v1/app-connections/venafi (the `CreateVenafiAppConnection` operationId) request,
 	// with any type of body and a specified content type.
@@ -253312,6 +255947,18 @@ type ClientInterface interface {
 	// ACME Finalize Order - finalize cert order by providing CSR.
 	FinalizeAcmeOrder(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PreviewPkiAlertCertificatesV1WithBody performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Preview certificates that would match the given filter rules.
+	PreviewPkiAlertCertificatesV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PreviewPkiAlertCertificatesV1 performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Preview certificates that would match the given filter rules.
+	PreviewPkiAlertCertificatesV1(ctx context.Context, body PreviewPkiAlertCertificatesV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListPkiApplications performs a GET /api/v1/cert-manager/applications (the `ListPkiApplications` operationId) request.
 	//
 	// List applications.
@@ -254029,6 +256676,18 @@ type ClientInterface interface {
 	// Get certificate.
 	GetCertificate(ctx context.Context, id openapi_types.UUID, params *GetCertificateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// UpdateCertificateWithBody performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update certificate.
+	UpdateCertificateWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCertificate performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Update certificate.
+	UpdateCertificate(ctx context.Context, id openapi_types.UUID, body UpdateCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCertificateBundle performs a GET /api/v1/cert-manager/certificates/{id}/bundle (the `GetCertificateBundle` operationId) request.
 	//
 	// Get certificate bundle including the certificate, chain, and private key.
@@ -254177,6 +256836,9 @@ type ClientInterface interface {
 	// PostOcspRequestWithBody performs a POST /api/v1/cert-manager/ocsp/{caId} (the `PostOcspRequest` operationId) request,
 	// with any type of body and a specified content type.
 	PostOcspRequestWithBody(ctx context.Context, caId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetOcspRequest performs a GET /api/v1/cert-manager/ocsp/{caId}/{request} (the `GetOcspRequest` operationId) request.
+	GetOcspRequest(ctx context.Context, caId openapi_types.UUID, request string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSigners performs a GET /api/v1/cert-manager/signers (the `ListSigners` operationId) request.
 	//
@@ -254340,6 +257002,11 @@ type ClientInterface interface {
 	//
 	// List signing operations for a signer.
 	ListSigningOperations(ctx context.Context, signerId openapi_types.UUID, params *ListSigningOperationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSignerPublicKey performs a GET /api/v1/cert-manager/signers/{signerId}/public-key (the `GetSignerPublicKey` operationId) request.
+	//
+	// Get the public key for a code signing signer.
+	GetSignerPublicKey(ctx context.Context, signerId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSignerRequests performs a GET /api/v1/cert-manager/signers/{signerId}/requests (the `ListSignerRequests` operationId) request.
 	//
@@ -258771,6 +261438,9 @@ type ClientInterface interface {
 	// Get secret reference tree.
 	GetSecretReferenceTreeV4(ctx context.Context, secretName string, params *GetSecretReferenceTreeV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenerateScepApplicationDynamicChallenge performs a POST /scep/applications/{applicationId}/profiles/{profileId}/challenge (the `GenerateScepApplicationDynamicChallenge` operationId) request.
+	GenerateScepApplicationDynamicChallenge(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetScepApplicationOperation performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
 	GetScepApplicationOperation(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -258778,8 +261448,15 @@ type ClientInterface interface {
 	// with any type of body and a specified content type.
 	PostScepApplicationOperationWithBody(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *PostScepApplicationOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenerateScepDynamicChallenge performs a POST /scep/{profileId}/challenge (the `GenerateScepDynamicChallenge` operationId) request.
+	GenerateScepDynamicChallenge(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetScepOperation performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
 	GetScepOperation(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostScepOperationWithBody performs a POST /scep/{profileId}/pkiclient.exe (the `PostScepOperation` operationId) request,
+	// with any type of body and a specified content type.
+	PostScepOperationWithBody(ctx context.Context, profileId openapi_types.UUID, params *PostScepOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetEstApplicationCaCerts performs a GET /.well-known/est/applications/{applicationId}/profiles/{profileId}/cacerts (the `GetEstApplicationCaCerts` operationId) request.
@@ -259973,6 +262650,38 @@ func (c *Client) CreateAzureAdcsAppConnection(ctx context.Context, body CreateAz
 	return c.Client.Do(req)
 }
 
+// CreateAzureDnsAppConnectionWithBody performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an Azure DNS Connection.
+func (c *Client) CreateAzureDnsAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAzureDnsAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateAzureDnsAppConnection performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create an Azure DNS Connection.
+func (c *Client) CreateAzureDnsAppConnection(ctx context.Context, body CreateAzureDnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateAzureDnsAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateAzureKeyVaultAppConnectionWithBody performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -260793,6 +263502,38 @@ func (c *Client) UpdatePostgresAppConnection(ctx context.Context, connectionId o
 	return c.Client.Do(req)
 }
 
+// CreatePowerdnsAppConnectionWithBody performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a PowerDNS Connection.
+func (c *Client) CreatePowerdnsAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePowerdnsAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePowerdnsAppConnection performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a PowerDNS Connection.
+func (c *Client) CreatePowerdnsAppConnection(ctx context.Context, body CreatePowerdnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePowerdnsAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // CreateServiceNowAppConnectionWithBody performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -260847,6 +263588,38 @@ func (c *Client) CreateSshAppConnectionWithBody(ctx context.Context, contentType
 // Create a SSH Connection.
 func (c *Client) CreateSshAppConnection(ctx context.Context, body CreateSshAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateSshAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateUltradnsAppConnectionWithBody performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an UltraDNS Connection.
+func (c *Client) CreateUltradnsAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUltradnsAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateUltradnsAppConnection performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create an UltraDNS Connection.
+func (c *Client) CreateUltradnsAppConnection(ctx context.Context, body CreateUltradnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUltradnsAppConnectionRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -264145,6 +266918,38 @@ func (c *Client) FinalizeAcmeOrder(ctx context.Context, profileId openapi_types.
 	return c.Client.Do(req)
 }
 
+// PreviewPkiAlertCertificatesV1WithBody performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request,
+// with any type of body and a specified content type.
+//
+// Preview certificates that would match the given filter rules.
+func (c *Client) PreviewPkiAlertCertificatesV1WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPreviewPkiAlertCertificatesV1RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PreviewPkiAlertCertificatesV1 performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Preview certificates that would match the given filter rules.
+func (c *Client) PreviewPkiAlertCertificatesV1(ctx context.Context, body PreviewPkiAlertCertificatesV1JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPreviewPkiAlertCertificatesV1Request(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListPkiApplications performs a GET /api/v1/cert-manager/applications (the `ListPkiApplications` operationId) request.
 //
 // List applications.
@@ -266311,6 +269116,38 @@ func (c *Client) GetCertificate(ctx context.Context, id openapi_types.UUID, para
 	return c.Client.Do(req)
 }
 
+// UpdateCertificateWithBody performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update certificate.
+func (c *Client) UpdateCertificateWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCertificateRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateCertificate performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Update certificate.
+func (c *Client) UpdateCertificate(ctx context.Context, id openapi_types.UUID, body UpdateCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateCertificateRequest(c.Server, id, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetCertificateBundle performs a GET /api/v1/cert-manager/certificates/{id}/bundle (the `GetCertificateBundle` operationId) request.
 //
 // Get certificate bundle including the certificate, chain, and private key.
@@ -266730,6 +269567,19 @@ func (c *Client) GetCertManagerInstanceState(ctx context.Context, reqEditors ...
 // with any type of body and a specified content type.
 func (c *Client) PostOcspRequestWithBody(ctx context.Context, caId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostOcspRequestRequestWithBody(c.Server, caId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetOcspRequest performs a GET /api/v1/cert-manager/ocsp/{caId}/{request} (the `GetOcspRequest` operationId) request.
+func (c *Client) GetOcspRequest(ctx context.Context, caId openapi_types.UUID, request string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOcspRequestRequest(c.Server, caId, request)
 	if err != nil {
 		return nil, err
 	}
@@ -267183,6 +270033,21 @@ func (c *Client) UpdateSignerIdentityRole(ctx context.Context, signerId openapi_
 // List signing operations for a signer.
 func (c *Client) ListSigningOperations(ctx context.Context, signerId openapi_types.UUID, params *ListSigningOperationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListSigningOperationsRequest(c.Server, signerId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSignerPublicKey performs a GET /api/v1/cert-manager/signers/{signerId}/public-key (the `GetSignerPublicKey` operationId) request.
+//
+// Get the public key for a code signing signer.
+func (c *Client) GetSignerPublicKey(ctx context.Context, signerId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSignerPublicKeyRequest(c.Server, signerId)
 	if err != nil {
 		return nil, err
 	}
@@ -281052,6 +283917,19 @@ func (c *Client) GetSecretReferenceTreeV4(ctx context.Context, secretName string
 	return c.Client.Do(req)
 }
 
+// GenerateScepApplicationDynamicChallenge performs a POST /scep/applications/{applicationId}/profiles/{profileId}/challenge (the `GenerateScepApplicationDynamicChallenge` operationId) request.
+func (c *Client) GenerateScepApplicationDynamicChallenge(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenerateScepApplicationDynamicChallengeRequest(c.Server, applicationId, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetScepApplicationOperation performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
 func (c *Client) GetScepApplicationOperation(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetScepApplicationOperationRequest(c.Server, applicationId, profileId, params)
@@ -281079,9 +283957,36 @@ func (c *Client) PostScepApplicationOperationWithBody(ctx context.Context, appli
 	return c.Client.Do(req)
 }
 
+// GenerateScepDynamicChallenge performs a POST /scep/{profileId}/challenge (the `GenerateScepDynamicChallenge` operationId) request.
+func (c *Client) GenerateScepDynamicChallenge(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenerateScepDynamicChallengeRequest(c.Server, profileId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetScepOperation performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
 func (c *Client) GetScepOperation(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetScepOperationRequest(c.Server, profileId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PostScepOperationWithBody performs a POST /scep/{profileId}/pkiclient.exe (the `PostScepOperation` operationId) request,
+// with any type of body and a specified content type.
+func (c *Client) PostScepOperationWithBody(ctx context.Context, profileId openapi_types.UUID, params *PostScepOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostScepOperationRequestWithBody(c.Server, profileId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -283829,6 +286734,46 @@ func NewCreateAzureAdcsAppConnectionRequestWithBody(server string, contentType s
 	return req, nil
 }
 
+// NewCreateAzureDnsAppConnectionRequest calls the generic CreateAzureDnsAppConnection builder with application/json body
+func NewCreateAzureDnsAppConnectionRequest(server string, body CreateAzureDnsAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateAzureDnsAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateAzureDnsAppConnectionRequestWithBody constructs an http.Request for the CreateAzureDnsAppConnection method, with any body, and a specified content type
+func NewCreateAzureDnsAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/azure-dns")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateAzureKeyVaultAppConnectionRequest calls the generic CreateAzureKeyVaultAppConnection builder with application/json body
 func NewCreateAzureKeyVaultAppConnectionRequest(server string, body CreateAzureKeyVaultAppConnectionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -285166,6 +288111,46 @@ func NewUpdatePostgresAppConnectionRequestWithBody(server string, connectionId o
 	return req, nil
 }
 
+// NewCreatePowerdnsAppConnectionRequest calls the generic CreatePowerdnsAppConnection builder with application/json body
+func NewCreatePowerdnsAppConnectionRequest(server string, body CreatePowerdnsAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePowerdnsAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreatePowerdnsAppConnectionRequestWithBody constructs an http.Request for the CreatePowerdnsAppConnection method, with any body, and a specified content type
+func NewCreatePowerdnsAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/powerdns")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateServiceNowAppConnectionRequest calls the generic CreateServiceNowAppConnection builder with application/json body
 func NewCreateServiceNowAppConnectionRequest(server string, body CreateServiceNowAppConnectionJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -285227,6 +288212,46 @@ func NewCreateSshAppConnectionRequestWithBody(server string, contentType string,
 	}
 
 	operationPath := fmt.Sprintf("/api/v1/app-connections/ssh")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateUltradnsAppConnectionRequest calls the generic CreateUltradnsAppConnection builder with application/json body
+func NewCreateUltradnsAppConnectionRequest(server string, body CreateUltradnsAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateUltradnsAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateUltradnsAppConnectionRequestWithBody constructs an http.Request for the CreateUltradnsAppConnection method, with any body, and a specified content type
+func NewCreateUltradnsAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/ultradns")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -291046,6 +294071,46 @@ func NewFinalizeAcmeOrderRequestWithBody(server string, profileId openapi_types.
 	return req, nil
 }
 
+// NewPreviewPkiAlertCertificatesV1Request calls the generic PreviewPkiAlertCertificatesV1 builder with application/json body
+func NewPreviewPkiAlertCertificatesV1Request(server string, body PreviewPkiAlertCertificatesV1JSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPreviewPkiAlertCertificatesV1RequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPreviewPkiAlertCertificatesV1RequestWithBody constructs an http.Request for the PreviewPkiAlertCertificatesV1 method, with any body, and a specified content type
+func NewPreviewPkiAlertCertificatesV1RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/alerts/preview/certificates")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListPkiApplicationsRequest constructs an http.Request for the ListPkiApplications method
 func NewListPkiApplicationsRequest(server string, params *ListPkiApplicationsParams) (*http.Request, error) {
 	var err error
@@ -295654,6 +298719,53 @@ func NewGetCertificateRequest(server string, id openapi_types.UUID, params *GetC
 	return req, nil
 }
 
+// NewUpdateCertificateRequest calls the generic UpdateCertificate builder with application/json body
+func NewUpdateCertificateRequest(server string, id openapi_types.UUID, body UpdateCertificateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCertificateRequestWithBody(server, id, "application/json", bodyReader)
+}
+
+// NewUpdateCertificateRequestWithBody constructs an http.Request for the UpdateCertificate method, with any body, and a specified content type
+func NewUpdateCertificateRequestWithBody(server string, id openapi_types.UUID, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/certificates/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetCertificateBundleRequest constructs an http.Request for the GetCertificateBundle method
 func NewGetCertificateBundleRequest(server string, id openapi_types.UUID) (*http.Request, error) {
 	var err error
@@ -296583,6 +299695,47 @@ func NewPostOcspRequestRequestWithBody(server string, caId openapi_types.UUID, c
 	return req, nil
 }
 
+// NewGetOcspRequestRequest constructs an http.Request for the GetOcspRequest method
+func NewGetOcspRequestRequest(server string, caId openapi_types.UUID, request string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "caId", caId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "request", request, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/ocsp/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListSignersRequest constructs an http.Request for the ListSigners method
 func NewListSignersRequest(server string, params *ListSignersParams) (*http.Request, error) {
 	var err error
@@ -297498,6 +300651,40 @@ func NewListSigningOperationsRequest(server string, signerId openapi_types.UUID,
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSignerPublicKeyRequest constructs an http.Request for the GetSignerPublicKey method
+func NewGetSignerPublicKeyRequest(server string, signerId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "signerId", signerId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/cert-manager/signers/%s/public-key", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -328337,6 +331524,47 @@ func NewGetSecretReferenceTreeV4Request(server string, secretName string, params
 	return req, nil
 }
 
+// NewGenerateScepApplicationDynamicChallengeRequest constructs an http.Request for the GenerateScepApplicationDynamicChallenge method
+func NewGenerateScepApplicationDynamicChallengeRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "applicationId", applicationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/scep/applications/%s/profiles/%s/challenge", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetScepApplicationOperationRequest constructs an http.Request for the GetScepApplicationOperation method
 func NewGetScepApplicationOperationRequest(server string, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *GetScepApplicationOperationParams) (*http.Request, error) {
 	var err error
@@ -328483,6 +331711,40 @@ func NewPostScepApplicationOperationRequestWithBody(server string, applicationId
 	return req, nil
 }
 
+// NewGenerateScepDynamicChallengeRequest constructs an http.Request for the GenerateScepDynamicChallenge method
+func NewGenerateScepDynamicChallengeRequest(server string, profileId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/scep/%s/challenge", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetScepOperationRequest constructs an http.Request for the GetScepOperation method
 func NewGetScepOperationRequest(server string, profileId openapi_types.UUID, params *GetScepOperationParams) (*http.Request, error) {
 	var err error
@@ -328548,6 +331810,69 @@ func NewGetScepOperationRequest(server string, profileId openapi_types.UUID, par
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPostScepOperationRequestWithBody constructs an http.Request for the PostScepOperation method, with any body, and a specified content type
+func NewPostScepOperationRequestWithBody(server string, profileId openapi_types.UUID, params *PostScepOperationParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "profileId", profileId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/scep/%s/pkiclient.exe", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Operation != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "operation", *params.Operation, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -329077,6 +332402,20 @@ type ClientWithResponsesInterface interface {
 	// Create an Azure ADCS (Web Enrollment) Connection.
 	CreateAzureAdcsAppConnectionWithResponse(ctx context.Context, body CreateAzureAdcsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAzureAdcsAppConnectionResponse, error)
 
+	// CreateAzureDnsAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an Azure DNS Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateAzureDnsAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAzureDnsAppConnectionResponse, error)
+
+	// CreateAzureDnsAppConnectionWithResponse performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create an Azure DNS Connection.
+	CreateAzureDnsAppConnectionWithResponse(ctx context.Context, body CreateAzureDnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAzureDnsAppConnectionResponse, error)
+
 	// CreateAzureKeyVaultAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -329441,6 +332780,20 @@ type ClientWithResponsesInterface interface {
 	// Update the specified PostgreSQL Connection.
 	UpdatePostgresAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePostgresAppConnectionResponse, error)
 
+	// CreatePowerdnsAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a PowerDNS Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreatePowerdnsAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePowerdnsAppConnectionResponse, error)
+
+	// CreatePowerdnsAppConnectionWithResponse performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a PowerDNS Connection.
+	CreatePowerdnsAppConnectionWithResponse(ctx context.Context, body CreatePowerdnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePowerdnsAppConnectionResponse, error)
+
 	// CreateServiceNowAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -329468,6 +332821,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create a SSH Connection.
 	CreateSshAppConnectionWithResponse(ctx context.Context, body CreateSshAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSshAppConnectionResponse, error)
+
+	// CreateUltradnsAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create an UltraDNS Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateUltradnsAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUltradnsAppConnectionResponse, error)
+
+	// CreateUltradnsAppConnectionWithResponse performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create an UltraDNS Connection.
+	CreateUltradnsAppConnectionWithResponse(ctx context.Context, body CreateUltradnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUltradnsAppConnectionResponse, error)
 
 	// CreateVenafiAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/venafi (the `CreateVenafiAppConnection` operationId) request,
 	// with any type of body and a specified content type.
@@ -330883,6 +334250,20 @@ type ClientWithResponsesInterface interface {
 	// ACME Finalize Order - finalize cert order by providing CSR.
 	FinalizeAcmeOrderWithResponse(ctx context.Context, profileId openapi_types.UUID, orderId openapi_types.UUID, body FinalizeAcmeOrderJSONRequestBody, reqEditors ...RequestEditorFn) (*FinalizeAcmeOrderResponse, error)
 
+	// PreviewPkiAlertCertificatesV1WithBodyWithResponse performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Preview certificates that would match the given filter rules.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	PreviewPkiAlertCertificatesV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PreviewPkiAlertCertificatesV1Response, error)
+
+	// PreviewPkiAlertCertificatesV1WithResponse performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Preview certificates that would match the given filter rules.
+	PreviewPkiAlertCertificatesV1WithResponse(ctx context.Context, body PreviewPkiAlertCertificatesV1JSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewPkiAlertCertificatesV1Response, error)
+
 	// ListPkiApplicationsWithResponse performs a GET /api/v1/cert-manager/applications (the `ListPkiApplications` operationId) request.
 	//
 	// List applications.
@@ -331800,6 +335181,20 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetCertificateWithResponse(ctx context.Context, id openapi_types.UUID, params *GetCertificateParams, reqEditors ...RequestEditorFn) (*GetCertificateResponse, error)
 
+	// UpdateCertificateWithBodyWithResponse performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Update certificate.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	UpdateCertificateWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCertificateResponse, error)
+
+	// UpdateCertificateWithResponse performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Update certificate.
+	UpdateCertificateWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCertificateResponse, error)
+
 	// GetCertificateBundleWithResponse performs a GET /api/v1/cert-manager/certificates/{id}/bundle (the `GetCertificateBundle` operationId) request.
 	//
 	// Get certificate bundle including the certificate, chain, and private key.
@@ -331990,6 +335385,11 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	PostOcspRequestWithBodyWithResponse(ctx context.Context, caId openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostOcspRequestResponse, error)
+
+	// GetOcspRequestWithResponse performs a GET /api/v1/cert-manager/ocsp/{caId}/{request} (the `GetOcspRequest` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetOcspRequestWithResponse(ctx context.Context, caId openapi_types.UUID, request string, reqEditors ...RequestEditorFn) (*GetOcspRequestResponse, error)
 
 	// ListSignersWithResponse performs a GET /api/v1/cert-manager/signers (the `ListSigners` operationId) request.
 	//
@@ -332193,6 +335593,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListSigningOperationsWithResponse(ctx context.Context, signerId openapi_types.UUID, params *ListSigningOperationsParams, reqEditors ...RequestEditorFn) (*ListSigningOperationsResponse, error)
+
+	// GetSignerPublicKeyWithResponse performs a GET /api/v1/cert-manager/signers/{signerId}/public-key (the `GetSignerPublicKey` operationId) request.
+	//
+	// Get the public key for a code signing signer.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetSignerPublicKeyWithResponse(ctx context.Context, signerId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetSignerPublicKeyResponse, error)
 
 	// ListSignerRequestsWithResponse performs a GET /api/v1/cert-manager/signers/{signerId}/requests (the `ListSignerRequests` operationId) request.
 	//
@@ -337980,6 +341387,11 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetSecretReferenceTreeV4WithResponse(ctx context.Context, secretName string, params *GetSecretReferenceTreeV4Params, reqEditors ...RequestEditorFn) (*GetSecretReferenceTreeV4Response, error)
 
+	// GenerateScepApplicationDynamicChallengeWithResponse performs a POST /scep/applications/{applicationId}/profiles/{profileId}/challenge (the `GenerateScepApplicationDynamicChallenge` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GenerateScepApplicationDynamicChallengeWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GenerateScepApplicationDynamicChallengeResponse, error)
+
 	// GetScepApplicationOperationWithResponse performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -337991,10 +341403,21 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	PostScepApplicationOperationWithBodyWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, params *PostScepApplicationOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostScepApplicationOperationResponse, error)
 
+	// GenerateScepDynamicChallengeWithResponse performs a POST /scep/{profileId}/challenge (the `GenerateScepDynamicChallenge` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GenerateScepDynamicChallengeWithResponse(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GenerateScepDynamicChallengeResponse, error)
+
 	// GetScepOperationWithResponse performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	GetScepOperationWithResponse(ctx context.Context, profileId openapi_types.UUID, params *GetScepOperationParams, reqEditors ...RequestEditorFn) (*GetScepOperationResponse, error)
+
+	// PostScepOperationWithBodyWithResponse performs a POST /scep/{profileId}/pkiclient.exe (the `PostScepOperation` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	PostScepOperationWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, params *PostScepOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostScepOperationResponse, error)
 }
 
 type GetEstApplicationCaCertsResponse struct {
@@ -349054,6 +352477,157 @@ func (r CreateAzureAdcsAppConnectionResponse) ContentType() string {
 	return ""
 }
 
+type CreateAzureDnsAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateAzureDnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateAzureDnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateAzureDnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateAzureDnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateAzureDnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                   `json:"error"`
+		Message    interface{}                                              `json:"message,omitempty"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateAzureDnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateAzureDnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateAzureDnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateAzureDnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateAzureDnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateAzureDnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateAzureDnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                   `json:"error"`
+	Message    interface{}                                              `json:"message,omitempty"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateAzureDnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateAzureDnsAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateAzureDnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateAzureDnsAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateAzureDnsAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateAzureDnsAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAzureDnsAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateAzureKeyVaultAppConnectionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -353886,6 +357460,157 @@ func (r UpdatePostgresAppConnectionResponse) ContentType() string {
 	return ""
 }
 
+type CreatePowerdnsAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreatePowerdnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreatePowerdnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreatePowerdnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreatePowerdnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreatePowerdnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                   `json:"error"`
+		Message    interface{}                                              `json:"message,omitempty"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreatePowerdnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreatePowerdnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreatePowerdnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreatePowerdnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreatePowerdnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreatePowerdnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreatePowerdnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                   `json:"error"`
+	Message    interface{}                                              `json:"message,omitempty"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreatePowerdnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreatePowerdnsAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreatePowerdnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreatePowerdnsAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePowerdnsAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePowerdnsAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePowerdnsAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateServiceNowAppConnectionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -354182,6 +357907,157 @@ func (r CreateSshAppConnectionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateSshAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateUltradnsAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateUltradnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateUltradnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateUltradnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                              `json:"details,omitempty"`
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateUltradnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateUltradnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                   `json:"error"`
+		Message    interface{}                                              `json:"message,omitempty"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateUltradnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                   `json:"error"`
+		Message    string                                                   `json:"message"`
+		ReqId      string                                                   `json:"reqId"`
+		StatusCode CreateUltradnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateUltradnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateUltradnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateUltradnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                              `json:"details,omitempty"`
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateUltradnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateUltradnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                   `json:"error"`
+	Message    interface{}                                              `json:"message,omitempty"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateUltradnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateUltradnsAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                   `json:"error"`
+	Message    string                                                   `json:"message"`
+	ReqId      string                                                   `json:"reqId"`
+	StatusCode CreateUltradnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateUltradnsAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateUltradnsAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateUltradnsAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateUltradnsAppConnectionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -380158,6 +384034,179 @@ func (r FinalizeAcmeOrderResponse) ContentType() string {
 	return ""
 }
 
+type PreviewPkiAlertCertificatesV1Response struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Certificates []struct {
+			CommonName     string             `json:"commonName"`
+			EnrollmentType *string            `json:"enrollmentType"`
+			Id             openapi_types.UUID `json:"id"`
+			NotAfter       time.Time          `json:"notAfter"`
+			NotBefore      time.Time          `json:"notBefore"`
+			ProfileName    *string            `json:"profileName"`
+			San            []string           `json:"san"`
+			SerialNumber   string             `json:"serialNumber"`
+			Status         string             `json:"status"`
+		} `json:"certificates"`
+		Total float32 `json:"total"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON200() *struct {
+	Certificates []struct {
+		CommonName     string             `json:"commonName"`
+		EnrollmentType *string            `json:"enrollmentType"`
+		Id             openapi_types.UUID `json:"id"`
+		NotAfter       time.Time          `json:"notAfter"`
+		NotBefore      time.Time          `json:"notBefore"`
+		ProfileName    *string            `json:"profileName"`
+		San            []string           `json:"san"`
+		SerialNumber   string             `json:"serialNumber"`
+		Status         string             `json:"status"`
+	} `json:"certificates"`
+	Total float32 `json:"total"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r PreviewPkiAlertCertificatesV1Response) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r PreviewPkiAlertCertificatesV1Response) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PreviewPkiAlertCertificatesV1Response) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PreviewPkiAlertCertificatesV1Response) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PreviewPkiAlertCertificatesV1Response) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListPkiApplicationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -399592,6 +403641,163 @@ func (r GetCertificateResponse) ContentType() string {
 	return ""
 }
 
+type UpdateCertificateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Metadata []struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		} `json:"metadata"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                    `json:"details,omitempty"`
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                         `json:"error"`
+		Message    interface{}                                    `json:"message,omitempty"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                         `json:"error"`
+		Message    string                                         `json:"message"`
+		ReqId      string                                         `json:"reqId"`
+		StatusCode UpdateCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateCertificateResponse) GetJSON200() *struct {
+	Metadata []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	} `json:"metadata"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r UpdateCertificateResponse) GetJSON400() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r UpdateCertificateResponse) GetJSON401() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r UpdateCertificateResponse) GetJSON403() *struct {
+	Details    interface{}                                    `json:"details,omitempty"`
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r UpdateCertificateResponse) GetJSON404() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r UpdateCertificateResponse) GetJSON422() *struct {
+	Error      string                                         `json:"error"`
+	Message    interface{}                                    `json:"message,omitempty"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r UpdateCertificateResponse) GetJSON500() *struct {
+	Error      string                                         `json:"error"`
+	Message    string                                         `json:"message"`
+	ReqId      string                                         `json:"reqId"`
+	StatusCode UpdateCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateCertificateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCertificateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCertificateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCertificateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCertificateBundleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -403287,6 +407493,40 @@ func (r PostOcspRequestResponse) ContentType() string {
 	return ""
 }
 
+type GetOcspRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r GetOcspRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetOcspRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetOcspRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOcspRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListSignersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -406814,6 +411054,159 @@ func (r ListSigningOperationsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListSigningOperationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSignerPublicKeyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Algorithm string `json:"algorithm"`
+		PublicKey string `json:"publicKey"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSignerPublicKey400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSignerPublicKey401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                     `json:"details,omitempty"`
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSignerPublicKey403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSignerPublicKey404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                          `json:"error"`
+		Message    interface{}                                     `json:"message,omitempty"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSignerPublicKey422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                          `json:"error"`
+		Message    string                                          `json:"message"`
+		ReqId      string                                          `json:"reqId"`
+		StatusCode GetSignerPublicKey500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON200() *struct {
+	Algorithm string `json:"algorithm"`
+	PublicKey string `json:"publicKey"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON400() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSignerPublicKey400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON401() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSignerPublicKey401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON403() *struct {
+	Details    interface{}                                     `json:"details,omitempty"`
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSignerPublicKey403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON404() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSignerPublicKey404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON422() *struct {
+	Error      string                                          `json:"error"`
+	Message    interface{}                                     `json:"message,omitempty"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSignerPublicKey422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetSignerPublicKeyResponse) GetJSON500() *struct {
+	Error      string                                          `json:"error"`
+	Message    string                                          `json:"message"`
+	ReqId      string                                          `json:"reqId"`
+	StatusCode GetSignerPublicKey500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSignerPublicKeyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSignerPublicKeyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSignerPublicKeyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSignerPublicKeyResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -529645,6 +534038,40 @@ func (r GetSecretReferenceTreeV4Response) ContentType() string {
 	return ""
 }
 
+type GenerateScepApplicationDynamicChallengeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r GenerateScepApplicationDynamicChallengeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GenerateScepApplicationDynamicChallengeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenerateScepApplicationDynamicChallengeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GenerateScepApplicationDynamicChallengeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetScepApplicationOperationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -529713,6 +534140,40 @@ func (r PostScepApplicationOperationResponse) ContentType() string {
 	return ""
 }
 
+type GenerateScepDynamicChallengeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r GenerateScepDynamicChallengeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GenerateScepDynamicChallengeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenerateScepDynamicChallengeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GenerateScepDynamicChallengeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetScepOperationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -529741,6 +534202,40 @@ func (r GetScepOperationResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetScepOperationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PostScepOperationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// GetBody returns the raw response body bytes
+func (r PostScepOperationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PostScepOperationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostScepOperationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostScepOperationResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -530726,6 +535221,32 @@ func (c *ClientWithResponses) CreateAzureAdcsAppConnectionWithResponse(ctx conte
 	return ParseCreateAzureAdcsAppConnectionResponse(rsp)
 }
 
+// CreateAzureDnsAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an Azure DNS Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateAzureDnsAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAzureDnsAppConnectionResponse, error) {
+	rsp, err := c.CreateAzureDnsAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAzureDnsAppConnectionResponse(rsp)
+}
+
+// CreateAzureDnsAppConnectionWithResponse performs a POST /api/v1/app-connections/azure-dns (the `CreateAzureDnsAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create an Azure DNS Connection.
+func (c *ClientWithResponses) CreateAzureDnsAppConnectionWithResponse(ctx context.Context, body CreateAzureDnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAzureDnsAppConnectionResponse, error) {
+	rsp, err := c.CreateAzureDnsAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateAzureDnsAppConnectionResponse(rsp)
+}
+
 // CreateAzureKeyVaultAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -531402,6 +535923,32 @@ func (c *ClientWithResponses) UpdatePostgresAppConnectionWithResponse(ctx contex
 	return ParseUpdatePostgresAppConnectionResponse(rsp)
 }
 
+// CreatePowerdnsAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a PowerDNS Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreatePowerdnsAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePowerdnsAppConnectionResponse, error) {
+	rsp, err := c.CreatePowerdnsAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePowerdnsAppConnectionResponse(rsp)
+}
+
+// CreatePowerdnsAppConnectionWithResponse performs a POST /api/v1/app-connections/powerdns (the `CreatePowerdnsAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a PowerDNS Connection.
+func (c *ClientWithResponses) CreatePowerdnsAppConnectionWithResponse(ctx context.Context, body CreatePowerdnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePowerdnsAppConnectionResponse, error) {
+	rsp, err := c.CreatePowerdnsAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePowerdnsAppConnectionResponse(rsp)
+}
+
 // CreateServiceNowAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -531452,6 +535999,32 @@ func (c *ClientWithResponses) CreateSshAppConnectionWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseCreateSshAppConnectionResponse(rsp)
+}
+
+// CreateUltradnsAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create an UltraDNS Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateUltradnsAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUltradnsAppConnectionResponse, error) {
+	rsp, err := c.CreateUltradnsAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUltradnsAppConnectionResponse(rsp)
+}
+
+// CreateUltradnsAppConnectionWithResponse performs a POST /api/v1/app-connections/ultradns (the `CreateUltradnsAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create an UltraDNS Connection.
+func (c *ClientWithResponses) CreateUltradnsAppConnectionWithResponse(ctx context.Context, body CreateUltradnsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUltradnsAppConnectionResponse, error) {
+	rsp, err := c.CreateUltradnsAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUltradnsAppConnectionResponse(rsp)
 }
 
 // CreateVenafiAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/venafi (the `CreateVenafiAppConnection` operationId) request,
@@ -534164,6 +538737,32 @@ func (c *ClientWithResponses) FinalizeAcmeOrderWithResponse(ctx context.Context,
 	return ParseFinalizeAcmeOrderResponse(rsp)
 }
 
+// PreviewPkiAlertCertificatesV1WithBodyWithResponse performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request,
+// with any type of body and a specified content type.
+//
+// Preview certificates that would match the given filter rules.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PreviewPkiAlertCertificatesV1WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PreviewPkiAlertCertificatesV1Response, error) {
+	rsp, err := c.PreviewPkiAlertCertificatesV1WithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePreviewPkiAlertCertificatesV1Response(rsp)
+}
+
+// PreviewPkiAlertCertificatesV1WithResponse performs a POST /api/v1/cert-manager/alerts/preview/certificates (the `PreviewPkiAlertCertificatesV1` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Preview certificates that would match the given filter rules.
+func (c *ClientWithResponses) PreviewPkiAlertCertificatesV1WithResponse(ctx context.Context, body PreviewPkiAlertCertificatesV1JSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewPkiAlertCertificatesV1Response, error) {
+	rsp, err := c.PreviewPkiAlertCertificatesV1(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePreviewPkiAlertCertificatesV1Response(rsp)
+}
+
 // ListPkiApplicationsWithResponse performs a GET /api/v1/cert-manager/applications (the `ListPkiApplications` operationId) request.
 //
 // List applications.
@@ -535951,6 +540550,32 @@ func (c *ClientWithResponses) GetCertificateWithResponse(ctx context.Context, id
 	return ParseGetCertificateResponse(rsp)
 }
 
+// UpdateCertificateWithBodyWithResponse performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request,
+// with any type of body and a specified content type.
+//
+// Update certificate.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) UpdateCertificateWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCertificateResponse, error) {
+	rsp, err := c.UpdateCertificateWithBody(ctx, id, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCertificateResponse(rsp)
+}
+
+// UpdateCertificateWithResponse performs a PATCH /api/v1/cert-manager/certificates/{id} (the `UpdateCertificate` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Update certificate.
+func (c *ClientWithResponses) UpdateCertificateWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateCertificateJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCertificateResponse, error) {
+	rsp, err := c.UpdateCertificate(ctx, id, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCertificateResponse(rsp)
+}
+
 // GetCertificateBundleWithResponse performs a GET /api/v1/cert-manager/certificates/{id}/bundle (the `GetCertificateBundle` operationId) request.
 //
 // Get certificate bundle including the certificate, chain, and private key.
@@ -536308,6 +540933,17 @@ func (c *ClientWithResponses) PostOcspRequestWithBodyWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParsePostOcspRequestResponse(rsp)
+}
+
+// GetOcspRequestWithResponse performs a GET /api/v1/cert-manager/ocsp/{caId}/{request} (the `GetOcspRequest` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetOcspRequestWithResponse(ctx context.Context, caId openapi_types.UUID, request string, reqEditors ...RequestEditorFn) (*GetOcspRequestResponse, error) {
+	rsp, err := c.GetOcspRequest(ctx, caId, request, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetOcspRequestResponse(rsp)
 }
 
 // ListSignersWithResponse performs a GET /api/v1/cert-manager/signers (the `ListSigners` operationId) request.
@@ -536685,6 +541321,19 @@ func (c *ClientWithResponses) ListSigningOperationsWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseListSigningOperationsResponse(rsp)
+}
+
+// GetSignerPublicKeyWithResponse performs a GET /api/v1/cert-manager/signers/{signerId}/public-key (the `GetSignerPublicKey` operationId) request.
+//
+// Get the public key for a code signing signer.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetSignerPublicKeyWithResponse(ctx context.Context, signerId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetSignerPublicKeyResponse, error) {
+	rsp, err := c.GetSignerPublicKey(ctx, signerId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSignerPublicKeyResponse(rsp)
 }
 
 // ListSignerRequestsWithResponse performs a GET /api/v1/cert-manager/signers/{signerId}/requests (the `ListSignerRequests` operationId) request.
@@ -548134,6 +552783,17 @@ func (c *ClientWithResponses) GetSecretReferenceTreeV4WithResponse(ctx context.C
 	return ParseGetSecretReferenceTreeV4Response(rsp)
 }
 
+// GenerateScepApplicationDynamicChallengeWithResponse performs a POST /scep/applications/{applicationId}/profiles/{profileId}/challenge (the `GenerateScepApplicationDynamicChallenge` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GenerateScepApplicationDynamicChallengeWithResponse(ctx context.Context, applicationId openapi_types.UUID, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GenerateScepApplicationDynamicChallengeResponse, error) {
+	rsp, err := c.GenerateScepApplicationDynamicChallenge(ctx, applicationId, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenerateScepApplicationDynamicChallengeResponse(rsp)
+}
+
 // GetScepApplicationOperationWithResponse performs a GET /scep/applications/{applicationId}/profiles/{profileId}/pkiclient.exe (the `GetScepApplicationOperation` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -548157,6 +552817,17 @@ func (c *ClientWithResponses) PostScepApplicationOperationWithBodyWithResponse(c
 	return ParsePostScepApplicationOperationResponse(rsp)
 }
 
+// GenerateScepDynamicChallengeWithResponse performs a POST /scep/{profileId}/challenge (the `GenerateScepDynamicChallenge` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GenerateScepDynamicChallengeWithResponse(ctx context.Context, profileId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GenerateScepDynamicChallengeResponse, error) {
+	rsp, err := c.GenerateScepDynamicChallenge(ctx, profileId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenerateScepDynamicChallengeResponse(rsp)
+}
+
 // GetScepOperationWithResponse performs a GET /scep/{profileId}/pkiclient.exe (the `GetScepOperation` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -548166,6 +552837,18 @@ func (c *ClientWithResponses) GetScepOperationWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetScepOperationResponse(rsp)
+}
+
+// PostScepOperationWithBodyWithResponse performs a POST /scep/{profileId}/pkiclient.exe (the `PostScepOperation` operationId) request,
+// with any type of body and a specified content type.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) PostScepOperationWithBodyWithResponse(ctx context.Context, profileId openapi_types.UUID, params *PostScepOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostScepOperationResponse, error) {
+	rsp, err := c.PostScepOperationWithBody(ctx, profileId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostScepOperationResponse(rsp)
 }
 
 // ParseGetEstApplicationCaCertsResponse parses an HTTP response from a GetEstApplicationCaCertsWithResponse call
@@ -555259,6 +559942,108 @@ func ParseCreateAzureAdcsAppConnectionResponse(rsp *http.Response) (*CreateAzure
 	return response, nil
 }
 
+// ParseCreateAzureDnsAppConnectionResponse parses an HTTP response from a CreateAzureDnsAppConnectionWithResponse call
+func ParseCreateAzureDnsAppConnectionResponse(rsp *http.Response) (*CreateAzureDnsAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateAzureDnsAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateAzureDnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateAzureDnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateAzureDnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateAzureDnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateAzureDnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    interface{}                                              `json:"message,omitempty"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateAzureDnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateAzureDnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateAzureKeyVaultAppConnectionResponse parses an HTTP response from a CreateAzureKeyVaultAppConnectionWithResponse call
 func ParseCreateAzureKeyVaultAppConnectionResponse(rsp *http.Response) (*CreateAzureKeyVaultAppConnectionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -558523,6 +563308,108 @@ func ParseUpdatePostgresAppConnectionResponse(rsp *http.Response) (*UpdatePostgr
 	return response, nil
 }
 
+// ParseCreatePowerdnsAppConnectionResponse parses an HTTP response from a CreatePowerdnsAppConnectionWithResponse call
+func ParseCreatePowerdnsAppConnectionResponse(rsp *http.Response) (*CreatePowerdnsAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePowerdnsAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreatePowerdnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreatePowerdnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreatePowerdnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreatePowerdnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreatePowerdnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    interface{}                                              `json:"message,omitempty"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreatePowerdnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreatePowerdnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateServiceNowAppConnectionResponse parses an HTTP response from a CreateServiceNowAppConnectionWithResponse call
 func ParseCreateServiceNowAppConnectionResponse(rsp *http.Response) (*CreateServiceNowAppConnectionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -558716,6 +563603,108 @@ func ParseCreateSshAppConnectionResponse(rsp *http.Response) (*CreateSshAppConne
 			Message    string                                              `json:"message"`
 			ReqId      string                                              `json:"reqId"`
 			StatusCode CreateSshAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateUltradnsAppConnectionResponse parses an HTTP response from a CreateUltradnsAppConnectionWithResponse call
+func ParseCreateUltradnsAppConnectionResponse(rsp *http.Response) (*CreateUltradnsAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateUltradnsAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateUltradnsAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateUltradnsAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateUltradnsAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                              `json:"details,omitempty"`
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateUltradnsAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateUltradnsAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    interface{}                                              `json:"message,omitempty"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateUltradnsAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                   `json:"error"`
+			Message    string                                                   `json:"message"`
+			ReqId      string                                                   `json:"reqId"`
+			StatusCode CreateUltradnsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -575209,6 +580198,119 @@ func ParseFinalizeAcmeOrderResponse(rsp *http.Response) (*FinalizeAcmeOrderRespo
 	return response, nil
 }
 
+// ParsePreviewPkiAlertCertificatesV1Response parses an HTTP response from a PreviewPkiAlertCertificatesV1WithResponse call
+func ParsePreviewPkiAlertCertificatesV1Response(rsp *http.Response) (*PreviewPkiAlertCertificatesV1Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PreviewPkiAlertCertificatesV1Response{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Certificates []struct {
+				CommonName     string             `json:"commonName"`
+				EnrollmentType *string            `json:"enrollmentType"`
+				Id             openapi_types.UUID `json:"id"`
+				NotAfter       time.Time          `json:"notAfter"`
+				NotBefore      time.Time          `json:"notBefore"`
+				ProfileName    *string            `json:"profileName"`
+				San            []string           `json:"san"`
+				SerialNumber   string             `json:"serialNumber"`
+				Status         string             `json:"status"`
+			} `json:"certificates"`
+			Total float32 `json:"total"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode PreviewPkiAlertCertificatesV1400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode PreviewPkiAlertCertificatesV1401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode PreviewPkiAlertCertificatesV1403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode PreviewPkiAlertCertificatesV1404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode PreviewPkiAlertCertificatesV1422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode PreviewPkiAlertCertificatesV1500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListPkiApplicationsResponse parses an HTTP response from a ListPkiApplicationsWithResponse call
 func ParseListPkiApplicationsResponse(rsp *http.Response) (*ListPkiApplicationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -587576,6 +592678,111 @@ func ParseGetCertificateResponse(rsp *http.Response) (*GetCertificateResponse, e
 	return response, nil
 }
 
+// ParseUpdateCertificateResponse parses an HTTP response from a UpdateCertificateWithResponse call
+func ParseUpdateCertificateResponse(rsp *http.Response) (*UpdateCertificateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCertificateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Metadata []struct {
+				Key   string `json:"key"`
+				Value string `json:"value"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateCertificate400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateCertificate401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                    `json:"details,omitempty"`
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateCertificate403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateCertificate404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    interface{}                                    `json:"message,omitempty"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateCertificate422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                         `json:"error"`
+			Message    string                                         `json:"message"`
+			ReqId      string                                         `json:"reqId"`
+			StatusCode UpdateCertificate500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetCertificateBundleResponse parses an HTTP response from a GetCertificateBundleWithResponse call
 func ParseGetCertificateBundleResponse(rsp *http.Response) (*GetCertificateBundleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -589980,6 +595187,22 @@ func ParsePostOcspRequestResponse(rsp *http.Response) (*PostOcspRequestResponse,
 	return response, nil
 }
 
+// ParseGetOcspRequestResponse parses an HTTP response from a GetOcspRequestWithResponse call
+func ParseGetOcspRequestResponse(rsp *http.Response) (*GetOcspRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetOcspRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseListSignersResponse parses an HTTP response from a ListSignersWithResponse call
 func ParseListSignersResponse(rsp *http.Response) (*ListSignersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -592238,6 +597461,109 @@ func ParseListSigningOperationsResponse(rsp *http.Response) (*ListSigningOperati
 			Message    string                                             `json:"message"`
 			ReqId      string                                             `json:"reqId"`
 			StatusCode ListSigningOperations500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSignerPublicKeyResponse parses an HTTP response from a GetSignerPublicKeyWithResponse call
+func ParseGetSignerPublicKeyResponse(rsp *http.Response) (*GetSignerPublicKeyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSignerPublicKeyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Algorithm string `json:"algorithm"`
+			PublicKey string `json:"publicKey"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSignerPublicKey400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSignerPublicKey401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                     `json:"details,omitempty"`
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSignerPublicKey403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSignerPublicKey404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    interface{}                                     `json:"message,omitempty"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSignerPublicKey422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                          `json:"error"`
+			Message    string                                          `json:"message"`
+			ReqId      string                                          `json:"reqId"`
+			StatusCode GetSignerPublicKey500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -670720,6 +676046,22 @@ func ParseGetSecretReferenceTreeV4Response(rsp *http.Response) (*GetSecretRefere
 	return response, nil
 }
 
+// ParseGenerateScepApplicationDynamicChallengeResponse parses an HTTP response from a GenerateScepApplicationDynamicChallengeWithResponse call
+func ParseGenerateScepApplicationDynamicChallengeResponse(rsp *http.Response) (*GenerateScepApplicationDynamicChallengeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenerateScepApplicationDynamicChallengeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseGetScepApplicationOperationResponse parses an HTTP response from a GetScepApplicationOperationWithResponse call
 func ParseGetScepApplicationOperationResponse(rsp *http.Response) (*GetScepApplicationOperationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -670752,6 +676094,22 @@ func ParsePostScepApplicationOperationResponse(rsp *http.Response) (*PostScepApp
 	return response, nil
 }
 
+// ParseGenerateScepDynamicChallengeResponse parses an HTTP response from a GenerateScepDynamicChallengeWithResponse call
+func ParseGenerateScepDynamicChallengeResponse(rsp *http.Response) (*GenerateScepDynamicChallengeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenerateScepDynamicChallengeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseGetScepOperationResponse parses an HTTP response from a GetScepOperationWithResponse call
 func ParseGetScepOperationResponse(rsp *http.Response) (*GetScepOperationResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -670761,6 +676119,22 @@ func ParseGetScepOperationResponse(rsp *http.Response) (*GetScepOperationRespons
 	}
 
 	response := &GetScepOperationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
+// ParsePostScepOperationResponse parses an HTTP response from a PostScepOperationWithResponse call
+func ParsePostScepOperationResponse(rsp *http.Response) (*PostScepOperationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostScepOperationResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

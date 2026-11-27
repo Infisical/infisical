@@ -10,7 +10,10 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"net/http"
 	"testing"
@@ -20,14 +23,17 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/id"
+	"github.com/google/uuid"
 	"github.com/smallstep/pkcs7"
 	"github.com/smallstep/scep"
 	"github.com/smallstep/scep/x509util"
 	"github.com/stretchr/testify/require"
 )
 
-// scepProfile is a profile of an application with SCEP enrollment on, issuing from an
-// internal CA under a policy that allows anything.
+// scepProfile is a profile with SCEP enrollment on, issuing from an internal CA under a
+// policy that allows anything. Its enrollment belongs to an application, or to the
+// profile itself when app is unset.
 type scepProfile struct {
 	api     *api.ClientWithResponses
 	project *pki.Project
@@ -48,6 +54,17 @@ func staticChallenge(password string) api.SetPkiApplicationScepEnrollmentJSONReq
 	}
 }
 
+// dynamicChallenge is an enrollment that takes one-time challenge passwords, at most
+// maxPending of them unused at once.
+func dynamicChallenge(maxPending int) api.SetPkiApplicationScepEnrollmentJSONRequestBody {
+	return api.SetPkiApplicationScepEnrollmentJSONRequestBody{
+		ChallengeType:              new(api.SetPkiApplicationScepEnrollmentJSONBodyChallengeTypeDynamic),
+		DynamicChallengeMaxPending: new(maxPending),
+		IncludeCaCertInResponse:    new(true),
+		AllowCertBasedRenewal:      new(true),
+	}
+}
+
 // withoutRenewal refuses a renewal signed by a previously issued certificate.
 func withoutRenewal(enrollment api.SetPkiApplicationScepEnrollmentJSONRequestBody) api.SetPkiApplicationScepEnrollmentJSONRequestBody {
 	enrollment.AllowCertBasedRenewal = new(false)
@@ -64,16 +81,42 @@ func newScepProfile(t *testing.T, tn *harness.Tenant, enrollment api.SetPkiAppli
 	return scepProfile{api: tn.Anonymous(t), project: proj, app: app, profile: profile, ca: pki.CACertificate(t, tn.Admin, ca.ID)}
 }
 
+// newStandaloneScepProfile is a profile with SCEP enrollment of its own, outside any
+// application, that takes one-time challenge passwords valid for expiryMinutes, at most
+// one of them unused at once.
+func newStandaloneScepProfile(t *testing.T, tn *harness.Tenant, expiryMinutes int) scepProfile {
+	t.Helper()
+	proj := pki.CertManager(t, tn)
+	ca := pki.NewInternalCA(t, proj)
+	policy := pki.NewPolicy(t, proj, pki.AllowAll(t))
+	var body api.CreateCertificateProfileJSONRequestBody
+	require.NoError(t, json.Unmarshal(fmt.Appendf(nil, `{
+		"projectId": %q, "slug": "profile-%s", "caId": %q, "certificatePolicyId": %q,
+		"enrollmentType": "scep",
+		"scepConfig": {"challengeType": "dynamic", "dynamicChallengeMaxPending": 1, "dynamicChallengeExpiryMinutes": %d, "includeCaCertInResponse": true, "allowCertBasedRenewal": true}
+	}`, proj.ID, id.Short(), ca.ID, policy.ID, expiryMinutes), &body))
+	res, err := tn.Admin.API.CreateCertificateProfileWithResponse(t.Context(), body)
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "creating the SCEP profile returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	profile := pki.Profile{ID: res.JSON200.CertificateProfile.Id, Slug: res.JSON200.CertificateProfile.Slug}
+	return scepProfile{api: tn.Anonymous(t), project: proj, profile: profile, ca: pki.CACertificate(t, tn.Admin, ca.ID)}
+}
+
 // operation sends a SCEP GET, which is how a client without POSTPKIOperation, or
 // any client for GetCACaps and GetCACert, talks to the server.
 func (p scepProfile) operation(t *testing.T, op string, message []byte) *api.GetScepApplicationOperationResponse {
 	t.Helper()
-	params := &api.GetScepApplicationOperationParams{Operation: op}
+	var encoded *string
 	if message != nil {
-		encoded := base64.StdEncoding.EncodeToString(message)
-		params.Message = &encoded
+		encoded = new(base64.StdEncoding.EncodeToString(message))
 	}
-	res, err := p.api.GetScepApplicationOperationWithResponse(t.Context(), p.app.ID, p.profile.ID, params)
+	if p.app.ID == uuid.Nil {
+		res, err := p.api.GetScepOperationWithResponse(t.Context(), p.profile.ID, &api.GetScepOperationParams{Operation: op, Message: encoded})
+		require.NoError(t, err)
+		return &api.GetScepApplicationOperationResponse{Body: res.Body, HTTPResponse: res.HTTPResponse}
+	}
+	res, err := p.api.GetScepApplicationOperationWithResponse(t.Context(), p.app.ID, p.profile.ID,
+		&api.GetScepApplicationOperationParams{Operation: op, Message: encoded})
 	require.NoError(t, err)
 	return res
 }
@@ -135,6 +178,13 @@ type request struct {
 // signer, with password as the CSR's challengePassword (none when empty).
 func (p scepProfile) pkcsReq(t *testing.T, signer device, commonName, password string) request {
 	t.Helper()
+	return p.csrRequest(t, scep.PKCSReq, signer, commonName, password)
+}
+
+// csrRequest builds a message of msgType carrying a CSR naming commonName on a fresh
+// key, signed by signer, with password as the CSR's challengePassword (none when empty).
+func (p scepProfile) csrRequest(t *testing.T, msgType scep.MessageType, signer device, commonName, password string) request {
+	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	der, err := x509util.CreateCertificateRequest(rand.Reader, &x509util.CertificateRequest{
@@ -144,22 +194,73 @@ func (p scepProfile) pkcsReq(t *testing.T, signer device, commonName, password s
 	require.NoError(t, err)
 	csr, err := x509.ParseCertificateRequest(der)
 	require.NoError(t, err)
-
 	ra := p.caCerts(t)[0]
+	return request{msg: message(t, msgType, ra, signer, csr), ra: ra, key: key}
+}
+
+// message wraps a CSR in a message of msgType encrypted to the RA, signed by signer. Its
+// transaction ID is derived from the CSR's key, so the same CSR names the same
+// transaction.
+func message(t *testing.T, msgType scep.MessageType, ra *x509.Certificate, signer device, csr *x509.CertificateRequest) *scep.PKIMessage {
+	t.Helper()
 	msg, err := scep.NewCSRRequest(csr, &scep.PKIMessage{
-		MessageType: scep.PKCSReq,
+		MessageType: msgType,
 		Recipients:  []*x509.Certificate{ra},
 		SignerKey:   signer.key,
 		SignerCert:  signer.cert,
 	})
 	require.NoError(t, err)
-	return request{msg: msg, ra: ra, key: key}
+	return msg
+}
+
+// poll asks with GetCertInitial (CertPoll) for the outcome of an earlier request the
+// signer sent, and reads the CertRep it gets back.
+func (p scepProfile) poll(t *testing.T, earlier request, signer device) enrollment {
+	t.Helper()
+	req := request{msg: p.certPoll(t, earlier, signer), ra: earlier.ra, key: earlier.key}
+	return readCertRep(t, p.post(t, req.msg.Raw), req, signer)
+}
+
+// certPoll is a CertPoll for an earlier request: an IssuerAndSubject naming the CA and
+// the requested subject, encrypted to the RA and sent under the earlier transaction ID
+// (RFC 8894, section 3.3.3).
+func (p scepProfile) certPoll(t *testing.T, earlier request, signer device) *scep.PKIMessage {
+	t.Helper()
+	payload, err := asn1.Marshal(struct {
+		Issuer  asn1.RawValue
+		Subject asn1.RawValue
+	}{asn1.RawValue{FullBytes: p.ca.RawSubject}, asn1.RawValue{FullBytes: earlier.msg.CSR.RawSubject}})
+	require.NoError(t, err)
+	enveloped, err := pkcs7.Encrypt(payload, []*x509.Certificate{earlier.ra})
+	require.NoError(t, err)
+	signed, err := pkcs7.NewSignedData(enveloped)
+	require.NoError(t, err)
+	nonce := make([]byte, 16)
+	_, err = rand.Read(nonce)
+	require.NoError(t, err)
+	require.NoError(t, signed.AddSigner(signer.cert, signer.key, pkcs7.SignerInfoConfig{
+		ExtraSignedAttributes: []pkcs7.Attribute{
+			{Type: oidTransactionID, Value: earlier.msg.TransactionID},
+			{Type: oidMessageType, Value: scep.CertPoll},
+			{Type: oidSenderNonce, Value: nonce},
+		},
+	}))
+	raw, err := signed.Finish()
+	require.NoError(t, err)
+	return &scep.PKIMessage{Raw: raw, MessageType: scep.CertPoll, TransactionID: earlier.msg.TransactionID}
 }
 
 // post sends a PKIOperation as a POST body, which is how sscep and any client that
 // sees POSTPKIOperation in GetCACaps sends one.
 func (p scepProfile) post(t *testing.T, message []byte) []byte {
 	t.Helper()
+	if p.app.ID == uuid.Nil {
+		res, err := p.api.PostScepOperationWithBodyWithResponse(t.Context(), p.profile.ID,
+			&api.PostScepOperationParams{Operation: new("PKIOperation")}, "application/x-pki-message", bytes.NewReader(message))
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "PKIOperation returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		return res.Body
+	}
 	res, err := p.api.PostScepApplicationOperationWithBodyWithResponse(t.Context(), p.app.ID, p.profile.ID,
 		&api.PostScepApplicationOperationParams{Operation: new("PKIOperation")}, "application/x-pki-message", bytes.NewReader(message))
 	require.NoError(t, err)
@@ -204,6 +305,7 @@ func readCertRep(t *testing.T, raw []byte, req request, signer device) enrollmen
 		require.NoError(t, p7.UnmarshalSignedAttribute(oidFailInfo, &out.failInfo))
 	}
 	if out.status != scep.SUCCESS {
+		require.Empty(t, p7.Content, "a %s CertRep carries content", out.status)
 		return out
 	}
 
@@ -224,6 +326,7 @@ var (
 	oidMessageType   = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 2}
 	oidPKIStatus     = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 3}
 	oidFailInfo      = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 4}
+	oidSenderNonce   = asn1.ObjectIdentifier{2, 16, 840, 1, 113733, 1, 9, 5}
 )
 
 // verifyAsSent checks the first signer's RSA signature over its signed attributes
@@ -274,4 +377,41 @@ func (p scepProfile) mustEnroll(t *testing.T, commonName, password string) devic
 	got, key := p.enroll(t, newDevice(t, commonName), commonName, password)
 	require.Equalf(t, scep.SUCCESS, got.status, "enrollment failed: %s", got.failInfo)
 	return device{key: key, cert: got.cert}
+}
+
+// challenge asks for a one-time challenge password as `as`.
+func (p scepProfile) challenge(t *testing.T, as *harness.Principal) *api.GenerateScepApplicationDynamicChallengeResponse {
+	t.Helper()
+	res, err := as.API.GenerateScepApplicationDynamicChallengeWithResponse(t.Context(), p.app.ID, p.profile.ID)
+	require.NoError(t, err)
+	return res
+}
+
+// mustChallenge is a one-time challenge password the principal was given.
+func (p scepProfile) mustChallenge(t *testing.T, as *harness.Principal) string {
+	t.Helper()
+	res := p.challenge(t, as)
+	require.Equalf(t, http.StatusOK, res.StatusCode(), "generating a challenge: %s", apierr.Body(res.Body))
+	require.NotEmpty(t, res.Body)
+	return string(res.Body)
+}
+
+// certificates maps the serial of each certificate the profile issued to its ID, as the
+// tenant admin finds them through the profile's certificate requests.
+// ListCertificateProfileCertificates would be the direct read, but it fails
+// (TestCertificateProfile_KnownIssues).
+func (p scepProfile) certificates(t *testing.T) map[string]uuid.UUID {
+	t.Helper()
+	out := map[string]uuid.UUID{}
+	for _, r := range pki.ProfileRequests(t, p.project, p.profile).JSON200.CertificateRequests {
+		if r.Certificate != nil {
+			out[r.Certificate.SerialNumber] = uuid.MustParse(r.Certificate.Id)
+		}
+	}
+	return out
+}
+
+// serial is a certificate's serial number as Infisical lists it.
+func serial(cert *x509.Certificate) string {
+	return hex.EncodeToString(cert.SerialNumber.Bytes())
 }

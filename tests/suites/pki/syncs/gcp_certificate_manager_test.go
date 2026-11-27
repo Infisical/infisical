@@ -139,6 +139,7 @@ func TestGcpCertificateManagerPkiSync_Sync(t *testing.T) {
 		require.Len(t, state.Certificates, 1)
 		require.Contains(t, state.Certificates, name)
 		require.True(t, strings.HasPrefix(state.Certificates[name].PemCertificate, strings.TrimSpace(renewed.JSON200.Certificate)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, state.Certificates[name].PemCertificate, state.Certificates[name].PemPrivateKey)
 		require.Equal(t, []string{name}, state.CertificateMapEntries[s.entry()].Certificates)
 	})
 
@@ -165,6 +166,7 @@ func TestGcpCertificateManagerPkiSync_Sync(t *testing.T) {
 		require.Len(t, state.Certificates, 1)
 		require.Contains(t, state.Certificates, fresh)
 		require.True(t, strings.HasPrefix(state.Certificates[fresh].PemCertificate, strings.TrimSpace(renewed.JSON200.Certificate)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, state.Certificates[fresh].PemCertificate, state.Certificates[fresh].PemPrivateKey)
 		require.Equal(t, []string{fresh}, state.CertificateMapEntries[s.entry()].Certificates)
 	})
 

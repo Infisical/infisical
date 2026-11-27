@@ -57,4 +57,41 @@ func TestApplication_Delete(t *testing.T) {
 		require.Equal(t, "You are not a member of this certificate-application.", apierr.Message(res.Body))
 		require.Zero(t, pki.Requests(t, g.Project, g.Profile))
 	})
+
+	t.Run("should remove the application from reads and lists when an application admin deletes it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		admin := pki.NewMember(t, app, "admin-"+id.Short(), "admin")
+
+		// Action
+		res, err := admin.API.DeletePkiApplicationWithResponse(t.Context(), app.ID)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting the application: %s", apierr.Body(res.Body))
+		got, err := tn.Admin.API.GetPkiApplicationWithResponse(t.Context(), app.ID)
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusNotFound, got.StatusCode(), "reading the deleted application: %s", apierr.Body(got.Body))
+		require.NotContains(t, applicationIDs(t, tn), app.ID)
+	})
+
+	t.Run("should refuse an application auditor's delete and keep the application", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		app := pki.NewApplication(t, pki.CertManager(t, tn))
+		auditor := pki.NewMember(t, app, "auditor-"+id.Short(), "auditor")
+
+		// Action
+		res, err := auditor.API.DeletePkiApplicationWithResponse(t.Context(), app.ID)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusForbidden, res.StatusCode(), "answered: %s", apierr.Body(res.Body))
+		require.Contains(t, applicationIDs(t, tn), app.ID)
+	})
 }

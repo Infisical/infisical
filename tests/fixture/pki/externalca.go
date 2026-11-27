@@ -43,6 +43,49 @@ func NewAwsPcaCA(tt *testing.T, p *Project) AwsPcaCA {
 	return AwsPcaCA{CA: CA{ID: res.JSON200.Id}, Conn: conn, Acct: acct, ARN: arn}
 }
 
+// AwsAcmPublicCA is an AWS ACM Public CA CA with the connection and account behind it,
+// writing its validation records to a Route 53 hosted zone of the same account.
+type AwsAcmPublicCA struct {
+	CA
+	Conn *fixture.AppConnection
+	Acct *aws.ControlPlane
+	// Zone is the hosted zone's id and ZoneName the domain it serves.
+	Zone     string
+	ZoneName string
+}
+
+// NewAwsAcmPublicCA is an active AWS ACM Public CA CA on a new connection's own account,
+// with a hosted zone for a domain of its own.
+func NewAwsAcmPublicCA(tt *testing.T, p *Project) AwsAcmPublicCA {
+	tt.Helper()
+	conn := fixture.NewAppConnection(tt, p.tn, fixture.AWSAccessKeyAppConnection)
+	acct := aws.Open(tt, conn.FakenetAdmin(tt), conn.Nonce())
+	zoneName := id.Short() + ".acm.test"
+	zone := "Z" + id.Short()
+	acct.Seed(tt, aws.SeedHostedZone(zone, zoneName))
+	body := api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONRequestBody{
+		ProjectId: &p.ID,
+		Name:      "acm-" + id.Short(),
+		Status:    api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONBodyStatusActive,
+	}
+	body.Configuration.AppConnectionId = conn.ID
+	body.Configuration.DnsAppConnectionId = conn.ID
+	body.Configuration.HostedZoneId = zone
+	body.Configuration.Region = api.CreateAwsAcmPublicCaCertificateAuthorityV1JSONBodyConfigurationRegionUsEast1
+	res, err := p.tn.Admin.API.CreateAwsAcmPublicCaCertificateAuthorityV1WithResponse(tt.Context(), body)
+	require.NoError(tt, err, "creating an AWS ACM Public CA CA")
+	require.NotNilf(tt, res.JSON200, "creating an AWS ACM Public CA CA returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	return AwsAcmPublicCA{CA: CA{ID: res.JSON200.Id}, Conn: conn, Acct: acct, Zone: zone, ZoneName: zoneName}
+}
+
+// AcmCertificate is a request for a server certificate for name, valid for the fixed
+// validity ACM issues, which is the only one it accepts.
+func AcmCertificate(name string) api.CreateCertificateJSONRequestBody {
+	body := ServerCertificate(name)
+	body.Attributes.Ttl = new("198d")
+	return body
+}
+
 // NewAzureADCSCA is an active Azure AD CS CA on a fake certsrv of a new connection's own.
 func NewAzureADCSCA(tt *testing.T, p *Project) (CA, *azureadcs.ControlPlane) {
 	tt.Helper()

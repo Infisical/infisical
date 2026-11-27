@@ -1,7 +1,12 @@
 // Package apierr formats API responses for failure messages.
 package apierr
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 // Body truncates a response body to something that fits in a test failure.
 //
@@ -23,4 +28,16 @@ func Message(b []byte) string {
 	}
 	_ = json.Unmarshal(b, &e)
 	return e.Message
+}
+
+// Public is an error body as the caller sees it, minus the per-request reqId, so two
+// responses can be compared field by field. It fails the test unless the body is a JSON
+// object, since two bodies that fail to parse would otherwise compare equal.
+func Public(t testing.TB, b []byte) map[string]any {
+	t.Helper()
+	var e map[string]any
+	require.NoErrorf(t, json.Unmarshal(b, &e), "error body is not a JSON object: %s", Body(b))
+	require.NotNilf(t, e, "error body is not a JSON object: %s", Body(b))
+	delete(e, "reqId")
+	return e
 }

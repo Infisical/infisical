@@ -105,6 +105,7 @@ func TestKempLoadMasterPkiSync_Sync(t *testing.T) {
 		certs := s.lm.State(t).Certificates
 		require.Len(t, certs, 1)
 		require.True(t, strings.HasPrefix(certs[name], strings.TrimSpace(renewed.JSON200.Certificate)))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, certs[name], certs[name])
 	})
 
 	t.Run("should unbind the certificate from the Virtual Service, keeping the ones it did not add, then delete it", func(t *testing.T) {

@@ -124,7 +124,7 @@ func TestLinuxServerPkiSync_Sync(t *testing.T) {
 		require.Len(t, files, 3, "the renewed certificate should replace the certificate, key and chain files, not add more: %v", fileNames(files))
 		leaf := pki.ParseLeaf(t, renewed.JSON200.Certificate)
 		require.Equal(t, leaf.Raw, pki.ParseLeaf(t, files[s.base+".pem"].Content).Raw)
-		require.Equal(t, leaf.PublicKey, acmPublicKey(t, files[s.base+".key"].Content))
+		requireRenewedKey(t, g.Operator, cert, renewed.JSON200.CertificateId, files[s.base+".pem"].Content, files[s.base+".key"].Content)
 	})
 
 	t.Run("should mark the certificate failed and write nothing when the destination directory does not exist", func(t *testing.T) {
