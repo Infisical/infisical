@@ -93,7 +93,7 @@ export const KmipCertificateSheet = ({
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent pending={pending}>
+      <SheetContent size="md" pending={pending}>
         <SheetHeader>
           <SheetTitle>{`Certificate for ${client.name}`}</SheetTitle>
           <SheetDescription>

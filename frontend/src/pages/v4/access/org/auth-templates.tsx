@@ -252,7 +252,7 @@ const TemplateSheet = ({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent pending={pending}>
+      <SheetContent size="md" pending={pending}>
         <SheetHeader>
           <SheetTitle>
             {isEdit

@@ -119,6 +119,7 @@ export function VaultImportSheet({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open
         title="Import from HashiCorp Vault"
         description={`Secrets go to ${environment.label} at ${path}.`}

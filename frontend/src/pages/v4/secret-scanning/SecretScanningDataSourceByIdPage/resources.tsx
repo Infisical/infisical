@@ -235,7 +235,7 @@ const AddResourceSheet = ({
         onClose();
       }}
     >
-      <SheetContent onOpenAutoFocus={(event) => event.preventDefault()}>
+      <SheetContent size="md" onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Add {resource.singularNoun}</SheetTitle>
           <SheetDescription>
