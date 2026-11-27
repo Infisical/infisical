@@ -1108,8 +1108,10 @@ charge after it, because the cost is unknown until the secrets are loaded: one r
 next one that is refused. Do not move the charge ahead of the read or skip it for a 304, which already costs nothing.
 `SECRET_READ_ORG_BUDGET_MODE` is `off` by default; set `observe` to count and record `would_refuse` while refusing nothing,
 or `enforce` to refuse with a 429 and `Retry-After`. It runs only where the rate limiter is registered (cloud production). A key store
-failure allows the read. Only the v3 and v4 routes that list secrets are charged. Routes that return a single secret are
-left out on purpose, since they cannot return a large number of secrets, and so are the dashboard and secret import routes.
+failure allows the read. The v3 and v4 routes that list secrets are charged, and so are the secret import routes that
+list imported secrets (`/secret-imports/secrets`), which pass their result as
+`countReturnedSecrets({ secrets: [], imports })`. Routes that return a single secret are left out on purpose, since they
+cannot return a large number of secrets, and so are the dashboard routes.
 
 A read at or over budget records `infisical.secret.rate_limit.exceeded.count` (`recordSecretRateLimitExceededMetric`,
 bucket `org_budget`, outcome `refused` or `would_refuse`), and every charge records the window's running total in
@@ -1150,15 +1152,16 @@ service takes no slot. A route that does neither is outside the budget. The slot
   secret change. `getSecrets` in `secret-v2-bridge-service.ts` is the reference.
 - Call `reportSize` as soon as the count is known (after a cache hit is parsed, after the rows are fetched, after imports
   are expanded) and again whenever it changes, before the expensive work that follows (decryption, reference expansion).
-  `fnSecretsV2FromImports` takes an `onSecretsLoaded` callback that runs after each import level's rows load and
-  before they are decrypted; pass `reportSize` through it.
+  `fnSecretsV2FromImports` and the legacy `fnSecretsFromImports` take an `onSecretsLoaded` callback that runs after
+  each import level's rows load and before they are decrypted; pass `reportSize` through it, as
+  `getRawSecretsFromImports` in `secret-import-service.ts` does.
   A report that grows the read past the room other reads leave refuses it there, a 503 in enforce mode and
   `would_refuse` in observe mode, and the size is remembered so the next attempt is refused at admission. Admission
   runs on an estimate, so without this check a cold burst is admitted at the default weight and lands far past the
   budget. A `catch` around `reportSize` must rethrow `ServerBusyError`, as the cache hit path of `getSecrets` does,
   or a refusal turns into a cache miss and a full reload.
-- Work that never calls `reportSize` holds its estimate until it finishes. The legacy V1 project path does this
-  today, and the secret import routes report only after the imports are loaded.
+- Work that never calls `reportSize` holds its estimate until it finishes. The legacy V1 project path of
+  `getSecretsRaw` does this today.
 - A read larger than the whole budget is admitted only when the instance holds nothing, so it runs alone.
 
 A refusal records `infisical.secret.rate_limit.exceeded.count` with bucket `read_budget`. The instance also reports

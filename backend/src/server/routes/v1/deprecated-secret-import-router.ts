@@ -6,6 +6,7 @@ import { ApiDocsTags, SECRET_IMPORTS } from "@app/lib/api-docs";
 import { canonicalizeSecretPath, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { countReturnedSecrets } from "@app/server/plugins/secrets-org-budget";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { secretRawSchema } from "../sanitizedSchemas";
@@ -466,19 +467,21 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.OAUTH
     ]),
     handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
       const readSlot = server.secretReadSlot(req, reply);
-      const importedSecrets = await readSlot(async (reportSize) => {
-        const secrets = await server.services.secretImport.getSecretsFromImports({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          ...req.query,
-          projectId: req.query.workspaceId
-        });
-        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
-        return secrets;
+      const importedSecrets = await server.services.secretImport.getSecretsFromImports({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query,
+        projectId: req.query.workspaceId,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
       return { secrets: importedSecrets };
     }
   });
@@ -523,19 +526,21 @@ export const registerDeprecatedSecretImportRouter = async (server: FastifyZodPro
       AuthMode.OAUTH
     ]),
     handler: async (req, reply) => {
+      const orgBudget = server.secretsOrgBudget(req, reply);
       const readSlot = server.secretReadSlot(req, reply);
-      const importedSecrets = await readSlot(async (reportSize) => {
-        const secrets = await server.services.secretImport.getRawSecretsFromImports({
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          ...req.query,
-          projectId: req.query.workspaceId
-        });
-        reportSize(secrets.reduce((count, folder) => count + folder.secrets.length, 0));
-        return secrets;
+      const importedSecrets = await server.services.secretImport.getRawSecretsFromImports({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query,
+        projectId: req.query.workspaceId,
+        secretReadSlot: async (work, opts) => {
+          await orgBudget.check();
+          return readSlot(work, opts);
+        }
       });
+      orgBudget.charge(countReturnedSecrets({ secrets: [], imports: importedSecrets }));
       return { secrets: importedSecrets };
     }
   });

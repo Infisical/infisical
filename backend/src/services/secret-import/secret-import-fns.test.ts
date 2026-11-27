@@ -216,4 +216,36 @@ describe("fnSecretsFromImports", () => {
 
     expect(findByManySecretPath).toHaveBeenCalledTimes(2);
   });
+
+  it("reports the running total of rows after each level loads", async () => {
+    const { args, rootImport, find, findByFolderIds } = makeLegacyArgs();
+    find
+      .mockResolvedValueOnce([
+        { id: "A", folderId: "shared-folder" },
+        { id: "B", folderId: "shared-folder" }
+      ])
+      .mockResolvedValueOnce([{ id: "C", folderId: "shared-folder" }]);
+    findByFolderIds.mockResolvedValueOnce([
+      { ...rootImport, id: "deeper-import", folderId: "shared-folder", importPath: "/deeper" }
+    ] as Awaited<ReturnType<LegacyArgs["secretImportDAL"]["findByFolderIds"]>>);
+    const reported: number[] = [];
+
+    await fnSecretsFromImports({ ...args, onSecretsLoaded: (count) => reported.push(count) });
+
+    expect(reported).toEqual([2, 3]);
+  });
+
+  it("loads no deeper level when the loaded rows are refused", async () => {
+    const { args, findByFolderIds } = makeLegacyArgs();
+
+    await expect(
+      fnSecretsFromImports({
+        ...args,
+        onSecretsLoaded: () => {
+          throw new Error("refused");
+        }
+      })
+    ).rejects.toThrow("refused");
+    expect(findByFolderIds).not.toHaveBeenCalled();
+  });
 });

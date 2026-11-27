@@ -143,7 +143,8 @@ export const fnSecretsFromImports = async ({
   secretImportDAL,
   depth = 0,
   cyclicDetector = new Set(),
-  abortSignal
+  abortSignal,
+  onSecretsLoaded
 }: {
   allowedImports: (Omit<TSecretImports, "importEnv"> & {
     importEnv: { id: string; slug: string; name: string };
@@ -154,6 +155,7 @@ export const fnSecretsFromImports = async ({
   depth?: number;
   cyclicDetector?: Set<string>;
   abortSignal?: AbortSignal;
+  onSecretsLoaded?: (loadedSecretCount: number) => void;
 }) => {
   // avoid going more than a depth
   if (depth >= LEVEL_BREAK) return [];
@@ -195,6 +197,7 @@ export const fnSecretsFromImports = async ({
       sort: [["id", "asc"]]
     }
   );
+  onSecretsLoaded?.(importedSecrets.length);
 
   const importedSecretsGroupByFolderId = groupBy(importedSecrets, (i) => i.folderId);
 
@@ -213,7 +216,8 @@ export const fnSecretsFromImports = async ({
       secretDAL,
       depth: depth + 1,
       cyclicDetector,
-      abortSignal
+      abortSignal,
+      onSecretsLoaded: (deeperSecretCount) => onSecretsLoaded?.(importedSecrets.length + deeperSecretCount)
     });
   }
   const secretsFromdeeperImportGroupedByFolderId = groupBy(secretsFromDeeperImports, (i) => i.importFolderId);

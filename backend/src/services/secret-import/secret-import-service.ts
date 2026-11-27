@@ -20,6 +20,7 @@ import {
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
+import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -75,6 +76,14 @@ const ERR_NON_REPLICATION_IMPORT_UNDER_POLICY = (policyName: string) =>
   });
 
 export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceFactory>;
+
+const countImportedSecrets = (imports: { secrets: unknown[] }[]) =>
+  imports.reduce((count, { secrets }) => count + secrets.length, 0);
+
+const getImportedSecretsSizeKey = (
+  kind: "imports" | "imports-raw",
+  { projectId, environment, secretPath }: { projectId: string; environment: string; secretPath: string }
+) => `${projectId}:${generateCacheKeyFromData({ kind, environment, secretPath })}`;
 
 export const secretImportServiceFactory = ({
   secretImportDAL,
@@ -896,7 +905,8 @@ export const secretImportServiceFactory = ({
     actor,
     actorAuthMethod,
     actorId,
-    actorOrgId
+    actorOrgId,
+    secretReadSlot
   }: TGetSecretsFromImportDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -928,7 +938,23 @@ export const secretImportServiceFactory = ({
       })
     );
 
-    return fnSecretsFromImports({ allowedImports, folderDAL, secretDAL, secretImportDAL });
+    const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+      const importedSecrets = await fnSecretsFromImports({
+        allowedImports,
+        folderDAL,
+        secretDAL,
+        secretImportDAL,
+        onSecretsLoaded: reportSize
+      });
+      reportSize(countImportedSecrets(importedSecrets));
+      return importedSecrets;
+    };
+
+    return secretReadSlot
+      ? secretReadSlot(loadSecrets, {
+          sizeKey: getImportedSecretsSizeKey("imports", { projectId, environment, secretPath })
+        })
+      : loadSecrets();
   };
 
   const getRawSecretsFromImports = async ({
@@ -938,7 +964,8 @@ export const secretImportServiceFactory = ({
     actor,
     actorAuthMethod,
     actorId,
-    actorOrgId
+    actorOrgId,
+    secretReadSlot
   }: TGetSecretsFromImportDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -965,34 +992,40 @@ export const secretImportServiceFactory = ({
     ).filter((imp) => !imp.isAccessRevoked);
 
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
+    const sizeKey = getImportedSecretsSizeKey("imports-raw", { projectId, environment, secretPath });
     if (shouldUseSecretV2Bridge) {
       const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const importedSecrets = await fnSecretsV2FromImports({
-        secretImports,
-        folderDAL,
-        viewSecretValue: true,
-        secretDAL: secretV2BridgeDAL,
-        secretImportDAL,
-        decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
-        importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
-        hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-            environment: expandEnvironment,
-            secretPath: expandSecretPath,
-            secretName: expandSecretKey,
-            secretTags: expandSecretTags
-          }),
-        projectId,
-        projectFolderGrantDAL,
-        actorOrgId,
-        orgDAL,
-        kmsDataKeyService
-      });
+      const loadSecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+        const importedSecrets = await fnSecretsV2FromImports({
+          secretImports,
+          folderDAL,
+          viewSecretValue: true,
+          secretDAL: secretV2BridgeDAL,
+          secretImportDAL,
+          decryptor: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : ""),
+          importAccessScopeByFolderId: new Map([[folder.id, { environment, secretPath }]]),
+          hasSecretAccess: (expandEnvironment, expandSecretPath, expandSecretKey, expandSecretTags) =>
+            hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
+              environment: expandEnvironment,
+              secretPath: expandSecretPath,
+              secretName: expandSecretKey,
+              secretTags: expandSecretTags
+            }),
+          projectId,
+          projectFolderGrantDAL,
+          actorOrgId,
+          orgDAL,
+          kmsDataKeyService,
+          onSecretsLoaded: reportSize
+        });
+        reportSize(countImportedSecrets(importedSecrets));
+        return importedSecrets;
+      };
 
-      return importedSecrets;
+      return secretReadSlot ? secretReadSlot(loadSecrets, { sizeKey }) : loadSecrets();
     }
 
     if (!botKey)
@@ -1007,21 +1040,27 @@ export const secretImportServiceFactory = ({
         secretPath: el.importPath
       })
     );
-    const importedSecrets = await fnSecretsFromImports({
-      allowedImports,
-      folderDAL,
-      secretDAL,
-      secretImportDAL
-    });
-    return importedSecrets.map((el) => ({
-      ...el,
-      secrets: el.secrets.map((encryptedSecret) =>
-        decryptSecretRaw(
-          { ...encryptedSecret, workspace: projectId, environment, secretPath, secretValueHidden: false },
-          botKey
+    const loadLegacySecrets = async (reportSize: (secretCount: number) => void = () => {}) => {
+      const importedSecrets = await fnSecretsFromImports({
+        allowedImports,
+        folderDAL,
+        secretDAL,
+        secretImportDAL,
+        onSecretsLoaded: reportSize
+      });
+      reportSize(countImportedSecrets(importedSecrets));
+      return importedSecrets.map((el) => ({
+        ...el,
+        secrets: el.secrets.map((encryptedSecret) =>
+          decryptSecretRaw(
+            { ...encryptedSecret, workspace: projectId, environment, secretPath, secretValueHidden: false },
+            botKey
+          )
         )
-      )
-    }));
+      }));
+    };
+
+    return secretReadSlot ? secretReadSlot(loadLegacySecrets, { sizeKey }) : loadLegacySecrets();
   };
 
   const getImportsMultiEnv = async ({
