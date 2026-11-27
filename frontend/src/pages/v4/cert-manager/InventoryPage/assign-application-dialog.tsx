@@ -63,7 +63,8 @@ const AssignForm = ({ cert, onClose }: { cert: TCertificate; onClose: () => void
                 <Combobox
                   label="Application"
                   placeholder="Select an application"
-                  emptyText={isPending ? "Loading" : "No applications found"}
+                  emptyText={isPending ? "Loading" : "No applications yet"}
+                  noMatchText="No matching applications"
                   options={options}
                   value={applicationId}
                   onValueChange={setApplicationId}

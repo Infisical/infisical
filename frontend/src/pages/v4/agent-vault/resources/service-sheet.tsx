@@ -724,8 +724,10 @@ export const ServiceSheet = ({
             mono
             value={form.hosts}
             invalid={Boolean(err("hosts") ?? err("hostDraft"))}
-            placeholder={form.hostDraft || "api.example.com"}
-            onChange={(hosts) => patch({ hosts, hostDraft: "" })}
+            placeholder="api.example.com"
+            draft={form.hostDraft}
+            onDraftChange={(hostDraft) => set("hostDraft", hostDraft)}
+            onChange={(hosts) => set("hosts", hosts)}
           />
         </Field>
         <Field label="Allowed methods" error={err("methods")} wide>

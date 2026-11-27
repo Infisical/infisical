@@ -199,7 +199,7 @@ const ScanRuns = ({
       render: (scan) =>
         scan.completedAt
           ? `${((new Date(scan.completedAt).getTime() - new Date(scan.startedAt).getTime()) / 1000).toFixed(1)}s`
-          : "-"
+          : null
     },
     {
       id: "message",
@@ -309,14 +309,14 @@ const FoundInstallations = ({
       id: "certificate",
       header: "Certificate",
       width: 200,
-      text: (installation) => installation.primaryCertName || "N/A",
-      render: (installation) => installation.primaryCertName || "N/A"
+      text: (installation) => installation.primaryCertName ?? "",
+      render: (installation) => installation.primaryCertName
     },
     {
       id: "gateway",
       header: "Gateway",
       width: 140,
-      render: (installation) => installation.locationDetails.gatewayName || "N/A"
+      render: (installation) => installation.locationDetails.gatewayName
     },
     {
       id: "seen",

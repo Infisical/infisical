@@ -140,7 +140,7 @@ const LinkedResources = ({ orgId, connectorId }: { orgId: string; connectorId: s
       id: "expires",
       header: "Expires",
       width: 140,
-      render: (cert) => (cert.notAfter ? format(new Date(cert.notAfter), "MMM d, yyyy") : "-")
+      render: (cert) => (cert.notAfter ? format(new Date(cert.notAfter), "MMM d, yyyy") : null)
     }
   ];
 

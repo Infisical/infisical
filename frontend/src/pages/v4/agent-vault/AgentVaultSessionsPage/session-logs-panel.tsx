@@ -10,7 +10,7 @@ import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Meta } from "@infisical/cipher/ui/text";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { Link } from "@tanstack/react-router";
-import { endOfDay, format, startOfDay, subHours, subMinutes } from "date-fns";
+import { endOfMinute, format, startOfDay, subHours, subMinutes } from "date-fns";
 
 import {
   ProjectPermissionActions,
@@ -287,7 +287,7 @@ const LOG_COLUMNS: DataTableColumn<TAgentVaultSessionLogRecord>[] = [
     header: "Upstream",
     width: 96,
     mono: true,
-    render: (record) => upstreamOf(record) ?? <Meta>-</Meta>
+    render: (record) => upstreamOf(record)
   },
   {
     id: "outcome",
@@ -298,16 +298,6 @@ const LOG_COLUMNS: DataTableColumn<TAgentVaultSessionLogRecord>[] = [
 ];
 
 const OUTCOME_FIELD = "outcome";
-
-const rangeOf = (value: { from?: Date; to?: Date } | undefined): TLogRange | null => {
-  if (!value?.from || !value.to) return null;
-  const isWholeDays =
-    value.from.getTime() === startOfDay(value.from).getTime() &&
-    value.to.getTime() === startOfDay(value.to).getTime();
-  return isWholeDays
-    ? { from: value.from, to: endOfDay(value.to) }
-    : { from: value.from, to: value.to };
-};
 
 const livePresets = (): DateRangePreset[] => {
   const now = new Date();
@@ -405,7 +395,6 @@ export const SessionLogsPanel = ({
   }, [canAddService, bundle, bundleDetail]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
-  const [rangeDraft, setRangeDraft] = useState<{ from?: Date; to?: Date }>();
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const attachScroller = useCallback((node: HTMLDivElement | null) => {
     if (node) setScroller(node);
@@ -809,17 +798,18 @@ export const SessionLogsPanel = ({
               aria-label="Time range"
               placeholder="Entire session"
               align="end"
-              value={rangeDraft?.from ? { from: rangeDraft.from, to: rangeDraft.to } : undefined}
+              withTime
+              value={range ?? undefined}
               presets={isActive ? livePresets() : undefined}
               disabled={[
                 { before: startOfDay(new Date(session.createdAt)) },
                 { after: new Date() }
               ]}
-              onValueChange={(next) => {
-                setRangeDraft(next);
-                const picked = rangeOf(next);
-                if (picked || !next) applyRange(picked);
-              }}
+              onValueChange={(next) =>
+                applyRange(
+                  next?.from && next.to ? { from: next.from, to: endOfMinute(next.to) } : null
+                )
+              }
             />
           }
         />

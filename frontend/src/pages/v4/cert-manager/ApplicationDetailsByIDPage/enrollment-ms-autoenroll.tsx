@@ -221,10 +221,6 @@ const AllowedGroupsField = ({
   const known = [...value, ...(groups.data?.groups ?? [])].filter(
     (group, index, all) => all.findIndex((entry) => entry.sid === group.sid) === index
   );
-  let note = "";
-  if (!connectionId) note = " Select an LDAP connection first.";
-  else if (groups.data?.isTruncated)
-    note = ` Showing the first ${MAX_GROUP_RESULTS} groups. Type to narrow the search.`;
   const searchError =
     connectionId && groups.error
       ? errorMessage(groups.error) || "Could not search Active Directory."
@@ -235,14 +231,20 @@ const AllowedGroupsField = ({
       label="AD groups"
       name="allowedGroups"
       optional
-      description={`Only computers in one of these groups can enroll. Leave empty to allow every computer in the domain.${note}`}
+      description="Only computers in one of these groups can enroll. Leave empty to allow every computer in the domain."
       error={shownError}
     >
       <MultiSelect
         label="AD groups"
         placeholder="Search groups by name"
         searchPlaceholder="Search groups by name"
-        disabled={!connectionId}
+        emptyText={connectionId ? "No groups found" : "Select an LDAP connection first"}
+        noMatchText={connectionId ? "No matching groups" : "Select an LDAP connection first"}
+        footer={
+          groups.data?.isTruncated
+            ? `Showing the first ${MAX_GROUP_RESULTS} groups. Type to narrow the search.`
+            : undefined
+        }
         invalid={Boolean(shownError)}
         options={known.map((group) => ({
           value: group.sid,
