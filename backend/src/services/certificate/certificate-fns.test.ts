@@ -14,6 +14,7 @@ import {
   extractExternallyIssuedCertificateFields,
   getCertificateDisplayName,
   getSerialNumberSpellings,
+  linkRenewedCertificate,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
@@ -473,5 +474,80 @@ describe("parsePemCertificateChain", () => {
     const rootLines = (await makeCertPem("Root")).split("\n");
     rootLines[2] = `${rootLines[2].slice(0, 5)}!${rootLines[2].slice(6)}`;
     expect(parsePemCertificateChain(`${await makeCertPem("Intermediate")}\n${rootLines.join("\n")}`)).toBeNull();
+  });
+});
+
+describe("linkRenewedCertificate", () => {
+  type TRow = { id: string; renewedByCertificateId?: string | null; orderId?: string | null };
+
+  const dal = (...rows: TRow[]) => {
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return {
+      findById: vi.fn(async (id: string) => byId.get(id)),
+      updateById: vi.fn()
+    } as unknown as Parameters<typeof linkRenewedCertificate>[0] & { updateById: ReturnType<typeof vi.fn> };
+  };
+
+  it("links both ways and carries the order over", async () => {
+    const certificateDAL = dal({ id: "a", orderId: "order-1" });
+
+    await linkRenewedCertificate(certificateDAL, "a", "c");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith(
+      "c",
+      { renewedFromCertificateId: "a", orderId: "order-1" },
+      undefined
+    );
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("a", { renewedByCertificateId: "c" }, undefined);
+  });
+
+  it("links a renewal of an already-renewed certificate to the latest one in its chain", async () => {
+    const certificateDAL = dal({ id: "a", renewedByCertificateId: "b" }, { id: "b" });
+
+    await linkRenewedCertificate(certificateDAL, "a", "c");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("c", { renewedFromCertificateId: "b" }, undefined);
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("b", { renewedByCertificateId: "c" }, undefined);
+    expect(certificateDAL.updateById, "the old certificate keeps its first replacement").not.toHaveBeenCalledWith(
+      "a",
+      expect.anything(),
+      undefined
+    );
+  });
+
+  it("links to the end of a long chain", async () => {
+    const chain = Array.from({ length: 25 }, (_, i) => ({ id: `c${i}`, renewedByCertificateId: `c${i + 1}` }));
+    const certificateDAL = dal(...chain, { id: "c25" });
+
+    await linkRenewedCertificate(certificateDAL, "c0", "new");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("new", { renewedFromCertificateId: "c25" }, undefined);
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("c25", { renewedByCertificateId: "new" }, undefined);
+  });
+
+  it("leaves the new certificate unlinked when the chain loops", async () => {
+    const certificateDAL = dal(
+      { id: "c0", renewedByCertificateId: "c1" },
+      { id: "c1", renewedByCertificateId: "c2" },
+      { id: "c2", renewedByCertificateId: "c0" }
+    );
+
+    await linkRenewedCertificate(certificateDAL, "c0", "new");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("new", { renewedFromCertificateId: null }, undefined);
+    expect(certificateDAL.updateById, "no certificate in the chain loses its replacement").not.toHaveBeenCalledWith(
+      expect.stringMatching(/^c/),
+      expect.objectContaining({ renewedByCertificateId: "new" }),
+      undefined
+    );
+  });
+
+  it("relinks a certificate that already replaced the original without walking onto itself", async () => {
+    const certificateDAL = dal({ id: "a", renewedByCertificateId: "c" }, { id: "c" });
+
+    await linkRenewedCertificate(certificateDAL, "a", "c");
+
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("c", { renewedFromCertificateId: "a" }, undefined);
+    expect(certificateDAL.updateById).toHaveBeenCalledWith("a", { renewedByCertificateId: "c" }, undefined);
   });
 });

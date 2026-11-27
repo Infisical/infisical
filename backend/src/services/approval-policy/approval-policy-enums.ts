@@ -67,3 +67,8 @@ export enum EnforcementLevel {
   Hard = "hard",
   Soft = "soft"
 }
+
+export enum CertRequestPolicyOperation {
+  Issuance = "issuance",
+  Renewal = "renewal"
+}

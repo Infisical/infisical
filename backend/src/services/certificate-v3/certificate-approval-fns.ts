@@ -54,7 +54,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -115,7 +115,10 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findById" | "findByIdForUpdate" | "updateById" | "transaction" | "create" | "primaryNode"
+  >;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById" | "queuePkiSyncLinkMatchingCertificates">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
@@ -136,7 +139,10 @@ export type TIssueCertificateFromApprovedRequestDeps = {
 };
 
 export type TCertificateApprovalService = {
-  issueCertificate: (certificateRequestId: string) => Promise<TCertificateIssuanceResponse>;
+  issueCertificate: (
+    certificateRequestId: string,
+    renewalOfCertificateId?: string
+  ) => Promise<TCertificateIssuanceResponse>;
 };
 
 const buildRevalidationRequest = ({
@@ -418,7 +424,8 @@ export const certificateApprovalServiceFactory = (
     certRequest: NonNullable<Awaited<ReturnType<TCertificateRequestDALFactory["findById"]>>>,
     certificateRequestId: string,
     profileId: string,
-    ttl: string
+    ttl: string,
+    renewalOfCertificateId?: string
   ): Promise<TCertificateIssuanceResponse> => {
     const { csr } = certRequest;
 
@@ -606,25 +613,14 @@ export const certificateApprovalServiceFactory = (
           new Date(newCert.notAfter)
         );
 
-        const updateData: {
-          profileId: string;
-          renewBeforeDays?: number;
-          applicationId?: string;
-          renewedFromCertificateId?: string;
-        } = { profileId };
+        const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = { profileId };
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
         }
         if (certRequest.applicationId) {
           updateData.applicationId = certRequest.applicationId;
         }
-        if (certRequest.renewedFromCertificateId) {
-          updateData.renewedFromCertificateId = certRequest.renewedFromCertificateId;
-        }
         await certificateDAL.updateById(newCert.id, updateData, tx);
-        if (certRequest.renewedFromCertificateId) {
-          await linkRenewedCertificate(certificateDAL, certRequest.renewedFromCertificateId, newCert.id, tx);
-        }
 
         await certificateRequestDAL.updateById(
           certificateRequestId,
@@ -634,6 +630,13 @@ export const certificateApprovalServiceFactory = (
           },
           tx
         );
+
+        if (renewalOfCertificateId) {
+          // Locks the certificate the client renewed from, so a second re-enrollment with it waits and links to the new end.
+          const original = await certificateDAL.findByIdForUpdate(renewalOfCertificateId, tx);
+          if (original) assertCertificateNotDeleted(original);
+          await linkRenewedCertificate(certificateDAL, renewalOfCertificateId, newCert.id, tx);
+        }
 
         // Copy metadata from cert request to newly issued cert
         await copyMetadataFromRequestToCertificate(resourceMetadataDAL, {
@@ -686,7 +689,8 @@ export const certificateApprovalServiceFactory = (
     certificateRequestId: string,
     profile: NonNullable<Awaited<ReturnType<TCertificateProfileDALFactory["findByIdWithConfigs"]>>>,
     altNames: TAltNameEntry[] | null,
-    ttl?: string
+    ttl?: string,
+    renewalOfCertificateId?: string
   ): Promise<TCertificateIssuanceResponse | null> => {
     if (!profile.caId) {
       return null;
@@ -808,7 +812,8 @@ export const certificateApprovalServiceFactory = (
       locality: mappedReconstructedRequest.locality || undefined,
       basicConstraints: certRequest.basicConstraints as { isCA: boolean; pathLength?: number | null } | null,
       customExtensions: revalidationResult.resolvedCustomExtensions,
-      ...(certRequest.applicationId && { applicationId: certRequest.applicationId })
+      ...(certRequest.applicationId && { applicationId: certRequest.applicationId }),
+      ...(renewalOfCertificateId && { isRenewal: true, originalCertificateId: renewalOfCertificateId })
     });
 
     return {
@@ -1125,8 +1130,13 @@ export const certificateApprovalServiceFactory = (
     };
   };
 
-  const issueCertificate = async (certificateRequestId: string): Promise<TCertificateIssuanceResponse> => {
-    const certRequest = await certificateRequestDAL.findById(certificateRequestId);
+  const issueCertificate = async (
+    certificateRequestId: string,
+    approvedRenewalOfCertificateId?: string
+  ): Promise<TCertificateIssuanceResponse> => {
+    // Approval sets the request PENDING just before this runs, and a lagging replica would still show it awaiting
+    // approval.
+    const certRequest = await certificateRequestDAL.findById(certificateRequestId, certificateDAL.primaryNode());
     if (!certRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
@@ -1143,12 +1153,21 @@ export const certificateApprovalServiceFactory = (
     }
     const { ttl } = certRequest;
     const altNames = certRequest.altNames as TAltNameEntry[] | null;
+    // A Microsoft Autoenrollment renewal held before its approval request named the renewed certificate names it only
+    // on the certificate request.
+    const renewalOfCertificateId = approvedRenewalOfCertificateId ?? certRequest.renewedFromCertificateId ?? undefined;
 
     await certificateRequestDAL.updateById(certificateRequestId, {
       status: CertificateRequestStatus.PENDING
     });
 
     try {
+      // Deleting a certificate doesn't cancel a re-enrollment of it waiting for approval.
+      if (renewalOfCertificateId) {
+        const original = await certificateDAL.findById(renewalOfCertificateId, certificateDAL.primaryNode());
+        if (original) assertCertificateNotDeleted(original);
+      }
+
       const enrollmentType = (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API;
       const targetProfile = await $validateProfileAndPermissions({
         profileId,
@@ -1163,7 +1182,8 @@ export const certificateApprovalServiceFactory = (
         certificateRequestId,
         targetProfile,
         altNames,
-        ttl || undefined
+        ttl || undefined,
+        renewalOfCertificateId
       );
       if (externalCaResult) {
         return externalCaResult;
@@ -1174,7 +1194,13 @@ export const certificateApprovalServiceFactory = (
       }
 
       if (certRequest.csr) {
-        return await $processCSRSigningRequest(certRequest, certificateRequestId, profileId, ttl);
+        return await $processCSRSigningRequest(
+          certRequest,
+          certificateRequestId,
+          profileId,
+          ttl,
+          renewalOfCertificateId
+        );
       }
 
       const basicConstraints = certRequest.basicConstraints as { isCA: boolean; pathLength?: number } | null;

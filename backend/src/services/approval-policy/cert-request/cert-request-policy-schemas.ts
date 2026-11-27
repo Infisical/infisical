@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { APPROVAL_POLICY_CERT_REQUEST } from "@app/lib/api-docs";
 import {
   certificateAttributesSchema,
   domainComponentSchema,
@@ -7,6 +8,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { CertificateRenewalKeySource } from "@app/services/certificate-v3/certificate-v3-types";
 
+import { CertRequestPolicyOperation } from "../approval-policy-enums";
 import {
   BaseApprovalPolicySchema,
   BaseApprovalRequestGrantSchema,
@@ -16,8 +18,11 @@ import {
   BaseUpdateApprovalPolicySchema
 } from "../approval-policy-schemas";
 
+export const CertRequestPolicyOperationSchema = z.nativeEnum(CertRequestPolicyOperation);
+
 export const CertRequestPolicyInputsSchema = z.object({
   profileName: z.string(),
+  operation: CertRequestPolicyOperationSchema.optional().describe(APPROVAL_POLICY_CERT_REQUEST.matchOperation),
   applicationId: z.string().uuid().optional()
 });
 
@@ -27,7 +32,14 @@ export const CertRequestPolicyConditionsSchema = z
   })
   .array();
 
-export const CertRequestPolicyConstraintsSchema = z.object({});
+export const CertRequestPolicyConstraintsSchema = z.object({
+  operation: CertRequestPolicyOperationSchema.optional().describe(APPROVAL_POLICY_CERT_REQUEST.operation)
+});
+
+// Policy rows reach callers unparsed, and policies created before Renewal policies existed store no operation.
+export const parseCertRequestPolicyOperation = (policy: { constraints?: unknown }) =>
+  (policy.constraints as { constraints?: { operation?: CertRequestPolicyOperation } } | null | undefined)?.constraints
+    ?.operation ?? CertRequestPolicyOperation.Issuance;
 
 export const CertRequestPolicyRequestDataSchema = z.object({
   profileId: z.string().uuid(),
@@ -73,10 +85,26 @@ export const CertRequestPolicyRequestDataSchema = z.object({
       csr: z.string().optional(),
       attributes: certificateAttributesSchema.optional(),
       caId: z.string().uuid().optional(),
-      externalConfiguration: z.object({ reissue: z.boolean().optional() }).optional()
+      externalConfiguration: z.object({ reissue: z.boolean().optional() }).optional(),
+      // Whether the daily auto-renewal job raised the request. Requester columns can't tell: deleting a user clears
+      // them on their requests. Absent on requests raised before it existed.
+      raisedByAutoRenewal: z.boolean().optional(),
+      // The certificate being renewed, which certificateRequest can't name when the renewal changes the common name.
+      // Absent on requests raised before it existed.
+      certificateName: z.string().optional()
     })
-    .optional()
+    .optional(),
+  // The certificate an EST or SCEP re-enrollment replaces. These issue from the client's CSR like a new certificate,
+  // then link to it, so they don't go through `renewal`.
+  renewalOfCertificateId: z.string().uuid().optional(),
+  // How the re-enrollment names the certificate it replaces. Absent on requests raised before it existed.
+  renewalOfCertificateName: z.string().optional()
 });
+
+// The certificate a request renews: a renewal's, or the one an EST or SCEP re-enrollment replaces.
+export const getRenewedCertificateId = (
+  requestData: Pick<z.infer<typeof CertRequestPolicyRequestDataSchema>, "renewal" | "renewalOfCertificateId">
+) => requestData.renewal?.certificateId ?? requestData.renewalOfCertificateId;
 
 export const CertRequestPolicySchema = BaseApprovalPolicySchema.extend({
   conditions: z.object({
@@ -98,7 +126,12 @@ export const CreateCertRequestPolicySchema = BaseCreateApprovalPolicySchema.exte
 
 export const UpdateCertRequestPolicySchema = BaseUpdateApprovalPolicySchema.extend({
   conditions: CertRequestPolicyConditionsSchema.optional(),
-  constraints: CertRequestPolicyConstraintsSchema.optional()
+  // Clients that predate the setting send `{}`: keep the stored value instead of clearing it.
+  constraints: CertRequestPolicyConstraintsSchema.extend({
+    operation: CertRequestPolicyOperationSchema.optional().describe(APPROVAL_POLICY_CERT_REQUEST.updateOperation)
+  })
+    .optional()
+    .transform((constraints) => (constraints?.operation ? { operation: constraints.operation } : undefined))
 });
 
 export const CertRequestRequestSchema = BaseApprovalRequestSchema.extend({

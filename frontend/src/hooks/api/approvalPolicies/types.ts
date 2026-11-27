@@ -54,7 +54,15 @@ export type CertRequestPolicyConditions = {
   profileNames: string[];
 }[];
 
-export type CertRequestPolicyConstraints = Record<string, never>;
+export enum CertRequestPolicyOperation {
+  Issuance = "issuance",
+  Renewal = "renewal"
+}
+
+// Policies created before Renewal policies existed store no operation, and are Issuance policies.
+export type CertRequestPolicyConstraints = {
+  operation?: CertRequestPolicyOperation;
+};
 
 export type CodeSigningPolicyConditions = Record<string, never>[];
 

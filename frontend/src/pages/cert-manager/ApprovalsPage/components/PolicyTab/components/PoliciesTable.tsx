@@ -43,6 +43,8 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { getCertPolicyTypeLabel, getPolicyOperation } from "./policyConstraints";
+
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["policy", "deletePolicy"]>,
@@ -144,6 +146,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
       <TableHeader>
         <TableRow>
           <TableHead>Policy Name</TableHead>
+          <TableHead>Type</TableHead>
           <TableHead>Profile Name</TableHead>
           <TableHead>Approval Steps</TableHead>
           <TableHead>Created</TableHead>
@@ -151,7 +154,7 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {isPoliciesLoading && <TableSkeletonRows columns={5} />}
+        {isPoliciesLoading && <TableSkeletonRows columns={6} />}
         {!isPoliciesLoading &&
           sortedPolicies.map((policy) => {
             const profileNames = getProfileNames(policy);
@@ -166,6 +169,11 @@ export const PoliciesTable = ({ handlePopUpOpen, applicationId }: Props) => {
                       </span>
                     )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm text-foreground-secondary">
+                    {getCertPolicyTypeLabel(policy.type, getPolicyOperation(policy))}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1">

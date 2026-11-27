@@ -15,10 +15,13 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import {
+  CaOperationFailureStage,
+  CertificateIssuanceOperation
+} from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
@@ -36,17 +39,24 @@ describe("CertificateRequestService", () => {
 
   const mockCertificateRequestDAL: Pick<
     TCertificateRequestDALFactory,
-    "create" | "findById" | "findByIdWithCertificate" | "transitionFromPending" | "attachCertificate"
+    | "create"
+    | "findById"
+    | "findByIdWithCertificate"
+    | "transitionFromPending"
+    | "attachCertificate"
+    | "attachCertificateIfUnlinked"
   > = {
     create: vi.fn() as any,
     findById: vi.fn() as any,
     findByIdWithCertificate: vi.fn() as any,
     transitionFromPending: vi.fn() as any,
-    attachCertificate: vi.fn() as any
+    attachCertificate: vi.fn() as any,
+    attachCertificateIfUnlinked: vi.fn() as any
   };
 
-  const mockCertificateDAL: Pick<TCertificateDALFactory, "findById"> = {
-    findById: vi.fn() as any
+  const mockCertificateDAL: Pick<TCertificateDALFactory, "findById" | "primaryNode"> = {
+    findById: vi.fn() as any,
+    primaryNode: vi.fn().mockReturnValue("primary") as any
   };
 
   const mockCertificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey"> = {
@@ -67,12 +77,17 @@ describe("CertificateRequestService", () => {
   const mockIdentityDAL = { findById: vi.fn() };
   const mockCertificateProfileDAL = { findById: vi.fn() };
   const mockCertificateAuthorityDAL = { findById: vi.fn(), findByIdWithAssociatedCa: vi.fn() };
-  const mockAuditLogService = { createCollapsedAuditLog: vi.fn() };
+  const mockAuditLogService = { createCollapsedAuditLog: vi.fn(), createAuditLog: vi.fn() };
   const mockDigicertFns = { cancelPendingRequest: vi.fn() };
+  const mockApprovalRequestDAL = { findById: vi.fn() };
+  const mockApprovalPolicyDAL = { findById: vi.fn(), primaryNode: vi.fn().mockReturnValue("primary") };
+  const mockApprovalPolicyService = { notifyApprovedActionFailed: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockQueueService.cancelActiveJob.mockReturnValue(true);
+    (mockCertificateDAL.primaryNode as any).mockReturnValue("primary");
+    mockApprovalPolicyDAL.primaryNode.mockReturnValue("primary");
     service = certificateRequestServiceFactory({
       certificateRequestDAL: mockCertificateRequestDAL as TCertificateRequestDALFactory,
       certificateDAL: mockCertificateDAL,
@@ -86,7 +101,10 @@ describe("CertificateRequestService", () => {
       certificateProfileDAL: mockCertificateProfileDAL as any,
       certificateAuthorityDAL: mockCertificateAuthorityDAL as any,
       auditLogService: mockAuditLogService,
-      digicertFns: mockDigicertFns
+      digicertFns: mockDigicertFns,
+      approvalRequestDAL: mockApprovalRequestDAL as never,
+      approvalPolicyDAL: mockApprovalPolicyDAL as never,
+      approvalPolicyService: mockApprovalPolicyService
     });
   });
 
@@ -800,6 +818,247 @@ describe("CertificateRequestService", () => {
         })
       );
     });
+
+    describe("for a request that was approved", () => {
+      const approvalRequest = {
+        id: "approval-1",
+        policyId: "policy-1",
+        status: "approved",
+        requesterName: "Dana Approver",
+        requesterEmail: "dana@example.com",
+        requestData: { requestData: { certificateRequestId: "req-1", renewal: { certificateId: "cert-0" } } }
+      };
+      const failedRequest = {
+        id: "550e8400-e29b-41d4-a716-446655440017",
+        projectId: "project-1",
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "DigiCert order expired",
+        caId: "ca-1",
+        commonName: "app.example.com",
+        approvalRequestId: "approval-1"
+      };
+
+      beforeEach(() => {
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue({ ...failedRequest, status: "pending" });
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(failedRequest);
+        mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+          id: "ca-1",
+          name: "digicert-ca",
+          externalCa: { type: CaType.DIGICERT }
+        });
+        mockApprovalRequestDAL.findById.mockResolvedValue(approvalRequest);
+        mockApprovalPolicyDAL.findById.mockResolvedValue({ id: "policy-1", name: "prod renewals" });
+      });
+
+      it("names the approval request's policy and requester in the failure event", async () => {
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage,
+          operation: CertificateIssuanceOperation.RENEW
+        });
+
+        expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({
+                approvalRequestId: "approval-1",
+                approvalPolicyName: "prod renewals",
+                requesterName: "Dana Approver",
+                requesterEmail: "dana@example.com"
+              })
+            })
+          })
+        );
+      });
+
+      it("tells the requester and approvers when a background job fails an approved renewal", async () => {
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage,
+          operation: CertificateIssuanceOperation.RENEW
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          "Renewing the certificate at CA 'digicert-ca' (DigiCert CertCentral) failed: DigiCert order expired."
+        );
+      });
+
+      it("tells the requester and approvers while a replica still shows the approval request pending", async () => {
+        mockApprovalRequestDAL.findById.mockImplementation(async (_id: string, tx?: unknown) =>
+          tx === "primary" ? approvalRequest : { ...approvalRequest, status: "pending" }
+        );
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage,
+          operation: CertificateIssuanceOperation.RENEW
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          "Renewing the certificate at CA 'digicert-ca' (DigiCert CertCentral) failed: DigiCert order expired."
+        );
+      });
+
+      it("uses the CA's own message instead of the job's prefixed reason", async () => {
+        const caMessage = "A certificate template is required to issue through Active Directory Certificate Service";
+        mockCertificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+          id: "ca-1",
+          name: "e2e-adcs-ca",
+          externalCa: { type: CaType.ADCS }
+        });
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue({
+          ...failedRequest,
+          errorMessage: `Certificate issuance failed: ${caMessage}`
+        });
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: `Certificate issuance failed: ${caMessage}`,
+          error: new BadRequestError({ message: caMessage })
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          `Renewing the certificate at CA 'e2e-adcs-ca' (Microsoft ADCS) failed: ${caMessage}.`
+        );
+      });
+
+      it("still notifies, without the policy name, when the policy can't be read", async () => {
+        mockApprovalPolicyDAL.findById.mockRejectedValue(new Error("connection reset"));
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalled();
+        expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ approvalRequestId: "approval-1", requesterName: "Dana Approver" })
+            })
+          })
+        );
+      });
+
+      it("keeps the approval request ID in the failure event when the approval request can't be read", async () => {
+        mockApprovalRequestDAL.findById.mockRejectedValue(new Error("connection reset"));
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockAuditLogService.createCollapsedAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({ metadata: expect.objectContaining({ approvalRequestId: "approval-1" }) })
+          })
+        );
+      });
+
+      it("words the notice for an approved issuance", async () => {
+        mockApprovalRequestDAL.findById.mockResolvedValue({
+          ...approvalRequest,
+          requestData: { requestData: { certificateRequestId: "req-1" } }
+        });
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          expect.objectContaining({ id: "approval-1" }),
+          "Issuing the certificate at CA 'digicert-ca' (DigiCert CertCentral) failed: DigiCert order expired."
+        );
+      });
+
+      it("sends no notice when the request had already left pending", async () => {
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(null);
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+      });
+
+      it("sends no notice while the approval request isn't approved", async () => {
+        mockApprovalRequestDAL.findById.mockResolvedValue({ ...approvalRequest, status: "pending" });
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          errorMessage: failedRequest.errorMessage
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+      });
+
+      it("says the failure was unexpected when the job stored no reason and no CA is known", async () => {
+        (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue({
+          ...failedRequest,
+          caId: null,
+          errorMessage: null
+        });
+
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          "An unexpected error stopped the certificate from being renewed."
+        );
+      });
+
+      it("says the CA issued the certificate when linking it to the request failed", async () => {
+        await service.updateCertificateRequestStatus({
+          certificateRequestId: failedRequest.id,
+          status: CertificateRequestStatus.FAILED,
+          error: new Error("Failed to execute db ops"),
+          failureStage: CaOperationFailureStage.AttachingIssuedCertificate,
+          errorMessage: "Failed to attach certificate: Failed to execute db ops"
+        });
+
+        expect(mockApprovalPolicyService.notifyApprovedActionFailed).toHaveBeenCalledWith(
+          approvalRequest,
+          "CA 'digicert-ca' (DigiCert CertCentral) issued the certificate, but Infisical couldn't link it to this request. Find it in the certificate inventory before you renew or request it again."
+        );
+      });
+    });
+
+    it("sends no notice for a request nobody approved", async () => {
+      const failedRequest = {
+        id: "550e8400-e29b-41d4-a716-446655440018",
+        projectId: "project-1",
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: "DigiCert order expired"
+      };
+      (mockCertificateRequestDAL.findById as any).mockResolvedValue({ ...failedRequest, status: "pending" });
+      (mockCertificateRequestDAL.transitionFromPending as any).mockResolvedValue(failedRequest);
+
+      await service.updateCertificateRequestStatus({
+        certificateRequestId: failedRequest.id,
+        status: CertificateRequestStatus.FAILED,
+        errorMessage: failedRequest.errorMessage
+      });
+
+      expect(mockApprovalRequestDAL.findById).not.toHaveBeenCalled();
+      expect(mockApprovalPolicyService.notifyApprovedActionFailed).not.toHaveBeenCalled();
+    });
   });
 
   describe("attachCertificateToRequest", () => {
@@ -819,7 +1078,7 @@ describe("CertificateRequestService", () => {
 
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
       (mockCertificateDAL.findById as any).mockResolvedValue(mockCertificate);
-      (mockCertificateRequestDAL.attachCertificate as any).mockResolvedValue(mockUpdatedRequest);
+      (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue(mockUpdatedRequest);
 
       const result = await service.attachCertificateToRequest({
         certificateRequestId: "550e8400-e29b-41d4-a716-446655440014",
@@ -828,7 +1087,7 @@ describe("CertificateRequestService", () => {
 
       expect(mockCertificateRequestDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440014");
       expect(mockCertificateDAL.findById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440015");
-      expect(mockCertificateRequestDAL.attachCertificate).toHaveBeenCalledWith(
+      expect(mockCertificateRequestDAL.attachCertificateIfUnlinked).toHaveBeenCalledWith(
         "550e8400-e29b-41d4-a716-446655440014",
         "550e8400-e29b-41d4-a716-446655440015"
       );
@@ -861,6 +1120,169 @@ describe("CertificateRequestService", () => {
           certificateId: "550e8400-e29b-41d4-a716-446655440019"
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    describe("for an approved renewal an external CA finished", () => {
+      const pendingRequest = {
+        id: "req-2",
+        projectId: "project-1",
+        status: CertificateRequestStatus.PENDING,
+        profileId: "profile-1",
+        applicationId: "app-1",
+        commonName: "app.example.com",
+        approvalRequestId: "approval-2"
+      };
+      const approvalRequest = {
+        id: "approval-2",
+        policyId: "policy-1",
+        requesterName: "Dana Approver",
+        requesterEmail: "dana@example.com",
+        requestData: {
+          requestData: {
+            certificateRequestId: "req-2",
+            renewal: { certificateId: "cert-old", renewalKeySource: "new" }
+          }
+        }
+      };
+
+      beforeEach(() => {
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue(pendingRequest);
+        (mockCertificateDAL.findById as any).mockResolvedValue({
+          id: "cert-new",
+          serialNumber: "0a1b",
+          renewedFromCertificateId: "cert-old"
+        });
+        (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue({
+          ...pendingRequest,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: "cert-new"
+        });
+        mockApprovalRequestDAL.findById.mockResolvedValue(approvalRequest);
+        mockApprovalPolicyDAL.findById.mockResolvedValue({ id: "policy-1", name: "prod renewals" });
+        mockCertificateProfileDAL.findById.mockResolvedValue({ id: "profile-1", slug: "public-web" });
+      });
+
+      it("records the certificate the CA issued, naming the approval request", async () => {
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith({
+          projectId: "project-1",
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.RENEW_CERTIFICATE,
+            metadata: expect.objectContaining({
+              originalCertificateId: "cert-old",
+              newCertificateId: "cert-new",
+              serialNumber: "0a1b",
+              certificateRequestId: "req-2",
+              profileName: "public-web",
+              changedAttributes: [],
+              status: CertificateRequestStatus.ISSUED,
+              approvalRequestId: "approval-2",
+              approvalPolicyName: "prod renewals",
+              requesterName: "Dana Approver",
+              requesterEmail: "dana@example.com"
+            })
+          }
+        });
+      });
+
+      it("names the issued certificate when the replica the event reads hasn't caught up", async () => {
+        const issued = { id: "cert-new", serialNumber: "0a1b", renewedFromCertificateId: "cert-old" };
+        // replicaNode() picks a replica per query, so the existence check can find the row on one replica and the
+        // event's read miss it on another.
+        (mockCertificateDAL.findById as any)
+          .mockImplementation(async (_id: string, tx?: unknown) => (tx === "primary" ? issued : undefined))
+          .mockImplementationOnce(async () => issued);
+
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ serialNumber: "0a1b", newCertificateId: "cert-new" })
+            })
+          })
+        );
+      });
+
+      it("names the certificate the CA renewed when another renewal replaced the requested one meanwhile", async () => {
+        (mockCertificateDAL.findById as any).mockResolvedValue({
+          id: "cert-new",
+          serialNumber: "0a1b",
+          renewedFromCertificateId: "cert-mid"
+        });
+
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ originalCertificateId: "cert-mid" })
+            })
+          })
+        );
+      });
+
+      it("keeps the event when looking up a label fails", async () => {
+        mockCertificateProfileDAL.findById.mockRejectedValue(new Error("connection reset"));
+
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: expect.objectContaining({
+              metadata: expect.objectContaining({ newCertificateId: "cert-new", profileName: "" })
+            })
+          })
+        );
+      });
+
+      it("records nothing again when a retry attaches the same certificate", async () => {
+        (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue(null);
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue({
+          ...pendingRequest,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: "cert-new"
+        });
+
+        const attached = await service.attachCertificateToRequest({
+          certificateRequestId: "req-2",
+          certificateId: "cert-new"
+        });
+
+        expect(attached).toEqual(expect.objectContaining({ certificateId: "cert-new" }));
+        expect(mockAuditLogService.createAuditLog).not.toHaveBeenCalled();
+      });
+
+      it("keeps an issued request on its certificate when a concurrent run attaches another", async () => {
+        (mockCertificateRequestDAL.attachCertificateIfUnlinked as any).mockResolvedValue(null);
+        (mockCertificateRequestDAL.findById as any).mockResolvedValue({
+          ...pendingRequest,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: "cert-new"
+        });
+
+        const attached = await service.attachCertificateToRequest({
+          certificateRequestId: "req-2",
+          certificateId: "cert-other"
+        });
+
+        expect(attached).toBeNull();
+        expect(mockCertificateRequestDAL.attachCertificate).not.toHaveBeenCalled();
+        expect(mockAuditLogService.createAuditLog).not.toHaveBeenCalled();
+      });
+
+      it("records nothing for an approved issuance", async () => {
+        mockApprovalRequestDAL.findById.mockResolvedValue({
+          ...approvalRequest,
+          requestData: { requestData: { certificateRequestId: "req-2" } }
+        });
+
+        await service.attachCertificateToRequest({ certificateRequestId: "req-2", certificateId: "cert-new" });
+
+        expect(mockAuditLogService.createAuditLog).not.toHaveBeenCalled();
+      });
     });
   });
 

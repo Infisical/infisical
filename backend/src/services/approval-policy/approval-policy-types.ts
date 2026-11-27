@@ -227,6 +227,13 @@ export type TApprovalResource<
   canAccess: (projectId: string, actorId: string, inputs: I) => Promise<TApprovalRequestGrants | null>;
   validateConstraints: (policy: P, requestData: R) => { valid: boolean; errors?: string[] };
 
+  // The constraints an update stores, from the stored ones and the ones the caller sent. Without it, an update
+  // replaces the stored constraints with the ones it sent.
+  updateConstraints?: (
+    stored: TApprovalPolicy["constraints"]["constraints"] | undefined,
+    update: TApprovalPolicy["constraints"]["constraints"]
+  ) => TApprovalPolicy["constraints"]["constraints"];
+
   // Whatever the approval entitles the requester to goes in the Tx variant, which commits with the
   // approval; anything reaching outside the database goes in postApprovalRoutine, after the commit. Each
   // runs at most once, for the approval that completes the request.
@@ -403,6 +410,7 @@ export type TApprovalResourceRegistry = Partial<Record<ApprovalPolicyType, TAppr
 export type TApprovalRequestSubjectMetadata = {
   certificateRequestId?: string;
   certificateId?: string;
+  certificateName?: string;
   commonName?: string;
   profileName?: string;
   signerId?: string;

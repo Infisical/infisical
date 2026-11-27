@@ -1,7 +1,8 @@
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError, InternalServerError } from "@app/lib/errors";
 
+import { CaOperationFailureStage } from "../certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
-import { CaType } from "./certificate-authority-enums";
+import { CaStatus, CaType } from "./certificate-authority-enums";
 import { certificateIssuanceQueueFactory, TIssueCertificateFromProfileJobData } from "./certificate-issuance-queue";
 
 const digicertFns = {
@@ -14,6 +15,27 @@ const digicertFns = {
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("./digicert/digicert-certificate-authority-fns", () => ({
   DigiCertCertificateAuthorityFns: () => digicertFns
+}));
+
+const orderFns = {
+  [CaType.AZURE_AD_CS]: { orderCertificate: vi.fn() },
+  [CaType.ADCS]: { orderCertificate: vi.fn() },
+  [CaType.AWS_ACM_PUBLIC_CA]: { orderCertificate: vi.fn() },
+  [CaType.AWS_PCA]: { orderCertificate: vi.fn() },
+  [CaType.VENAFI_TPP]: { orderCertificate: vi.fn() }
+};
+vi.mock("./azure-ad-cs/azure-ad-cs-certificate-authority-fns", () => ({
+  AzureAdCsCertificateAuthorityFns: () => orderFns[CaType.AZURE_AD_CS]
+}));
+vi.mock("./adcs/adcs-certificate-authority-fns", () => ({ ADCSCertificateAuthorityFns: () => orderFns[CaType.ADCS] }));
+vi.mock("./aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns", () => ({
+  AwsAcmPublicCaCertificateAuthorityFns: () => orderFns[CaType.AWS_ACM_PUBLIC_CA]
+}));
+vi.mock("./aws-pca/aws-pca-certificate-authority-fns", () => ({
+  AwsPcaCertificateAuthorityFns: () => orderFns[CaType.AWS_PCA]
+}));
+vi.mock("./venafi-tpp/venafi-tpp-certificate-authority-fns", () => ({
+  VenafiTppCertificateAuthorityFns: () => orderFns[CaType.VENAFI_TPP]
 }));
 
 const CA_ID = "ca-1";
@@ -42,6 +64,8 @@ const buildQueue = () => {
   const certificateAuthorityDAL = {
     findByIdWithAssociatedCa: vi.fn().mockResolvedValue({
       id: CA_ID,
+      name: "digicert-ca",
+      status: CaStatus.ACTIVE,
       projectId: "project-1",
       externalCa: { id: "external-ca-1", type: CaType.DIGICERT }
     })
@@ -58,13 +82,18 @@ const buildQueue = () => {
     setPendingMessage: vi.fn(),
     transitionToPendingValidation: vi.fn().mockResolvedValue(true)
   };
+  const certificateRequestService = {
+    updateCertificateRequestStatus: vi.fn().mockResolvedValue(undefined),
+    attachCertificateToRequest: vi.fn().mockResolvedValue(undefined)
+  };
 
   certificateIssuanceQueueFactory({
     ...stubDeps(),
     queueService,
     certificateAuthorityDAL,
     certificateDAL,
-    certificateRequestDAL
+    certificateRequestDAL,
+    certificateRequestService
   } as unknown as Parameters<typeof certificateIssuanceQueueFactory>[0]);
 
   const run = (data: Partial<TIssueCertificateFromProfileJobData>) =>
@@ -84,7 +113,12 @@ const buildQueue = () => {
         ...data
       }
     });
-  return Object.assign(run, { certificateRequestDAL });
+  return Object.assign(run, {
+    certificateAuthorityDAL,
+    certificateDAL,
+    certificateRequestDAL,
+    certificateRequestService
+  });
 };
 
 const digicertResult = {
@@ -177,5 +211,107 @@ describe("certificate issuance queue, DigiCert renewals", () => {
     await expect(runJob({ externalConfiguration: { reissue: true }, csr: "csr" })).rejects.toThrow(
       "invalid_order_status"
     );
+  });
+});
+
+describe("certificate issuance queue, where a failed renewal stopped", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    digicertFns.orderCertificate.mockResolvedValue(digicertResult);
+  });
+
+  test("reports a renewal of a deleted certificate as Infisical's check, not the CA's", async () => {
+    const runJob = buildQueue();
+    runJob.certificateDAL.findById.mockResolvedValue({ id: ORIGINAL_CERTIFICATE_ID, deletedAt: new Date() });
+
+    await expect(runJob({})).rejects.toThrow();
+
+    expect(digicertFns.orderCertificate, "the CA is never called").not.toHaveBeenCalled();
+    expect(runJob.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: CertificateRequestStatus.FAILED,
+        failureStage: CaOperationFailureStage.Infisical
+      })
+    );
+  });
+
+  test("reports a CA disabled in Infisical as Infisical's check, without calling the CA", async () => {
+    const runJob = buildQueue();
+    runJob.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+      id: CA_ID,
+      name: "digicert-ca",
+      status: CaStatus.DISABLED,
+      projectId: "project-1",
+      externalCa: { id: "external-ca-1", type: CaType.DIGICERT }
+    });
+
+    await expect(runJob({})).rejects.toThrow("Certificate Authority 'digicert-ca' is disabled");
+
+    expect(digicertFns.orderCertificate, "the CA is never called").not.toHaveBeenCalled();
+    expect(runJob.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ failureStage: CaOperationFailureStage.Infisical })
+    );
+  });
+
+  test("reports a CA error once the CA has been called as the CA's", async () => {
+    const runJob = buildQueue();
+    digicertFns.orderCertificate.mockRejectedValue(new BadRequestError({ message: "DigiCert rejected the order" }));
+
+    await expect(runJob({})).rejects.toThrow("DigiCert rejected the order");
+
+    expect(runJob.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ status: CertificateRequestStatus.FAILED, failureStage: CaOperationFailureStage.Ca })
+    );
+  });
+});
+
+describe("certificate issuance queue, a certificate the CA issued but Infisical couldn't attach", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test.each(Object.keys(orderFns) as (keyof typeof orderFns)[])(
+    "reports the attach step, not the CA, for %s",
+    async (caType) => {
+      const runJob = buildQueue();
+      runJob.certificateAuthorityDAL.findByIdWithAssociatedCa.mockResolvedValue({
+        id: CA_ID,
+        name: "external-ca",
+        status: CaStatus.ACTIVE,
+        projectId: "project-1",
+        externalCa: { id: "external-ca-1", type: caType }
+      });
+      orderFns[caType].orderCertificate.mockResolvedValue({ certificateId: "issued-1", privateKey: "" });
+      runJob.certificateRequestService.attachCertificateToRequest.mockRejectedValue(
+        new DatabaseError({ name: "Attach certificate to request", error: new Error("connection reset") })
+      );
+
+      await runJob({ caType, isRenewal: false, originalCertificateId: undefined }).catch(() => undefined);
+
+      expect(orderFns[caType].orderCertificate, "the CA issued the certificate").toHaveBeenCalled();
+      expect(runJob.certificateRequestService.updateCertificateRequestStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: CertificateRequestStatus.FAILED,
+          failureStage: CaOperationFailureStage.AttachingIssuedCertificate
+        })
+      );
+    }
+  );
+});
+
+describe("certificate issuance queue, a request approved just before the job runs", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads the request's status from the primary, where approval just set it pending", async () => {
+    const runJob = buildQueue();
+    const primary = { isPrimary: true };
+    runJob.certificateDAL.primaryNode.mockReturnValue(primary);
+    digicertFns.orderCertificate.mockResolvedValue(digicertResult);
+
+    await runJob({});
+
+    expect(runJob.certificateRequestDAL.findById).toHaveBeenCalledWith(CERTIFICATE_REQUEST_ID, primary);
+    expect(runJob.certificateRequestDAL.findById).not.toHaveBeenCalledWith(CERTIFICATE_REQUEST_ID);
+    expect(digicertFns.orderCertificate, "the job still reaches the CA").toHaveBeenCalled();
   });
 });

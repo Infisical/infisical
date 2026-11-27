@@ -1,7 +1,11 @@
 import { TProjectPermission } from "@app/lib/types";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
-import { CertificateIssuanceOperation, CertificateRequestStatus } from "../certificate-common/certificate-constants";
+import {
+  CaOperationFailureStage,
+  CertificateIssuanceOperation,
+  CertificateRequestStatus
+} from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export { CertificateRequestStatus };
@@ -59,6 +63,8 @@ export type TUpdateCertificateRequestStatusDTO = {
   operation?: CertificateIssuanceOperation;
   originalCertificateId?: string;
   error?: unknown;
+  // Defaults to the CA, since background jobs mostly fail while calling it.
+  failureStage?: CaOperationFailureStage;
 };
 
 export type TAttachCertificateToRequestDTO = {

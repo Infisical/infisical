@@ -581,6 +581,10 @@ type TDeletableCertificate = {
 export const getCertificateDisplayName = (certificate: Omit<TDeletableCertificate, "deletedAt">) =>
   certificate.friendlyName || certificate.commonName || certificate.serialNumber;
 
+// How a renewal names the certificate it replaces, which can differ from the common name the renewal requests.
+export const getRenewedCertificateName = (certificate: { commonName?: string | null; altNames?: string | null }) =>
+  certificate.commonName || certificate.altNames?.split(",")[0]?.trim() || undefined;
+
 export const assertCertificateNotDeleted = (
   certificate: TDeletableCertificate,
   consequence = "It can no longer be renewed or changed."
@@ -636,17 +640,53 @@ export const softDeleteCertificates = async (
   };
 };
 
+// Stops before `excludeId`, so relinking a certificate that already replaced this one doesn't walk onto itself.
+// A chain that loops back on itself stops at the certificate whose replacement was already visited.
+export const findEndOfRenewalChain = async (
+  certificateDAL: Pick<TCertificateDALFactory, "findById">,
+  certificateId: string,
+  { tx, excludeId }: { tx?: Knex; excludeId?: string } = {}
+) => {
+  const visited = new Set([certificateId]);
+  let latestCertificateId = certificateId;
+  for (;;) {
+    // eslint-disable-next-line no-await-in-loop
+    const certificate = await certificateDAL.findById(latestCertificateId, tx);
+    const next = certificate?.renewedByCertificateId;
+    if (!next || next === excludeId || visited.has(next)) return latestCertificateId;
+    visited.add(next);
+    latestCertificateId = next;
+  }
+};
+
 export const linkRenewedCertificate = async (
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
   originalCertificateId: string,
   renewedCertificateId: string,
   tx?: Knex
 ) => {
-  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
+  // A certificate has one replacement, so renewing one that's already renewed (an EST or SCEP client that
+  // re-enrolls again with its old certificate) links the new certificate to the latest one in that chain.
+  const latestCertificateId = await findEndOfRenewalChain(certificateDAL, originalCertificateId, {
+    tx,
+    excludeId: renewedCertificateId
+  });
+  const latestCertificate = await certificateDAL.findById(latestCertificateId, tx);
 
-  if (originalCertificate?.orderId) {
-    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
+  // A chain that loops stops at a certificate that still has a replacement, which keeps its link.
+  if (latestCertificate?.renewedByCertificateId && latestCertificate.renewedByCertificateId !== renewedCertificateId) {
+    await certificateDAL.updateById(renewedCertificateId, { renewedFromCertificateId: null }, tx);
+    return;
   }
 
-  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
+  await certificateDAL.updateById(
+    renewedCertificateId,
+    {
+      renewedFromCertificateId: latestCertificateId,
+      ...(latestCertificate?.orderId && { orderId: latestCertificate.orderId })
+    },
+    tx
+  );
+
+  await certificateDAL.updateById(latestCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
 };

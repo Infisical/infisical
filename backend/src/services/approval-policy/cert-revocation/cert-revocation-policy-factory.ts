@@ -1,18 +1,11 @@
-import { Knex } from "knex";
-
-import { AccessScope, OrgMembershipStatus, ResourceType } from "@app/db/schemas";
-import { RESOURCE_SCOPE, ResourceMembershipRole } from "@app/db/schemas/models";
+import { ResourceType } from "@app/db/schemas";
+import { RESOURCE_SCOPE } from "@app/db/schemas/models";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { findUsersWithOrgAccess, TOrgAccessDALs } from "@app/services/alert/alert-principal-scope-fns";
 import { getCertificateDisplayName } from "@app/services/certificate/certificate-fns";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -27,11 +20,14 @@ import {
 import { TApprovalResource } from "../approval-policy-types";
 import {
   approverKey,
-  findPeopleWhoCanApprove,
-  isRevocationRequestUndecidable,
+  findLiveApproverEntries,
+  holdsApprovingMembership,
+  PKI_APPROVER_RULES,
+  resolveApprovingPeople,
   TApproverEntry,
-  TApprovingPeople
-} from "./cert-revocation-policy-fns";
+  TPkiApprovingPeopleDeps
+} from "../pki-approvers/application-approver-checks";
+import { findPeopleWhoCanApprove, isRevocationRequestUndecidable } from "./cert-revocation-policy-fns";
 import {
   TCertRevocationPolicy,
   TCertRevocationPolicyInputs,
@@ -39,187 +35,10 @@ import {
   TMatchedCertRevocationPolicy
 } from "./cert-revocation-policy-types";
 
-type TCertRevocationApprovalResourceDep = TOrgAccessDALs & {
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+type TCertRevocationApprovalResourceDep = TPkiApprovingPeopleDeps & {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "primaryNode">;
   certificateService: Pick<TCertificateServiceFactory, "revokeApprovedCertificate">;
-  membershipDAL: Pick<TMembershipDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
-};
-
-type TMembershipDeps = Pick<
-  TCertRevocationApprovalResourceDep,
-  "membershipDAL" | "membershipRoleDAL" | "userGroupMembershipDAL"
->;
-
-// A request snapshots its approvers when it is raised. Removing a member from the Application or demoting them to
-// Auditor only edits the policy, so the snapshot alone would let them decide requests that were already pending.
-// A membership counts only while it is active and holds a role that can approve.
-const findApprovingApplicationMemberships = async (
-  { membershipDAL, membershipRoleDAL }: TMembershipDeps,
-  { projectId, applicationId }: { projectId: string; applicationId: string },
-  tx?: Knex
-) => {
-  const memberships = (
-    await membershipDAL.find(
-      {
-        scope: RESOURCE_SCOPE,
-        scopeProjectId: projectId,
-        scopeResourceType: ResourceType.CertificateApplication,
-        scopeResourceId: applicationId
-      },
-      { tx }
-    )
-  ).filter((membership) => membership.isActive);
-  if (memberships.length === 0) return [];
-
-  const roles = await membershipRoleDAL.find({ $in: { membershipId: memberships.map((m) => m.id) } }, { tx });
-  const approvingMembershipIds = new Set(
-    roles.filter((r) => r.role !== ResourceMembershipRole.Auditor).map((r) => r.membershipId)
-  );
-  return memberships.filter((membership) => approvingMembershipIds.has(membership.id));
-};
-
-const holdsApprovingMembership = async (
-  deps: TMembershipDeps,
-  {
-    projectId,
-    applicationId,
-    userId,
-    userGroupIds
-  }: { projectId: string; applicationId: string; userId: string; userGroupIds: Set<string> },
-  tx?: Knex
-) => {
-  const memberships = await findApprovingApplicationMemberships(deps, { projectId, applicationId }, tx);
-  return memberships.some(
-    (membership) =>
-      membership.actorUserId === userId || Boolean(membership.actorGroupId && userGroupIds.has(membership.actorGroupId))
-  );
-};
-
-// The approver entries that can still approve: a user entry while that user holds an approving role directly or
-// through a group, a group entry while the group itself holds one. Each entry is judged on its own, so a user named
-// only through a group the Admin removed can't approve on the strength of an unrelated direct role.
-const $findLiveEntries = async <T extends TApproverEntry>(
-  deps: TMembershipDeps,
-  { projectId, applicationId }: { projectId: string; applicationId: string },
-  approvers: T[],
-  tx?: Knex
-): Promise<{ live: T[]; orgId: string | null }> => {
-  if (approvers.length === 0) return { live: [], orgId: null };
-  const memberships = await findApprovingApplicationMemberships(deps, { projectId, applicationId }, tx);
-  if (memberships.length === 0) return { live: [], orgId: null };
-  const memberUserIds = new Set(memberships.flatMap((m) => (m.actorUserId ? [m.actorUserId] : [])));
-  const memberGroupIds = new Set(memberships.flatMap((m) => (m.actorGroupId ? [m.actorGroupId] : [])));
-
-  const usersToCheckViaGroups = approvers
-    .filter((a) => a.type === ApproverType.User && !memberUserIds.has(a.id))
-    .map((a) => a.id);
-  const memberViaGroup = new Set<string>();
-  if (usersToCheckViaGroups.length > 0 && memberGroupIds.size > 0) {
-    const links = await deps.userGroupMembershipDAL.find(
-      { $in: { userId: usersToCheckViaGroups, groupId: [...memberGroupIds] } },
-      { tx }
-    );
-    links.forEach((link) => memberViaGroup.add(link.userId));
-  }
-
-  return {
-    live: approvers.filter((a) =>
-      a.type === ApproverType.Group ? memberGroupIds.has(a.id) : memberUserIds.has(a.id) || memberViaGroup.has(a.id)
-    ),
-    orgId: memberships[0].scopeOrgId
-  };
-};
-
-const findLiveApproverEntries = async <T extends TApproverEntry>(
-  deps: TMembershipDeps,
-  scope: { projectId: string; applicationId: string },
-  approvers: T[],
-  tx?: Knex
-): Promise<T[]> => (await $findLiveEntries(deps, scope, approvers, tx)).live;
-
-// Signing in to a sub-org also takes an active membership in its root organization (validateTokenOrgScope), so a
-// sub-org user deactivated there can't approve, however their sub-org access looks.
-const $keepRootOrgMembers = async (
-  { orgDAL }: Pick<TCertRevocationApprovalResourceDep, "orgDAL">,
-  orgId: string,
-  userIds: Set<string>,
-  tx?: Knex
-) => {
-  if (userIds.size === 0) return userIds;
-  const org = await orgDAL.findById(orgId, tx);
-  if (!org?.rootOrgId || org.rootOrgId === orgId) return userIds;
-  const { userIds: inRoot } = await orgDAL.findActorsWithActiveOrgAccess(
-    { orgId: org.rootOrgId, userIds: [...userIds], identityIds: [] },
-    tx
-  );
-  return new Set([...userIds].filter((userId) => inRoot.has(userId)));
-};
-
-// The people who can approve through each live entry, counted only while they can sign in to the organization. A user
-// entry's user may reach it through a group linked into it, as everyone in a sub-org does. A group entry's member
-// approves through the group only with an active, accepted organization membership of their own, since that is the
-// row the group lookup at review time joins on. An empty group names nobody.
-const resolveApprovingPeople = async (
-  deps: TMembershipDeps & Pick<TCertRevocationApprovalResourceDep, "orgDAL" | "userDAL">,
-  scope: { projectId: string; applicationId: string },
-  approvers: TApproverEntry[],
-  tx?: Knex
-): Promise<TApprovingPeople> => {
-  const { live, orgId } = await $findLiveEntries(deps, scope, approvers, tx);
-  const liveGroupIds = live.filter((a) => a.type === ApproverType.Group).map((a) => a.id);
-  const groupLinks = liveGroupIds.length
-    ? await deps.userGroupMembershipDAL.find({ $in: { groupId: liveGroupIds } }, { tx })
-    : [];
-
-  const namedUserIds = [...new Set(live.filter((a) => a.type === ApproverType.User).map((a) => a.id))];
-  const groupMemberIds = [...new Set(groupLinks.map((link) => link.userId))];
-  const namedUsersWithAccess = orgId
-    ? await $keepRootOrgMembers(
-        deps,
-        orgId,
-        await findUsersWithOrgAccess(deps, { orgId, userIds: namedUserIds }, tx),
-        tx
-      )
-    : new Set<string>();
-  const groupMembersWithAccess =
-    orgId && groupMemberIds.length
-      ? await $keepRootOrgMembers(
-          deps,
-          orgId,
-          new Set(
-            (
-              await deps.membershipDAL.find(
-                {
-                  scope: AccessScope.Organization,
-                  scopeOrgId: orgId,
-                  isActive: true,
-                  status: OrgMembershipStatus.Accepted,
-                  $in: { actorUserId: groupMemberIds }
-                },
-                { tx }
-              )
-            ).flatMap((m) => (m.actorUserId ? [m.actorUserId] : []))
-          ),
-          tx
-        )
-      : new Set<string>();
-
-  return new Map(
-    live.map((entry) => [
-      approverKey(entry),
-      entry.type === ApproverType.User
-        ? new Set(namedUsersWithAccess.has(entry.id) ? [entry.id] : [])
-        : new Set(
-            groupLinks
-              .filter((link) => link.groupId === entry.id && groupMembersWithAccess.has(link.userId))
-              .map((link) => link.userId)
-          )
-    ])
-  );
 };
 
 export const certRevocationApprovalResourceFactory = ({
@@ -238,6 +57,7 @@ export const certRevocationApprovalResourceFactory = ({
 > => {
   const membershipDeps = { membershipDAL, membershipRoleDAL, userGroupMembershipDAL };
   const approvingPeopleDeps = { ...membershipDeps, orgDAL, userDAL };
+  const approverRule = PKI_APPROVER_RULES[ApprovalPolicyType.CertRevocation];
 
   return {
     scopeType: ApprovalPolicyScope.PkiApplication,
@@ -262,6 +82,7 @@ export const certRevocationApprovalResourceFactory = ({
 
       const people = await resolveApprovingPeople(
         approvingPeopleDeps,
+        approverRule,
         { projectId, applicationId: inputs.applicationId },
         policy.steps.flatMap((step) => step.approvers),
         primaryDb
@@ -294,6 +115,7 @@ export const certRevocationApprovalResourceFactory = ({
         // eslint-disable-next-line no-await-in-loop
         const people = await resolveApprovingPeople(
           approvingPeopleDeps,
+          approverRule,
           { projectId: entries[0].request.projectId, applicationId },
           [...approvers.values()],
           tx
@@ -317,7 +139,9 @@ export const certRevocationApprovalResourceFactory = ({
     isLiveApprover: async ({ projectId, scopeId, actor, userGroupIds }) =>
       holdsApprovingMembership(
         membershipDeps,
-        { projectId, applicationId: scopeId, userId: actor.id, userGroupIds },
+        approverRule,
+        { projectId, applicationId: scopeId },
+        { userId: actor.id, userGroupIds },
         approvalPolicyDAL.primaryNode()
       ),
 
@@ -335,6 +159,7 @@ export const certRevocationApprovalResourceFactory = ({
       const primaryDb = tx ?? approvalPolicyDAL.primaryNode();
       const liveEntries = await findLiveApproverEntries(
         membershipDeps,
+        approverRule,
         { projectId, applicationId: scopeId },
         stepApprovers,
         primaryDb
@@ -347,7 +172,9 @@ export const certRevocationApprovalResourceFactory = ({
       // only through groups that lost theirs.
       const stillHoldsRole = await holdsApprovingMembership(
         membershipDeps,
-        { projectId, applicationId: scopeId, userId: actor.id, userGroupIds },
+        approverRule,
+        { projectId, applicationId: scopeId },
+        { userId: actor.id, userGroupIds },
         primaryDb
       );
       throw new ForbiddenRequestError({
@@ -365,6 +192,7 @@ export const certRevocationApprovalResourceFactory = ({
         (
           await findLiveApproverEntries(
             membershipDeps,
+            approverRule,
             { projectId, applicationId: scopeId },
             entries,
             approvalPolicyDAL.primaryNode()
@@ -416,6 +244,7 @@ export const certRevocationApprovalResourceFactory = ({
       if (!request.scopeId) return [];
       return findLiveApproverEntries(
         membershipDeps,
+        approverRule,
         { projectId: request.projectId, applicationId: request.scopeId },
         approvers,
         approvalPolicyDAL.primaryNode()

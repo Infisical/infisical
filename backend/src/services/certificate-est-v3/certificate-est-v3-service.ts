@@ -383,6 +383,14 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
+    // A client certificate from another profile or Application on the same CA, or one Infisical doesn't hold, still
+    // re-enrolls, but as a new certificate: there's no certificate of this Application's for it to renew.
+    const isSameEnrollment =
+      storedCert?.profileId === profileId && (storedCert.applicationId ?? null) === (applicationId ?? null);
+    const failureOperation = isSameEnrollment
+      ? { operation: CertificateIssuanceOperation.RENEW, originalCertificateId: storedCert.id }
+      : { operation: CertificateIssuanceOperation.SIGN };
+
     const $rejectReenrollCsr = async (message: string) => {
       const error = new BadRequestError({ message });
       await $recordEstFailure({
@@ -391,8 +399,7 @@ export const certificateEstV3ServiceFactory = ({
         csr,
         applicationId,
         auditLogInfo,
-        operation: CertificateIssuanceOperation.RENEW,
-        originalCertificateId: storedCert?.id
+        ...failureOperation
       });
       return error;
     };
@@ -430,8 +437,7 @@ export const certificateEstV3ServiceFactory = ({
         csr,
         applicationId,
         auditLogInfo,
-        operation: CertificateIssuanceOperation.RENEW,
-        originalCertificateId: storedCert?.id
+        ...failureOperation
       });
       throw error;
     });
@@ -446,8 +452,10 @@ export const certificateEstV3ServiceFactory = ({
       validity: { ttl },
       enrollmentType: EnrollmentType.EST,
       applicationId,
-      issuanceOperation: CertificateIssuanceOperation.RENEW,
-      originalCertificateId: storedCert?.id,
+      ...(isSameEnrollment && {
+        issuanceOperation: CertificateIssuanceOperation.RENEW,
+        originalCertificateId: storedCert.id
+      }),
       renewalCommonNameSanTypes: isCsrSanMatch ? [] : getSubjectAltNameTypes(certSanExtension),
       auditLogInfo: auditLogInfo && {
         ...auditLogInfo,

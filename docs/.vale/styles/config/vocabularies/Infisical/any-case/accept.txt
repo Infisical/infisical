@@ -225,6 +225,7 @@ I
 (?i)timeframe
 (?i)toolchain
 (?i)toolset
+(?i)tooltip
 (?i)tolerations
 (?i)truststore
 (?i)uncontained

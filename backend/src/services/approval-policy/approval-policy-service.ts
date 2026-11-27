@@ -1005,7 +1005,7 @@ export const approvalPolicyServiceFactory = ({
       : undefined;
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
-      await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
+      const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policyId, tx);
       const updateDoc: Partial<TApprovalPolicies> = {};
 
       if (name !== undefined) {
@@ -1021,7 +1021,16 @@ export const approvalPolicyServiceFactory = ({
       }
 
       if (constraints !== undefined) {
-        updateDoc.constraints = { version: 1, constraints };
+        const { updateConstraints } = resources[policy.type as ApprovalPolicyType] ?? {};
+        updateDoc.constraints = {
+          version: 1,
+          constraints: updateConstraints
+            ? updateConstraints(
+                (lockedPolicy?.constraints as TApprovalPolicy["constraints"] | null | undefined)?.constraints,
+                constraints
+              )
+            : constraints
+        };
       }
 
       if (bypassForMachineIdentities !== undefined) {
@@ -1994,8 +2003,11 @@ export const approvalPolicyServiceFactory = ({
       await $emitEvent({ event: ApprovalNotificationEvent.Rejected, request: rejected }, tx);
     });
 
-    const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
-    const finalRequest = await approvalRequestDAL.findById(requestId);
+    // The rejection just committed, and a replica may still show the request pending. The post-rejection routine and
+    // the response both go by its status, so read it from the primary.
+    const primary = approvalPolicyDAL.primaryNode();
+    const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId, primary);
+    const finalRequest = await approvalRequestDAL.findById(requestId, primary);
 
     if (finalRequest) {
       const resource = $resource(finalRequest.type as ApprovalPolicyType);

@@ -1,8 +1,13 @@
 import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
-import { ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
-import { isEligibleStepApprover, upsertApprovalRequestStepDecision } from "./approval-request-fns";
+import { ApprovalPolicyType, ApprovalRequestApprovalDecision, ApproverType } from "./approval-policy-enums";
+import {
+  getApprovalRequestAuditLabel,
+  getApprovalRequestSubjectMetadata,
+  isEligibleStepApprover,
+  upsertApprovalRequestStepDecision
+} from "./approval-request-fns";
 
 const TX = { isTx: true } as unknown as Knex;
 
@@ -74,5 +79,101 @@ describe("upsertApprovalRequestStepDecision", () => {
       TX
     );
     expect(result).toMatchObject({ id: "approval-7", decision: ApprovalRequestApprovalDecision.Rejected });
+  });
+});
+
+describe("getApprovalRequestSubjectMetadata for a certificate request", () => {
+  const certRequest = (requestData: object) => ({
+    type: ApprovalPolicyType.CertRequest,
+    requestData: {
+      version: 1,
+      requestData: {
+        certificateRequestId: "cert-req-1",
+        profileName: "web-servers",
+        certificateRequest: { commonName: "a.example.com" },
+        ...requestData
+      }
+    }
+  });
+
+  test("names the certificate whose renewal is being decided", () => {
+    expect(getApprovalRequestSubjectMetadata(certRequest({ renewal: { certificateId: "cert-1" } }))).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-1",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
+  test("names the certificate an EST or SCEP re-enrollment replaces", () => {
+    expect(getApprovalRequestSubjectMetadata(certRequest({ renewalOfCertificateId: "cert-2" }))).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-2",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
+  test("labels the certificate an EST or SCEP re-enrollment replaces", () => {
+    expect(
+      getApprovalRequestSubjectMetadata(
+        certRequest({ renewalOfCertificateId: "cert-2", renewalOfCertificateName: "device.example.com" })
+      )
+    ).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-2",
+      certificateName: "device.example.com",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
+  test("labels the renewed certificate apart from the name the renewal requests", () => {
+    expect(
+      getApprovalRequestSubjectMetadata(
+        certRequest({ renewal: { certificateId: "cert-1", certificateName: "old.example.com" } })
+      )
+    ).toEqual({
+      certificateRequestId: "cert-req-1",
+      certificateId: "cert-1",
+      certificateName: "old.example.com",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+
+  test("names no certificate for a new issuance", () => {
+    expect(getApprovalRequestSubjectMetadata(certRequest({}))).toEqual({
+      certificateRequestId: "cert-req-1",
+      commonName: "a.example.com",
+      profileName: "web-servers"
+    });
+  });
+});
+
+describe("getApprovalRequestAuditLabel", () => {
+  test("names the requester's email when the requester has one", () => {
+    expect(
+      getApprovalRequestAuditLabel(
+        { id: "approval-1", requesterName: "Dana", requesterEmail: "dana@example.com" },
+        { name: "renewals" }
+      )
+    ).toEqual({
+      approvalRequestId: "approval-1",
+      approvalPolicyName: "renewals",
+      requesterName: "Dana",
+      requesterEmail: "dana@example.com"
+    });
+  });
+
+  test("leaves the email out for an automatic renewal and the policy name out once the policy is deleted", () => {
+    const label = getApprovalRequestAuditLabel(
+      { id: "approval-1", requesterName: "Automatic Renewal", requesterEmail: "" },
+      null
+    );
+    expect(JSON.parse(JSON.stringify(label))).toEqual({
+      approvalRequestId: "approval-1",
+      requesterName: "Automatic Renewal"
+    });
   });
 });

@@ -158,15 +158,18 @@ stop agreeing.
 
 A new approval type's `postApprovalRoutine` must never throw, because it runs after the approval has committed. Throwing
 can't undo the approval, would fail the approver's request for an approval that went through, and never reaches the
-requester. `approveRequest` runs it once, for the approval that completes the request. When the approved
-action fails there, record the failure in the audit log and call
-`approvalPolicyService.notifyApprovedActionFailed`, which tells the requester and the request's approvers why
-(`ApprovalNotificationEvent.ApprovedActionFailed`); the resource's `buildNotification` supplies the wording, and its
-`filterActiveApprovers` drops approvers who have since lost access to the scope, since the request's approver list
-outlives their removal. Certificate
-revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance
-(`cert-request-policy-factory.ts`) doesn't follow this pattern: its status updates, failure recording and telemetry
-run outside any guard, so it can still throw, and a failed issuance is audited but nobody is notified. Don't copy it.
+requester. `approveRequest` runs it for the approval that completes the request, and `createRequest` runs it for a
+request an auto-approval rule approves, where a throw fails the requester's call instead. When the approved action fails
+there, record the failure in the audit log and call `approvalPolicyService.notifyApprovedActionFailed`, which tells the
+requester and the approvers why (`ApprovalNotificationEvent.ApprovedActionFailed`), leaving out any approver the
+resource's `filterActiveApprovers` drops; the resource's `buildNotification` supplies the wording. Certificate
+revocation (`certificateService.revokeApprovedCertificate`) is the reference. Certificate issuance and renewal
+(`cert-request-policy-factory.ts`) notify through it when the approved action fails, and their
+`filterActiveApprovers` keeps approvers still in the request's Application in any role (or, for a policy without one,
+users still in Certificate Management and every approver group, whose membership is never checked there), but approve
+and reject don't recheck that yet. Read
+`backend/src/services/certificate-request/AGENTS.md` before changing how an issuance or renewal failure is recorded or
+reported.
 
 Auto-approval rules (`approval-policy/auto-approval/`) live on the policy and are evaluated once in
 `createRequest`, outside any transaction, failing closed. Another service becomes checkable by adding a

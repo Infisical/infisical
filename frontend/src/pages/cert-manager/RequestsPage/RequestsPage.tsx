@@ -48,6 +48,7 @@ import {
   CertRequestRequestData,
   CertRevocationRequestData,
   CodeSigningRequestData,
+  isCertRenewalRequest,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
@@ -111,16 +112,19 @@ const getApplicationRequestSummary = (request: TApprovalRequest) => {
     return {
       typeLabel: "Revocation",
       commonName: data.commonName || data.serialNumber,
+      renewedCertificateName: "",
       displayName: data.commonName || truncateSerialNumber(data.serialNumber),
       profileName: data.profileName
     };
   }
 
   const data = isCertRequestData(request.requestData) ? request.requestData.requestData : null;
+  const renewal = data && "renewal" in data ? data.renewal : undefined;
   const commonName = data?.certificateRequest?.commonName ?? "";
   return {
-    typeLabel: data && "renewal" in data && data.renewal ? "Renewal" : "Issuance",
+    typeLabel: data && isCertRenewalRequest(data) ? "Renewal" : "Issuance",
     commonName,
+    renewedCertificateName: renewal?.certificateName ?? "",
     displayName: commonName,
     profileName: data?.profileName ?? ""
   };
@@ -250,10 +254,12 @@ export const RequestsPage = () => {
       .filter((r) => matchesStatus(r.status as ApprovalRequestStatus))
       .filter((r) => {
         if (!norm) return true;
-        const { typeLabel, commonName, profileName } = getApplicationRequestSummary(r);
+        const { typeLabel, commonName, renewedCertificateName, profileName } =
+          getApplicationRequestSummary(r);
         const requester = `${r.requesterName} ${r.requesterEmail}`;
         return (
           commonName.toLowerCase().includes(norm) ||
+          renewedCertificateName.toLowerCase().includes(norm) ||
           profileName.toLowerCase().includes(norm) ||
           typeLabel.toLowerCase().includes(norm) ||
           requester.toLowerCase().includes(norm)

@@ -1,5 +1,5 @@
 import * as x509 from "@peculiar/x509";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, it, test, vi } from "vitest";
 
 import { encodeCustomExtensionValue, resolveCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import { TCertificateRequest, TPolicyValidationOptions } from "../certificate-policy/certificate-policy-types";
@@ -94,6 +94,7 @@ describe("certificateApprovalService issuing an approved request", () => {
   beforeEach(() => {
     deps = {
       certificateRequestDAL: { findById: vi.fn(), updateById: vi.fn() },
+      certificateDAL: { primaryNode: vi.fn() },
       certificateProfileDAL: { findByIdWithConfigs: vi.fn().mockResolvedValue(profile) },
       certificateAuthorityDAL: {
         findByIdWithAssociatedCa: vi.fn().mockResolvedValue({ id: "ca-id", projectId: "project-id", externalCa: null })
@@ -110,10 +111,10 @@ describe("certificateApprovalService issuing an approved request", () => {
     };
   });
 
-  const issue = async (request: Record<string, unknown>) => {
+  const issue = async (request: Record<string, unknown>, renewalOfCertificateId?: string) => {
     deps.certificateRequestDAL.findById.mockResolvedValue(request);
     const service = certificateApprovalServiceFactory(deps as unknown as TIssueCertificateFromApprovedRequestDeps);
-    await expect(service.issueCertificate("request-id")).rejects.toThrow(SIGNING_STOPPED);
+    await expect(service.issueCertificate("request-id", renewalOfCertificateId)).rejects.toThrow(SIGNING_STOPPED);
   };
 
   test("signs an approved Microsoft Autoenrollment request for the Active Directory name, not the request's", async () => {
@@ -209,10 +210,13 @@ describe("certificateApprovalService issuing an approved request", () => {
   describe("persisting the issued certificate", () => {
     const issuanceTx = { isTransaction: true };
 
-    const persistApproved = async (request: Record<string, unknown>) => {
+    const persistApproved = async (request: Record<string, unknown>, renewalOfCertificateId?: string) => {
+      const oldCertificate = { id: "cert-old", orderId: null, deletedAt: null };
       deps.certificateDAL = {
+        primaryNode: vi.fn(),
         updateById: vi.fn(),
-        findById: vi.fn().mockResolvedValue({ id: "cert-old", orderId: null })
+        findById: vi.fn().mockResolvedValue(oldCertificate),
+        findByIdForUpdate: vi.fn().mockResolvedValue(oldCertificate)
       };
       deps.resourceMetadataDAL = { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() };
       deps.certificateAlertEventEmitter = { emit: vi.fn() };
@@ -222,7 +226,7 @@ describe("certificateApprovalService issuing an approved request", () => {
           throw SIGNING_STOPPED;
         }
       );
-      await issue(request);
+      await issue(request, renewalOfCertificateId);
     };
 
     test("links an approved Microsoft Autoenrollment renewal to the certificate it replaces", async () => {
@@ -241,6 +245,24 @@ describe("certificateApprovalService issuing an approved request", () => {
         expect.objectContaining({ renewedFromCertificateId: "cert-old" }),
         issuanceTx
       );
+      expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-old",
+        { renewedByCertificateId: "cert-new" },
+        issuanceTx
+      );
+    });
+
+    test("links an approved re-enrollment to the certificate its approval request names", async () => {
+      await persistApproved(
+        storedRequest({
+          enrollmentType: EnrollmentType.EST,
+          csr: await buildCsrPem("device.example.com"),
+          renewedFromCertificateId: null
+        }),
+        "cert-old"
+      );
+
+      expect(deps.certificateDAL.findByIdForUpdate).toHaveBeenCalledWith("cert-old", issuanceTx);
       expect(deps.certificateDAL.updateById).toHaveBeenCalledWith(
         "cert-old",
         { renewedByCertificateId: "cert-new" },
@@ -366,5 +388,78 @@ describe("certificateApprovalService issuing an approved request", () => {
 
     expect(signInput().subjectOverride).toContain("CN=service.example.com");
     expect(signInput().altNames).toBeUndefined();
+  });
+});
+
+const stubDeps = () => {
+  const stubs = new Map<string, unknown>();
+  return new Proxy({} as Record<string, unknown>, {
+    get: (_target, property: string) => {
+      if (!stubs.has(property)) stubs.set(property, vi.fn());
+      return stubs.get(property);
+    }
+  });
+};
+
+describe("issueCertificate after an approval", () => {
+  it("reads the request from the primary, where approval just set it pending", async () => {
+    const primary = { isPrimary: true };
+    const replicaRequest = { id: "request-1", status: CertificateRequestStatus.PENDING_APPROVAL };
+    const certificateRequestDAL = {
+      findById: vi.fn(async (_id: string, tx?: unknown) =>
+        tx === primary ? { ...replicaRequest, status: CertificateRequestStatus.PENDING } : replicaRequest
+      ),
+      updateById: vi.fn()
+    };
+    const service = certificateApprovalServiceFactory({
+      ...stubDeps(),
+      certificateRequestDAL,
+      certificateDAL: { primaryNode: vi.fn().mockReturnValue(primary) }
+    } as unknown as Parameters<typeof certificateApprovalServiceFactory>[0]);
+
+    await expect(service.issueCertificate("request-1")).rejects.toThrow("Certificate request is missing profile ID");
+
+    expect(certificateRequestDAL.findById).toHaveBeenCalledWith("request-1", primary);
+  });
+});
+
+describe("issueCertificate for an approved re-enrollment", () => {
+  it("fails the request when the certificate it renews was deleted while it waited", async () => {
+    const primary = { isPrimary: true };
+    const certificateRequestDAL = {
+      findById: vi.fn(async () => ({
+        id: "request-1",
+        profileId: "profile-1",
+        status: CertificateRequestStatus.PENDING
+      })),
+      updateById: vi.fn()
+    };
+    const certificateDAL = {
+      primaryNode: vi.fn().mockReturnValue(primary),
+      findById: vi.fn(async () => ({
+        id: "original-1",
+        commonName: "device.example.com",
+        serialNumber: "01",
+        deletedAt: new Date("2026-11-20T00:00:00.000Z")
+      }))
+    };
+    const internalCaService = { signCertFromCa: vi.fn() };
+    const service = certificateApprovalServiceFactory({
+      ...stubDeps(),
+      certificateRequestDAL,
+      certificateDAL,
+      internalCaService
+    } as unknown as Parameters<typeof certificateApprovalServiceFactory>[0]);
+
+    await expect(service.issueCertificate("request-1", "original-1")).rejects.toThrow(
+      "Certificate 'device.example.com' was deleted on 2026-11-20T00:00:00.000Z. It can no longer be renewed or changed."
+    );
+
+    expect(certificateDAL.findById).toHaveBeenCalledWith("original-1", primary);
+    expect(internalCaService.signCertFromCa).not.toHaveBeenCalled();
+    expect(certificateRequestDAL.updateById).toHaveBeenLastCalledWith(
+      "request-1",
+      expect.objectContaining({ status: CertificateRequestStatus.FAILED })
+    );
   });
 });

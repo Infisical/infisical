@@ -196,6 +196,8 @@ When auto-renewal is enabled, Infisical automatically renews certificates before
 2. When a certificate is within the "Renew Before Days" threshold, Infisical issues a new certificate
 3. The new certificate is pushed to any configured [certificate syncs](/documentation/platform/pki/applications/certificate-syncs/overview)
 
+If an [approval policy](/documentation/platform/pki/applications/approvals#renewals) holds the renewal, Infisical requests approval in step 2 and issues the new certificate only after approvers approve the renewal.
+
 <Info>
   Auto-renewal needs Infisical to hold either the certificate's private key or a CSR generated from it. If Infisical holds only the CSR, it sends that CSR to the certificate authority again, so the renewed certificate works with the private key your client already has.
 </Info>

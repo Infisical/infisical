@@ -1040,6 +1040,8 @@ Encryption (the root key, KMS keys, org and project data keys, HSM, external KMS
 
 **PAM**: Before working on any `pam-*` service or router, read [`src/ee/services/pam/AGENTS.md`](src/ee/services/pam/AGENTS.md) for a high-level map of the PAM backend — module layout, permission model, and non-obvious invariants. It is intentionally a concept map, not a spec: read the referenced code for implementation detail. If you add a feature, keep any addition there brief (a concept or invariant, not code mechanics).
 
+**Certificate request failures**: before changing how an issuance job, CA module or approved issuance fails a certificate request, read [`src/services/certificate-request/AGENTS.md`](src/services/certificate-request/AGENTS.md).
+
 **Certificate discovery**: before working on `pki-discovery-*` or `pki-installation-*`, read [`src/ee/services/pki-discovery/AGENTS.md`](src/ee/services/pki-discovery/AGENTS.md). Linux Server discovery splits work between the backend and the gateway's certificate scanner in the CLI repo, and keystore passwords live on installations, not jobs.
 
 **Agent Vault**: the same applies to the `agent-vault-*` services and routers; the concept map is [`src/ee/services/agent-vault/AGENTS.md`](src/ee/services/agent-vault/AGENTS.md). Agent Vault projects are user-created like any other project type, but their roles collapse to admin or member like PAM's, they have their own identities meter, and they stay out of the billable-project count. So a branch on `ProjectType.PAM` for metering, predefined roles or the billable-project count usually needs an Agent Vault arm too; one about the implicit project does not.

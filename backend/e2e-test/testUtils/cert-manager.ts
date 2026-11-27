@@ -4,9 +4,13 @@ import { LightMyRequestResponse } from "fastify";
 
 import { ProjectType } from "@app/db/schemas";
 import { ResourceMembershipRole } from "@app/db/schemas/models";
-import { ApprovalPolicyScope, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApproverType
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CaStatus, InternalCaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { CertKeyAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 
 import { request } from "./request";
 
@@ -238,6 +242,7 @@ export const issueApplicationCertificate = (dto: {
   profileId: string;
   applicationId: string;
   commonName: string;
+  ttl?: string;
   authToken: string;
 }) =>
   request(
@@ -248,7 +253,14 @@ export const issueApplicationCertificate = (dto: {
       body: {
         profileId: dto.profileId,
         applicationId: dto.applicationId,
-        attributes: { commonName: dto.commonName, ttl: "1d" }
+        // createInternalRootCa's CA has an ECDSA P-256 key. A renewal reuses the certificate's algorithms, so a
+        // certificate issued without them from that CA can't be renewed.
+        attributes: {
+          commonName: dto.commonName,
+          ttl: dto.ttl ?? "1d",
+          keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
+          signatureAlgorithm: CertSignatureAlgorithm.ECDSA_SHA256
+        }
       }
     },
     (res) => ok<{ certificate: { certificateId: string } }>(res).certificate.certificateId
@@ -268,41 +280,123 @@ export const revokeCertificate = (dto: { certificateId: string; authToken: strin
     }
   );
 
-export type TRevocationPolicyStep = {
+export type TCertificate = {
+  id: string;
+  status: string;
+  serialNumber: string;
+  commonName: string;
+  renewedByCertificateId?: string | null;
+  renewedFromCertificateId?: string | null;
+  renewBeforeDays?: number | null;
+  renewalError?: string | null;
+  revokedAt?: string | null;
+};
+
+export const getCertificate = (dto: { certificateId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}`,
+      headers: auth(dto.authToken)
+    },
+    (res) => ok<{ certificate: TCertificate }>(res).certificate
+  );
+
+// Renews with a new key pair: the certificate as it is, or with the attributes passed.
+export const renewCertificate = (dto: {
+  certificateId: string;
+  authToken: string;
+  attributes?: { commonName?: string };
+}) =>
+  request(
+    {
+      method: "POST",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}/renew`,
+      headers: auth(dto.authToken),
+      body: dto.attributes ? { attributes: dto.attributes } : {}
+    },
+    ok<{ status: string; certificateId: string; certificateRequestId: string; serialNumber: string }>
+  );
+
+export const setCertificateRenewBeforeDays = (dto: {
+  certificateId: string;
+  renewBeforeDays: number;
+  authToken: string;
+}) =>
+  request(
+    {
+      method: "PATCH",
+      url: `/api/v1/cert-manager/certificates/${dto.certificateId}/config`,
+      headers: auth(dto.authToken),
+      body: { renewBeforeDays: dto.renewBeforeDays }
+    },
+    ok
+  );
+
+export type TApprovalPolicyStep = {
   requiredApprovals: number;
   approvers: { type: ApproverType; id: string }[];
   notifyApprovers?: boolean;
 };
 
-const revocationPoliciesUrl = "/api/v1/approval-policies/cert-revocation";
+export type TCertRequestApprovalRequest = {
+  id: string;
+  status: string;
+  requesterName: string;
+  requesterId?: string | null;
+  createdAt: string;
+  requestData: {
+    requestData: {
+      certificateRequestId: string;
+      profileName: string;
+      renewal?: { certificateId: string } | null;
+    };
+  };
+};
 
-export const createRevocationApprovalPolicy = (dto: {
+type TApplicationApprovalRequestByType = {
+  [ApprovalPolicyType.CertRequest]: TCertRequestApprovalRequest;
+  [ApprovalPolicyType.CertRevocation]: { id: string; approversCanNoLongerApprove: boolean };
+};
+
+type TPkiApprovalPolicyType = keyof TApplicationApprovalRequestByType;
+
+const approvalPoliciesUrl = (policyType: TPkiApprovalPolicyType) => `/api/v1/approval-policies/${policyType}`;
+
+const revocationPoliciesUrl = approvalPoliciesUrl(ApprovalPolicyType.CertRevocation);
+
+// Policies need the pkiApprovals plan feature (see overrideLicenseFeatures).
+export const createApprovalPolicy = (dto: {
+  policyType: TPkiApprovalPolicyType;
   applicationId: string;
   profileSlug: string;
-  steps: TRevocationPolicyStep[];
+  steps: TApprovalPolicyStep[];
   maxRequestTtl?: string;
+  constraints?: Record<string, unknown>;
   authToken: string;
 }) =>
   request(
     {
       method: "POST",
-      url: revocationPoliciesUrl,
+      url: approvalPoliciesUrl(dto.policyType),
       headers: auth(dto.authToken),
       body: {
         scope: ApprovalPolicyScope.PkiApplication,
         scopeId: dto.applicationId,
-        name: `revocation-${randomUUID().slice(0, 8)}`,
+        name: `${dto.policyType}-${randomUUID().slice(0, 8)}`,
         maxRequestTtl: dto.maxRequestTtl ?? null,
         conditions: [{ profileNames: [dto.profileSlug] }],
+        ...(dto.constraints && { constraints: dto.constraints }),
         steps: dto.steps
       }
     },
-    (res) => ok<{ policy: { id: string; name: string } }>(res).policy
+    (res) =>
+      ok<{ policy: { id: string; name: string; constraints: { constraints: Record<string, unknown> } } }>(res).policy
   );
 
 export const updateRevocationApprovalPolicy = (dto: {
   policyId: string;
-  steps: TRevocationPolicyStep[];
+  steps: TApprovalPolicyStep[];
   authToken: string;
 }) =>
   request(
@@ -322,7 +416,7 @@ export const getRevocationApprovalPolicy = (dto: { policyId: string; authToken: 
       url: `${revocationPoliciesUrl}/${dto.policyId}`,
       headers: auth(dto.authToken)
     },
-    (res) => ok<{ policy: { id: string; steps: TRevocationPolicyStep[] } }>(res).policy
+    (res) => ok<{ policy: { id: string; steps: TApprovalPolicyStep[] } }>(res).policy
   );
 
 // The query the Certificate Manager requests page and its sidebar count send.
@@ -337,15 +431,19 @@ export const listProjectRevocationRequests = (dto: { projectId: string; authToke
     (res) => ok<{ requests: { id: string }[] }>(res).requests
   );
 
-export const listApplicationRevocationRequests = (dto: { applicationId: string; authToken: string }) =>
+export const listApplicationApprovalRequests = <TPolicyType extends TPkiApprovalPolicyType>(dto: {
+  policyType: TPolicyType;
+  applicationId: string;
+  authToken: string;
+}) =>
   request(
     {
       method: "GET",
-      url: `${revocationPoliciesUrl}/requests`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/requests`,
       headers: auth(dto.authToken),
       query: { scope: ApprovalPolicyScope.PkiApplication, id: dto.applicationId }
     },
-    (res) => ok<{ requests: { id: string; approversCanNoLongerApprove: boolean }[] }>(res).requests
+    (res) => ok<{ requests: TApplicationApprovalRequestByType[TPolicyType][] }>(res).requests
   );
 
 export const cancelRevocationRequest = (dto: { requestId: string; authToken: string }) =>
@@ -377,17 +475,19 @@ export const getRevocationRequest = (dto: { requestId: string; authToken: string
       }>(res).request
   );
 
-export const decideRevocationRequest = (dto: {
+export const decideApprovalRequest = (dto: {
+  policyType: TPkiApprovalPolicyType;
   requestId: string;
   decision: "approve" | "reject";
+  comment?: string;
   authToken: string;
 }) =>
   request(
     {
       method: "POST",
-      url: `${revocationPoliciesUrl}/requests/${dto.requestId}/${dto.decision}`,
+      url: `${approvalPoliciesUrl(dto.policyType)}/requests/${dto.requestId}/${dto.decision}`,
       headers: auth(dto.authToken),
-      body: {}
+      body: dto.comment ? { comment: dto.comment } : {}
     },
     (res) => ok<{ request: { id: string; status: string } }>(res).request
   );

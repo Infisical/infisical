@@ -5,8 +5,15 @@ import { ForbiddenRequestError } from "@app/lib/errors";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { ApprovalPolicyScope, ApprovalPolicyType, ApprovalRequestStatus, ApproverType } from "./approval-policy-enums";
+import {
+  ApprovalPolicyScope,
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  ApproverType,
+  CertRequestPolicyOperation
+} from "./approval-policy-enums";
 import { approvalPolicyServiceFactory } from "./approval-policy-service";
+import { certRequestApprovalResourceFactory } from "./cert-request/cert-request-policy-factory";
 import { certRevocationApprovalResourceFactory } from "./cert-revocation";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -16,6 +23,77 @@ vi.mock("@app/lib/request-context/oauth-delegation", async (importOriginal) => (
 }));
 
 type TDeps = Parameters<typeof approvalPolicyServiceFactory>[0];
+
+describe("approvalPolicyService.updateById constraints", () => {
+  const actor = { type: ActorType.USER, id: "user-1", orgId: "org-1", authMethod: null } as never;
+
+  const setup = (type: ApprovalPolicyType, storedConstraints: Record<string, unknown>) => {
+    const stored = {
+      id: "policy-1",
+      type,
+      projectId: "project-1",
+      constraints: { version: 1, constraints: storedConstraints }
+    };
+    const approvalPolicyDAL = {
+      findById: vi.fn().mockResolvedValue(stored),
+      findByIdForUpdate: vi.fn().mockResolvedValue(stored),
+      transaction: vi.fn((fn: (tx: unknown) => unknown) => fn("tx")),
+      updateById: vi.fn((id: string, doc: object) => Promise.resolve({ ...stored, ...doc })),
+      findStepsByPolicyId: vi.fn().mockResolvedValue([]),
+      findBypassersByPolicyId: vi.fn().mockResolvedValue([])
+    };
+    const domainChecks = { assertCanManagePolicy: vi.fn(), verifyPolicyActors: vi.fn() };
+    const service = approvalPolicyServiceFactory({
+      approvalPolicyDAL,
+      autoApprovalService: { findByPolicyIds: vi.fn().mockResolvedValue(new Map()), toPolicyResponse: vi.fn() },
+      resources: {
+        [ApprovalPolicyType.CertRequest]: { ...certRequestApprovalResourceFactory({} as never), ...domainChecks },
+        [ApprovalPolicyType.CertRevocation]: { ...certRevocationApprovalResourceFactory({} as never), ...domainChecks }
+      }
+    } as unknown as TDeps);
+    const written = () => approvalPolicyDAL.updateById.mock.calls[0]?.[1] as { constraints?: unknown } | undefined;
+    return { service, written };
+  };
+
+  it("keeps a cert-request policy's type when an update sends no type", async () => {
+    const { service, written } = setup(ApprovalPolicyType.CertRequest, {
+      operation: CertRequestPolicyOperation.Renewal
+    });
+
+    await service.updateById("policy-1", { constraints: {} } as never, actor, ApprovalPolicyType.CertRequest);
+
+    expect(written()?.constraints).toEqual({
+      version: 1,
+      constraints: { operation: CertRequestPolicyOperation.Renewal }
+    });
+  });
+
+  it("refuses an update that changes a cert-request policy's operation", async () => {
+    const { service, written } = setup(ApprovalPolicyType.CertRequest, {
+      operation: CertRequestPolicyOperation.Renewal
+    });
+
+    await expect(
+      service.updateById(
+        "policy-1",
+        { constraints: { operation: CertRequestPolicyOperation.Issuance } } as never,
+        actor,
+        ApprovalPolicyType.CertRequest
+      )
+    ).rejects.toThrow(
+      "This is a renewal policy, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new issuance policy."
+    );
+    expect(written()).toBeUndefined();
+  });
+
+  it("replaces the constraints of a policy type without its own update rule", async () => {
+    const { service, written } = setup(ApprovalPolicyType.CertRevocation, { stale: true });
+
+    await service.updateById("policy-1", { constraints: {} } as never, actor, ApprovalPolicyType.CertRevocation);
+
+    expect(written()?.constraints).toEqual({ version: 1, constraints: {} });
+  });
+});
 
 describe("approvalPolicyService.notifyApprovedActionFailed", () => {
   const request = {
@@ -87,7 +165,8 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       steps = [{ stepNumber: 1, approvers: [{ type: ApproverType.User, id: "approver-1" }], approvals: [] }],
       replicaMemberships = applicationMemberships,
       groupIds = [],
-      replicaGroupIds = groupIds
+      replicaGroupIds = groupIds,
+      completeDecision = false
     }: {
       type?: ApprovalPolicyType;
       status?: ApprovalRequestStatus;
@@ -96,6 +175,8 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       replicaMemberships?: TApplicationMembership[];
       groupIds?: string[];
       replicaGroupIds?: string[];
+      // Runs the decision's transaction, after which the primary has the rejected request and a replica doesn't yet.
+      completeDecision?: boolean;
     } = {}
   ) => {
     const primaryDb = { node: "primary" };
@@ -113,12 +194,19 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       scopeType: ApprovalPolicyScope.PkiApplication,
       scopeId: "app-1"
     };
+    const rejected = { ...request, status: ApprovalRequestStatus.Rejected };
     const approvalRequestDAL = {
-      findById: vi.fn().mockResolvedValue(request),
+      findById: vi.fn(async (_id: string, db?: unknown) =>
+        completeDecision ? fromNode(db, rejected, request) : request
+      ),
       findStepsByRequestId: vi.fn().mockResolvedValue(steps),
       find: vi.fn().mockResolvedValue([request]),
       findStepsByRequestIds: vi.fn().mockResolvedValue({ [request.id]: steps }),
-      transaction: vi.fn().mockRejectedValue(new Error("reached the decision"))
+      transaction: completeDecision
+        ? vi.fn(async (run: (tx: unknown) => Promise<unknown>) => run("tx"))
+        : vi.fn().mockRejectedValue(new Error("reached the decision")),
+      findByIdForUpdate: vi.fn().mockResolvedValue(request),
+      updateById: vi.fn().mockResolvedValue(rejected)
     };
     const certificateService = { revokeApprovedCertificate: vi.fn() };
     const approvalPolicyDAL = { findByProjectId: vi.fn(), primaryNode: vi.fn().mockReturnValue(primaryDb) };
@@ -151,18 +239,33 @@ describe("approvalPolicyService review of a revocation by an approver removed fr
       },
       userDAL: { find: vi.fn().mockResolvedValue([]) }
     } as never);
+    const postRejectionRoutine = vi.fn();
     const service = approvalPolicyServiceFactory({
       approvalRequestDAL,
       approvalPolicyDAL,
+      approvalRequestApprovalsDAL: { create: vi.fn() },
+      eventEmitter: { emit: vi.fn() },
       permissionService: {
         getOrgPermission: vi.fn().mockResolvedValue({}),
         getResourcePermission: vi.fn().mockResolvedValue({ permission: { can: () => true } })
       },
       userGroupMembershipDAL,
-      resources: { [ApprovalPolicyType.CertRevocation]: revocationResource }
+      resources: { [ApprovalPolicyType.CertRevocation]: { ...revocationResource, postRejectionRoutine } }
     } as unknown as TDeps);
-    return { service, approvalRequestDAL, certificateService, userGroupMembershipDAL, primaryDb };
+    return { service, approvalRequestDAL, certificateService, userGroupMembershipDAL, primaryDb, postRejectionRoutine };
   };
+
+  it("hands the post-rejection routine and the response the rejected request while a replica still shows it pending", async () => {
+    const ctx = buildReviewingService([{ actorUserId: "approver-1", isActive: true }], { completeDecision: true });
+
+    const result = await ctx.service.rejectRequest("revocation-1", {}, approver, ApprovalPolicyType.CertRevocation);
+
+    expect(ctx.postRejectionRoutine).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "revocation-1", status: ApprovalRequestStatus.Rejected })
+    );
+    expect(result.request.status).toBe(ApprovalRequestStatus.Rejected);
+    expect(ctx.approvalRequestDAL.findStepsByRequestId).toHaveBeenLastCalledWith("revocation-1", ctx.primaryDb);
+  });
 
   it("refuses the approval and leaves the certificate alone", async () => {
     const ctx = buildReviewingService([{ actorUserId: "someone-else", isActive: true }]);

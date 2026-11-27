@@ -23,6 +23,7 @@ import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import { asSentence } from "@app/lib/fn/string";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
@@ -109,6 +110,7 @@ import {
 import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
 import { assertCsrMatchesCertificate } from "../certificate-common/certificate-csr-utils";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
+import { formatCaLabel } from "../certificate-common/certificate-failure-fns";
 import {
   calculateFinalRenewBeforeDays,
   detectSanType,
@@ -230,12 +232,6 @@ type TCertificateServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "update" | "findByIdForUpdate">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-};
-
-// Upstream CA messages rarely end in a period, so one is added before another sentence follows.
-const asSentence = (text: string) => {
-  const trimmed = text.trim();
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -1445,11 +1441,6 @@ export const certificateServiceFactory = ({
     | { at: ApprovedRevocationFailureStage.Ca; ca: TRevocationCa }
     | { at: ApprovedRevocationFailureStage.AfterCa; ca: TRevocationCa };
 
-  const $describeRevocationCa = (ca: TRevocationCa) => {
-    const caType = ca.externalCa?.type as CaType | undefined;
-    return caType ? `CA '${ca.name}' (${CA_TYPE_LABEL[caType] ?? caType})` : `CA '${ca.name}'`;
-  };
-
   const $settleFailedApprovedRevocation = async (
     approvalRequestId: string,
     certificateId: string,
@@ -1491,7 +1482,7 @@ export const certificateServiceFactory = ({
     if (stage.at === ApprovedRevocationFailureStage.AfterCa) {
       // Every CA accepts revoking a certificate it already revoked with the same reason, so a retry records it.
       // AD CS refuses a retry that changes a permanent reason to Certificate Hold, hence "the same reason".
-      const recorded = `${$describeRevocationCa(stage.ca)} accepted the revocation, but Infisical couldn't record it.`;
+      const recorded = `${formatCaLabel(stage.ca)} accepted the revocation, but Infisical couldn't record it.`;
       return {
         kind: ApprovedRevocationOutcomeKind.Failed,
         reason: current ? `${recorded} Request the revocation again with the same reason to record it.` : recorded
@@ -1500,7 +1491,7 @@ export const certificateServiceFactory = ({
 
     const message = error instanceof BadRequestError || error instanceof NotFoundError ? error.message : undefined;
     if (stage.at === ApprovedRevocationFailureStage.Ca) {
-      const caLabel = $describeRevocationCa(stage.ca);
+      const caLabel = formatCaLabel(stage.ca);
       if (!message) {
         const cause = `Revoking the certificate at ${caLabel} failed with an unexpected error.`;
         return {

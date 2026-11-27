@@ -24,6 +24,7 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { CertRequestPolicyOperation } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { ActorAuthMethod, ActorType, PROTOCOL_ENROLLMENT_ACTORS } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
@@ -60,7 +61,11 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted, linkRenewedCertificate } from "@app/services/certificate/certificate-fns";
+import {
+  assertCertificateNotDeleted,
+  getRenewedCertificateName,
+  linkRenewedCertificate
+} from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
@@ -109,6 +114,7 @@ import {
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
+  assertNoRenewalAwaitingApproval,
   holdCertificateRequestForApproval,
   matchCertificateRequestApprovalPolicy
 } from "../certificate-request/certificate-request-approval-fns";
@@ -1383,6 +1389,7 @@ export const certificateV3ServiceFactory = ({
     basicConstraints,
     applicationId: explicitApplicationId,
     acmeOrderId,
+    issuanceOperation,
     issuerNameOverride,
     additionalExtensions,
     originalCertificateId,
@@ -1395,6 +1402,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
+    const isRenewal = issuanceOperation === CertificateIssuanceOperation.RENEW;
     const profile = await validateProfileAndPermissions({
       profileId,
       actor,
@@ -1559,7 +1567,13 @@ export const certificateV3ServiceFactory = ({
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
-      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor }
+      {
+        projectId: profile.projectId,
+        profileName: profile.slug,
+        applicationId,
+        actor,
+        operation: isRenewal ? CertRequestPolicyOperation.Renewal : CertRequestPolicyOperation.Issuance
+      }
     );
 
     if (approvalPolicy) {
@@ -1569,8 +1583,17 @@ export const certificateV3ServiceFactory = ({
         certificateRequestId: certRequestId,
         approvalRequestId,
         notifyApprovers
-      } = await certificateRequestDAL.transaction((tx) =>
-        holdCertificateRequestForApproval(
+      } = await certificateRequestDAL.transaction(async (tx) => {
+        let renewedCertificateName: string | undefined;
+        if (isRenewal && originalCertificateId) {
+          const original = await assertNoRenewalAwaitingApproval(
+            certificateDAL,
+            { certificateId: originalCertificateId, projectId: profile.projectId },
+            tx
+          );
+          renewedCertificateName = original ? getRenewedCertificateName(original) : undefined;
+        }
+        return holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
             approvalPolicy,
@@ -1651,14 +1674,19 @@ export const certificateV3ServiceFactory = ({
                 keyAlgorithm: extractedKeyAlgorithm,
                 basicConstraints: resolvedBasicConstraints,
                 customExtensions: resolvedCustomExtensions
-              }
+              },
+              ...(isRenewal &&
+                originalCertificateId && {
+                  renewalOfCertificateId: originalCertificateId,
+                  ...(renewedCertificateName && { renewalOfCertificateName: renewedCertificateName })
+                })
             },
             justification: `Certificate signing request for ${mappedCertificateRequest.commonName || profile.slug}`,
             requester: { actor, actorId, name: requesterName, email: requesterEmail },
             tx
           }
-        )
-      );
+        );
+      });
 
       await notifyApprovers();
 
@@ -1781,12 +1809,7 @@ export const certificateV3ServiceFactory = ({
             new Date(newCert.notAfter)
           );
 
-          const updateData: {
-            profileId: string;
-            renewBeforeDays?: number;
-            applicationId?: string;
-            renewedFromCertificateId?: string;
-          } = {
+          const updateData: { profileId: string; renewBeforeDays?: number; applicationId?: string } = {
             profileId
           };
           if (finalRenewBeforeDays !== undefined) {
@@ -1795,13 +1818,7 @@ export const certificateV3ServiceFactory = ({
           if (applicationId) {
             updateData.applicationId = applicationId;
           }
-          if (renewedFromCertificateId) {
-            updateData.renewedFromCertificateId = renewedFromCertificateId;
-          }
           await certificateDAL.updateById(newCert.id, updateData, tx);
-          if (renewedFromCertificateId) {
-            await linkRenewedCertificate(certificateDAL, renewedFromCertificateId, newCert.id, tx);
-          }
 
           // Records the outcome: flips the request to ISSUED and links the certificate in one update.
           // Returns null when the request is no longer attachable, meaning it left a pending status
@@ -1821,6 +1838,13 @@ export const certificateV3ServiceFactory = ({
             tx
           );
           await onCertificateRequestPersisted?.(pendingRequest, tx);
+
+          if (isRenewal && originalCertificateId) {
+            // Locks the certificate the client renewed from, so a second re-enrollment with it waits and links to the new end.
+            const original = await certificateDAL.findByIdForUpdate(originalCertificateId, tx);
+            if (original) assertCertificateNotDeleted(original);
+            await linkRenewedCertificate(certificateDAL, originalCertificateId, newCert.id, tx);
+          }
 
           await $emitIssuanceAlert(
             {

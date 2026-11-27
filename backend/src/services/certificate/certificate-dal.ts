@@ -13,7 +13,11 @@ import {
 } from "@app/lib/knex/permission-filter-utils";
 import { OrderByDirection } from "@app/lib/types";
 import { isUuidV4 } from "@app/lib/validator";
-import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestStatus,
+  CertRequestPolicyOperation
+} from "@app/services/approval-policy/approval-policy-enums";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr } from "@app/services/certificate-authority/certificate-authority-maps";
 import {
@@ -137,6 +141,7 @@ export type TOriginatingCertificateRequest = {
 };
 
 const PENDING_RENEWAL_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'certificateId'`;
+const PENDING_RE_ENROLLMENT_CERTIFICATE_ID = `"${TableName.ApprovalRequests}"."requestData"->'requestData'->>'renewalOfCertificateId'`;
 
 export const certificateDALFactory = (db: TDbClient) => {
   const certificateOrm = ormify(db, TableName.Certificate);
@@ -984,14 +989,37 @@ export const certificateDALFactory = (db: TDbClient) => {
                     .whereNotNull(`${TableName.Certificate}.source`)
                     .whereNot(`${TableName.Certificate}.source`, CertificateSource.Issued);
                 })
-                .orWhere((raisedByAutoRenewalQb) => {
-                  void raisedByAutoRenewalQb
+                .orWhereRaw(
+                  `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->>'raisedByAutoRenewal' = 'true'`
+                )
+                // Requests raised before the flag existed with no requester: usually the daily job, though a manual
+                // renewal whose requester was deleted looks the same. Skipping only waits for it to be decided.
+                .orWhere((legacyAutoRenewalQb) => {
+                  void legacyAutoRenewalQb
+                    .whereRaw(
+                      `"${TableName.ApprovalRequests}"."requestData"->'requestData'->'renewal'->'raisedByAutoRenewal' IS NULL`
+                    )
                     .whereNull(`${TableName.ApprovalRequests}.requesterId`)
                     .whereNull(`${TableName.ApprovalRequests}.machineIdentityId`);
+                })
+                .orWhereExists((alwaysHeldQb) => {
+                  void alwaysHeldQb
+                    .select(db.raw("1"))
+                    .from(TableName.ApprovalPolicies)
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."id" = "${TableName.ApprovalRequests}"."policyId"`)
+                    .whereRaw(`"${TableName.ApprovalPolicies}"."constraints"->'constraints'->>'operation' = ?`, [
+                      CertRequestPolicyOperation.Renewal
+                    ]);
                 });
             })
             .where(`${TableName.ApprovalRequests}.type`, ApprovalPolicyType.CertRequest)
             .where(`${TableName.ApprovalRequests}.status`, ApprovalRequestStatus.Pending)
+            // An hourly job marks expired requests, so until then one past its expiry still reads as pending.
+            .where((unexpiredQb) => {
+              void unexpiredQb
+                .whereNull(`${TableName.ApprovalRequests}.expiresAt`)
+                .orWhere(`${TableName.ApprovalRequests}.expiresAt`, ">", now);
+            })
             .whereRaw(`"${TableName.ApprovalRequests}"."projectId" = "${TableName.Certificate}"."projectId"`)
             .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = "${TableName.Certificate}"."id"::text`);
         })
@@ -1024,7 +1052,14 @@ export const certificateDALFactory = (db: TDbClient) => {
     try {
       const row = await (tx || db)(TableName.ApprovalRequests)
         .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
-        .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
+        .where((unexpiredQb) => {
+          void unexpiredQb.whereNull("expiresAt").orWhere("expiresAt", ">", new Date());
+        })
+        .where((renewalQb) => {
+          void renewalQb
+            .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
+            .orWhereRaw(`${PENDING_RE_ENROLLMENT_CERTIFICATE_ID} = ?`, [certificateId]);
+        })
         .first("id");
       return Boolean(row);
     } catch (error) {

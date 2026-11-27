@@ -1,11 +1,21 @@
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ActorType } from "@app/services/auth/auth-type";
+import {
+  CaOperationFailureStage,
+  CertificateIssuanceOperation
+} from "@app/services/certificate-common/certificate-constants";
+import { describeCaOperationFailure } from "@app/services/certificate-common/certificate-failure-fns";
 import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateApprovalService } from "@app/services/certificate-v3/certificate-approval-fns";
 import { TCertificateRenewalServiceFactory } from "@app/services/certificate-v3/certificate-renewal-service";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -17,30 +27,50 @@ import {
   ApprovalNotificationEvent,
   ApprovalPolicyScope,
   ApprovalPolicyType,
-  ApprovalRequestStatus
+  ApprovalRequestStatus,
+  CertRequestPolicyOperation
 } from "../approval-policy-enums";
+import { TApprovalPolicyServiceFactory } from "../approval-policy-service";
 import { TApprovalResource } from "../approval-policy-types";
-import { TCertRequestPolicy, TCertRequestPolicyInputs, TCertRequestRequestData } from "./cert-request-policy-types";
+import { getApprovalRequestAuditLabel } from "../approval-request-fns";
+import { findLiveApproverEntries, PKI_APPROVER_RULES } from "../pki-approvers/application-approver-checks";
+import { getRenewedCertificateId, parseCertRequestPolicyOperation } from "./cert-request-policy-schemas";
+import {
+  TCertRequestPolicy,
+  TCertRequestPolicyConstraints,
+  TCertRequestPolicyInputs,
+  TCertRequestRequestData
+} from "./cert-request-policy-types";
 
 type TCertRequestApprovalResourceDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId" | "findById" | "primaryNode">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "notifyApprovedActionFailed">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateApprovalService: TCertificateApprovalService;
-  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById" | "transitionFromPending">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "recordIssuanceFailure">;
   certificateRenewalService: Pick<
     TCertificateRenewalServiceFactory,
     "renewApprovedCertificate" | "recordRejectedRenewal"
   >;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
+  membershipDAL: Pick<TMembershipDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
 };
 
 export const certRequestApprovalResourceFactory = ({
   approvalPolicyDAL,
+  approvalPolicyService,
+  auditLogService,
   certificateApprovalService,
   certificateRequestDAL,
   certificateRequestService,
   certificateRenewalService,
-  telemetryService
+  telemetryService,
+  membershipDAL,
+  membershipRoleDAL,
+  userGroupMembershipDAL
 }: TCertRequestApprovalResourceDep): TApprovalResource<
   TCertRequestPolicyInputs,
   TCertRequestPolicy,
@@ -51,12 +81,25 @@ export const certRequestApprovalResourceFactory = ({
 
     const inputAppId = inputs.applicationId ?? null;
     const expectedScopeType = inputAppId ? ApprovalPolicyScope.PkiApplication : null;
+    // An Issuance policy also holds renewals that change the certificate, so a renewal can match either kind.
+    const isRenewal = inputs.operation === CertRequestPolicyOperation.Renewal;
     const candidates = (policies as TCertRequestPolicy[]).filter(
-      (p) => p.isActive && (p.scopeType ?? null) === expectedScopeType && (p.scopeId ?? null) === inputAppId
+      (p) =>
+        p.isActive &&
+        (p.scopeType ?? null) === expectedScopeType &&
+        (p.scopeId ?? null) === inputAppId &&
+        (isRenewal || parseCertRequestPolicyOperation(p) === CertRequestPolicyOperation.Issuance)
     );
 
+    const covering = candidates.filter((p) =>
+      p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))
+    );
+
+    // A Renewal policy holds every renewal, which includes everything an Issuance policy would hold of it.
     return (
-      candidates.find((p) => p.conditions.conditions.some((c) => c.profileNames.includes(inputs.profileName))) ?? null
+      covering.find((p) => parseCertRequestPolicyOperation(p) === CertRequestPolicyOperation.Renewal) ??
+      covering[0] ??
+      null
     );
   },
 
@@ -65,29 +108,82 @@ export const certRequestApprovalResourceFactory = ({
 
   validateConstraints: () => ({ valid: true }),
 
-  // Cert approvals notify approvers when raised; the decision shows up on the certificate itself.
-  buildNotification: async ({ event, request }) => {
+  // An update names only the settings it changes, so the stored ones survive it. A policy's operation is fixed
+  // when it's created, and the edit form sends it back unchanged.
+  updateConstraints: (stored, update) => {
+    const { operation } = update as TCertRequestPolicyConstraints;
+    const storedOperation = parseCertRequestPolicyOperation({ constraints: { constraints: stored } });
+    if (operation && operation !== storedOperation) {
+      throw new BadRequestError({
+        message: `This is ${storedOperation === CertRequestPolicyOperation.Issuance ? "an issuance" : "a renewal"} policy, and constraints.operation can't be changed after a policy is created. Leave constraints.operation out of the update, or create a new ${operation} policy.`
+      });
+    }
+    return { ...stored, ...update };
+  },
+
+  // A request saves its approvers when it is raised, so someone removed from the Application since then (or, for a
+  // policy without one, from Certificate Management) would still get its notices, including a failure's reason.
+  filterActiveApprovers: async (request, approvers) =>
+    findLiveApproverEntries(
+      { membershipDAL, membershipRoleDAL, userGroupMembershipDAL },
+      PKI_APPROVER_RULES[ApprovalPolicyType.CertRequest],
+      {
+        projectId: request.projectId,
+        applicationId: request.scopeType === ApprovalPolicyScope.PkiApplication ? (request.scopeId ?? null) : null
+      },
+      approvers,
+      approvalPolicyDAL.primaryNode()
+    ),
+
+  // Cert approvals notify approvers when raised, and everyone when the approved action then fails.
+  buildNotification: async ({ event, request, failureReason }) => {
+    const { requestData } = request.requestData as { requestData: TCertRequestRequestData };
+    const { renewal, certificateRequest } = requestData;
+    const isRenewal = Boolean(getRenewedCertificateId(requestData));
+    const certificateName =
+      renewal?.certificateName || certificateRequest?.commonName || certificateRequest?.altNames?.[0]?.value;
+
+    if (event === ApprovalNotificationEvent.ApprovedActionFailed) {
+      const action = isRenewal ? "renewal" : "issuance";
+      const certificate = certificateName ? ` of the certificate '${certificateName}'` : "";
+      return {
+        inApp: {
+          type: NotificationType.APPROVED_ACTION_FAILED,
+          title: isRenewal ? "Certificate Renewal Failed" : "Certificate Issuance Failed",
+          body: `The approved ${action}${certificate} didn't complete. Reason: ${failureReason}`,
+          link: `${getConfig().SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`
+        }
+      };
+    }
+
     if (event !== ApprovalNotificationEvent.Requested) return null;
 
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}/organizations/${request.organizationId}/cert-manager/approvals/${request.id}?policyType=${encodeURIComponent(request.type)}&from=root-requests`;
+    const title = isRenewal ? "Certificate Renewal Approval Request" : "Certificate Approval Request";
+    let body = `You have a new approval request for ${request.type} from ${request.requesterName}.`;
+    if (isRenewal) {
+      body = certificateName
+        ? `${request.requesterName} asked to renew the certificate '${certificateName}'.`
+        : `${request.requesterName} asked to renew a certificate.`;
+    }
 
     return {
       inApp: {
         type: NotificationType.APPROVAL_REQUIRED,
         title: "Approval Required",
-        body: `You have a new approval request for ${request.type} from ${request.requesterName}.`,
+        body,
         link: approvalUrl
       },
       email: cfg.SITE_URL
         ? {
-            subjectLine: "Certificate Approval Request",
+            subjectLine: title,
             template: SmtpTemplates.PkiApprovalRequestNeedsReview,
             substitutions: {
               requesterName: request.requesterName,
               requesterEmail: request.requesterEmail || undefined,
-              title: "Certificate Approval Request",
-              requestType: "certificate request",
+              title,
+              requestType: isRenewal ? "certificate renewal request" : "certificate request",
               justification: request.justification || undefined,
               approvalUrl
             }
@@ -107,27 +203,31 @@ export const certRequestApprovalResourceFactory = ({
       : null,
 
   postApprovalRoutine: async (request) => {
+    const requestData = request.requestData.requestData as TCertRequestRequestData;
     const {
       certificateRequestId: certReqId,
       renewal,
+      renewalOfCertificateId,
       certificateRequest: reviewedCertificateRequest
-    } = request.requestData.requestData as TCertRequestRequestData;
+    } = requestData;
+    const renewedCertificateId = getRenewedCertificateId(requestData);
 
     await certificateRequestDAL.updateById(certReqId, {
       status: CertificateRequestStatus.PENDING,
       approvalRequestId: request.id
     });
 
+    let renewed: Awaited<ReturnType<typeof certificateRenewalService.renewApprovedCertificate>> | undefined;
     try {
       if (renewal) {
-        await certificateRenewalService.renewApprovedCertificate({
+        renewed = await certificateRenewalService.renewApprovedCertificate({
           certificateRequestId: certReqId,
           organizationId: request.organizationId,
           renewal,
           reviewedCertificateRequest
         });
       } else {
-        await certificateApprovalService.issueCertificate(certReqId);
+        await certificateApprovalService.issueCertificate(certReqId, renewalOfCertificateId);
       }
       logger.info(
         { certificateRequestId: certReqId, approvalRequestId: request.id },
@@ -135,22 +235,81 @@ export const certRequestApprovalResourceFactory = ({
       );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const failedRequest = await certificateRequestDAL.updateById(certReqId, {
-        status: CertificateRequestStatus.FAILED,
-        errorMessage
-      });
+      // Issuance and renewal mark their own request failed before rethrowing, so a failed request is still this
+      // failure to report. Any other state (issued, because something threw after the renewal committed, or gone)
+      // means there's no failure to report. It's read from the primary, since a replica may not show that write yet.
+      const failedRequest =
+        (await certificateRequestDAL.transitionFromPending(certReqId, CertificateRequestStatus.FAILED, errorMessage)) ??
+        (await certificateRequestDAL.findById(certReqId, approvalPolicyDAL.primaryNode()));
+      if (failedRequest?.status !== CertificateRequestStatus.FAILED) {
+        logger.error(
+          { error, certificateRequestId: certReqId, approvalRequestId: request.id },
+          `Approved certificate request threw but isn't failed [certificateRequestId=${certReqId}] [status=${failedRequest?.status ?? "missing"}]`
+        );
+        return;
+      }
       await certificateRequestService.recordIssuanceFailure(failedRequest, {
         error,
-        ...(renewal && {
+        ...(renewedCertificateId && {
           operation: CertificateIssuanceOperation.RENEW,
-          originalCertificateId: renewal.certificateId
+          originalCertificateId: renewedCertificateId
         })
       });
+      // External CAs are only reached from a background job, and internal-CA signing is Infisical's own, so a
+      // failure here never names a CA.
+      await approvalPolicyService.notifyApprovedActionFailed(
+        request,
+        describeCaOperationFailure({
+          action: renewedCertificateId ? "Renewing the certificate" : "Issuing the certificate",
+          stage: CaOperationFailureStage.Infisical,
+          error,
+          fallback: `An unexpected error stopped the certificate from being ${renewedCertificateId ? "renewed" : "issued"}.`
+        })
+      );
       logger.error(
         { error, certificateRequestId: certReqId, approvalRequestId: request.id },
         `Failed to issue certificate after approval [certificateRequestId=${certReqId}]`
       );
       return;
+    }
+
+    if (renewal && renewed) {
+      // The approval has already committed, so a failed audit write must not surface to the approver.
+      try {
+        // An external-CA renewal still pending returns its order id in certificateId, not a certificate.
+        const isIssued = renewed.status === CertificateRequestStatus.ISSUED;
+        // The policy only labels the event, so failing to read it mustn't lose the event.
+        const policy = request.policyId
+          ? await approvalPolicyDAL.findById(request.policyId).catch(() => undefined)
+          : undefined;
+        await auditLogService.createAuditLog({
+          projectId: request.projectId,
+          actor: { type: ActorType.PLATFORM, metadata: {} },
+          event: {
+            type: EventType.RENEW_CERTIFICATE,
+            metadata: {
+              originalCertificateId: renewed.originalCertificateId,
+              newCertificateId: (isIssued && renewed.certificateId) || "",
+              ...(isIssued && { serialNumber: renewed.serialNumber }),
+              certificateRequestId: renewed.certificateRequestId,
+              profileName: renewed.profileName,
+              commonName: renewed.commonName || "",
+              applicationId: renewed.applicationId,
+              applicationName: renewed.applicationName,
+              renewalKeySource: renewal.renewalKeySource,
+              externalConfiguration: renewal.externalConfiguration,
+              changedAttributes: renewed.changedAttributes ?? [],
+              status: renewed.status,
+              ...getApprovalRequestAuditLabel(request, policy)
+            }
+          }
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to record an approved certificate renewal [certificateRequestId=${certReqId}] [approvalRequestId=${request.id}]`
+        );
+      }
     }
 
     const requesterDistinctId = request.machineIdentityId
@@ -173,7 +332,12 @@ export const certRequestApprovalResourceFactory = ({
       approvalRequestId: request.id
     });
     if (renewal && request.status === ApprovalRequestStatus.Rejected) {
-      await certificateRenewalService.recordRejectedRenewal(renewal.certificateId);
+      // A rejected request the daily job raised would otherwise be raised again the next day. A request raised
+      // before the flag existed counts as manual: an empty requester can also be a deleted user, and stopping
+      // auto-renewal for them could let the certificate expire. Imported and discovered certificates stop either way.
+      await certificateRenewalService.recordRejectedRenewal(renewal.certificateId, {
+        raisedByAutoRenewal: renewal.raisedByAutoRenewal ?? false
+      });
     }
   }
 });

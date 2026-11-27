@@ -23,6 +23,7 @@ import {
   ApprovalPolicyScope,
   ApprovalPolicyType,
   CertRequestPolicyConditions,
+  CertRequestPolicyOperation,
   TApprovalPolicy,
   useCreateApprovalPolicy,
   useUpdateApprovalPolicy
@@ -30,9 +31,15 @@ import {
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { getPolicyOperation } from "./policyConstraints";
 import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
+
+const POLICY_OPERATION_NOUN = {
+  [CertRequestPolicyOperation.Issuance]: "issuance",
+  [CertRequestPolicyOperation.Renewal]: "renewal"
+};
 
 type Props = {
   popUp: UsePopUpState<["policy"]>;
@@ -66,7 +73,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
       policyType: ApprovalPolicyType.CertRequest,
       maxRequestTtl: null,
       conditions: [{ profileNames: [] }],
-      constraints: {},
+      operation: CertRequestPolicyOperation.Issuance,
       bypassForMachineIdentities: false,
       steps: [
         {
@@ -87,6 +94,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     formState: { isDirty, isSubmitting, isValidating }
   } = formMethods;
   const selectedPolicyType = watch("policyType");
+  const selectedOperation = watch("operation");
 
   const { mutateAsync: createPolicy, isPending: isCreating } = useCreateApprovalPolicy();
   const { mutateAsync: updatePolicy, isPending: isUpdating } = useUpdateApprovalPolicy();
@@ -105,7 +113,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         policyType: policyData.policy.type,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         conditions,
-        constraints: {},
+        operation: getPolicyOperation(policyData.policy),
         bypassForMachineIdentities: policyData.policy.bypassForMachineIdentities ?? false,
         steps: policyData.policy.steps.map((step) => ({
           ...step,
@@ -118,7 +126,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         policyType: ApprovalPolicyType.CertRequest,
         maxRequestTtl: null,
         conditions: [{ profileNames: [] }],
-        constraints: {},
+        operation: CertRequestPolicyOperation.Issuance,
         bypassForMachineIdentities: false,
         steps: [
           {
@@ -133,13 +141,14 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     setSelectedStepIndex(0);
   }, [policyData, reset, isOpen]);
 
-  const onSubmit = async ({ policyType, ...data }: TPolicyForm) => {
+  const onSubmit = async ({ policyType, operation, ...data }: TPolicyForm) => {
     if (!currentProject?.id) return;
 
+    const isRevocationPolicy = policyType === ApprovalPolicyType.CertRevocation;
     const policyFields = {
       ...data,
-      bypassForMachineIdentities:
-        policyType === ApprovalPolicyType.CertRevocation ? false : data.bypassForMachineIdentities
+      bypassForMachineIdentities: isRevocationPolicy ? false : data.bypassForMachineIdentities,
+      constraints: isRevocationPolicy ? {} : { ...(operation && { operation }) }
     };
 
     try {
@@ -227,9 +236,11 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
               : "Create Certificate Approval Policy"}
           </SheetTitle>
           <SheetDescription>
-            {selectedPolicyType === ApprovalPolicyType.CertRevocation
-              ? "Configure a certificate approval policy requiring approval for certificate revocation."
-              : "Configure a certificate approval policy requiring approval for certificate issuance."}
+            {`Configure a certificate approval policy requiring approval for certificate ${
+              selectedPolicyType === ApprovalPolicyType.CertRevocation
+                ? "revocation"
+                : POLICY_OPERATION_NOUN[selectedOperation ?? CertRequestPolicyOperation.Issuance]
+            }.`}
           </SheetDescription>
         </SheetHeader>
         <FormProvider {...formMethods}>

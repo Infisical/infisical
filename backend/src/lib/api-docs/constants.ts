@@ -5904,6 +5904,16 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
 
+const CERT_REQUEST_POLICY_OPERATION_VALUES =
+  "Which certificate requests the policy holds for approval. 'issuance' holds new certificates, and renewals that change the certificate, come with a CSR, or renew an imported or discovered certificate. 'renewal' holds every renewal, including automatic renewals, EST re-enrollments with a certificate from the same Application and profile, SCEP renewal requests that a device signs with its existing certificate, and Microsoft Autoenrollment renewals. When both kinds of policy cover a profile, its renewals go to the 'renewal' policy. If the 'renewal' policy lets machine identities bypass approval, a machine identity's renewal that the 'issuance' policy would hold goes to the 'issuance' policy instead.";
+
+export const APPROVAL_POLICY_CERT_REQUEST = {
+  operation: `${CERT_REQUEST_POLICY_OPERATION_VALUES} Omitted, the policy is an 'issuance' policy.`,
+  updateOperation: `${CERT_REQUEST_POLICY_OPERATION_VALUES} It's set when the policy is created and can't be changed. Omitted, the policy keeps its current value. Sending the current value changes nothing, and sending the other value is refused.`,
+  matchOperation:
+    "The kind of request to match. 'issuance' matches only 'issuance' policies. 'renewal' matches the 'renewal' policy that covers the profile, or the 'issuance' policy when no 'renewal' policy does. Omitted, the request is matched as 'issuance'."
+};
+
 export const SECRET_CHANGE_POLICIES = {
   enforceOnSecretImports:
     "When true, imports from the same project into the folders this policy governs must respect approval policies, so changes to their values need approval. Existing imports that read their source directly are not changed and have to be recreated. Imports from other projects are not affected.",

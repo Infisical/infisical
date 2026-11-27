@@ -24,6 +24,7 @@ import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { CertRequestPolicyOperation } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -53,6 +54,7 @@ import { TCertificatePolicyServiceFactory } from "@app/services/certificate-poli
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import {
+  assertNoRenewalAwaitingApproval,
   holdCertificateRequestForApproval,
   matchCertificateRequestApprovalPolicy
 } from "@app/services/certificate-request/certificate-request-approval-fns";
@@ -70,6 +72,7 @@ import {
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { getRenewedCertificateName } from "@app/services/certificate/certificate-fns";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
@@ -108,7 +111,10 @@ type TPkiScepServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findOneLiveFirst" | "transaction" | "primaryNode">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findOne" | "findOneLiveFirst" | "findByIdForUpdate" | "transaction" | "primaryNode" | "hasRenewalAwaitingApproval"
+  >;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find" | "updateById" | "transaction">;
@@ -808,6 +814,7 @@ export const pkiScepServiceFactory = ({
       csrPem,
       applicationId,
       isRenewal: true,
+      originalCertificateId: storedSignerCert?.id,
       renewalCommonNameSanTypes: renewalAuth.isCsrSanMatch ? [] : getSubjectAltNameTypes(signerSanExt),
       clientIp
     });
@@ -931,6 +938,8 @@ export const pkiScepServiceFactory = ({
     csrPem,
     ttl,
     applicationId,
+    isRenewal,
+    originalCertificateId,
     renewalCommonNameSanTypes
   }: {
     profile: TScepContext["profile"];
@@ -940,6 +949,8 @@ export const pkiScepServiceFactory = ({
     csrPem: string;
     ttl: string;
     applicationId?: string;
+    isRenewal: boolean;
+    originalCertificateId?: string;
     renewalCommonNameSanTypes?: CertSubjectAlternativeNameType[];
   }): Promise<TIssuanceResult> => {
     // Internal CAs use direct signing
@@ -954,6 +965,7 @@ export const pkiScepServiceFactory = ({
         validity: { ttl },
         enrollmentType: EnrollmentType.SCEP,
         applicationId,
+        ...(isRenewal && { issuanceOperation: CertificateIssuanceOperation.RENEW, originalCertificateId }),
         renewalCommonNameSanTypes
       });
 
@@ -995,7 +1007,13 @@ export const pkiScepServiceFactory = ({
 
     const approvalPolicy = await matchCertificateRequestApprovalPolicy(
       { approvalPolicyService, approvalPolicyDAL },
-      { projectId: profile.projectId, profileName: profile.slug, applicationId, actor: ActorType.SCEP_ACCOUNT }
+      {
+        projectId: profile.projectId,
+        profileName: profile.slug,
+        applicationId,
+        actor: ActorType.SCEP_ACCOUNT,
+        operation: isRenewal ? CertRequestPolicyOperation.Renewal : CertRequestPolicyOperation.Issuance
+      }
     );
 
     const { subjectAlternativeNames } = applyCommonNameDefaultSan({
@@ -1065,8 +1083,17 @@ export const pkiScepServiceFactory = ({
       });
 
     if (approvalPolicy) {
-      const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction((tx) =>
-        holdCertificateRequestForApproval(
+      const { certificateRequestId, notifyApprovers } = await certificateRequestDAL.transaction(async (tx) => {
+        let renewedCertificateName: string | undefined;
+        if (isRenewal && originalCertificateId) {
+          const original = await assertNoRenewalAwaitingApproval(
+            certificateDAL,
+            { certificateId: originalCertificateId, projectId: profile.projectId },
+            tx
+          );
+          renewedCertificateName = original ? getRenewedCertificateName(original) : undefined;
+        }
+        return holdCertificateRequestForApproval(
           { certificateRequestDAL, approvalPolicyService },
           {
             approvalPolicy,
@@ -1093,14 +1120,19 @@ export const pkiScepServiceFactory = ({
                 keyAlgorithm,
                 customExtensions: validationResult.resolvedCustomExtensions,
                 basicConstraints: certRequestWithDefaults.basicConstraints
-              }
+              },
+              ...(isRenewal &&
+                originalCertificateId && {
+                  renewalOfCertificateId: originalCertificateId,
+                  ...(renewedCertificateName && { renewalOfCertificateName: renewedCertificateName })
+                })
             },
             justification: `SCEP certificate request for ${certRequestWithDefaults.commonName || profile.slug}`,
             requester: { actor: ActorType.SCEP_ACCOUNT, actorId: profile.id, name: "SCEP Client", email: "" },
             tx
           }
-        )
-      );
+        );
+      });
 
       await notifyApprovers();
       await $recordScepTransaction(profile.id, parsed, certificateRequestId, applicationId, { awaitingApproval: true });
@@ -1129,7 +1161,8 @@ export const pkiScepServiceFactory = ({
       country: certRequest.country,
       state: certRequest.state,
       locality: certRequest.locality,
-      ...(applicationId && { applicationId })
+      ...(applicationId && { applicationId }),
+      ...(isRenewal && originalCertificateId && { isRenewal: true, originalCertificateId })
     });
 
     await $recordScepTransaction(profile.id, parsed, newCertRequest.id, applicationId);
@@ -1141,10 +1174,10 @@ export const pkiScepServiceFactory = ({
     isRenewal,
     clientIp,
     ...params
-  }: Omit<Parameters<typeof $issueOrQueueCertificate>[0], "ttl"> & { isRenewal: boolean; clientIp: string }) => {
+  }: Omit<Parameters<typeof $issueOrQueueCertificate>[0], "ttl"> & { clientIp: string }) => {
     try {
       const { ttl } = await resolveIssuanceParams(params.profile);
-      return await $issueOrQueueCertificate({ ...params, ttl });
+      return await $issueOrQueueCertificate({ ...params, isRenewal, ttl });
     } catch (error) {
       let operation =
         params.caType === CaType.INTERNAL ? CertificateIssuanceOperation.SIGN : CertificateIssuanceOperation.ORDER;
@@ -1173,7 +1206,8 @@ export const pkiScepServiceFactory = ({
             profileName: params.profile.slug,
             caId: params.profile.caId,
             commonName,
-            applicationId: params.applicationId
+            applicationId: params.applicationId,
+            originalCertificateId: params.originalCertificateId
           }
         }
       );

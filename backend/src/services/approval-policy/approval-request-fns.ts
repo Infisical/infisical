@@ -20,6 +20,7 @@ import {
   TApprovalRequestStepsDALFactory
 } from "./approval-request-dal";
 import { TAutoApprovalEvidence } from "./auto-approval/auto-approval-types";
+import { getRenewedCertificateId } from "./cert-request/cert-request-policy-schemas";
 import { TCertRequestRequestData } from "./cert-request/cert-request-policy-types";
 import { TCertRevocationRequestData } from "./cert-revocation/cert-revocation-policy-types";
 import { TCodeSigningRequestData } from "./code-signing/code-signing-policy-types";
@@ -237,6 +238,17 @@ export const resolveStepApproverUserIds = async (
   return userIds;
 };
 
+// An approval request has no name, so an audit event names it by who asked and under which policy.
+export const getApprovalRequestAuditLabel = (
+  request: Pick<TApprovalRequests, "id" | "requesterName" | "requesterEmail">,
+  policy: { name: string } | undefined | null
+) => ({
+  approvalRequestId: request.id,
+  approvalPolicyName: policy?.name,
+  requesterName: request.requesterName,
+  requesterEmail: request.requesterEmail || undefined
+});
+
 export const getApprovalRequestSubjectMetadata = (
   request: Pick<TApprovalRequests, "type" | "requestData">
 ): TApprovalRequestSubjectMetadata => {
@@ -244,8 +256,18 @@ export const getApprovalRequestSubjectMetadata = (
   if (!requestData) return {};
 
   if (request.type === ApprovalPolicyType.CertRequest) {
-    const { certificateRequestId, certificateRequest, profileName } = requestData as TCertRequestRequestData;
-    return { certificateRequestId, commonName: certificateRequest?.commonName, profileName };
+    const certRequestData = requestData as TCertRequestRequestData;
+    const { certificateRequestId, certificateRequest, profileName, renewal, renewalOfCertificateName } =
+      certRequestData;
+    const renewedCertificateId = getRenewedCertificateId(certRequestData);
+    const renewedCertificateName = renewal?.certificateName ?? renewalOfCertificateName;
+    return {
+      certificateRequestId,
+      ...(renewedCertificateId && { certificateId: renewedCertificateId }),
+      ...(renewedCertificateName && { certificateName: renewedCertificateName }),
+      commonName: certificateRequest?.commonName,
+      profileName
+    };
   }
 
   if (request.type === ApprovalPolicyType.CertRevocation) {

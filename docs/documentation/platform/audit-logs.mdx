@@ -600,7 +600,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     Infisical records a `certificate-issuance-failed` event for certificates requested from a certificate profile through the API or the Infisical UI, ACME, EST, SCEP, and Microsoft Autoenrollment, including renewals and certificates issued after an approval.
 
     <Note>
-      If an automatic renewal fails before Infisical sends it to an external CA, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials). Microsoft Autoenrollment requests refused before issuance, such as a failed Kerberos sign-in or a computer outside the allowed groups, are recorded as `microsoft-autoenrollment-request-refused` events.
+      If an automatic renewal fails before Infisical sends it to an external CA or holds it for approval, Infisical records an `automated-renew-certificate-failed` event instead. Infisical doesn't record `certificate-issuance-failed` for EST enrollment through a certificate template, for EST requests rejected before Infisical reads the CSR (such as a failed sign-in or a rejected client certificate), or for requests the actor's role doesn't allow, which are recorded as [`permission-denied` events](#permission-denials). Microsoft Autoenrollment requests refused before issuance, such as a failed Kerberos sign-in or a computer outside the allowed groups, are recorded as `microsoft-autoenrollment-request-refused` events.
     </Note>
 
     <Tabs>
@@ -634,9 +634,10 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     - `certificateProfileId`, `profileName`, `caId`, `caName`, `commonName`, `applicationId`, and `applicationName`: the certificate the request was for, where Infisical knows them
     - `certificateRequestId`: the certificate request that failed, if Infisical had already created one
     - `originalCertificateId`: on a failed renewal, the certificate being renewed
+    - `approvalRequestId`, `approvalPolicyName`, `requesterName`, and `requesterEmail`: on a request that needed approval, the approval request, its policy (while the policy exists), and who requested it (`requesterEmail` only if the requester has an email address)
     - `suppressedRepeats`, `suppressedFrom`, and `suppressedUntil`: on a summary event, how many identical failures Infisical counted instead of recording, and the minute they fell in
 
-    The event's actor is `platform` if issuance fails after the original request has returned. That happens in two cases: an external CA, such as DigiCert or AWS Private CA, fails the order in the background, or issuance fails once an approver approves the request. An approved request for an external CA goes through the same background step. To find who requested a certificate through the API or the Infisical UI, filter by the original event, such as `order-certificate-from-profile`, and match the `certificateRequestId`.
+    The event's actor is `platform` if issuance fails after the original request has returned. That happens in two cases: an external CA, such as DigiCert or AWS Private CA, fails the order in the background, or issuance fails once an approver approves the request. An approved request for an external CA goes through the same background step. If the request didn't need approval, find who requested the certificate through the API or the Infisical UI by filtering by the original event, such as `order-certificate-from-profile`, and matching the `certificateRequestId`.
 
     Infisical counts identical failures the same way it counts [repeated denials](#permission-denials). In each minute, it records the first failure with a given actor, operation, certificate, and error, then writes one summary event when the minute ends.
   </Accordion>
@@ -689,6 +690,57 @@ Here are a few common patterns for filtering audit logs, grouped by product.
       -H "Authorization: Bearer <your-access-token>" \
       --data-urlencode "projectId=<project-id>" \
       --data-urlencode "eventType=request-cert-revocation,approval-request-approve,approval-request-reject,revoke-cert,cert-revocation-failed" \
+      --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
+    ```
+  </Accordion>
+  <Accordion title="Who approved a certificate renewal" id="certificate-renewals">
+    Find who requested, approved, or rejected a renewal that needed [approval](/documentation/platform/pki/applications/approvals#renewals). The events below cover renewals requested in Infisical and automatic renewals.
+
+    <Tabs>
+      <Tab title="Infisical UI">
+        <Steps>
+          <Step>
+            Go to **Certificate Manager** and open **Audit Logs**.
+          </Step>
+          <Step>
+            Select **Search audit logs** and add:
+            - `event`: `renew-certificate`, `automated-renew-certificate`, `approval-request-approve`, `approval-request-reject`, `certificate-issuance-failed`
+          </Step>
+        </Steps>
+
+        Select a result to see its `event.metadata`.
+      </Tab>
+      <Tab title="API">
+        This request returns these events from across your organization, so the access token needs permission to read the organization's audit logs.
+
+        ```bash
+        curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+          -H "Authorization: Bearer <your-access-token>" \
+          --data-urlencode "eventType=renew-certificate,automated-renew-certificate,approval-request-approve,approval-request-reject,certificate-issuance-failed"
+        ```
+      </Tab>
+    </Tabs>
+
+    Each event records one step of the renewal:
+
+    - `renew-certificate` or `automated-renew-certificate` with the status `pending_approval`: the actor, or automatic renewal, requested the renewal
+    - `approval-request-approve` and `approval-request-reject` with the `policyType` `cert-request`: the actor approved or rejected the request, with these fields:
+      - `event.metadata.certificateId` is the certificate being renewed
+      - `event.metadata.certificateName`, when present, is that certificate's common name, or its first SAN if it has no common name
+      - `event.metadata.commonName`, when present, is the common name the renewal requests
+    - `renew-certificate` with `platform` as the actor: after the approvers approved the request, Infisical renewed the certificate (the status is `issued`) or sent the renewal to an external CA (the status is `pending`)
+    - A second `renew-certificate` with `platform` as the actor and the status `issued`, for an external CA such as ACME or Microsoft ADCS: the CA issued the renewed certificate, and `event.metadata.newCertificateId` is the new certificate
+    - `certificate-issuance-failed` with `platform` as the actor and the operation `renew`: the approved renewal failed, and `event.metadata.error` holds the reason
+    - For an EST or SCEP re-enrollment, Infisical records `approval-request-approve` or `approval-request-reject`, and `certificate-issuance-failed` if the approved renewal fails, but not `renew-certificate`
+
+    Each event that Infisical records after the approval includes the approval request ID in `event.metadata.approvalRequestId` and the requester's name in `requesterName`. If the requester has an email address, the event also includes it in `requesterEmail`. If the approval policy still exists, the event also includes the policy's name in `approvalPolicyName`.
+
+    Through the API, add `eventMetadata` to return the decisions and the outcome for one approval request:
+
+    ```bash
+    curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
+      -H "Authorization: Bearer <your-access-token>" \
+      --data-urlencode "eventType=approval-request-approve,approval-request-reject,renew-certificate,certificate-issuance-failed" \
       --data-urlencode "eventMetadata=approvalRequestId=<approval-request-id>"
     ```
   </Accordion>
