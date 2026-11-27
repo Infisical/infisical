@@ -4,7 +4,11 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { recordSecretOrgBudgetUsageMetric, recordSecretRateLimitExceededMetric } from "@app/lib/telemetry/metrics";
+import {
+  recordSecretOrgBudgetExceededMetric,
+  recordSecretOrgBudgetUsageMetric,
+  recordSecretRateLimitExceededMetric
+} from "@app/lib/telemetry/metrics";
 import { DEFAULT_RATE_LIMITS, secretsLimit } from "@app/server/config/rateLimiter";
 
 import { countReturnedSecrets, secretsOrgBudget, secretsOrgBudgetCost } from "./secrets-org-budget";
@@ -24,7 +28,8 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/telemetry/metrics")>()),
   recordSecretRateLimitExceededMetric: vi.fn(),
-  recordSecretOrgBudgetUsageMetric: vi.fn()
+  recordSecretOrgBudgetUsageMetric: vi.fn(),
+  recordSecretOrgBudgetExceededMetric: vi.fn()
 }));
 
 const createKeyStore = () => {
@@ -149,7 +154,9 @@ describe("secrets org budget", () => {
     Object.assign(config, { SECRET_READ_ORG_BUDGET_MODE: "enforce", SECRET_READ_ORG_BUDGET: BUDGET });
     vi.mocked(recordSecretRateLimitExceededMetric).mockClear();
     vi.mocked(recordSecretOrgBudgetUsageMetric).mockClear();
+    vi.mocked(recordSecretOrgBudgetExceededMetric).mockClear();
     vi.mocked(logger.warn).mockClear();
+    vi.mocked(logger.info).mockClear();
   });
 
   test("refuses an organization's reads once its budget is spent", async () => {
@@ -247,6 +254,53 @@ describe("secrets org budget", () => {
     expect(vi.mocked(recordSecretOrgBudgetUsageMetric).mock.calls).toEqual([
       [{ usedCredits: 2, planSlug: "pro" }],
       [{ usedCredits: 3, planSlug: "pro" }]
+    ]);
+  });
+
+  test("records how far the read that spends the last of the budget went past it, and logs the organization", async () => {
+    const built = await buildServer();
+    app = built.app;
+
+    await read(built.app, 200);
+    expect(recordSecretOrgBudgetExceededMetric).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
+
+    await read(built.app, 500);
+    expect(vi.mocked(recordSecretOrgBudgetExceededMetric).mock.calls).toEqual([
+      [{ exceededCredits: 4, planSlug: "pro" }]
+    ]);
+    expect(vi.mocked(logger.info).mock.calls).toEqual([
+      [expect.stringContaining("[orgId=org-a] [cost=5] [used=7] [budget=3] [exceeded=4]")]
+    ]);
+  });
+
+  test("records 0 credits exceeded for a read that lands exactly on the budget", async () => {
+    const built = await buildServer();
+    app = built.app;
+    const server = built.app;
+
+    await statusesOf(BUDGET, () => read(server, 100));
+
+    expect(vi.mocked(recordSecretOrgBudgetExceededMetric).mock.calls).toEqual([
+      [{ exceededCredits: 0, planSlug: "pro" }]
+    ]);
+  });
+
+  test("records the credits exceeded once per window, however many reads follow it", async () => {
+    config.SECRET_READ_ORG_BUDGET_MODE = "observe";
+    const built = await buildServer();
+    app = built.app;
+    const server = built.app;
+
+    await statusesOf(BUDGET + 2, () => read(server, 100));
+    expect(recordSecretOrgBudgetExceededMetric).toHaveBeenCalledTimes(1);
+
+    built.keyStore.advanceSeconds(60);
+    await read(server, 10_000);
+
+    expect(vi.mocked(recordSecretOrgBudgetExceededMetric).mock.calls).toEqual([
+      [{ exceededCredits: 0, planSlug: "pro" }],
+      [{ exceededCredits: 97, planSlug: "pro" }]
     ]);
   });
 

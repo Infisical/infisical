@@ -610,6 +610,22 @@ export const recordSecretOrgBudgetUsageMetric = (params: { usedCredits: number; 
   secretOrgBudgetUsageHistogram.record(params.usedCredits, { "plan.slug": planSlugAttribute(params.planSlug) });
 };
 
+export const secretOrgBudgetExceededHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.secret.org_budget.exceeded",
+  {
+    description:
+      "Credits by which the read that spent the last of an organization's secret read budget went past it, recorded once per organization per window, by plan. 0 when the read landed exactly on the budget.",
+    unit: "{credit}"
+  }
+);
+
+export const recordSecretOrgBudgetExceededMetric = (params: { exceededCredits: number; planSlug?: string | null }) => {
+  if (!isTelemetryEnabled()) return;
+  secretOrgBudgetExceededHistogram.record(params.exceededCredits, {
+    "plan.slug": planSlugAttribute(params.planSlug)
+  });
+};
+
 export const registerSecretReadBudgetGauges = (budget: { getCapacity: () => number; getUsed: () => number }) => {
   const meter = resolveCoreMeter();
   const gauges = [

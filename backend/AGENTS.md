@@ -1113,8 +1113,11 @@ left out on purpose, since they cannot return a large number of secrets, and so 
 
 A read at or over budget records `infisical.secret.rate_limit.exceeded.count` (`recordSecretRateLimitExceededMetric`,
 bucket `org_budget`, outcome `refused` or `would_refuse`), and every charge records the window's running total in
-`infisical.secret.org_budget.usage`. The per-IP limit records neither; the per-instance read budget records the first
-under its own bucket (see Secret Read Concurrency Limit).
+`infisical.secret.org_budget.usage`. The charge that spends the last of the budget also records how many credits it
+went past it in `infisical.secret.org_budget.exceeded` (0 when it lands exactly on the budget) and logs the organization,
+once per organization per window; the organization id stays out of the metric attributes because it is unbounded. The
+per-IP limit records none of these; the per-instance read budget records the first under its own bucket (see Secret Read
+Concurrency Limit).
 
 ### Secret Read Concurrency Limit
 

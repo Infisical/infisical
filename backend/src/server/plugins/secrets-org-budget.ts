@@ -6,6 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
+  recordSecretOrgBudgetExceededMetric,
   recordSecretOrgBudgetUsageMetric,
   recordSecretRateLimitExceededMetric,
   SecretRateLimitBucket,
@@ -97,7 +98,18 @@ export const secretsOrgBudget = fp<TSecretsOrgBudgetOptions>(async (server, { ke
       if (cost <= 0) return;
       void keyStore
         .incrementByWithFixedExpiry(key, cost, BUDGET_WINDOW_IN_SECONDS)
-        .then((total) => recordSecretOrgBudgetUsageMetric({ usedCredits: total, planSlug }))
+        .then((total) => {
+          recordSecretOrgBudgetUsageMetric({ usedCredits: total, planSlug });
+
+          const exceededCredits = total - budget;
+          const didSpendLastOfBudget = exceededCredits >= 0 && exceededCredits < cost;
+          if (!didSpendLastOfBudget) return;
+
+          recordSecretOrgBudgetExceededMetric({ exceededCredits, planSlug });
+          logger.info(
+            `secretsOrgBudget: organization spent its secret read budget [orgId=${orgId}] [cost=${cost}] [used=${total}] [budget=${budget}] [exceeded=${exceededCredits}]`
+          );
+        })
         .catch((error) => logFailure(error, "charge", orgId));
     };
 
