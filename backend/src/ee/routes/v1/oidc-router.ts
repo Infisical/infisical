@@ -20,6 +20,7 @@ import {
   OIDCJWTSignatureAlgorithm
 } from "@app/ee/services/oidc/oidc-config-types";
 import { ApiDocsTags, OidcSSo } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { pick } from "@app/lib/fn";
@@ -28,7 +29,7 @@ import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLim
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedOidcConfigSchema = OidcConfigsSchema.pick({
@@ -257,12 +258,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const oidc = await server.services.oidc.getOidc({
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         type: "external",
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       return oidc;
@@ -342,12 +340,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const organizationId = req.permission.orgId;
+      const organizationId = req.actor.orgId;
       const oidc = await server.services.oidc.updateOidcCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         organizationId
       });
@@ -371,11 +366,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "oidc",
             action: "update",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -499,12 +494,9 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
 
     handler: async (req) => {
-      const organizationId = req.permission.orgId;
+      const organizationId = req.actor.orgId;
       const oidc = await server.services.oidc.createOidcCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         organizationId
       });
@@ -526,11 +518,11 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
         .sendPostHogEvents({
           event: PostHogEventTypes.SSOConfigured,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: "oidc",
             action: "create",
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch((err) => logger.error(err, "Failed to send SSOConfigured telemetry event"));
@@ -561,13 +553,10 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const organizationId = req.permission.orgId;
+      const organizationId = req.actor.orgId;
       const oidc = await server.services.oidc.deleteOidcCfg({
         organizationId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
@@ -601,7 +590,7 @@ export const registerOidcRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.permission);
+      const isEnabled = await server.services.oidc.isOidcManageGroupMembershipsEnabled(req.query.orgId, req.actor);
 
       return { isEnabled };
     }

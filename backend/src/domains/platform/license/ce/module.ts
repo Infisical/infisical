@@ -1,6 +1,6 @@
 import type { TDomainCron, TDomainQueue } from "@app/domains/lib/jobs";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
 
@@ -48,7 +48,7 @@ export type TLicenseDeps = {
   // From EE. Required: CE has no defaults of its own.
   licensePolicyService: TLicensePolicyService;
   licenseServer: TLicenseServer;
-  organizationsProjectsService: TOrganizationsProjectsService;
+  organizationsService: TOrganizationsService;
   // The plan cache's clock; tests pass the key store's.
   now?: () => number;
   // One per product meter, from the domain that owns the data. Seat meters are built here.
@@ -74,12 +74,9 @@ export class LicenseModule {
     private readonly deps: TLicenseDeps,
     instanceEntitlements: InstanceEntitlements
   ) {
-    const { keyStore, organizationsProjectsService, licensePolicyService, licenseServer } = deps;
+    const { keyStore, organizationsService, licensePolicyService, licenseServer } = deps;
     const usageReportCache = new UsageReportCache(keyStore);
-    this.counterRegistry = new CounterRegistry([
-      ...seatUsageCounters(organizationsProjectsService),
-      ...deps.usageCounters
-    ]);
+    this.counterRegistry = new CounterRegistry([...seatUsageCounters(organizationsService), ...deps.usageCounters]);
 
     const usageQueue = new UsageQueue(deps.queueService, licenseServer, usageReportCache, this.counterRegistry);
 
@@ -87,7 +84,7 @@ export class LicenseModule {
       new InstanceEntitlementsCache(instanceEntitlements),
       new PlanCache(keyStore, deps.now),
       usageQueue,
-      organizationsProjectsService,
+      organizationsService,
       licensePolicyService,
       licenseServer
     );
@@ -95,7 +92,7 @@ export class LicenseModule {
       this.counterRegistry,
       usageQueue,
       this.licenseService,
-      organizationsProjectsService
+      organizationsService
     );
     this.usageReportService = new UsageReportService(
       this.counterRegistry,
@@ -103,7 +100,7 @@ export class LicenseModule {
       usageQueue,
       this.licenseService,
       licenseServer,
-      organizationsProjectsService
+      organizationsService
     );
   }
 

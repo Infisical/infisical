@@ -1,9 +1,8 @@
-import { MongoAbility, MongoQuery } from "@casl/ability";
-
 import { SecretFolderRole, TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
-import { ActorType } from "@app/services/auth/auth-type";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
+import { ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
+import type { TMemberRoleSummary } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 // A reader's last read of an object. The table also keys it by month (its partition key), which the DAL adds
@@ -126,7 +125,7 @@ export type TSecretActivity = TSecretLocation & {
 export type TProjectReader = {
   actorType: TSecretReaderType;
   actorId: string;
-  permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+  permission: Permission<ProjectPermissionSet>;
 };
 
 // One way an actor has access, and when it last changed. A folder grant only reaches secrets in its own folder, or
@@ -140,7 +139,7 @@ export type TAccessSource = {
   // have had dates from the edit. The grant may have been recursive before the edit, so this can be wider than its
   // current reach.
   restartsReach?: TAccessReach;
-  permission: () => MongoAbility<ProjectPermissionSet, MongoQuery>;
+  permission: () => Permission<ProjectPermissionSet>;
 };
 
 export type TProjectAccess = {
@@ -188,10 +187,7 @@ export type TSecretReadActivityActor = {
 };
 
 // A group's roles carry no assignment id, and naming a role does not need one.
-export type TMemberRole = Omit<
-  Awaited<ReturnType<TPermissionServiceFactory["getProjectPermissions"]>>["userPermissions"][number]["roles"][number],
-  "id"
->;
+export type TMemberRole = Omit<TMemberRoleSummary, "id">;
 
 export type TUnusedAccessRole = { id: string | null; slug: string; name: string };
 

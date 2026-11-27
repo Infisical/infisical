@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { AuthMethod, AuthModeRefreshJwtTokenPayload, MfaMethod } from "@app/services/auth/auth-type";
+import { AuthMethod, MfaMethod } from "@app/lib/auth/actor-types";
+import { AuthModeRefreshJwtTokenPayload } from "@app/services/auth/auth-type";
 
 // RFC 7591 client metadata. Each grant makes a different subset of the client's fields meaningful; see
 // assertValidOauthClientGrantConfig.

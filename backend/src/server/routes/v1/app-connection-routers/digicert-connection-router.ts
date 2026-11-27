@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedDigiCertConnectionSchema,
   UpdateDigiCertConnectionSchema
 } from "@app/services/app-connection/digicert/digicert-connection-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -46,7 +46,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      return server.services.appConnection.digicert.listOrganizations(connectionId, req.permission);
+      return server.services.appConnection.digicert.listOrganizations(connectionId, req.actor);
     }
   });
 
@@ -75,7 +75,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { connectionId } = req.params;
-      return server.services.appConnection.digicert.listProducts(connectionId, req.permission);
+      return server.services.appConnection.digicert.listProducts(connectionId, req.actor);
     }
   });
 
@@ -108,7 +108,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
         connectionId,
         organizationId,
         productNameId,
-        req.permission
+        req.actor
       );
     }
   });
@@ -144,12 +144,7 @@ export const registerDigiCertConnectionRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { connectionId, organizationId } = req.params;
       const { productNameId } = req.query;
-      return server.services.appConnection.digicert.listOrders(
-        connectionId,
-        organizationId,
-        productNameId,
-        req.permission
-      );
+      return server.services.appConnection.digicert.listOrders(connectionId, organizationId, productNameId, req.actor);
     }
   });
 };

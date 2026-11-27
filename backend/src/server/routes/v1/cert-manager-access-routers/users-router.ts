@@ -9,10 +9,10 @@ import {
 } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../../sanitizedSchemas";
@@ -34,8 +34,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { users } = await server.services.membershipUser.listAvailableUsers({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {}
       });
       return { users };
@@ -66,8 +66,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { data: memberships } = await server.services.membershipUser.listMemberships({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {}
       });
       return {
@@ -100,8 +100,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
       const membership = await server.services.membershipUser.getMembershipByUserId({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { userId }
       });
       return { membership: { ...membership, userId } };
@@ -141,8 +141,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
       await server.services.membershipUser.createMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Organization, orgId: req.permission.orgId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Organization, orgId: req.actor.orgId },
         data: {
           roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
           usernames: usernamesAndEmails,
@@ -151,8 +151,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       });
 
       const { memberships } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {
           roles: (req.body.roleSlugs || [ProjectMembershipRole.Member]).map((role) => ({
             isTemporary: false,
@@ -181,9 +181,9 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertManagerMemberAdded,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             memberType: "user",
             role: (req.body.roleSlugs || [ProjectMembershipRole.Member]).join(",")
@@ -212,8 +212,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
       const { membership } = await server.services.membershipUser.updateMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { userId },
         data: { roles: req.body.roles }
       });
@@ -231,9 +231,9 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerMemberUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           memberType: "user"
         }
@@ -269,10 +269,7 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId,
         emails: req.body.emails,
         usernames: req.body.usernames
@@ -294,9 +291,9 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.CertManagerMemberRemoved,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId,
             memberType: "user"
           }
@@ -322,8 +319,8 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       const projectId = req.internalCertManagerProjectId;
       const { userId } = req.params;
       const { membership } = await server.services.membershipUser.deleteMembership({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { userId }
       });
       await server.services.auditLog.createAuditLog({
@@ -337,9 +334,9 @@ export const registerCertManagerAccessUsersRouter = async (server: FastifyZodPro
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerMemberRemoved,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId,
           memberType: "user"
         }

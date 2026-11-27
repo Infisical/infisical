@@ -23,14 +23,14 @@ const callMcp = async <T>(
         createAuditLog: vi.fn().mockResolvedValue(undefined)
       },
       telemetry: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
-      permission: { getOrgPermission: vi.fn().mockResolvedValue({}) },
+      orgPermissionService: { getOrgPermission: vi.fn().mockResolvedValue({}) },
       oauthClient: { assertOrgMcpAccess: vi.fn().mockResolvedValue(undefined) },
       ...services
     }
   };
   const req = {
     method: "POST",
-    permission: { type: "user", id: "user-id", orgId: "org-id", authMethod: null },
+    actor: { type: "user", id: "user-id", orgId: "org-id", authMethod: null },
     auth: { actor: "user", user: { username: "user@example.com" } },
     auditLogInfo: {}
   };

@@ -1,4 +1,4 @@
-import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
+import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
 
 export type TCreatePamFolderDTO = {
   projectId: string;
@@ -27,7 +27,7 @@ export type TListPamFoldersDTO = {
   projectId: string;
   search?: string;
   onlyAccessible?: boolean;
-  filterByAction?: ResourcePermissionPamResourceActions;
+  filterByAction?: PamResourcePermissionActions;
   includeNonMemberFolders?: boolean;
 };
 

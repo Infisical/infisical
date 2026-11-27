@@ -2,16 +2,17 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { PERMISSION_BOUNDARY_ERROR_NAME } from "@app/domains/lib/errors";
+import { ActorPermission, Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
-import { FakeOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/testing/fake-organizations-projects-service";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { PermissionBoundaryError } from "@app/lib/errors";
+} from "@app/domains/platform/organizations/ce/module";
+import { FakeOrganizationsService } from "@app/domains/platform/organizations/ce/testing/fake-organizations-service";
 
 import { identityServiceFactory } from "./identity-service";
 
@@ -73,16 +74,22 @@ const createService = ({
   };
 
   const service = identityServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    orgPermissionService: {
+      getOrgPermission: vi.fn().mockResolvedValue(
+        ActorPermission.of({
+          rules: actorPermission.rules as never,
+          usesNewPrivilegeSystem: shouldUseNewPrivilegeSystem
+        })
+      ),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }) }))
+        )
     } as never,
     licenseService: new FakeLicenseService().setPlan(ORG_ID, { rbac: true }),
-    organizationsProjectsService: new FakeOrganizationsProjectsService(),
+    organizationsService: new FakeOrganizationsService(),
     orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: MEMBERSHIP_ID, scopeOrgId: ORG_ID })
     } as never,
     membershipIdentityDAL: {
@@ -97,7 +104,9 @@ const createService = ({
     identityDAL: identityDAL as never
   } as never);
 
-  const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
+  const actor = {
+    actor: { principal: { type: "user", id: "actor-id" }, org: { id: ORG_ID, shouldUseNewPrivilegeSystem } }
+  };
 
   return {
     update: (role: string) => service.updateIdentity({ id: IDENTITY_ID, role, ...actor } as never),
@@ -119,7 +128,7 @@ describe("identity service privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(update(OrgMembershipRole.NoAccess)).rejects.toThrow(PermissionBoundaryError);
+    await expect(update(OrgMembershipRole.NoAccess)).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(membershipRoleDAL.create).not.toHaveBeenCalled();
   });
 
@@ -129,7 +138,7 @@ describe("identity service privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(update(OrgMembershipRole.Member)).rejects.toThrow(PermissionBoundaryError);
+    await expect(update(OrgMembershipRole.Member)).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
   });
 
   test("on the legacy system, a weaker actor cannot delete an Admin identity", async () => {
@@ -138,7 +147,7 @@ describe("identity service privilege boundary", () => {
       shouldUseNewPrivilegeSystem: false
     });
 
-    await expect(remove()).rejects.toThrow(PermissionBoundaryError);
+    await expect(remove()).rejects.toMatchObject({ name: PERMISSION_BOUNDARY_ERROR_NAME });
     expect(identityDAL.deleteById).not.toHaveBeenCalled();
   });
 

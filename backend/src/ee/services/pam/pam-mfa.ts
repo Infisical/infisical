@@ -1,5 +1,5 @@
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { getUserAllowedMfaMethods, resolveMfaChallenge } from "@app/services/auth/auth-fns";
-import { MfaMethod } from "@app/services/auth/auth-type";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";

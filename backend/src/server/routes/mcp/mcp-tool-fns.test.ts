@@ -29,14 +29,14 @@ const callTool = async ({
   const server = {
     services: {
       auditLog: { recordPermissionDenied },
-      permission: { getOrgPermission },
+      orgPermissionService: { getOrgPermission },
       oauthClient: { assertOrgMcpAccess }
     }
   };
   const req = {
     method: "POST",
     auditLogInfo: { ipAddress: "203.0.113.1" },
-    permission: { type: "user", id: "user-id", orgId: "org-id", authMethod: null }
+    actor: { type: "user", id: "user-id", orgId: "org-id", authMethod: null }
   };
 
   const { registerTool } = createMcpToolContext(server as never, req as never, mcpServer as never, []);

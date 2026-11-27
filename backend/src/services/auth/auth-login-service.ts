@@ -1,22 +1,21 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  OrganizationActionScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TUsers,
-  UserDeviceSchema
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
 import {
   LoginMethod,
   SignUpRefusal,
   TInstanceConfigService
 } from "@app/domains/platform/instance-config-core/ce/module";
+import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TSsoSessionService
+} from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
@@ -77,15 +76,7 @@ import {
   TProcessProviderCallbackDTO,
   TVerifyMfaTokenDTO
 } from "./auth-login-type";
-import {
-  ActorType,
-  AuthMethod,
-  AuthModeMfaJwtTokenPayload,
-  AuthTokenType,
-  MfaMethod,
-  ProviderAuthResult,
-  TProviderAuthCallback
-} from "./auth-type";
+import { AuthModeMfaJwtTokenPayload, ProviderAuthResult, TProviderAuthCallback } from "./auth-type";
 import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
@@ -102,7 +93,9 @@ type TAuthLoginServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
+  orgPermissionService: TOrgPermissionService;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
     "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
@@ -124,7 +117,9 @@ export const authLoginServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  permissionService,
+  actorContextService,
+  ssoSessionService,
+  orgPermissionService,
   mfaLockoutService,
   userService
 }: TAuthLoginServiceFactoryDep) => {
@@ -1316,46 +1311,57 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService
-      .getOrgPermission({
-        actor: ActorType.USER,
-        actorId: user.id,
-        orgId: rootOrg.id,
-        actorAuthMethod: userAuthMethod,
-        actorOrgId: rootOrg.id,
-        scope: OrganizationActionScope.Any
-      })
-      .catch(async (error: unknown) => {
-        // getOrgPermission enforces SSO, so it is what refuses a session another org's IdP issued.
-        if (error instanceof ForbiddenRequestError && error.name === FOREIGN_SSO_SESSION_ERROR_NAME) {
-          await auditLogService.createAuditLog({
-            orgId: organizationId,
-            ipAddress,
-            userAgent,
-            userAgentType: getUserAgentType(userAgent),
-            actor: {
-              type: ActorType.USER,
-              metadata: {
-                email: user.email,
-                userId: user.id,
-                username: user.username,
-                authMethod: userAuthMethod as string
-              }
-            },
-            event: {
-              type: EventType.SELECT_ORGANIZATION_REFUSED,
-              metadata: {
-                organizationId,
-                organizationName: selectedOrg.name
-              }
+    // No request context for the org being selected yet, so build one for the root org.
+    const rootOrgActor = await actorContextService.forPrincipal({
+      principal: {
+        type: ActorType.USER,
+        id: user.id,
+        username: user.username,
+        email: user.email ?? null,
+        authMethod: userAuthMethod,
+        isSuperAdmin: false,
+        sessionRootOrgId: issuingRootOrgId
+      },
+      orgId: rootOrg.id
+    });
+
+    const ssoRefusal = await ssoSessionService.findSsoSessionRefusal(rootOrgActor);
+    if (ssoRefusal) {
+      const isForeignSession = ssoRefusal.name === FOREIGN_SSO_SESSION_ERROR_NAME;
+      if (isForeignSession) {
+        await auditLogService.createAuditLog({
+          orgId: organizationId,
+          ipAddress,
+          userAgent,
+          userAgentType: getUserAgentType(userAgent),
+          actor: {
+            type: ActorType.USER,
+            metadata: {
+              email: user.email,
+              userId: user.id,
+              username: user.username,
+              authMethod: userAuthMethod as string
             }
-          });
-        }
-        throw error;
+          },
+          event: {
+            type: EventType.SELECT_ORGANIZATION_REFUSED,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name
+            }
+          }
+        });
+      }
+      throw new ForbiddenRequestError({
+        message: ssoRefusal.message,
+        ...(isForeignSession ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
       });
+    }
+
+    const permission = await orgPermissionService.getOrgPermission({ actor: rootOrgActor });
     const canBypassSso =
       rootOrg.bypassOrgAuthEnabled &&
-      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      permission.can({ action: OrgPermissionSsoActions.BypassSsoEnforcement, subject: OrgPermissionSubjects.Sso });
 
     if (rootOrg.googleSsoAuthEnforced && userAuthMethod !== AuthMethod.GOOGLE) {
       if (!canBypassSso) {

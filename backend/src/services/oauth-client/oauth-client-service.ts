@@ -1,15 +1,18 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { OrganizationActionScope, OrgMembershipStatus, TOauthClients, TOrganizations } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
   OrgPermissionActions,
   OrgPermissionSsoActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+  OrgPermissionSubjects,
+  TActorContextService,
+  TOrgPermissionService,
+  TSsoSessionService
+} from "@app/domains/platform/organizations/ce/module";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -18,12 +21,10 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor } from "@app/lib/types";
 import { safeRequest } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { getUserAllowedMfaMethods, isIdpMfaTrusted, isMfaRequired } from "@app/services/auth/auth-fns";
-import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -64,7 +65,9 @@ import { verifySubjectToken } from "./oauth-token-exchange-fns";
 
 type TOauthClientServiceFactoryDep = {
   oauthClientDAL: TOauthClientDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  actorContextService: TActorContextService;
+  ssoSessionService: TSsoSessionService;
+  orgPermissionService: TOrgPermissionService;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   tokenService: Pick<
     TAuthTokenServiceFactory,
@@ -179,7 +182,9 @@ const signOauthToken = (
 
 export const oauthClientServiceFactory = ({
   oauthClientDAL,
-  permissionService,
+  actorContextService,
+  ssoSessionService,
+  orgPermissionService,
   keyStore,
   tokenService,
   orgDAL,
@@ -188,33 +193,52 @@ export const oauthClientServiceFactory = ({
   userAliasDAL,
   auditLogService
 }: TOauthClientServiceFactoryDep) => {
-  const checkOauthClientPermission = async (actor: OrgServiceActor, action: OrgPermissionActions) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
+  // The request carries no context for the client's org, so build one for the user there.
+  const $userContextInOrg = ({
+    userId,
+    user,
+    authMethod,
+    sessionRootOrgId,
+    orgId
+  }: {
+    userId: string;
+    user?: { username: string; email?: string | null };
+    authMethod: AuthMethod;
+    sessionRootOrgId?: string;
+    orgId: string;
+  }) =>
+    actorContextService.forPrincipal({
+      principal: {
+        type: ActorType.USER,
+        id: userId,
+        username: user?.username ?? "",
+        email: user?.email ?? null,
+        authMethod,
+        isSuperAdmin: false,
+        sessionRootOrgId
+      },
+      orgId
+    });
+
+  const checkOauthClientPermission = async (actor: TActorContext, action: OrgPermissionActions) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.OauthClients);
+    permission.assert({ action, subject: OrgPermissionSubjects.OauthClients });
   };
 
   // Token exchange turns externally-issued tokens into Infisical user tokens, so establishing that trust
   // (or handing out a credential for it) changes the org's federation posture, not just an application.
   // `action` goes in the error because it's not obvious why an OAuth change wants SSO permission.
-  const checkSsoConfigPermission = async (actor: OrgServiceActor, action: string) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
+  const checkSsoConfigPermission = async (actor: TActorContext, action: string) => {
+    const permission = await orgPermissionService.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    if (permission.cannot(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso)) {
+    if (permission.cannot({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso })) {
       throw new ForbiddenRequestError({
         message: `You do not have permission to ${action}. Applications using the '${OauthGrantType.TokenExchange}' grant turn tokens from your organization's identity provider into Infisical user tokens, so managing them also requires permission to edit the organization's SSO configuration.`
       });
@@ -283,7 +307,7 @@ export const oauthClientServiceFactory = ({
     ssoPermissionAction
   }: {
     dto: TGrantConfigInput;
-    actor: OrgServiceActor;
+    actor: TActorContext;
     client?: TOauthClients;
     ssoPermissionAction: string;
   }) => {
@@ -320,7 +344,7 @@ export const oauthClientServiceFactory = ({
     });
 
     if (establishesTokenExchangeTrust) {
-      await getActiveOidcConfigOrThrow(actor.orgId, (message) => new BadRequestError({ message }));
+      await getActiveOidcConfigOrThrow(actor.org.id, (message) => new BadRequestError({ message }));
     }
 
     return {
@@ -334,7 +358,7 @@ export const oauthClientServiceFactory = ({
     };
   };
 
-  const createOauthClient = async (dto: TCreateOauthClientDTO, actor: OrgServiceActor) => {
+  const createOauthClient = async (dto: TCreateOauthClientDTO, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Create);
 
     assertAccessTokenTtlWithinInstanceLimit(dto.accessTokenTTL);
@@ -352,7 +376,7 @@ export const oauthClientServiceFactory = ({
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
 
     const client = await oauthClientDAL.create({
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       name: dto.name,
       description: dto.description,
       clientId,
@@ -369,28 +393,28 @@ export const oauthClientServiceFactory = ({
     return { client: sanitizeOauthClient(client), clientSecret };
   };
 
-  const listOauthClients = async (actor: OrgServiceActor) => {
+  const listOauthClients = async (actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
-    const clients = await oauthClientDAL.find({ orgId: actor.orgId });
+    const clients = await oauthClientDAL.find({ orgId: actor.org.id });
 
     return clients.map(sanitizeOauthClient);
   };
 
-  const getOauthClientById = async (clientDbId: string, actor: OrgServiceActor) => {
+  const getOauthClientById = async (clientDbId: string, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Read);
 
-    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(clientDbId, actor.org.id);
 
     return sanitizeOauthClient(client);
   };
 
-  const updateOauthClient = async (dto: TUpdateOauthClientDTO, actor: OrgServiceActor) => {
+  const updateOauthClient = async (dto: TUpdateOauthClientDTO, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
     assertAccessTokenTtlWithinInstanceLimit(dto.accessTokenTTL);
 
-    const client = await getOrgClientOrThrow(dto.clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(dto.clientDbId, actor.org.id);
 
     const {
       grantTypes,
@@ -448,10 +472,10 @@ export const oauthClientServiceFactory = ({
     return sanitizeOauthClient(updatedClient);
   };
 
-  const deleteOauthClient = async (clientDbId: string, actor: OrgServiceActor) => {
+  const deleteOauthClient = async (clientDbId: string, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Delete);
 
-    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(clientDbId, actor.org.id);
 
     const deletedClient = await oauthClientDAL.transaction(async (tx) => {
       const deleted = await oauthClientDAL.deleteById(client.id, tx);
@@ -463,10 +487,10 @@ export const oauthClientServiceFactory = ({
     return sanitizeOauthClient(deletedClient);
   };
 
-  const rotateOauthClientSecret = async (clientDbId: string, actor: OrgServiceActor) => {
+  const rotateOauthClientSecret = async (clientDbId: string, actor: TActorContext) => {
     await checkOauthClientPermission(actor, OrgPermissionActions.Edit);
 
-    const client = await getOrgClientOrThrow(clientDbId, actor.orgId);
+    const client = await getOrgClientOrThrow(clientDbId, actor.org.id);
 
     const usesTokenExchange = getGrantTypes(client).includes(OauthGrantType.TokenExchange);
 
@@ -631,6 +655,16 @@ export const oauthClientServiceFactory = ({
     };
   };
 
+  const assertSsoSessionAllowed = async (actor: TActorContext) => {
+    const refusal = await ssoSessionService.findSsoSessionRefusal(actor);
+    if (refusal) {
+      throw new ForbiddenRequestError({
+        message: refusal.message,
+        ...(refusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
+      });
+    }
+  };
+
   const authorizeConsent = async (dto: TOauthConsentDTO) => {
     const client = await getAuthorizationClient(dto.clientId);
     const resource = assertValidAuthorizationRequest(client, dto);
@@ -649,16 +683,24 @@ export const oauthClientServiceFactory = ({
       });
     }
 
+    const user = await userDAL.findById(dto.userId);
+    const consentActor = await $userContextInOrg({
+      userId: dto.userId,
+      user,
+      authMethod: dto.authMethod,
+      sessionRootOrgId: dto.issuingRootOrgId,
+      orgId
+    });
+
+    // A session the client org's sign-in policy refuses (enforced SSO, or another org's IdP) can't consent for it.
+    await assertSsoSessionAllowed(consentActor);
+
     // Called only for its side effects: it throws if the consenting user is not a member of the
-    // client's org or fails org SSO enforcement. This blocks issuing a delegation code to a user
+    // client's org. This blocks issuing a delegation code to a user
     // who has no standing in the org the client belongs to. The returned ability is intentionally
     // unused here; scope narrowing happens later when the delegated token builds its permission.
-    await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: dto.userId,
-      orgId,
-      actorAuthMethod: dto.authMethod,
-      actorOrgId: orgId,
+    await orgPermissionService.getOrgPermission({
+      actor: consentActor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
@@ -672,7 +714,6 @@ export const oauthClientServiceFactory = ({
     const org = await getClientOrg(orgId);
     if (resource) assertOrgAllowsMcp(org);
 
-    const user = await userDAL.findById(dto.userId);
     if (!user) throw new UnauthorizedError({ message: "User not found" });
 
     const allowedMfaMethods = getUserAllowedMfaMethods(org, user);
@@ -728,8 +769,7 @@ export const oauthClientServiceFactory = ({
     return { callbackUrl: callbackUrl.toString(), clientName: client.name, orgId, scopes: grantedScopes, resource };
   };
 
-  // Every MCP tool call checks this, because turning MCP access off keeps existing connections. Memoized under the key
-  // the SSO check loads the org with, so a tool call loads the org once.
+  // Every MCP tool call checks this, because turning MCP access off keeps existing connections.
   const assertOrgMcpAccess = async (orgId: string, buildError?: (message: string) => Error) => {
     const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
@@ -863,12 +903,15 @@ export const oauthClientServiceFactory = ({
       });
     }
 
-    await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: user.id,
-      orgId: client.orgId,
-      actorAuthMethod: AuthMethod.OIDC,
-      actorOrgId: client.orgId,
+    const exchangeActor = await $userContextInOrg({
+      userId: user.id,
+      user,
+      authMethod: AuthMethod.OIDC,
+      orgId: client.orgId
+    });
+    await assertSsoSessionAllowed(exchangeActor);
+    await orgPermissionService.getOrgPermission({
+      actor: exchangeActor,
       scope: OrganizationActionScope.ParentOrganization
     });
 

@@ -1,31 +1,30 @@
-import { ForbiddenError } from "@casl/ability";
-
 // import geoip from "geoip-lite";
-import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { IdentityAuthMethod } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionInsightsActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import {
-  OrgPermissionSecretsManagementInsightsActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionInsightsActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
@@ -69,7 +68,8 @@ import {
 } from "./insights-types";
 
 export type TInsightsServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
+  secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
   auditLogDAL: Pick<TAuditLogDALFactory, "countByDateAndActor" | "countByAuthMethod">;
   clickhouseAuditLogDAL?: Pick<
@@ -127,23 +127,16 @@ const assertInsightsPlanEnabled = async (
 };
 
 export const checkInsightsPermission = async (
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
+  secretsPermissionService: TSecretsPermissionService,
   licenseService: TInsightsServiceFactoryDep["licenseService"],
   projectId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => {
-  await assertInsightsPlanEnabled(licenseService, actor.orgId);
+  await assertInsightsPlanEnabled(licenseService, actor.org.id);
 
-  const { permission } = await permissionService.getProjectPermission({
-    actor: actor.type,
-    actorId: actor.id,
-    projectId,
-    actorAuthMethod: actor.authMethod,
-    actorOrgId: actor.orgId,
-    actionProjectType: ActionProjectType.SecretManager
-  });
+  const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-  ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
+  permission.assert({ action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights });
 
   return { permission };
 };
@@ -155,7 +148,8 @@ export const PROJECT_WARNINGS_CHUNK_SIZE = 1000;
 const SECRET_VALUE_SEARCH_LIMIT = 1000;
 
 export const insightsServiceFactory = ({
-  permissionService,
+  orgPermissionService,
+  secretsPermissionService,
   licenseService,
   auditLogDAL,
   clickhouseAuditLogDAL,
@@ -177,19 +171,12 @@ export const insightsServiceFactory = ({
 }: TInsightsServiceFactoryDep) => {
   // Gate for every org-wide aggregate: an org-level insights permission plus the insights entitlement.
   const assertOrgInsightsRead = async (
-    { actor, actorId, orgId, actorAuthMethod, actorOrgId }: TOrgInsightsDTO,
+    { actor, orgId }: TOrgInsightsDTO,
     action = OrgPermissionSecretsManagementInsightsActions.Read
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor, orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.SecretsManagementInsights);
+    permission.assert({ action, subject: OrgPermissionSubjects.SecretsManagementInsights });
 
     await assertInsightsPlanEnabled(licenseService, orgId);
   };
@@ -217,8 +204,8 @@ export const insightsServiceFactory = ({
     }));
   };
 
-  const getCalendar = async (dto: TGetInsightsCalendarDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  const getCalendar = async (dto: TGetInsightsCalendarDTO, actorDto: TActorContext) => {
+    await checkInsightsPermission(secretsPermissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `calendar:${dto.year}-${dto.month}`);
     return withCache({
@@ -267,8 +254,8 @@ export const insightsServiceFactory = ({
   const $getClickHouseAuditLogDAL = () =>
     getConfig().CLICKHOUSE_AUDIT_LOG_ENABLED && clickhouseAuditLogDAL ? clickhouseAuditLogDAL : undefined;
 
-  const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  const getAccessVolume = async (dto: TGetAccessVolumeDTO, actorDto: TActorContext) => {
+    await checkInsightsPermission(secretsPermissionService, licenseService, dto.projectId, actorDto);
 
     const clickhouseDAL = $getClickHouseAuditLogDAL();
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "access-volume");
@@ -280,7 +267,7 @@ export const insightsServiceFactory = ({
         const { dates, startDate, endDate } = buildAccessVolumeWindow();
 
         const countQuery = {
-          orgId: actorDto.orgId,
+          orgId: actorDto.org.id,
           projectId: dto.projectId,
           eventTypes: VALUE_EVENT_TYPES,
           startDate: startDate.toISOString(),
@@ -325,8 +312,8 @@ export const insightsServiceFactory = ({
     });
   };
 
-  const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  const getAuthMethodDistribution = async (dto: TGetAuthMethodDistributionDTO, actorDto: TActorContext) => {
+    await checkInsightsPermission(secretsPermissionService, licenseService, dto.projectId, actorDto);
 
     const clickhouseDAL = $getClickHouseAuditLogDAL();
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, `auth-methods:${dto.days}`);
@@ -340,7 +327,7 @@ export const insightsServiceFactory = ({
         startDate.setUTCDate(startDate.getUTCDate() - dto.days);
 
         const countQuery = {
-          orgId: actorDto.orgId,
+          orgId: actorDto.org.id,
           projectId: dto.projectId,
           eventTypes: VALUE_EVENT_TYPES,
           startDate: startDate.toISOString(),
@@ -411,8 +398,8 @@ export const insightsServiceFactory = ({
     });
   };
 
-  const getSummary = async (dto: TGetInsightsSummaryDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  const getSummary = async (dto: TGetInsightsSummaryDTO, actorDto: TActorContext) => {
+    await checkInsightsPermission(secretsPermissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(
       dto.projectId,
@@ -662,8 +649,8 @@ export const insightsServiceFactory = ({
     }));
   };
 
-  const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: OrgServiceActor) => {
-    await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  const getSecretsDuplication = async (dto: TGetSecretsDuplicationDTO, actorDto: TActorContext) => {
+    await checkInsightsPermission(secretsPermissionService, licenseService, dto.projectId, actorDto);
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "secrets-duplication");
 
@@ -727,8 +714,13 @@ export const insightsServiceFactory = ({
     return { result, remainingTTL };
   };
 
-  const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: OrgServiceActor) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseService, dto.projectId, actorDto);
+  const getCounts = async (dto: TGetInsightsCountsDTO, actorDto: TActorContext) => {
+    const { permission } = await checkInsightsPermission(
+      secretsPermissionService,
+      licenseService,
+      dto.projectId,
+      actorDto
+    );
 
     const cacheKey = KeyStorePrefixes.InsightsCache(dto.projectId, "counts");
     const counts = await withCache({
@@ -740,7 +732,7 @@ export const insightsServiceFactory = ({
         if (!shouldUseSecretV2Bridge) throw new BadRequestError({ message: "Project version not supported" });
 
         // Honey tokens are a separately licensed feature; return null when unavailable so the UI hides the stat.
-        const plan = await licenseService.getPlan(actorDto.orgId);
+        const plan = await licenseService.getPlan(actorDto.org.id);
 
         const [secretCount, folderCount, dynamicSecretCount, secretRotationCount, honeyTokenCount] = await Promise.all([
           secretV2BridgeDAL.countByProject(dto.projectId),
@@ -763,10 +755,10 @@ export const insightsServiceFactory = ({
     // Honey-token presence is sensitive (concealment is the feature) and is gated on HoneyTokens.Read
     // everywhere else, so strip the count for callers lacking that permission. Applied outside withCache
     // so the project-scoped cache key stays permission-independent.
-    const canReadHoneyTokens = permission.can(
-      ProjectPermissionHoneyTokenActions.Read,
-      ProjectPermissionSub.HoneyTokens
-    );
+    const canReadHoneyTokens = permission.can({
+      action: ProjectPermissionHoneyTokenActions.Read,
+      subject: ProjectPermissionSub.HoneyTokens
+    });
 
     return {
       ...counts,

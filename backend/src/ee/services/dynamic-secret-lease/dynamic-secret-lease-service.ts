@@ -1,14 +1,10 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { KmsDataKey, TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { PlanFeature, TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -19,7 +15,6 @@ import {
   recordDynamicSecretRevocationOutcomeMetric,
   recordDynamicSecretUnrecordedCredentialMetric
 } from "@app/lib/telemetry/metrics";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -51,7 +46,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: TLicenseService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   kmsDataKeyService: TKmsDataKeyService;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -64,7 +59,7 @@ export const dynamicSecretLeaseServiceFactory = ({
   dynamicSecretProviders,
   dynamicSecretDAL,
   folderDAL,
-  permissionService,
+  secretsPermissionService,
   dynamicSecretQueueService,
   projectDAL,
   licenseService,
@@ -85,27 +80,17 @@ export const dynamicSecretLeaseServiceFactory = ({
     name,
     projectSlug,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     ttl,
     config
   }) => {
     const appCfg = getConfig();
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
@@ -124,14 +109,15 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Dynamic secret with name '${name}' in folder with path '${path}' not found`
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, {
+    permission.assert({
+      action: ProjectPermissionDynamicSecretActions.Lease,
+      subject: ProjectPermissionSub.DynamicSecrets,
+      fields: {
         environment: environmentSlug,
         secretPath: path,
         metadata: dynamicSecretCfg.metadata
-      })
-    );
+      }
+    });
 
     const totalLeasesTaken = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
     if (totalLeasesTaken >= appCfg.MAX_LEASE_LIMIT)
@@ -160,14 +146,16 @@ export const dynamicSecretLeaseServiceFactory = ({
     let result;
     try {
       const identity: { name: string } = { name: "" };
-      if (actor === ActorType.USER) {
-        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+      if (actor.principal.type === ActorType.USER) {
+        const user = await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+          userDAL.findById(actor.principal.id)
+        );
         if (user) {
           identity.name = toSafeUsername(extractEmailUsername(user.username));
         }
-      } else if (actor === ActorType.IDENTITY) {
-        const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
-          identityDAL.findById(actorId)
+      } else if (actor.principal.type === ActorType.IDENTITY) {
+        const machineIdentity = await requestMemoize(requestMemoKeys.identityFindById(actor.principal.id), () =>
+          identityDAL.findById(actor.principal.id)
         );
         if (machineIdentity) {
           identity.name = toSafeUsername(machineIdentity.name);
@@ -252,34 +240,24 @@ export const dynamicSecretLeaseServiceFactory = ({
 
   const renewLease: TDynamicSecretLeaseServiceFactory["renewLease"] = async ({
     ttl,
-    actorAuthMethod,
-    actorOrgId,
-    actorId,
     actor,
     projectSlug,
     path,
     environmentSlug,
     leaseId
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
 
-    const plan = await licenseService.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actor.org.id);
     if (!plan?.has(PlanFeature.DynamicSecret)) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."
@@ -307,14 +285,15 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Dynamic secret with ID '${dynamicSecretLease.dynamicSecretId}' not found`
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, {
+    permission.assert({
+      action: ProjectPermissionDynamicSecretActions.Lease,
+      subject: ProjectPermissionSub.DynamicSecrets,
+      fields: {
         environment: environmentSlug,
         secretPath: path,
         metadata: dynamicSecretCfg.metadata
-      })
-    );
+      }
+    });
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const decryptedStoredInput = JSON.parse(
@@ -361,23 +340,13 @@ export const dynamicSecretLeaseServiceFactory = ({
     path,
     projectSlug,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     isForced
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const { decryptor: secretManagerDecryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
@@ -404,14 +373,15 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Dynamic secret with ID '${dynamicSecretLease.dynamicSecretId}' not found`
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, {
+    permission.assert({
+      action: ProjectPermissionDynamicSecretActions.Lease,
+      subject: ProjectPermissionSub.DynamicSecrets,
+      fields: {
         environment: environmentSlug,
         secretPath: path,
         metadata: dynamicSecretCfg.metadata
-      })
-    );
+      }
+    });
 
     const selectedProvider = dynamicSecretProviders[dynamicSecretCfg.type as DynamicSecretProviders];
     const decryptedStoredInput = JSON.parse(
@@ -485,24 +455,14 @@ export const dynamicSecretLeaseServiceFactory = ({
     path,
     name,
     actor,
-    actorId,
     projectSlug,
-    actorOrgId,
-    environmentSlug,
-    actorAuthMethod
+    environmentSlug
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder)
@@ -516,14 +476,15 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Dynamic secret with name '${name}' in folder with path '${path}' not found`
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, {
+    permission.assert({
+      action: ProjectPermissionDynamicSecretActions.Lease,
+      subject: ProjectPermissionSub.DynamicSecrets,
+      fields: {
         environment: environmentSlug,
         secretPath: path,
         metadata: dynamicSecretCfg.metadata
-      })
-    );
+      }
+    });
 
     const dynamicSecretLeases = await dynamicSecretLeaseDAL.find({ dynamicSecretId: dynamicSecretCfg.id });
     return {
@@ -537,26 +498,16 @@ export const dynamicSecretLeaseServiceFactory = ({
 
   const getLeaseDetails: TDynamicSecretLeaseServiceFactory["getLeaseDetails"] = async ({
     projectSlug,
-    actorOrgId,
     path,
     environmentSlug,
     actor,
-    actorId,
-    leaseId,
-    actorAuthMethod
+    leaseId
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const projectId = project.id;
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environmentSlug, path);
     if (!folder) throw new NotFoundError({ message: `Folder with path '${path}' not found` });
@@ -575,14 +526,15 @@ export const dynamicSecretLeaseServiceFactory = ({
         message: `Dynamic secret with ID '${dynamicSecretLease.dynamicSecretId}' not found`
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionDynamicSecretActions.Lease,
-      subject(ProjectPermissionSub.DynamicSecrets, {
+    permission.assert({
+      action: ProjectPermissionDynamicSecretActions.Lease,
+      subject: ProjectPermissionSub.DynamicSecrets,
+      fields: {
         environment: environmentSlug,
         secretPath: path,
         metadata: dynamicSecretCfg.metadata
-      })
-    );
+      }
+    });
 
     return {
       lease: dynamicSecretLease,

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
+import { AuthMode, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { authRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, AuthTokenType } from "@app/services/auth/auth-type";
 
 export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   server.route({
@@ -132,12 +132,10 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
 
       if (decodedToken.organizationId) {
-        const org = await server.services.org.findOrganizationById({
+        const org = await server.services.org.findOrganizationByIdForUser({
           userId: decodedToken.userId,
-          orgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId,
-          actorAuthMethod: decodedToken.authMethod,
-          actorOrgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId,
-          rootOrgId: decodedToken.organizationId
+          authMethod: decodedToken.authMethod,
+          orgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId
         });
         if (org && org.userTokenExpiration) {
           expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);

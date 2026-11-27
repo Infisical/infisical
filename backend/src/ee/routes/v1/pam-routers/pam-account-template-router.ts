@@ -5,11 +5,11 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamTemplateSettingsInputSchema } from "@app/ee/services/pam-account-template/pam-account-template-schemas";
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const SanitizedTemplateSchema = PamAccountTemplatesSchema.pick({
@@ -51,10 +51,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         projectId: req.internalPamProjectId,
         search: req.query.search,
         type: req.query.type,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return { templates };
     }
@@ -85,10 +82,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       const template = await server.services.pamAccountTemplate.getById({
         templateId: req.params.templateId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return { template };
     }
@@ -124,15 +118,12 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.create({
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_TEMPLATE_CREATE,
@@ -148,10 +139,10 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountTemplateCreated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: req.body.type,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -193,15 +184,12 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         templateId: req.params.templateId,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_TEMPLATE_UPDATE,
@@ -216,10 +204,10 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountTemplateUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: template.type,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});
@@ -248,15 +236,12 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       const template = await server.services.pamAccountTemplate.deleteTemplate({
         templateId: req.params.templateId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_ACCOUNT_TEMPLATE_DELETE,
@@ -271,10 +256,10 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         .sendPostHogEvents({
           event: PostHogEventTypes.PamAccountTemplateDeleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             accountType: template.type,
-            orgId: req.permission.orgId
+            orgId: req.actor.orgId
           }
         })
         .catch(() => {});

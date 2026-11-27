@@ -5,7 +5,7 @@ import * as x509 from "@peculiar/x509";
 import { TableName } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { OcspCertStatus } from "@app/ee/services/certificate-authority-ocsp/certificate-authority-ocsp-enums";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import { CaStatus } from "../certificate-authority-enums";

@@ -2,6 +2,7 @@ import z from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamNotificationEvent } from "@app/ee/services/pam/pam-enums";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
@@ -9,7 +10,6 @@ import {
   AutoApprovalConfigResponseSchema,
   AutoApprovalConfigSchema
 } from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const ApproverSchema = z.object({
   type: z.nativeEnum(ApproverType),
@@ -74,10 +74,7 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
       const result = await server.services.pamAccessRequest.getApprovalConfiguration({
         folderId: req.params.folderId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
       return result;
     }
@@ -125,15 +122,12 @@ export const registerPamApprovalConfigurationRouter = async (server: FastifyZodP
         breakGlassUsers: req.body.breakGlassUsers,
         autoApproval: req.body.autoApproval,
         emailApproversOnRequest: req.body.emailApproversOnRequest,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: req.internalPamProjectId,
         event: {
           type: EventType.PAM_APPROVAL_CONFIG_UPDATE,

@@ -1,14 +1,15 @@
-import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import {
   GATEWAY_OFFLINE_EVENT,
   GATEWAY_RESOURCE_TYPE,
   GatewayOfflinePayloadSchema
 } from "@app/ee/services/gateway-v2/gateway-v2-events";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -36,12 +37,12 @@ type TGatewayTarget = {
 
 export type TGatewayAlertProviderDep = {
   gatewayAlertDAL: TGatewayAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgPermissionService: TOrgPermissionService;
 };
 
 export const gatewayAlertProviderFactory = ({
   gatewayAlertDAL,
-  permissionService
+  orgPermissionService
 }: TGatewayAlertProviderDep): IEventAlertProvider<TGatewayTarget> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
     `${getConfig().SITE_URL}/organizations/${alert.orgId}/networking`;
@@ -113,14 +114,7 @@ export const gatewayAlertProviderFactory = ({
   };
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      orgId: input.orgId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId
-    });
+    const permission = await orgPermissionService.getOrgPermission({ actor: input.actor, orgId: input.orgId });
 
     const actions = (() => {
       if (input.action === AlertPermissionAction.Read) return [OrgPermissionGatewayActions.ListGateways];
@@ -129,7 +123,7 @@ export const gatewayAlertProviderFactory = ({
     })();
 
     for (const action of actions) {
-      ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Gateway);
+      permission.assert({ action, subject: OrgPermissionSubjects.Gateway });
     }
   };
 

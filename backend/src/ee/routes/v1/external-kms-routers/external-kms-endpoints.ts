@@ -9,12 +9,12 @@ import {
   TExternalKmsInputSchema,
   TExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { deterministicStringify } from "@app/lib/fn/object";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const sanitizedExternalSchema = KmsKeysSchema.extend({
   externalKms: ExternalKmsSchema.pick({
@@ -67,10 +67,7 @@ export const registerExternalKmsEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.findById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.id
       });
 
@@ -83,7 +80,7 @@ export const registerExternalKmsEndpoints = <
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_KMS,
           metadata: {
@@ -139,10 +136,7 @@ export const registerExternalKmsEndpoints = <
       } as TExternalKmsInputSchema;
 
       const externalKms = await server.services.externalKms.create({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         name,
         provider: providerInput,
         description
@@ -150,7 +144,7 @@ export const registerExternalKmsEndpoints = <
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.CREATE_KMS,
           metadata: {
@@ -211,10 +205,7 @@ export const registerExternalKmsEndpoints = <
       } as TExternalKmsInputUpdateSchema;
 
       const externalKms = await server.services.externalKms.updateById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         name,
         provider: providerInput,
         description,
@@ -223,7 +214,7 @@ export const registerExternalKmsEndpoints = <
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_KMS,
           metadata: {
@@ -268,10 +259,7 @@ export const registerExternalKmsEndpoints = <
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const externalKms = await server.services.externalKms.deleteById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.id
       });
 
@@ -284,7 +272,7 @@ export const registerExternalKmsEndpoints = <
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.DELETE_KMS,
           metadata: {

@@ -2,12 +2,12 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiSync, PkiSyncStatus } from "@app/services/pki-sync/pki-sync-enums";
 import { PKI_SYNC_NAME_MAP } from "@app/services/pki-sync/pki-sync-maps";
 import { getPkiSyncTargetHost } from "@app/services/pki-sync/pki-sync-target-host-fns";
@@ -97,10 +97,7 @@ export const registerSyncPkiEndpoints = ({
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
 
-      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId(
-        { projectId, destination },
-        req.permission
-      );
+      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId, destination }, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -139,7 +136,7 @@ export const registerSyncPkiEndpoints = ({
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
+      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -184,7 +181,7 @@ export const registerSyncPkiEndpoints = ({
           destination,
           auditLogInfo: req.auditLogInfo
         },
-        req.permission
+        req.actor
       );
 
       const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
@@ -214,9 +211,9 @@ export const registerSyncPkiEndpoints = ({
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiSyncCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: pkiSync.projectId,
           destination,
           isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
@@ -252,7 +249,7 @@ export const registerSyncPkiEndpoints = ({
 
       const pkiSync = await server.services.pkiSync.updatePkiSync(
         { ...req.body, id: pkiSyncId, auditLogInfo: req.auditLogInfo },
-        req.permission
+        req.actor
       );
 
       const targetHost = getPkiSyncTargetHost(pkiSync.destinationConfig);
@@ -281,9 +278,9 @@ export const registerSyncPkiEndpoints = ({
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiSyncUpdated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: pkiSync.projectId,
           destination: pkiSync.destination,
           isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
@@ -316,7 +313,7 @@ export const registerSyncPkiEndpoints = ({
     handler: async (req) => {
       const { pkiSyncId } = req.params;
 
-      const pkiSync = await server.services.pkiSync.deletePkiSync({ id: pkiSyncId }, req.permission);
+      const pkiSync = await server.services.pkiSync.deletePkiSync({ id: pkiSyncId }, req.actor);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -336,9 +333,9 @@ export const registerSyncPkiEndpoints = ({
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiSyncDeleted,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: pkiSync.projectId,
           destination: pkiSync.destination
         }
@@ -391,7 +388,7 @@ export const registerSyncPkiEndpoints = ({
             syncOptions: req.body.syncOptions,
             projectId: req.internalCertManagerProjectId
           },
-          req.permission,
+          req.actor,
           req.auditLogInfo
         );
 
@@ -421,7 +418,7 @@ export const registerSyncPkiEndpoints = ({
       handler: async (req) => {
         const healthCheck = await server.services.pkiSync.runPkiSyncHealthCheckById(
           { id: req.params.pkiSyncId },
-          req.permission,
+          req.actor,
           req.auditLogInfo
         );
 
@@ -456,7 +453,7 @@ export const registerSyncPkiEndpoints = ({
         {
           id: pkiSyncId
         },
-        req.permission
+        req.actor
       );
 
       return result;
@@ -491,7 +488,7 @@ export const registerSyncPkiEndpoints = ({
           {
             id: pkiSyncId
           },
-          req.permission
+          req.actor
         );
 
         return result;
@@ -535,7 +532,7 @@ export const registerSyncPkiEndpoints = ({
             id: pkiSyncId,
             removalOptions
           },
-          req.permission
+          req.actor
         );
 
         return result;

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { ProjectBotsSchema } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -32,10 +32,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const bot = await server.services.projectBot.findBotByProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         projectId: req.params.projectId
       });
       return { bot };
@@ -77,10 +74,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const bot = await server.services.projectBot.setBotActiveState({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.actor,
         botId: req.params.botId,
         botKey: req.body.botKey,
         isActive: req.body.isActive

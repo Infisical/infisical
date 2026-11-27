@@ -3,6 +3,7 @@ import { z } from "zod";
 import { IdentityAuthMethod, IdentityTlsCertAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TLS_CERT_AUTH } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -10,7 +11,6 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 import {
   isValidAllowedSubjectAltNameEntry,
@@ -274,10 +274,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.attachTlsCertAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -287,7 +284,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.ADD_IDENTITY_TLS_CERT_AUTH,
           metadata: {
@@ -308,10 +305,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodAttached,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityTlsCertAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })
@@ -409,10 +406,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.updateTlsCertAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -422,7 +416,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.UPDATE_IDENTITY_TLS_CERT_AUTH,
           metadata: {
@@ -443,10 +437,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodUpdated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityTlsCertAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })
@@ -489,17 +483,14 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.getTlsCertAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.GET_IDENTITY_TLS_CERT_AUTH,
           metadata: {
@@ -539,10 +530,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.revokeTlsCertAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -551,7 +539,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         event: {
           type: EventType.REVOKE_IDENTITY_TLS_CERT_AUTH,
           metadata: {
@@ -564,10 +552,10 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         .sendPostHogEvents({
           event: PostHogEventTypes.MachineIdentityAuthMethodRevoked,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             identityId: identityTlsCertAuth.identityId,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             authMethod: IdentityAuthMethod.TLS_CERT_AUTH
           }
         })

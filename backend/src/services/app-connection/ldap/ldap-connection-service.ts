@@ -1,8 +1,8 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { TLdapConnection, TLdapConnectionConfig } from "./ldap-connection-types";
@@ -18,7 +18,7 @@ import {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TLdapConnection>;
 
 export const ldapConnectionService = (
@@ -30,7 +30,7 @@ export const ldapConnectionService = (
   const listMachines = async (
     connectionId: string,
     { search, limit }: { search?: string; limit?: number },
-    actor: OrgServiceActor
+    actor: TActorContext
   ): Promise<TDirectoryMachine[]> => {
     const appConnection = await getAppConnection(AppConnection.LDAP, connectionId, actor);
 
@@ -50,7 +50,7 @@ export const ldapConnectionService = (
     });
   };
 
-  const listGroups = async (connectionId: string, { search }: { search?: string }, actor: OrgServiceActor) => {
+  const listGroups = async (connectionId: string, { search }: { search?: string }, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.LDAP, connectionId, actor);
     assertLdapProviderIsSupported(
       appConnection.credentials.provider,

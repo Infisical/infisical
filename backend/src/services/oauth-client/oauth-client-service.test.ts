@@ -1,5 +1,5 @@
 import { ForbiddenRequestError } from "@app/lib/errors";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 
 import { computePkceChallenge } from "./oauth-client-fns";
 import { oauthClientServiceFactory } from "./oauth-client-service";
@@ -36,7 +36,9 @@ const createService = ({ mcpEnabled }: { mcpEnabled: boolean }) => {
 
   const service = oauthClientServiceFactory({
     oauthClientDAL: { findOne: vi.fn().mockResolvedValue(registeredClient) },
-    permissionService: { getOrgPermission: vi.fn().mockResolvedValue({}) },
+    actorContextService: { forPrincipal: vi.fn().mockResolvedValue({}) },
+    ssoSessionService: { findSsoSessionRefusal: vi.fn().mockResolvedValue(null) },
+    orgPermissionService: { getOrgPermission: vi.fn().mockResolvedValue({}) },
     keyStore,
     tokenService,
     orgDAL: { findById: vi.fn().mockResolvedValue(org), findEffectiveOrgMembership: vi.fn() },

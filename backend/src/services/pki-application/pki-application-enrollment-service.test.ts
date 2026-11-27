@@ -1,8 +1,14 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import {
+  actorContext,
+  actorOrg,
+  userPrincipal
+} from "@app/domains/platform/organizations/ce/testing/actor-context-fixture";
 import {
   MicrosoftAutoenrollmentChannelBindingStatus,
   MicrosoftAutoenrollmentKeytabSource
@@ -15,7 +21,6 @@ import { KerberosEncryptionType } from "@app/lib/kerberos/kerberos-types";
 import { buildTestKeytab, buildTestKeytabEntry } from "@app/lib/kerberos/kerberos.test-helpers";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { LdapProvider } from "@app/services/app-connection/ldap/ldap-connection-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 
 import { pkiApplicationEnrollmentServiceFactory } from "./pki-application-enrollment-service";
@@ -51,12 +56,7 @@ const SERVERS_SID = "S-1-5-21-1111111111-2222222222-3333333333-1200";
 
 const actor = {
   projectId: "project-id",
-  actor: ActorType.USER as const,
-  actorId: "user-id",
-  actorAuthMethod: null,
-  actorOrgId: "org-id",
-  actorRootOrgId: "org-id",
-  actorParentOrgId: "org-id"
+  actor: actorContext({ principal: userPrincipal({ id: "user-id" }), org: actorOrg({ id: "org-id" }) })
 };
 
 const TEST_GROUP_SID_PREFIX = "S-1-5-21-1111111111-2222222222-3333333333-";
@@ -102,7 +102,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
     certificateAuthoritySecretDAL: { findOne: vi.fn() },
     kmsDataKeyService: { getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-id") },
     kmsKeyService: { encryptWithKmsKey: vi.fn(), decryptWithKmsKey: vi.fn() },
-    permissionService: { getResourcePermission: vi.fn() },
+    applicationPermissionService: { getApplicationPermission: vi.fn() },
     keyStore: { getItem: vi.fn() }
   };
 
@@ -140,9 +140,9 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       id: "junction-id",
       microsoftAutoenrollmentConfigId: null
     });
-    deps.permissionService.getResourcePermission.mockResolvedValue({
-      permission: createMongoAbility([{ action: "manage", subject: "all" }])
-    });
+    deps.applicationPermissionService.getApplicationPermission.mockResolvedValue(
+      Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never })
+    );
     deps.licenseService.getPlan.mockResolvedValue(
       Plan.restore({ ...testFeatures(), pkiMicrosoftAutoenrollment: true })
     );
@@ -185,10 +185,10 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
 
   describe("setMicrosoftAutoenrollmentEnrollment", () => {
     test("refuses an actor without permission to edit enrollment", async () => {
-      deps.permissionService.getResourcePermission.mockResolvedValue({ permission: createMongoAbility([]) });
+      deps.applicationPermissionService.getApplicationPermission.mockResolvedValue(Permission.none());
 
       await expect(set({ connectionId: CONNECTION_ID, keytab: encodeKeytab([3]) })).rejects.toBeInstanceOf(
-        ForbiddenError
+        PermissionDeniedError
       );
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
     });
@@ -369,7 +369,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       expect(deps.appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
         AppConnection.LDAP,
         { connectionId: CONNECTION_ID, projectId: "project-id" },
-        expect.objectContaining({ id: "user-id" })
+        actor.actor
       );
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.create).not.toHaveBeenCalled();
     });
@@ -691,7 +691,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
       expect(deps.appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
         AppConnection.LDAP,
         { connectionId: CONNECTION_ID, projectId: "project-id" },
-        expect.objectContaining({ id: "user-id" })
+        actor.actor
       );
       expect(resolveDirectorySecurityGroupNames).not.toHaveBeenCalled();
       expect(searchDirectoryGroups).not.toHaveBeenCalled();
@@ -1224,7 +1224,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
 
     test("refuses an actor without permission to edit enrollment", async () => {
       withExistingConfig();
-      deps.permissionService.getResourcePermission.mockResolvedValue({ permission: createMongoAbility([]) });
+      deps.applicationPermissionService.getApplicationPermission.mockResolvedValue(Permission.none());
 
       await expect(
         service.reenrollMicrosoftAutoenrollmentComputers({
@@ -1232,7 +1232,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
           profileId: PROFILE_ID,
           ...actor
         })
-      ).rejects.toBeInstanceOf(ForbiddenError);
+      ).rejects.toBeInstanceOf(PermissionDeniedError);
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.update).not.toHaveBeenCalled();
     });
   });
@@ -1289,7 +1289,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
 
     test("refuses an actor without permission to edit enrollment", async () => {
       withExistingConfig();
-      deps.permissionService.getResourcePermission.mockResolvedValue({ permission: createMongoAbility([]) });
+      deps.applicationPermissionService.getApplicationPermission.mockResolvedValue(Permission.none());
 
       await expect(
         service.clearMicrosoftAutoenrollmentEnrollment({
@@ -1297,7 +1297,7 @@ describe("pkiApplicationEnrollmentService Microsoft Autoenrollment", () => {
           profileId: PROFILE_ID,
           ...actor
         })
-      ).rejects.toBeInstanceOf(ForbiddenError);
+      ).rejects.toBeInstanceOf(PermissionDeniedError);
       expect(deps.microsoftAutoenrollmentEnrollmentConfigDAL.delete).not.toHaveBeenCalled();
     });
   });

@@ -1,38 +1,8 @@
-export enum AuthMethod {
-  EMAIL = "email",
-  GOOGLE = "google",
-  GITHUB = "github",
-  GITLAB = "gitlab",
-  OKTA_SAML = "okta-saml",
-  AZURE_SAML = "azure-saml",
-  JUMPCLOUD_SAML = "jumpcloud-saml",
-  GOOGLE_SAML = "google-saml",
-  KEYCLOAK_SAML = "keycloak-saml",
-  AUTH0_SAML = "auth0-saml",
-  LDAP = "ldap",
-  OIDC = "oidc"
-}
+import { AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 
 export enum SsoMfaTrust {
   None = "none",
   Signal = "signal"
-}
-
-export enum AuthTokenType {
-  ACCESS_TOKEN = "accessToken",
-  REFRESH_TOKEN = "refreshToken",
-  SIGNUP_TOKEN = "signupToken",
-  MFA_TOKEN = "mfaToken",
-  API_KEY = "apiKey",
-  SERVICE_ACCESS_TOKEN = "serviceAccessToken",
-  SERVICE_REFRESH_TOKEN = "serviceRefreshToken",
-  IDENTITY_ACCESS_TOKEN = "identityAccessToken",
-  SCIM_TOKEN = "scimToken",
-  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
-  RELAY_ACCESS_TOKEN = "relayAccessToken",
-  KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken",
-  AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken",
-  ACCOUNT_RECOVERY_TOKEN = "accountRecoveryToken"
 }
 
 // Result state from processProviderCallback — determines what the route handler should do
@@ -42,47 +12,6 @@ export enum ProviderAuthResult {
   // User account is incomplete (new user or unverified alias) — issue signup token
   SIGNUP_REQUIRED = "signup_required"
 }
-
-export enum AuthMode {
-  JWT = "jwt",
-  SERVICE_TOKEN = "serviceToken",
-  API_KEY = "apiKey",
-  IDENTITY_ACCESS_TOKEN = "identityAccessToken",
-  SCIM_TOKEN = "scimToken",
-  // Delegated OAuth 2.0 access tokens issued via the authorization code flow. These are NOT
-  // first-party dashboard sessions: a route must explicitly opt into AuthMode.OAUTH to accept them.
-  OAUTH = "oauth",
-  GATEWAY_ACCESS_TOKEN = "gatewayAccessToken",
-  RELAY_ACCESS_TOKEN = "relayAccessToken",
-  KMIP_SERVER_ACCESS_TOKEN = "kmipServerAccessToken",
-  AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken"
-}
-
-export enum ActorType {
-  // would extend to AWS, Azure, ...
-  PLATFORM = "platform", // Useful for when we want to perform logging on automated actions such as integration syncs.
-  KMIP_CLIENT = "kmipClient",
-  USER = "user", // userIdentity
-  SERVICE = "service",
-  IDENTITY = "identity",
-  SCIM_CLIENT = "scimClient",
-  ACME_PROFILE = "acmeProfile",
-  ACME_ACCOUNT = "acmeAccount",
-  EST_ACCOUNT = "estAccount",
-  SCEP_ACCOUNT = "scepAccount",
-  MICROSOFT_AUTOENROLLMENT_ACCOUNT = "microsoftAutoenrollmentAccount",
-  UNKNOWN_USER = "unknownUser",
-  GATEWAY = "gateway",
-  RELAY = "relay",
-  KMIP_SERVER = "kmipServer",
-  AGENT_VAULT_PROXY = "agentVaultProxy"
-}
-
-export const PROTOCOL_ENROLLMENT_ACTORS: ReadonlySet<ActorType> = new Set([
-  ActorType.EST_ACCOUNT,
-  ActorType.SCEP_ACCOUNT,
-  ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT
-]);
 
 export type TGatewayAccessTokenJwtPayload = {
   authTokenType: AuthTokenType.GATEWAY_ACCESS_TOKEN;
@@ -112,9 +41,6 @@ export type TAgentVaultProxyAccessTokenJwtPayload = {
   tokenVersion: number;
 };
 
-// This will be null unless the token-type is JWT
-export type ActorAuthMethod = AuthMethod | null;
-
 export type AuthModeJwtTokenPayload = {
   authTokenType: AuthTokenType.ACCESS_TOKEN;
   authMethod: AuthMethod;
@@ -134,7 +60,7 @@ export type AuthModeJwtTokenPayload = {
   // AuthMode.OAUTH so the default JWT middleware will not accept it as a first-party session.
   oauthClientId?: string;
   // Granted OAuth delegation scopes (see OauthScope). The delegated ability is intersected with
-  // these in permission-service; an empty/absent list denies all scope-guarded resource access.
+  // these when the org and project permissions are built; an empty/absent list denies all scope-guarded resource access.
   scopes?: string[];
   // Set instead of `scopes` on RFC 8693 token exchange tokens, which carry the user's authorization
   // unnarrowed. Never both. See OauthDelegationMode.
@@ -193,12 +119,6 @@ export type AuthModeAccountRecoveryTokenPayload = {
   jti: string;
   exp: number;
 };
-
-export enum MfaMethod {
-  EMAIL = "email",
-  TOTP = "totp",
-  WEBAUTHN = "webauthn"
-}
 
 export type TProviderAuthCallback =
   | {

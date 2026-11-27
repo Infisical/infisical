@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SignUpRefusal } from "@app/domains/platform/instance-config-core/ce/module";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -12,7 +13,6 @@ import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -267,14 +267,14 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const distinctId = getTelemetryDistinctId(req);
-      const organizationId = req.permission.orgId;
+      const organizationId = req.actor.orgId;
 
       // Persisted for SQL analytics alongside the PostHog events; a DB failure must not
       // take the telemetry down with it.
       if (organizationId) {
         try {
           await server.services.signup.recordOnboardingResponse({
-            userId: req.permission.id,
+            userId: req.actor.id,
             orgId: organizationId,
             selectedProducts: req.body.selectedProducts,
             launchDestination: req.body.launchDestination,

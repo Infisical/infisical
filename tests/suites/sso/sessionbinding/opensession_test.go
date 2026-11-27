@@ -28,7 +28,7 @@ func TestSessionBinding_OpenSession(t *testing.T) {
 		status, body = readOrg(t, alice, other.Tenant.OrgID)
 
 		// Assert
-		requireForeignSession(t, status, body)
+		requireForeignSessionRefused(t, status, body)
 	})
 
 	t.Run("should refuse a project read on the next request once the org starts enforcing SSO", func(t *testing.T) {
@@ -48,6 +48,6 @@ func TestSessionBinding_OpenSession(t *testing.T) {
 		status, body = readProject(t, alice, proj.ID)
 
 		// Assert
-		requireForeignSession(t, status, body)
+		requireForeignSessionRefused(t, status, body)
 	})
 }

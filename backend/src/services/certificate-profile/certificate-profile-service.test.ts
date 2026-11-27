@@ -2,14 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TApplicationPermissionService } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import type { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
-import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TProjectPermissionService } from "@app/domains/platform/projects/ce/module";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
@@ -87,10 +89,10 @@ describe("CertificateProfileService", () => {
   } as unknown as TCertificatePolicyDALFactory;
 
   const mockActor = {
-    actor: ActorType.USER,
-    actorId: "user-123",
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: "org-123"
+    actor: {
+      principal: { type: ActorType.USER, id: "user-123", authMethod: AuthMethod.EMAIL },
+      org: { id: "org-123" }
+    } as unknown as TActorContext
   };
 
   const sampleProfile: TCertificateProfile = {
@@ -186,22 +188,13 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TScepEnrollmentConfigDALFactory;
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: {
-        can: vi.fn().mockReturnValue(true),
-        throwUnlessCan: vi.fn(),
-        rules: []
-      }
-    }),
-    getResourcePermission: vi.fn().mockResolvedValue({
-      permission: {
-        can: vi.fn().mockReturnValue(true),
-        throwUnlessCan: vi.fn(),
-        rules: []
-      }
-    })
-  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  const allowAll = Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] });
+  const mockProjectPermissionService = {
+    getProjectPermission: vi.fn().mockResolvedValue(allowAll)
+  } as unknown as TProjectPermissionService;
+  const mockApplicationPermissionService = {
+    getApplicationPermission: vi.fn().mockResolvedValue(allowAll)
+  } as unknown as TApplicationPermissionService;
 
   const mockKmsService = {
     getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
@@ -270,10 +263,6 @@ describe("CertificateProfileService", () => {
   };
 
   beforeEach(() => {
-    vi.spyOn(ForbiddenError, "from").mockReturnValue({
-      throwUnlessCan: vi.fn()
-    } as any);
-
     // Mock the transaction method to execute the callback and return the result
     (mockCertificateProfileDAL.transaction as any).mockImplementation(async (fn: any) => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/return-await
@@ -303,7 +292,8 @@ describe("CertificateProfileService", () => {
       certificateAuthorityCertDAL: { find: vi.fn() } as never,
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
-      permissionService: mockPermissionService,
+      projectPermissionService: mockProjectPermissionService,
+      applicationPermissionService: mockApplicationPermissionService,
       kmsDataKeyService: mockKmsService,
       kmsKeyService: mockKmsService,
       resourceMetadataDAL: mockResourceMetadataDAL,

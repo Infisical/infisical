@@ -13,7 +13,7 @@ export class SeatUsage {
     return new SeatUsage(membersUsed, identitiesUsed);
   }
 
-  // From organizations-projects' billable actor counts: every member also takes an identity seat.
+  // From Organizations' billable actor counts: every member also takes an identity seat.
   static fromBillableActors({ users, identities }: { users: number; identities: number }): SeatUsage {
     return new SeatUsage(users, users + identities);
   }
