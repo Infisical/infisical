@@ -19,7 +19,8 @@ export const ACME_DNS_PROVIDER_NAME_MAP: Record<AcmeDnsProvider, string> = {
   [AcmeDnsProvider.AzureDNS]: "Azure DNS",
   [AcmeDnsProvider.PowerDns]: "PowerDNS",
   [AcmeDnsProvider.GcpCloudDns]: "Google Cloud DNS",
-  [AcmeDnsProvider.UltraDNS]: "UltraDNS"
+  [AcmeDnsProvider.UltraDNS]: "UltraDNS",
+  [AcmeDnsProvider.Rfc2136]: "DNS Server (RFC 2136)"
 };
 
 export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnection> = {
@@ -29,7 +30,8 @@ export const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppCo
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
   [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
-  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
+  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS,
+  [AcmeDnsProvider.Rfc2136]: AppConnection.Rfc2136
 };
 
 export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {

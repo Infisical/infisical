@@ -78,6 +78,7 @@ import { TQoveryConnection } from "./qovery-connection";
 import { TRailwayConnection } from "./railway-connection";
 import { TRedisConnection } from "./redis-connection";
 import { TRenderConnection } from "./render-connection";
+import { TRfc2136Connection } from "./rfc2136-connection";
 import { TRundeckConnection } from "./rundeck-connection";
 import { TS3CompatibleConnection } from "./s3-compatible-connection";
 import { TSalesforceConnection } from "./salesforce-connection";
@@ -171,6 +172,7 @@ export * from "./palo-alto-networks-connection";
 export * from "./portainer-connection";
 export * from "./postgres-connection";
 export * from "./powerdns-connection";
+export * from "./rfc2136-connection";
 export * from "./qovery-connection";
 export * from "./railway-connection";
 export * from "./redis-connection";
@@ -296,7 +298,8 @@ export type TAppConnection =
   | TClickHouseConnection
   | TIncidentIoConnection
   | TJenkinsConnection
-  | TCoolifyConnection;
+  | TCoolifyConnection
+  | TRfc2136Connection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
   gatewayId?: string | null;

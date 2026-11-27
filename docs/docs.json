@@ -1127,6 +1127,7 @@
                   "integrations/app-connections/digital-ocean",
                   "integrations/app-connections/doppler",
                   "integrations/app-connections/dns-made-easy",
+                  "integrations/app-connections/rfc2136",
                   "integrations/app-connections/f5-big-ip",
                   "integrations/app-connections/fireworks",
                   "integrations/app-connections/flyio",
@@ -2037,6 +2038,18 @@
                           "api-reference/endpoints/app-connections/digital-ocean/create",
                           "api-reference/endpoints/app-connections/digital-ocean/update",
                           "api-reference/endpoints/app-connections/digital-ocean/delete"
+                        ]
+                      },
+                      {
+                        "group": "DNS Server (RFC 2136)",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/rfc2136/list",
+                          "api-reference/endpoints/app-connections/rfc2136/available",
+                          "api-reference/endpoints/app-connections/rfc2136/get-by-id",
+                          "api-reference/endpoints/app-connections/rfc2136/get-by-name",
+                          "api-reference/endpoints/app-connections/rfc2136/create",
+                          "api-reference/endpoints/app-connections/rfc2136/update",
+                          "api-reference/endpoints/app-connections/rfc2136/delete"
                         ]
                       },
                       {

@@ -246,6 +246,10 @@ import {
   SanitizedRenderConnectionSchema
 } from "@app/services/app-connection/render/render-connection-schema";
 import {
+  Rfc2136ConnectionListItemSchema,
+  SanitizedRfc2136ConnectionSchema
+} from "@app/services/app-connection/rfc2136";
+import {
   RundeckConnectionListItemSchema,
   SanitizedRundeckConnectionSchema
 } from "@app/services/app-connection/rundeck";
@@ -413,7 +417,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedS3CompatibleConnectionSchema.options,
   ...SanitizedJiraConnectionSchema.options,
   ...SanitizedClickHouseConnectionSchema.options,
-  ...SanitizedIncidentIoConnectionSchema.options
+  ...SanitizedIncidentIoConnectionSchema.options,
+  ...SanitizedRfc2136ConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -515,7 +520,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   S3CompatibleConnectionListItemSchema,
   JiraConnectionListItemSchema,
   ClickHouseConnectionListItemSchema,
-  IncidentIoConnectionListItemSchema
+  IncidentIoConnectionListItemSchema,
+  Rfc2136ConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

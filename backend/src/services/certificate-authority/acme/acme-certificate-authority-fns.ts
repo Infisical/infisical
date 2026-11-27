@@ -32,6 +32,7 @@ import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/c
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TGcpConnection } from "@app/services/app-connection/gcp/gcp-connection-types";
 import { TPowerDnsConnection } from "@app/services/app-connection/powerdns/powerdns-connection-types";
+import { TRfc2136Connection } from "@app/services/app-connection/rfc2136/rfc2136-connection-types";
 import { TUltraDNSConnection } from "@app/services/app-connection/ultradns/ultradns-connection-types";
 import { CertificateRequestCancelledError } from "@app/services/certificate-common/certificate-request-errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
@@ -76,6 +77,7 @@ import {
   validateGcpCloudDnsZone
 } from "./dns-providers/gcp-cloud-dns";
 import { powerDnsDeleteTxtRecord, powerDnsInsertTxtRecord, TPowerDnsProviderDeps } from "./dns-providers/powerdns";
+import { rfc2136DeleteTxtRecord, rfc2136InsertTxtRecord, validateRfc2136Zone } from "./dns-providers/rfc2136";
 import { ultraDNSDeleteTxtRecord, ultraDNSInsertTxtRecord } from "./dns-providers/ultradns";
 
 const UNCHANGED_CREDENTIAL_SENTINEL = "__INFISICAL_UNCHANGED__";
@@ -273,7 +275,8 @@ const ACME_DNS_PROVIDER_APP_CONNECTION_MAP: Record<AcmeDnsProvider, AppConnectio
   [AcmeDnsProvider.AzureDNS]: AppConnection.AzureDNS,
   [AcmeDnsProvider.PowerDns]: AppConnection.PowerDns,
   [AcmeDnsProvider.GcpCloudDns]: AppConnection.GCP,
-  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS
+  [AcmeDnsProvider.UltraDNS]: AppConnection.UltraDNS,
+  [AcmeDnsProvider.Rfc2136]: AppConnection.Rfc2136
 };
 
 const validateDnsProviderAppConnection = (provider: AcmeDnsProvider, dnsAppConnectionId: string, app: string) => {
@@ -553,6 +556,16 @@ export const executeAcmeOrder = async (
           );
           break;
         }
+        case AcmeDnsProvider.Rfc2136: {
+          await rfc2136InsertTxtRecord(
+            connection as TRfc2136Connection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { gatewayV2Service, gatewayPoolService, abortSignal }
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
@@ -646,6 +659,16 @@ export const executeAcmeOrder = async (
             recordName,
             recordValue,
             { keyStore }
+          );
+          break;
+        }
+        case AcmeDnsProvider.Rfc2136: {
+          await rfc2136DeleteTxtRecord(
+            connection as TRfc2136Connection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue,
+            { gatewayV2Service, gatewayPoolService }
           );
           break;
         }
@@ -805,6 +828,10 @@ export const AcmeCertificateAuthorityFns = ({
       validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.Rfc2136) {
+      validateRfc2136Zone(dnsProviderConfig.hostedZoneId);
+    }
+
     if (dnsResolver) {
       validateDnsResolver(dnsResolver);
     }
@@ -892,6 +919,10 @@ export const AcmeCertificateAuthorityFns = ({
 
       if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
         validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+      }
+
+      if (dnsProviderConfig.provider === AcmeDnsProvider.Rfc2136) {
+        validateRfc2136Zone(dnsProviderConfig.hostedZoneId);
       }
 
       if (dnsResolver) {
