@@ -1,7 +1,8 @@
 import type {
   TCreateProjectFolderGrantDTO,
   TDeleteProjectFolderGrantDTO,
-  TProjectFolderGrant
+  TProjectFolderGrant,
+  TProjectFolderGrantReceived
 } from "@app/hooks/api/projectFolderGrants/types";
 import type { Project } from "@app/hooks/api/projects/types";
 import type { TSecretFolder } from "@app/hooks/api/secretFolders/types";
@@ -41,6 +42,10 @@ export type SecretPoliciesAdapter = {
     projectId: string,
     options: { enabled: boolean }
   ) => V4QueryResult<TProjectFolderGrant[]>;
+  useFolderGrantsReceived: (
+    projectId: string,
+    options: { enabled: boolean }
+  ) => V4QueryResult<TProjectFolderGrantReceived[]>;
   useFolderGrantsUsage: (
     grantIds: string[],
     projectId: string,

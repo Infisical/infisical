@@ -57,7 +57,6 @@ import { nameLabel } from "../../../shell/resource-name";
 import { withoutDefaults } from "../../search-defaults";
 import {
   environments,
-  readableValue,
   type Resource,
   type ResourceKind,
   type Secret,
@@ -84,6 +83,7 @@ import {
 } from "./overview-cells";
 import type { PermissionScope } from "./row-actions/permissions";
 import { canReconcile } from "./row-actions/rotation-actions";
+import { SecretValue } from "./secret-row";
 
 import styles from "./overview.module.css";
 
@@ -111,7 +111,6 @@ const gateAny = (
   const blocks = scopes.map((scope) => gate(ctx, sub, action, scope, verb));
   return blocks.every(Boolean) ? blocks[0] : undefined;
 };
-const mask = "••••••••••••••••";
 const tone = (value: string): BadgeTone =>
   (
     {
@@ -968,7 +967,8 @@ export function ImportRow({
   ctx,
   sourceSecrets,
   projectId,
-  sites
+  sites,
+  revealAll
 }: {
   rowKey: string;
   entries: Of<"import">[];
@@ -976,6 +976,7 @@ export function ImportRow({
   sourceSecrets: (entry: Of<"import">) => Secret[];
   projectId: string;
   sites: EnvironmentOption[];
+  revealAll: boolean;
 }) {
   const expanded = ctx.expanded.includes(rowKey);
   const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
@@ -1151,9 +1152,7 @@ export function ImportRow({
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
-              <code className={styles.value}>
-                {readableValue(secret) === undefined ? "No access" : mask}
-              </code>
+              <SecretValue secret={secret} visible={revealAll} />
             </TableCell>
           </TableRow>
         ))}
@@ -1196,9 +1195,7 @@ export function ImportRow({
                         <span className={styles.truncate}>{secret.name}</span>
                       </TableCell>
                       <TableCell className={styles.valueCell}>
-                        <code className={styles.value}>
-                          {readableValue(secret) === undefined ? "No access" : mask}
-                        </code>
+                        <SecretValue secret={secret} visible={revealAll} />
                       </TableCell>
                     </TableRow>
                   ))

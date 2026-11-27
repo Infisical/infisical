@@ -219,6 +219,17 @@ export const secretPoliciesDemo: SecretPoliciesAdapter = {
   }),
   useFolderGrants: (projectId) =>
     ok(store.use().grants.filter((entry) => entry.sourceProjectId === projectId)),
+  useFolderGrantsReceived: (projectId) =>
+    ok(
+      store
+        .use()
+        .grants.filter((entry) => entry.targetProjectId === projectId)
+        .map((entry) => ({
+          ...entry,
+          sourceProjectName: entry.sourceProjectId,
+          sourceProjectSlug: entry.sourceProjectId
+        }))
+    ),
   useFolderGrantsUsage: (grantIds) => ({
     isChecking: false,
     isError: false,

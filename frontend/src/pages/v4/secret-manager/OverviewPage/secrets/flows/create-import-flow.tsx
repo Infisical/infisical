@@ -12,6 +12,7 @@ import {
 import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Select } from "@infisical/cipher/ui/select";
+import { Tabs } from "@infisical/cipher/ui/tabs";
 import { SmallText } from "@infisical/cipher/ui/text";
 
 import {
@@ -19,6 +20,8 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
+import { useOrgId } from "../../../../access/permissions";
+import { useV4Adapter } from "../../../../data/adapters";
 import { usePlanGates } from "../plan-gates";
 import { useCreateBlock } from "../row-actions/permissions";
 import { environmentLabel, folderExists, Gate } from "./shared";
@@ -52,9 +55,68 @@ export function CreateImportFlow({
   const [secretPath, setSecretPath] = useState("/");
   const [replication, setReplication] = useState(false);
   const [error, setError] = useState<string>();
+  const [fromOtherProject, setFromOtherProject] = useState(false);
+  const [grant, setGrant] = useState<{ project?: string; environment?: string; path?: string }>({});
+  const [grantErrors, setGrantErrors] = useState<{
+    project?: string;
+    environment?: string;
+    path?: string;
+  }>({});
   const { plan, guard } = usePlanGates();
+  const policies = useV4Adapter("secretPolicies");
+  const { data: gates } = policies.useGates(useOrgId());
+  const { data: receivedGrants = [] } = policies.useFolderGrantsReceived(scope.project, {
+    enabled: Boolean(gates?.allowCrossProjectSecretSharing && gates.crossProjectSecretSharingInPlan)
+  });
+  const unique = (values: { value: string; label: string }[]) =>
+    values.filter(
+      (entry, index) => values.findIndex((other) => other.value === entry.value) === index
+    );
+  const projectOptions = unique(
+    receivedGrants.map((entry) => ({
+      value: entry.sourceProjectId,
+      label: entry.sourceProjectName
+    }))
+  );
+  const projectGrants = receivedGrants.filter((entry) => entry.sourceProjectId === grant.project);
+  const environmentOptions = unique(
+    projectGrants.map((entry) => ({ value: entry.environmentSlug, label: entry.environmentName }))
+  );
+  const folderOptions = projectGrants
+    .filter((entry) => entry.environmentSlug === grant.environment)
+    .map((entry) => ({ value: entry.secretPath, label: entry.secretPath }));
+
+  const submitFromGrant = () => {
+    const next = {
+      project: grant.project ? undefined : "Required",
+      environment: grant.environment ? undefined : "Required",
+      path: grant.path ? undefined : "Required"
+    };
+    setGrantErrors(next);
+    if (!grant.project || !grant.environment || !grant.path) return;
+    onCreate(
+      [
+        {
+          kind: "import",
+          project: scope.project,
+          environment: destination,
+          path: scope.path,
+          name: `${grant.environment}:${grant.path}`,
+          source: { project: grant.project, environment: grant.environment, path: grant.path },
+          revoked: false,
+          replicated: false
+        }
+      ],
+      { title: "Successfully linked secrets." }
+    );
+    onOpenChange(false);
+  };
 
   const submit = () => {
+    if (fromOtherProject) {
+      submitFromGrant();
+      return;
+    }
     if (!environment) {
       setError("Required");
       return;
@@ -139,41 +201,106 @@ export function CreateImportFlow({
             submit();
           }}
         >
-          <Field label="Environment" error={error}>
-            <Combobox
-              label="Environment"
-              options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
-              value={environment}
-              placeholder="Select environment..."
-              invalid={Boolean(error)}
-              onValueChange={(value) => {
-                setEnvironment(value);
-                setError(undefined);
-              }}
+          {projectOptions.length > 0 && (
+            <Tabs
+              variant="segmented"
+              width="full"
+              label="Import from"
+              value={fromOtherProject ? "other" : "this"}
+              onChange={(next) => setFromOtherProject(next === "other")}
+              tabs={[
+                { value: "this", label: "This project" },
+                { value: "other", label: "Another project" }
+              ]}
             />
-          </Field>
-          <Field label="Secret path">
-            <Input
-              mono
-              value={secretPath}
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => setSecretPath(event.target.value)}
-            />
-          </Field>
-          <div className={styles.stackTight}>
-            <Select
-              label="Secret approval policies"
-              value={replication ? "true" : "false"}
-              options={replicationOptions}
-              onChange={(value) => setReplication(value === "true")}
-            />
-            <SmallText muted>
-              {replication
-                ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
-                : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
-            </SmallText>
-          </div>
+          )}
+          {fromOtherProject ? (
+            <>
+              <Field label="Project" error={grantErrors.project}>
+                <Combobox
+                  label="Project"
+                  options={projectOptions}
+                  value={grant.project ?? ""}
+                  placeholder="Select project..."
+                  invalid={Boolean(grantErrors.project)}
+                  onValueChange={(value) => {
+                    setGrant({ project: value });
+                    setGrantErrors({});
+                  }}
+                />
+              </Field>
+              <Field label="Environment" error={grantErrors.environment}>
+                <Combobox
+                  label="Environment"
+                  options={environmentOptions}
+                  value={grant.environment ?? ""}
+                  placeholder="Select environment..."
+                  disabled={!grant.project}
+                  invalid={Boolean(grantErrors.environment)}
+                  onValueChange={(value) => {
+                    setGrant((current) => ({ project: current.project, environment: value }));
+                    setGrantErrors((current) => ({
+                      ...current,
+                      environment: undefined,
+                      path: undefined
+                    }));
+                  }}
+                />
+              </Field>
+              <Field label="Folder path" error={grantErrors.path}>
+                <Combobox
+                  label="Folder path"
+                  options={folderOptions}
+                  value={grant.path ?? ""}
+                  placeholder="Select folder..."
+                  disabled={!grant.environment}
+                  invalid={Boolean(grantErrors.path)}
+                  onValueChange={(value) => {
+                    setGrant((current) => ({ ...current, path: value }));
+                    setGrantErrors((current) => ({ ...current, path: undefined }));
+                  }}
+                />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Environment" error={error}>
+                <Combobox
+                  label="Environment"
+                  options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
+                  value={environment}
+                  placeholder="Select environment..."
+                  invalid={Boolean(error)}
+                  onValueChange={(value) => {
+                    setEnvironment(value);
+                    setError(undefined);
+                  }}
+                />
+              </Field>
+              <Field label="Secret path">
+                <Input
+                  mono
+                  value={secretPath}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) => setSecretPath(event.target.value)}
+                />
+              </Field>
+              <div className={styles.stackTight}>
+                <Select
+                  label="Secret approval policies"
+                  value={replication ? "true" : "false"}
+                  options={replicationOptions}
+                  onChange={(value) => setReplication(value === "true")}
+                />
+                <SmallText muted>
+                  {replication
+                    ? "Secrets from the source will be automatically sent to the destination. If approval policies exist at the destination, the secrets will be sent as approval requests instead of being applied immediately."
+                    : "Secrets from the source location will be imported to the selected destination immediately, ignoring any approval policies at the destination."}
+                </SmallText>
+              </div>
+            </>
+          )}
         </form>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
