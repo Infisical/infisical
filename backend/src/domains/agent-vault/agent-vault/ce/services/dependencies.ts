@@ -1,3 +1,7 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TGrantActor } from "@app/domains/platform/access-control/ce/module";
+import { ProjectPermission } from "@app/domains/platform/projects/ce/module";
+
 import {
   AgentVaultAccessState,
   AgentVaultFreeUsageThreshold,
@@ -48,4 +52,40 @@ export type TAgentVaultUsageService = {
   recordProxyUsage(input: TRecordProxyUsageInput): Promise<TAgentVaultFreeUsageCrossing[]>;
   completeNotice(crossing: TAgentVaultFreeUsageCrossing): Promise<void>;
   releaseNotice(crossing: TAgentVaultFreeUsageCrossing): Promise<void>;
+};
+
+export type TGetAccessBundlePermissionInput = {
+  actor: TActorContext;
+  projectId: string;
+};
+
+export type TAgentVaultPermission = {
+  permission: ProjectPermission;
+};
+
+export type TAgentVaultReachability = TAgentVaultPermission & {
+  // The built-in admin reaches every bundle without a grant.
+  reachesEveryBundle: boolean;
+  // null means every bundle.
+  accessBundleIds: string[] | null;
+};
+
+export type TAgentVaultGrantedReachability = TAgentVaultReachability & {
+  // Granted directly or via a group, regardless of role. This is what "mine" means for an actor that reaches
+  // every bundle.
+  grantedAccessBundleIds: string[];
+};
+
+// Bundle reach is a filter the services apply, not a CASL condition (conditions only interpolate identity.id,
+// username and metadata).
+export type TAccessBundlePermissionService = {
+  // Refuses a project of another type and a non-member.
+  getAgentVaultPermission(input: TGetAccessBundlePermissionInput): Promise<TAgentVaultPermission>;
+  // Actors that aren't a user or identity reach no bundles.
+  getAccessBundlePermission(input: TGetAccessBundlePermissionInput): Promise<TAgentVaultReachability>;
+  getGrantedAccessBundlePermission(input: TGetAccessBundlePermissionInput): Promise<TAgentVaultGrantedReachability>;
+  // Only pass groups holding a live role in the project, a group's grants count only while it does.
+  findReachableAccessBundleIds(input: { projectId: string; actor: TGrantActor; groupIds: string[] }): Promise<string[]>;
+  // null means every bundle, so a null side just returns the other one.
+  intersectAccessBundleIds(a: string[] | null, b: string[] | null): string[] | null;
 };

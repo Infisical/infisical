@@ -1,7 +1,8 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { ExternalMigrationProviders } from "./external-migration-schemas";
@@ -34,11 +35,11 @@ export type InfisicalImportData = {
 export type TImportEnvKeyDataDTO = {
   decryptionKey: string;
   encryptedJson: { nonce: string; data: string };
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type THasCustomVaultMigrationDTO = {
   provider: ExternalMigrationProviders;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TImportVaultDataDTO = {
   vaultAccessToken: string;
@@ -47,7 +48,7 @@ export type TImportVaultDataDTO = {
   vaultUrl: string;
   gatewayId?: string;
   gatewayPoolId?: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TImportInfisicalDataCreate = {
   data: InfisicalImportData;
@@ -140,7 +141,7 @@ export type TImportDopplerSecretsDTO = {
   targetProjectId: string;
   targetEnvironment: string;
   targetSecretPath: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   auditLogInfo: AuditLogInfo;
 };
 

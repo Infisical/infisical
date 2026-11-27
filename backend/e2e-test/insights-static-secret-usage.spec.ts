@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -15,13 +14,14 @@ import {
   TSecretsV2Insert,
   TUsersInsert
 } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import {
   buildOrgInsightsGateStubs,
+  insightsActor,
   passThroughKeyStore,
   projectScopedInsightsDepStubs,
   usageInsightsDepStubs
@@ -89,11 +89,13 @@ const projects = {
 
 const projectList = Object.values(projects);
 
-const { permissionService, licenseService, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { orgPermissionService, secretsPermissionService, licenseService, setCanReadInsights, setPlanHasInsights } =
+  buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
-  permissionService,
+  orgPermissionService,
+  secretsPermissionService,
   licenseService,
   ...usageInsightsDepStubs,
   insightsDAL: insightsDALFactory(testDb),
@@ -101,10 +103,7 @@ const insightsService = insightsServiceFactory({
 });
 
 const actor = (orgId: string): TOrgInsightsDTO => ({
-  actor: ActorType.USER,
-  actorId: USER_ID,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: orgId,
+  actor: insightsActor(USER_ID, orgId),
   orgId
 });
 
@@ -272,7 +271,7 @@ describe("insights static secrets usage", () => {
   test("throws when the actor cannot read secrets management insights", async () => {
     setCanReadInsights(false);
     try {
-      await expect(insightsService.getStaticSecretsUsage(actor(ORG_ID))).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(insightsService.getStaticSecretsUsage(actor(ORG_ID))).rejects.toBeInstanceOf(PermissionDeniedError);
     } finally {
       setCanReadInsights(true);
     }

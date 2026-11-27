@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedDynamicSecretLeaseSchema, SanitizedDynamicSecretSchema } from "@app/server/routes/sanitizedSchemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvider) => {
@@ -53,10 +53,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { data, lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.create({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           name: req.body.dynamicSecretName,
           ...req.body
         });
@@ -64,7 +61,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretLeaseCreated,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             provider: dynamicSecret.type,
@@ -135,10 +132,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.revokeLease({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           leaseId: req.params.leaseId,
           ...req.body
         });
@@ -167,7 +161,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretLeaseRevoked,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             provider: dynamicSecret.type,
             projectId,
@@ -228,10 +222,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.renewLease({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           leaseId: req.params.leaseId,
           ...req.body
         });
@@ -239,7 +230,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
       await server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.DynamicSecretLeaseRenewed,
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           distinctId: getTelemetryDistinctId(req),
           properties: {
             provider: dynamicSecret.type,
@@ -310,10 +301,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.getLeaseDetails({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.actor,
           leaseId: req.params.leaseId,
           ...req.query
         });

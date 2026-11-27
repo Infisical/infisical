@@ -1,12 +1,12 @@
 import { Knex } from "knex";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "../approval-policy/approval-policy-enums";
 import { TApprovalPolicyServiceFactory } from "../approval-policy/approval-policy-service";
 import { TCertRequestPolicy, TCertRequestRequestData } from "../approval-policy/cert-request/cert-request-policy-types";
-import { ActorType } from "../auth/auth-type";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 
 export type TCertificateRequestApprovalPolicy = TCertRequestPolicy & {

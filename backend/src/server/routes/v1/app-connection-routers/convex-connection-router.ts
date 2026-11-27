@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedConvexConnectionSchema,
   UpdateConvexConnectionSchema
 } from "@app/services/app-connection/convex";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -49,7 +49,7 @@ export const registerConvexConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const deployments = await server.services.appConnection.convex.listDeployments(connectionId, req.permission);
+      const deployments = await server.services.appConnection.convex.listDeployments(connectionId, req.actor);
 
       return { deployments };
     }

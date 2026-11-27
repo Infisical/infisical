@@ -1,15 +1,17 @@
 import { S3ServiceException } from "@aws-sdk/client-s3";
-import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TPermissionRule, Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanFeatures as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import {
-  agentVaultProjectAdminPermissions,
-  agentVaultProjectMemberPermissions
-} from "@app/ee/services/permission/default-roles";
+  ProjectPermissionActions,
+  ProjectPermissionAgentVaultSessionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -32,6 +34,17 @@ import { buildSessionLogObjectName, toRev } from "./agent-vault-session-log-fns"
 import { unwrapSessionLogKey } from "./agent-vault-session-log-secrets";
 import { agentVaultSessionLogServiceFactory } from "./agent-vault-session-log-service";
 import { TCreateChunkUploadUrlDTO, TUpdateSessionLogSettingsDTO } from "./agent-vault-session-log-types";
+
+// Agent Vault's real role rules are EE-only, so these stub just what the service reads: any member reads its own
+// sessions; admin reads every session and the project settings.
+const agentVaultMemberRules: TPermissionRule<ProjectPermissionSet>[] = [
+  { action: [ProjectPermissionAgentVaultSessionActions.Read], subject: ProjectPermissionSub.AgentVaultSessions }
+];
+const agentVaultAdminRules: TPermissionRule<ProjectPermissionSet>[] = [
+  ...agentVaultMemberRules,
+  { action: [ProjectPermissionAgentVaultSessionActions.ReadAny], subject: ProjectPermissionSub.AgentVaultSessions },
+  { action: [ProjectPermissionActions.Read, ProjectPermissionActions.Edit], subject: ProjectPermissionSub.Settings }
+];
 
 const PROJECT_ID = "c4a1e0d2-5b7f-4c1e-9a3d-2f6b8e0c7a11";
 const SESSION_ID = "5d2e9b41-0c3a-4f8e-b7d2-91a4c6e8f035";
@@ -181,12 +194,11 @@ const build = (overrides: TOverrides = {}) => {
     } as never,
     appConnectionDAL: { findById: vi.fn(async () => ({ name: "prod-logs" })) } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility(
-          (overrides.isAdmin ?? true) ? agentVaultProjectAdminPermissions : agentVaultProjectMemberPermissions
-        ),
-        hasRole: () => overrides.isAdmin ?? true
+    accessBundlePermissionService: {
+      getAgentVaultPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({
+          rules: (overrides.isAdmin ?? true) ? agentVaultAdminRules : agentVaultMemberRules
+        })
       }))
     } as never,
     kmsDataKeyService: {} as never,
@@ -203,8 +215,7 @@ const record = (
   chunk: TCreateChunkUploadUrlDTO["chunk"] = validChunk()
 ) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
-const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
-const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
+const ctx = { principal: { type: "user", id: "user-1" }, org: { id: "org-1" } } as never;
 const scope = { projectId: PROJECT_ID, ctx, sessionId: SESSION_ID };
 
 // The route's schema already shapes the body, so tests pass plain objects.
@@ -212,7 +223,6 @@ const save = (service: ReturnType<typeof build>["service"], patch: Record<string
   service.updateSessionLogSettings({
     projectId: PROJECT_ID,
     ctx,
-    actor,
     ...patch
   } as unknown as TUpdateSessionLogSettingsDTO);
 

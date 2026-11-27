@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { MfaMethod } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType, MfaMethod, SsoMfaTrust } from "../auth/auth-type";
+import { SsoMfaTrust } from "../auth/auth-type";
 import { TListActorProjectMembershipsFilter } from "../project-membership/project-membership-types";
 import { OrgWithSubOrgsSchema } from "./org-schema";
 
@@ -14,19 +16,23 @@ export type TUpdateOrgMembershipDTO = {
   role?: string;
   isActive?: boolean;
   metadata?: { key: string; value: string }[];
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TGetOrgMembershipDTO = {
   membershipId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TDeleteOrgMembershipDTO = {
   membershipId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TDeleteOrgMembershipsDTO = {
   membershipIds: string[];
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TInviteUserToOrgDTO = {
   inviteeEmails: string[];
@@ -35,11 +41,13 @@ export type TInviteUserToOrgDTO = {
     id: string;
     projectRoleSlug?: string[];
   }[];
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TResendOrgMemberInvitationDTO = {
   membershipId: string;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TVerifyUserToOrgDTO = {
   email: string;
@@ -48,21 +56,13 @@ export type TVerifyUserToOrgDTO = {
 };
 
 export type TFindOrgMembersByEmailDTO = {
-  actor: ActorType;
-  actorOrgId: string;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
   orgId: string;
   emails: string[];
-};
+} & TActorInput;
 
 export type TFindAllWorkspacesDTO = {
-  actor: ActorType;
-  actorId: string;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
   orgId: string;
-};
+} & TActorInput;
 
 export type TSecretShareBrandConfig = {
   primaryColor?: string;
@@ -91,7 +91,8 @@ export type TUpdateOrgDTO = {
     requireGatewayPools: boolean;
     secretShareBrandConfig: TSecretShareBrandConfig;
   }>;
-} & TOrgPermission;
+  orgId: string;
+} & TActorInput;
 
 export type TOrgSsoSettings = {
   orgId: string;
@@ -102,20 +103,21 @@ export type TOrgSsoSettings = {
 };
 
 export type TUpdateOrgSsoSettingsDTO = {
-  actor: OrgServiceActor;
+  actor: TActorContext;
   data: Partial<Omit<TOrgSsoSettings, "orgId">>;
 };
 
-export type TUpgradePrivilegeSystemDTO = Omit<TOrgPermission, "actor">;
+export type TUpgradePrivilegeSystemDTO = { orgId: string } & TActorInput;
 
-export type TGetOrgGroupsDTO = TOrgPermission;
+export type TGetOrgGroupsDTO = { orgId: string } & TActorInput;
 
-export type TFindAllOrgMembersDTO = TOrgPermission;
+export type TFindAllOrgMembersDTO = { orgId: string } & TActorInput;
 
 export type TListProjectMembershipsByOrgMembershipIdDTO = {
   orgMembershipId: string;
+  orgId: string;
 } & TListActorProjectMembershipsFilter &
-  TOrgPermission;
+  TActorInput;
 
 export enum OrgAuthMethod {
   OIDC = "oidc",

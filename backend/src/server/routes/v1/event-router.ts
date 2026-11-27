@@ -2,13 +2,12 @@
 import { pipeline } from "stream/promises";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { getSSEHeaders } from "@app/ee/services/project-events/project-events-sse-service";
 import { ProjectEventRegisterSchema } from "@app/ee/services/project-events/project-events-types";
 import { ApiDocsTags, EventSubscriptions } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const CONNECTION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 
@@ -34,11 +33,7 @@ export const registerEventRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const client = await server.services.projectEventsSSE.subscribe({
         projectId: req.body.projectId,
-        actor: req.auth.actor,
-        actorId: req.permission.id,
-        actorAuthMethod: req.auth.authMethod,
-        actorOrgId: req.permission.orgId,
-        actionProjectType: ActionProjectType.Any,
+        actor: req.actor,
         register: req.body.register
       });
 

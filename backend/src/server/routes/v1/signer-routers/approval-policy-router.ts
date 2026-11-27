@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { ApprovalPolicyBodySchema, SignerIdParamsSchema } from "./schemas";
 
@@ -36,10 +36,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       return server.services.signerPolicy.getPolicy({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
     }
   });
@@ -61,10 +58,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
       const policy = await server.services.signerPolicy.updatePolicy({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);

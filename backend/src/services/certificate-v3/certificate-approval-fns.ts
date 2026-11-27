@@ -1,21 +1,13 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { TCertificates } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -111,8 +103,6 @@ export type TCertificateRequestPreSignHook = (
 export type TIssueCertificateFromApprovedRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
-  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create">;
@@ -239,8 +229,6 @@ export const certificateApprovalServiceFactory = (
   const {
     certificateRequestDAL,
     certificateProfileDAL,
-    acmeAccountDAL,
-    permissionService,
     certificateAuthorityDAL,
     internalCaService,
     certificateDAL,
@@ -282,69 +270,12 @@ export const certificateApprovalServiceFactory = (
     }
   };
 
-  const $validateProfileAndPermissions = async ({
-    profileId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    requiredEnrollmentType,
-    isInternal = false
-  }: {
-    profileId: string;
-    actor?: ActorType;
-    actorId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    actorOrgId?: string;
-    requiredEnrollmentType: EnrollmentType;
-    isInternal?: boolean;
-  }) => {
+  // Requests were authorized at creation, so just load the profile.
+  const $getProfile = async (profileId: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
-
-    if (isInternal) {
-      return profile;
-    }
-
-    if (profile.enrollmentType !== requiredEnrollmentType) {
-      throw new ForbiddenRequestError({
-        message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
-      });
-    }
-
-    if (
-      (actor === ActorType.ACME_ACCOUNT && requiredEnrollmentType === EnrollmentType.ACME) ||
-      (actor === ActorType.EST_ACCOUNT && requiredEnrollmentType === EnrollmentType.EST)
-    ) {
-      const account = await acmeAccountDAL.findById(actorId!);
-      if (!account) {
-        throw new NotFoundError({ message: "ACME account not found" });
-      }
-      if (account.profileId !== profile.id) {
-        throw new ForbiddenRequestError({
-          message: "ACME account is not associated with this profile"
-        });
-      }
-      return profile;
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor!,
-      actorId: actorId!,
-      projectId: profile.projectId,
-      actorAuthMethod: actorAuthMethod!,
-      actorOrgId: actorOrgId!,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.IssueCert,
-      subject(ProjectPermissionSub.CertificateProfiles, {
-        slug: profile.slug
-      })
-    );
 
     return profile;
   };
@@ -422,11 +353,7 @@ export const certificateApprovalServiceFactory = (
   ): Promise<TCertificateIssuanceResponse> => {
     const { csr } = certRequest;
 
-    const profile = await $validateProfileAndPermissions({
-      profileId,
-      requiredEnrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
-      isInternal: true
-    });
+    const profile = await $getProfile(profileId);
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -445,9 +372,6 @@ export const certificateApprovalServiceFactory = (
 
     const certPolicy = await certificatePolicyService.getPolicyById({
       actor: undefined,
-      actorId: undefined,
-      actorAuthMethod: undefined,
-      actorOrgId: undefined,
       policyId: profile.certificatePolicyId,
       internal: true
     });
@@ -1079,9 +1003,6 @@ export const certificateApprovalServiceFactory = (
         keyAlgorithm: effectiveKeyAlgorithm,
         customExtensions,
         actor: undefined,
-        actorId: undefined,
-        actorAuthMethod: undefined,
-        actorOrgId: undefined,
         isFromProfile: true,
         internal: true,
         organization: certificateRequestInput.organization,
@@ -1150,11 +1071,7 @@ export const certificateApprovalServiceFactory = (
 
     try {
       const enrollmentType = (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API;
-      const targetProfile = await $validateProfileAndPermissions({
-        profileId,
-        requiredEnrollmentType: enrollmentType,
-        isInternal: true
-      });
+      const targetProfile = await $getProfile(profileId);
 
       await enrollmentPreSignHooks?.[enrollmentType]?.(certRequest);
 
@@ -1206,9 +1123,6 @@ export const certificateApprovalServiceFactory = (
 
       const certPolicy = await certificatePolicyService.getPolicyById({
         actor: undefined,
-        actorId: undefined,
-        actorAuthMethod: undefined,
-        actorOrgId: undefined,
         policyId: targetProfile.certificatePolicyId,
         internal: true
       });

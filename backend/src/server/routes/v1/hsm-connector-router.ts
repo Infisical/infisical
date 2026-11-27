@@ -3,9 +3,9 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { HsmConnectorSanitizedSchema } from "@app/services/hsm-connector/hsm-connector-fns";
 
 import {
@@ -48,7 +48,7 @@ export const createHsmConnectorRouter =
             gatewayPoolId: req.body.gatewayPoolId,
             credentials: req.body.credentials
           },
-          req.permission
+          req.actor
         );
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -81,7 +81,7 @@ export const createHsmConnectorRouter =
       handler: async (req) => {
         const hsmConnectors = await server.services.hsmConnector.listHsmConnectors(
           { projectId: resolveProjectId(req) },
-          req.permission
+          req.actor
         );
         return { hsmConnectors };
       }
@@ -102,7 +102,7 @@ export const createHsmConnectorRouter =
       handler: async (req) => {
         const hsmConnector = await server.services.hsmConnector.getHsmConnectorById(
           { connectorId: req.params.connectorId },
-          req.permission
+          req.actor
         );
         return { hsmConnector };
       }
@@ -131,7 +131,7 @@ export const createHsmConnectorRouter =
             gatewayPoolId: req.body.gatewayPoolId ?? undefined,
             credentials: req.body.credentials
           },
-          req.permission
+          req.actor
         );
         const fieldsUpdated = Object.keys(req.body).filter((k) => req.body[k as keyof typeof req.body] !== undefined);
         await server.services.auditLog.createAuditLog({
@@ -165,7 +165,7 @@ export const createHsmConnectorRouter =
       handler: async (req) => {
         const deleted = await server.services.hsmConnector.deleteHsmConnector(
           { connectorId: req.params.connectorId },
-          req.permission
+          req.actor
         );
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -194,7 +194,7 @@ export const createHsmConnectorRouter =
       handler: async (req) => {
         const { projectId, name, result } = await server.services.hsmConnector.testHsmConnector(
           { connectorId: req.params.connectorId },
-          req.permission
+          req.actor
         );
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
@@ -233,7 +233,7 @@ export const createHsmConnectorRouter =
             offset: req.query.offset,
             limit: req.query.limit
           },
-          req.permission
+          req.actor
         );
       }
     });
@@ -254,7 +254,7 @@ export const createHsmConnectorRouter =
       handler: async (req) => {
         const { keys } = await server.services.hsmConnector.listHsmConnectorKeys(
           { connectorId: req.params.connectorId, projectId: resolveProjectId(req), keyLabel: req.query.label },
-          req.permission
+          req.actor
         );
         return { keys };
       }

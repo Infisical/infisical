@@ -3,10 +3,10 @@ import { z } from "zod";
 import { ServiceTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { sanitizedServiceTokenUserSchema } from "../sanitizedSchemas";
 
@@ -53,10 +53,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const { serviceToken, user } = await server.services.serviceToken.getServiceToken({
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        actor: req.permission.type
+        actor: req.actor
       });
 
       const formattedUser = {
@@ -110,10 +107,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const { serviceToken, token } = await server.services.serviceToken.createServiceToken({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         ...req.body,
         projectId: req.body.workspaceId
       });
@@ -153,10 +147,7 @@ export const registerServiceTokenRouter = async (server: FastifyZodProvider) => 
     },
     handler: async (req) => {
       const serviceTokenData = await server.services.serviceToken.deleteServiceToken({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         id: req.params.serviceTokenId
       });
 

@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const ExportResultSchema = z.object({
@@ -57,15 +57,12 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const result = await server.services.certManagerExport.exportCertManagerProject({
         sourceProjectId: req.body.sourceProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.actor
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: result.destinationProjectId,
         event: {
           type: EventType.EXPORT_CERT_MANAGER_PROJECT,
@@ -86,9 +83,9 @@ export const registerCertManagerExportRouter = async (server: FastifyZodProvider
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.CertManagerProjectExported,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           sourceProjectId: result.sourceProjectId,
           destinationProjectId: result.destinationProjectId,
           numberOfCertificateAuthorities: result.exportedCertificateAuthorities,

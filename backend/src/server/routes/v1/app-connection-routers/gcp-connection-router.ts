@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -9,7 +10,6 @@ import {
   UpdateGcpConnectionSchema
 } from "@app/services/app-connection/gcp";
 import { GCP_PROJECT_ID_PATTERN } from "@app/services/app-connection/gcp/gcp-connection-constants";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -42,7 +42,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.gcp.listSecretManagerProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.gcp.listSecretManagerProjects(connectionId, req.actor);
 
       return projects;
     }
@@ -75,7 +75,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
 
       const locations = await server.services.appConnection.gcp.listSecretManagerProjectLocations(
         { connectionId, projectId },
-        req.permission
+        req.actor
       );
 
       return locations;
@@ -100,10 +100,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.gcp.listCertificateManagerProjects(
-        connectionId,
-        req.permission
-      );
+      const projects = await server.services.appConnection.gcp.listCertificateManagerProjects(connectionId, req.actor);
 
       return projects;
     }
@@ -141,7 +138,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
 
       const locations = await server.services.appConnection.gcp.listCertificateManagerLocations(
         { connectionId, gcpProjectId },
-        req.permission
+        req.actor
       );
 
       return locations;
@@ -180,7 +177,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
 
       const certificateMaps = await server.services.appConnection.gcp.listCertificateMaps(
         { connectionId, gcpProjectId },
-        req.permission
+        req.actor
       );
 
       return certificateMaps;
@@ -206,7 +203,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.gcp.listCloudDnsProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.gcp.listCloudDnsProjects(connectionId, req.actor);
 
       return projects;
     }
@@ -244,7 +241,7 @@ export const registerGcpConnectionRouter = async (server: FastifyZodProvider) =>
 
       const zones = await server.services.appConnection.gcp.listCloudDnsZones(
         { connectionId, gcpProjectId },
-        req.permission
+        req.actor
       );
 
       return zones;

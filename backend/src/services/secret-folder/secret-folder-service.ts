@@ -1,31 +1,32 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 import path from "path";
 import { v4 as uuidv4, validate as uuidValidate } from "uuid";
 
-import { ActionProjectType, TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import { TProjectEnvironments, TSecretFolders, TSecretFoldersInsert } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { sealKnexTransaction } from "@app/domains/lib/transactions";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { EventModificationType } from "@app/domains/platform/events/ce/module";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
-import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
-import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { SecretReadAccess, TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
+import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   assertFolderDeleteAllowed,
   assertFolderMoveAllowed,
@@ -89,7 +90,7 @@ import {
 import { TSecretFolderVersionDALFactory } from "./secret-folder-version-dal";
 
 type TSecretFolderServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
+  secretsPermissionService: TSecretsPermissionService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "remapFolderIds" | "find">;
   folderDAL: TSecretFolderDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
@@ -145,7 +146,7 @@ export type TSecretFolderServiceFactory = ReturnType<typeof secretFolderServiceF
 
 export const secretFolderServiceFactory = ({
   folderDAL,
-  permissionService,
+  secretsPermissionService,
   additionalPrivilegeDAL,
   projectEnvDAL,
   folderVersionDAL,
@@ -174,27 +175,18 @@ export const secretFolderServiceFactory = ({
   const createFolder = async ({
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     name,
     environment,
     path: secretPath,
     description
   }: TCreateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-    );
+    permission.assert({
+      action: ProjectPermissionActions.Create,
+      subject: ProjectPermissionSub.SecretFolders,
+      fields: { environment, secretPath }
+    });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) {
@@ -284,9 +276,9 @@ export const secretFolderServiceFactory = ({
             await folderCommitService.createCommit(
               {
                 actor: {
-                  type: actor,
+                  type: actor.principal.type,
                   metadata: {
-                    id: actorId
+                    id: actor.principal.id
                   }
                 },
                 message: "Folder created",
@@ -320,9 +312,9 @@ export const secretFolderServiceFactory = ({
         await folderCommitService.createCommit(
           {
             actor: {
-              type: actor,
+              type: actor.principal.type,
               metadata: {
-                id: actorId
+                id: actor.principal.id
               }
             },
             message: "Folder created",
@@ -367,7 +359,7 @@ export const secretFolderServiceFactory = ({
   const $assertNoOpenChangeRequests = async (
     folders: { id: string; path: string }[],
     action: TFolderChangeAction,
-    permission: MongoAbility<ProjectPermissionSet>,
+    permission: Permission<ProjectPermissionSet>,
     tx: Knex
   ) => {
     const folderIdsWithOpenRequests = await secretChangeRequestService.findFolderIdsWithOpenRequests(
@@ -377,7 +369,10 @@ export const secretFolderServiceFactory = ({
     if (!folderIdsWithOpenRequests.length) return;
 
     if (
-      !permission.can(ProjectPermissionSecretApprovalRequestActions.Read, ProjectPermissionSub.SecretApprovalRequest)
+      !permission.can({
+        action: ProjectPermissionSecretApprovalRequestActions.Read,
+        subject: ProjectPermissionSub.SecretApprovalRequest
+      })
     ) {
       throw new BadRequestError({
         message: `You cannot ${action} the selected folder because it contains resources that are protected by a change policy. Contact a project admin and try again.`,
@@ -409,7 +404,7 @@ export const secretFolderServiceFactory = ({
     folderId: string;
     newName: string;
     actor: ActorType;
-    permission: MongoAbility<ProjectPermissionSet>;
+    permission: Permission<ProjectPermissionSet>;
     tx: Knex;
   }) => {
     const unlockedSubtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
@@ -499,18 +494,15 @@ export const secretFolderServiceFactory = ({
 
   const updateManyFolders = async ({
     actor,
-    actorId,
     projectSlug,
     projectId: providedProjectId,
-    actorAuthMethod,
-    actorOrgId,
     folders,
     tx: providedTx,
     commitChanges
   }: TUpdateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[]; projectId?: string }) => {
     let projectId = providedProjectId;
     if (!projectId && projectSlug) {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+      const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
       if (!project) {
         throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
       }
@@ -520,20 +512,14 @@ export const secretFolderServiceFactory = ({
       throw new BadRequestError({ message: "Must provide either project slug or projectId" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     folders.forEach(({ environment, path: secretPath }) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-      );
+      permission.assert({
+        action: ProjectPermissionActions.Edit,
+        subject: ProjectPermissionSub.SecretFolders,
+        fields: { environment, secretPath }
+      });
     });
 
     const executeBulkUpdate = async (tx: Knex) => {
@@ -585,7 +571,7 @@ export const secretFolderServiceFactory = ({
               environment,
               folderId: folder.id,
               newName: name,
-              actor,
+              actor: actor.principal.type,
               permission,
               tx
             });
@@ -616,9 +602,9 @@ export const secretFolderServiceFactory = ({
             await folderCommitService.createCommit(
               {
                 actor: {
-                  type: actor,
+                  type: actor.principal.type,
                   metadata: {
-                    id: actorId
+                    id: actor.principal.id
                   }
                 },
                 message: "Folder updated",
@@ -666,7 +652,13 @@ export const secretFolderServiceFactory = ({
     const result = providedTx ? await executeBulkUpdate(providedTx) : await folderDAL.transaction(executeBulkUpdate);
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, providedTx);
-    await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
+    if (providedTx) {
+      await secretsPermissionService
+        .within(sealKnexTransaction(providedTx))
+        .invalidateFolderGrants({ projectIds: [projectId] });
+    } else {
+      await secretsPermissionService.invalidateFolderGrants({ projectIds: [projectId] });
+    }
     return {
       projectId,
       newFolders: result.map((res) => res.newFolder),
@@ -677,28 +669,19 @@ export const secretFolderServiceFactory = ({
   const updateFolder = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     name,
     environment,
     path: secretPath,
     id,
     description
   }: TUpdateFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-    );
+    permission.assert({
+      action: ProjectPermissionActions.Edit,
+      subject: ProjectPermissionSub.SecretFolders,
+      fields: { environment, secretPath }
+    });
 
     const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
     if (!parentFolder)
@@ -752,7 +735,7 @@ export const secretFolderServiceFactory = ({
           environment,
           folderId: folder.id,
           newName: name,
-          actor,
+          actor: actor.principal.type,
           permission,
           tx
         });
@@ -776,9 +759,9 @@ export const secretFolderServiceFactory = ({
       await folderCommitService.createCommit(
         {
           actor: {
-            type: actor,
+            type: actor.principal.type,
             metadata: {
-              id: actorId
+              id: actor.principal.id
             }
           },
           message: "Folder updated",
@@ -823,7 +806,7 @@ export const secretFolderServiceFactory = ({
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-    await permissionService.invalidateProjectFolderPermissionCache(projectId);
+    await secretsPermissionService.invalidateFolderGrants({ projectIds: [projectId] });
     return {
       folder: { ...newFolder, path: newFolderPath },
       old: { ...folder, path: oldFolderPath }
@@ -844,7 +827,7 @@ export const secretFolderServiceFactory = ({
     parentId: string;
     idOrName: string;
     actor: ActorType;
-    permission: MongoAbility<ProjectPermissionSet>;
+    permission: Permission<ProjectPermissionSet>;
     tx: Knex;
   }) => {
     let targetFolder = await folderDAL
@@ -934,27 +917,18 @@ export const secretFolderServiceFactory = ({
   const deleteFolder = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     environment,
     path: secretPath,
     idOrName,
     forceDelete = false
   }: TDeleteFolderDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-    );
+    permission.assert({
+      action: ProjectPermissionActions.Delete,
+      subject: ProjectPermissionSub.SecretFolders,
+      fields: { environment, secretPath }
+    });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
@@ -966,7 +940,15 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
+      await $checkFolderPolicy({
+        projectId,
+        env,
+        parentId: parentFolder.id,
+        idOrName,
+        actor: actor.principal.type,
+        permission,
+        tx
+      });
 
       let folderToDelete = await folderDAL
         .findOne(
@@ -1029,9 +1011,9 @@ export const secretFolderServiceFactory = ({
       await folderCommitService.createCommit(
         {
           actor: {
-            type: actor,
+            type: actor.principal.type,
             metadata: {
-              id: actorId
+              id: actor.principal.id
             }
           },
           message: "Folder deleted",
@@ -1063,7 +1045,7 @@ export const secretFolderServiceFactory = ({
     });
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-    await permissionService.invalidateProjectFolderPermissionCache(projectId);
+    await secretsPermissionService.invalidateFolderGrants({ projectIds: [projectId] });
 
     // A recursive sync rooted above this folder just lost every secret it held, and no secret-level
     // write carries that. Queued after the commit so a worker cannot read the folder back.
@@ -1079,9 +1061,6 @@ export const secretFolderServiceFactory = ({
   const getFolders = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     environment,
     path: secretPath,
     search,
@@ -1094,14 +1073,7 @@ export const secretFolderServiceFactory = ({
   }: TGetFolderDTO) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const env = await projectEnvDAL.findOne({ projectId, slug: environment });
     if (!env) throw new NotFoundError({ message: `Environment with slug '${environment}' not found` });
@@ -1154,23 +1126,13 @@ export const secretFolderServiceFactory = ({
   const getFoldersMultiEnv = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     environments,
     path: secretPath,
     ...params
   }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -1196,23 +1158,13 @@ export const secretFolderServiceFactory = ({
   const getProjectFolderCount = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     environments,
     path: secretPath,
     search
   }: Omit<TGetFolderDTO, "environment"> & { environments: string[] }) => {
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -1236,19 +1188,12 @@ export const secretFolderServiceFactory = ({
     return Number(folders[0]?.count ?? 0);
   };
 
-  const getFolderById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id }: TGetFolderByIdDTO) => {
+  const getFolderById = async ({ actor, id }: TGetFolderByIdDTO) => {
     const folder = await folderDAL.findById(id);
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found` });
     // folder list is allowed to be read by anyone
     // permission to check does user has access
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: folder.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId: folder.projectId });
 
     const [folderWithPath] = await folderDAL.findSecretPathByFolderIds(folder.projectId, [folder.id]);
 
@@ -1266,18 +1211,11 @@ export const secretFolderServiceFactory = ({
 
   const getFoldersDeepByEnvs = async (
     { projectId, environments, secretPath }: TGetFoldersDeepByEnvsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     // folder list is allowed to be read by anyone
     // permission to check does user have access
-    await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const envs = await projectEnvDAL.findBySlugs(projectId, environments);
 
@@ -1306,17 +1244,10 @@ export const secretFolderServiceFactory = ({
     }));
   };
 
-  const getProjectEnvironmentsFolders = async (projectId: string, actor: OrgServiceActor, environment?: string) => {
+  const getProjectEnvironmentsFolders = async (projectId: string, actor: TActorContext, environment?: string) => {
     // folder list is allowed to be read by anyone
     // permission is to check if user has access
-    await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const environments = await projectEnvDAL.find({ projectId, ...(environment && { slug: environment }) });
 
@@ -1405,27 +1336,18 @@ export const secretFolderServiceFactory = ({
   const createManyFolders = async ({
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     folders,
     tx: providedTx,
     commitChanges
   }: TCreateManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     folders.forEach(({ environment, path: secretPath }) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-      );
+      permission.assert({
+        action: ProjectPermissionActions.Create,
+        subject: ProjectPermissionSub.SecretFolders,
+        fields: { environment, secretPath }
+      });
     });
 
     const foldersByEnv = folders.reduce(
@@ -1541,9 +1463,9 @@ export const secretFolderServiceFactory = ({
               await folderCommitService.createCommit(
                 {
                   actor: {
-                    type: actor,
+                    type: actor.principal.type,
                     metadata: {
-                      id: actorId
+                      id: actor.principal.id
                     }
                   },
                   message: "Folders created (batch)",
@@ -1591,9 +1513,9 @@ export const secretFolderServiceFactory = ({
             await folderCommitService.createCommit(
               {
                 actor: {
-                  type: actor,
+                  type: actor.principal.type,
                   metadata: {
-                    id: actorId
+                    id: actor.principal.id
                   }
                 },
                 message: "Folder created (batch)",
@@ -1626,27 +1548,18 @@ export const secretFolderServiceFactory = ({
   const deleteManyFolders = async ({
     projectId,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     folders,
     tx: providedTx,
     commitChanges
   }: TDeleteManyFoldersDTO & { tx?: Knex; commitChanges?: TCommitResourceChangeDTO[] }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     folders.forEach(({ environment, path: secretPath }) => {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Delete,
-        subject(ProjectPermissionSub.SecretFolders, { environment, secretPath })
-      );
+      permission.assert({
+        action: ProjectPermissionActions.Delete,
+        subject: ProjectPermissionSub.SecretFolders,
+        fields: { environment, secretPath }
+      });
     });
 
     const foldersByEnv = folders.reduce(
@@ -1727,7 +1640,15 @@ export const secretFolderServiceFactory = ({
 
       const deletedFolders = [];
       for (const { environment, env, parentFolder, idOrName, folderToDelete } of targets) {
-        await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
+        await $checkFolderPolicy({
+          projectId,
+          env,
+          parentId: parentFolder.id,
+          idOrName,
+          actor: actor.principal.type,
+          permission,
+          tx
+        });
 
         const [doc] = await folderDAL.delete(
           {
@@ -1751,9 +1672,9 @@ export const secretFolderServiceFactory = ({
           await folderCommitService.createCommit(
             {
               actor: {
-                type: actor,
+                type: actor.principal.type,
                 metadata: {
-                  id: actorId
+                  id: actor.principal.id
                 }
               },
               message: "Folder deleted (batch)",
@@ -1791,7 +1712,13 @@ export const secretFolderServiceFactory = ({
 
     const result = providedTx ? await executeBulkDelete(providedTx) : await folderDAL.transaction(executeBulkDelete);
 
-    await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
+    if (providedTx) {
+      await secretsPermissionService
+        .within(sealKnexTransaction(providedTx))
+        .invalidateFolderGrants({ projectIds: [projectId] });
+    } else {
+      await secretsPermissionService.invalidateFolderGrants({ projectIds: [projectId] });
+    }
 
     return {
       folders: result,
@@ -1799,20 +1726,10 @@ export const secretFolderServiceFactory = ({
     };
   };
 
-  const getFolderByPath = async (
-    { projectId, environment, secretPath }: TGetFolderByPathDTO,
-    actor: OrgServiceActor
-  ) => {
+  const getFolderByPath = async ({ projectId, environment, secretPath }: TGetFolderByPathDTO, actor: TActorContext) => {
     // folder check is allowed to be read by anyone
     // permission is to check if user has access
-    await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsPermissionService.getSecretsPermission({ actor, projectId });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -1893,25 +1810,15 @@ export const secretFolderServiceFactory = ({
   // rejected by moveFolder), so the caller can block the move before attempting it.
   const getFolderMoveEligibility = async ({
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     id,
     destinationEnvironment,
     destinationPath
   }: TGetFolderMoveEligibilityDTO): Promise<TFolderMoveEligibility> => {
-    const folder = await getFolderById({ actor, actorId, actorOrgId, actorAuthMethod, id });
+    const folder = await getFolderById({ actor, id });
 
     // resolve the actor's ability so subtree disclosure is gated by per-path read permission. this is
     // request-memoized, so it reuses the lookup getFolderById already performed (no extra DB read).
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: folder.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId: folder.projectId });
     const accessScope: TFolderMoveAccessScope = {
       permission,
       environment: folder.environment.envSlug,
@@ -1923,13 +1830,14 @@ export const secretFolderServiceFactory = ({
     // implied-for-all (folder list/get is not gated by a Read permission), so it is not required here.
     const canActorAccessDestination =
       !!destinationEnvironment &&
-      permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
+      permission.can({
+        action: ProjectPermissionActions.Create,
+        subject: ProjectPermissionSub.SecretFolders,
+        fields: {
           environment: destinationEnvironment,
           secretPath: destinationParentPath
-        })
-      );
+        }
+      });
 
     // run every read inside a transaction so it hits the primary database rather than a read replica
     const { sourceBlock, destinationBlock, hasRbacPolicies } = await folderDAL.transaction(async (tx) => {
@@ -1985,13 +1893,10 @@ export const secretFolderServiceFactory = ({
     folderId,
     destinationEnvironment,
     destinationPath,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TMoveFolderDTO): Promise<TMoveFolderResult> => {
     // 1. resolve the source folder (getFolderById also runs the project-level permission check)
-    const sourceFolder = await getFolderById({ actor, actorId, actorOrgId, actorAuthMethod, id: folderId });
+    const sourceFolder = await getFolderById({ actor, id: folderId });
     const sourceEnvironment = sourceFolder.environment.envSlug;
     const sourceFolderPath = sourceFolder.path;
     const folderName = sourceFolder.name;
@@ -2012,22 +1917,17 @@ export const secretFolderServiceFactory = ({
     }
 
     // 2. permission: a move is create-at-destination + delete-at-source (secret-level perms are enforced in moveSecrets)
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor, projectId });
+    permission.assert({
+      action: ProjectPermissionActions.Create,
+      subject: ProjectPermissionSub.SecretFolders,
+      fields: { environment: destinationEnvironment, secretPath: destinationPath }
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      subject(ProjectPermissionSub.SecretFolders, { environment: destinationEnvironment, secretPath: destinationPath })
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParentPath })
-    );
+    permission.assert({
+      action: ProjectPermissionActions.Delete,
+      subject: ProjectPermissionSub.SecretFolders,
+      fields: { environment: sourceEnvironment, secretPath: sourceParentPath }
+    });
 
     // 3. cyclic / no-op validation (only meaningful within the same environment)
     if (destinationEnvironment === sourceEnvironment) {
@@ -2167,21 +2067,23 @@ export const secretFolderServiceFactory = ({
           checkedSourceParents.add(sourceParent);
           // a move only requires Delete at each source parent path. folder read is implied-for-all (folder
           // list/get is not gated by a Read permission), so it is not required here.
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionActions.Delete,
-            subject(ProjectPermissionSub.SecretFolders, { environment: sourceEnvironment, secretPath: sourceParent })
-          );
+          permission.assert({
+            action: ProjectPermissionActions.Delete,
+            subject: ProjectPermissionSub.SecretFolders,
+            fields: { environment: sourceEnvironment, secretPath: sourceParent }
+          });
         }
         const destinationParent = path.dirname(entry.destinationAbsPath);
         if (!checkedDestinationParents.has(destinationParent)) {
           checkedDestinationParents.add(destinationParent);
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionActions.Create,
-            subject(ProjectPermissionSub.SecretFolders, {
+          permission.assert({
+            action: ProjectPermissionActions.Create,
+            subject: ProjectPermissionSub.SecretFolders,
+            fields: {
               environment: destinationEnvironment,
               secretPath: destinationParent
-            })
-          );
+            }
+          });
         }
       }
 
@@ -2193,7 +2095,7 @@ export const secretFolderServiceFactory = ({
           // eslint-disable-next-line no-continue
           continue;
         }
-        validateSecretMovePermissions(permission, {
+        SecretReadAccess.assertMove(permission, {
           sourceEnvironment,
           sourceSecretPath: entry.sourceAbsPath,
           destinationEnvironment,
@@ -2244,7 +2146,7 @@ export const secretFolderServiceFactory = ({
       for (const folderVersion of createdVersions) {
         await folderCommitService.createCommit(
           {
-            actor: { type: actor, metadata: { id: actorId } },
+            actor: { type: actor.principal.type, metadata: { id: actor.principal.id } },
             message: "Folder moved",
             folderId: newParentIdByNewFolderId.get(folderVersion.folderId) as string,
             changes: [{ type: CommitType.ADD, folderVersionId: folderVersion.id }]
@@ -2273,11 +2175,8 @@ export const secretFolderServiceFactory = ({
             secretIds: entry.secretIds,
             shouldOverwrite: false,
             actor,
-            actorId,
-            actorAuthMethod,
-            actorOrgId,
             tx,
-            permissionService,
+            secretsPermissionService,
             kmsDataKeyService,
             folderDAL,
             secretDAL: secretV2BridgeDAL,
@@ -2315,7 +2214,7 @@ export const secretFolderServiceFactory = ({
       const latestVersions = await folderVersionDAL.findLatestFolderVersions([deletedRoot.id], tx);
       await folderCommitService.createCommit(
         {
-          actor: { type: actor, metadata: { id: actorId } },
+          actor: { type: actor.principal.type, metadata: { id: actor.principal.id } },
           message: "Folder moved",
           folderId: deletedRoot.parentId as string,
           changes: [
@@ -2340,16 +2239,16 @@ export const secretFolderServiceFactory = ({
       moveResults.map((result) =>
         secretV2BridgeService.dispatchSecretMoveSideEffects({
           projectId,
-          orgId: actorOrgId,
-          actor,
-          actorId,
+          orgId: actor.org.id,
+          actor: actor.principal.type,
+          actorId: actor.principal.id,
           ...result
         })
       )
     );
 
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
-    await permissionService.invalidateProjectFolderPermissionCache(projectId);
+    await secretsPermissionService.invalidateFolderGrants({ projectIds: [projectId] });
 
     return {
       folderId,

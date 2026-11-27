@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { SanitizedAcmeCertificateAuthoritySchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
 import { ADCSCertificateAuthoritySchema } from "@app/services/certificate-authority/adcs/adcs-certificate-authority-schemas";
 import { AwsAcmPublicCaCertificateAuthoritySchema } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-schemas";
@@ -57,7 +57,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
     handler: async (req) =>
       server.services.certificateAuthority.getCertificateAuthorityQuota(
         { projectId: req.internalCertManagerProjectId },
-        req.permission
+        req.actor
       )
   });
 
@@ -89,7 +89,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.INTERNAL
         },
-        req.permission
+        req.actor
       );
 
       const acmeCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -97,7 +97,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.ACME
         },
-        req.permission
+        req.actor
       );
 
       const azureAdCsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -105,7 +105,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.AZURE_AD_CS
         },
-        req.permission
+        req.actor
       );
 
       const adcsCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -113,7 +113,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.ADCS
         },
-        req.permission
+        req.actor
       );
 
       const awsPcaCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -121,7 +121,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.AWS_PCA
         },
-        req.permission
+        req.actor
       );
 
       const digicertCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -129,7 +129,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.DIGICERT
         },
-        req.permission
+        req.actor
       );
 
       const awsAcmPublicCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -137,7 +137,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.AWS_ACM_PUBLIC_CA
         },
-        req.permission
+        req.actor
       );
 
       const venafiTppCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -145,7 +145,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.VENAFI_TPP
         },
-        req.permission
+        req.actor
       );
 
       const godaddyCas = await server.services.certificateAuthority.listCertificateAuthoritiesByProjectId(
@@ -153,7 +153,7 @@ export const registerGeneralCertificateAuthorityRouter = async (server: FastifyZ
           projectId,
           type: CaType.GODADDY
         },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({

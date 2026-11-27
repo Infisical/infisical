@@ -126,7 +126,7 @@ export const registerSecretManagerTools = ({
     sendEvent({
       event,
       distinctId: getTelemetryDistinctId(req),
-      organizationId: req.permission.orgId,
+      organizationId: req.actor.orgId,
       properties: {
         numberOfSecrets,
         projectId,
@@ -134,7 +134,7 @@ export const registerSecretManagerTools = ({
         secretPath,
         channel: UserAgentType.REMOTE_MCP,
         ...auditLogInfo,
-        actorType: req.permission.type
+        actorType: req.actor.type
       }
     });
 
@@ -238,7 +238,7 @@ export const registerSecretManagerTools = ({
       await sendEvent({
         event: PostHogEventTypes.ProjectCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
           orgId: project.orgId,
           name: project.name,
@@ -249,7 +249,7 @@ export const registerSecretManagerTools = ({
 
       await server.services.auditLog.createAuditLog({
         ...auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId: project.id,
         event: {
           type: EventType.CREATE_PROJECT,
@@ -339,7 +339,7 @@ export const registerSecretManagerTools = ({
       await sendEvent({
         event: PostHogEventTypes.SecretFolderCreated,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: { projectId, environment: environmentSlug, folderPath: secretPath, folderId: folder.id }
       });
 
@@ -393,8 +393,8 @@ export const registerSecretManagerTools = ({
 
       if (canReadSecretValues) {
         void server.services.secretReadActivity.recordBulkRead({
-          actor: req.permission.type,
-          actorId: req.permission.id,
+          actor: req.actor.type,
+          actorId: req.actor.id,
           projectId,
           environment: environmentSlug,
           secretPath,
@@ -472,8 +472,8 @@ export const registerSecretManagerTools = ({
         // credited in place of matching references by key.
         const usesOverrides = type === SecretType.Personal && expandSecretReferences;
         void server.services.secretReadActivity.recordRead({
-          actor: req.permission.type,
-          actorId: req.permission.id,
+          actor: req.actor.type,
+          actorId: req.actor.id,
           projectId,
           secretIds: usesOverrides ? [secret.id, ...referencedSecretIds] : [secret.id],
           referencesExpanded: usesOverrides ? false : expandSecretReferences

@@ -73,6 +73,65 @@ const resetRedirectingFlag = () => {
 
 let refreshPromise: Promise<string> | null = null;
 
+const SSO_SESSION_REFUSED_ERRORS = ["OrgSsoRequired", "ForeignSsoSession"];
+
+// Otherwise the refresh cookie would mint a new token for the refused session, so end it server-side and clear
+// client state before the login page loads. Plain axios so the refused token isn't sent and we skip the interceptors.
+const endRefusedSession = async () => {
+  // Bounded, so an unreachable server can't hold the user on the page; local cleanup runs either way.
+  await axios
+    .post("/api/v1/auth/logout", undefined, { withCredentials: true, timeout: 5000 })
+    .catch((err) => console.warn("Error ending the refused session:", err));
+  try {
+    const { clearSession } = await import("@app/hooks/api/users/queries");
+    clearSession();
+  } catch (err) {
+    console.warn("Error clearing the refused session:", err);
+  }
+};
+
+const signOutToLogin = ({
+  title,
+  text,
+  endSession = false
+}: {
+  title: string;
+  text: string;
+  endSession?: boolean;
+}) => {
+  isRedirecting = true;
+
+  try {
+    setAuthToken("");
+    SecurityClient.setToken("");
+  } catch (err) {
+    console.warn("Error clearing tokens:", err);
+  }
+
+  createNotification({ type: "error", title, text });
+
+  try {
+    sessionStorage.setItem(
+      SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
+      JSON.stringify({
+        expiry: formatISO(addSeconds(new Date(), 300)),
+        data: window.location.href
+      })
+    );
+  } catch (err) {
+    console.warn("Could not save redirect URL to sessionStorage:", err);
+  }
+
+  const ended = endSession ? endRefusedSession() : Promise.resolve();
+  setTimeout(() => {
+    ended.finally(() => {
+      window.location.href = "/login";
+    });
+  }, 2000);
+
+  setTimeout(resetRedirectingFlag, 3000);
+};
+
 const isTokenExpiredError = (message: string) => {
   const lower = message.toLowerCase();
   return lower.includes("token expired") || lower.includes("session is no longer valid");
@@ -110,42 +169,28 @@ apiRequest.interceptors.response.use(
       } catch {
         // Refresh failed — clear session and redirect to login
         if (!isRedirecting) {
-          isRedirecting = true;
-
-          try {
-            setAuthToken("");
-            SecurityClient.setToken("");
-          } catch (err) {
-            console.warn("Error clearing tokens:", err);
-          }
-
-          createNotification({
-            type: "error",
+          signOutToLogin({
             title: "Session Expired",
             text: "Your session has expired. Redirecting to login page..."
           });
-
-          try {
-            sessionStorage.setItem(
-              SessionStorageKeys.ORG_LOGIN_SUCCESS_REDIRECT_URL,
-              JSON.stringify({
-                expiry: formatISO(addSeconds(new Date(), 300)),
-                data: window.location.href
-              })
-            );
-          } catch (err) {
-            console.warn("Could not save redirect URL to sessionStorage:", err);
-          }
-
-          setTimeout(() => {
-            window.location.href = "/login";
-          }, 2000);
-
-          setTimeout(resetRedirectingFlag, 3000);
-
           return Promise.reject(new Error("Session expired - redirecting to login"));
         }
       }
+    }
+
+    // The org's SSO policy refuses this session (enforced after sign-in, or issued by another org's IdP). A refreshed
+    // token would be refused too, so sign out.
+    if (
+      response &&
+      response.status === 401 &&
+      SSO_SESSION_REFUSED_ERRORS.includes(response.data?.error) &&
+      getAuthToken() &&
+      !isRedirecting
+    ) {
+      signOutToLogin({ title: "Sign in again", text: response.data?.message, endSession: true });
+      return Promise.reject(
+        new Error("Session refused by organization SSO policy - redirecting to login")
+      );
     }
 
     return Promise.reject(error);

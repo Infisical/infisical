@@ -132,7 +132,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           method: req.method,
           orgId: req.auth?.orgId,
           realIp: req.realIp,
-          actor: req.auth?.actor,
+          actor: req.auth?.actorType,
           details: (error as { details?: unknown }).details
         },
         `client error: ${error.name}`

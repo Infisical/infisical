@@ -10,12 +10,12 @@ import {
   TSecretRotationV2Input
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { startsWithVowel } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretRotationEndpoints = <
@@ -89,7 +89,7 @@ export const registerSecretRotationEndpoints = <
 
       const secretRotations = (await server.services.secretRotationV2.listSecretRotationsByProjectId(
         { projectId, type },
-        req.permission
+        req.actor
       )) as T[];
 
       await server.services.auditLog.createAuditLog({
@@ -133,7 +133,7 @@ export const registerSecretRotationEndpoints = <
 
       const secretRotation = (await server.services.secretRotationV2.findSecretRotationById(
         { rotationId, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -200,7 +200,7 @@ export const registerSecretRotationEndpoints = <
 
       const secretRotation = (await server.services.secretRotationV2.findSecretRotationByName(
         { rotationName, projectId, type, secretPath, environment },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -243,7 +243,7 @@ export const registerSecretRotationEndpoints = <
     handler: async (req) => {
       const secretRotation = (await server.services.secretRotationV2.createSecretRotation(
         { ...req.body, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -263,7 +263,7 @@ export const registerSecretRotationEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Created,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             rotationId: secretRotation.id,
             type,
@@ -303,7 +303,7 @@ export const registerSecretRotationEndpoints = <
 
       const secretRotation = (await server.services.secretRotationV2.updateSecretRotation(
         { ...req.body, rotationId, type },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -323,11 +323,11 @@ export const registerSecretRotationEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Updated,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             rotationId: secretRotation.id,
             type,
-            orgId: req.permission.orgId,
+            orgId: req.actor.orgId,
             projectId: secretRotation.projectId,
             environment: secretRotation.environment.slug,
             secretPath: secretRotation.folder.path
@@ -376,7 +376,7 @@ export const registerSecretRotationEndpoints = <
 
       const secretRotation = (await server.services.secretRotationV2.deleteSecretRotation(
         { type, rotationId, deleteSecrets, revokeGeneratedCredentials },
-        req.permission
+        req.actor
       )) as T;
 
       await server.services.auditLog.createAuditLog({
@@ -397,7 +397,7 @@ export const registerSecretRotationEndpoints = <
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Deleted,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             rotationId,
             type,
@@ -447,7 +447,7 @@ export const registerSecretRotationEndpoints = <
           rotationId,
           type
         },
-        req.permission
+        req.actor
       );
 
       await server.services.auditLog.createAuditLog({
@@ -499,7 +499,7 @@ export const registerSecretRotationEndpoints = <
       const { secretRotation, sourceEnvironment, sourceSecretPath } =
         await server.services.secretRotationV2.moveSecretRotation(
           { rotationId, type, destinationEnvironment, destinationSecretPath, overwriteDestination },
-          req.permission
+          req.actor
         );
 
       const movedRotation = secretRotation as T;
@@ -553,14 +553,14 @@ export const registerSecretRotationEndpoints = <
           type,
           auditLogInfo: req.auditLogInfo
         },
-        req.permission
+        req.actor
       )) as T;
 
       void server.services.telemetry
         .sendPostHogEvents({
           event: PostHogEventTypes.SecretRotationV2Executed,
           distinctId: getTelemetryDistinctId(req),
-          organizationId: req.permission.orgId,
+          organizationId: req.actor.orgId,
           properties: {
             rotationId,
             type,
@@ -604,7 +604,7 @@ export const registerSecretRotationEndpoints = <
           type,
           auditLogInfo: req.auditLogInfo
         },
-        req.permission
+        req.actor
       );
 
       return res.status(204).send("");

@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/app-connections/oracledb";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AppConnections } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
@@ -315,7 +316,6 @@ import {
   WinRMConnectionListItemSchema
 } from "@app/services/app-connection/winrm/winrm-connection-schemas";
 import { SanitizedZabbixConnectionSchema, ZabbixConnectionListItemSchema } from "@app/services/app-connection/zabbix";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // can't use discriminated due to multiple schemas for certain apps
 const SanitizedAppConnectionSchema = z.union([
@@ -573,15 +573,11 @@ export const registerAppConnectionRouter = async (server: FastifyZodProvider) =>
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId } = req.query;
-      const appConnections = await server.services.appConnection.listAppConnections(
-        req.permission,
-        undefined,
-        projectId
-      );
+      const appConnections = await server.services.appConnection.listAppConnections(req.actor, undefined, projectId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         projectId,
         event: {
           type: EventType.GET_APP_CONNECTIONS,

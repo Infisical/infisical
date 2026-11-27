@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { ApplicationIdParamsSchema, ApplicationProfileSchema } from "./pki-application-schemas";
@@ -28,10 +28,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const profiles = await server.services.pkiApplication.listApplicationProfiles({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId
       });
@@ -60,10 +57,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { profiles, applicationName } = await server.services.pkiApplication.attachProfiles({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileIds: req.body.profileIds
@@ -85,9 +79,9 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationProfileAttached,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: req.params.applicationId
         }
@@ -120,10 +114,7 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiApplication.detachProfile({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         profileId: req.params.profileId
@@ -145,9 +136,9 @@ export const registerPkiApplicationProfileRoutes = async (server: FastifyZodProv
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.PkiApplicationProfileDetached,
         distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
+        organizationId: req.actor.orgId,
         properties: {
-          orgId: req.permission.orgId,
+          orgId: req.actor.orgId,
           projectId: req.internalCertManagerProjectId,
           applicationId: result.applicationId
         }

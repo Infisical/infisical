@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { getConvexErrorMessage, listConvexDeployments } from "./convex-connection-fns";
@@ -9,11 +9,11 @@ import { TConvexConnection } from "./convex-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TConvexConnection>;
 
 export const convexConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listDeployments = async (connectionId: string, actor: OrgServiceActor) => {
+  const listDeployments = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Convex, connectionId, actor);
 
     try {

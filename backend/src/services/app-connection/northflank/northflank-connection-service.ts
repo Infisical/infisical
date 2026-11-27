@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -11,18 +11,21 @@ import { TNorthflankConnection, TNorthflankSecretGroup } from "./northflank-conn
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TNorthflankConnection>;
 
 export const northflankConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Northflank, connectionId, actor);
     try {
       const projects = await getNorthflankProjects(appConnection);
 
       return projects;
     } catch (error) {
-      logger.error({ error, connectionId, actor: actor.type }, "Failed to establish connection with Northflank");
+      logger.error(
+        { error, connectionId, actor: actor.principal.type },
+        "Failed to establish connection with Northflank"
+      );
       return [];
     }
   };
@@ -30,7 +33,7 @@ export const northflankConnectionService = (getAppConnection: TGetAppConnectionF
   const listSecretGroups = async (
     connectionId: string,
     projectId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ): Promise<TNorthflankSecretGroup[]> => {
     const appConnection = await getAppConnection(AppConnection.Northflank, connectionId, actor);
     try {
@@ -38,7 +41,10 @@ export const northflankConnectionService = (getAppConnection: TGetAppConnectionF
 
       return secretGroups;
     } catch (error) {
-      logger.error({ error, connectionId, projectId, actor: actor.type }, "Failed to list Northflank secret groups");
+      logger.error(
+        { error, connectionId, projectId, actor: actor.principal.type },
+        "Failed to list Northflank secret groups"
+      );
       return [];
     }
   };

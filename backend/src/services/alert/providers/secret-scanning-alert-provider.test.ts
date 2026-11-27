@@ -1,6 +1,7 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 
 import { AlertPermissionAction, TAlertContext } from "../alert-types";
@@ -57,8 +58,8 @@ const buildProvider = (rules: { action: string; subject: string }[] = []) => {
       findDataSourcesByIds,
       findDataSourceNamesByIds: vi.fn(async () => new Map([[DATA_SOURCE_ID, "payments-github"]]))
     },
-    permissionService: {
-      getProjectPermission: async () => ({ permission: createMongoAbility(rules as never) })
+    projectPermissionService: {
+      getProjectPermission: async () => Permission.fromRules({ rules: rules as never })
     } as never
   });
   return { provider, findScansByIds };
@@ -222,7 +223,7 @@ describe("secret scanning alert provider: scope and permissions", () => {
     const reader = buildProvider([{ action: "read-data-sources", subject: "secret-scanning-data-sources" }]).provider;
     await expect(reader.assertPermission({ ...input, action: AlertPermissionAction.Read })).resolves.toBeUndefined();
     await expect(reader.assertPermission({ ...input, action: AlertPermissionAction.Edit })).rejects.toThrow(
-      ForbiddenError
+      PermissionDeniedError
     );
 
     const editor = buildProvider([

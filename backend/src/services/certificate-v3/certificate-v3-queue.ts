@@ -1,11 +1,11 @@
 /* eslint-disable no-await-in-loop */
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 
-import { ActorType } from "../auth/auth-type";
 import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -73,10 +73,6 @@ export const certificateV3QueueServiceFactory = ({
                 }
 
                 const renewed = await certificateV3Service.renewCertificate({
-                  actor: ActorType.PLATFORM,
-                  actorId: "",
-                  actorAuthMethod: null,
-                  actorOrgId: "",
                   certificateId: certificate.id,
                   internal: true,
                   // A certificate Infisical has no private key for is eligible only because it holds a

@@ -2,10 +2,10 @@ import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const getUserAgentType = (userAgent: string | undefined) => {
   if (userAgent === undefined) {
@@ -39,7 +39,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
     const userAgent = req.headers["user-agent"] ?? "";
     const payload = {
       ipAddress: req.realIp,
-      orgId: req?.permission?.orgId,
+      orgId: req?.actor?.orgId,
       userAgent,
       userAgentType: getUserAgentType(userAgent)
     } as typeof req.auditLogInfo;
@@ -53,7 +53,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
       return;
     }
 
-    if (req.auth.actor === ActorType.USER) {
+    if (req.auth.actorType === ActorType.USER) {
       payload.actor = {
         type: ActorType.USER,
         metadata: {
@@ -63,10 +63,10 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
             : {}),
           email: req.auth.user.email,
           username: req.auth.user.username,
-          userId: req.permission.id
+          userId: req.actor.id
         }
       };
-    } else if (req.auth.actor === ActorType.SERVICE) {
+    } else if (req.auth.actorType === ActorType.SERVICE) {
       payload.actor = {
         type: ActorType.SERVICE,
         metadata: {
@@ -74,7 +74,7 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
           serviceId: req.auth.serviceTokenId
         }
       };
-    } else if (req.auth.actor === ActorType.IDENTITY) {
+    } else if (req.auth.actorType === ActorType.IDENTITY) {
       const identityAuthInfo = requestContext.get(RequestContextKey.IdentityAuthInfo);
 
       payload.actor = {
@@ -88,37 +88,37 @@ export const injectAuditLogInfo = fp(async (server: FastifyZodProvider) => {
           ...(identityAuthInfo?.oidc ? { oidc: identityAuthInfo.oidc } : {})
         }
       };
-    } else if (req.auth.actor === ActorType.SCIM_CLIENT) {
+    } else if (req.auth.actorType === ActorType.SCIM_CLIENT) {
       payload.actor = {
         type: ActorType.SCIM_CLIENT,
         metadata: {}
       };
-    } else if (req.auth.actor === ActorType.GATEWAY) {
+    } else if (req.auth.actorType === ActorType.GATEWAY) {
       payload.actor = {
         type: ActorType.GATEWAY,
         metadata: {
-          gatewayId: req.permission.id
+          gatewayId: req.actor.id
         }
       };
-    } else if (req.auth.actor === ActorType.RELAY) {
+    } else if (req.auth.actorType === ActorType.RELAY) {
       payload.actor = {
         type: ActorType.RELAY,
         metadata: {
-          relayId: req.permission.id
+          relayId: req.actor.id
         }
       };
-    } else if (req.auth.actor === ActorType.KMIP_SERVER) {
+    } else if (req.auth.actorType === ActorType.KMIP_SERVER) {
       payload.actor = {
         type: ActorType.KMIP_SERVER,
         metadata: {
-          kmipServerId: req.permission.id
+          kmipServerId: req.actor.id
         }
       };
-    } else if (req.auth.actor === ActorType.AGENT_VAULT_PROXY) {
+    } else if (req.auth.actorType === ActorType.AGENT_VAULT_PROXY) {
       payload.actor = {
         type: ActorType.AGENT_VAULT_PROXY,
         metadata: {
-          agentVaultProxyId: req.permission.id
+          agentVaultProxyId: req.actor.id
         }
       };
     } else {

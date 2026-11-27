@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { ScimEventsSchema, ScimTokensSchema } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const ScimUserSchema = z.object({
   schemas: z.array(z.string()),
@@ -68,11 +68,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { scimToken } = await server.services.scim.createScimToken({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         orgId: req.body.organizationId,
-        actorAuthMethod: req.permission.authMethod,
         description: req.body.description,
         ttlDays: req.body.ttlDays
       });
@@ -101,10 +98,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const scimTokens = await server.services.scim.listScimTokens({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.actor,
         orgId: req.query.organizationId
       });
 
@@ -133,10 +127,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const scimToken = await server.services.scim.deleteScimToken({
         scimTokenId: req.params.scimTokenId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.actor
       });
 
       return { scimToken };
@@ -165,11 +156,8 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const scimEvents = await server.services.scim.listScimEvents({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId,
+        actor: req.actor,
+        orgId: req.actor.orgId,
         since: req.query.since,
         limit: req.query.limit,
         offset: req.query.offset
@@ -300,7 +288,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         startIndex: req.query.startIndex,
         limit: req.query.count,
         filter: req.query.filter,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
       return users;
     }
@@ -322,7 +310,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.getScimUser({
         orgMembershipId: req.params.orgMembershipId,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
       return user;
     }
@@ -369,7 +357,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
         firstName: req.body?.name?.givenName,
         lastName: req.body?.name?.familyName,
         active: req.body.active,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
 
       return user;
@@ -392,7 +380,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       await req.server.services.scim.deleteScimUser({
         orgMembershipId: req.params.orgMembershipId,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
 
       return res.status(204).send("");
@@ -453,7 +441,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
       const primaryEmail = req.body.emails?.find((email) => email.primary)?.value;
       const user = await req.server.services.scim.replaceScimUser({
         orgMembershipId: req.params.orgMembershipId,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         firstName: req.body?.name?.givenName,
         lastName: req.body?.name?.familyName,
         active: req.body?.active,
@@ -503,7 +491,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const user = await req.server.services.scim.updateScimUser({
         orgMembershipId: req.params.orgMembershipId,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         operations: req.body.Operations
       });
 
@@ -535,7 +523,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
       const group = await req.server.services.scim.createScimGroup({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.body
       });
 
@@ -567,7 +555,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.SCIM_TOKEN]),
     handler: async (req) => {
       const groups = await req.server.services.scim.listScimGroups({
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         startIndex: req.query.startIndex,
         filter: req.query.filter,
         limit: req.query.count,
@@ -600,7 +588,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const group = await req.server.services.scim.getScimGroup({
         groupId: req.params.groupId,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         isMembersExcluded: req.query.excludedAttributes === "members"
       });
 
@@ -637,7 +625,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const group = await req.server.services.scim.replaceScimGroup({
         groupId: req.params.groupId,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...req.body
       });
 
@@ -684,7 +672,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const group = await req.server.services.scim.updateScimGroup({
         groupId: req.params.groupId,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         operations: req.body.Operations
       });
       return group;
@@ -707,7 +695,7 @@ export const registerScimRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       await req.server.services.scim.deleteScimGroup({
         groupId: req.params.groupId,
-        orgId: req.permission.orgId
+        orgId: req.actor.orgId
       });
 
       return res.status(204).send("");

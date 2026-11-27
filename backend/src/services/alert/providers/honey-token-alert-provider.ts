@@ -1,7 +1,8 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { PermissionDeniedError } from "@app/domains/lib/errors";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsPermissionService } from "@app/domains/secrets-manager/secrets/ce/module";
 import { HoneyTokenStatus, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_RESOURCE_TYPE,
@@ -9,11 +10,6 @@ import {
   HoneyTokenTriggeredPayloadSchema
 } from "@app/ee/services/honey-token/honey-token-events";
 import { HONEY_TOKEN_PROVIDER_MAP } from "@app/ee/services/honey-token/honey-token-provider-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -41,7 +37,7 @@ export type THoneyTokenTarget = THoneyTokenWithLocation & {
 export type THoneyTokenAlertProviderDep = {
   honeyTokenAlertDAL: Pick<THoneyTokenAlertDALFactory, "findHoneyTokensByIds" | "findHoneyTokenNamesByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsPermissionService: TSecretsPermissionService;
 };
 
 const providerName = (type: string) => HONEY_TOKEN_PROVIDER_MAP[type as HoneyTokenType]?.name ?? type;
@@ -56,7 +52,7 @@ const formatEventTime = (eventTime: string) => {
 export const honeyTokenAlertProviderFactory = ({
   honeyTokenAlertDAL,
   folderDAL,
-  permissionService
+  secretsPermissionService
 }: THoneyTokenAlertProviderDep): IEventAlertProvider<THoneyTokenTarget> => {
   const $loadHoneyTokensWithPath = async (honeyTokenIds: string[]) => {
     const honeyTokens = await honeyTokenAlertDAL.findHoneyTokensByIds(honeyTokenIds);
@@ -186,56 +182,57 @@ export const honeyTokenAlertProviderFactory = ({
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
     const projectId = $requireProject(input.projectId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      projectId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsPermissionService.getSecretsPermission({ actor: input.actor, projectId });
 
     if (!input.resourceId) {
       if (input.action !== AlertPermissionAction.Read) {
         // A test send for a token that is still being created. It reads nothing back.
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionHoneyTokenActions.Create,
-          ProjectPermissionSub.HoneyTokens
-        );
+        permission.assert({
+          action: ProjectPermissionHoneyTokenActions.Create,
+          subject: ProjectPermissionSub.HoneyTokens
+        });
         return;
       }
 
       // Listing without a token returns the alerts of every token in the project, so a read limited to some
       // environments or paths, or narrowed by a deny rule, would expose the rest.
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionHoneyTokenActions.Read,
-        ProjectPermissionSub.HoneyTokens
-      );
-      const readRules = permission.rulesFor(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
+      permission.assert({ action: ProjectPermissionHoneyTokenActions.Read, subject: ProjectPermissionSub.HoneyTokens });
+      const readRules = permission
+        .toAbility()
+        .rulesFor(ProjectPermissionHoneyTokenActions.Read, ProjectPermissionSub.HoneyTokens);
       const canReadEveryHoneyToken =
         readRules.some((rule) => !rule.inverted && !rule.conditions) && !readRules.some((rule) => rule.inverted);
       if (!canReadEveryHoneyToken) {
-        // Built by hand because throwUnlessCan passes a partial read, and a CASL error is what the
+        // Built by hand because the check above passes a partial read, and a denial is what the
         // permission-denied audit hook records.
-        const denial = ForbiddenError.from(permission);
-        denial.action = ProjectPermissionHoneyTokenActions.Read;
-        denial.subject = ProjectPermissionSub.HoneyTokens;
-        denial.subjectType = ProjectPermissionSub.HoneyTokens;
-        throw denial;
+        throw new PermissionDeniedError({
+          denial: {
+            action: ProjectPermissionHoneyTokenActions.Read,
+            subject: ProjectPermissionSub.HoneyTokens,
+            matchedRules: readRules.map(({ action, inverted, subject, conditions }) => ({
+              action,
+              inverted,
+              subject,
+              conditions
+            }))
+          }
+        });
       }
       return;
     }
 
     const honeyToken = await $loadInScopeHoneyToken({ orgId: input.orgId, projectId, resourceId: input.resourceId });
-    ForbiddenError.from(permission).throwUnlessCan(
-      input.action === AlertPermissionAction.Read
-        ? ProjectPermissionHoneyTokenActions.Read
-        : ProjectPermissionHoneyTokenActions.Edit,
-      subject(ProjectPermissionSub.HoneyTokens, {
+    permission.assert({
+      action:
+        input.action === AlertPermissionAction.Read
+          ? ProjectPermissionHoneyTokenActions.Read
+          : ProjectPermissionHoneyTokenActions.Edit,
+      subject: ProjectPermissionSub.HoneyTokens,
+      fields: {
         environment: honeyToken.envSlug,
         secretPath: honeyToken.secretPath
-      })
-    );
+      }
+    });
   };
 
   return {

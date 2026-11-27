@@ -1,9 +1,10 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
-export type TGetLatestProjectKeyDTO = TProjectPermission;
+export type TGetLatestProjectKeyDTO = { projectId: string } & TActorInput;
 
 export type TUploadProjectKeyDTO = {
   encryptedKey: string;
   nonce: string;
   receiverId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;

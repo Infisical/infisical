@@ -1,16 +1,17 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
 import { LoginMethod, TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { PlanLimit, TLicenseService } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  TOrgPermissionService
+} from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -18,10 +19,10 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  resolveMembershipRoleSlugs,
+  toBoundsTargets
 } from "@app/services/membership/membership-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { MAX_NEW_MEMBERS_PER_INVITE, TOrgInviteQuota } from "@app/services/org/org-invite-quota";
@@ -34,7 +35,7 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TOrgMembershipUserScopeFactoryDep = {
   instanceConfigService: TInstanceConfigService;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
+  orgPermissionService: TOrgPermissionService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   userDAL: Pick<TUserDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -50,7 +51,7 @@ type TOrgMembershipUserScopeFactoryDep = {
 
 export const newOrgMembershipUserFactory = ({
   instanceConfigService,
-  permissionService,
+  orgPermissionService,
   tokenService,
   userDAL,
   orgDAL,
@@ -102,40 +103,27 @@ export const newOrgMembershipUserFactory = ({
     newMembers,
     newUserEmails
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+    const permission = await orgPermissionService.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionMemberActions.Create, subject: OrgPermissionSubjects.Member });
 
     const rolesToBound = filterRolesNeedingPrivilegeBoundary(dto.data.roles);
     if (rolesToBound.length) {
-      const permissionRoles = await permissionService.getOrgPermissionByRoles(
-        rolesToBound.map((el) => el.role),
-        dto.permission.orgId
-      );
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
+      const permissionRoles = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: dto.actor.org.id,
+        roles: rolesToBound.map((el) => el.role)
+      });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission,
-        targetPermissions: permissionRoles,
-        baseMessage: "Failed to assign the requested role to a new org member"
+      permission.assertBounds({
+        actions: OrgPermissionMemberActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Member,
+        targets: toBoundsTargets(permissionRoles),
+        message: "Failed to assign the requested role to a new org member"
       });
     }
 
-    const plan = await licenseService.getPlan(dto.permission.orgId);
+    const plan = await licenseService.getPlan(dto.actor.org.id);
     if (plan.isLimited(PlanLimit.Identities)) {
-      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.actor.org.id);
       if (plan.exceeds(PlanLimit.Identities, identitiesUsed)) {
         throw new BadRequestError({
           name: "InviteUser",
@@ -144,8 +132,8 @@ export const newOrgMembershipUserFactory = ({
       }
     }
 
-    const org = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
-      orgDAL.findById(dto.permission.orgId)
+    const org = await requestMemoize(requestMemoKeys.orgFindById(dto.actor.org.id), () =>
+      orgDAL.findById(dto.actor.org.id)
     );
     if (org?.authEnforced) {
       const invitedEmails = [
@@ -222,8 +210,8 @@ export const newOrgMembershipUserFactory = ({
     dto,
     newMemberCount
   ) => {
-    const org = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
-      orgDAL.findById(dto.permission.orgId)
+    const org = await requestMemoize(requestMemoKeys.orgFindById(dto.actor.org.id), () =>
+      orgDAL.findById(dto.actor.org.id)
     );
     if (org.rootOrgId) return undefined;
 
@@ -243,9 +231,9 @@ export const newOrgMembershipUserFactory = ({
     const appCfg = getConfig();
 
     const actorDetails =
-      dto.permission.type === ActorType.USER
-        ? await requestMemoize(requestMemoKeys.userFindById(dto.permission.id), () =>
-            userDAL.findById(dto.permission.id)
+      dto.actor.principal.type === ActorType.USER
+        ? await requestMemoize(requestMemoKeys.userFindById(dto.actor.principal.id), () =>
+            userDAL.findById(dto.actor.principal.id)
           )
         : {
             firstName: "Platform Identity",
@@ -253,8 +241,8 @@ export const newOrgMembershipUserFactory = ({
           };
 
     const signUpTokens: { email: string; link: string }[] = [];
-    const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.permission.orgId), () =>
-      orgDAL.findById(dto.permission.orgId)
+    const orgDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.actor.org.id), () =>
+      orgDAL.findById(dto.actor.org.id)
     );
     const isEmailLoginEnabled = (await instanceConfigService.getLoginPolicy()).allows(LoginMethod.EMAIL);
 
@@ -282,7 +270,7 @@ export const newOrgMembershipUserFactory = ({
           recipients: emails,
           substitutions: {
             subOrganizationName: orgDetails.slug,
-            callback_url: `${appCfg.SITE_URL}/organizations/${dto.permission.orgId}/projects`
+            callback_url: `${appCfg.SITE_URL}/organizations/${dto.actor.org.id}/projects`
           }
         });
       }
@@ -321,14 +309,14 @@ export const newOrgMembershipUserFactory = ({
           const token = await tokenService.createTokenForUser({
             type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
             userId: el.id,
-            orgId: dto.permission.orgId
+            orgId: dto.actor.org.id
           });
 
           if (el.email) {
             if (!appCfg.isSmtpConfigured) {
               signUpTokens.push({
                 email: el.email,
-                link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
+                link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.actor.org.id}`
               });
             }
 
@@ -342,7 +330,7 @@ export const newOrgMembershipUserFactory = ({
                 organizationName: orgDetails?.name,
                 callback_url: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${encodeURIComponent(
                   el.email
-                )}&organization_id=${dto.permission.orgId}`
+                )}&organization_id=${dto.actor.org.id}`
               }
             });
           }
@@ -354,20 +342,8 @@ export const newOrgMembershipUserFactory = ({
   };
 
   const onUpdateMembershipUserGuard: TMembershipUserScopeFactory["onUpdateMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Edit, OrgPermissionSubjects.Member);
-
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
+    const permission = await orgPermissionService.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionMemberActions.Edit, subject: OrgPermissionSubjects.Member });
 
     const targetOps: { opAction: OrgPermissionMemberActions; baseMessage: string }[] = [];
     if (dto.data.roles.length || dto.data.metadata !== undefined)
@@ -387,98 +363,71 @@ export const newOrgMembershipUserFactory = ({
         userId: dto.selector.userId
       });
       const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-      const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+      const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: dto.actor.org.id,
+        roles: targetRoles,
         ignoreUnresolvedRoles: true
       });
 
       for (const { opAction, baseMessage } of targetOps) {
-        assertRoleSetBoundary({
-          shouldUseNewPrivilegeSystem,
-          opActions: opAction,
-          opSubject: OrgPermissionSubjects.Member,
-          actorPermission: permission,
-          targetPermissions,
-          baseMessage
+        permission.assertBounds({
+          actions: opAction,
+          subject: OrgPermissionSubjects.Member,
+          targets: toBoundsTargets(targetPermissions),
+          message: baseMessage
         });
       }
     }
 
     const rolesToBound = filterRolesNeedingPrivilegeBoundary(dto.data.roles);
     if (rolesToBound.length) {
-      const permissionRoles = await permissionService.getOrgPermissionByRoles(
-        rolesToBound.map((el) => el.role),
-        dto.permission.orgId
-      );
+      const permissionRoles = await orgPermissionService.getOrgPermissionByRoles({
+        orgId: dto.actor.org.id,
+        roles: rolesToBound.map((el) => el.role)
+      });
 
-      assertRoleSetBoundary({
-        shouldUseNewPrivilegeSystem,
-        opActions: OrgPermissionMemberActions.GrantPrivileges,
-        opSubject: OrgPermissionSubjects.Member,
-        actorPermission: permission,
-        targetPermissions: permissionRoles,
-        baseMessage: "Failed to assign the requested role to an existing org member"
+      permission.assertBounds({
+        actions: OrgPermissionMemberActions.GrantPrivileges,
+        subject: OrgPermissionSubjects.Member,
+        targets: toBoundsTargets(permissionRoles),
+        message: "Failed to assign the requested role to an existing org member"
       });
     }
   };
 
   const onDeleteMembershipUserGuard: TMembershipUserScopeFactory["onDeleteMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Delete, OrgPermissionSubjects.Member);
+    const permission = await orgPermissionService.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionMemberActions.Delete, subject: OrgPermissionSubjects.Member });
 
     const targetMembership = await membershipUserDAL.getUserById({
       scopeData: dto.scopeData,
       userId: dto.selector.userId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+    const targetPermissions = await orgPermissionService.getOrgPermissionByRoles({
+      orgId: dto.actor.org.id,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
 
-    assertRoleSetBoundary({
-      shouldUseNewPrivilegeSystem,
-      opActions: OrgPermissionMemberActions.Delete,
-      opSubject: OrgPermissionSubjects.Member,
-      actorPermission: permission,
-      targetPermissions,
-      baseMessage: "Failed to remove this member from the organization"
+    permission.assertBounds({
+      actions: OrgPermissionMemberActions.Delete,
+      subject: OrgPermissionSubjects.Member,
+      targets: toBoundsTargets(targetPermissions),
+      message: "Failed to remove this member from the organization"
     });
   };
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    const permission = await orgPermissionService.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
   };
 
   const onGetMembershipUserByUserIdGuard: TMembershipUserScopeFactory["onGetMembershipUserByUserIdGuard"] = async (
     dto
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    const permission = await orgPermissionService.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
   };
 
   return {
