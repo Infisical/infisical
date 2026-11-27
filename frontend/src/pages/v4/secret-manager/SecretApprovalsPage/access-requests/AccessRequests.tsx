@@ -7,7 +7,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
-import { Meta, StatusText } from "@infisical/cipher/ui/text";
+import { StatusText } from "@infisical/cipher/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@infisical/cipher/ui/toggle-group";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { formatDistance } from "date-fns";
@@ -225,7 +225,7 @@ export const AccessRequests = ({
       text: (request) => personName(requesterOf(request)),
       render: (request) => {
         const name = personName(requesterOf(request));
-        if (!name) return <Meta>-</Meta>;
+        if (!name) return null;
         return (
           <Inline gap={8} align="center" wrap={false}>
             <span>{name}</span>

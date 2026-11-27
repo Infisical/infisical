@@ -144,13 +144,12 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
       id: "duration",
       header: "Duration",
       width: 120,
-      render: (row) => (
-        <Meta mono={false}>
-          {row.startedAt && row.completedAt
-            ? formatDistanceStrict(new Date(row.completedAt), new Date(row.startedAt))
-            : "-"}
-        </Meta>
-      )
+      render: (row) =>
+        row.startedAt && row.completedAt ? (
+          <Meta mono={false}>
+            {formatDistanceStrict(new Date(row.completedAt), new Date(row.startedAt))}
+          </Meta>
+        ) : null
     },
     {
       id: "findings",
@@ -158,7 +157,7 @@ export const ScanHistoryTab = ({ dataSource }: { dataSource: TSecretScanningData
       sortable: true,
       width: 136,
       render: (row) => {
-        if (row.status !== SecretScanningScanStatus.Completed) return <Meta mono={false}>-</Meta>;
+        if (row.status !== SecretScanningScanStatus.Completed) return null;
         if (!row.unresolvedFindings) return String(total(row));
         return (
           <StatusText tone="bad" icon="alert">

@@ -344,7 +344,7 @@ const dataSourceColumns = (
     sortable: true,
     width: 184,
     render: (row) => {
-      if (!row.lastScannedAt || row.unresolvedFindings === null) return <Meta>-</Meta>;
+      if (!row.lastScannedAt || row.unresolvedFindings === null) return null;
       if (row.unresolvedFindings === 0) return "0";
       return (
         <StatusText tone="bad" icon="alert">
