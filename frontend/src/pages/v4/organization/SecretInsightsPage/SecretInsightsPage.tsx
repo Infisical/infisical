@@ -26,7 +26,6 @@ import { InsightsUpgradePreview } from "./components/insights-upgrade-preview";
 import { NewSecretsCard } from "./components/new-secrets-card";
 import { ProjectsInsightsCard } from "./components/projects-insights-card";
 import { MAX_REPORT_RECIPIENTS, reportOptions } from "./components/report-types";
-import { SummaryCards } from "./components/summary-cards";
 
 const IN_FLIGHT_REPORT_STATUSES = new Set([
   AuditReportStatus.Pending,
@@ -57,7 +56,6 @@ const InsightsCards = ({
 }) => {
   const insights = useV4Adapter("secretInsights");
   const withAnalytics = { enabled: isAuditLogAnalyticsEnabled };
-  const summary = insights.useOrgSummary(orgId);
   const projects = insights.useOrgProjects(orgId);
   const authMethods = insights.useOrgAuthMethods(orgId, withAnalytics);
   const staticSecrets = insights.useOrgStaticSecrets(orgId);
@@ -68,7 +66,6 @@ const InsightsCards = ({
 
   return (
     <Stack gap={16}>
-      {!summary.error && <SummaryCards summary={summary.data} />}
       {loadable(projects, 320, (data) => (
         <ProjectsInsightsCard
           data={data}
