@@ -43,7 +43,7 @@ const DuplicateGroups = ({
         <AccordionItem key={value} value={value}>
           <AccordionTrigger>
             <Inline gap={8} justify="between" wrap={false}>
-              <InlineGrow>{group.secrets.length} secrets share a value</InlineGrow>
+              <InlineGrow>{group.secrets.length} secrets share an identical value</InlineGrow>
               <InlineItem shrink={false}>
                 <Badge tone="soft">{plural(locations, "location")}</Badge>
               </InlineItem>
@@ -62,6 +62,7 @@ const DuplicateGroups = ({
                   primary: true,
                   grow: true,
                   mono: true,
+                  wrap: true,
                   text: (entry) => entry.key,
                   render: (entry) => (
                     <RowLink
@@ -78,14 +79,15 @@ const DuplicateGroups = ({
                 {
                   id: "environment",
                   header: "Environment",
-                  width: 160,
+                  minWidth: 140,
                   text: (entry) => entry.environment.name,
                   render: (entry) => <Badge tone="info">{entry.environment.name}</Badge>
                 },
                 {
                   id: "path",
                   header: "Path",
-                  width: 240,
+                  minWidth: 120,
+                  maxWidth: 240,
                   mono: true,
                   text: (entry) => entry.secretPath,
                   render: (entry) => entry.secretPath

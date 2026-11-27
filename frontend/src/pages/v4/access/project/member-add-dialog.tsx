@@ -11,26 +11,99 @@ import {
   DialogTitle
 } from "@infisical/cipher/ui/dialog";
 import { Stack } from "@infisical/cipher/ui/layout";
-import { MultiSelect } from "@infisical/cipher/ui/multi-select";
+import { MultiSelect, type MultiSelectOption } from "@infisical/cipher/ui/multi-select";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { CustomRolesUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { isValidEmail, normalizeEmail } from "@app/helpers/email";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
+import { roleQueryKeys } from "@app/hooks/api/roles/queries";
+import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
+import { UpgradeGate } from "../../license";
+import { useBillingSubscription } from "../../license/product-icon";
+import { orgHref } from "../../links";
+import { useResolveV4Href } from "../../resolveV4Href";
 import { useOrgId, useOrgPermission, useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { personName, useMemberRoleAccess } from "./member-access";
 import { accessNoun, accessThe, accessThis } from "./product";
 import { useProjectScope } from "./scope";
+
+const RolePicker = ({
+  projectId,
+  options,
+  value,
+  onChange
+}: {
+  projectId: string;
+  options: MultiSelectOption[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}) => {
+  const orgId = useOrgId();
+  const scope = useProjectScope();
+  const { permission } = useProjectPermission(projectId);
+  const queryClient = useQueryClient();
+  const resolveHref = useResolveV4Href();
+  const subscription = useBillingSubscription();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const canCreateRole =
+    scope.projectType === ProjectType.SecretManager &&
+    permission.can(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
+  const createRole = () => {
+    if (subscription && !subscription.rbac) {
+      setUpgradeOpen(true);
+      return;
+    }
+    window.open(
+      resolveHref(
+        orgHref(
+          orgId,
+          `/projects/secret-management/${projectId}/access-management?selectedTab=${ProjectAccessControlTabs.Roles}&createRole=true`
+        )
+      ),
+      "_blank",
+      "noopener"
+    );
+  };
+  return (
+    <>
+      <MultiSelect
+        label="Select roles"
+        placeholder="Select roles..."
+        searchable
+        options={options}
+        value={value}
+        onChange={onChange}
+        onOpenChange={(isOpen) => {
+          if (isOpen)
+            queryClient.invalidateQueries({ queryKey: roleQueryKeys.getProjectRoles(projectId) });
+        }}
+        createAction={
+          canCreateRole ? { label: "Create custom role", onSelect: createRole } : undefined
+        }
+      />
+      <UpgradeGate
+        paywallKey="project.role"
+        isOpen={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        intent={{ ...CustomRolesUpgradeIntent, isEnterpriseFeature: false }}
+      />
+    </>
+  );
+};
 
 export const AddMemberDialog = ({
   projectId,
@@ -211,10 +284,8 @@ export const AddMemberDialog = ({
                   : undefined
               }
             />
-            <MultiSelect
-              label="Select roles"
-              placeholder="Select roles..."
-              searchable
+            <RolePicker
+              projectId={projectId}
               options={assignable.map((role) => ({
                 value: role.slug,
                 label: role.name,

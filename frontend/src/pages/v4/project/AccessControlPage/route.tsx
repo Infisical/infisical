@@ -14,7 +14,8 @@ export const Route = createFileRoute(
   validateSearch: zodValidator(
     z.object({
       selectedTab: z.nativeEnum(ProjectAccessControlTabs).catch(ProjectAccessControlTabs.Member),
-      requesterEmail: z.string().catch("")
+      requesterEmail: z.string().catch(""),
+      createRole: z.boolean().catch(false)
     })
   ),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

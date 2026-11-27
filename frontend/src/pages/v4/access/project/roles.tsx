@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FilterBar } from "@infisical/cipher/patterns/filter-bar";
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { RowLink } from "@infisical/cipher/ui/row-link";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { WrenchIcon } from "lucide-react";
 
 import { CustomRolesUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
@@ -81,6 +82,25 @@ export const ProjectRolesTab = () => {
     setSheet((current) => ({ open: true, mode, key: current.key + 1 }));
   };
   const openRole = (role: ProjectRoleRow) => go(accessLinks.projectRole(scope, role.slug));
+
+  const navigate = useNavigate();
+  const createRequested = useSearch({
+    strict: false,
+    select: (search) => Boolean((search as { createRole?: boolean }).createRole)
+  });
+  const hasRbac = subscription?.rbac;
+  const createReady = canCreate && !isCertManager && hasRbac !== undefined;
+  useEffect(() => {
+    if (!createRequested || !createReady) return;
+    if (hasRbac)
+      setSheet((current) => ({ open: true, mode: { kind: "create" }, key: current.key + 1 }));
+    else setUpgrade("rbac");
+    navigate({
+      to: ".",
+      search: ((prev: Record<string, unknown>) => ({ ...prev, createRole: false })) as never,
+      replace: true
+    });
+  }, [createRequested, createReady, hasRbac, navigate]);
 
   const list = usePagedList<ProjectRoleRow>({
     table: "projectRolesTable",

@@ -140,6 +140,13 @@ export const ProjectsInsightsCard = ({
         ) : (
           <StatusText>0</StatusText>
         )
+    },
+    {
+      id: "total",
+      header: "Total secrets",
+      align: "end",
+      width: 140,
+      render: (project) => project.totalSecrets.toLocaleString()
     }
   ];
 
