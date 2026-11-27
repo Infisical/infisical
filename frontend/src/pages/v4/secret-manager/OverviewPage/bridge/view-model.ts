@@ -67,6 +67,20 @@ const valueOf = (
   return { status: "loading" };
 };
 
+export const readThrough = (
+  secret: Secret,
+  readFrom: NonNullable<Secret["readFrom"]>,
+  values: LoadedValues
+): Secret => {
+  if (secret.value.status === "unreadable") return { ...secret, readFrom };
+  const loaded =
+    values[valueKey(readFrom.environment, readFrom.path, secret.name, false, secret.version)];
+  if (typeof loaded === "string")
+    return { ...secret, readFrom, value: { status: "present", value: loaded } };
+  if (loaded) return { ...secret, readFrom, value: { status: "failed", message: loaded.error } };
+  return { ...secret, readFrom, value: { status: "loading" } };
+};
+
 const isoOf = (date?: Date | string | null) => (date ? new Date(date).toISOString() : undefined);
 const overrideOf = (secret: SecretV3RawSanitized, loaded: LoadedValues[string] | undefined) => {
   if (!secret.idOverride) return undefined;

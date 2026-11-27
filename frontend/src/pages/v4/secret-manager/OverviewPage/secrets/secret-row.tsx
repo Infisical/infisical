@@ -176,7 +176,15 @@ const copy = async (
   if (await copyText(value, failure)) report(done, "ok");
 };
 
-export function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
+export function SecretValue({
+  secret,
+  visible,
+  references = true
+}: {
+  secret?: Secret;
+  visible: boolean;
+  references?: boolean;
+}) {
   const [focused, setFocused] = useState(false);
   const loader = useValueLoader();
   const shown = visible || focused;
@@ -208,7 +216,12 @@ export function SecretValue({ secret, visible }: { secret?: Secret; visible: boo
       onBlur={() => setFocused(false)}
     >
       {value === "" && <span className={styles.emptyValue}>Empty</span>}
-      {value !== "" && (shown && !loading ? <ReferenceText value={value} scope={secret} /> : mask)}
+      {value !== "" &&
+        (shown && !loading ? (
+          <ReferenceText value={value} scope={references ? secret : undefined} />
+        ) : (
+          mask
+        ))}
     </span>
   );
 }

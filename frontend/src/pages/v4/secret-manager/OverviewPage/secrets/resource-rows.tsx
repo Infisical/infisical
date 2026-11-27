@@ -1152,7 +1152,7 @@ export function ImportRow({
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
-              <SecretValue secret={secret} visible={revealAll} />
+              <SecretValue secret={secret} visible={revealAll} references={false} />
             </TableCell>
           </TableRow>
         ))}
@@ -1195,7 +1195,7 @@ export function ImportRow({
                         <span className={styles.truncate}>{secret.name}</span>
                       </TableCell>
                       <TableCell className={styles.valueCell}>
-                        <SecretValue secret={secret} visible={revealAll} />
+                        <SecretValue secret={secret} visible={revealAll} references={false} />
                       </TableCell>
                     </TableRow>
                   ))

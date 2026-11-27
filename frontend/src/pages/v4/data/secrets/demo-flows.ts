@@ -679,10 +679,18 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
     return {};
   }),
   useCreateSecretImport: demoMutation((store, dto) => {
-    const project = store.get().projects.find((entry) => entry.id === dto.projectId);
-    const source = project?.environments.find((entry) => entry.slug === dto.import.environment);
+    const { projects } = store.get();
+    const project = projects.find((entry) => entry.id === dto.projectId);
+    const sourceProject = projects.find(
+      (entry) => entry.id === (dto.import.sourceProjectId ?? dto.projectId)
+    );
+    const sourceEnv = sourceProject?.environments.find(
+      (entry) => entry.slug === dto.import.environment
+    );
     const destination = project?.environments.find((entry) => entry.slug === dto.environment);
-    if (!source || !destination) throw new Error("Source environment not found");
+    if (!sourceProject || !sourceEnv || !destination)
+      throw new Error("Source environment not found");
+    const source = { ...sourceEnv, projectId: sourceProject.id };
     const timestamp = now();
     const id = crypto.randomUUID();
     const folderId = `${dto.projectId}:${dto.environment}:${dto.path ?? "/"}`;
@@ -719,6 +727,7 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
             folderId,
             importPath: dto.import.path,
             importEnv: source,
+            sourceProjectName: sourceProject.id === dto.projectId ? undefined : sourceProject.name,
             position: String(last + 1),
             createdAt: timestamp,
             updatedAt: timestamp,

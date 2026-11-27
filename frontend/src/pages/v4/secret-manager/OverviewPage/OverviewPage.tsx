@@ -86,6 +86,7 @@ import { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import type { TProxiedServiceCredentialInput } from "@app/hooks/api/proxiedServices/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
+import { ReservedFolders } from "@app/hooks/api/secretFolders/types";
 import type { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import type {
   TCreateSecretRotationV2DTO,
@@ -108,7 +109,7 @@ import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges, toUnsavedPendingChanges } from "./bridge/commit";
 import { BreadthContext, useImportedSecrets, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
-import { buildResources, valueKey } from "./bridge/view-model";
+import { buildResources, readThrough, valueKey } from "./bridge/view-model";
 import {
   importName,
   readableValue,
@@ -1299,11 +1300,18 @@ export const OverviewPage = () => {
             scopeMatches(resource, entry.source)
         )
       )?.source.environment;
-  const sourceSecrets = (entry: Of<"import">) =>
-    resources.filter(
+  const sourceSecrets = (entry: Of<"import">) => {
+    const secrets = resources.filter(
       (resource): resource is Secret =>
         resource.kind === "secret" && scopeMatches(resource, entry.source)
     );
+    if (!entry.replicated) return secrets;
+    const readFrom = {
+      environment: entry.environment,
+      path: `${entry.path === "/" ? "" : entry.path}/${ReservedFolders.SecretReplication}${entry.id}`
+    };
+    return secrets.map((secret) => readThrough(secret, readFrom, valueStore.values));
+  };
 
   const insert = (
     created: NewResource[],
@@ -1520,7 +1528,15 @@ export const OverviewPage = () => {
   const loadedValue = (values: Record<string, unknown>, secret: Secret) => {
     const value =
       readableValue(secret) ??
-      values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
+      values[
+        valueKey(
+          secret.readFrom?.environment ?? secret.environment,
+          secret.readFrom?.path ?? secret.path,
+          secret.name,
+          false,
+          secret.version
+        )
+      ];
     return typeof value === "string" ? value : undefined;
   };
   const exportEnv = async (environment: string, action: "clipboard" | "download") => {
