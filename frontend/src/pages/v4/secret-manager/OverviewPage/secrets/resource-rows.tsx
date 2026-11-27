@@ -1077,6 +1077,7 @@ export function ImportRow({
     ) : undefined
   };
   const keys = ctx.single && expanded ? sourceSecrets(first) : [];
+  const nested = !ctx.single && expanded ? sourceSecrets(first) : [];
   return (
     <>
       <RowContextMenu {...rowActions}>
@@ -1149,13 +1150,23 @@ export function ImportRow({
           <TableRow key={secret.id} className={styles.importedRow}>
             <TableCell pin="start" selection divider={false} />
             <TableCell pin="start" pinOffset="var(--cipher-size-row)" className={styles.nameCell}>
-              <span className={styles.truncate}>{secret.name}</span>
+              <div className={styles.nameLine}>
+                <span className={styles.truncate}>{secret.name}</span>
+              </div>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
               <SecretValue secret={secret} visible={revealAll} references={false} />
             </TableCell>
           </TableRow>
         ))}
+      {ctx.single && expanded && !first.revoked && keys.length === 0 && (
+        <TableRow className={styles.importedRow}>
+          <TableCell pin="start" selection divider={false} />
+          <TableCell colSpan={3} className={styles.subtle}>
+            No secrets in this folder.
+          </TableCell>
+        </TableRow>
+      )}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
           <TableCell pin="start" selection divider={false} />
@@ -1180,19 +1191,23 @@ export function ImportRow({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {first.revoked ? (
+                {first.revoked || nested.length === 0 ? (
                   <TableRow>
                     <TableCell selection divider={false} />
                     <TableCell colSpan={2} className={styles.subtle}>
-                      Access to this source was revoked, so its secrets are not shown.
+                      {first.revoked
+                        ? "Access to this source was revoked, so its secrets are not shown."
+                        : "No secrets in this folder."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sourceSecrets(first).map((secret) => (
+                  nested.map((secret) => (
                     <TableRow key={secret.id} className={styles.row}>
                       <TableCell selection divider={false} />
                       <TableCell className={styles.envName}>
-                        <span className={styles.truncate}>{secret.name}</span>
+                        <div className={styles.nameLine}>
+                          <span className={styles.truncate}>{secret.name}</span>
+                        </div>
                       </TableCell>
                       <TableCell className={styles.valueCell}>
                         <SecretValue secret={secret} visible={revealAll} references={false} />

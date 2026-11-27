@@ -405,9 +405,28 @@ export const secretsDemo: SecretsAdapter = {
     const scenario = useScenario();
     const state = useStore().use();
     if (options?.enabled === false) return { data: undefined, isPending: true, error: null };
-    const secret = state.secrets.find(
-      secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)
-    );
+    const secret =
+      state.secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey)) ??
+      state.imports
+        .filter(
+          (entry) =>
+            !entry.isReserved &&
+            entry.projectId === dto.projectId &&
+            entry.environment === dto.environment &&
+            entry.path === dto.secretPath
+        )
+        .sort((a, b) => Number(a.position) - Number(b.position))
+        .map((entry) =>
+          state.secrets.find(
+            secretAt(
+              entry.importEnv.projectId ?? dto.projectId,
+              entry.importEnv.slug,
+              entry.importPath,
+              dto.secretKey
+            )
+          )
+        )
+        .find(Boolean);
     if (!secret || (scenario === "permissions" && secret.key === "STRIPE_SECRET_KEY"))
       return { data: undefined, isPending: false, error: new Error("You cannot read this value") };
     return {

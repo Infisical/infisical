@@ -110,10 +110,7 @@ export function CreateImportFlow({
     if (!grant.project || !grant.environment || !grant.path) return;
     const source = { project: grant.project, environment: grant.environment, path: grant.path };
     if (alreadyImports(source, false)) {
-      onError({
-        title: "Import was not created",
-        description: `This folder already imports ${grant.path} from that project.`
-      });
+      setGrantErrors({ path: "This folder already imports this path." });
       return;
     }
     onCreate(
@@ -199,8 +196,7 @@ export function CreateImportFlow({
         <DialogHeader>
           <DialogTitle>Add secret import</DialogTitle>
           <DialogDescription>
-            Reference secrets from another environment or folder. Changes at the source show up
-            here.
+            Reference secrets from another folder. Changes at the source show up here.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -258,12 +254,12 @@ export function CreateImportFlow({
                   }}
                 />
               </Field>
-              <Field label="Folder path" error={grantErrors.path}>
+              <Field label="Secret path" error={grantErrors.path}>
                 <Combobox
-                  label="Folder path"
+                  label="Secret path"
                   options={folderOptions}
                   value={grant.path ?? ""}
-                  placeholder="Select folder..."
+                  placeholder="Select path..."
                   disabled={!grant.environment}
                   invalid={Boolean(grantErrors.path)}
                   onValueChange={(value) => {

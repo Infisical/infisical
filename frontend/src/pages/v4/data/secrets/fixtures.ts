@@ -552,6 +552,24 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     secrets
   );
   secretsAt("web-dashboard", "/flags", [{ name: "NEW_CHECKOUT", envs: ["staging"] }], secrets);
+  secretsAt(
+    "payments-api",
+    "/shared",
+    [
+      { name: "SENTRY_DSN", envs: ["prod"] },
+      { name: "STRIPE_PUBLISHABLE_KEY", envs: ["prod"] }
+    ],
+    secrets
+  );
+  secretsAt(
+    "platform-core",
+    "/shared",
+    [
+      { name: "LOG_LEVEL", envs: ["prod"] },
+      { name: "OTEL_ENDPOINT", envs: ["prod"] }
+    ],
+    secrets
+  );
 
   const dynamicSecrets = [
     dynamicSecret("/", "dev", "payments-db-readonly"),

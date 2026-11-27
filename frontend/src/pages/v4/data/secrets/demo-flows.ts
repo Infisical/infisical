@@ -455,7 +455,34 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
       error: null
     };
   },
-  useImportedSecretsAt: () => ({ data: [], isPending: false, error: null }),
+  useImportedSecretsAt: ({ projectId, environment, secretPath }) => {
+    const state = useStore().use();
+    return {
+      data: state.imports
+        .filter(
+          (entry) =>
+            !entry.isReserved &&
+            entry.projectId === projectId &&
+            entry.environment === environment &&
+            entry.path === secretPath &&
+            entry.importEnv.projectId &&
+            entry.importEnv.projectId !== projectId
+        )
+        .map((entry) => ({
+          importId: entry.id,
+          secrets: state.secrets
+            .filter(
+              (secret) =>
+                secret.projectId === entry.importEnv.projectId &&
+                secret.env === entry.importEnv.slug &&
+                secret.path === entry.importPath
+            )
+            .map(sanitize)
+        })),
+      isPending: false,
+      error: null
+    };
+  },
   useFetchSecretsAt: () => {
     const store = useStore();
     return ({ projectId, environment, secretPath = "/" }) =>
