@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import {
@@ -8,7 +9,6 @@ import {
   UpdateAnthropicConnectionSchema
 } from "@app/services/app-connection/anthropic";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -49,7 +49,7 @@ export const registerAnthropicConnectionRouter = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const models = await server.services.appConnection.anthropic.listModels(req.params.connectionId, req.permission);
+      const models = await server.services.appConnection.anthropic.listModels(req.params.connectionId, req.actor);
 
       return { models };
     }

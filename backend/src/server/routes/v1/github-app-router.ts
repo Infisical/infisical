@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { SanitizedGitHubAppSchema } from "@app/services/github-app/github-app-types";
 
 export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
@@ -40,7 +40,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.gitHubApp.initiateManifestCreation({
-        orgPermission: req.permission,
+        actor: req.actor,
         name: req.body.name,
         instanceType: req.body.instanceType,
         githubOrg: req.body.githubOrg,
@@ -101,7 +101,7 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const gitHubApps = await server.services.gitHubApp.listGitHubApps({
-        orgPermission: req.permission,
+        actor: req.actor,
         projectId: req.query.projectId
       });
 
@@ -128,13 +128,13 @@ export const registerGitHubAppRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const gitHubApp = await server.services.gitHubApp.deleteGitHubApp({
-        orgPermission: req.permission,
+        actor: req.actor,
         id: req.params.id
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: req.permission.orgId,
+        orgId: req.actor.orgId,
         ...(gitHubApp.projectId ? { projectId: gitHubApp.projectId } : {}),
         event: {
           type: EventType.DELETE_GITHUB_APP,

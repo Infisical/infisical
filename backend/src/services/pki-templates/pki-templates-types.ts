@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
 export type TCreatePkiTemplateDTO = {
@@ -9,7 +9,8 @@ export type TCreatePkiTemplateDTO = {
   ttl: string;
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdatePkiTemplateDTO = {
   templateName: string;
@@ -20,20 +21,24 @@ export type TUpdatePkiTemplateDTO = {
   ttl?: string;
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TListPkiTemplateDTO = {
   limit?: number;
   offset?: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetPkiTemplateDTO = {
   templateName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeletePkiTemplateDTO = {
   templateName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TIssueCertPkiTemplateDTO = {
   templateName: string;
@@ -44,10 +49,12 @@ export type TIssueCertPkiTemplateDTO = {
   notAfter?: string;
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TSignCertPkiTemplateDTO = {
   templateName: string;
   csr: string;
   ttl: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;

@@ -119,6 +119,7 @@ export enum PamPolicyType {
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
   MaxSessionDuration = "max-session-duration",
+  MaxAccessDuration = "max-access-duration",
   CommandBlocking = "command-blocking",
   OutputMasking = "output-masking"
 }

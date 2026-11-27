@@ -150,7 +150,6 @@ func TestOIDCLogin_AllowedEmailDomains(t *testing.T) {
 		// Setup
 		o := setup(t)
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      o.Tenant.OrgID.String(),
 			AllowedEmailDomains: new("allowed.test"),
 		})
 		require.NoError(t, err)
@@ -175,7 +174,6 @@ func TestOIDCLogin_AllowedEmailDomains(t *testing.T) {
 		alice := o.Person()
 		_, domain, _ := strings.Cut(alice.Email, "@")
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      o.Tenant.OrgID.String(),
 			AllowedEmailDomains: new("allowed.test, " + domain),
 		})
 		require.NoError(t, err)

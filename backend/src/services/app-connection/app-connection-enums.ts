@@ -98,7 +98,8 @@ export enum AppConnection {
   IncidentIo = "incident-io",
   Linear = "linear",
   Jenkins = "jenkins",
-  Coolify = "coolify"
+  Coolify = "coolify",
+  Rfc2136 = "rfc2136"
 }
 
 export enum AWSRegion {

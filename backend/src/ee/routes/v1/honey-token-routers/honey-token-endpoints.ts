@@ -7,10 +7,10 @@ import {
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
 import { HoneyTokenWebhookPayloadSchema } from "@app/ee/services/honey-token/honey-token-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
   id: true,
@@ -66,7 +66,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
       const { connectionId, config } = upsertBodySchema.parse(req.body);
       const parsedConfig = configSchema.parse(config);
       const savedConfig = await server.services.honeyTokenConfig.upsertConfig({
-        orgPermission: req.permission,
+        actor: req.actor,
         type,
         connectionId,
         config: parsedConfig
@@ -91,7 +91,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     handler: async (req) => {
       const response = await server.services.honeyTokenConfig.testConnection({
-        orgPermission: req.permission,
+        actor: req.actor,
         type
       });
       return testConnectionResponseSchema.parse(response);
@@ -117,7 +117,7 @@ export const registerHoneyTokenEndpoints = <TType extends HoneyTokenType>({
     },
     handler: async (req) => {
       const config = await server.services.honeyTokenConfig.getConfig({
-        orgPermission: req.permission,
+        actor: req.actor,
         type
       });
 

@@ -62,7 +62,7 @@ func TestSigner_Update(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "updating the signer returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		got := signerState(t, tn, s.ID).JSON200
+		got := pki.SignerState(t, tn, s.ID).JSON200
 		require.Equal(t, "release-signer", got.Name)
 		require.Equal(t, "signs release builds", *got.Description)
 		require.EqualValues(t, 7, *got.CertificateRenewBeforeDays)
@@ -84,7 +84,7 @@ func TestSigner_Update(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t, "Renew before (30d) must be less than the certificate validity (30d).", apierr.Message(res.Body))
-		require.Nil(t, signerState(t, tn, s.ID).JSON200.CertificateRenewBeforeDays)
+		require.Nil(t, pki.SignerState(t, tn, s.ID).JSON200.CertificateRenewBeforeDays)
 	})
 }
 
@@ -132,10 +132,10 @@ func TestSigner_Status(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "disabling the signer returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		require.Equal(t, "disabled", *signerState(t, tn, s.ID).JSON200.Status)
+		require.Equal(t, "disabled", *pki.SignerState(t, tn, s.ID).JSON200.Status)
 		signed, _ := pki.Sign(t, operator, s.ID)
 		require.Equal(t, http.StatusBadRequest, signed.StatusCode())
-		require.Equal(t, "Signer '"+signerState(t, tn, s.ID).JSON200.Name+"' is not active (status: disabled)", apierr.Message(signed.Body))
+		require.Equal(t, "Signer '"+pki.SignerState(t, tn, s.ID).JSON200.Name+"' is not active (status: disabled)", apierr.Message(signed.Body))
 		ops, err := tn.Admin.API.ListSigningOperationsWithResponse(t.Context(), s.ID, nil)
 		require.NoError(t, err)
 		require.NotNilf(t, ops.JSON200, "listing signing operations returned %d: %s", ops.StatusCode(), apierr.Body(ops.Body))
@@ -162,7 +162,7 @@ func TestSigner_Status(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.NotNilf(t, res.JSON200, "enabling the signer returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-		require.Equal(t, "active", *signerState(t, tn, s.ID).JSON200.Status)
-		requireSigns(t, tn, operator, s.ID)
+		require.Equal(t, "active", *pki.SignerState(t, tn, s.ID).JSON200.Status)
+		pki.RequireSigns(t, pki.SignerCertificate(t, tn, s.ID), operator, s.ID)
 	})
 }

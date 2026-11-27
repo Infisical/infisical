@@ -215,8 +215,7 @@ func TestScimSSOConfigChange(t *testing.T) {
 
 		// Action
 		res, err := s.tn.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      s.tn.OrgID.String(),
-			AllowedEmailDomains: new(""),
+			AllowedEmailDomains: new("allowed.test"),
 		})
 
 		// Assert

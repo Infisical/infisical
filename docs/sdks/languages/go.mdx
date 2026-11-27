@@ -1657,7 +1657,7 @@ session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreate
       The name of the access bundle that the agent can use during the session. Set `AccessBundle`, `Services`, or both.
     </ResponseField>
     <ResponseField name="Services" type="[]AgentVaultInlineService">
-      Up to 20 [inline services](#create-a-session-with-inline-services) to send with the session. Only Agent Vault admins can send inline services.
+      Up to 30 [inline services](#create-a-session-with-inline-services) to send with the session. Only Agent Vault admins can send inline services.
     </ResponseField>
     <ResponseField name="TTL" type="string">
       The session's lifetime: a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never` for a session that doesn't expire. Defaults to `7d`, or to `1h` for a session on behalf of a user.
@@ -1729,7 +1729,7 @@ session, err := client.AgentVault().Sessions().Create(infisical.AgentVaultCreate
 
 - Each service is an HTTP API (`AgentVaultInlineHTTPService`), an MCP server (`AgentVaultInlineMCPService`), or a [database or SSH server](/documentation/platform/agent-vault/databases-and-ssh) (`AgentVaultInlineDatabaseService` or `AgentVaultInlineSSHService`)
 - Credentials, custom header values, and substitution values can't contain text in double braces, such as `{{GITHUB_TOKEN}}`, because inline services can't use [variables](/documentation/platform/agent-vault/variables)
-- A session can have up to 20 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
+- A session can have up to 30 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
 - If a machine identity creates the session on behalf of a user, the machine identity needs the **Admin** role and the user doesn't, and the inline services don't use the user's personal values
 - In each session that the `Create`, `Get`, `List`, and `Update` methods return, `Services` lists the inline services without their secrets
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedHasuraCloudConnectionSchema,
   UpdateHasuraCloudConnectionSchema
 } from "@app/services/app-connection/hasura-cloud";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -48,7 +48,7 @@ export const registerHasuraCloudConnectionRouter = async (server: FastifyZodProv
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const projects = await server.services.appConnection.hasuraCloud.listProjects(connectionId, req.permission);
+      const projects = await server.services.appConnection.hasuraCloud.listProjects(connectionId, req.actor);
 
       return { projects: projects.map(({ id, name }) => ({ id, name })) };
     }

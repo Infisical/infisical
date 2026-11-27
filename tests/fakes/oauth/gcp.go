@@ -785,6 +785,7 @@ func (c *CertificateManager) Seed(raw []byte) error {
 type GCPControlPlane struct {
 	IAM                *fakenet.Scope[Impersonation]
 	CertificateManager *fakenet.Scope[CertificateManager]
+	CloudDNS           *fakenet.Scope[CloudDNS]
 }
 
 // OpenGCP returns the state a service account's impersonated tokens reach, and starts
@@ -793,8 +794,10 @@ func OpenGCP(tt *testing.T, adminURL, serviceAccountEmail string) *GCPControlPla
 	tt.Helper()
 	fakenet.Track(tt, adminURL, GCPIAMCredentials.Host(), serviceAccountEmail)
 	fakenet.Track(tt, adminURL, GCPCertificateManager.Host(), serviceAccountEmail)
+	fakenet.Track(tt, adminURL, GCPCloudDNS.Host(), serviceAccountEmail)
 	return &GCPControlPlane{
 		IAM:                fakenet.Open[Impersonation](tt, adminURL, GCPIAMCredentials.Host(), serviceAccountEmail),
 		CertificateManager: fakenet.Open[CertificateManager](tt, adminURL, GCPCertificateManager.Host(), serviceAccountEmail),
+		CloudDNS:           fakenet.Open[CloudDNS](tt, adminURL, GCPCloudDNS.Host(), serviceAccountEmail),
 	}
 }

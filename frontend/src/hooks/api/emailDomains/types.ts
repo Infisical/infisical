@@ -2,9 +2,11 @@ export type TEmailDomain = {
   id: string;
   orgId: string;
   domain: string;
-  verificationMethod: string;
-  verificationCode: string;
-  verificationRecordName: string;
+  verificationRecord: {
+    type: "TXT";
+    name: string;
+    value: string;
+  };
   status: "pending" | "verified" | "expired";
   verifiedAt: string | null;
   codeExpiresAt: string;

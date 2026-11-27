@@ -269,6 +269,13 @@ export const appConnections = [
     category: "Networking & DNS",
   },
   {
+    name: "DNS Server (RFC 2136)",
+    slug: "rfc2136",
+    path: "/integrations/app-connections/rfc2136",
+    description: "Learn how to connect Infisical to your own DNS server, such as BIND or Knot DNS, for ACME DNS validation.",
+    category: "Networking & DNS",
+  },
+  {
     name: "UltraDNS",
     slug: "ultradns",
     path: "/integrations/app-connections/ultradns",

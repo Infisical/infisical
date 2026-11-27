@@ -93,6 +93,6 @@ func TestCertificate_Import(t *testing.T) {
 		require.NotNil(t, bundle.JSON200.CertificateChain)
 		require.Equal(t, pki.ParseLeaf(t, chain).Raw, pki.ParseLeaf(t, *bundle.JSON200.CertificateChain).Raw)
 		require.NotNil(t, bundle.JSON200.PrivateKey)
-		require.True(t, publicKeyOf(t, key).Equal(publicKeyOf(t, *bundle.JSON200.PrivateKey)), "the bundle's private key is not the imported one")
+		require.True(t, pki.ParsePrivateKey(t, key).Equal(pki.ParsePrivateKey(t, *bundle.JSON200.PrivateKey)), "the bundle's private key is not the imported one")
 	})
 }

@@ -1,5 +1,6 @@
 import z from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -8,7 +9,6 @@ import {
   SanitizedVenafiConnectionSchema,
   UpdateVenafiConnectionSchema
 } from "@app/services/app-connection/venafi/venafi-connection-schema";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
@@ -45,7 +45,7 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const { connectionId } = req.params;
 
-      const applications = await server.services.appConnection.venafi.listApplications(connectionId, req.permission);
+      const applications = await server.services.appConnection.venafi.listApplications(connectionId, req.actor);
       return applications;
     }
   });
@@ -81,7 +81,7 @@ export const registerVenafiConnectionRouter = async (server: FastifyZodProvider)
       const templates = await server.services.appConnection.venafi.listIssuingTemplates(
         connectionId,
         applicationId,
-        req.permission
+        req.actor
       );
       return templates;
     }

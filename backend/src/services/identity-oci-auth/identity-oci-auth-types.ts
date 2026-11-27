@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TLoginOciAuthDTO = {
   identityId: string;
@@ -21,7 +21,7 @@ export type TAttachOciAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateOciAuthDTO = {
   identityId: string;
@@ -32,16 +32,16 @@ export type TUpdateOciAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetOciAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeOciAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TOciGetUserResponse = {
   email: string;

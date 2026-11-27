@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { SanitizedRoleSchema } from "../../sanitizedSchemas";
 
@@ -40,8 +40,8 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { roles } = await server.services.role.listRoles({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         data: {}
       });
       await server.services.auditLog.createAuditLog({
@@ -73,8 +73,8 @@ export const registerCertManagerAccessRolesRouter = async (server: FastifyZodPro
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const role = await server.services.role.getRoleBySlug({
-        permission: req.permission,
-        scopeData: { scope: AccessScope.Project, orgId: req.permission.orgId, projectId },
+        actor: req.actor,
+        scopeData: { scope: AccessScope.Project, orgId: req.actor.orgId, projectId },
         selector: { slug: req.params.roleSlug }
       });
       await server.services.auditLog.createAuditLog({

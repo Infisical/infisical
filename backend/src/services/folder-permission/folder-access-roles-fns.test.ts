@@ -2,12 +2,12 @@ import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { ProjectMembershipRole, ProjectType, TAdditionalPrivileges } from "@app/db/schemas";
-import { FOLDER_SCOPED_DENY_RULES } from "@app/ee/services/permission/folder-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/projects/ce/module";
+import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import {
@@ -122,6 +122,11 @@ describe("roleGrantsFolderAccess", () => {
 
   test("no-access grants nothing", () => {
     expect(roleGrantsFolderAccess(builtIn(ProjectMembershipRole.NoAccess), folder)).toBe(false);
+  });
+
+  // KMS crypto operator only has CMEK rules, so it reaches no folder either way.
+  test("built-in KMS cryptographic operator grants no access", () => {
+    expect(roleGrantsFolderAccess(builtIn(ProjectMembershipRole.KmsCryptographicOperator), folder)).toBe(false);
   });
 
   test("custom role scoped by environment and secretPath glob grants access only under that path", () => {

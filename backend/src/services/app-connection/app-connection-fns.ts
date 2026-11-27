@@ -300,6 +300,7 @@ import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } fr
 import { getRedisConnectionListItem, RedisConnectionMethod, validateRedisConnectionCredentials } from "./redis";
 import { RenderConnectionMethod } from "./render/render-connection-enums";
 import { getRenderConnectionListItem, validateRenderConnectionCredentials } from "./render/render-connection-fns";
+import { getRfc2136ConnectionListItem, Rfc2136ConnectionMethod, validateRfc2136ConnectionCredentials } from "./rfc2136";
 import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckConnectionCredentials } from "./rundeck";
 import {
   getS3CompatibleConnectionListItem,
@@ -404,6 +405,7 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.UltraDNS,
   AppConnection.AzureDNS,
   AppConnection.PowerDns,
+  AppConnection.Rfc2136,
   AppConnection.Venafi,
   AppConnection.VenafiTpp,
   AppConnection.NetScaler,
@@ -578,7 +580,8 @@ export const listAppConnectionOptions = async (
     getJiraConnectionListItem(),
     getClickHouseConnectionListItem(),
     getIncidentIoConnectionListItem(),
-    getLinearConnectionListItem()
+    getLinearConnectionListItem(),
+    getRfc2136ConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -876,7 +879,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.IncidentIo]: validateIncidentIoConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Linear]: validateLinearConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Linear]: validateLinearConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Rfc2136]: validateRfc2136ConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -1006,6 +1010,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Key";
     case ChefConnectionMethod.UserKey:
       return "User Key";
+    case Rfc2136ConnectionMethod.TsigKey:
+      return "TSIG Key";
     case QoveryConnectionMethod.AccessToken:
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
@@ -1245,7 +1251,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Jira]: platformManagedCredentialsNotSupported,
   [AppConnection.ClickHouse]: platformManagedCredentialsNotSupported,
   [AppConnection.IncidentIo]: platformManagedCredentialsNotSupported,
-  [AppConnection.Linear]: platformManagedCredentialsNotSupported
+  [AppConnection.Linear]: platformManagedCredentialsNotSupported,
+  [AppConnection.Rfc2136]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

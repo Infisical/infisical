@@ -15,6 +15,8 @@ Each API request is counted against one of the following categories:
 - **Identity creation**: creating a new machine identity in an organization
 - **Project creation**: creating a new project in an organization
 
+Tool calls to the [Infisical MCP server](/documentation/platform/mcp-server) count against the Secret category, per user instead of per client IP address.
+
 ## Limits on Infisical Cloud
 
  A global cap of 600 requests per minute per client IP applies to every endpoint (except the [status endpoint](/api-reference/endpoints/instance/status)).  On top of that, category-specific limits are tracked separately per client IP address.

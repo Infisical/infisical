@@ -9,9 +9,11 @@ import {
   TSecretsInsert,
   TSecretsUpdate
 } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsDataKeyService } from "@app/domains/platform/kms-core/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
-import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
@@ -21,7 +23,6 @@ import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
-import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -82,7 +83,8 @@ export type TCreateSecretDTO = {
   metadata?: {
     source?: string;
   };
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateSecretDTO = {
   secretName: string;
@@ -107,7 +109,8 @@ export type TUpdateSecretDTO = {
   metadata?: {
     source?: string;
   };
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeleteSecretDTO = {
   secretName: string;
@@ -115,7 +118,8 @@ export type TDeleteSecretDTO = {
   path: string;
   environment: string;
   type: "shared" | "personal";
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSecretsDTO = {
   path: string;
@@ -125,7 +129,8 @@ export type TGetSecretsDTO = {
   limit?: number;
   offset?: number;
   abortSignal?: AbortSignal;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetASecretDTO = {
   secretName: string;
@@ -134,12 +139,13 @@ export type TGetASecretDTO = {
   type: "shared" | "personal";
   includeImports?: boolean;
   version?: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetASecretByIdDTO = {
   secretId: string;
   viewSecretValue: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateBulkSecretDTO = {
   path: string;
@@ -161,7 +167,8 @@ export type TCreateBulkSecretDTO = {
       source?: string;
     };
   }>;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateBulkSecretDTO = {
   path: string;
@@ -181,7 +188,8 @@ export type TUpdateBulkSecretDTO = {
     secretReminderRepeatDays?: number | null;
     secretReminderNote?: string | null;
   }>;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeleteBulkSecretDTO = {
   path: string;
@@ -190,7 +198,8 @@ export type TDeleteBulkSecretDTO = {
     type: SecretType;
     secretName: string;
   }>;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export enum SecretsOrderBy {
   Name = "name" // "key" for secrets but using name for use across resources
@@ -218,7 +227,8 @@ export type TGetSecretMetadataDTO = {
   environment: string;
   cursor?: string;
   limit: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSecretsRawDTO = {
   expandSecretReferences?: boolean;
@@ -249,14 +259,16 @@ export type TGetSecretsRawDTO = {
   abortSignal?: AbortSignal;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSecretAccessListDTO = {
   environment: string;
   secretPath: string;
   secretName: string;
   includeAllEntities?: boolean;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetASecretRawDTO = {
   secretName: string;
@@ -271,54 +283,54 @@ export type TGetASecretRawDTO = {
   projectId: string;
   // Called with each secret in the project a reference resolved to, a personal override included.
   onSecretReferenced?: (secretId: string) => void;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetASecretByIdRawDTO = {
   secretId: string;
   viewSecretValue: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TCreateSecretRawDTO = TProjectPermission & {
-  secretName: string;
-  secretPath: string;
-  environment: string;
-  secretValue: string;
-  type: SecretType;
-  tagIds?: string[];
-  secretComment?: string;
-  skipMultilineEncoding?: boolean | null;
-  secretReminderRepeatDays?: number | null;
-  secretReminderNote?: string | null;
-  secretMetadata?: ResourceMetadataWithEncryptionDTO;
-};
-
-export type TUpdateSecretRawDTO = TProjectPermission & {
-  secretPath: string;
-  environment: string;
-  secretName: string;
-  secretValue?: string;
-  newSecretName?: string;
-  secretComment?: string;
-  type: SecretType;
-  tagIds?: string[];
-  skipMultilineEncoding?: boolean | null;
-  secretReminderRepeatDays?: number | null;
-  secretReminderNote?: string | null;
-  secretReminderRecipients?: string[] | null;
-  metadata?: {
-    source?: string;
+export type TCreateSecretRawDTO = { projectId: string } & TActorInput & {
+    secretName: string;
+    secretPath: string;
+    environment: string;
+    secretValue: string;
+    type: SecretType;
+    tagIds?: string[];
+    secretComment?: string;
+    skipMultilineEncoding?: boolean | null;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
   };
-  secretMetadata?: ResourceMetadataWithEncryptionDTO;
-};
 
-export type TDeleteSecretRawDTO = TProjectPermission & {
-  secretPath: string;
-  environment: string;
-  secretName: string;
-  type: SecretType;
-};
+export type TUpdateSecretRawDTO = { projectId: string } & TActorInput & {
+    secretPath: string;
+    environment: string;
+    secretName: string;
+    secretValue?: string;
+    newSecretName?: string;
+    secretComment?: string;
+    type: SecretType;
+    tagIds?: string[];
+    skipMultilineEncoding?: boolean | null;
+    secretReminderRepeatDays?: number | null;
+    secretReminderNote?: string | null;
+    secretReminderRecipients?: string[] | null;
+    metadata?: {
+      source?: string;
+    };
+    secretMetadata?: ResourceMetadataWithEncryptionDTO;
+  };
 
-export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
+export type TDeleteSecretRawDTO = { projectId: string } & TActorInput & {
+    secretPath: string;
+    environment: string;
+    secretName: string;
+    type: SecretType;
+  };
+
+export type TCreateManySecretRawDTO = TActorInput & {
   secretPath: string;
   projectId?: string;
   projectSlug?: string;
@@ -337,7 +349,7 @@ export type TCreateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   }[];
 };
 
-export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
+export type TUpdateManySecretRawDTO = TActorInput & {
   secretPath: string;
   projectId?: string;
   projectSlug?: string;
@@ -357,7 +369,7 @@ export type TUpdateManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   }[];
 };
 
-export type TDeleteManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
+export type TDeleteManySecretRawDTO = TActorInput & {
   secretPath: string;
   projectId?: string;
   projectSlug?: string;
@@ -368,7 +380,7 @@ export type TDeleteManySecretRawDTO = Omit<TProjectPermission, "projectId"> & {
   }[];
 };
 
-export type TGetSecretVersionsDTO = Omit<TProjectPermission, "projectId"> & {
+export type TGetSecretVersionsDTO = TActorInput & {
   limit?: number;
   offset?: number;
   secretId: string;
@@ -414,7 +426,7 @@ export type TAttachSecretTagsDTO = {
   environment: string;
   path: string;
   type: SecretType;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TFnSecretBulkDelete = {
   folderId: string;
@@ -450,7 +462,7 @@ export type THandleReminderDTO = {
   oldSecret: TPartialSecret;
   projectId: string;
   // Whoever is updating the secret, as whom the reminder is saved.
-  actor: TGenericPermission;
+  actor: TActorContext;
 };
 
 export type TRemoveSecretReminderDTO = {
@@ -460,7 +472,7 @@ export type TRemoveSecretReminderDTO = {
   deleteRecipients?: boolean;
 };
 
-export type TBackFillSecretReferencesDTO = TProjectPermission;
+export type TBackFillSecretReferencesDTO = { projectId: string } & TActorInput;
 
 // ---
 
@@ -580,14 +592,14 @@ export type TMoveSecretsDTO = {
   destinationSecretPath: string;
   secretIds: string[];
   shouldOverwrite: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export enum SecretProtectionType {
   Approval = "approval",
   Direct = "direct"
 }
 
-export type TStartSecretsV2MigrationDTO = TProjectPermission;
+export type TStartSecretsV2MigrationDTO = { projectId: string } & TActorInput;
 
 export type TProcessNewCommitRawDTO = {
   secrets: {
@@ -621,4 +633,4 @@ export type TProcessNewCommitRawDTO = {
 
 export type TRedactSecretVersionValueDTO = {
   versionId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

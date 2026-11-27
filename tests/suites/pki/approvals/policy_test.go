@@ -1,12 +1,16 @@
 package approvals_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
+	"github.com/Infisical/infisical/tests/fixture/pki"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -99,7 +103,7 @@ func TestCertificateApproval_BreakGlass(t *testing.T) {
 		tn := h.NewTenant(t)
 		g := newGated(t, tn, separateApproverOnly)
 		reqID := g.request(t).JSON200.CertificateRequestId
-		approval := g.approvalFor(t, reqID)
+		approval := pki.ApprovalFor(t, g.App, reqID)
 
 		// Action
 		res, err := g.Operator.API.BreakGlassCertRequestApprovalRequestWithResponse(t.Context(), approval, api.BreakGlassCertRequestApprovalRequestJSONRequestBody{
@@ -115,5 +119,42 @@ func TestCertificateApproval_BreakGlass(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNilf(t, got.JSON200, "reading the approval request returned %d: %s", got.StatusCode(), apierr.Body(got.Body))
 		require.False(t, got.JSON200.Request.IsBreakGlass != nil && *got.JSON200.Request.IsBreakGlass)
+	})
+}
+
+func TestCertificateApprovalPolicy_KnownIssues(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should refuse a step needing more approvals than it has approvers and create no policy", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Such a step can never complete, so every request the policy matches is held for
+			good. Revocation and secret access policies already refuse it with this message.`)
+
+		// Setup
+		tn := h.NewTenant(t)
+		g := pki.NewGraph(t, tn)
+		approver := pki.NewMember(t, g.App, "approver", "admin")
+		var body api.CreateCertRequestApprovalPolicyJSONRequestBody
+		require.NoError(t, json.Unmarshal(fmt.Appendf(nil, `{
+			"name": "policy-%s", "scope": "pki-application", "scopeId": %q,
+			"conditions": [{"profileNames": [%q]}],
+			"steps": [{"requiredApprovals": 2, "approvers": [{"type": "user", "id": %q}]}]
+		}`, id.Short(), g.App.ID, g.Profile.Slug, approver.ID), &body))
+
+		// Action
+		res, err := tn.Admin.API.CreateCertRequestApprovalPolicyWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "creating the policy: %s", apierr.Body(res.Body))
+		require.Equal(t, "Step 1 requires 2 approvals but only has 1 approver. Add approvers to the step or lower its required approvals.", apierr.Message(res.Body))
+		list, err := tn.Admin.API.ListCertRequestApprovalPoliciesWithResponse(t.Context(), &api.ListCertRequestApprovalPoliciesParams{
+			Scope: api.ListCertRequestApprovalPoliciesParamsScopePkiApplication,
+			Id:    g.App.ID,
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, list.JSON200, "listing approval policies returned %d: %s", list.StatusCode(), apierr.Body(list.Body))
+		require.Empty(t, list.JSON200.Policies)
 	})
 }

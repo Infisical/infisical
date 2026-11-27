@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TLoginGcpAuthDTO = {
   identityId: string;
@@ -17,7 +17,7 @@ export type TAttachGcpAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateGcpAuthDTO = {
   identityId: string;
@@ -30,11 +30,11 @@ export type TUpdateGcpAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetGcpAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 type TComputeEngineDetails = {
   instance_creation_timestamp: number;
@@ -83,4 +83,4 @@ export type TDecodedGcpIamAuthJwt = {
 export type TRevokeGcpAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

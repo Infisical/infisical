@@ -2,6 +2,7 @@ import { AnyAbility, ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
+import { PermissionDeniedError } from "@app/domains/lib/errors";
 import { PermissionBoundaryError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 
@@ -37,22 +38,49 @@ const readProjectId = (source: unknown) => {
   return typeof projectId === "string" ? projectId : undefined;
 };
 
-// RBAC denials are CASL ForbiddenError or PermissionBoundaryError, and onError runs before the
+// The permission an RBAC denial names (the domains' PermissionDeniedError, CASL ForbiddenError or
+// PermissionBoundaryError), or undefined for any other error.
+export const getPermissionDenialDetails = (error: unknown) => {
+  if (error instanceof PermissionDeniedError && error.denial) {
+    const { denial } = error;
+    return {
+      permissionAction: denial.action,
+      permissionSubject: denial.subject,
+      permissionSubjectDetails: pickSubjectDetails(denial.subjectFields),
+      // Domain denials log the name CASL denials always had, so the audit log reads the same either way.
+      errorName: "ForbiddenError"
+    };
+  }
+
+  if (error instanceof ForbiddenError) {
+    const caslError = error as ForbiddenError<AnyAbility>;
+    return {
+      permissionAction: caslError.action ? String(caslError.action) : undefined,
+      permissionSubject: caslError.subjectType ? String(caslError.subjectType) : undefined,
+      permissionSubjectDetails: pickSubjectDetails(caslError.subject),
+      errorName: error.name
+    };
+  }
+
+  if (error instanceof PermissionBoundaryError || (error instanceof PermissionDeniedError && error.isBoundaryRefusal)) {
+    const missing = readMissingPermission((error as { details?: unknown }).details);
+    return { permissionAction: missing?.action, permissionSubject: missing?.subject, errorName: error.name };
+  }
+};
+
+// RBAC denials are the domains' PermissionDeniedError, CASL ForbiddenError or PermissionBoundaryError, and onError runs before the
 // error handler, so this hook catches all of them. ForbiddenRequestError is skipped: it's mostly
 // auth-mode, plan, admin-only and ownership checks with no action/subject, so it'd just be noise.
 // Services that call permission.can() by hand and throw ForbiddenRequestError aren't captured,
 // switch them to throwUnlessCan if you want them recorded.
 export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvider) => {
   server.addHook("onError", async (req, _reply, error) => {
-    const isCaslDenial = error instanceof ForbiddenError;
-    if (!isCaslDenial && !(error instanceof PermissionBoundaryError)) return;
+    const denial = getPermissionDenialDetails(error);
+    if (!denial) return;
     if (!req.auth || !req.auditLogInfo?.actor) return;
 
-    const orgId = req.auditLogInfo.orgId ?? req.permission?.orgId;
+    const orgId = req.auditLogInfo.orgId ?? req.actor?.orgId;
     if (!orgId) return;
-
-    const caslError = isCaslDenial ? (error as unknown as ForbiddenError<AnyAbility>) : undefined;
-    const missing = isCaslDenial ? undefined : readMissingPermission((error as PermissionBoundaryError).details);
 
     const { schema } = req.routeOptions;
     const projectId =
@@ -66,10 +94,7 @@ export const injectPermissionDeniedAuditLog = fp(async (server: FastifyZodProvid
       orgId,
       projectId,
       metadata: {
-        permissionAction: caslError?.action ? String(caslError.action) : missing?.action,
-        permissionSubject: caslError?.subjectType ? String(caslError.subjectType) : missing?.subject,
-        permissionSubjectDetails: pickSubjectDetails(caslError?.subject),
-        errorName: error.name,
+        ...denial,
         route: req.routeOptions.url,
         method: req.method
       }

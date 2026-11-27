@@ -1,5 +1,5 @@
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsService } from "@app/domains/platform/organizations/ce/module";
 import { logger } from "@app/lib/logger";
 
 import { TAgentVaultAccessService } from "../../../ce/services/dependencies";
@@ -9,7 +9,7 @@ import { TAgentVaultFreeUsageCache } from "../dependencies";
 export class AgentVaultAccessService implements TAgentVaultAccessService {
   constructor(
     private readonly licenseService: Pick<TLicenseService, "getPlan" | "getInstanceEntitlements">,
-    private readonly organizationsProjectsService: Pick<TOrganizationsProjectsService, "resolveRootOrgId">,
+    private readonly organizationsService: Pick<TOrganizationsService, "resolveRootOrgId">,
     private readonly freeUsageCache: Pick<TAgentVaultFreeUsageCache, "read">
   ) {}
 
@@ -28,7 +28,7 @@ export class AgentVaultAccessService implements TAgentVaultAccessService {
 
   // Null when the count can't be read, which allows: a key store outage never blocks brokering.
   private async readFreeUsage(orgId: string, now: Date): Promise<number | null> {
-    const rootOrgId = await this.organizationsProjectsService.resolveRootOrgId(orgId);
+    const rootOrgId = await this.organizationsService.resolveRootOrgId(orgId);
     try {
       return await this.freeUsageCache.read(rootOrgId, now);
     } catch (error) {

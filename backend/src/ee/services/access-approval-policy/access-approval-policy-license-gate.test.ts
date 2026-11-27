@@ -1,10 +1,11 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { Plan } from "@app/domains/platform/license/ce/module";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { EnforcementLevel } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { secretAccessApprovalPolicyServiceFactory } from "./access-approval-policy-service";
 import { ApproverType } from "./access-approval-policy-types";
@@ -14,18 +15,10 @@ const PROJECT_ID = "project-id";
 const POLICY_ID = "policy-id";
 
 const actor = {
-  actor: ActorType.USER as const,
-  actorId: "actor-id",
-  actorAuthMethod: null,
-  actorOrgId: ORG_ID,
-  orgActor: {
-    type: ActorType.USER,
-    id: "actor-id",
-    authMethod: null,
-    orgId: ORG_ID,
-    rootOrgId: ORG_ID,
-    parentOrgId: ORG_ID
-  }
+  actor: {
+    principal: { type: ActorType.USER, id: "actor-id", authMethod: null },
+    org: { id: ORG_ID, rootOrgId: ORG_ID, parentOrgId: ORG_ID }
+  } as unknown as TActorContext
 };
 
 const createService = (secretApproval: boolean) => {
@@ -35,10 +28,10 @@ const createService = (secretApproval: boolean) => {
     projectDAL: {
       findProjectBySlug: vi.fn().mockResolvedValue({ id: PROJECT_ID, orgId: ORG_ID })
     },
-    permissionService: {
-      // the gate sits behind the authorization check, so the ability must allow the action
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
+    secretsPermissionService: {
+      // the gate runs after the authz check, so the permission has to allow the action
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })
       })
     },
     licenseService: { getPlan },

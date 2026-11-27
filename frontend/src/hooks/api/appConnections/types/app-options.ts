@@ -415,6 +415,10 @@ export type TCoolifyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Coolify;
 };
 
+export type TRfc2136ConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Rfc2136;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -515,7 +519,8 @@ export type TAppConnectionOption =
   | TIncidentIoConnectionOption
   | TLinearConnectionOption
   | TJenkinsConnectionOption
-  | TCoolifyConnectionOption;
+  | TCoolifyConnectionOption
+  | TRfc2136ConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -618,4 +623,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Linear]: TLinearConnectionOption;
   [AppConnection.Jenkins]: TJenkinsConnectionOption;
   [AppConnection.Coolify]: TCoolifyConnectionOption;
+  [AppConnection.Rfc2136]: TRfc2136ConnectionOption;
 };

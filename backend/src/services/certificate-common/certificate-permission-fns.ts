@@ -1,19 +1,44 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TApplicationPermissionService
+} from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+  ProjectPermissionSub,
+  ProjectPermission,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+
+// ACME, EST, SCEP and MS autoenrollment clients hold no project permissions, so they're checked against their
+// profile instead of the permission functions.
+export type TCertificateEnrollmentActor = {
+  type:
+    | ActorType.ACME_ACCOUNT
+    | ActorType.EST_ACCOUNT
+    | ActorType.SCEP_ACCOUNT
+    | ActorType.MICROSOFT_AUTOENROLLMENT_ACCOUNT;
+  // The ACME account, or the profile for EST, SCEP and Microsoft autoenrollment.
+  id: string;
+  orgId: string;
+};
+
+export type TCertificateIssuanceCaller =
+  | { actor: TActorContext; enrollment?: undefined }
+  | { actor?: undefined; enrollment: TCertificateEnrollmentActor };
+
+// For writing issuance records (requester, telemetry, metadata org).
+export const flatActorOfCaller = (caller: TCertificateIssuanceCaller) =>
+  caller.actor
+    ? { actor: caller.actor.principal.type, actorId: caller.actor.principal.id, actorOrgId: caller.actor.org.id }
+    : { actor: caller.enrollment.type, actorId: caller.enrollment.id, actorOrgId: caller.enrollment.orgId };
 
 type TCertificateSubjectFields = {
   id: string;
@@ -26,11 +51,9 @@ type TCertificateSubjectFields = {
 
 type TAssertCanEditCertificateDTO = {
   certificate: TCertificateSubjectFields;
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  actor: TActorContext;
+  projectPermissionService: TProjectPermissionService;
+  applicationPermissionService: TApplicationPermissionService;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   tx?: Knex;
 };
@@ -38,34 +61,28 @@ type TAssertCanEditCertificateDTO = {
 const assertCertificatePermission = async ({
   certificate,
   actor,
-  actorId,
-  actorAuthMethod,
-  actorOrgId,
-  permissionService,
+  projectPermissionService,
+  applicationPermissionService,
   resourceMetadataDAL,
   tx,
   resourceAction,
   projectAction,
   extraSubjectFields
 }: TAssertCanEditCertificateDTO & {
-  resourceAction: ResourcePermissionCertificateActions;
+  resourceAction: ApplicationCertificatePermissionActions;
   projectAction: ProjectPermissionCertificateActions;
   extraSubjectFields?: Record<string, string | undefined>;
 }): Promise<{
   certMetadata: { key: string; value: string }[];
-  projectPermission?: MongoAbility;
+  projectPermission?: ProjectPermission;
 }> => {
   if (certificate.applicationId) {
-    const { permission } = await permissionService.getResourcePermission({
+    const permission = await applicationPermissionService.getApplicationPermission({
       actor,
-      actorId,
       projectId: certificate.projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: certificate.applicationId,
-      actorAuthMethod,
-      actorOrgId
+      applicationId: certificate.applicationId
     });
-    ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.Certificates);
+    permission.assert({ action: resourceAction, subject: ApplicationPermissionSub.Certificates });
 
     return { certMetadata: [] };
   }
@@ -73,25 +90,23 @@ const assertCertificatePermission = async ({
   const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id }, { tx });
   const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-  const { permission } = await permissionService.getProjectPermission({
+  const permission = await projectPermissionService.getProjectPermission({
     actor,
-    actorId,
     projectId: certificate.projectId,
-    actorAuthMethod,
-    actorOrgId,
-    actionProjectType: ActionProjectType.CertificateManager
+    type: ProjectType.CertificateManager
   });
 
-  ForbiddenError.from(permission).throwUnlessCan(
-    projectAction,
-    subject(ProjectPermissionSub.Certificates, {
+  permission.assert({
+    action: projectAction,
+    subject: ProjectPermissionSub.Certificates,
+    fields: {
       commonName: certificate.commonName ?? undefined,
       altNames: certificate.altNames?.split(",").map((s) => s.trim()),
       serialNumber: certificate.serialNumber ?? undefined,
       ...extraSubjectFields,
       metadata: certMetadata
-    })
-  );
+    }
+  });
 
   return { certMetadata, projectPermission: permission };
 };
@@ -99,7 +114,7 @@ const assertCertificatePermission = async ({
 export const assertCanEditCertificate = (dto: TAssertCanEditCertificateDTO) =>
   assertCertificatePermission({
     ...dto,
-    resourceAction: ResourcePermissionCertificateActions.Edit,
+    resourceAction: ApplicationCertificatePermissionActions.Edit,
     projectAction: ProjectPermissionCertificateActions.Edit
   });
 
@@ -111,7 +126,7 @@ export const assertCanRevokeCertificate = async ({ certificate, ...dto }: TAsser
   await assertCertificatePermission({
     ...dto,
     certificate,
-    resourceAction: ResourcePermissionCertificateActions.Delete,
+    resourceAction: ApplicationCertificatePermissionActions.Delete,
     projectAction: ProjectPermissionCertificateActions.Delete,
     extraSubjectFields: {
       friendlyName: certificate.friendlyName ?? undefined,
@@ -131,25 +146,21 @@ export const assertCanRevokeOrRequestRevocation = async (
     return { canRevokeDirectly: true };
   }
 
-  const { permission } = await dto.permissionService.getResourcePermission({
+  const permission = await dto.applicationPermissionService.getApplicationPermission({
     actor: dto.actor,
-    actorId: dto.actorId,
     projectId: certificate.projectId,
-    resourceType: ResourceType.CertificateApplication,
-    resourceId: certificate.applicationId,
-    actorAuthMethod: dto.actorAuthMethod,
-    actorOrgId: dto.actorOrgId
+    applicationId: certificate.applicationId
   });
 
-  const canRevokeDirectly = permission.can(
-    ResourcePermissionCertificateActions.Delete,
-    ResourcePermissionSub.Certificates
-  );
+  const canRevokeDirectly = permission.can({
+    action: ApplicationCertificatePermissionActions.Delete,
+    subject: ApplicationPermissionSub.Certificates
+  });
   if (!canRevokeDirectly) {
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionCertificateActions.RequestRevocation,
-      ResourcePermissionSub.Certificates
-    );
+    permission.assert({
+      action: ApplicationCertificatePermissionActions.RequestRevocation,
+      subject: ApplicationPermissionSub.Certificates
+    });
   }
 
   return { canRevokeDirectly };
@@ -162,19 +173,20 @@ export const assertCanEditCertificateResult = ({
   serialNumber,
   metadata
 }: {
-  projectPermission: MongoAbility;
+  projectPermission: ProjectPermission;
   commonName?: string | null;
   altNames?: string[];
   serialNumber?: string | null;
   metadata: { key: string; value: string }[];
 }) => {
-  ForbiddenError.from(projectPermission).throwUnlessCan(
-    ProjectPermissionCertificateActions.Edit,
-    subject(ProjectPermissionSub.Certificates, {
+  projectPermission.assert({
+    action: ProjectPermissionCertificateActions.Edit,
+    subject: ProjectPermissionSub.Certificates,
+    fields: {
       commonName: commonName ?? undefined,
       altNames,
       serialNumber: serialNumber ?? undefined,
       metadata
-    })
-  );
+    }
+  });
 };

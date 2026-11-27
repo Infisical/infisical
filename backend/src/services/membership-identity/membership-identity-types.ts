@@ -1,5 +1,5 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export interface TMembershipIdentityScopeFactory {
   onCreateMembershipIdentityGuard: (arg: TCreateMembershipIdentityDTO) => Promise<void>;
@@ -17,7 +17,7 @@ export interface TMembershipIdentityScopeFactory {
 }
 
 export type TCreateMembershipIdentityDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     identityId: string;
@@ -32,7 +32,7 @@ export type TCreateMembershipIdentityDTO = {
 };
 
 export type TUpdateMembershipIdentityDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     identityId: string;
@@ -51,7 +51,7 @@ export type TUpdateMembershipIdentityDTO = {
 };
 
 export type TListMembershipIdentityDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     limit?: number;
@@ -62,7 +62,7 @@ export type TListMembershipIdentityDTO = {
 };
 
 export type TDeleteMembershipIdentityDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     identityId: string;
@@ -70,7 +70,7 @@ export type TDeleteMembershipIdentityDTO = {
 };
 
 export type TGetMembershipIdentityByIdentityIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     identityId: string;

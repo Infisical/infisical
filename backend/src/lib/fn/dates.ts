@@ -6,3 +6,7 @@ export const getTimeDifferenceInSeconds = (lhsTimestamp: string, rhsTimestamp: s
   const rhs = new Date(rhsTimestamp);
   return Math.floor((Number(lhs) - Number(rhs)) / 1000);
 };
+
+// Dates come back from the cache as strings; null and undefined pass through.
+export const asDate = <T extends Date | string | null | undefined>(value: T) =>
+  (value ? new Date(value) : value) as T extends string ? Date : T;

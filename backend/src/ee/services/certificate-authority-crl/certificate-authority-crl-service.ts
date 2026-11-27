@@ -1,16 +1,15 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { TKmsDataKeyService, TKmsKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
-import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  TProjectPermissionService
+} from "@app/domains/platform/projects/ce/module";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
@@ -43,7 +42,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   kmsDataKeyService: TKmsDataKeyService;
   kmsKeyService: TKmsKeyService;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectPermissionService: TProjectPermissionService;
   licenseService: TLicenseService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
@@ -59,7 +58,7 @@ export const certificateAuthorityCrlServiceFactory = ({
   projectDAL,
   kmsDataKeyService,
   kmsKeyService,
-  permissionService,
+  projectPermissionService,
   licenseService,
   caKeySourceService,
   keyStore,
@@ -95,29 +94,20 @@ export const certificateAuthorityCrlServiceFactory = ({
   /**
    * Returns a list of CRL ids for CA with id [caId]
    */
-  const getCaCrls: TCertificateAuthorityCrlServiceFactory["getCaCrls"] = async ({
-    caId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }) => {
+  const getCaCrls: TCertificateAuthorityCrlServiceFactory["getCaCrls"] = async ({ caId, actor }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities
+    });
 
     const caCrls = await certificateAuthorityCrlDAL.find({ caId: ca.id }, { sort: [["createdAt", "desc"]] });
 
@@ -150,31 +140,26 @@ export const certificateAuthorityCrlServiceFactory = ({
 
   const regenerateCrl: TCertificateAuthorityCrlServiceFactory["regenerateCrl"] = async ({
     caId,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     auditLogInfo
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     const project = ca?.internalCa?.id ? await projectDAL.findById(ca.projectId) : undefined;
-    if (!ca?.internalCa?.id || !project || project.orgId !== actorOrgId) {
+    if (!ca?.internalCa?.id || !project || project.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectPermissionService.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Edit,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Edit,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     if (!(await isCaCrlAllowed({ orgId: project.orgId, licenseService }))) {
       throw new BadRequestError({

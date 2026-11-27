@@ -24,6 +24,7 @@ func TestOIDCConfig_Create(t *testing.T) {
 
 		// Setup
 		tn := h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, tn)
 		body := configBody(t, tn)
 
 		// Action
@@ -33,12 +34,29 @@ func TestOIDCConfig_Create(t *testing.T) {
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.NotContains(t, string(res.Body), body.ClientSecret)
-		stored := readConfig(t, tn, tn.Admin)
+		stored := readConfig(t, tn.Admin)
 		require.Equal(t, *body.DiscoveryURL, *stored.DiscoveryURL)
 		require.Equal(t, "discoveryURL", stored.ConfigurationType)
 		require.Equal(t, body.ClientId, stored.ClientId)
 		require.Equal(t, body.ClientSecret, stored.ClientSecret)
 		require.True(t, stored.IsActive)
+	})
+
+	t.Run("should return a conflict and keep the existing config when the organization already has one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		o := setup(t)
+		before := readConfig(t, o.Tenant.Admin)
+
+		// Action
+		res, err := o.Tenant.Admin.API.CreateOidcConfigWithResponse(t.Context(), configBody(t, o.Tenant))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "An OIDC configuration already exists")
+		require.Equal(t, before, readConfig(t, o.Tenant.Admin))
 	})
 
 	t.Run("should reject creation when the plan lacks OIDC SSO", func(t *testing.T) {
@@ -54,6 +72,23 @@ func TestOIDCConfig_Create(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, string(res.Body), "Failed to create OIDC SSO configuration due to plan restriction")
+		requireNoConfig(t, tn)
+	})
+
+	t.Run("should reject creation when the organization has no verified email domain", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.CreateOidcConfigWithResponse(t.Context(), configBody(t, tn))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.NotNil(t, res.JSON400)
+		require.Equal(t, "SSO_EMAIL_DOMAIN_NOT_VERIFIED", res.JSON400.Error)
 		requireNoConfig(t, tn)
 	})
 
@@ -73,18 +108,21 @@ func TestOIDCConfig_Create(t *testing.T) {
 		requireNoConfig(t, tn)
 	})
 
-	t.Run("should reject creation when the admin belongs to another organization", func(t *testing.T) {
+	t.Run("should create the config in the caller's organization and leave other organizations untouched", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		mine, theirs := h.NewTenant(t), h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, theirs)
+		body := configBody(t, mine)
 
 		// Action
-		res, err := theirs.Admin.API.CreateOidcConfigWithResponse(t.Context(), configBody(t, mine))
+		res, err := theirs.Admin.API.CreateOidcConfigWithResponse(t.Context(), body)
 
 		// Assert
 		require.NoError(t, err)
-		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, body.ClientId, readConfig(t, theirs.Admin).ClientId)
 		requireNoConfig(t, mine)
 	})
 
@@ -118,7 +156,7 @@ func TestOIDCConfig_Read(t *testing.T) {
 		tn := h.NewTenant(t)
 
 		// Action
-		res, err := tn.Admin.API.GetOidcConfigWithResponse(t.Context(), &api.GetOidcConfigParams{OrganizationId: tn.OrgID.String()})
+		res, err := tn.Admin.API.GetOidcConfigWithResponse(t.Context())
 
 		// Assert
 		require.NoError(t, err)
@@ -134,7 +172,7 @@ func TestOIDCConfig_Read(t *testing.T) {
 		member := o.Tenant.NewUser(t)
 
 		// Action
-		res, err := member.API.GetOidcConfigWithResponse(t.Context(), &api.GetOidcConfigParams{OrganizationId: o.Tenant.OrgID.String()})
+		res, err := member.API.GetOidcConfigWithResponse(t.Context())
 
 		// Assert
 		require.NoError(t, err)
@@ -150,7 +188,7 @@ func TestOIDCConfig_Read(t *testing.T) {
 		identity := o.Tenant.NewMachineIdentity(t, harness.OrgRole("admin"))
 
 		// Action
-		stored := readConfig(t, o.Tenant, identity)
+		stored := readConfig(t, identity)
 
 		// Assert
 		require.Equal(t, o.OP.DiscoveryURL()+"/.well-known/openid-configuration", *stored.DiscoveryURL)
@@ -159,6 +197,24 @@ func TestOIDCConfig_Read(t *testing.T) {
 
 func TestOIDCConfig_Update(t *testing.T) {
 	t.Parallel()
+
+	t.Run("should return not found and leave the organization untouched when there is no config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := harness.From(t).NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
+			IsActive: new(true),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "OIDC configuration for organization")
+		requireNoConfig(t, tn)
+	})
 
 	t.Run("should apply new provider settings when an admin updates the config", func(t *testing.T) {
 		t.Parallel()
@@ -169,7 +225,6 @@ func TestOIDCConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      o.Tenant.OrgID.String(),
 			DiscoveryURL:        replacement.DiscoveryURL,
 			ClientId:            new(replacement.ClientId),
 			ClientSecret:        new(replacement.ClientSecret),
@@ -179,7 +234,7 @@ func TestOIDCConfig_Update(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		stored := readConfig(t, o.Tenant, o.Tenant.Admin)
+		stored := readConfig(t, o.Tenant.Admin)
 		require.Equal(t, *replacement.DiscoveryURL, *stored.DiscoveryURL)
 		require.Equal(t, replacement.ClientId, stored.ClientId)
 		require.Equal(t, replacement.ClientSecret, stored.ClientSecret)
@@ -195,7 +250,6 @@ func TestOIDCConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId:      o.Tenant.OrgID.String(),
 			AllowedEmailDomains: new("other.test"),
 		})
 
@@ -203,7 +257,7 @@ func TestOIDCConfig_Update(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, string(res.Body), "Failed to update OIDC SSO configuration due to plan restriction")
-		require.Empty(t, *readConfig(t, o.Tenant, o.Tenant.Admin).AllowedEmailDomains)
+		require.Empty(t, *readConfig(t, o.Tenant.Admin).AllowedEmailDomains)
 	})
 
 	t.Run("should reject an update and keep the config when the actor is a member", func(t *testing.T) {
@@ -215,14 +269,13 @@ func TestOIDCConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := member.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId: o.Tenant.OrgID.String(),
-			IsActive:       new(false),
+			IsActive: new(false),
 		})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
-		require.True(t, readConfig(t, o.Tenant, o.Tenant.Admin).IsActive)
+		require.True(t, readConfig(t, o.Tenant.Admin).IsActive)
 	})
 
 	t.Run("should refuse to start a login when the config is deactivated", func(t *testing.T) {
@@ -231,8 +284,7 @@ func TestOIDCConfig_Update(t *testing.T) {
 		// Setup
 		o := setup(t)
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId: o.Tenant.OrgID.String(),
-			IsActive:       new(false),
+			IsActive: new(false),
 		})
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
@@ -257,14 +309,64 @@ func TestOIDCConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := o.Tenant.Admin.API.UpdateOidcConfigWithResponse(t.Context(), api.UpdateOidcConfigJSONRequestBody{
-			OrganizationId: o.Tenant.OrgID.String(),
-			ClientSecret:   new(id.Short()),
+			ClientSecret: new(id.Short()),
 		})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.False(t, authEnforced(t, o.Tenant))
+	})
+}
+
+func TestOIDCConfig_Delete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should remove the config and turn off SSO enforcement when an admin deletes it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		o := setup(t)
+		enforce(t, o)
+
+		// Action
+		res, err := o.Tenant.Admin.API.DeleteOidcConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		requireNoConfig(t, o.Tenant)
+		require.False(t, authEnforced(t, o.Tenant))
+	})
+
+	t.Run("should return not found when the organization has no config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := harness.From(t).NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.DeleteOidcConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s", apierr.Body(res.Body))
+	})
+
+	t.Run("should reject the delete and keep the config when the actor is a member", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		o := setup(t)
+		member := o.Tenant.NewUser(t)
+
+		// Action
+		res, err := member.API.DeleteOidcConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.True(t, readConfig(t, o.Tenant.Admin).IsActive)
 	})
 }
 
@@ -276,7 +378,6 @@ func configBody(t *testing.T, tn *harness.Tenant) api.CreateOidcConfigJSONReques
 	op := oidcidp.Open(t, fixture.FakenetAdmin(t, tn), scope)
 	op.Seed(t, oidcidp.Client(clientID, secret))
 	return api.CreateOidcConfigJSONRequestBody{
-		OrganizationId:    tn.OrgID.String(),
 		ConfigurationType: api.CreateOidcConfigJSONBodyConfigurationTypeDiscoveryURL,
 		DiscoveryURL:      new(op.DiscoveryURL() + "/.well-known/openid-configuration"),
 		ClientId:          clientID,
@@ -292,9 +393,9 @@ type storedConfig struct {
 	IsActive                          bool
 }
 
-func readConfig(t *testing.T, tn *harness.Tenant, actor *harness.Principal) storedConfig {
+func readConfig(t *testing.T, actor *harness.Principal) storedConfig {
 	t.Helper()
-	res, err := actor.API.GetOidcConfigWithResponse(t.Context(), &api.GetOidcConfigParams{OrganizationId: tn.OrgID.String()})
+	res, err := actor.API.GetOidcConfigWithResponse(t.Context())
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "reading OIDC config: %s", apierr.Body(res.Body))
 	empty := ""
@@ -313,7 +414,7 @@ func readConfig(t *testing.T, tn *harness.Tenant, actor *harness.Principal) stor
 
 func requireNoConfig(t *testing.T, tn *harness.Tenant) {
 	t.Helper()
-	res, err := tn.Admin.API.GetOidcConfigWithResponse(t.Context(), &api.GetOidcConfigParams{OrganizationId: tn.OrgID.String()})
+	res, err := tn.Admin.API.GetOidcConfigWithResponse(t.Context())
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusNotFound, res.StatusCode(), "an OIDC config exists: %s", apierr.Body(res.Body))
 }

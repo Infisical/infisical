@@ -24,9 +24,9 @@ import {
   SanitizedSumoLogicProviderSchema,
   SumoLogicProviderListItemSchema
 } from "@app/ee/services/audit-log-stream/sumo-logic/sumo-logic-provider-schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedAuditLogStreamSchema = z.union([
   SanitizedCustomProviderSchema,
@@ -85,7 +85,7 @@ export const registerAuditLogStreamRouter = async (server: FastifyZodProvider) =
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const auditLogStreams = await server.services.auditLogStream.list(req.permission);
+      const auditLogStreams = await server.services.auditLogStream.list(req.actor);
 
       return { auditLogStreams };
     }

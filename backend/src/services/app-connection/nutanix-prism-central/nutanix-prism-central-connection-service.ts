@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { listNutanixClusters } from "./nutanix-prism-central-connection-fns";
@@ -12,7 +12,7 @@ import {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TNutanixPrismCentralConnection>;
 
 export const nutanixPrismCentralConnectionService = (
@@ -22,7 +22,7 @@ export const nutanixPrismCentralConnectionService = (
 ) => {
   const listClusters = async (
     { connectionId }: { connectionId: string },
-    actor: OrgServiceActor
+    actor: TActorContext
   ): Promise<{ id: string; name: string }[]> => {
     const appConnection = await getAppConnection(AppConnection.NutanixPrismCentral, connectionId, actor);
     const effectiveGatewayId = gatewayPoolService
@@ -37,7 +37,7 @@ export const nutanixPrismCentralConnectionService = (
         ...appConnection,
         gatewayId: effectiveGatewayId,
         gatewayPoolId: null,
-        orgId: actor.orgId
+        orgId: actor.org.id
       } as TNutanixPrismCentralConnectionConfig,
       gatewayV2Service
     );

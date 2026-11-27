@@ -1,8 +1,8 @@
 import Fastify, { FastifyInstance } from "fastify";
 import { vi } from "vitest";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "@app/server/plugins/fastify-zod";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerSecretRequestsRouter } from "./secret-requests-router";
 
@@ -34,7 +34,7 @@ const buildServer = async () => {
   app.addHook("onRequest", async (req) => {
     Object.assign(req, {
       auth: { authMode: AuthMode.JWT },
-      permission: { orgId: "org-id", id: "user-id" },
+      actor: { orgId: "org-id", id: "user-id" },
       auditLogInfo: {}
     });
   });

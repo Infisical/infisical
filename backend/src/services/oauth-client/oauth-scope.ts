@@ -1,23 +1,18 @@
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+import { RuleSet, TRuleLike } from "@app/domains/platform/access-control/ce/module";
+import { ORG_OAUTH_SCOPE_RULES } from "@app/domains/platform/organizations/ce/module";
+import { narrowToProjectOauthScopes, PROJECT_OAUTH_SCOPE_RULES } from "@app/domains/platform/projects/ce/module";
+import { OauthScope } from "@app/lib/auth/oauth-scopes";
 
 // Coarse, named OAuth delegation scopes. A delegated OAuth access token can never do more than the
 // underlying user; scopes only *narrow* that ability (effective = userPermissions ∩ grantedScopes).
 // Each scope maps to a set of (level, subject, actions) rules that are intersected against the user's
-// CASL rules in permission-service. Keep this list curated — it is a public contract.
+// CASL rules where the org and project permissions are built. Keep this list curated: it is a public contract.
 //
-// Only secrets:read is exposed for now: the sole delegated use case is `infisical run` fetching
-// secrets at runtime (e.g. via Coder External Auth). Add further scopes only when a route is opted
-// into AuthMode.OAUTH to serve them.
-export enum OauthScope {
-  SecretsRead = "secrets:read"
-}
+// The delegated use cases are `infisical run` fetching secrets at runtime (e.g. via Coder External Auth) and
+// the MCP server's tools. Add further scopes only when a route or MCP tool accepting AuthMode.OAUTH needs them.
+export { OauthScope };
 
-// Which permission ability a rule applies to. getOrgPermission builds org-level abilities,
-// getProjectPermission builds project-level abilities; a scope can contribute to either or both.
+// Which permission ability a rule applies to: the org permission or the project permission.
 export type OauthScopeLevel = "org" | "project";
 
 export type TOauthScopeRule = {
@@ -29,24 +24,32 @@ export type TOauthScopeRule = {
 type TOauthScopeDefinition = {
   description: string;
   rules: TOauthScopeRule[];
+  // OAuth applications using the REST API have only ever been offered secrets:read. Scopes that serve only the MCP tools
+  // are granted only to tokens bound to the MCP endpoint; offering them to every OAuth application is a separate
+  // decision.
+  mcpOnly: boolean;
 };
 
+const scopeRules = (scope: OauthScope): TOauthScopeRule[] => [
+  ...PROJECT_OAUTH_SCOPE_RULES[scope].map((rule) => ({ level: "project" as const, ...rule })),
+  ...ORG_OAUTH_SCOPE_RULES[scope].map((rule) => ({ level: "org" as const, ...rule }))
+];
+
 export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> = {
+  [OauthScope.SecretsDescribe]: {
+    description: "See projects, folders and secrets, without their values",
+    mcpOnly: true,
+    rules: scopeRules(OauthScope.SecretsDescribe)
+  },
+  [OauthScope.SecretsWrite]: {
+    description: "Create, change and delete secrets, create folders, and create projects",
+    mcpOnly: true,
+    rules: scopeRules(OauthScope.SecretsWrite)
+  },
   [OauthScope.SecretsRead]: {
     description: "Read secrets, folders, and imports",
-    rules: [
-      {
-        level: "project",
-        subject: ProjectPermissionSub.Secrets,
-        actions: [
-          ProjectPermissionSecretActions.DescribeAndReadValue,
-          ProjectPermissionSecretActions.DescribeSecret,
-          ProjectPermissionSecretActions.ReadValue
-        ]
-      },
-      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.SecretImports, actions: [ProjectPermissionActions.Read] }
-    ]
+    mcpOnly: false,
+    rules: scopeRules(OauthScope.SecretsRead)
   }
 };
 
@@ -79,62 +82,8 @@ export const parseOauthScopeString = (raw?: string): { granted: OauthScope[]; in
 export const getOauthScopeDescriptions = (scopes: OauthScope[]) =>
   scopes.map((scope) => ({ scope, description: OAUTH_SCOPE_DEFINITIONS[scope].description }));
 
-// CASL wildcards: "manage" matches every action on a subject, "all" matches every subject.
-const CASL_MANAGE_ACTION = "manage";
-const CASL_ALL_SUBJECT = "all";
+export const applyOauthScopeToOrgRules = <T extends TRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
+  RuleSet.of(rules).narrowTo(RuleSet.allowlistOf(scopes.flatMap((scope) => ORG_OAUTH_SCOPE_RULES[scope]))).rules;
 
-type TCaslRuleLike = {
-  action: string | string[];
-  subject?: string | string[];
-  inverted?: boolean;
-};
-
-const buildAllowedActionMap = (scopes: OauthScope[], level: OauthScopeLevel) => {
-  const allowed = new Map<string, Set<string>>();
-  scopes
-    .flatMap((scope) => OAUTH_SCOPE_DEFINITIONS[scope].rules)
-    .filter((rule) => rule.level === level)
-    .forEach((rule) => {
-      const existing = allowed.get(rule.subject) ?? new Set<string>();
-      rule.actions.forEach((action) => existing.add(action));
-      allowed.set(rule.subject, existing);
-    });
-  return allowed;
-};
-
-// A rule on the CASL "all" subject (e.g. org/project admin) fans out to every in-scope subject;
-// any other subject maps to itself only when it is in scope, otherwise to nothing.
-const resolveTargetSubjects = (ruleSubject: string | undefined, allowed: Map<string, Set<string>>): string[] => {
-  if (ruleSubject === CASL_ALL_SUBJECT) return [...allowed.keys()];
-  if (ruleSubject && allowed.has(ruleSubject)) return [ruleSubject];
-  return [];
-};
-
-// Intersects a CASL rule set with the actions permitted by the granted scopes. This is purely
-// subtractive: allow-rules are dropped if their subject is out of scope, and otherwise narrowed to
-// the scope-permitted actions (conditions are preserved, so resource constraints still apply).
-// Inverted ("cannot") rules are kept untouched because they only further restrict access.
-const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: Map<string, Set<string>>): T[] =>
-  rules.flatMap((rule) => {
-    if (rule.inverted) return [rule];
-
-    const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
-    const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
-    const grantsManage = ruleActions.includes(CASL_MANAGE_ACTION);
-
-    return ruleSubjects.flatMap((ruleSubject) =>
-      resolveTargetSubjects(ruleSubject, allowed).flatMap((subject) => {
-        const allowedActions = allowed.get(subject) ?? new Set<string>();
-        const newActions = grantsManage
-          ? [...allowedActions]
-          : ruleActions.filter((action) => allowedActions.has(action));
-        return newActions.length ? [{ ...rule, subject, action: newActions }] : [];
-      })
-    );
-  });
-
-export const applyOauthScopeToOrgRules = <T extends TCaslRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
-  intersectRulesWithScopes(rules, buildAllowedActionMap(scopes, "org"));
-
-export const applyOauthScopeToProjectRules = <T extends TCaslRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
-  intersectRulesWithScopes(rules, buildAllowedActionMap(scopes, "project"));
+export const applyOauthScopeToProjectRules = <T extends TRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
+  narrowToProjectOauthScopes(RuleSet.of(rules), scopes).rules;

@@ -30,9 +30,9 @@ import {
   SecretScanningFindingStatus,
   SecretScanningScanType
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { WebhookType } from "@app/services/webhook/webhook-types";
@@ -153,6 +153,7 @@ export enum PostHogEventTypes {
   HoneyTokenCreated = "Honey Token Created",
   HoneyTokenUpdated = "Honey Token Updated",
   HoneyTokenRevoked = "Honey Token Revoked",
+  HoneyTokenDeleted = "Honey Token Deleted",
   HoneyTokenReset = "Honey Token Reset",
   HoneyTokenTriggered = "Honey Token Triggered",
 
@@ -1335,6 +1336,15 @@ export type THoneyTokenUpdatedEvent = {
 
 export type THoneyTokenRevokedEvent = {
   event: PostHogEventTypes.HoneyTokenRevoked;
+  properties: {
+    honeyTokenId: string;
+    type: string;
+    projectId: string;
+  };
+};
+
+export type THoneyTokenDeletedEvent = {
+  event: PostHogEventTypes.HoneyTokenDeleted;
   properties: {
     honeyTokenId: string;
     type: string;
@@ -2900,6 +2910,7 @@ export type TPostHogEvent = {
   | THoneyTokenCreatedEvent
   | THoneyTokenUpdatedEvent
   | THoneyTokenRevokedEvent
+  | THoneyTokenDeletedEvent
   | THoneyTokenResetEvent
   | THoneyTokenTriggeredEvent
   | TCaCreatedEvent

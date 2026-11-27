@@ -1,23 +1,24 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, SecretFolderRole, TSecretFolders } from "@app/db/schemas";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
-import { TProjectFolderScopedPrivilege } from "@app/ee/services/permission/permission-service-types";
+import { Grant, Permission } from "@app/domains/platform/access-control/ce/module";
 import {
+  ProjectAccess,
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+  ProjectPermissionSub,
+  StandardProjectRoles
+} from "@app/domains/platform/projects/ce/module";
+import { FolderGrant, FolderGrants } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
-import { conditionsMatcher } from "@app/lib/casl";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { ActorType } from "../auth/auth-type";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
@@ -26,11 +27,13 @@ import {
   assertFolderDeleteAllowed,
   assertFolderRenameAllowed,
   assertFolderSubtreeDeleteAllowed,
+  assertNoDirectImportEnteringEnforcedPath,
   assertNoOverlappingFolderEntries,
   buildChildrenMap,
   buildFolderIdMap,
   buildFolderPath,
   checkFolderHasRbacPolicies,
+  findDirectImportEnteringEnforcedPath,
   findFoldersWithContent,
   findPolicyProtectedFolder,
   resolveBatchFolderEntries,
@@ -577,8 +580,115 @@ describe("findPolicyProtectedFolder", () => {
   });
 });
 
+describe("findDirectImportEnteringEnforcedPath", () => {
+  const tx = {} as Knex;
+  const enforcing = { id: "import-guard-id", name: "import-guard", enforceOnSecretImports: true };
+  const otherEnforcing = { id: "other-guard-id", name: "other-guard", enforceOnSecretImports: true };
+  const notEnforcing = { id: "prod-guard-id", name: "prod-guard", enforceOnSecretImports: false };
+  const folders = [
+    { id: "app-id", path: "/prod", contentPath: "/staging" },
+    { id: "api-id", path: "/prod/api", contentPath: "/staging/api" }
+  ];
+
+  const makeService = (policies: [string, { id: string; name: string; enforceOnSecretImports: boolean }][]) => {
+    const getSecretApprovalPolicyByPaths = vi.fn().mockResolvedValue(new Map(policies));
+    return {
+      deps: {
+        secretChangePolicyService: { getSecretApprovalPolicyByPaths } as unknown as Pick<
+          TSecretChangePolicyServiceFactory,
+          "getSecretApprovalPolicyByPaths"
+        >
+      },
+      getSecretApprovalPolicyByPaths
+    };
+  };
+
+  const find = (
+    directImportFolderIds: string[],
+    deps: ReturnType<typeof makeService>["deps"],
+    candidates: typeof folders = folders
+  ) =>
+    findDirectImportEnteringEnforcedPath(
+      {
+        folders: candidates,
+        directImportFolderIds: new Set(directImportFolderIds),
+        projectId: "project-1",
+        environment: "dev"
+      },
+      deps,
+      tx
+    );
+
+  test("returns null without a policy lookup when no folder holds a direct import", async () => {
+    const { deps, getSecretApprovalPolicyByPaths } = makeService([["/prod", enforcing]]);
+
+    await expect(find([], deps)).resolves.toBeNull();
+    expect(getSecretApprovalPolicyByPaths).not.toHaveBeenCalled();
+  });
+
+  test("looks up the old and new path of each carrying folder once, in the transaction", async () => {
+    const { deps, getSecretApprovalPolicyByPaths } = makeService([]);
+
+    await expect(find(["api-id"], deps)).resolves.toBeNull();
+    expect(getSecretApprovalPolicyByPaths).toHaveBeenCalledTimes(1);
+    expect(getSecretApprovalPolicyByPaths).toHaveBeenCalledWith("project-1", "dev", ["/prod/api", "/staging/api"], tx);
+  });
+
+  test("reports a direct import moving from an unenforced path into an enforced one", async () => {
+    const { deps } = makeService([["/prod/api", enforcing]]);
+
+    await expect(find(["api-id"], deps)).resolves.toEqual({
+      environment: "dev",
+      path: "/prod/api",
+      contentPath: "/staging/api",
+      policyName: "import-guard"
+    });
+  });
+
+  test("reports a direct import leaving a policy that does not enforce imports", async () => {
+    const { deps } = makeService([
+      ["/staging", notEnforcing],
+      ["/prod", enforcing]
+    ]);
+
+    await expect(find(["app-id"], deps)).resolves.toMatchObject({ path: "/prod", policyName: "import-guard" });
+  });
+
+  test("allows a move into a path whose policy does not enforce imports", async () => {
+    const { deps } = makeService([["/prod", notEnforcing]]);
+
+    await expect(find(["app-id"], deps)).resolves.toBeNull();
+  });
+
+  test("allows a direct import that is already under enforcement to move within that policy or out of it", async () => {
+    const within = makeService([
+      ["/staging", enforcing],
+      ["/prod", enforcing]
+    ]);
+    const out = makeService([["/staging", enforcing]]);
+
+    await expect(find(["app-id"], within.deps)).resolves.toBeNull();
+    await expect(find(["app-id"], out.deps)).resolves.toBeNull();
+  });
+
+  test("reports a direct import moving from one enforcing policy into another", async () => {
+    const { deps } = makeService([
+      ["/staging", enforcing],
+      ["/prod", otherEnforcing]
+    ]);
+
+    await expect(find(["app-id"], deps)).resolves.toMatchObject({ path: "/prod", policyName: "other-guard" });
+  });
+
+  test("ignores folders that only hold other content", async () => {
+    const { deps } = makeService([["/prod", enforcing]]);
+
+    await expect(find(["api-id"], deps, [folders[0]])).resolves.toBeNull();
+  });
+});
+
 const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]) =>
-  createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+  Permission.fromRules<ProjectPermissionSet>({ rules });
 
 const canReadAll = buildAccess([
   { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },
@@ -664,15 +774,22 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
   const folderGrant = (
     role: SecretFolderRole,
     secretPath: string,
-    appliesToSubfolders = false
-  ): TProjectFolderScopedPrivilege => ({
-    id: `grant-${secretPath}`,
-    folderId: `folder-${secretPath}`,
-    role,
-    environmentSlug: "dev",
-    secretPath,
-    appliesToSubfolders
-  });
+    appliesToSubfolders = false,
+    environmentSlug = "dev"
+  ) =>
+    FolderGrant.restore({
+      id: `grant-${secretPath}`,
+      name: "",
+      actorId: null,
+      folderId: `folder-${secretPath}`,
+      role,
+      environmentSlug,
+      secretPath,
+      appliesToSubfolders,
+      isTemporary: false,
+      temporaryAccessStartTime: null,
+      temporaryAccessEndTime: null
+    });
 
   const folderDeleteRole = (conditions: object, inverted = false) => ({
     role: ProjectMembershipRole.Custom,
@@ -681,12 +798,15 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
     ])
   });
 
-  const accessOf = (roles: { role: string; permissions?: unknown }[], grants: TProjectFolderScopedPrivilege[] = []) =>
-    buildAccess(
-      buildProjectPermissionRules(roles, ProjectType.SecretManager, grants) as RawRuleOf<
-        MongoAbility<ProjectPermissionSet>
-      >[]
-    );
+  const accessOf = (roles: { role: string; permissions?: unknown }[], grants: FolderGrant[] = []) =>
+    Permission.fromRules<ProjectPermissionSet>({
+      rules: ProjectAccess.rulesOf(
+        roles.map(({ role, permissions }) =>
+          role === ProjectMembershipRole.Custom ? Grant.custom(permissions) : Grant.restore({ slug: role })
+        ),
+        StandardProjectRoles.generic(ProjectType.SecretManager)
+      ).then(FolderGrants.of(grants).rules())
+    });
 
   const noAccess = [{ role: ProjectMembershipRole.NoAccess, permissions: [] }];
   const member = [{ role: ProjectMembershipRole.Member, permissions: [] }];
@@ -774,7 +894,7 @@ describe("assertFolderSubtreeDeleteAllowed", () => {
 
   test("ignores a lower role held in another environment or on a sibling folder", () => {
     const caller = accessOf(member, [
-      { ...folderGrant(SecretFolderRole.List, "/apps/scratch", true), environmentSlug: "prod" },
+      folderGrant(SecretFolderRole.List, "/apps/scratch", true, "prod"),
       folderGrant(SecretFolderRole.List, "/apps/web", true)
     ]);
 
@@ -867,6 +987,46 @@ describe("assertFolderRenameAllowed", () => {
   test("allows a rename when nothing is protected on either side", () => {
     expect(assertFolderRenameAllowed(null, "source", canReadNothing)).toBeUndefined();
     expect(assertFolderRenameAllowed(null, "destination", canReadNothing)).toBeUndefined();
+  });
+});
+
+describe("assertNoDirectImportEnteringEnforcedPath", () => {
+  const destination = {
+    environment: "dev",
+    path: "/prod/api",
+    contentPath: "/staging/api",
+    policyName: "import-guard"
+  };
+
+  test("refuses a rename that would move a direct import under import enforcement", () => {
+    const error = thrown(() => assertNoDirectImportEnteringEnforcedPath(destination, canReadAll));
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "RenameFolderImportIntoEnforcedPath",
+      message:
+        'You cannot rename the selected folder because its secret imports would move to folder path "/prod/api", where the change policy "import-guard" requires approval for imported secrets. Imports that ignore approval policies cannot be moved there. Choose a different name and try again.'
+    });
+  });
+
+  test("names the imports only where the caller can read them now", () => {
+    const access = buildAccess([
+      {
+        action: ProjectPermissionActions.Read,
+        subject: ProjectPermissionSub.SecretImports,
+        conditions: { secretPath: { $glob: "/prod/**" } }
+      }
+    ]);
+
+    expect(thrown(() => assertNoDirectImportEnteringEnforcedPath(destination, access))).toMatchObject({
+      name: "RenameFolderIntoProtectedPath",
+      message:
+        'You cannot rename the selected folder because its resources would move to folder path "/prod/api", which is protected by the change policy "import-guard". Choose a different name and try again.'
+    });
+  });
+
+  test("allows a rename when no direct import enters an enforced path", () => {
+    expect(assertNoDirectImportEnteringEnforcedPath(null, canReadNothing)).toBeUndefined();
   });
 });
 

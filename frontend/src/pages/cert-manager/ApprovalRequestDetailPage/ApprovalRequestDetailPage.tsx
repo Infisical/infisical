@@ -15,6 +15,9 @@ import {
   CardHeader,
   CardTitle,
   ConfirmationAlertDialog,
+  Detail,
+  DetailLabel,
+  DetailValue,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -127,10 +130,12 @@ const RevocationDetailsSection = ({
 
 const CodeSigningDetailsSection = ({
   requestData,
+  justification,
   requesterName,
   requesterEmail
 }: {
   requestData: CodeSigningRequestData;
+  justification?: string | null;
   requesterName?: string;
   requesterEmail?: string;
 }) => {
@@ -184,6 +189,14 @@ const CodeSigningDetailsSection = ({
                 <span className="text-xs text-muted">Allowed Sign Operations</span>
                 <p className="text-sm text-foreground">{requestData.requestedSignings}</p>
               </div>
+            )}
+            {justification && (
+              <Detail className="col-span-2">
+                <DetailLabel>Reason</DetailLabel>
+                <DetailValue className="max-h-72 thin-scrollbar overflow-y-auto whitespace-pre-wrap">
+                  {justification}
+                </DetailValue>
+              </Detail>
             )}
           </div>
           {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
@@ -443,6 +456,7 @@ const PageContent = () => {
       return (
         <CodeSigningDetailsSection
           requestData={reqData}
+          justification={request.justification || reqData.justification}
           requesterName={request.requesterName}
           requesterEmail={request.requesterEmail}
         />

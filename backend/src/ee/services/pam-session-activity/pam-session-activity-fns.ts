@@ -1,8 +1,8 @@
 import { v5 as uuidv5 } from "uuid";
 
 import { TPamSessions } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { sanitizeLogPayload } from "@app/lib/validator/log-safe-text";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   PamSessionActivityEventType,

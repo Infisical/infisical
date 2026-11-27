@@ -100,6 +100,7 @@ import { PortainerConnectionMethod } from "@app/hooks/api/appConnections/types/p
 import { PowerDnsConnectionMethod } from "@app/hooks/api/appConnections/types/powerdns-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
+import { Rfc2136ConnectionMethod } from "@app/hooks/api/appConnections/types/rfc2136-connection";
 import { RundeckConnectionMethod } from "@app/hooks/api/appConnections/types/rundeck-connection";
 import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
@@ -353,6 +354,13 @@ export const APP_CONNECTION_MAP: Record<
     image: "PowerDNS.png",
     category: "DNS",
     description: "Manage DNS records on a self-hosted PowerDNS server."
+  },
+  [AppConnection.Rfc2136]: {
+    name: "DNS Server (RFC 2136)",
+    image: "DNS Server.svg",
+    aliases: ["bind", "knot", "tsig", "nsupdate", "dynamic dns"],
+    category: "DNS",
+    description: "Manage DNS records on your own DNS server, such as BIND or Knot, with a TSIG key."
   },
   [AppConnection.UltraDNS]: {
     name: "UltraDNS",
@@ -930,6 +938,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "API Key", icon: KeyRoundIcon };
     case ChefConnectionMethod.UserKey:
       return { name: "User Key", icon: KeyRoundIcon };
+    case Rfc2136ConnectionMethod.TsigKey:
+      return { name: "TSIG Key", icon: KeyRoundIcon };
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:
