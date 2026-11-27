@@ -1137,7 +1137,9 @@ export const secretImportServiceFactory = ({
     // Chosen from the project row rather than getBotKey, which can create or reactivate a legacy project's bot and
     // so must not run before the caller is authorized. A missing project takes the V2 path, whose permission check
     // refuses it.
-    const project = await projectDAL.findById(dto.projectId);
+    const project = await requestMemoize(requestMemoKeys.projectFindById(dto.projectId), () =>
+      projectDAL.findById(dto.projectId)
+    );
     if (project && project.version !== 3) {
       return { secrets: await $getRawSecretsV1FromImports(dto) };
     }
