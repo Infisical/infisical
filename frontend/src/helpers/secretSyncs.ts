@@ -441,7 +441,7 @@ export const SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP: Record<
 > = {
   [SecretSyncInitialSyncBehavior.OverwriteDestination]: (destinationName: string) => ({
     name: "Overwrite Destination Secrets",
-    description: `Infisical will overwrite any secrets located in the ${destinationName} destination, removing any secrets that are not present within Infiscal. `
+    description: `Infisical will overwrite any secrets located in the ${destinationName} destination, removing any secrets that are not present within Infisical.`
   }),
   [SecretSyncInitialSyncBehavior.ImportPrioritizeSource]: (destinationName: string) => ({
     name:

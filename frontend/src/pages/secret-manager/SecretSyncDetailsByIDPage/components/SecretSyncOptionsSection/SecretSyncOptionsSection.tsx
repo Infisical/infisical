@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { InfoIcon } from "lucide-react";
 
 import {
   Accordion,
@@ -10,9 +11,12 @@ import {
   DetailGroup,
   DetailLabel,
   DetailValue,
-  Separator
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
-import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
+import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
@@ -34,6 +38,10 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     destination,
     syncOptions: { initialSyncBehavior, disableSecretDeletion, keySchema }
   } = secretSync;
+
+  const initialSyncBehaviorDetails = SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](
+    SECRET_SYNC_MAP[destination].name
+  );
 
   let AdditionalSyncOptionsComponent: ReactNode;
 
@@ -136,7 +144,15 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
               <Detail>
                 <DetailLabel>Initial Sync Behavior</DetailLabel>
                 <DetailValue>
-                  {SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP[initialSyncBehavior](destination).name}
+                  {initialSyncBehaviorDetails.name}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="ml-1 inline size-3 text-label-secondary" />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      {initialSyncBehaviorDetails.description}
+                    </TooltipContent>
+                  </Tooltip>
                 </DetailValue>
               </Detail>
               <Detail>
