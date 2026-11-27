@@ -2936,16 +2936,18 @@ html.dark img[src*="/images/agent-vault-agents/daytona.svg"] {
   filter: invert(1);
 }
 
-/* Agent Vault's "By agent" and "By compute" sidebar icons are a row of logos, so they keep their width. */
+/* Agent Vault's "By compute", "By agent", and "By use case" sidebar icons are a row of logos, so they keep their width. */
 img[src*="/stack-agents."],
-img[src*="/stack-compute."] {
+img[src*="/stack-compute."],
+img[src*="/stack-use-cases."] {
   width: auto !important;
   height: 1.125rem !important;
 }
 
 /* The row of logos goes after the page title, so the titles line up with the rest of the sidebar. */
 div:has(> img[src*="/stack-agents."]),
-div:has(> img[src*="/stack-compute."]) {
+div:has(> img[src*="/stack-compute."]),
+div:has(> img[src*="/stack-use-cases."]) {
   order: 1;
 }
 

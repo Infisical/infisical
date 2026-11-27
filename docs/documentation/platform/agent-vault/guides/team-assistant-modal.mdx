@@ -1,0 +1,27 @@
+---
+title: "Team assistant on Modal with Agent Vault"
+sidebarTitle: "Team assistant on Modal"
+description: "Run one Slack assistant for your team on Modal that works with the access of whoever asks it."
+icon: "users"
+---
+
+DM the team assistant in Slack or mention it in a channel, and it does the work with the access of the person who asked: their GitHub, their Linear, their Notion. Each message runs in a fresh [Modal](/documentation/platform/agent-vault/guides/modal) sandbox that can't reach the internet, with the Agent Vault proxy as a sidecar in the same sandbox.
+
+<Card title="Deploy the team assistant on Modal" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/team-assistant" horizontal>
+  The code and the full setup steps, in the reference repo.
+</Card>
+
+To run the sandboxes on Daytona instead, see [Team assistant on Daytona](/documentation/platform/agent-vault/guides/team-assistant-daytona).
+
+## How it works
+
+1. An orchestrator receives each message, and starts an Agent Vault [session on behalf of](/documentation/platform/agent-vault/sessions-on-behalf-of-users) the Infisical user with the sender's Slack email. If the delegation doesn't cover them, the bot says so and starts nothing.
+2. It runs [Claude Code](/documentation/platform/agent-vault/guides/claude-code) in the sandbox, and the proxy attaches that person's own sign-ins, so the agent works with their access and nothing else.
+3. The bot posts the answer in the thread, then the orchestrator revokes the session and deletes the sandbox.
+## What you need
+
+- An Agent Vault project where you have the Admin role
+- A Slack workspace where you can create apps
+- A Modal workspace
+- A host for the orchestrator that runs Docker containers, such as a small virtual machine or Render
+- For each person who uses it: a grant on the access bundle, a place in the delegation, their own sign-in for each [MCP service](/documentation/platform/agent-vault/mcp-servers#member-provided-credentials), and the same email in Slack and Infisical

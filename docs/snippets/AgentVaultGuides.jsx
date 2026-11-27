@@ -1,28 +1,10 @@
-// The Agent Vault guide index. The catalog is the Markdown table in snippets/agent-vault-guides.mdx, passed as
-// children. Search engines, agents, and readers without JavaScript get that table. In the browser, this component
-// reads the table and replaces it with cards.
-//
-// It has two pages, each with a sidebar entry. guides/by-agent (view="agent") leads with the agent setup guides,
-// then the examples, and filters them by compute. guides/by-compute (view="compute") leads with the compute setup
-// guides, then the examples, and filters them by agent.
-//
-// It reuses existing styles rather than adding its own: the search, filters, and count from the catalog browser
-// (.ifx-catalog, snippets/CatalogBrowser.jsx), the filter logos from the quickstart configurator (.ifx-avqs), and
-// Mintlify's Card and Columns.
-
-export const AgentVaultGuides = ({ view = "agent", children }) => {
+export const AgentVaultGuides = ({ view = "compute", children }) => {
   const AXES = {
-    agent: {
-      column: "agents",
-      noun: "agent",
-      order: ["Claude Code", "Codex", "Cursor", "OpenCode", "OpenClaw", "Hermes"]
-    },
-    compute: {
-      column: "compute",
-      noun: "platform",
-      order: ["Kubernetes", "Docker", "Modal", "Daytona", "E2B", "VM"]
-    }
+    agent: { column: "agents", order: ["Claude Code", "Codex", "OpenCode", "OpenClaw", "Hermes", "Cursor"] },
+    compute: { column: "compute", order: ["Docker", "VM", "Kubernetes", "Modal", "Daytona", "E2B"] },
+    useCase: { column: "useCases", order: [] }
   };
+  const own = AXES[view] ? view : "compute";
 
   const LOGOS = {
     "Claude Code": "/images/agent-vault-agents/claude-code.svg",
@@ -38,16 +20,17 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
     E2B: "/images/agent-vault-agents/e2b.svg"
   };
 
-  // Logos with a separate version for dark mode, the same pairs the quickstart configurator uses.
   const DARK_LOGOS = {
     Codex: "/images/agent-vault-agents/OpenAIWhite.png",
     OpenCode: "/images/agent-vault-agents/opencode.on-dark.svg",
     Hermes: "/images/agent-vault-agents/hermes.on-dark.png"
   };
 
-  // Service logos, from the service templates. A service without one shows its name only.
   const SERVICE_LOGOS = {
     Slack: { light: "/images/agent-vault-templates/Slack.svg" },
+    Ashby: { light: "/images/agent-vault-templates/Ashby.png" },
+    Linear: { light: "/images/agent-vault-templates/Linear.svg" },
+    Notion: { light: "/images/agent-vault-templates/Notion.svg" },
     Telegram: { light: "/images/agent-vault-templates/Telegram.svg" },
     Sentry: { light: "/images/agent-vault-templates/Sentry.on-light.svg", dark: "/images/agent-vault-templates/Sentry.svg" },
     GitHub: { light: "/images/agent-vault-templates/GitHub.on-light.png", dark: "/images/agent-vault-templates/GitHub.png" }
@@ -58,14 +41,14 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
   const [guides, setGuides] = useState(null);
   const [docsBase, setDocsBase] = useState("");
   const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState(null);
+  const [agent, setAgent] = useState(null);
+  const [compute, setCompute] = useState(null);
   const [useCase, setUseCase] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const rootRef = useRef(null);
   const tableRef = useRef(null);
   const filtersRef = useRef(null);
 
-  // A filter menu closes on a click outside the filters, or on Escape.
   useEffect(() => {
     if (!openMenu) return undefined;
     const onDown = (event) => {
@@ -101,21 +84,19 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
       const rawHref = link.getAttribute("href");
       parsed.push({
         title: link.textContent.trim(),
-        // Keep the bare path. The links this component renders get the base path below.
         href: base && rawHref.startsWith(`${base}/`) ? rawHref.slice(base.length) : rawHref,
         example: (cells[1]?.textContent ?? "").trim().toLowerCase() === "example",
         agents: splitNames(cells[2]),
         compute: splitNames(cells[3]),
         services: splitNames(cells[4]),
         useCases: splitNames(cells[5]),
-        description: (cells[6]?.textContent ?? "").trim()
+        description: (cells[6]?.textContent ?? "").trim(),
+        recommended: splitNames(cells[7])
       });
     });
     if (parsed.length) setGuides(parsed);
   }, []);
 
-  // The links are root-relative, because Mintlify opens relative ones in a new tab. Mintlify usually adds the /docs
-  // base path to those, but not always, so add it only when it's missing.
   useEffect(() => {
     if (!docsBase || !rootRef.current) return;
     rootRef.current.querySelectorAll("a[href^='/']").forEach((anchor) => {
@@ -143,8 +124,6 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
     );
   };
 
-  // An agent's or platform's logo, with its dark-mode version when it has one, in the quickstart configurator's
-  // image markup. A virtual machine has no brand, so it gets a server icon.
   const logo = (name) => {
     if (name === "VM") {
       return (
@@ -169,14 +148,7 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
     );
   };
 
-  // The logo at text size, as the configurator's chips show it.
   const chipIcon = (name) => (logo(name) ? <span className="ifx-avqs__chip-icon">{logo(name)}</span> : null);
-
-  // This page's own kind of guide, and the other axis, which its filter uses.
-  const own = AXES[view] ? view : "agent";
-  const other = own === "agent" ? "compute" : "agent";
-  const ownColumn = AXES[own].column;
-  const otherColumn = AXES[other].column;
 
   const all = guides ?? [];
   const needle = query.trim().toLowerCase();
@@ -191,42 +163,36 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
       ...guide.useCases
     ].some((text) => text.toLowerCase().includes(needle));
 
-  // Setup guides for this page's axis come first, since they work with anything on the other axis. They belong to no
-  // use case, so picking one hides them. Examples that involve this axis follow, narrowed by both filters.
-  const setups = useCase
-    ? []
-    : all.filter(
-        (guide) => !guide.example && guide[ownColumn].length > 0 && guide[otherColumn].length === 0 && matchesQuery(guide)
-      );
-  const examples = all.filter(
+  const byOrder = (order) => (a, b) => {
+    const rank = (name) => (order.indexOf(name) === -1 ? order.length : order.indexOf(name));
+    return rank(a) - rank(b);
+  };
+  const ordered = (column, order) => [...new Set(all.flatMap((guide) => guide[column]))].sort(byOrder(order));
+  const agentOptions = ordered("agents", AXES.agent.order);
+  const computeOptions = ordered("compute", AXES.compute.order);
+  const useCaseOptions = ordered("useCases", []);
+
+  const shown = all.filter(
     (guide) =>
-      guide.example &&
-      guide[ownColumn].length > 0 &&
-      (!picked || guide[otherColumn].includes(picked)) &&
+      (!agent || guide.agents.includes(agent)) &&
+      (!compute || guide.compute.includes(compute)) &&
       (!useCase || guide.useCases.includes(useCase)) &&
       matchesQuery(guide)
   );
-  const shown = [...setups, ...examples];
 
-  // One section per agent or platform on this page's axis, with a card for each of its guides. A guide tagged with
-  // two of them appears in both sections.
-  const sectionNames = [
-    ...AXES[own].order,
-    ...new Set(shown.flatMap((guide) => guide[ownColumn]).filter((name) => !AXES[own].order.includes(name)))
-  ];
-  const sections = sectionNames
-    .map((name) => ({ name, guides: shown.filter((guide) => guide[ownColumn].includes(name)) }))
+  const ownColumn = AXES[own].column;
+  const ownOptions = { agent: agentOptions, compute: computeOptions, useCase: useCaseOptions }[own];
+  const sections = ownOptions
+    .map((name) => ({
+      name,
+      guides: shown
+        .filter((guide) => guide[ownColumn].includes(name))
+        .sort((a, b) => Number(a.example) - Number(b.example))
+    }))
     .filter((section) => section.guides.length > 0);
+  const count = new Set(sections.flatMap((section) => section.guides.map((guide) => guide.title))).size;
   const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
-  const filters = AXES[other].order.filter((name) => all.some((guide) => guide[otherColumn].includes(name)));
-
-  // The use case filter only helps once there's a choice, so it appears when the catalog has two use cases or more.
-  const useCases = [...new Set(all.flatMap((guide) => guide.useCases))];
-  const showUseCases = useCases.length >= 2;
-
-  // Mintlify's Card, so the guides look like the cards on every other page. The icon shows every agent and platform
-  // the guide combines, so an example's card shows both its agent and where it runs.
   const card = (guide) => {
     const names = [...guide.agents, ...guide.compute];
     const icon = names.some((name) => LOGOS[name] || name === "VM") ? (
@@ -255,10 +221,6 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
     );
   };
 
-  const count = shown.length;
-
-  // A filter is a button that opens a menu of tiles, like the quickstart configurator's (.ifx-avqs). The button
-  // shows the filter's name until something is picked, then the pick.
   const filterMenu = (id, name, options, value, setValue) => {
     const active = options.find((option) => option.id === value);
     const choose = (next) => {
@@ -328,11 +290,11 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
             <svg aria-hidden="true" className="ifx-catalog__search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="m21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
-            <label className="sr-only" htmlFor={`guides-${own}-search`}>
+            <label className="sr-only" htmlFor="guides-search">
               Search guides
             </label>
             <input
-              id={`guides-${own}-search`}
+              id="guides-search"
               type="search"
               className="ifx-catalog__input"
               placeholder="Search guides..."
@@ -342,18 +304,27 @@ export const AgentVaultGuides = ({ view = "agent", children }) => {
           </div>
 
           <div ref={filtersRef} className="ifx-catalog__filters" role="group" aria-label="Filter guides">
-            {filterMenu(
-              "other",
-              other === "compute" ? "Runs on" : "Agent",
-              filters.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
-              picked,
-              setPicked
-            )}
-            {showUseCases &&
+            {own !== "agent" &&
+              filterMenu(
+                "agent",
+                "Agent",
+                agentOptions.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
+                agent,
+                setAgent
+              )}
+            {own !== "compute" &&
+              filterMenu(
+                "compute",
+                "Compute",
+                computeOptions.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
+                compute,
+                setCompute
+              )}
+            {own !== "useCase" &&
               filterMenu(
                 "useCase",
                 "Use case",
-                useCases.map((name) => ({ id: name, label: name, chip: null })),
+                useCaseOptions.map((name) => ({ id: name, label: name, chip: null })),
                 useCase,
                 setUseCase
               )}

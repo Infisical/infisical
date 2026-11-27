@@ -1,13 +1,38 @@
 import { AgentVaultBranch } from "/snippets/AgentVaultQuickstartConfigurator.jsx";
 
+<AgentVaultBranch agent="claude-code">
+  To set up Claude Code on its own, follow the steps on this page. For complete agents built on Claude Code that you can deploy, see the reference architectures:
+
+  <CardGroup cols={2}>
+    <Card title="On-call Slack agent" icon="bell" href="/documentation/platform/agent-vault/guides/on-call-slack-agent-docker">
+      Investigate production errors from Slack, on Docker or a virtual machine.
+    </Card>
+    <Card title="Coding Slack agent" icon="code" href="/documentation/platform/agent-vault/guides/coding-slack-agent-docker">
+      Ask for code changes and pull requests from Slack, on Docker or a virtual machine.
+    </Card>
+    <Card title="Recruiting Slack agent" icon="contact" href="/documentation/platform/agent-vault/guides/recruiting-slack-agent-docker">
+      Answer questions from Ashby in Slack, on Docker or a virtual machine.
+    </Card>
+    <Card title="Team assistant" icon="users" href="/documentation/platform/agent-vault/guides/team-assistant-modal">
+      Work with the access of whoever asks, on Modal or Daytona.
+    </Card>
+  </CardGroup>
+</AgentVaultBranch>
+
+<AgentVaultBranch agent="codex,opencode">
+  <Tip>
+    For complete agents you can deploy with Agent Vault, such as Slack agents and a team assistant, see the Claude Code examples in [the guides by agent](/documentation/platform/agent-vault/guides/by-agent).
+  </Tip>
+</AgentVaultBranch>
+
 <AgentVaultBranch agent="hermes">
   <Tip>
-    This guide runs Hermes in your terminal. If you chat with Hermes through Slack, Telegram, or another messaging platform, follow [Agent Vault with the Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) instead.
+    This guide runs Hermes in your terminal. If you chat with Hermes through Slack, Telegram, or another messaging platform, follow [Agent Vault with the Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) instead. To host Hermes on a server and message it from Telegram, see [Deploy on a DigitalOcean Droplet](/documentation/platform/agent-vault/guides/hermes-droplet).
   </Tip>
 </AgentVaultBranch>
 
 <AgentVaultBranch agent="openclaw">
   <Tip>
-    This guide runs OpenClaw in your terminal. If you chat with OpenClaw through Slack, Telegram, or another messaging platform, follow [Agent Vault with the OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) instead.
+    This guide runs OpenClaw in your terminal. If you chat with OpenClaw through Slack, Telegram, or another messaging platform, follow [Agent Vault with the OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) instead. To host OpenClaw on a server and message it from Telegram, see [Deploy on a DigitalOcean Droplet](/documentation/platform/agent-vault/guides/openclaw-droplet).
   </Tip>
 </AgentVaultBranch>

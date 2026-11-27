@@ -711,8 +711,8 @@
               {
                 "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/by-agent",
-                  "documentation/platform/agent-vault/guides/by-compute"
+                  "documentation/platform/agent-vault/guides/by-compute",
+                  "documentation/platform/agent-vault/guides/by-agent"
                 ]
               },
               {
