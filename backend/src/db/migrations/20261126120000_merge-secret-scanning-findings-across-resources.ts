@@ -29,8 +29,71 @@ const STATUS_LABEL: Record<string, string> = {
 
 type TValue = { projectId: string; blindIndex: string; locationCount: number; resourceIds: string[] };
 
+type TFinding = {
+  id: string;
+  valueKey: string;
+  status: SecretScanningFindingStatus;
+  triagedAt: Date | null;
+  triagedByUserId: string | null;
+  triageComment: string | null;
+  resolvedAt: Date | null;
+  lastDetectedAt: Date;
+  resourceName: string;
+};
+
 const lockAll = (tx: Knex, keys: number[]) =>
   tx.raw("SELECT pg_advisory_xact_lock(k) FROM unnest(?::bigint[]) AS k", [keys]);
+
+const isSafer = (a: TFinding, b: TFinding) => {
+  const rankA = STATUS_PRECEDENCE.indexOf(a.status);
+  const rankB = STATUS_PRECEDENCE.indexOf(b.status);
+  if (rankA !== rankB) return rankA < rankB;
+  return (a.triagedAt?.getTime() ?? -Infinity) > (b.triagedAt?.getTime() ?? -Infinity);
+};
+
+// The findings come oldest first, and the oldest is kept.
+const mergeValue = async (tx: Knex, findings: TFinding[]) => {
+  const [winner, ...losers] = findings;
+  const loserIds = losers.map(({ id }) => id);
+
+  // A pull request check saved finding ids, so each merged-away finding's id lives on as the id of its oldest
+  // location, which findings.findByIdsOrLocationIdsForUpdate resolves.
+  for (const loser of losers) {
+    /* eslint-disable no-await-in-loop */
+    const isTaken = await tx(LOCATION).where({ id: loser.id }).first("id");
+    if (!isTaken) {
+      const oldest = await tx(LOCATION).where({ findingId: loser.id }).orderBy(["createdAt", "id"]).first("id");
+      if (oldest) await tx(LOCATION).where({ id: oldest.id }).update("id", loser.id);
+    }
+    /* eslint-enable no-await-in-loop */
+  }
+
+  await tx(LOCATION).whereIn("findingId", loserIds).update({ findingId: winner.id });
+
+  const verdict = findings.reduce((best, finding) => (isSafer(finding, best) ? finding : best));
+  const notes = findings
+    .filter((finding): finding is TFinding & { triagedAt: Date } => finding !== verdict && Boolean(finding.triagedAt))
+    .sort((a, b) => a.triagedAt.getTime() - b.triagedAt.getTime())
+    .map(
+      ({ resourceName, status, triagedAt, triageComment }) =>
+        `Merged from ${resourceName}: ${STATUS_LABEL[status]} on ${triagedAt.toISOString().slice(0, 10)}${
+          triageComment ? `: ${triageComment}` : ""
+        }`
+    );
+
+  await tx(FINDING)
+    .where({ id: winner.id })
+    .update({
+      status: verdict.status,
+      resolvedAt: verdict.resolvedAt,
+      triagedAt: verdict.triagedAt,
+      triagedByUserId: verdict.triagedByUserId,
+      triageComment: [verdict.triageComment, notes.join("\n")].filter(Boolean).join("\n\n") || null,
+      lastDetectedAt: new Date(Math.max(...findings.map(({ lastDetectedAt }) => lastDetectedAt.getTime())))
+    });
+
+  await tx(FINDING).whereIn("id", loserIds).delete();
+};
 
 const mergeBatch = async (tx: Knex, values: TValue[]) => {
   const resourceIds = [...new Set(values.flatMap((value) => value.resourceIds))].sort();
@@ -43,104 +106,54 @@ const mergeBatch = async (tx: Knex, values: TValue[]) => {
   await lockAll(tx, resourceIds.map(PgSqlLock.SecretScanningFindingLocations));
   await lockAll(tx, projectIds.map(PgSqlLock.SecretScanningFindingValues));
 
-  await tx.raw(
-    `CREATE TEMPORARY TABLE finding_merge ON COMMIT DROP AS
-     SELECT f.id, f.status, f."triagedAt", f."triagedByUserId", f."triageComment", f."resolvedAt", f."createdAt",
-       f."lastDetectedAt", r.name AS "resourceName",
-       first_value(f.id) OVER (
-         PARTITION BY ds."projectId", f."secretFindingBlindIndex" ORDER BY f."createdAt", f.id
-       ) AS "winnerId"
-     FROM ?? AS f
-     JOIN ?? AS r ON r.id = f."resourceId"
-     JOIN ?? AS ds ON ds.id = r."dataSourceId"
-     WHERE (ds."projectId", f."secretFindingBlindIndex") IN (SELECT * FROM unnest(?::text[], ?::text[]))
-       AND f."resourceId" = ANY(?::uuid[])`,
-    [
-      FINDING,
-      RESOURCE,
-      DATA_SOURCE,
+  const findings: TFinding[] = await tx(`${FINDING} as f`)
+    .join(`${RESOURCE} as r`, "r.id", "f.resourceId")
+    .join(`${DATA_SOURCE} as ds`, "ds.id", "r.dataSourceId")
+    .whereRaw(`(ds."projectId", f."secretFindingBlindIndex") IN (SELECT * FROM unnest(?::text[], ?::text[]))`, [
       values.map(({ projectId }) => projectId),
-      values.map(({ blindIndex }) => blindIndex),
-      resourceIds
-    ]
-  );
+      values.map(({ blindIndex }) => blindIndex)
+    ])
+    .whereRaw(`f."resourceId" = ANY(?::uuid[])`, [resourceIds])
+    .orderBy(["f.createdAt", "f.id"])
+    .select(
+      tx.raw(`ds."projectId" || ':' || f."secretFindingBlindIndex" AS "valueKey"`),
+      "f.id",
+      "f.status",
+      "f.triagedAt",
+      "f.triagedByUserId",
+      "f.triageComment",
+      "f.resolvedAt",
+      "f.lastDetectedAt",
+      "r.name as resourceName"
+    );
 
-  // A pull request check saved finding ids, so each merged-away finding's id lives on as the id of its oldest
-  // location, which findings.findByIdsOrLocationIdsForUpdate resolves.
-  await tx.raw(
-    `UPDATE ?? AS l
-     SET id = m.id
-     FROM finding_merge AS m
-     WHERE m.id <> m."winnerId"
-       AND NOT EXISTS (SELECT 1 FROM ?? AS taken WHERE taken.id = m.id)
-       AND l.id = (
-         SELECT oldest.id FROM ?? AS oldest WHERE oldest."findingId" = m.id ORDER BY oldest."createdAt", oldest.id LIMIT 1
-       )`,
-    [LOCATION, LOCATION, LOCATION]
-  );
-
-  await tx.raw(
-    `UPDATE ?? AS l SET "findingId" = m."winnerId"
-     FROM finding_merge AS m
-     WHERE l."findingId" = m.id AND m.id <> m."winnerId"`,
-    [LOCATION]
-  );
-
-  await tx.raw(
-    `WITH verdict AS (
-       SELECT DISTINCT ON (m."winnerId") m."winnerId", m.id AS "sourceId", m.status, m."triagedAt", m."triagedByUserId",
-         m."triageComment", m."resolvedAt"
-       FROM finding_merge AS m
-       ORDER BY m."winnerId", array_position(?::text[], m.status::text), m."triagedAt" DESC NULLS LAST, m."createdAt", m.id
-     )
-     UPDATE ?? AS f
-     SET status = v.status,
-       "resolvedAt" = v."resolvedAt",
-       "triagedAt" = v."triagedAt",
-       "triagedByUserId" = v."triagedByUserId",
-       "triageComment" = NULLIF(concat_ws(E'\\n\\n', v."triageComment", notes.text), ''),
-       "lastDetectedAt" = (SELECT max(m."lastDetectedAt") FROM finding_merge AS m WHERE m."winnerId" = v."winnerId")
-     FROM verdict AS v
-     JOIN LATERAL (
-       SELECT string_agg(
-         'Merged from ' || m."resourceName" || ': ' || (?::jsonb ->> m.status) || ' on '
-           || to_char(m."triagedAt", 'YYYY-MM-DD') || COALESCE(': ' || m."triageComment", ''),
-         E'\\n' ORDER BY m."triagedAt"
-       ) AS text
-       FROM finding_merge AS m
-       WHERE m."winnerId" = v."winnerId" AND m.id <> v."sourceId" AND m."triagedAt" IS NOT NULL
-     ) AS notes ON TRUE
-     WHERE f.id = v."winnerId"
-       AND EXISTS (SELECT 1 FROM finding_merge AS loser WHERE loser."winnerId" = v."winnerId" AND loser.id <> loser."winnerId")`,
-    [STATUS_PRECEDENCE, FINDING, JSON.stringify(STATUS_LABEL)]
-  );
-
-  await tx.raw(`DELETE FROM ?? AS f USING finding_merge AS m WHERE f.id = m.id AND m.id <> m."winnerId"`, [FINDING]);
+  const findingsByValue = Map.groupBy(findings, ({ valueKey }) => valueKey);
+  for (const valueFindings of findingsByValue.values()) {
+    // eslint-disable-next-line no-await-in-loop
+    if (valueFindings.length > 1) await mergeValue(tx, valueFindings);
+  }
 };
 
 // One transaction per batch, so an interrupted run can start over.
 export async function up(knex: Knex): Promise<void> {
-  const { rows } = (await knex.raw(
-    `WITH value AS (
-       SELECT ds."projectId", f."secretFindingBlindIndex" AS "blindIndex", array_agg(f.id) AS "findingIds",
-         array_agg(DISTINCT f."resourceId"::text) AS "resourceIds"
-       FROM ?? AS f
-       JOIN ?? AS r ON r.id = f."resourceId"
-       JOIN ?? AS ds ON ds.id = r."dataSourceId"
-       WHERE f."secretFindingBlindIndex" IS NOT NULL
-       GROUP BY ds."projectId", f."secretFindingBlindIndex"
-       HAVING count(*) > 1
-     )
-     SELECT v."projectId", v."blindIndex", v."resourceIds",
-       (SELECT count(*)::int FROM ?? AS l WHERE l."findingId" = ANY(v."findingIds")) AS "locationCount"
-     FROM value AS v
-     ORDER BY v."projectId", v."blindIndex"`,
-    [FINDING, RESOURCE, DATA_SOURCE, LOCATION]
-  )) as { rows: TValue[] };
+  const values: TValue[] = await knex(`${FINDING} as f`)
+    .join(`${RESOURCE} as r`, "r.id", "f.resourceId")
+    .join(`${DATA_SOURCE} as ds`, "ds.id", "r.dataSourceId")
+    .leftJoin(`${LOCATION} as l`, "l.findingId", "f.id")
+    .whereNotNull("f.secretFindingBlindIndex")
+    .groupBy("ds.projectId", "f.secretFindingBlindIndex")
+    .havingRaw("count(DISTINCT f.id) > 1")
+    .orderBy(["ds.projectId", "f.secretFindingBlindIndex"])
+    .select(
+      "ds.projectId",
+      "f.secretFindingBlindIndex as blindIndex",
+      knex.raw(`array_agg(DISTINCT f."resourceId"::text) AS "resourceIds"`),
+      knex.raw(`count(l.id)::int AS "locationCount"`)
+    );
 
   const batches: TValue[][] = [];
   let batchLocations = 0;
-  for (const value of rows) {
+  for (const value of values) {
     if (!batches.length || batchLocations + value.locationCount > BATCH_LOCATIONS) {
       batches.push([]);
       batchLocations = 0;
