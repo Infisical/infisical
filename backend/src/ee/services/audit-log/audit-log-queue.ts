@@ -43,12 +43,14 @@ export const auditLogQueueServiceFactory = ({
       return null;
     }
 
-    // Loaded whenever there is a project, orgId or not: its retention and name belong on the log.
-    const project = projectId
+    // Loaded whenever there is a project, orgId or not: its retention and name belong on the log. A project of
+    // another org than the one given counts as missing, so its details never land in another tenant's log.
+    const loadedProject = projectId
       ? await requestMemoize(requestMemoKeys.auditLogProjectConfig(projectId), () =>
           auditConfigSource.findProjectConfig(projectId)
         )
       : null;
+    const project = loadedProject && (!data.orgId || loadedProject.orgId === data.orgId) ? loadedProject : null;
     // With the org known, a hard-deleted project's logs (its deletion included) are still recorded, under the plan's
     // retention. Without it there is no org to record them in.
     if (projectId && !project && !data.orgId) {

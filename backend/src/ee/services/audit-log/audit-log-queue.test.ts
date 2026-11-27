@@ -180,6 +180,21 @@ describe("auditLogQueueServiceFactory pushToLog", () => {
     expect((new Date(entry.expiresAt).getTime() - new Date(entry.createdAt).getTime()) / MS_IN_DAY).toBe(30);
   });
 
+  test("never attaches another org's project details to an entry", async () => {
+    // Setup
+    const { service, appended, addProject } = setup();
+    const projectId = addProject({ orgId: "org-2", name: "other-tenant", retentionDays: 5 });
+
+    // Action
+    await service.pushToLog(dto({ orgId: "org-1", projectId }));
+
+    // Assert
+    const [entry] = await appended();
+    expect(entry).toMatchObject({ orgId: "org-1", projectId });
+    expect(entry.projectName).toBeUndefined();
+    expect(ttlDays(entry)).toBe(30);
+  });
+
   test("drops an entry when the plan's audit log retention is 0", async () => {
     // Setup
     const { service, appended, auditConfigSource } = setup();
