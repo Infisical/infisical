@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Controller,
   type FieldValues,
@@ -28,7 +28,8 @@ import { DocumentationLink } from "@infisical/cipher/ui/documentation-link";
 import { FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
-import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 import { RadioGroup, RadioGroupItem } from "@infisical/cipher/ui/radio-group";
 import { Switch } from "@infisical/cipher/ui/switch";
 import { SmallText } from "@infisical/cipher/ui/text";
@@ -68,13 +69,13 @@ import {
 import { useV4Session } from "../../../../data/session/contract";
 import { useUpgradeGate } from "../../../../license";
 import type { FlowFeedback, FlowScope } from "../flows";
+import { ProviderLogo } from "../flows/provider-logo";
 import {
   ReviewSection,
   RotationField as SyncField,
   TextField
 } from "../flows/secret-rotation/fields";
-import { DiscardDialog, Gate } from "../flows/shared";
-import { ProviderLogo, WizardSheet } from "../flows/wizard-sheet";
+import { DiscardDialog } from "../flows/shared";
 import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
 import {
@@ -963,6 +964,7 @@ export function CreateSecretSyncSheet({
   const [step, setStep] = useState(0);
   const [discard, setDiscard] = useState<"close" | "provider">();
   const [confirming, setConfirming] = useState(false);
+  const closing = useRef(false);
   const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
   const connectionApp = destination ? SECRET_SYNC_CONNECTION_MAP[destination] : AppConnection.AWS;
   const loadedConnections = useV4Adapter("secrets").useSyncConnections(
@@ -1003,8 +1005,6 @@ export function CreateSecretSyncSheet({
 
   const destinationName = destination ? nameOf(destination) : "";
   const tabs = destination ? formTabs(destination, destinationName) : [];
-  const current = tabs[step];
-  const isFinalStep = step === tabs.length - 1;
   const createBlock = useCreateBlock(
     scope.project,
     ProjectPermissionSub.SecretSyncs,
@@ -1099,32 +1099,6 @@ export function CreateSecretSyncSheet({
     else setDestination(null);
   };
   const isStepValid = (index: number) => form.trigger(tabs[index].fields);
-  const handleNext = async () => {
-    if (isFinalStep) {
-      setConfirming(true);
-      return;
-    }
-    if (step === 0 && conflicts.length) return;
-    if (await isStepValid(step)) setStep(step + 1);
-  };
-  const handleStepClick = async (index: number) => {
-    if (index === 0) {
-      request("provider");
-      return;
-    }
-    const target = index - 1;
-    if (target === step) return;
-    if (target < step) {
-      setStep(target);
-      return;
-    }
-    if (conflicts.length) return;
-    for (let i = step; i < target; i += 1) {
-      // eslint-disable-next-line no-await-in-loop
-      if (!(await isStepValid(i))) return;
-    }
-    setStep(target);
-  };
   const submit = (data: FieldValues) => {
     setConfirming(false);
     if (!destination) return;
@@ -1172,24 +1146,56 @@ export function CreateSecretSyncSheet({
   };
   const Destination = destination ? SYNC_VIEWS[destination]?.Destination : undefined;
 
-  let body: ReactNode = null;
-  if (destination && current) {
-    if (step === 0) body = <SourceFields environments={environments} conflicts={conflicts} />;
-    if (step === 1) body = Destination ? <Destination /> : null;
-    if (step === 2) body = <InitialSyncFields />;
-    if (step === 3) body = <OptionsFields />;
-    if (step === 4) body = <DetailsFields />;
-    if (step === 5)
-      body = <FailureAlertFields projectId={scope.project} canManage={canManageAlert} />;
-    if (step === 6)
-      body = (
-        <ReviewFields
-          duplicateProject={duplicate ? duplicate.project : undefined}
-          projectId={scope.project}
-          canManageAlert={canManageAlert}
-        />
-      );
-  }
+  const stepBody = (index: number) => {
+    if (index === 0) return <SourceFields environments={environments} conflicts={conflicts} />;
+    if (index === 1) return Destination ? <Destination /> : null;
+    if (index === 2) return <InitialSyncFields />;
+    if (index === 3) return <OptionsFields />;
+    if (index === 4) return <DetailsFields />;
+    if (index === 5)
+      return <FailureAlertFields projectId={scope.project} canManage={canManageAlert} />;
+    return (
+      <ReviewFields
+        duplicateProject={duplicate ? duplicate.project : undefined}
+        projectId={scope.project}
+        canManageAlert={canManageAlert}
+      />
+    );
+  };
+  const disabledReason = (index: number) => {
+    if (index === 0 && conflicts.length)
+      return "Resolve the secret name conflicts before you continue.";
+    return index === tabs.length - 1 ? createBlock : undefined;
+  };
+  const steps: MultiStepStep[] = [
+    {
+      title: "Provider",
+      summary: destinationName || undefined,
+      footer: false,
+      content: <ProviderPicker onSelect={select} />
+    },
+    ...tabs.map((tab, index) => ({
+      title: tab.name,
+      heading: tab.title,
+      validate: () => isStepValid(index),
+      disabledReason: disabledReason(index),
+      aside: {
+        description:
+          index >= 2 ? (
+            <Stack gap={12}>
+              <span>{tab.rightDescription}</span>
+              <InitialSyncAlerts
+                onGoToInitialSync={() => goTo("initialSync")}
+                onGoToOptions={() => goTo("options")}
+              />
+            </Stack>
+          ) : (
+            tab.rightDescription
+          )
+      },
+      content: stepBody(index)
+    }))
+  ];
 
   return (
     <SyncConnections
@@ -1210,10 +1216,24 @@ export function CreateSecretSyncSheet({
       }}
     >
       <FormProvider {...form}>
-        <WizardSheet
+        <MultiStep
+          variant="sheet"
+          layout="aside"
           open={open}
-          wide
-          onRequestClose={() => request("close")}
+          onCancel={() => {
+            // MultiStep resets to the first step before asking to close; keep the step if the discard is cancelled.
+            closing.current = true;
+          }}
+          onOpenChange={(next) => {
+            closing.current = false;
+            if (!next) request("close");
+          }}
+          step={destination ? step + 1 : 0}
+          onStepChange={(next) => {
+            if (closing.current) return;
+            if (next === 0) request("provider");
+            else setStep(next - 1);
+          }}
           media={
             destination ? (
               <ProviderLogo image={SECRET_SYNC_MAP[destination].image} size={28} />
@@ -1231,80 +1251,14 @@ export function CreateSecretSyncSheet({
           description={
             destination ? undefined : "You can't change the destination later without a new sync."
           }
-          steps={
-            destination
-              ? [
-                  { title: "Provider", summary: destinationName },
-                  ...tabs.map((tab) => ({ title: tab.name }))
-                ]
-              : undefined
-          }
-          current={step + 1}
-          onStepClick={handleStepClick}
-          heading={current?.title}
-          aside={
-            destination && current ? (
-              <>
-                <div className={flowStyles.asideHead}>
-                  <span className={flowStyles.eyebrow}>{`Step ${step + 2}`}</span>
-                  <span className={flowStyles.eyebrow}>{current.name}</span>
-                </div>
-                <p className={flowStyles.label}>What this step does</p>
-                <SmallText muted>{current.rightDescription}</SmallText>
-                {step >= 2 && (
-                  <InitialSyncAlerts
-                    onGoToInitialSync={() => goTo("initialSync")}
-                    onGoToOptions={() => goTo("options")}
-                  />
-                )}
-              </>
-            ) : undefined
-          }
-          footer={
-            destination ? (
-              <Inline justify="between" wrap={false}>
-                <SmallText muted>{isDirty ? "Unsaved changes" : ""}</SmallText>
-                <Inline gap={12} wrap={false}>
-                  <SmallText muted>{`Step ${step + 2} of ${tabs.length + 1}`}</SmallText>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => (step === 0 ? request("provider") : setStep(step - 1))}
-                  >
-                    Back
-                  </Button>
-                  <Gate reason={isFinalStep ? createBlock : undefined}>
-                    <Button
-                      type="button"
-                      disabled={
-                        (step === 0 && conflicts.length > 0) ||
-                        (isFinalStep && Boolean(createBlock))
-                      }
-                      onClick={handleNext}
-                    >
-                      {isFinalStep ? "Create sync" : "Continue"}
-                    </Button>
-                  </Gate>
-                </Inline>
-              </Inline>
-            ) : undefined
-          }
-        >
-          {destination ? (
-            <form
-              noValidate
-              className={flowStyles.form}
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleNext();
-              }}
-            >
-              {body}
-            </form>
-          ) : (
-            <ProviderPicker onSelect={select} />
-          )}
-        </WizardSheet>
+          footerStart={isDirty ? <SmallText muted>Unsaved changes</SmallText> : undefined}
+          completeLabel="Create sync"
+          onComplete={() => {
+            setConfirming(true);
+            return false;
+          }}
+          steps={steps}
+        />
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
           <AlertDialogContent icon="alert">
             <AlertDialogHeader>

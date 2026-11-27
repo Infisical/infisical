@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FieldMapping, FieldMappingRow } from "@infisical/cipher/patterns/field-mapping";
 import { Alert, AlertDescription } from "@infisical/cipher/ui/alert";
 import { Badge } from "@infisical/cipher/ui/badge";
@@ -9,8 +9,8 @@ import { Field, FieldError } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
+import { MultiStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
-import { SmallText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
 import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
@@ -34,10 +34,10 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 import { useOrgId, useOrgPermission } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
 import { useCreateBlock } from "../row-actions/permissions";
+import { ProviderLogo } from "./provider-logo";
 import { InfoTip } from "./secret-rotation/fields";
-import { DiscardDialog, Gate, secretsAt } from "./shared";
+import { DiscardDialog, secretsAt } from "./shared";
 import type { AddFlowProps } from "./types";
-import { ProviderLogo, WizardSheet } from "./wizard-sheet";
 
 import styles from "./flows.module.css";
 
@@ -205,6 +205,8 @@ export function CreateHoneyTokenFlow({
   const [dirty, setDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
   const [accountChosen, setAccountChosen] = useState(false);
+  const closing = useRef(false);
+  const created = useRef(false);
   const orgId = useOrgId();
   const { permission } = useOrgPermission();
   const createBlock = useCreateBlock(
@@ -327,6 +329,7 @@ export function CreateHoneyTokenFlow({
     return true;
   };
   const submit = () => {
+    created.current = true;
     const name = draft.name.trim();
     const mapped = [
       draft.secretsMapping.accessKeyId.trim(),
@@ -365,170 +368,153 @@ export function CreateHoneyTokenFlow({
         title: "Successfully created AWS Honey Token"
       }
     );
-    onOpenChange(false);
   };
-  const next = () => {
-    if (!validate(step)) return;
-    if (step === 0) {
+  const validateStep = (index: number) => {
+    if (!validate(index)) return false;
+    if (index === 0) {
       const message = accountError();
       if (message) {
         setErrors({ managedBy: message });
-        return;
+        return false;
       }
     }
-    if (step === 1 && !checkMapping()) return;
-    if (step === HONEY_TOKEN_STEPS.length - 1) {
-      submit();
-      return;
-    }
-    setStep(step + 1);
+    return index !== 1 || checkMapping();
   };
-  const back = () => {
-    if (step === 0) {
-      close();
-      return;
-    }
-    setErrors({});
-    setStep(step - 1);
-  };
-  const current = HONEY_TOKEN_STEPS[step];
-  const last = step === HONEY_TOKEN_STEPS.length - 1;
 
   return (
     <>
-      <WizardSheet
+      <MultiStep
+        variant="sheet"
+        layout="aside"
         open={open}
-        onRequestClose={close}
+        onCancel={() => {
+          // MultiStep resets to the first step before asking to close; keep the step if the discard is cancelled.
+          closing.current = true;
+        }}
+        onOpenChange={(next) => {
+          closing.current = false;
+          if (next) return;
+          if (created.current) onOpenChange(false);
+          else close();
+        }}
+        step={step}
+        onStepChange={(next) => {
+          if (closing.current) return;
+          setErrors({});
+          setStep(next);
+        }}
         media={<ProviderLogo image="Amazon Web Services.png" size={32} />}
         title="AWS honey token"
         badges={<DocumentationLink href={HONEY_TOKEN_DOCS_URL} subject="honey tokens" />}
         description="Plant a decoy AWS credential that alerts when anyone uses it."
-        steps={HONEY_TOKEN_STEPS.map((entry) => ({ title: entry.name }))}
-        current={step}
-        onStepClick={(index) => {
-          setErrors({});
-          setStep(index);
-        }}
-        heading={current.title}
-        footer={
-          <Inline justify="between">
-            <SmallText muted>{`Step ${step + 1} of ${HONEY_TOKEN_STEPS.length}`}</SmallText>
-            <Inline gap={12}>
-              <Button type="button" variant="outline" onClick={back}>
-                Back
-              </Button>
-              <Gate reason={last ? createBlock : undefined}>
-                <Button
-                  type="button"
-                  variant={last ? "primary" : "outline"}
-                  disabled={last && Boolean(createBlock)}
-                  onClick={next}
-                >
-                  {last ? "Create honey token" : "Next"}
-                </Button>
-              </Gate>
-            </Inline>
-          </Inline>
-        }
-      >
-        <form
-          noValidate
-          className={styles.form}
-          onSubmit={(event) => {
-            event.preventDefault();
-            next();
-          }}
-        >
-          {current.key === "configuration" && (
-            <Field label="Environment" error={errors.environment}>
-              <Combobox
-                label="Environment"
-                options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
-                value={draft.environment}
-                placeholder="Select an environment..."
-                invalid={Boolean(errors.environment)}
-                onValueChange={(environment) => {
-                  patch({ environment });
+        completeLabel="Create honey token"
+        onComplete={submit}
+        steps={[
+          {
+            title: HONEY_TOKEN_STEPS[0].name,
+            heading: HONEY_TOKEN_STEPS[0].title,
+            validate: () => validateStep(0),
+            content: (
+              <>
+                <Field label="Environment" error={errors.environment}>
+                  <Combobox
+                    label="Environment"
+                    options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
+                    value={draft.environment}
+                    placeholder="Select an environment..."
+                    invalid={Boolean(errors.environment)}
+                    onValueChange={(environment) => {
+                      patch({ environment });
+                      setErrors({});
+                    }}
+                  />
+                </Field>
+                <Stack gap={8}>
+                  <Field
+                    label="AWS account"
+                    description={
+                      accountChoices.find((choice) => choice.value === draft.managedBy)?.description
+                    }
+                    error={errors.managedBy}
+                  >
+                    <Select
+                      label="AWS account"
+                      placeholder="Select an AWS account..."
+                      options={accountChoices}
+                      value={draft.managedBy}
+                      invalid={Boolean(errors.managedBy)}
+                      onChange={(value) => {
+                        setAccountChosen(true);
+                        patch({ managedBy: value as HoneyTokenManagedBy });
+                        setErrors({});
+                      }}
+                    />
+                  </Field>
+                  {deployment.data && !organizationReady && canSetUpAccount && (
+                    <Inline>
+                      <Button asChild variant="link" size="sm" iconRight="external">
+                        <a
+                          href={`/organizations/${orgId}/projects/secret-management/product-settings`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {setupLabel}
+                        </a>
+                      </Button>
+                    </Inline>
+                  )}
+                  {Boolean(deployment.error) && !deployment.data && (
+                    <Inline>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        icon="sync"
+                        onClick={() => deployment.refetch()}
+                      >
+                        Retry
+                      </Button>
+                    </Inline>
+                  )}
+                </Stack>
+              </>
+            )
+          },
+          {
+            title: HONEY_TOKEN_STEPS[1].name,
+            heading: HONEY_TOKEN_STEPS[1].title,
+            validate: () => validateStep(1),
+            content: (
+              <HoneyTokenMappingFields
+                mapping={draft.secretsMapping}
+                errors={errors}
+                onChange={(secretsMapping) => {
+                  patch({ secretsMapping });
                   setErrors({});
                 }}
               />
-            </Field>
-          )}
-          {current.key === "configuration" && (
-            <Stack gap={8}>
-              <Field
-                label="AWS account"
-                description={
-                  accountChoices.find((choice) => choice.value === draft.managedBy)?.description
-                }
-                error={errors.managedBy}
-              >
-                <Select
-                  descriptionLayout="stacked"
-                  label="AWS account"
-                  placeholder="Select an AWS account..."
-                  options={accountChoices}
-                  value={draft.managedBy}
-                  invalid={Boolean(errors.managedBy)}
-                  onChange={(value) => {
-                    setAccountChosen(true);
-                    patch({ managedBy: value as HoneyTokenManagedBy });
-                    setErrors({});
-                  }}
-                />
-              </Field>
-              {deployment.data && !organizationReady && canSetUpAccount && (
-                <Inline>
-                  <Button asChild variant="link" size="sm" iconRight="external">
-                    <a
-                      href={`/organizations/${orgId}/projects/secret-management/product-settings`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {setupLabel}
-                    </a>
-                  </Button>
-                </Inline>
-              )}
-              {Boolean(deployment.error) && !deployment.data && (
-                <Inline>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    icon="sync"
-                    onClick={() => deployment.refetch()}
-                  >
-                    Retry
-                  </Button>
-                </Inline>
-              )}
-            </Stack>
-          )}
-          {current.key === "mapping" && (
-            <HoneyTokenMappingFields
-              mapping={draft.secretsMapping}
-              errors={errors}
-              onChange={(secretsMapping) => {
-                patch({ secretsMapping });
-                setErrors({});
-              }}
-            />
-          )}
-          {current.key === "details" && (
-            <HoneyTokenDetailsFields
-              name={draft.name}
-              description={draft.description}
-              suggestedName={suggestedName}
-              errors={errors}
-              onChange={(value) => {
-                patch(value);
-                if (value.name !== undefined) setErrors({});
-              }}
-            />
-          )}
-        </form>
-      </WizardSheet>
+            )
+          },
+          {
+            title: HONEY_TOKEN_STEPS[2].name,
+            heading: HONEY_TOKEN_STEPS[2].title,
+            validate: () => validateStep(2),
+            disabledReason: createBlock,
+            content: (
+              <HoneyTokenDetailsFields
+                name={draft.name}
+                description={draft.description}
+                suggestedName={suggestedName}
+                errors={errors}
+                onChange={(value) => {
+                  patch(value);
+                  if (value.name !== undefined) setErrors({});
+                }}
+              />
+            )
+          }
+        ]}
+      />
       <DiscardDialog
         open={discard}
         onKeep={() => setDiscard(false)}
