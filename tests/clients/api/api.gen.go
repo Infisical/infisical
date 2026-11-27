@@ -81732,6 +81732,21 @@ func (e ListDynamicSecretLeases500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType.
+const (
+	ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordTypeTXT ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType enum.
+func (e ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType) Valid() bool {
+	switch e {
+	case ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListEmailDomains400JSONResponseBodyStatusCode.
 const (
 	ListEmailDomains400JSONResponseBodyStatusCodeN400 ListEmailDomains400JSONResponseBodyStatusCode = 400
@@ -81816,6 +81831,21 @@ const (
 func (e ListEmailDomains500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListEmailDomains500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType.
+const (
+	CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType enum.
+func (e CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType) Valid() bool {
+	switch e {
+	case CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT:
 		return true
 	default:
 		return false
@@ -81912,6 +81942,21 @@ func (e CreateEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType.
+const (
+	DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType enum.
+func (e DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType) Valid() bool {
+	switch e {
+	case DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteEmailDomain400JSONResponseBodyStatusCode.
 const (
 	DeleteEmailDomain400JSONResponseBodyStatusCodeN400 DeleteEmailDomain400JSONResponseBodyStatusCode = 400
@@ -81996,6 +82041,21 @@ const (
 func (e DeleteEmailDomain500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case DeleteEmailDomain500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType.
+const (
+	VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType = "TXT"
+)
+
+// Valid indicates whether the value is a known member of the VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType enum.
+func (e VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType) Valid() bool {
+	switch e {
+	case VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordTypeTXT:
 		return true
 	default:
 		return false
@@ -187257,6 +187317,9 @@ type ListDynamicSecretLeases422JSONResponseBodyStatusCode float32
 // ListDynamicSecretLeases500JSONResponseBodyStatusCode defines parameters for ListDynamicSecretLeases.
 type ListDynamicSecretLeases500JSONResponseBodyStatusCode float32
 
+// ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType defines parameters for ListEmailDomains.
+type ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType string
+
 // ListEmailDomains400JSONResponseBodyStatusCode defines parameters for ListEmailDomains.
 type ListEmailDomains400JSONResponseBodyStatusCode float32
 
@@ -187281,6 +187344,9 @@ type CreateEmailDomainJSONBody struct {
 	Domain string `json:"domain"`
 }
 
+// CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType defines parameters for CreateEmailDomain.
+type CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType string
+
 // CreateEmailDomain400JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
 type CreateEmailDomain400JSONResponseBodyStatusCode float32
 
@@ -187299,6 +187365,9 @@ type CreateEmailDomain422JSONResponseBodyStatusCode float32
 // CreateEmailDomain500JSONResponseBodyStatusCode defines parameters for CreateEmailDomain.
 type CreateEmailDomain500JSONResponseBodyStatusCode float32
 
+// DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType defines parameters for DeleteEmailDomain.
+type DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType string
+
 // DeleteEmailDomain400JSONResponseBodyStatusCode defines parameters for DeleteEmailDomain.
 type DeleteEmailDomain400JSONResponseBodyStatusCode float32
 
@@ -187316,6 +187385,9 @@ type DeleteEmailDomain422JSONResponseBodyStatusCode float32
 
 // DeleteEmailDomain500JSONResponseBodyStatusCode defines parameters for DeleteEmailDomain.
 type DeleteEmailDomain500JSONResponseBodyStatusCode float32
+
+// VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType defines parameters for VerifyEmailDomain.
+type VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType string
 
 // VerifyEmailDomain400JSONResponseBodyStatusCode defines parameters for VerifyEmailDomain.
 type VerifyEmailDomain400JSONResponseBodyStatusCode float32
@@ -202532,12 +202604,6 @@ type OidcCallbackParams struct {
 	State *string `form:"state,omitempty" json:"state,omitempty"`
 }
 
-// DeleteOidcConfigParams defines parameters for DeleteOidcConfig.
-type DeleteOidcConfigParams struct {
-	// OrganizationId The ID of the organization to delete the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *openapi_types.UUID `form:"organizationId,omitempty" json:"organizationId,omitempty"`
-}
-
 // DeleteOidcConfig400JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
 type DeleteOidcConfig400JSONResponseBodyStatusCode float32
 
@@ -202555,12 +202621,6 @@ type DeleteOidcConfig422JSONResponseBodyStatusCode float32
 
 // DeleteOidcConfig500JSONResponseBodyStatusCode defines parameters for DeleteOidcConfig.
 type DeleteOidcConfig500JSONResponseBodyStatusCode float32
-
-// GetOidcConfigParams defines parameters for GetOidcConfig.
-type GetOidcConfigParams struct {
-	// OrganizationId The ID of the organization to get the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *openapi_types.UUID `form:"organizationId,omitempty" json:"organizationId,omitempty"`
-}
 
 // GetOidcConfig400JSONResponseBodyStatusCode defines parameters for GetOidcConfig.
 type GetOidcConfig400JSONResponseBodyStatusCode float32
@@ -202620,9 +202680,6 @@ type UpdateOidcConfigJSONBody struct {
 
 	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
-
-	// OrganizationId The ID of the organization to update the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *openapi_types.UUID `json:"organizationId,omitempty"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -202695,9 +202752,6 @@ type CreateOidcConfigJSONBody struct {
 
 	// MfaClaimName The ID token claim that lists the authentication methods the user completed. Defaults to amr.
 	MfaClaimName *string `json:"mfaClaimName,omitempty"`
-
-	// OrganizationId The ID of the organization to create the OIDC config for. Defaults to the organization of the token used to make the request.
-	OrganizationId *openapi_types.UUID `json:"organizationId,omitempty"`
 
 	// TokenEndpoint The token endpoint to use for OIDC token exchange.
 	TokenEndpoint *string `json:"tokenEndpoint,omitempty"`
@@ -256367,13 +256421,13 @@ type ClientInterface interface {
 	// UpdateOrganizationSsoSettingsWithBody performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	// Update the organization's SSO enforcement settings.
 	UpdateOrganizationSsoSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateOrganizationSsoSettings performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
 	// Takes a body of the `application/json` content type.
 	//
-	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	// Update the organization's SSO enforcement settings.
 	UpdateOrganizationSsoSettings(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListAvailableOrganizationUsers performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
@@ -257887,12 +257941,12 @@ type ClientInterface interface {
 	// DeleteOidcConfig performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
 	//
 	// Delete OIDC config.
-	DeleteOidcConfig(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 	//
 	// Get OIDC config.
-	GetOidcConfig(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateOidcConfigWithBody performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
 	// with any type of body and a specified content type.
@@ -272908,7 +272962,7 @@ func (c *Client) GetOrganizationSsoSettings(ctx context.Context, reqEditors ...R
 // UpdateOrganizationSsoSettingsWithBody performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
 // with any type of body and a specified content type.
 //
-// Update the organization's SSO enforcement settings. Fields left out are not changed.
+// Update the organization's SSO enforcement settings.
 func (c *Client) UpdateOrganizationSsoSettingsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationSsoSettingsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -272924,7 +272978,7 @@ func (c *Client) UpdateOrganizationSsoSettingsWithBody(ctx context.Context, cont
 // UpdateOrganizationSsoSettings performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
 // Takes a body of the `application/json` content type.
 //
-// Update the organization's SSO enforcement settings. Fields left out are not changed.
+// Update the organization's SSO enforcement settings.
 func (c *Client) UpdateOrganizationSsoSettings(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateOrganizationSsoSettingsRequest(c.Server, body)
 	if err != nil {
@@ -277637,8 +277691,8 @@ func (c *Client) OidcCallback(ctx context.Context, params *OidcCallbackParams, r
 // DeleteOidcConfig performs a DELETE /api/v1/sso/oidc/config (the `DeleteOidcConfig` operationId) request.
 //
 // Delete OIDC config.
-func (c *Client) DeleteOidcConfig(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteOidcConfigRequest(c.Server, params)
+func (c *Client) DeleteOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteOidcConfigRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -277652,8 +277706,8 @@ func (c *Client) DeleteOidcConfig(ctx context.Context, params *DeleteOidcConfigP
 // GetOidcConfig performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 //
 // Get OIDC config.
-func (c *Client) GetOidcConfig(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetOidcConfigRequest(c.Server, params)
+func (c *Client) GetOidcConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetOidcConfigRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -320556,7 +320610,7 @@ func NewOidcCallbackRequest(server string, params *OidcCallbackParams) (*http.Re
 }
 
 // NewDeleteOidcConfigRequest constructs an http.Request for the DeleteOidcConfig method
-func NewDeleteOidcConfigRequest(server string, params *DeleteOidcConfigParams) (*http.Request, error) {
+func NewDeleteOidcConfigRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -320572,33 +320626,6 @@ func NewDeleteOidcConfigRequest(server string, params *DeleteOidcConfigParams) (
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.OrganizationId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
@@ -320610,7 +320637,7 @@ func NewDeleteOidcConfigRequest(server string, params *DeleteOidcConfigParams) (
 }
 
 // NewGetOidcConfigRequest constructs an http.Request for the GetOidcConfig method
-func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.Request, error) {
+func NewGetOidcConfigRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -320626,33 +320653,6 @@ func NewGetOidcConfigRequest(server string, params *GetOidcConfigParams) (*http.
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if params.OrganizationId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "organizationId", *params.OrganizationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-				return nil, err
-			} else {
-				for _, qp := range strings.Split(queryFrag, "&") {
-					rawQueryFragments = append(rawQueryFragments, qp)
-				}
-			}
-
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -334931,7 +334931,7 @@ type ClientWithResponsesInterface interface {
 	// UpdateOrganizationSsoSettingsWithBodyWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
 	// with any type of body and a specified content type.
 	//
-	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	// Update the organization's SSO enforcement settings.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	UpdateOrganizationSsoSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error)
@@ -334939,7 +334939,7 @@ type ClientWithResponsesInterface interface {
 	// UpdateOrganizationSsoSettingsWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 	//
-	// Update the organization's SSO enforcement settings. Fields left out are not changed.
+	// Update the organization's SSO enforcement settings.
 	UpdateOrganizationSsoSettingsWithResponse(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error)
 
 	// ListAvailableOrganizationUsersWithResponse performs a GET /api/v1/organization/users/available (the `ListAvailableOrganizationUsers` operationId) request.
@@ -336919,14 +336919,14 @@ type ClientWithResponsesInterface interface {
 	// Delete OIDC config.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	DeleteOidcConfigWithResponse(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error)
+	DeleteOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error)
 
 	// GetOidcConfigWithResponse performs a GET /api/v1/sso/oidc/config (the `GetOidcConfig` operationId) request.
 	//
 	// Get OIDC config.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetOidcConfigWithResponse(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error)
+	GetOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error)
 
 	// UpdateOidcConfigWithBodyWithResponse performs a PATCH /api/v1/sso/oidc/config (the `UpdateOidcConfig` operationId) request,
 	// with any type of body and a specified content type.
@@ -426398,17 +426398,19 @@ type ListEmailDomainsResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomains []struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomains"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -426460,17 +426462,19 @@ type ListEmailDomainsResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r ListEmailDomainsResponse) GetJSON200() *struct {
 	EmailDomains []struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomains"`
 } {
 	return r.JSON200
@@ -426573,17 +426577,19 @@ type CreateEmailDomainResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomain struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomain"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -426635,17 +426641,19 @@ type CreateEmailDomainResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateEmailDomainResponse) GetJSON200() *struct {
 	EmailDomain struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomain"`
 } {
 	return r.JSON200
@@ -426748,17 +426756,19 @@ type DeleteEmailDomainResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomain struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomain"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -426810,17 +426820,19 @@ type DeleteEmailDomainResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteEmailDomainResponse) GetJSON200() *struct {
 	EmailDomain struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomain"`
 } {
 	return r.JSON200
@@ -426923,17 +426935,19 @@ type VerifyEmailDomainResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		EmailDomain struct {
-			CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-			CreatedAt              time.Time          `json:"createdAt"`
-			Domain                 string             `json:"domain"`
-			Id                     openapi_types.UUID `json:"id"`
-			OrgId                  openapi_types.UUID `json:"orgId"`
-			Status                 *string            `json:"status,omitempty"`
-			UpdatedAt              time.Time          `json:"updatedAt"`
-			VerificationCode       string             `json:"verificationCode"`
-			VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-			VerificationRecordName string             `json:"verificationRecordName"`
-			VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+			CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Domain             string             `json:"domain"`
+			Id                 openapi_types.UUID `json:"id"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			Status             *string            `json:"status,omitempty"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+			VerificationRecord struct {
+				Name  string                                                                `json:"name"`
+				Type  VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+				Value string                                                                `json:"value"`
+			} `json:"verificationRecord"`
+			VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 		} `json:"emailDomain"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -426985,17 +426999,19 @@ type VerifyEmailDomainResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r VerifyEmailDomainResponse) GetJSON200() *struct {
 	EmailDomain struct {
-		CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-		CreatedAt              time.Time          `json:"createdAt"`
-		Domain                 string             `json:"domain"`
-		Id                     openapi_types.UUID `json:"id"`
-		OrgId                  openapi_types.UUID `json:"orgId"`
-		Status                 *string            `json:"status,omitempty"`
-		UpdatedAt              time.Time          `json:"updatedAt"`
-		VerificationCode       string             `json:"verificationCode"`
-		VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-		VerificationRecordName string             `json:"verificationRecordName"`
-		VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+		CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Domain             string             `json:"domain"`
+		Id                 openapi_types.UUID `json:"id"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		Status             *string            `json:"status,omitempty"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+		VerificationRecord struct {
+			Name  string                                                                `json:"name"`
+			Type  VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+			Value string                                                                `json:"value"`
+		} `json:"verificationRecord"`
+		VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 	} `json:"emailDomain"`
 } {
 	return r.JSON200
@@ -542015,7 +542031,7 @@ func (c *ClientWithResponses) GetOrganizationSsoSettingsWithResponse(ctx context
 // UpdateOrganizationSsoSettingsWithBodyWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request,
 // with any type of body and a specified content type.
 //
-// Update the organization's SSO enforcement settings. Fields left out are not changed.
+// Update the organization's SSO enforcement settings.
 //
 // Returns a wrapper object for the known response body format(s).
 func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error) {
@@ -542029,7 +542045,7 @@ func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithBodyWithResponse(
 // UpdateOrganizationSsoSettingsWithResponse performs a PATCH /api/v1/organization/sso-settings (the `UpdateOrganizationSsoSettings` operationId) request.
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
 //
-// Update the organization's SSO enforcement settings. Fields left out are not changed.
+// Update the organization's SSO enforcement settings.
 func (c *ClientWithResponses) UpdateOrganizationSsoSettingsWithResponse(ctx context.Context, body UpdateOrganizationSsoSettingsJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateOrganizationSsoSettingsResponse, error) {
 	rsp, err := c.UpdateOrganizationSsoSettings(ctx, body, reqEditors...)
 	if err != nil {
@@ -545932,8 +545948,8 @@ func (c *ClientWithResponses) OidcCallbackWithResponse(ctx context.Context, para
 // Delete OIDC config.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) DeleteOidcConfigWithResponse(ctx context.Context, params *DeleteOidcConfigParams, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error) {
-	rsp, err := c.DeleteOidcConfig(ctx, params, reqEditors...)
+func (c *ClientWithResponses) DeleteOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteOidcConfigResponse, error) {
+	rsp, err := c.DeleteOidcConfig(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -545945,8 +545961,8 @@ func (c *ClientWithResponses) DeleteOidcConfigWithResponse(ctx context.Context, 
 // Get OIDC config.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetOidcConfigWithResponse(ctx context.Context, params *GetOidcConfigParams, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error) {
-	rsp, err := c.GetOidcConfig(ctx, params, reqEditors...)
+func (c *ClientWithResponses) GetOidcConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetOidcConfigResponse, error) {
+	rsp, err := c.GetOidcConfig(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -605213,17 +605229,19 @@ func ParseListEmailDomainsResponse(rsp *http.Response) (*ListEmailDomainsRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomains []struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  ListEmailDomains200JSONResponseBodyEmailDomainsVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomains"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -605327,17 +605345,19 @@ func ParseCreateEmailDomainResponse(rsp *http.Response) (*CreateEmailDomainRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomain struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  CreateEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomain"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -605441,17 +605461,19 @@ func ParseDeleteEmailDomainResponse(rsp *http.Response) (*DeleteEmailDomainRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomain struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  DeleteEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomain"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -605555,17 +605577,19 @@ func ParseVerifyEmailDomainResponse(rsp *http.Response) (*VerifyEmailDomainRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			EmailDomain struct {
-				CodeExpiresAt          time.Time          `json:"codeExpiresAt"`
-				CreatedAt              time.Time          `json:"createdAt"`
-				Domain                 string             `json:"domain"`
-				Id                     openapi_types.UUID `json:"id"`
-				OrgId                  openapi_types.UUID `json:"orgId"`
-				Status                 *string            `json:"status,omitempty"`
-				UpdatedAt              time.Time          `json:"updatedAt"`
-				VerificationCode       string             `json:"verificationCode"`
-				VerificationMethod     *string            `json:"verificationMethod,omitempty"`
-				VerificationRecordName string             `json:"verificationRecordName"`
-				VerifiedAt             *time.Time         `json:"verifiedAt,omitempty"`
+				CodeExpiresAt      time.Time          `json:"codeExpiresAt"`
+				CreatedAt          time.Time          `json:"createdAt"`
+				Domain             string             `json:"domain"`
+				Id                 openapi_types.UUID `json:"id"`
+				OrgId              openapi_types.UUID `json:"orgId"`
+				Status             *string            `json:"status,omitempty"`
+				UpdatedAt          time.Time          `json:"updatedAt"`
+				VerificationRecord struct {
+					Name  string                                                                `json:"name"`
+					Type  VerifyEmailDomain200JSONResponseBodyEmailDomainVerificationRecordType `json:"type"`
+					Value string                                                                `json:"value"`
+				} `json:"verificationRecord"`
+				VerifiedAt *time.Time `json:"verifiedAt,omitempty"`
 			} `json:"emailDomain"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

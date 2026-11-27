@@ -41,7 +41,6 @@ func NewOIDCConfig(tt *testing.T, tn *harness.Tenant) *OIDC {
 	op.Seed(tt, oidcidp.Client(clientID, secret))
 
 	res, err := tn.Admin.API.CreateOidcConfigWithResponse(tt.Context(), api.CreateOidcConfigJSONRequestBody{
-		OrganizationId:    new(tn.OrgID),
 		ConfigurationType: api.CreateOidcConfigJSONBodyConfigurationTypeDiscoveryURL,
 		DiscoveryURL:      new(oidcidp.IssuerURL(scope) + "/.well-known/openid-configuration"),
 		ClientId:          clientID,

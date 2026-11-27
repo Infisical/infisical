@@ -1,4 +1,6 @@
-import { TEmailDomains } from "@app/db/schemas";
+import { z } from "zod";
+
+import { EmailDomainsSchema, TEmailDomains } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TEmailDomainDALFactory } from "./email-domain-dal";
@@ -9,9 +11,32 @@ const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 export const getEmailDomainVerificationRecordValue = (verificationCode: string) =>
   `${DNS_TXT_VALUE_PREFIX}=${verificationCode}`;
 
-export const toEmailDomainResponse = <T extends { verificationCode: string }>(emailDomain: T): T => ({
+export const EmailDomainResponseSchema = EmailDomainsSchema.omit({
+  verificationMethod: true,
+  verificationCode: true,
+  verificationRecordName: true
+}).extend({
+  verificationRecord: z.object({
+    type: z.literal("TXT"),
+    name: z.string(),
+    value: z.string()
+  })
+});
+
+export type TEmailDomainResponse = z.infer<typeof EmailDomainResponseSchema>;
+
+export const toEmailDomainResponse = ({
+  verificationMethod,
+  verificationCode,
+  verificationRecordName,
+  ...emailDomain
+}: TEmailDomains): TEmailDomainResponse => ({
   ...emailDomain,
-  verificationCode: getEmailDomainVerificationRecordValue(emailDomain.verificationCode)
+  verificationRecord: {
+    type: "TXT",
+    name: verificationRecordName,
+    value: getEmailDomainVerificationRecordValue(verificationCode)
+  }
 });
 
 // SSO login only admits users from the org's verified domains, so a config created without one can never sign anyone in.

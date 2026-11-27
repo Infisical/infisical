@@ -248,7 +248,8 @@ func pendingDomainFor(t *testing.T, tn *harness.Tenant, domain string) emailDoma
 	require.NoError(t, err)
 	requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 	d := res.JSON200.EmailDomain
-	return emailDomain{Id: d.Id, Domain: d.Domain, VerificationCode: d.VerificationCode, VerificationRecordName: d.VerificationRecordName}
+	require.EqualValues(t, "TXT", d.VerificationRecord.Type)
+	return emailDomain{Id: d.Id, Domain: d.Domain, VerificationCode: d.VerificationRecord.Value, VerificationRecordName: d.VerificationRecord.Name}
 }
 
 func onlyDomain(t *testing.T, tn *harness.Tenant) emailDomain {

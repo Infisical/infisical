@@ -70,10 +70,28 @@ describe("isIdpAuthoritativeForDomain", () => {
 });
 
 describe("toEmailDomainResponse", () => {
-  test("returns the stored bare code as the full TXT record value", () => {
-    expect(toEmailDomainResponse({ id: "domain-1", verificationCode: "abc123" })).toEqual({
+  test("returns the DNS record to publish in place of the stored verification fields", () => {
+    const response = toEmailDomainResponse({
       id: "domain-1",
-      verificationCode: "infisical-domain-verification=abc123"
+      orgId: "org-1",
+      domain: "example.com",
+      verificationMethod: "dns-txt",
+      verificationCode: "abc123",
+      verificationRecordName: "_infisical-verification.example.com",
+      status: EmailDomainStatus.Pending,
+      verifiedAt: null,
+      codeExpiresAt: new Date(0),
+      createdAt: new Date(0),
+      updatedAt: new Date(0)
     });
+
+    expect(response.verificationRecord).toEqual({
+      type: "TXT",
+      name: "_infisical-verification.example.com",
+      value: "infisical-domain-verification=abc123"
+    });
+    expect(response).not.toHaveProperty("verificationMethod");
+    expect(response).not.toHaveProperty("verificationCode");
+    expect(response).not.toHaveProperty("verificationRecordName");
   });
 });
