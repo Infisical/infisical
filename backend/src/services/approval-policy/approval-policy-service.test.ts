@@ -719,7 +719,7 @@ describe("approvalPolicyService closure events", () => {
 
     await expect(service.expireOverdueRequests()).resolves.toBe(2);
 
-    expect(markExpiredRequests).toHaveBeenCalledWith(TX);
+    expect(markExpiredRequests).toHaveBeenCalledWith({ limit: 500 }, TX);
     expect(eventEmitter.emit).toHaveBeenCalledWith(
       [
         { type: "pam.expired", data: { targetIds: ["r1"] } },
@@ -727,6 +727,16 @@ describe("approvalPolicyService closure events", () => {
       ],
       TX
     );
+  });
+
+  it("expires a large backlog in committed batches", async () => {
+    const batch = (prefix: string, size: number) => Array.from({ length: size }, (_, i) => pamRequest(`${prefix}${i}`));
+    const markExpiredRequests = vi.fn().mockResolvedValueOnce(batch("a", 500)).mockResolvedValueOnce(batch("b", 3));
+    const { service, eventEmitter } = buildService({ markExpiredRequests });
+
+    await expect(service.expireOverdueRequests()).resolves.toBe(503);
+    expect(markExpiredRequests).toHaveBeenCalledTimes(2);
+    expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
   });
 
   it("emits nothing when no request expired", async () => {

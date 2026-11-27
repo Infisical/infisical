@@ -1,6 +1,6 @@
 import {
   EventResultStatus,
-  runEventsSerially,
+  runEventsConcurrentlyByKey,
   TEvent,
   TEventConsumer,
   TEventConsumerResult
@@ -11,6 +11,8 @@ import { TAlertMessageResolutionService } from "./alert-message-resolution-fns";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 
 export const ALERT_MESSAGE_RESOLUTION_CONSUMER = "alert-message-resolution";
+
+const RESOLUTION_ORG_CONCURRENCY = 5;
 
 export type TAlertMessageResolutionConsumerDep = {
   alertProviderRegistry: Pick<TAlertProviderRegistry, "messageClosingKeys">;
@@ -41,7 +43,12 @@ export const alertMessageResolutionConsumerFactory = ({
     };
   };
 
-  const handle = (events: TEvent[]) => runEventsSerially(events, $handleEvent);
+  const handle = (events: TEvent[]) =>
+    runEventsConcurrentlyByKey(events, {
+      keyOf: (event) => AlertEventPayloadSchema.safeParse(event.data).data?.orgId,
+      concurrency: RESOLUTION_ORG_CONCURRENCY,
+      handleEvent: $handleEvent
+    });
 
   return {
     name: ALERT_MESSAGE_RESOLUTION_CONSUMER,

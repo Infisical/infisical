@@ -140,6 +140,9 @@ type TApprovalPolicyServiceFactoryDep = {
 
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
 
+const EXPIRE_BATCH_SIZE = 500;
+const EXPIRE_MAX_BATCHES = 20;
+
 export const isApprovalRequestExpired = (
   request: { expiresAt?: Date | string | null },
   now: Date = new Date()
@@ -2979,12 +2982,20 @@ export const approvalPolicyServiceFactory = ({
     }
   };
 
-  const expireOverdueRequests = async () =>
-    approvalRequestDAL.transaction(async (tx) => {
-      const expired = await approvalRequestDAL.markExpiredRequests(tx);
-      await $emitClosures(ApprovalRequestClosure.Expired, expired, tx);
-      return expired.length;
-    });
+  const expireOverdueRequests = async () => {
+    let total = 0;
+    for (let batch = 0; batch < EXPIRE_MAX_BATCHES; batch += 1) {
+      // eslint-disable-next-line no-await-in-loop -- each batch commits before the next one starts
+      const count = await approvalRequestDAL.transaction(async (tx) => {
+        const expired = await approvalRequestDAL.markExpiredRequests({ limit: EXPIRE_BATCH_SIZE }, tx);
+        await $emitClosures(ApprovalRequestClosure.Expired, expired, tx);
+        return expired.length;
+      });
+      total += count;
+      if (count < EXPIRE_BATCH_SIZE) break;
+    }
+    return total;
+  };
 
   const buildTelemetryEvent = async (args: {
     action: ApprovalAuditAction;

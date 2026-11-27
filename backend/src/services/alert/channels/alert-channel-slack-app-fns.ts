@@ -127,6 +127,8 @@ const $messageRememberer = (ctx: TAlertChannelSendContext, workflowIntegrationId
         .then(({ encryptor }) => encryptor({ plainText: Buffer.from(JSON.stringify(message)) }).cipherTextBlob);
       await alertSlackMessageDAL.create({
         orgId,
+        alertId: ctx.payload.alert.id,
+        alertChannelId: ctx.channelId,
         workflowIntegrationId,
         slackChannelId,
         messageTs,

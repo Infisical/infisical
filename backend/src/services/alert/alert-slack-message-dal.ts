@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TAlertSlackMessages } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -18,10 +18,36 @@ export const alertSlackMessageDALFactory = (db: TDbClient) => {
     targetIds: string[];
   }) => {
     try {
-      return await db(TableName.AlertSlackMessage)
-        .where({ orgId, resourceType })
-        .whereIn("targetId", targetIds)
-        .orderBy("createdAt", "asc");
+      return (await db(TableName.AlertSlackMessage)
+        .leftJoin(TableName.Alert, `${TableName.Alert}.id`, `${TableName.AlertSlackMessage}.alertId`)
+        .leftJoin(
+          TableName.AlertChannel,
+          `${TableName.AlertChannel}.id`,
+          `${TableName.AlertSlackMessage}.alertChannelId`
+        )
+        .leftJoin(TableName.AlertChannelMembership, (join) => {
+          join
+            .on(`${TableName.AlertChannelMembership}.alertId`, `${TableName.AlertSlackMessage}.alertId`)
+            .andOn(`${TableName.AlertChannelMembership}.channelId`, `${TableName.AlertSlackMessage}.alertChannelId`);
+        })
+        .where(`${TableName.AlertSlackMessage}.orgId`, orgId)
+        .where(`${TableName.AlertSlackMessage}.resourceType`, resourceType)
+        .whereIn(`${TableName.AlertSlackMessage}.targetId`, targetIds)
+        .select(
+          `${TableName.AlertSlackMessage}.*`,
+          db.ref("enabled").withSchema(TableName.Alert).as("alertEnabled"),
+          db.ref("enabled").withSchema(TableName.AlertChannel).as("channelEnabled"),
+          db.ref("encryptedConfig").withSchema(TableName.AlertChannel).as("channelEncryptedConfig"),
+          db.ref("projectId").withSchema(TableName.AlertChannel).as("channelProjectId"),
+          db.ref("id").withSchema(TableName.AlertChannelMembership).as("membershipId")
+        )
+        .orderBy(`${TableName.AlertSlackMessage}.createdAt`, "asc")) as (TAlertSlackMessages & {
+        alertEnabled: boolean | null;
+        channelEnabled: boolean | null;
+        channelEncryptedConfig: Buffer | null;
+        channelProjectId: string | null;
+        membershipId: string | null;
+      })[];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindAlertSlackMessagesByTargets" });
     }

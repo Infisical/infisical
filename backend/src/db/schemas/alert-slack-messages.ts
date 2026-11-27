@@ -12,6 +12,8 @@ import { TImmutableDBKeys } from "./models";
 export const AlertSlackMessagesSchema = z.object({
   id: z.string().uuid(),
   orgId: z.string().uuid(),
+  alertId: z.string().uuid(),
+  alertChannelId: z.string().uuid(),
   workflowIntegrationId: z.string().uuid(),
   slackChannelId: z.string(),
   messageTs: z.string(),

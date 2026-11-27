@@ -310,16 +310,15 @@ export const alertEngineFactory = ({
     return $dispatchChannelWork(alert, provider, channelWork);
   };
 
-  const runAlertForEvent = async (
-    alert: TAlerts,
-    input: {
-      eventId: string;
-      eventType: string;
-      occurredAt: Date;
-      targetIds: string[];
-      payload: Record<string, unknown>;
-    }
-  ): Promise<AlertDispatchOutcome> => {
+  type TAlertEventInput = {
+    eventId: string;
+    eventType: string;
+    occurredAt: Date;
+    targetIds: string[];
+    payload: Record<string, unknown>;
+  };
+
+  const $dispatchEvent = async (alert: TAlerts, input: TAlertEventInput): Promise<AlertDispatchOutcome> => {
     const provider = $getProvider(alert, "findEventTargets");
     if (!provider?.findEventTargets) return AlertDispatchOutcome.NoProvider;
 
@@ -346,27 +345,31 @@ export const alertEngineFactory = ({
 
     const targets = resolved.map((target) => ({ target, id: provider.targetId(target) }));
 
-    const outcome = await $dispatchChannelWork(
-      alert,
-      provider,
-      $buildChannelWork(alert, channels, targets),
-      input.eventId
-    );
+    return $dispatchChannelWork(alert, provider, $buildChannelWork(alert, channels, targets), input.eventId);
+  };
 
-    // The request may have closed before its message was stored, when the closing event found nothing to edit.
-    if (provider.messageResolver?.openingEvents.includes(alert.eventType)) {
-      try {
-        await alertMessageResolution.resolveMessages({
-          orgId: alert.orgId,
-          projectId: alert.projectId,
-          resourceType: alert.resourceType,
-          targetIds: targets.map((target) => target.id)
-        });
-      } catch (err) {
-        logger.error(err, `Failed to update closed alert messages [alertId=${alert.id}]`);
-      }
+  const runAlertForEvent = async (alert: TAlerts, input: TAlertEventInput): Promise<AlertDispatchOutcome> => {
+    const outcome = await $dispatchEvent(alert, input);
+    if (!alertProviderRegistry.get(alert.resourceType)?.messageResolver?.openingEvents.includes(alert.eventType)) {
+      return outcome;
     }
-    return outcome;
+
+    // A target that closed before its message was stored had nothing to edit when the closing event ran.
+    const errors = await alertMessageResolution
+      .resolveMessages({
+        orgId: alert.orgId,
+        projectId: alert.projectId,
+        resourceType: alert.resourceType,
+        targetIds: input.targetIds
+      })
+      .catch((err: unknown) => [err instanceof Error ? err.message : "Unknown error"]);
+    if (errors.length === 0) return outcome;
+
+    logger.warn(`Failed to update closed alert messages [alertId=${alert.id}]: ${errors.join("; ")}`);
+    // Retrying the event skips the channels it already delivered and runs this update again.
+    return outcome === AlertDispatchOutcome.DeliverySuccess || outcome === AlertDispatchOutcome.NoChannels
+      ? AlertDispatchOutcome.DeliveryPartial
+      : outcome;
   };
 
   return { runAlert, runAlertForEvent };

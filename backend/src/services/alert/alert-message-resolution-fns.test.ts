@@ -34,12 +34,24 @@ const approved: TAlertMessageResolution = {
 const storedMessage = (overrides: Record<string, unknown> = {}) => ({
   id: "msg-1",
   orgId: ORG_ID,
-  workflowIntegrationId: "wi-1",
+  workflowIntegrationId: "0b9a9d3e-1c1c-4c4c-9d9d-2e2e2e2e2e2e",
   slackChannelId: "C0123ABCD",
   messageTs: "1.1",
   resourceType: "pam.folder",
   targetId: "request-1",
   encryptedMessage: Buffer.from(JSON.stringify(original)),
+  alertId: "alert-1",
+  alertChannelId: "channel-1",
+  alertEnabled: true,
+  channelEnabled: true,
+  membershipId: "membership-1",
+  channelProjectId: "project-1",
+  channelEncryptedConfig: Buffer.from(
+    JSON.stringify({
+      workflowIntegrationId: "0b9a9d3e-1c1c-4c4c-9d9d-2e2e2e2e2e2e",
+      channels: [{ id: "C0123ABCD", name: "requests" }]
+    })
+  ),
   ...overrides
 });
 
@@ -146,7 +158,7 @@ describe("alertMessageResolution.resolveMessages", () => {
     await expect(resolve()).resolves.toEqual([]);
     expect(updateMock).toHaveBeenCalledWith(expect.anything(), {
       orgId: ORG_ID,
-      workflowIntegrationId: "wi-1",
+      workflowIntegrationId: "0b9a9d3e-1c1c-4c4c-9d9d-2e2e2e2e2e2e",
       slackChannelId: "C0123ABCD",
       messageTs: "1.1",
       message: buildResolvedSlackPayload(original, approved)
@@ -185,12 +197,46 @@ describe("alertMessageResolution.resolveMessages", () => {
     expect(deleteById).not.toHaveBeenCalled();
   });
 
+  test.each([
+    ["the alert is disabled", { alertEnabled: false }],
+    ["the channel is disabled", { channelEnabled: false }],
+    ["the channel was removed from the alert", { membershipId: null }],
+    [
+      "the Slack channel was removed from the alert channel",
+      {
+        channelEncryptedConfig: Buffer.from(
+          JSON.stringify({
+            workflowIntegrationId: "0b9a9d3e-1c1c-4c4c-9d9d-2e2e2e2e2e2e",
+            channels: [{ id: "C0999ZZZZ", name: "other" }]
+          })
+        )
+      }
+    ],
+    [
+      "the alert channel now posts through another Slack integration",
+      {
+        channelEncryptedConfig: Buffer.from(
+          JSON.stringify({
+            workflowIntegrationId: "0b9a9d3e-1c1c-4c4c-9d9d-3f3f3f3f3f3f",
+            channels: [{ id: "C0123ABCD", name: "requests" }]
+          })
+        )
+      }
+    ]
+  ])("forgets the message without editing it when %s", async (_case, overrides) => {
+    const { resolve, deleteById } = setup({ messages: [storedMessage(overrides)] });
+
+    await expect(resolve()).resolves.toEqual([]);
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(deleteById).toHaveBeenCalledWith("msg-1");
+  });
+
   test("drops an unreadable message and still updates the others", async () => {
     updateMock.mockResolvedValue({ result: SlackMessageUpdateResult.Updated });
     const { resolve, deleteById } = setup({
       messages: [
         storedMessage({ id: "broken", encryptedMessage: Buffer.from("not json") }),
-        storedMessage({ id: "msg-2", slackChannelId: "C0456EFGH" })
+        storedMessage({ id: "msg-2", messageTs: "2.2" })
       ]
     });
 

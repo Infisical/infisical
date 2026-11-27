@@ -818,12 +818,22 @@ describe("alert engine, messages a later event can update", () => {
     expect(resolveMessages).not.toHaveBeenCalled();
   });
 
-  test("still reports the delivery when the follow-up update fails", async () => {
+  test("reports a partial delivery when the follow-up update fails, so the event retries it", async () => {
     const { outcome } = await runCapturingPayload(
       { targets: [{ id: "t1" }], channels: [slackAppChannel], messageResolver, failMessageResolution: true },
       ["t1"]
     );
 
-    expect(outcome).toBe(AlertDispatchOutcome.DeliverySuccess);
+    expect(outcome).toBe(AlertDispatchOutcome.DeliveryPartial);
+  });
+
+  test("runs the follow-up update again on a retry whose channels were all delivered", async () => {
+    const { outcome, resolveMessages } = await runCapturingPayload(
+      { targets: [{ id: "t1" }], channels: [slackAppChannel], messageResolver, deliveredForEvent: ["c-slack-app"] },
+      ["t1"]
+    );
+
+    expect(outcome).toBe(AlertDispatchOutcome.NoChannels);
+    expect(resolveMessages).toHaveBeenCalledTimes(1);
   });
 });
