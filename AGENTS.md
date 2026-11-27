@@ -130,6 +130,15 @@ and destructure only the keys you need, because that object holds plaintext secr
 
 No IoC container. Every service is a factory function with explicit dependencies, wired in `backend/src/server/routes/index.ts`; see `backend/AGENTS.md`.
 
+### Workflow Integrations (Slack and Teams)
+
+Slack and Microsoft Teams app installs and posting to their channels belong to the Workflow Integrations domain
+(`backend/src/domains/platform/workflow-integrations/`). A product that posts keeps its own "which event, which
+channels" settings keyed by an integration id, renders the message itself, and calls
+`chatDeliveryService.post({ orgId, integrationId, message: ChatMessage.slack(...), channelIds })`; it checks a stored id
+with `workflowIntegrationService.findInOrg`. Never read `workflow_integrations`, `slack_integrations` or
+`microsoft_teams_integrations`, or decrypt a bot token, outside the domain. See its `AGENTS.md`.
+
 ### Alerting
 
 All user-facing "notify me when X happens" features share one module: `backend/src/services/alert/`. It owns the alert CRUD, the channel stack (email, Slack, webhook, PagerDuty), recipients, dedup, history, and dispatch. To alert on a new resource, register an `IResourceAlertProvider` on the shared registry — do not stand up a per-domain alert service, channel table, or notification cron. See `backend/AGENTS.md` for the provider contract and invariants.

@@ -3,7 +3,8 @@
 The instance's configuration: the single `super_admin` row (settings, the Slack, Teams and GitHub app credentials, the
 env overrides) shared by every pod through Redis, and every env value an instance admin can override, resolved. Owns
 `super_admin`. Depends only on KMS Core, for the root key that encrypts credentials and overrides. Instance Admin
-(`src/services/super-admin/`) keeps the admin console, the login-method lockout guard and the Teams bot re-init.
+(`src/services/super-admin/`) keeps the admin console and the login-method lockout guard; after saving Teams
+credentials it asks Workflow Integrations to rebuild the Teams bot (`microsoftTeamsIntegrationService.reinitializeBot`).
 
 | Piece | Holds |
 | --- | --- |

@@ -19,7 +19,8 @@ src/domains/
 │   ├── instance-config-core/
 │   ├── access-control/
 │   ├── organizations/
-│   └── projects/
+│   ├── projects/
+│   └── workflow-integrations/
 ├── secrets-manager/secrets/    # <product-area>/<domain>
 ├── pam/pam/
 ├── agent-vault/agent-vault/
@@ -33,7 +34,7 @@ Read a domain's `AGENTS.md` before changing it: [license](platform/license/AGENT
 [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
 [cert-manager](certificates/cert-manager/AGENTS.md), [kms-core](platform/kms-core/AGENTS.md),
 [events](platform/events/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md), [code-signing](certificates/code-signing/AGENTS.md),
-[kms](kms/kms/AGENTS.md).
+[kms](kms/kms/AGENTS.md), [workflow-integrations](platform/workflow-integrations/AGENTS.md).
 
 `lib/` holds infrastructure every domain uses, one folder per concern. Each folder exports its public API from
 `index.ts` and keeps its test doubles in its own `testing/`:
@@ -79,7 +80,7 @@ EE-licensed, so moving it into `ce/` relicenses it as MIT. That is a maintainer'
 | Stores bundle | A domain's stores plus `locks`, bound to one transaction: what `run` hands a service as `stores`. Built inline in `module.ts` and passed to `TransactionRunner` |
 | Service | Start with one per entity; split when use cases need different deps or callers use one group without the other (`LicenseService` vs `UsageMeteringService`). `class X implements TX`, `TX` is a `type` using method syntax, not arrow props |
 | Module | Only `new` calls. Builds everything once and exposes services as-is (typed by their service type) as `readonly <name>Service` fields, named like the service, even when the module has only one (`OrganizationsModule.organizationsService`, `LicenseModule.licenseService`). Never wraps a service method |
-| Router | `register<Name>Router(server)` in `router/`, registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It reads its service from `server.services.<name>Service`, which `routes/index.ts` decorates with `domains.<domain>.<name>Service`.
+| Router | `register<Name>Router(server, deps)` in `router/`, exported from `module.ts` and registered where the legacy router was (`ee/routes/v<N>/index.ts` or `server/routes/v<N>/index.ts`) under the same prefix. It takes its services as a typed deps argument (`T<Name>RouterDeps`), passed from `domains.<domain>` where it is mounted (the v1 routes receive `domains`), and never reads a domain service from `server.services`; domain services are not decorated onto Fastify. Sub-routers get the deps as Fastify plugin options. Cross-cutting HTTP pieces (`verifyAuth`, `req.actor`, rate limits, the audit log until Audit Log Core exists) stay on `server`.
 | Helpers | Plain functions |
 
 Children: if there are a few and they're always read with the parent, the parent holds them (`Secret` holds
@@ -420,7 +421,7 @@ sets the pattern from the rules above, and its PR names it here.
 | Stores bundle passed to `TransactionRunner` | `platform/organizations/ce/module.ts` |
 | Entity with one method per change | `platform/events/ce/models/outbox-entry.ts` (`settle`, `expireClaim`) |
 | In-memory store, contract suite run on both stores | `platform/events/ce/testing/` (`InMemoryOutboxEntryStore`, `outbox-entry-store-contract.ts`) |
-| Router | none yet |
+| Router | `platform/workflow-integrations/ce/router/` (typed deps, mounted in `server/routes/v1/index.ts`) |
 | A service on in-memory stores for tests (`build<Domain>()`), fake for consumers | `platform/events/ce/testing/build-events.ts`, `fake-event-emitter-service.ts` |
 | Workers, crons and a timer in `start()`, with a `stop()` | `platform/events/ce/module.ts` |
 | Store query style on Postgres (returns counts, so no row-to-model mapping) | `platform/organizations/ce/data-access/billable-actor-store.ts` |
@@ -463,8 +464,9 @@ Where each legacy piece lands:
    `NotFoundError` into domain errors. A plan check reads the plan before `run` and refuses with
    `plan.assert(PlanFeature.X)`; never gate a read or a delete.
 5. Wire it: build the module in `domains.ts`, hand its services to legacy callers from `domains.<domain>` in
-   `routes/index.ts`, and replace the legacy factory everywhere. Delete the old service, DAL and types. Point the
-   `server.services` entry and its `@types/fastify.d.ts` type at the domain service (`<name>Service`).
+   `routes/index.ts`, and replace the legacy factory everywhere. Delete the old service, DAL and types. Move its routes
+   into the domain's `router/` with typed deps (see Router above), and delete the old `server.services` entry and its
+   `@types/fastify.d.ts` type rather than pointing them at the domain service.
 6. Test it: model and service unit tests on in-memory stores, the store contract suite, integration
    specs for SQL and locks, a `Fake<Name>Service` if anything else calls it, and a blackbox plan in `tests/` for
    every API change.
