@@ -51,7 +51,10 @@ func TestSecret_Create(t *testing.T) {
 shared suites; a layout test in `harness/` fails a misplaced one. Containers the test talks to through Infisical,
 such as a rotation target database, are added with `harness.WithInfra(...)`. Instance-wide
 environment, such as `RELAY_AUTH_SECRET`, is set with `harness.WithInfisicalEnv(k, v)`,
-which only an `Isolated` package may use.
+which only an `Isolated` package may use. `harness.WithClickHouse()`, also `Isolated` only, adds a ClickHouse and has
+the instance store audit logs there instead of Postgres. Keep an `Isolated` package's directory name short: it is
+part of the instance's hostname (`inf-pkg-suitesisolated-<package>-infisical-<image id>`), and past the 63 characters
+a DNS label allows, every sign-in fails with a 500 because the session cookie's domain is invalid.
 
 ## Structure
 

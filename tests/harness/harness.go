@@ -23,6 +23,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/harness/infisical"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/clickhouse"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/id"
 )
@@ -54,10 +55,11 @@ type Stack struct {
 type Option func(*config)
 
 type config struct {
-	extra []infra.Module
-	plan  *license.Plan
-	env   map[string]string
-	files []infra.File
+	extra      []infra.Module
+	plan       *license.Plan
+	env        map[string]string
+	files      []infra.File
+	clickhouse bool
 }
 
 // WithInfra adds a container the harness does not know about, for a suite that needs
@@ -83,6 +85,15 @@ func WithInfisicalEnv(key, value string) Option {
 // only, same reason as WithInfisicalEnv.
 func WithInfisicalFile(src, dst string) Option {
 	return func(c *config) { c.files = append(c.files, infra.File{Src: src, Dst: dst}) }
+}
+
+// WithClickHouse runs a ClickHouse and has the package's Infisical store audit logs there instead of Postgres.
+// Isolated only, same reason as WithInfisicalEnv.
+func WithClickHouse() Option {
+	return func(c *config) {
+		c.extra = append(c.extra, clickhouse.Module())
+		c.clickhouse = true
+	}
 }
 
 // WithDefaultPlan sets the entitlements a tenant gets unless it asks for others.

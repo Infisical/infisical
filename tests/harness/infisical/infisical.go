@@ -13,6 +13,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/oauth"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/infra"
+	"github.com/Infisical/infisical/tests/infra/clickhouse"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/infra/postgres"
 	"github.com/Infisical/infisical/tests/infra/redis"
@@ -50,10 +51,11 @@ var OAuthClients = map[string]string{
 }
 
 type module struct {
-	image    Image
-	env      map[string]string
-	files    []infra.File
-	runModes string
+	image      Image
+	env        map[string]string
+	files      []infra.File
+	runModes   string
+	clickhouse bool
 }
 
 type Option func(*module)
@@ -72,6 +74,10 @@ func WithFile(src, dst string) Option {
 // /api/status and no product routes, which is a thing worth asserting.
 func WithRunModes(modes string) Option { return func(m *module) { m.runModes = modes } }
 
+// WithClickHouse stores audit logs in the stack's ClickHouse instead of Postgres. Declare the clickhouse module
+// beside it (harness.WithClickHouse does both).
+func WithClickHouse() Option { return func(m *module) { m.clickhouse = true } }
+
 func Module(opts ...Option) infra.Module {
 	m := &module{env: map[string]string{}}
 	for _, o := range opts {
@@ -88,7 +94,11 @@ func (m *module) Key() infra.ModuleKey { return Key }
 // outbound calls, mail and entitlements controllable, and mail is what makes creating
 // a user possible at all.
 func (m *module) Requires() []infra.ModuleKey {
-	return []infra.ModuleKey{postgres.Key, redis.Key, fakenet.Key}
+	keys := []infra.ModuleKey{postgres.Key, redis.Key, fakenet.Key}
+	if m.clickhouse {
+		keys = append(keys, clickhouse.Key)
+	}
+	return keys
 }
 
 func (m *module) Name() infra.NameParts {
@@ -137,6 +147,9 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 	}
 	if m.runModes != "" {
 		env["INFISICAL_RUN_MODES"] = m.runModes
+	}
+	if m.clickhouse {
+		env["CLICKHOUSE_URL"] = clickhouse.MustFrom(d).URL(infra.Internal)
 	}
 
 	// Outbound interception is DNS, not a proxy. Every hostname resolves to fakenet,
