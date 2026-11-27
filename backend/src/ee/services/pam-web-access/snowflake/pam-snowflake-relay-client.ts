@@ -1,6 +1,7 @@
 import snowflake from "snowflake-sdk";
 
 import { BadRequestError } from "@app/lib/errors";
+import { SNOWFLAKE_ARRAY_BINDING_THRESHOLD_DISABLED } from "@app/services/app-connection/snowflake";
 
 const STATEMENT_TIMEOUT_MS = 30 * 60 * 1000;
 const LOGIN_TIMEOUT_MS = 30 * 1000;
@@ -14,7 +15,8 @@ export const connectThroughRelay = async (relayPort: number, account: string): P
     accessUrl: `http://127.0.0.1:${relayPort}`,
     application: "Infisical",
     fetchAsString: ["Boolean", "Number"],
-    timeout: STATEMENT_TIMEOUT_MS
+    timeout: STATEMENT_TIMEOUT_MS,
+    arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD_DISABLED
   });
 
   let loginTimer: NodeJS.Timeout | undefined;
