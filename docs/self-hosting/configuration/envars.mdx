@@ -256,6 +256,24 @@ Example values:
   Number of secrets that an instance assumes a request to list secrets returns, the first time the instance handles a request with that project and those parameters. After the first time, the instance assumes the number of secrets the request returned last time. Only used when `SECRET_READ_CONCURRENCY_LIMIT_MODE` is `observe` or `enforce`.
 </ParamField>
 
+<ParamField query="SECRET_READ_ORG_BUDGET_MODE" type="string" default="off" optional>
+  Controls a per-organization limit on the number of secrets that API requests to list secrets can return each minute, across all Infisical instances.
+
+  <Note>
+    This limit applies only on Infisical Cloud. If you self-host Infisical, Infisical ignores this variable and `SECRET_READ_ORG_BUDGET`.
+  </Note>
+
+  Set it to one of these values:
+
+  - `off`: Infisical doesn't apply or measure the limit
+  - `observe`: Infisical measures every request against the limit and records the [secret list limit metrics](/self-hosting/guides/monitoring-telemetry), but doesn't refuse any request
+  - `enforce`: Once an organization reaches the limit, its next requests to list secrets fail with a `429` response until the minute ends. The `Retry-After` header gives the number of seconds to wait
+</ParamField>
+
+<ParamField query="SECRET_READ_ORG_BUDGET" type="int" default="1000" optional>
+  Number of credits each organization can spend on requests to list secrets each minute. A request costs one credit for every 100 secrets it returns, rounded up, including imported secrets. If a request for a single secret has to search the folder's [imports](/documentation/platform/secret-reference#secret-imports), it costs one credit for every 100 imported secrets Infisical loads. Only used when `SECRET_READ_ORG_BUDGET_MODE` is `observe` or `enforce`.
+</ParamField>
+
 ## CORS
 
 Cross-Origin Resource Sharing (CORS) is a security feature that allows web applications running on one domain to access resources from another domain.

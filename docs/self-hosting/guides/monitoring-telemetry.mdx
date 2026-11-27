@@ -1274,7 +1274,9 @@ The secret service caches encrypted secret payloads to avoid redundant decryptio
 
 ### Secret list limit metrics (InfisicalCore)
 
-Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-hosting/configuration/envars) is `observe` or `enforce`. They show how close each instance is to the number of secrets it can hold in memory for requests to list secrets, and how many of those requests Infisical refuses. In `observe` mode, Infisical refuses no request, and the metrics show how many requests `enforce` mode would refuse.
+Infisical records the `infisical.secret.read_budget.*` and `infisical.secret.read.*` metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-hosting/configuration/envars) is `observe` or `enforce`. They show how close each instance is to the number of secrets it can hold in memory for requests to list secrets, and how many of those requests Infisical refuses. In `observe` mode, Infisical refuses no request, and the metrics show how many requests `enforce` mode would refuse.
+
+Infisical records the `infisical.secret.org_budget.*` metrics if `SECRET_READ_ORG_BUDGET_MODE` is `observe` or `enforce`. That limit applies only on Infisical Cloud, so a self-hosted instance never records them.
 
 <AccordionGroup>
   <Accordion title="Secret Read Budget Capacity">
@@ -1340,11 +1342,40 @@ Infisical records these metrics if [`SECRET_READ_CONCURRENCY_LIMIT_MODE`](/self-
 
     **Unit**: `{request}`
 
-    **Description**: Requests to list secrets that arrived when the instance had no room for them. If this count keeps growing, the instances need more memory, or you need more instances.
+    **Description**: Requests to list secrets that a limit refused, or would have refused in `enforce` mode. If the count for `read_budget` keeps growing, the instances need more memory, or you need more instances.
 
     **Attributes**:
-      - `rate_limit.bucket` (string): `read_budget`
-      - `outcome` (string): `refused` (Infisical answered with a `503` response) or `would_refuse` (`observe` mode: the request ran, but `enforce` mode would have refused it)
+      - `rate_limit.bucket` (string): the limit that refused the request:
+        - `read_budget`: the instance had no room for the request (`503` response)
+        - `read_budget_org_share`: the organization already held its share of the instance's room (`503` response, Infisical Cloud only)
+        - `org_budget`: the organization had spent its `SECRET_READ_ORG_BUDGET` for the minute (`429` response, Infisical Cloud only)
+      - `outcome` (string): `refused` (Infisical refused the request) or `would_refuse` (`observe` mode: the request ran, but `enforce` mode would have refused it)
+      - `plan.slug` (string): the slug of the organization's license plan, or `none`
+  </Accordion>
+
+  <Accordion title="Secret Org Budget Usage">
+    **Metric Name**: `infisical.secret.org_budget.usage`
+
+    **Type**: Histogram
+
+    **Unit**: `{credit}`
+
+    **Description**: Credits an organization has spent in the current minute, recorded after each request to list secrets that costs credits. Compare it with `SECRET_READ_ORG_BUDGET` to see how close organizations come to the limit.
+
+    **Attributes**:
+      - `plan.slug` (string): the slug of the organization's license plan, or `none`
+  </Accordion>
+
+  <Accordion title="Secret Org Budget Exceeded">
+    **Metric Name**: `infisical.secret.org_budget.exceeded`
+
+    **Type**: Histogram
+
+    **Unit**: `{credit}`
+
+    **Description**: Credits by which an organization went past `SECRET_READ_ORG_BUDGET`, recorded once per organization per minute, for the request that spent the last of the budget. The value is 0 if that request used up the budget exactly. Infisical refuses only the requests after it, so large values mean single requests return many more secrets than the budget allows.
+
+    **Attributes**:
       - `plan.slug` (string): the slug of the organization's license plan, or `none`
   </Accordion>
 </AccordionGroup>
