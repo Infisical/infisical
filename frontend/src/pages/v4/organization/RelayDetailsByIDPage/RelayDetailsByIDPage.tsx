@@ -459,11 +459,11 @@ export const RelayDetailsByIDPage = () => {
             />
           </Card>
         }
-        secondary={<AuthenticationCard relay={relay} canEdit={canEdit} />}
       >
         <Stack gap={24}>
           <RelayDeployCard relay={relay} />
           <ConnectedGatewaysCard relayId={relay.id} />
+          <AuthenticationCard relay={relay} canEdit={canEdit} />
         </Stack>
       </DetailLayout>
       <EditHostDialog
