@@ -269,12 +269,9 @@ describe("resolving a Linear issue", () => {
       expect(await setterOf([moved(lead, 3), reassigned(2)])).toEqual({ email: "lead@acme.com", reason: null });
     });
 
-    test("falls back to the creator when the status never changed", async () => {
-      expect(await setterOf([], true, lead)).toEqual({ email: "lead@acme.com", reason: null });
-      expect((await setterOf([reassigned(2)], true, lead))?.reason).toBe(
-        "ENG-123 was reassigned after its status was set"
-      );
-      expect((await setterOf([], false, lead))?.reason).toBe(
+    test("refuses an issue with no recorded status change, even one a listed person created", async () => {
+      expect((await setterOf([], true, lead))?.reason).toBe("Linear has no record of anyone changing ENG-123's status");
+      expect((await setterOf([reassigned(2)], false, lead))?.reason).toBe(
         "Couldn't find who set the status of ENG-123 in its recent history"
       );
     });

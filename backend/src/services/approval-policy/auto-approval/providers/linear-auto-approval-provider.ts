@@ -151,15 +151,21 @@ const readStatusSetter = async (
 
   const { entries, complete } = history;
   const index = entries.findIndex((entry) => entry.toStateId && entry.toStateId !== entry.fromStateId);
-  if (index === -1 && !complete) return fail(`Couldn't find who set the status of ${identifier} in its recent history`);
-  if (index !== -1 && (!issue.state?.id || entries[index].toStateId !== issue.state.id)) {
+  if (index === -1) {
+    // Linear doesn't record changes made in an issue's first three minutes, so the creator can't be credited
+    return fail(
+      complete
+        ? `Linear has no record of anyone changing ${identifier}'s status`
+        : `Couldn't find who set the status of ${identifier} in its recent history`
+    );
+  }
+  if (!issue.state?.id || entries[index].toStateId !== issue.state.id) {
     return fail(`${identifier}'s status changed while Infisical was checking it. Submit the request again.`);
   }
 
-  // An issue whose status never changed got it when it was created
-  const setter = index === -1 ? issue.creator : entries[index].actor;
+  const setter = entries[index].actor;
   if (!setter) {
-    const bot = index === -1 ? null : entries[index].botActor?.name;
+    const bot = entries[index].botActor?.name;
     return fail(`${identifier}'s status was set by ${bot || "an integration or automation"}, not a person`);
   }
 
@@ -168,7 +174,7 @@ const readStatusSetter = async (
   if (email === ctx.requester.email?.trim().toLowerCase()) {
     return fail(`${identifier}'s status was set by the requester`);
   }
-  if (entries.slice(0, index === -1 ? entries.length : index).some(isAssigneeChange)) {
+  if (entries.slice(0, index).some(isAssigneeChange)) {
     return fail(`${identifier} was reassigned after its status was set`);
   }
 

@@ -105,7 +105,7 @@ To require sign-off in Jira, use **is approved in Jira** rather than **has statu
 | **has status** | The issue's status is one of the values |
 | **is in team** | The issue is in one of the teams |
 | **has label** | The issue has at least one of the labels |
-| **had its status set by** | One of the listed people, by email address, made the issue's latest status change. It never passes if the requester made that change, if an integration or automation made it, if the issue was reassigned afterward, or if Linear doesn't share that person's email address with the connection's API key. If the status never changed, the person who created the issue counts as having set it. |
+| **had its status set by** | One of the listed people, by email address, made the issue's latest status change. It never passes if the requester made that change, if an integration or automation made it, if the issue was reassigned afterward, or if Linear doesn't share that person's email address with the connection's API key. Linear doesn't record changes made in an issue's first three minutes, so the status change has to happen after that. |
 
 Rules store team keys, so update them if you change a team's key in Linear. Infisical rejects issues that are archived or in the trash.
 
