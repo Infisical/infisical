@@ -17,7 +17,11 @@ import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
-import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
+import {
+  getAzureManagedIdentityAccessToken,
+  getCachedAzureManagedIdentityAccessToken,
+  isAzureAccessTokenValid
+} from "../shared/azure/azure-managed-identity-fns";
 import { generateClientAssertion } from "../shared/azure/generate-client-assertion";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 import {
@@ -25,8 +29,7 @@ import {
   TAzureClientSecretsConnectionCertificateCredentials,
   TAzureClientSecretsConnectionClientSecretCredentials,
   TAzureClientSecretsConnectionConfig,
-  TAzureClientSecretsConnectionCredentials,
-  TAzureClientSecretsConnectionManagedIdentityCredentials
+  TAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets-connection-types";
 
 export const getAzureClientSecretsConnectionListItem = ({
@@ -126,7 +129,7 @@ export const getAzureConnectionAccessToken = async (
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionClientSecretCredentials;
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = accessTokenCredentials;
-      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+      if (isAzureAccessTokenValid({ accessToken, expiresAt })) {
         return accessToken;
       }
 
@@ -166,7 +169,7 @@ export const getAzureConnectionAccessToken = async (
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionCertificateCredentials;
       const { accessToken, expiresAt, clientId, tenantId, certificateBody, privateKey } = accessTokenCredentials;
-      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+      if (isAzureAccessTokenValid({ accessToken, expiresAt })) {
         return accessToken;
       }
 
@@ -200,36 +203,11 @@ export const getAzureConnectionAccessToken = async (
       return clientData.access_token;
     }
 
-    case AzureClientSecretsConnectionMethod.ManagedIdentity: {
-      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
-        orgId: appConnection.orgId,
-        projectId: appConnection.projectId,
-        kmsDataKeyService,
-        encryptedCredentials: appConnection.encryptedCredentials
-      })) as TAzureClientSecretsConnectionManagedIdentityCredentials;
-      const { accessToken, expiresAt, clientId, tenantId } = managedIdentityCredentials;
-      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
-        return accessToken;
-      }
-
-      const managedIdentityToken = await getAzureManagedIdentityAccessToken(
-        { appConnection, tenantId, clientId, scope: "https://graph.microsoft.com/.default" },
-        oidcIssuerService
+    case AzureClientSecretsConnectionMethod.ManagedIdentity:
+      return getCachedAzureManagedIdentityAccessToken(
+        { appConnection, scope: "https://graph.microsoft.com/.default" },
+        { appConnectionDAL, kmsDataKeyService, oidcIssuerService }
       );
-
-      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
-        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
-        orgId: appConnection.orgId,
-        projectId: appConnection.projectId,
-        kmsDataKeyService
-      });
-
-      await appConnectionDAL.updateById(appConnection.id, {
-        encryptedCredentials: encryptedManagedIdentityCredentials
-      });
-
-      return managedIdentityToken.accessToken;
-    }
 
     default:
       throw new InternalServerError({

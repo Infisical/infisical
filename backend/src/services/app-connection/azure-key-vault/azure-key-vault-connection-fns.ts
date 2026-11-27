@@ -26,7 +26,11 @@ import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
-import { getAzureManagedIdentityAccessToken } from "../shared/azure/azure-managed-identity-fns";
+import {
+  getAzureManagedIdentityAccessToken,
+  getCachedAzureManagedIdentityAccessToken,
+  isAzureAccessTokenValid
+} from "../shared/azure/azure-managed-identity-fns";
 import { generateClientAssertion } from "../shared/azure/generate-client-assertion";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault-connection-enums";
 import {
@@ -34,8 +38,7 @@ import {
   TAzureKeyVaultConnectionCertificateCredentials,
   TAzureKeyVaultConnectionClientSecretCredentials,
   TAzureKeyVaultConnectionConfig,
-  TAzureKeyVaultConnectionCredentials,
-  TAzureKeyVaultConnectionManagedIdentityCredentials
+  TAzureKeyVaultConnectionCredentials
 } from "./azure-key-vault-connection-types";
 
 /**
@@ -214,8 +217,7 @@ export const getAzureConnectionAccessToken = async (
 
       const { accessToken, expiresAt, clientId, clientSecret, tenantId } = clientSecretCredentials;
 
-      // Check if token is still valid (with 5 minute buffer)
-      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+      if (isAzureAccessTokenValid({ accessToken, expiresAt })) {
         return { accessToken };
       }
 
@@ -263,8 +265,7 @@ export const getAzureConnectionAccessToken = async (
         privateKey
       } = certificateCredentials;
 
-      // Check if token is still valid (with 5 minute buffer)
-      if (certAccessToken && certExpiresAt && certExpiresAt > currentTime + 300000) {
+      if (isAzureAccessTokenValid({ accessToken: certAccessToken, expiresAt: certExpiresAt })) {
         return { accessToken: certAccessToken };
       }
 
@@ -306,46 +307,18 @@ export const getAzureConnectionAccessToken = async (
       return { accessToken: certificateData.access_token };
 
     case AzureKeyVaultConnectionMethod.ManagedIdentity:
-      const managedIdentityCredentials = (await decryptAppConnectionCredentials({
-        orgId: appConnection.orgId,
-        kmsDataKeyService,
-        encryptedCredentials: appConnection.encryptedCredentials,
-        projectId: appConnection.projectId
-      })) as TAzureKeyVaultConnectionManagedIdentityCredentials;
-
-      if (
-        managedIdentityCredentials.accessToken &&
-        managedIdentityCredentials.expiresAt &&
-        managedIdentityCredentials.expiresAt > currentTime + 300000
-      ) {
-        return { accessToken: managedIdentityCredentials.accessToken };
-      }
-
-      const managedIdentityToken = await getAzureManagedIdentityAccessToken(
-        {
-          appConnection,
-          tenantId: managedIdentityCredentials.tenantId,
-          clientId: managedIdentityCredentials.clientId,
-          scope:
-            appConnection.app === AppConnection.AzureAppConfiguration
-              ? "https://azconfig.io/.default"
-              : "https://vault.azure.net/.default"
-        },
-        oidcIssuerService
-      );
-
-      const encryptedManagedIdentityCredentials = await encryptAppConnectionCredentials({
-        credentials: { ...managedIdentityCredentials, ...managedIdentityToken },
-        orgId: appConnection.orgId,
-        kmsDataKeyService,
-        projectId: appConnection.projectId
-      });
-
-      await appConnectionDAL.updateById(appConnection.id, {
-        encryptedCredentials: encryptedManagedIdentityCredentials
-      });
-
-      return { accessToken: managedIdentityToken.accessToken };
+      return {
+        accessToken: await getCachedAzureManagedIdentityAccessToken(
+          {
+            appConnection,
+            scope:
+              appConnection.app === AppConnection.AzureAppConfiguration
+                ? "https://azconfig.io/.default"
+                : "https://vault.azure.net/.default"
+          },
+          { appConnectionDAL, kmsDataKeyService, oidcIssuerService }
+        )
+      };
 
     default:
       throw new InternalServerError({
