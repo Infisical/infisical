@@ -33,6 +33,7 @@ import {
   resolveGatewayAccountType,
   resolveSelectedHost
 } from "../pam-account/pam-account-schemas";
+import { TPamDevicePostureServiceFactory } from "../pam-device-posture/pam-device-posture-service";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
@@ -82,6 +83,7 @@ import {
 } from "./pam-session-fns";
 
 type TPamSessionServiceFactoryDep = {
+  pamDevicePostureService: Pick<TPamDevicePostureServiceFactory, "enforce">;
   pamSessionDAL: Pick<
     TPamSessionDALFactory,
     | "findAccessibleByProjectId"
@@ -149,6 +151,7 @@ export const pamSessionServiceFactory = ({
   userService,
   orgDAL,
   pamAccessRequestService,
+  pamDevicePostureService,
   telemetryService
 }: TPamSessionServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -548,7 +551,8 @@ export const pamSessionServiceFactory = ({
     mfaSessionId,
     tokenVersionId,
     accessMethod = PamAccessMethod.Cli,
-    targetHost
+    targetHost,
+    deviceVerificationId
   }: {
     path: string;
     projectId: string;
@@ -563,6 +567,7 @@ export const pamSessionServiceFactory = ({
     tokenVersionId?: string;
     accessMethod?: PamAccessMethod;
     targetHost?: string;
+    deviceVerificationId?: string;
   }) => {
     const account = await resolveAccountByPath(projectId, path);
 
@@ -578,6 +583,9 @@ export const pamSessionServiceFactory = ({
     await checkAccount(account.id, account.folderId, projectId, PamResourcePermissionActions.LaunchSessions, actor);
 
     const trimmedReason = reason?.trim() || null;
+
+    // The device is checked before MFA, so a CLI retrying with a device check can reuse its MFA session
+    await pamDevicePostureService.enforce({ account, deviceVerificationId, actor });
 
     if (policy.requireMfa) {
       if (!isUserActor) {

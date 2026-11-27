@@ -48,6 +48,7 @@ export type TCreateAccessRequestDTO = {
   duration: string;
   accessType?: PamAccessType;
   autoApprovalInputs?: TAutoApprovalInputValue[];
+  deviceVerificationId?: string;
 } & TActorInput;
 
 export type TListAccessRequestsDTO = {
@@ -98,6 +99,7 @@ export type TPamAccessRequestData = {
   reason?: string;
   duration: string;
   accessType?: PamAccessType;
+  deviceVerificationId?: string;
 };
 
 export type TGetAccountApproversDTO = {

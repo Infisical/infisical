@@ -67,6 +67,7 @@ export const FolderAccountRow = ({
     canLaunch: canLaunchNow,
     requiresApproval,
     requireReason: account.requireReason,
+    requireDevicePosture: account.requireDevicePosture,
     accessStatus,
     grantExpiresAt: account.grantExpiresAt,
     pendingRequestId: account.pendingRequestId,

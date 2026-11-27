@@ -1,5 +1,5 @@
-import { ReactNode, useCallback, useRef, useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { createContext, Fragment, ReactNode, useCallback, useMemo, useRef, useState } from "react";
+import { Laptop, ShieldCheck } from "lucide-react";
 
 import {
   Button,
@@ -13,13 +13,30 @@ import {
 } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
-import { PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
+import { PAM_DEVICE_VERIFICATION_REQUIRED, PamPolicyType, TPamAccount } from "@app/hooks/api/pam";
 import { getAccessErrorMessage } from "@app/pages/pam/access-error";
+import { DeviceVerification } from "@app/pages/pam/components/DeviceVerification";
+
+type TPamDeviceVerificationContext = {
+  deviceVerificationId?: string;
+  // Sends the user back to the device step, for a check that expired or a grant approved for one device
+  requestDeviceCheck: () => void;
+};
+
+export const PamDeviceVerificationContext = createContext<TPamDeviceVerificationContext>({
+  requestDeviceCheck: () => {}
+});
+
+export const isDeviceVerificationRequired = (err: unknown) =>
+  (err as { response?: { data?: { details?: { code?: string } } } })?.response?.data?.details
+    ?.code === PAM_DEVICE_VERIFICATION_REQUIRED;
 
 type TAccessPolicy = {
   requireReason: boolean;
   maxSessionDurationSeconds: number;
   requireMfa: boolean;
+  requireDevicePosture: boolean;
+  requiresApproval: boolean;
 };
 
 export const resolveAccessPolicy = (account: TPamAccount): TAccessPolicy => {
@@ -28,13 +45,88 @@ export const resolveAccessPolicy = (account: TPamAccount): TAccessPolicy => {
   return {
     requireReason: policies[PamPolicyType.RequireReason] === true,
     requireMfa: policies[PamPolicyType.RequireMfa] === true,
+    requireDevicePosture: Boolean(policies[PamPolicyType.DevicePosture]),
+    requiresApproval: policies[PamPolicyType.RequiresApproval] === true,
     maxSessionDurationSeconds: typeof duration === "number" ? duration : 3600
   };
+};
+
+const DeviceCheckCard = ({
+  account,
+  isBound,
+  onVerified
+}: {
+  account: TPamAccount;
+  isBound: boolean;
+  onVerified: (verificationId: string) => void;
+}) => (
+  <div className="flex h-dvh w-screen items-center justify-center bg-background p-4">
+    <Card className="w-full max-w-md">
+      <CardHeader className="flex items-center gap-3">
+        <Laptop className="size-6 shrink-0 text-product-pam" />
+        <div className="flex min-w-0 flex-col gap-1">
+          <CardTitle className="text-base">Device Verification Required</CardTitle>
+          <CardDescription>
+            {isBound
+              ? `Your access to ${account.name} was approved for one device. Check that you're on it.`
+              : `${account.name} requires a managed device that passes your organization's device policy.`}
+          </CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <DeviceVerification accountId={account.id} autoStart onVerified={onVerified} />
+      </CardContent>
+    </Card>
+  </div>
+);
+
+// For flows with their own reason and MFA steps, which only need the device check
+export const DevicePostureGate = ({
+  account,
+  children
+}: {
+  account: TPamAccount;
+  children: ReactNode;
+}) => {
+  const policy = resolveAccessPolicy(account);
+  const [needsCheck, setNeedsCheck] = useState(policy.requireDevicePosture);
+  const [isBound, setIsBound] = useState(false);
+  const [deviceVerificationId, setDeviceVerificationId] = useState<string>();
+
+  const requestDeviceCheck = useCallback(() => {
+    setDeviceVerificationId(undefined);
+    setIsBound(!policy.requireDevicePosture);
+    setNeedsCheck(true);
+  }, [policy.requireDevicePosture]);
+  const deviceContext = useMemo(
+    () => ({ deviceVerificationId, requestDeviceCheck }),
+    [deviceVerificationId, requestDeviceCheck]
+  );
+
+  if (needsCheck) {
+    return (
+      <DeviceCheckCard
+        account={account}
+        isBound={isBound}
+        onVerified={(verificationId) => {
+          setDeviceVerificationId(verificationId);
+          setTimeout(() => setNeedsCheck(false), 1500);
+        }}
+      />
+    );
+  }
+
+  return (
+    <PamDeviceVerificationContext.Provider value={deviceContext}>
+      <Fragment key={deviceVerificationId}>{children}</Fragment>
+    </PamDeviceVerificationContext.Provider>
+  );
 };
 
 type TSessionAccessGateResult = {
   reason?: string;
   mfaSessionId?: string;
+  deviceVerificationId?: string;
 };
 
 type Props = {
@@ -48,51 +140,84 @@ const MFA_TIMEOUT = 5 * 60 * 1000;
 export const SessionAccessGate = ({ account, children }: Props) => {
   const policy = resolveAccessPolicy(account);
 
-  const [step, setStep] = useState<"reason" | "mfa" | "done" | "error">("reason");
+  const [step, setStep] = useState<"reason" | "device" | "mfa" | "done" | "error">("reason");
+  const [deviceVerificationId, setDeviceVerificationId] = useState<string>();
+  const [isBound, setIsBound] = useState(false);
   const [reason, setReason] = useState("");
+  const deviceContext = useMemo(
+    () => ({
+      deviceVerificationId,
+      requestDeviceCheck: () => {
+        setDeviceVerificationId(undefined);
+        setIsBound(!policy.requireDevicePosture);
+        setStep("device");
+      }
+    }),
+    [deviceVerificationId, policy.requireDevicePosture]
+  );
   const [mfaSessionId, setMfaSessionId] = useState<string>();
   const [mfaVerifying, setMfaVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const popupRef = useRef<Window | null>(null);
 
-  const handleReasonSubmit = useCallback(async () => {
-    const trimmed = reason.trim();
+  const continueToMfa = useCallback(
+    async (verificationId?: string) => {
+      const trimmed = reason.trim();
 
-    if (!policy.requireMfa) {
-      setStep("done");
-      return;
-    }
-
-    setStep("mfa");
-
-    try {
-      await apiRequest.post<{ ticket: string }>(
-        `/api/v1/pam/accounts/${account.id}/web-access-ticket`,
-        { reason: trimmed || undefined }
-      );
-      setStep("done");
-    } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: {
-          data?: {
-            error?: string;
-            details?: { mfaSessionId?: string; mfaMethod?: string };
-          };
-        };
-      };
-
-      if (axiosErr?.response?.data?.error === "SESSION_MFA_REQUIRED") {
-        const sessionId = axiosErr.response!.data!.details?.mfaSessionId;
-        if (sessionId) {
-          setMfaSessionId(sessionId);
-          return;
-        }
+      // A grant approved for one device needs a device check too, which only the server knows about
+      const mayNeedDevice =
+        policy.requiresApproval && !verificationId && !policy.requireDevicePosture;
+      if (!policy.requireMfa && !mayNeedDevice) {
+        setStep("done");
+        return;
       }
 
-      setErrorMessage(getAccessErrorMessage(err, "Failed to access account. Please try again."));
-      setStep("error");
+      if (policy.requireMfa) setStep("mfa");
+
+      try {
+        await apiRequest.post<{ ticket: string }>(
+          `/api/v1/pam/accounts/${account.id}/web-access-ticket`,
+          { reason: trimmed || undefined, deviceVerificationId: verificationId }
+        );
+        setStep("done");
+      } catch (err: unknown) {
+        const axiosErr = err as {
+          response?: {
+            data?: {
+              error?: string;
+              details?: { mfaSessionId?: string; mfaMethod?: string; code?: string };
+            };
+          };
+        };
+
+        if (isDeviceVerificationRequired(err)) {
+          setIsBound(!policy.requireDevicePosture);
+          setStep("device");
+          return;
+        }
+
+        if (axiosErr?.response?.data?.error === "SESSION_MFA_REQUIRED") {
+          const sessionId = axiosErr.response!.data!.details?.mfaSessionId;
+          if (sessionId) {
+            setMfaSessionId(sessionId);
+            return;
+          }
+        }
+
+        setErrorMessage(getAccessErrorMessage(err, "Failed to access account. Please try again."));
+        setStep("error");
+      }
+    },
+    [reason, policy.requireMfa, policy.requireDevicePosture, account.id, policy.requiresApproval]
+  );
+
+  const handleReasonSubmit = useCallback(() => {
+    if (policy.requireDevicePosture) {
+      setStep("device");
+      return;
     }
-  }, [reason, policy.requireMfa, account.id]);
+    continueToMfa();
+  }, [policy.requireDevicePosture, continueToMfa]);
 
   const handleMfaVerify = useCallback(async () => {
     if (!mfaSessionId) return;
@@ -148,7 +273,13 @@ export const SessionAccessGate = ({ account, children }: Props) => {
 
   if (step === "done") {
     const trimmed = reason.trim();
-    return <>{children({ reason: trimmed || undefined, mfaSessionId })}</>;
+    return (
+      <PamDeviceVerificationContext.Provider value={deviceContext}>
+        <Fragment key={deviceVerificationId}>
+          {children({ reason: trimmed || undefined, mfaSessionId, deviceVerificationId })}
+        </Fragment>
+      </PamDeviceVerificationContext.Provider>
+    );
   }
 
   if (step === "error") {
@@ -166,6 +297,19 @@ export const SessionAccessGate = ({ account, children }: Props) => {
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  if (step === "device") {
+    return (
+      <DeviceCheckCard
+        account={account}
+        isBound={isBound}
+        onVerified={(verificationId) => {
+          setDeviceVerificationId(verificationId);
+          setTimeout(() => continueToMfa(verificationId), 1500);
+        }}
+      />
     );
   }
 

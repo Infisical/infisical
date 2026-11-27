@@ -70,7 +70,14 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
             .describe(
               "Self-approve the request immediately instead of waiting for an approver. Requires break-glass eligibility and a reason of at least 10 characters, which is reused as the bypass reason."
             ),
-          autoApprovalInputs: AutoApprovalInputValuesSchema.optional()
+          autoApprovalInputs: AutoApprovalInputValuesSchema.optional(),
+          deviceVerificationId: z
+            .string()
+            .uuid()
+            .optional()
+            .describe(
+              "A passed device check from POST /api/v1/pam/device-verifications. Required when the account's template requires device posture, and lets the folder's device auto-approval rules approve the request."
+            )
         })
         .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
           message: "Either 'accountId' or 'path' is required"
@@ -92,6 +99,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         accessType: req.body.accessType,
         breakGlass: req.body.breakGlass,
         autoApprovalInputs: req.body.autoApprovalInputs,
+        deviceVerificationId: req.body.deviceVerificationId,
         actor: req.actor
       });
 
@@ -273,6 +281,9 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         200: z.object({
           autoApprovalInputs: AutoApprovalInputDetailsSchema.array(),
           autoApprovalOnly: z.boolean(),
+          autoApprovalDevicePosture: z
+            .boolean()
+            .describe("Whether an auto-approval rule that applies to this account checks the requester's device"),
           steps: z.array(
             z.object({
               requiredApprovals: z.number(),

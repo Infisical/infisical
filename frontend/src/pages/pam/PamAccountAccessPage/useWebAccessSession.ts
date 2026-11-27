@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITheme, Terminal } from "@xterm/xterm";
@@ -8,6 +8,10 @@ import { type ResolvedTheme, useTheme } from "@app/components/v3/platform/ThemeP
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { PamAccountType } from "@app/hooks/api/pam";
+import {
+  isDeviceVerificationRequired,
+  PamDeviceVerificationContext
+} from "@app/pages/pam/PamAccountAccessPage/ReasonGate";
 
 import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types";
 
@@ -103,6 +107,9 @@ export const useWebAccessSession = ({
   mfaSessionId,
   onSessionEnd
 }: UseWebAccessSessionOptions) => {
+  const { deviceVerificationId, requestDeviceCheck } = useContext(PamDeviceVerificationContext);
+  const deviceVerificationIdRef = useRef(deviceVerificationId);
+  deviceVerificationIdRef.current = deviceVerificationId;
   const { resolvedTheme } = useTheme();
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -325,7 +332,11 @@ export const useWebAccessSession = ({
     try {
       const { data } = await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { reason: submittedReasonRef.current, mfaSessionId: mfaSessionIdRef.current }
+        {
+          reason: submittedReasonRef.current,
+          mfaSessionId: mfaSessionIdRef.current,
+          deviceVerificationId: deviceVerificationIdRef.current
+        }
       );
       mfaSessionIdRef.current = undefined;
       if (containerEl) {
@@ -337,6 +348,10 @@ export const useWebAccessSession = ({
       terminal.reset();
       openWebSocket(terminal, data.ticket);
     } catch (err: unknown) {
+      if (isDeviceVerificationRequired(err)) {
+        requestDeviceCheck();
+        return;
+      }
       const axiosErr = err as {
         response?: {
           data?: {
@@ -416,7 +431,11 @@ export const useWebAccessSession = ({
           terminal.reset();
           const { data: retryData } = await apiRequest.post<{ ticket: string }>(
             `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-            { mfaSessionId: newMfaSessionId, reason: submittedReasonRef.current }
+            {
+              mfaSessionId: newMfaSessionId,
+              reason: submittedReasonRef.current,
+              deviceVerificationId: deviceVerificationIdRef.current
+            }
           );
           openWebSocket(terminal, retryData.ticket);
         } catch {

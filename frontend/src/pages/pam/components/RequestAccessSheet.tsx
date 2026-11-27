@@ -5,6 +5,7 @@ import {
   Clock,
   GitBranch,
   KeyRound,
+  Laptop,
   ListChecks,
   Rocket,
   Send,
@@ -61,6 +62,7 @@ import {
   AutoApprovalRequestInputs,
   toAutoApprovalInputValues
 } from "./auto-approval/AutoApprovalRequestInputs";
+import { DeviceVerification } from "./DeviceVerification";
 import { PamDetailSheet } from "./PamDetailSheet";
 
 // Reason requiredness follows the template's Require Reason policy, same as the API and CLI
@@ -199,7 +201,22 @@ export const RequestAccessSheet = ({
     !approverData.steps.some((step) => step.approvers.length > 0)
   );
   const [breakGlassChosen, setBreakGlassChosen] = useState(false);
+  const requireDevicePosture = Boolean(account?.requireDevicePosture);
+  const [deviceVerificationId, setDeviceVerificationId] = useState<string>();
+  const isDeviceBlocking = requireDevicePosture && !deviceVerificationId;
   const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;
+  const offersDeviceAutoApproval =
+    !requireDevicePosture &&
+    !breakGlassOnSubmit &&
+    Boolean(approverData?.autoApprovalDevicePosture);
+  const checksDeviceForAutoApproval =
+    !breakGlassOnSubmit && Boolean(approverData?.autoApprovalDevicePosture);
+  const showsDeviceCheck = requireDevicePosture || offersDeviceAutoApproval;
+
+  useEffect(() => {
+    if (!showsDeviceCheck) setDeviceVerificationId(undefined);
+  }, [showsDeviceCheck]);
+
   const requestLabel = isCredentialRequest ? "Request credentials" : "Request session access";
   const submitLabel = breakGlassOnSubmit ? "Break glass" : requestLabel;
   const schema = useMemo(
@@ -246,6 +263,7 @@ export const RequestAccessSheet = ({
       setBypassReason("");
       setBreakGlassChosen(false);
       setAutoApprovalValues({});
+      setDeviceVerificationId(undefined);
     }
     onOpenChange(open);
   };
@@ -297,7 +315,9 @@ export const RequestAccessSheet = ({
         reason: data.reason || undefined,
         accessType,
         breakGlass: breakGlassOnSubmit || undefined,
-        autoApprovalInputs: autoApprovalInputs.length ? autoApprovalInputs : undefined
+        autoApprovalInputs: autoApprovalInputs.length ? autoApprovalInputs : undefined,
+        deviceVerificationId:
+          breakGlassOnSubmit && !requireDevicePosture ? undefined : deviceVerificationId
       },
       {
         onSuccess: ({ request }) => {
@@ -333,6 +353,7 @@ export const RequestAccessSheet = ({
           createNotification({ text, type });
           reset({ duration: defaultDuration, reason: "" });
           setAutoApprovalValues({});
+          setDeviceVerificationId(undefined);
           onOpenChange(false);
           if ((breakGlassOnSubmit || request?.autoApprovedAt) && account) {
             onGranted?.(account, accessType);
@@ -376,6 +397,7 @@ export const RequestAccessSheet = ({
               form={formId}
               variant={breakGlassOnSubmit ? "danger" : "pam"}
               isPending={createRequest.isPending}
+              isDisabled={isDeviceBlocking}
             >
               {!breakGlassOnSubmit && <Send className="mr-1.5 size-4" />}
               {submitLabel}
@@ -540,6 +562,36 @@ export const RequestAccessSheet = ({
                   values={autoApprovalValues}
                   onChange={setAutoApprovalValues}
                 />
+              )}
+              {showsDeviceCheck && account && (
+                <Card className="p-4">
+                  <Field>
+                    <FieldContent>
+                      <FieldTitle className="flex items-center gap-2">
+                        <Laptop className="size-4 shrink-0 text-product-pam" />
+                        Device Check
+                      </FieldTitle>
+                      <FieldDescription>
+                        {requireDevicePosture
+                          ? "Requests for this account must come from a managed device."
+                          : "Optional. Requests from a device that passes the posture checks can be approved automatically. Sessions and credential reveals are then limited to that device."}
+                      </FieldDescription>
+                    </FieldContent>
+                    <DeviceVerification
+                      accountId={account.id}
+                      accessType={accessType}
+                      forAutoApproval={checksDeviceForAutoApproval}
+                      onVerified={setDeviceVerificationId}
+                      onExpired={() => setDeviceVerificationId(undefined)}
+                      isOptional={!requireDevicePosture}
+                      skipHint={
+                        approverData?.autoApprovalOnly
+                          ? "This folder has no approvers, so a request from a device that doesn't pass is rejected."
+                          : "Skip this and the request goes to the approvers."
+                      }
+                    />
+                  </Field>
+                </Card>
               )}
               <ApprovalWorkflow accountId={account?.id} isPending={false} accessType={accessType} />
               {account?.canBreakGlass && (

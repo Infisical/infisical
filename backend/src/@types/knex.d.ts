@@ -840,6 +840,11 @@ import {
 } from "@app/db/schemas/pam-account-templates";
 import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
 import {
+  TPamDeviceVerifications,
+  TPamDeviceVerificationsInsert,
+  TPamDeviceVerificationsUpdate
+} from "@app/db/schemas/pam-device-verifications";
+import {
   TPamDiscoveredAccounts,
   TPamDiscoveredAccountsInsert,
   TPamDiscoveredAccountsUpdate
@@ -1997,6 +2002,11 @@ declare module "knex/types/tables" {
       TPamAccountPolicies,
       TPamAccountPoliciesInsert,
       TPamAccountPoliciesUpdate
+    >;
+    [TableName.PamDeviceVerification]: KnexOriginal.CompositeTableType<
+      TPamDeviceVerifications,
+      TPamDeviceVerificationsInsert,
+      TPamDeviceVerificationsUpdate
     >;
     [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
     [TableName.PamSessionEventBatch]: KnexOriginal.CompositeTableType<

@@ -182,6 +182,10 @@ An `ai` condition has the organization's AI model judge the request against the 
 only when the rest of its rule passed and no earlier rule approved, and anything but a clean approval falls
 through to the approvers. See AI Features below.
 
+A `device-posture` condition checks the requester's device against the providers it names. Only a resource with
+`supportsDevicePosture` can hold one, and that resource supplies the device check through `getAutoApprovalDevice`;
+the engine evaluates it like any deterministic condition and fails closed without one.
+
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
 through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
 `delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`

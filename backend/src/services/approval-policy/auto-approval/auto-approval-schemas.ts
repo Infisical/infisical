@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PamDevicePosturePolicySchema } from "@app/ee/services/pam-device-posture/pam-device-posture-schemas";
 import { APPROVAL_POLICY_AUTO_APPROVAL as DOCS } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -39,7 +40,8 @@ export const AutoApprovalConfigSchema = z
               .array()
               .max(AUTO_APPROVAL_AI_MAX_CONTEXT_CONNECTIONS)
               .optional()
-              .describe(DOCS.conditionContextConnectionIds)
+              .describe(DOCS.conditionContextConnectionIds),
+            devicePosture: PamDevicePosturePolicySchema.nullish().describe(DOCS.conditionDevicePosture)
           })
           .array()
           .min(1, "A rule needs at least one condition, or it would approve every request")
@@ -72,7 +74,8 @@ export const AutoApprovalConfigResponseSchema = z.object({
           constraint: z.string(),
           values: z.string().array(),
           prompt: z.string().nullable(),
-          contextConnectionIds: z.string().uuid().array()
+          contextConnectionIds: z.string().uuid().array(),
+          devicePosture: PamDevicePosturePolicySchema.nullable()
         })
         .array()
     })

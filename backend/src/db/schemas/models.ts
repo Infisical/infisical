@@ -279,6 +279,7 @@ export enum TableName {
   PamResourceFavorite = "pam_resource_favorites",
   PamDomain = "pam_domains",
   PamAccountPolicy = "pam_account_policies",
+  PamDeviceVerification = "pam_device_verifications",
   AgentVaultAccessBundle = "agent_vault_access_bundles",
   AgentVaultService = "agent_vault_services",
   AgentVaultServiceCustomHeader = "agent_vault_service_custom_headers",

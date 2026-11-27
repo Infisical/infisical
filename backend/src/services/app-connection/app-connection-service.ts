@@ -204,6 +204,7 @@ import { ValidateRedisConnectionCredentialsSchema } from "./redis";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateRfc2136ConnectionCredentialsSchema } from "./rfc2136";
+import { ValidateRipplingConnectionCredentialsSchema } from "./rippling";
 import { ValidateRundeckConnectionCredentialsSchema } from "./rundeck";
 import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
@@ -367,6 +368,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema,
   [AppConnection.ClickHouse]: ValidateClickHouseConnectionCredentialsSchema,
   [AppConnection.IncidentIo]: ValidateIncidentIoConnectionCredentialsSchema,
+  [AppConnection.Rippling]: ValidateRipplingConnectionCredentialsSchema,
   [AppConnection.Rfc2136]: ValidateRfc2136ConnectionCredentialsSchema
 };
 

@@ -22,6 +22,11 @@ import {
   TPamAccountSettingsOverrides
 } from "../pam-account-template/pam-account-template-schemas";
 import {
+  PAM_DEVICE_POSTURE_PROVIDER_APPS,
+  PAM_DEVICE_POSTURE_PROVIDER_NAMES
+} from "../pam-device-posture/pam-device-posture-enums";
+import { TPamDevicePosturePolicy } from "../pam-device-posture/pam-device-posture-schemas";
+import {
   PAM_RECORDING_CONNECTION_APPS,
   resolveS3RecordingAccess
 } from "../pam-session-recording/aws-s3/aws-s3-provider-factory";
@@ -124,6 +129,37 @@ export const validateRecordingConnection = async (
 ) => {
   if (connectionId) {
     await enforceAppConnectionConnect(deps, connectionId, ctx);
+  }
+};
+
+// Only connections the policy didn't already use are checked, so an admin without Connect on them can still edit the template
+export const validateDevicePostureConnections = async (
+  { orgPermissionService, appConnectionDAL }: Pick<TPamValidatorDeps, "orgPermissionService" | "appConnectionDAL">,
+  policy: TPamDevicePosturePolicy | null,
+  previous: TPamDevicePosturePolicy | null,
+  ctx: TActorContext
+) => {
+  const previousIds = new Set((previous?.providers ?? []).map((config) => config.connectionId));
+  for await (const config of policy?.providers ?? []) {
+    // eslint-disable-next-line no-continue
+    if (previousIds.has(config.connectionId)) continue;
+    const name = PAM_DEVICE_POSTURE_PROVIDER_NAMES[config.provider];
+    const conn = await appConnectionDAL.findById(config.connectionId);
+    if (!conn || conn.orgId !== ctx.org.id) {
+      throw new NotFoundError({ message: `${name} connection not found` });
+    }
+    if (conn.app !== PAM_DEVICE_POSTURE_PROVIDER_APPS[config.provider]) {
+      throw new BadRequestError({ message: `The ${name} device check needs a ${name} connection` });
+    }
+    if (conn.projectId) {
+      throw new BadRequestError({ message: `The ${name} connection must be an organization-level connection` });
+    }
+    const orgPermission = await orgPermissionService.getOrgPermission({ actor: ctx, orgId: conn.orgId });
+    orgPermission.assert({
+      action: OrgPermissionAppConnectionActions.Connect,
+      subject: OrgPermissionSubjects.AppConnections,
+      fields: { connectionId: config.connectionId }
+    });
   }
 };
 

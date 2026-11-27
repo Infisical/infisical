@@ -1,0 +1,71 @@
+---
+title: "Rippling connection"
+sidebarTitle: "Rippling"
+description: "Learn how to configure a Rippling connection for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/rippling/form-fields.mdx";
+
+A Rippling connection authenticates Infisical to Rippling with an API token, so Infisical can read the devices that Rippling manages and the workers they belong to. [PAM](/documentation/platform/pam/overview) device posture checks use this connection to confirm that a user's device is managed and healthy before granting access.
+
+<Note>
+    This guide only authenticates Infisical with Rippling. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A Rippling admin account that can create API tokens and can see the devices and workers Infisical should check
+
+## Step 1: Create an API token
+
+Infisical needs a Rippling API token with read access to devices and workers.
+
+<Steps>
+    <Step>
+        In Rippling, go to **Developer** > **API credentials**, or open [app.rippling.com/api-tokens/tokens](https://app.rippling.com/api-tokens/tokens), and create a token.
+    </Step>
+    <Step>
+        Enter a name, such as `infisical`, and give the token the `devices.read` and `workers.read` scopes.
+    </Step>
+    <Step>
+        Copy the token. Rippling shows it only once.
+    </Step>
+</Steps>
+
+<Warning>
+    The token can only read the data that the user who created it can see in Rippling. Rippling also revokes a token when it goes unused for 30 days or when its owner leaves the company. Create the token from a dedicated admin account, and keep the connection in regular use so the token stays active.
+</Warning>
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the Rippling [Create](/api-reference/endpoints/app-connections/rippling/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In the sidebar, select **Integrations**, then open the **App Connections** tab.
+    </Step>
+    <Step>
+        Select **Add Connection** and choose **Rippling**.
+    </Step>
+    <Step>
+        Fill out the form's fields:
+
+        <ConnectionFormFields />
+
+        Then, select **Connect to Rippling**.
+    </Step>
+</Steps>
+
+When you select **Connect to Rippling**, Infisical checks that the token can read devices and workers, and doesn't save the connection if it can't. If Rippling rejects the token, the error names the missing scope or says that the token is invalid or expired.
+
+<Check>
+    Your Rippling app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Rippling app connection is configured, you can use it in [PAM device posture checks](/documentation/platform/pam/templates/device-posture) to require that users connect from a device Rippling manages.

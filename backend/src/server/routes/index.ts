@@ -145,6 +145,8 @@ import { pamAccountTemplateDALFactory } from "@app/ee/services/pam-account-templ
 import { pamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamDevicePostureServiceFactory } from "@app/ee/services/pam-device-posture/pam-device-posture-service";
+import { pamDeviceVerificationDALFactory } from "@app/ee/services/pam-device-posture/pam-device-verification-dal";
 import { pamAccountDependencyDALFactory } from "@app/ee/services/pam-discovery/pam-account-dependency-dal";
 import { pamDiscoveredAccountDALFactory } from "@app/ee/services/pam-discovery/pam-discovered-account-dal";
 import { pamDiscoverySourceDALFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-dal";
@@ -2223,6 +2225,7 @@ export const registerRoutes = async (
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
   const pamFolderDAL = pamFolderDALFactory(db);
   const pamFolderNotificationConfigDAL = pamFolderNotificationConfigDALFactory(db);
+  const pamDeviceVerificationDAL = pamDeviceVerificationDALFactory(db);
 
   const certManagerInstanceService = certManagerInstanceServiceFactory({
     orgPermissionService,
@@ -4183,7 +4186,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     userDAL,
     gatewayV2Service,
-    kmsDataKeyService
+    kmsDataKeyService,
+    pamDeviceVerificationDAL
   });
 
   const approvalResources: TApprovalResourceRegistry = {
@@ -4414,6 +4418,19 @@ export const registerRoutes = async (
     keyStore
   });
 
+  const pamDevicePostureService = pamDevicePostureServiceFactory({
+    pamDeviceVerificationDAL,
+    pamAccountDAL,
+    pamPermissionService,
+    projectPermissionService,
+    approvalPolicyDAL,
+    approvalPolicyService,
+    autoApprovalService,
+    appConnectionDAL,
+    kmsDataKeyService,
+    userDAL
+  });
+
   const pamAccessRequestService = pamAccessRequestServiceFactory({
     projectPermissionService,
     pamPermissionService,
@@ -4447,6 +4464,7 @@ export const registerRoutes = async (
   const pamDiscoverySourceDAL = pamDiscoverySourceDALFactory(db);
 
   const pamAccountService = pamAccountServiceFactory({
+    pamDevicePostureService,
     orgPermissionService,
     projectPermissionService,
     pamPermissionService,
@@ -4521,6 +4539,7 @@ export const registerRoutes = async (
   });
 
   const pamSessionService = pamSessionServiceFactory({
+    pamDevicePostureService,
     projectPermissionService,
     pamPermissionService,
     pamSessionDAL,
@@ -4561,6 +4580,7 @@ export const registerRoutes = async (
   });
 
   const pamWebAccessService = pamWebAccessServiceFactory({
+    pamDevicePostureService,
     pamPermissionService,
     pamAccountDAL,
     pamAccessRequestService,
@@ -5259,6 +5279,7 @@ export const registerRoutes = async (
     pamSessionChunk: pamSessionChunkService,
     pamSessionActivity: pamSessionActivityService,
     pamAccessRequest: pamAccessRequestService,
+    pamDevicePosture: pamDevicePostureService,
     pamWebAccess: pamWebAccessService,
     certManagerInstance: certManagerInstanceService,
     certManagerExport: certManagerExportService,

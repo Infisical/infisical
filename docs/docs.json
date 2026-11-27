@@ -651,6 +651,7 @@
                   "documentation/platform/pam/concepts/access-control",
                   "documentation/platform/pam/folders/overview",
                   "documentation/platform/pam/templates/overview",
+                  "documentation/platform/pam/templates/device-posture",
                   "documentation/platform/pam/access-requests/overview",
                   "documentation/platform/pam/access-requests/auto-approval",
                   "documentation/platform/pam/access-requests/break-glass"
@@ -1176,6 +1177,7 @@
                   "integrations/app-connections/railway",
                   "integrations/app-connections/redis",
                   "integrations/app-connections/render",
+                  "integrations/app-connections/rippling",
                   "integrations/app-connections/rundeck",
                   "integrations/app-connections/salesforce",
                   "integrations/app-connections/servicenow",
@@ -2603,6 +2605,18 @@
                           "api-reference/endpoints/app-connections/render/create",
                           "api-reference/endpoints/app-connections/render/update",
                           "api-reference/endpoints/app-connections/render/delete"
+                        ]
+                      },
+                      {
+                        "group": "Rippling",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/rippling/list",
+                          "api-reference/endpoints/app-connections/rippling/available",
+                          "api-reference/endpoints/app-connections/rippling/get-by-id",
+                          "api-reference/endpoints/app-connections/rippling/get-by-name",
+                          "api-reference/endpoints/app-connections/rippling/create",
+                          "api-reference/endpoints/app-connections/rippling/update",
+                          "api-reference/endpoints/app-connections/rippling/delete"
                         ]
                       },
                       {

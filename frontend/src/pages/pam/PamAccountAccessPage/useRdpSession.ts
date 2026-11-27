@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { UserInteraction } from "@devolutions/iron-remote-desktop";
 import { Backend, init as initRdpBackend } from "@devolutions/iron-remote-desktop-rdp";
 import axios from "axios";
@@ -7,6 +7,10 @@ import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
 import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 import { extractMfaSessionId, useMfaChallenge } from "@app/pages/pam/components/useMfaChallenge";
+import {
+  isDeviceVerificationRequired,
+  PamDeviceVerificationContext
+} from "@app/pages/pam/PamAccountAccessPage/ReasonGate";
 
 import "@devolutions/iron-remote-desktop";
 
@@ -96,6 +100,9 @@ export const useRdpSession = ({
   selectedHost,
   onSessionEnd
 }: UseRdpSessionOptions) => {
+  const { deviceVerificationId, requestDeviceCheck } = useContext(PamDeviceVerificationContext);
+  const deviceVerificationIdRef = useRef(deviceVerificationId);
+  deviceVerificationIdRef.current = deviceVerificationId;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const elementRef = useRef<HTMLElement | null>(null);
   const userInteractionRef = useRef<UserInteraction | null>(null);
@@ -147,7 +154,12 @@ export const useRdpSession = ({
     const requestTicket = async (ticketMfaSessionId?: string) => {
       const { data } = await apiRequest.post<{ ticket: string }>(
         `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-        { reason, mfaSessionId: ticketMfaSessionId, selectedHost }
+        {
+          reason,
+          mfaSessionId: ticketMfaSessionId,
+          selectedHost,
+          deviceVerificationId: deviceVerificationIdRef.current
+        }
       );
       return data.ticket;
     };
@@ -160,6 +172,10 @@ export const useRdpSession = ({
     try {
       ticket = await requestTicket(initialMfaSessionId);
     } catch (err) {
+      if (isDeviceVerificationRequired(err)) {
+        requestDeviceCheck();
+        return;
+      }
       const challengeMfaSessionId = extractMfaSessionId(err);
       if (!challengeMfaSessionId || !isCurrent()) throw err;
       const outcome = await runMfaChallenge(challengeMfaSessionId);

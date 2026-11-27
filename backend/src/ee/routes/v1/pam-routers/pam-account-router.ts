@@ -75,6 +75,11 @@ const PamAccountListItemSchema = SanitizedAccountListItemSchema.extend({
   requiresApproval: z.boolean().describe("Whether this account requires approval before launching a session"),
   requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
   maxAccessDurationSeconds: MaxAccessDurationSecondsResponseSchema,
+  requireDevicePosture: z
+    .boolean()
+    .describe(
+      "Whether the account's template requires a device check (Require Device Posture). Users check their device with the Infisical CLI; machine identities cannot."
+    ),
   accessStatus: z.nativeEnum(ApprovalAccessStatus).describe("Current approval status for the caller"),
   grantExpiresAt: z.date().nullable().describe("When the current grant expires, if granted"),
   pendingRequestId: z.string().nullable().describe("The caller's pending access request for this account, if any"),
@@ -454,6 +459,11 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
                 .describe("Whether this account requires approval before launching a session"),
               requireReason: z.boolean().describe("Whether the account's template requires a reason for access"),
               maxAccessDurationSeconds: MaxAccessDurationSecondsResponseSchema,
+              requireDevicePosture: z
+                .boolean()
+                .describe(
+                  "Whether the account's template requires a device check (Require Device Posture). Users check their device with the Infisical CLI; machine identities cannot."
+                ),
               requireMfa: z
                 .boolean()
                 .describe(
@@ -872,7 +882,14 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           .string()
           .max(64)
           .optional()
-          .describe("A verified MFA session ID. Required when the template requires MFA.")
+          .describe("A verified MFA session ID. Required when the template requires MFA."),
+        deviceVerificationId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe(
+            "A passed device check from POST /api/v1/pam/device-verifications. Required when the account's template requires device posture, or the access was approved for one device."
+          )
       }),
       response: {
         200: PamAccountCredentialsSchema
@@ -888,6 +905,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
+        deviceVerificationId: req.body.deviceVerificationId,
         actor: req.actor
       });
 

@@ -467,6 +467,12 @@ import {
   TValidateRfc2136ConnectionCredentialsSchema
 } from "./rfc2136";
 import {
+  TRipplingConnection,
+  TRipplingConnectionConfig,
+  TRipplingConnectionInput,
+  TValidateRipplingConnectionCredentialsSchema
+} from "./rippling";
+import {
   TRundeckConnection,
   TRundeckConnectionConfig,
   TRundeckConnectionInput,
@@ -695,6 +701,7 @@ export type TAppConnection = { id: string; configuration?: TAppConnectionConfigu
   | TJiraConnection
   | TClickHouseConnection
   | TIncidentIoConnection
+  | TRipplingConnection
   | TRfc2136Connection
 );
 
@@ -806,6 +813,7 @@ export type TAppConnectionInput = { id: string } & (
   | TJiraConnectionInput
   | TClickHouseConnectionInput
   | TIncidentIoConnectionInput
+  | TRipplingConnectionInput
   | TRfc2136ConnectionInput
 );
 
@@ -951,6 +959,7 @@ export type TAppConnectionConfig =
   | TJiraConnectionConfig
   | TClickHouseConnectionConfig
   | TIncidentIoConnectionConfig
+  | TRipplingConnectionConfig
   | TRfc2136ConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -1053,6 +1062,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateJiraConnectionCredentialsSchema
   | TValidateClickHouseConnectionCredentialsSchema
   | TValidateIncidentIoConnectionCredentialsSchema
+  | TValidateRipplingConnectionCredentialsSchema
   | TValidateRfc2136ConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

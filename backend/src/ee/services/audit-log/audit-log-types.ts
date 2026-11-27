@@ -845,6 +845,7 @@ export enum EventType {
   PAM_ACCOUNT_SET_ROTATION_ACCOUNT = "pam-account-set-rotation-account",
   PAM_WEB_ACCESS_SESSION_TICKET_CREATED = "pam-web-access-session-ticket-created",
   PAM_ACCESS_REQUEST_CREATE = "pam-access-request-create",
+  PAM_DEVICE_POSTURE_CHECK = "pam-device-posture-check",
   PAM_ACCESS_REQUEST_REVIEW = "pam-access-request-review",
   PAM_ACCESS_GRANT_REVOKE = "pam-access-grant-revoke",
   PAM_APPROVAL_CONFIG_UPDATE = "pam-approval-config-update",
@@ -7685,6 +7686,23 @@ interface PamAccountSetRotationAccountEvent {
   };
 }
 
+interface PamDevicePostureCheckEvent {
+  type: EventType.PAM_DEVICE_POSTURE_CHECK;
+  metadata: {
+    verificationId: string;
+    accountId: string;
+    accountName: string;
+    folderId?: string | null;
+    folderName?: string | null;
+    accessType: string;
+    status: string;
+    deviceSerialNumber: string;
+    failedChecks: string[];
+    message?: string | null;
+    via: "cli" | "browser";
+  };
+}
+
 interface PamAccessRequestCreateEvent {
   type: EventType.PAM_ACCESS_REQUEST_CREATE;
   metadata: {
@@ -9701,6 +9719,7 @@ export type Event =
   | PamAccountHeartbeatEvent
   | PamAccountSetRotationAccountEvent
   | PamAccessRequestCreateEvent
+  | PamDevicePostureCheckEvent
   | PamAccessRequestReviewEvent
   | PamAccessGrantRevokeEvent
   | PamApprovalConfigUpdateEvent

@@ -1,5 +1,6 @@
 import { Fragment, ReactNode, useId } from "react";
 import {
+  Laptop,
   Pencil,
   Plus,
   ShieldAlert,
@@ -31,6 +32,8 @@ import {
   ApproverType,
   AUTO_APPROVAL_AI_CONSTRAINT,
   AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AutoApprovalConstraintValue,
   TAutoApprovalCatalog,
@@ -38,6 +41,7 @@ import {
 } from "@app/hooks/api/approvalPolicies";
 
 import { AutoApprovalAiCondition } from "./AutoApprovalAiCondition";
+import { AutoApprovalDevicePostureCondition } from "./AutoApprovalDevicePostureCondition";
 import {
   ASSIGNED_TO_REQUESTER_CONSTRAINT,
   AUTO_APPROVAL_LIMITS,
@@ -48,6 +52,7 @@ import {
   getSubjectDisplayLabel,
   getSubjectsMissingCheck,
   isAiCondition,
+  isDevicePostureCondition,
   isRequesterCheck,
   newKey,
   REQUESTER_CHECKS,
@@ -223,6 +228,19 @@ const ConditionRow = ({
     );
   }
 
+  if (isDevicePostureCondition(condition)) {
+    return renderRow(
+      <>
+        <Badge variant="neutral">
+          <Laptop className="size-3.5 text-muted" />
+          Device
+        </Badge>
+        <span className="text-sm text-foreground">passes the posture checks</span>
+      </>,
+      <AutoApprovalDevicePostureCondition condition={condition} onChange={onChange} />
+    );
+  }
+
   if (isRequesterCheck(condition)) {
     const label =
       REQUESTER_CHECKS.find((candidate) => candidate.id === condition.constraint)?.label ??
@@ -391,6 +409,8 @@ export const AutoApprovalRuleCard = ({
     .filter((group) => group.constraints.length > 0);
 
   const canAddAi = !rule.conditions.some(isAiCondition);
+  const canAddDevicePosture =
+    policyType === ApprovalPolicyType.PamAccess && !rule.conditions.some(isDevicePostureCondition);
   const requesterChecks = REQUESTER_CHECKS.filter(
     (constraint) =>
       !rule.conditions.some(
@@ -403,9 +423,19 @@ export const AutoApprovalRuleCard = ({
     addConditionBlocker = `A rule can have at most ${AUTO_APPROVAL_LIMITS.conditions} conditions.`;
   } else if (onCreateConnection) {
     addConditionBlocker = undefined;
-  } else if (choices.length === 0 && !canAddAi && requesterChecks.length === 0) {
+  } else if (
+    choices.length === 0 &&
+    !canAddAi &&
+    !canAddDevicePosture &&
+    requesterChecks.length === 0
+  ) {
     addConditionBlocker = "Add a field under Request Form Fields first.";
-  } else if (menuGroups.length === 0 && !canAddAi && requesterChecks.length === 0) {
+  } else if (
+    menuGroups.length === 0 &&
+    !canAddAi &&
+    !canAddDevicePosture &&
+    requesterChecks.length === 0
+  ) {
     addConditionBlocker = "Every available check is already in this rule.";
   }
 
@@ -584,11 +614,40 @@ export const AutoApprovalRuleCard = ({
                     ))}
                   </>
                 )}
-                {canAddAi && (
+                {canAddDevicePosture && (
                   <>
                     {(menuGroups.length > 0 || requesterChecks.length > 0) && (
                       <DropdownMenuSeparator />
                     )}
+                    <DropdownMenuLabel>Device</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onChange({
+                          ...rule,
+                          conditions: [
+                            ...rule.conditions,
+                            {
+                              key: newKey(),
+                              connectionId: "",
+                              subject: AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
+                              constraint: AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT,
+                              values: [],
+                              devicePosture: { providers: [] }
+                            }
+                          ]
+                        })
+                      }
+                    >
+                      <Laptop />
+                      Device passes the posture checks...
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {canAddAi && (
+                  <>
+                    {(menuGroups.length > 0 ||
+                      requesterChecks.length > 0 ||
+                      canAddDevicePosture) && <DropdownMenuSeparator />}
                     <DropdownMenuLabel>AI</DropdownMenuLabel>
                     <DropdownMenuItem
                       isDisabled={!ai.model}
@@ -622,9 +681,10 @@ export const AutoApprovalRuleCard = ({
                 )}
                 {onCreateConnection && (
                   <>
-                    {(menuGroups.length > 0 || requesterChecks.length > 0 || canAddAi) && (
-                      <DropdownMenuSeparator />
-                    )}
+                    {(menuGroups.length > 0 ||
+                      requesterChecks.length > 0 ||
+                      canAddAi ||
+                      canAddDevicePosture) && <DropdownMenuSeparator />}
                     <DropdownMenuItem onClick={onCreateConnection}>
                       <Plus />
                       Create App Connection

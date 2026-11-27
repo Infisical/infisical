@@ -166,6 +166,7 @@ export * from "./pam-account-dependencies";
 export * from "./pam-account-policies";
 export * from "./pam-account-templates";
 export * from "./pam-accounts";
+export * from "./pam-device-verifications";
 export * from "./pam-discovered-accounts";
 export * from "./pam-discovery-source-runs";
 export * from "./pam-discovery-sources";

@@ -12,10 +12,11 @@ import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recordi
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
 import { verifyProductMembership } from "../pam/pam-permission";
-import { defaultTemplatePolicies, validatePolicyValues } from "../pam/pam-policies";
+import { defaultTemplatePolicies, resolveAccessControls, validatePolicyValues } from "../pam/pam-policies";
 import {
   mintCorsProbeUrl,
   TPamValidatorDeps,
+  validateDevicePostureConnections,
   validateGatewayAttachment,
   validateRecordingConnection,
   validateRecordingS3Config
@@ -165,6 +166,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
     const validatedPolicies = validateTemplatePolicies(type, policies ?? defaultTemplatePolicies(type));
+    await validateDevicePostureConnections(deps, resolveAccessControls(validatedPolicies).devicePosture, null, ctx);
     validateTemplateRotationConfig(type, settings);
 
     const resolvedS3Config = await validateTemplateRecordingS3Config(recordingConnectionId, settings, ctx);
@@ -230,6 +232,14 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
 
     const validatedPolicies = validateTemplatePolicies(existing.type, policies);
+    if (validatedPolicies) {
+      await validateDevicePostureConnections(
+        deps,
+        resolveAccessControls(validatedPolicies).devicePosture,
+        resolveAccessControls(existing.policies).devicePosture,
+        ctx
+      );
+    }
     validateTemplateRotationConfig(existing.type, settings);
 
     const resolvedConnId = recordingConnectionId !== undefined ? recordingConnectionId : existing.recordingConnectionId;

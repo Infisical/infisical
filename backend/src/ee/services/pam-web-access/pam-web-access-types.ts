@@ -74,4 +74,5 @@ export type TIssueWebSocketTicketDTO = {
   reason?: string;
   mfaSessionId?: string;
   selectedHost?: string;
+  deviceVerificationId?: string;
 };

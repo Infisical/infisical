@@ -48,13 +48,15 @@ export const PamAccessPolicyRequestDataSchema = z.object({
   folderId: z.string().uuid(),
   reason: z.string().trim().max(1024).optional(),
   duration: DurationSchema,
-  accessType: PamAccessTypeSchema.optional()
+  accessType: PamAccessTypeSchema.optional(),
+  deviceVerificationId: z.string().uuid().optional()
 });
 
 export const PamAccessGrantAttributesSchema = z.object({
   accountId: z.string().uuid(),
   folderId: z.string().uuid().nullable().optional(),
-  accessType: PamAccessTypeSchema.optional()
+  accessType: PamAccessTypeSchema.optional(),
+  deviceSerialNumber: z.string().optional()
 });
 
 // Policy

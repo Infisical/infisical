@@ -1,5 +1,7 @@
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import type { TDevicePostureFacts } from "@app/ee/services/pam-device-posture/pam-device-posture-fns";
+import type { TPamDevicePosturePolicy } from "@app/ee/services/pam-device-posture/pam-device-posture-schemas";
 import { TAiJudgeResult, TAiRequestContext } from "@app/services/ai/ai-types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -13,6 +15,11 @@ export const AUTO_APPROVAL_AI_SUBJECT = "ai";
 export const AUTO_APPROVAL_AI_SUBJECT_LABEL = "AI";
 export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
 export const AUTO_APPROVAL_AI_CONSTRAINT_LABEL = "approves the request";
+
+export const AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT = "device-posture";
+export const AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT_LABEL = "Device";
+export const AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT = "passes";
+export const AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT_LABEL = "passes the posture checks";
 
 export enum AutoApprovalConstraintValue {
   None = "none",
@@ -37,6 +44,8 @@ export type TAutoApprovalContext = {
     email: string | null;
   };
   request?: Omit<TAiRequestContext, "inputs">;
+  // A passed device check the requester attached, when the policy type supports one
+  device?: { verificationId: string; serialNumber: string; facts: TDevicePostureFacts } | null;
 };
 
 export type TAutoApprovalTestResult = { pass: boolean; reason?: string };
@@ -100,6 +109,7 @@ export type TAutoApprovalConditionConfig = {
   values: string[];
   prompt?: string | null;
   contextConnectionIds?: string[];
+  devicePosture?: TPamDevicePosturePolicy | null;
 };
 
 export type TAutoApprovalRuleConfig = { name: string; conditions: TAutoApprovalConditionConfig[] };
@@ -120,6 +130,7 @@ export type TStoredAutoApproval = {
       connectionId: string | null;
       prompt: string | null;
       contextConnectionIds: string[];
+      devicePosture?: TPamDevicePosturePolicy | null;
     })[];
   }[];
 };
@@ -134,6 +145,7 @@ export type TAutoApprovalPolicyResponse = {
       connectionId: string | null;
       prompt: string | null;
       contextConnectionIds: string[];
+      devicePosture: TPamDevicePosturePolicy | null;
     })[];
   }[];
 };

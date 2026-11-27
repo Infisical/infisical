@@ -1,4 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import type { TPamDevicePosturePolicy } from "@app/hooks/api/pam/enums";
 
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
@@ -72,6 +73,9 @@ export const AUTO_APPROVAL_REQUESTER_CONSTRAINT = "is-one-of";
 export const AUTO_APPROVAL_AI_SUBJECT = "ai";
 export const AUTO_APPROVAL_AI_CONSTRAINT = "approves";
 
+export const AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT = "device-posture";
+export const AUTO_APPROVAL_DEVICE_POSTURE_CONSTRAINT = "passes";
+
 export enum AutoApprovalConstraintValue {
   None = "none",
   One = "one",
@@ -87,6 +91,7 @@ export type TAutoApprovalCondition = {
   values: string[];
   prompt?: string | null;
   contextConnectionIds?: string[];
+  devicePosture?: TPamDevicePosturePolicy | null;
 };
 
 export type TAutoApprovalConfig = {

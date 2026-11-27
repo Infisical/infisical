@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { getAccessErrorMessage } from "@app/pages/pam/access-error";
+import {
+  isDeviceVerificationRequired,
+  PamDeviceVerificationContext
+} from "@app/pages/pam/PamAccountAccessPage/ReasonGate";
 
 import type {
   DataExplorerClientMessage,
@@ -61,6 +65,9 @@ export const useDataExplorerSession = ({
   onConnectionClosed,
   onReconnected
 }: UseDataExplorerSessionOptions) => {
+  const { deviceVerificationId, requestDeviceCheck } = useContext(PamDeviceVerificationContext);
+  const deviceVerificationIdRef = useRef(deviceVerificationId);
+  deviceVerificationIdRef.current = deviceVerificationId;
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -206,10 +213,18 @@ export const useDataExplorerSession = ({
       try {
         const { data } = await apiRequest.post<{ ticket: string }>(
           `/api/v1/pam/accounts/${accountId}/web-access-ticket`,
-          { mfaSessionId, reason: accessReason }
+          {
+            mfaSessionId,
+            reason: accessReason,
+            deviceVerificationId: deviceVerificationIdRef.current
+          }
         );
         openWebSocket(data.ticket);
       } catch (err: unknown) {
+        if (isDeviceVerificationRequired(err)) {
+          requestDeviceCheck();
+          return;
+        }
         const axiosErr = err as {
           response?: {
             data?: {

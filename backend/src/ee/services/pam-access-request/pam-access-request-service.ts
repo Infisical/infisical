@@ -408,6 +408,7 @@ export const pamAccessRequestServiceFactory = ({
     accessType = PamAccessType.Session,
     breakGlass = false,
     autoApprovalInputs,
+    deviceVerificationId,
     actor
   }: TCreateAccessRequestDTO) => {
     const trimmedReason = reason?.trim() || undefined;
@@ -456,7 +457,8 @@ export const pamAccessRequestServiceFactory = ({
           folderId: account.folderId,
           reason: trimmedReason,
           duration,
-          accessType
+          accessType,
+          deviceVerificationId
         },
         justification: trimmedReason,
         skipApproverNotification: breakGlass,
@@ -650,7 +652,9 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!account.folderId) return { steps: [], autoApprovalInputs: [], autoApprovalOnly: false };
+    if (!account.folderId) {
+      return { steps: [], autoApprovalInputs: [], autoApprovalOnly: false, autoApprovalDevicePosture: false };
+    }
 
     return approvalPolicyService.getApproverRoster(
       ApprovalPolicyType.PamAccess,

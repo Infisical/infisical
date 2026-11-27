@@ -2,15 +2,22 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
+import { PamDevicePosturePolicySchema } from "@app/ee/services/pam-device-posture/pam-device-posture-schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
 import {
   AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   TAutoApprovalConfig,
   TStoredAutoApproval
 } from "./auto-approval-types";
+
+const toDevicePosture = (config: unknown) => {
+  const parsed = PamDevicePosturePolicySchema.safeParse((config as { devicePosture?: unknown } | null)?.devicePosture);
+  return parsed.success ? parsed.data : null;
+};
 
 const toValues = (values: unknown) =>
   Array.isArray(values) ? values.filter((value): value is string => typeof value === "string") : [];
@@ -81,8 +88,10 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
             .map((condition) => {
               const input = condition.inputId ? inputById.get(condition.inputId) : undefined;
               const isAi = condition.prompt !== null && condition.prompt !== undefined;
+              const devicePosture = toDevicePosture(condition.config);
               let subject = input?.subject ?? AUTO_APPROVAL_REQUESTER_SUBJECT;
               if (isAi) subject = AUTO_APPROVAL_AI_SUBJECT;
+              if (condition.config) subject = AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT;
               return {
                 id: condition.id,
                 inputId: condition.inputId ?? null,
@@ -93,7 +102,8 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
                 prompt: condition.prompt ?? null,
                 contextConnectionIds: contexts
                   .filter((context) => context.conditionId === condition.id)
-                  .map((context) => context.connectionId)
+                  .map((context) => context.connectionId),
+                devicePosture
               };
             })
         });
@@ -138,6 +148,18 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
             constraint: condition.constraint,
             values: JSON.stringify(condition.values),
             prompt: condition.prompt ?? ""
+          };
+        }
+
+        if (condition.subject === AUTO_APPROVAL_DEVICE_POSTURE_SUBJECT) {
+          return {
+            ruleId: ruleIdByPosition.get(rulePosition) as string,
+            position,
+            inputId: null,
+            connectionId: null,
+            constraint: condition.constraint,
+            values: JSON.stringify([]),
+            config: JSON.stringify({ devicePosture: condition.devicePosture })
           };
         }
 

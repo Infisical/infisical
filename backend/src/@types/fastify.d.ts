@@ -59,6 +59,7 @@ import { TPamAccountHeartbeatServiceFactory } from "@app/ee/services/pam-account
 import { TPamAccountRotationServiceFactory } from "@app/ee/services/pam-account-rotation/pam-account-rotation-service";
 import { TPamAccountTemplateServiceFactory } from "@app/ee/services/pam-account-template/pam-account-template-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamDevicePostureServiceFactory } from "@app/ee/services/pam-device-posture/pam-device-posture-service";
 import { TPamDiscoverySourceServiceFactory } from "@app/ee/services/pam-discovery/pam-discovery-source-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamMembershipServiceFactory } from "@app/ee/services/pam-membership/pam-membership-service";
@@ -524,6 +525,7 @@ declare module "fastify" {
     pamSessionChunk: TPamSessionChunkServiceFactory;
     pamSessionActivity: TPamSessionActivityServiceFactory;
     pamAccessRequest: TPamAccessRequestServiceFactory;
+    pamDevicePosture: TPamDevicePostureServiceFactory;
     pamWebAccess: TPamWebAccessServiceFactory;
     mfaSession: TMfaSessionServiceFactory;
     membershipUser: TMembershipUserServiceFactory;

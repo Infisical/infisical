@@ -121,7 +121,8 @@ export enum PamPolicyType {
   MaxSessionDuration = "max-session-duration",
   MaxAccessDuration = "max-access-duration",
   CommandBlocking = "command-blocking",
-  OutputMasking = "output-masking"
+  OutputMasking = "output-masking",
+  DevicePosture = "device-posture"
 }
 
 export enum PamOutputMaskingPreset {
@@ -231,3 +232,33 @@ export enum PamFolderCallerAccess {
   Member = "member",
   None = "none"
 }
+
+export enum PamDevicePostureProvider {
+  Rippling = "rippling"
+}
+
+export enum PamDevicePostureCheck {
+  ManagedDevice = "managed-device",
+  DiskEncrypted = "disk-encrypted",
+  MinimumOsVersion = "minimum-os-version",
+  NoPendingOsUpdate = "no-pending-os-update",
+  RecentCheckIn = "recent-check-in",
+  ApprovedDevice = "approved-device"
+}
+
+export type TPamRipplingPostureProvider = {
+  provider: PamDevicePostureProvider.Rippling;
+  connectionId: string;
+  checks: {
+    [PamDevicePostureCheck.DiskEncrypted]: boolean;
+    [PamDevicePostureCheck.NoPendingOsUpdate]: boolean;
+    [PamDevicePostureCheck.MinimumOsVersion]: { macos?: string; windows?: string } | null;
+    [PamDevicePostureCheck.RecentCheckIn]: { maxHours: number } | null;
+  };
+};
+
+export type TPamDevicePostureProviderConfig = TPamRipplingPostureProvider;
+
+export type TPamDevicePosturePolicy = {
+  providers: TPamDevicePostureProviderConfig[];
+};

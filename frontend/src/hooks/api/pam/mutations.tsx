@@ -3,8 +3,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 import { projectKeys } from "@app/hooks/api/projects/query-keys";
 
+import { PamAccessType } from "./enums";
 import { pamKeys } from "./queries";
 import {
+  PAM_DEVICE_VERIFICATION_REQUIRED,
+  TPamDeviceVerificationTicket,
   TAddAccountGroupMemberDTO,
   TAddAccountIdentityMemberDTO,
   TAddAccountUserMemberDTO,
@@ -443,20 +446,23 @@ export const useAccessPamAccount = () => {
       reason,
       duration,
       mfaSessionId,
-      accessMethod
+      accessMethod,
+      deviceVerificationId
     }: {
       path: string;
       reason?: string;
       duration?: string;
       mfaSessionId?: string;
       accessMethod?: "cli" | "web";
+      deviceVerificationId?: string;
     }) => {
       const { data } = await apiRequest.post<TPamAccessResponse>("/api/v1/pam/accounts/access", {
         path,
         reason,
         duration,
         mfaSessionId,
-        accessMethod
+        accessMethod,
+        deviceVerificationId
       });
       return data;
     }
@@ -836,11 +842,16 @@ export const useCheckPamAccountHeartbeat = () => {
 
 export const usePamAccountCredentials = () => {
   return useMutation({
-    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED"] },
-    mutationFn: async ({ accountId, reason, mfaSessionId }: TGetPamAccountCredentialsDTO) => {
+    meta: { handledErrorCodes: ["SESSION_MFA_REQUIRED", PAM_DEVICE_VERIFICATION_REQUIRED] },
+    mutationFn: async ({
+      accountId,
+      reason,
+      mfaSessionId,
+      deviceVerificationId
+    }: TGetPamAccountCredentialsDTO) => {
       const { data } = await apiRequest.post<TPamAccountCredentials>(
         `/api/v1/pam/accounts/${accountId}/credentials`,
-        { reason, mfaSessionId }
+        { reason, mfaSessionId, deviceVerificationId }
       );
       return data;
     }
@@ -950,3 +961,22 @@ export const useSetPamApprovalConfig = () => {
     }
   });
 };
+
+export const useStartPamDeviceVerification = () =>
+  useMutation({
+    mutationFn: async ({
+      accountId,
+      accessType,
+      forAutoApproval
+    }: {
+      accountId: string;
+      accessType?: PamAccessType;
+      forAutoApproval?: boolean;
+    }) => {
+      const { data } = await apiRequest.post<{ verification: TPamDeviceVerificationTicket }>(
+        "/api/v1/pam/device-verifications",
+        { accountId, accessType, forAutoApproval }
+      );
+      return data.verification;
+    }
+  });

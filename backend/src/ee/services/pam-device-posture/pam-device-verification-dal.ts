@@ -1,0 +1,7 @@
+import { TDbClient } from "@app/db";
+import { TableName } from "@app/db/schemas";
+import { ormify } from "@app/lib/knex";
+
+export type TPamDeviceVerificationDALFactory = ReturnType<typeof pamDeviceVerificationDALFactory>;
+
+export const pamDeviceVerificationDALFactory = (db: TDbClient) => ormify(db, TableName.PamDeviceVerification);

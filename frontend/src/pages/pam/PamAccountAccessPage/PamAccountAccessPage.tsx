@@ -9,7 +9,7 @@ import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataE
 import { AwsIamAccessContent } from "./AwsIamAccessContent";
 import { DisconnectedScreen } from "./DisconnectedScreen";
 import { RdpLauncher } from "./RdpLauncher";
-import { SessionAccessGate } from "./ReasonGate";
+import { DevicePostureGate, SessionAccessGate } from "./ReasonGate";
 import { useWebAccessSession } from "./useWebAccessSession";
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
@@ -120,11 +120,19 @@ const PageContent = () => {
   }
 
   if (account.accountType === PamAccountType.AwsIam) {
-    return <AwsIamAccessContent account={account} />;
+    return (
+      <DevicePostureGate account={account}>
+        <AwsIamAccessContent account={account} />
+      </DevicePostureGate>
+    );
   }
 
   if (account.accountType === PamAccountType.SSH) {
-    return <TerminalContent account={account} />;
+    return (
+      <DevicePostureGate account={account}>
+        <TerminalContent account={account} />
+      </DevicePostureGate>
+    );
   }
 
   return (

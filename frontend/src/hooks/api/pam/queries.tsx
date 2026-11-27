@@ -22,6 +22,7 @@ import {
   PamResourcePermissionSub
 } from "./enums";
 import {
+  TPamDeviceVerification,
   PamAccountAccessibilityIssue,
   PamFolderPermissionSet,
   TListAccessiblePamAccountsDTO,
@@ -227,6 +228,7 @@ export type TPamAccountListItem = {
   supportsCredentialReveal: boolean;
   requireReason: boolean;
   maxAccessDurationSeconds: number | null;
+  requireDevicePosture?: boolean;
   accessStatus: PamAccessStatus;
   grantExpiresAt: string | null;
   pendingRequestId: string | null;
@@ -663,6 +665,7 @@ export const useGetPamAccountApprovers = (
         steps: TPamApprovalWorkflowStep[];
         autoApprovalInputs: TAutoApprovalInputDetails[];
         autoApprovalOnly: boolean;
+        autoApprovalDevicePosture?: boolean;
       }>(`/api/v1/pam/access-requests/accounts/${accountId}/approvers`, { params: { accessType } });
       return data;
     }
@@ -726,4 +729,11 @@ export const useGetPamApprovalConfig = (folderId: string, enabled = true) => {
     },
     enabled: !!folderId && enabled
   });
+};
+
+export const fetchPamDeviceVerification = async (verificationId: string) => {
+  const { data } = await apiRequest.get<{ verification: TPamDeviceVerification }>(
+    `/api/v1/pam/device-verifications/${verificationId}`
+  );
+  return data.verification;
 };
