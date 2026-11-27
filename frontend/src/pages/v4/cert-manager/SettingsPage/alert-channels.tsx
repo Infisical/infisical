@@ -282,7 +282,7 @@ const EmailRecipientsField = ({
         [
           allowEmailAddresses
             ? "Pick organization members or type an email address on a verified email domain."
-            : projectId && `Pick ${pickable}.`,
+            : undefined,
           also.length ? `Also sent to ${also.join(" and ")}.` : undefined
         ]
           .filter(Boolean)
