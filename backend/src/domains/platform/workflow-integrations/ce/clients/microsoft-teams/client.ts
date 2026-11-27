@@ -4,7 +4,7 @@ import { isAxiosError } from "axios";
 import { ExternalSystemError } from "@app/domains/lib/errors";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
-import { logger } from "@app/lib/logger";
+import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 
 import { MicrosoftTeamsTokenKind } from "../../models/microsoft-teams-installation";
 import {
@@ -23,6 +23,32 @@ const GRAPH_SCOPE = "https://graph.microsoft.com/.default";
 
 type TNamedItem = { displayName: string; id: string };
 type TPage<T> = { value: T[]; "@odata.nextLink"?: string };
+
+// Graph pages through @odata.nextLink. A cursor that never clears must not hang the request.
+const GRAPH_MAX_PAGES = 50;
+
+// Every item across the pages, or up to the page where `isDone` says the caller has what it needs.
+const listGraphPages = async <T>(
+  firstUrl: string,
+  graphToken: string,
+  isDone?: (page: T[]) => boolean
+): Promise<T[]> => {
+  const items: T[] = [];
+  let next = firstUrl;
+  let pages = 0;
+  while (next && pages < GRAPH_MAX_PAGES) {
+    pages += 1;
+    // eslint-disable-next-line no-await-in-loop -- each page names the next
+    const response = await request.get<TPage<T>>(next, { headers: { Authorization: `Bearer ${graphToken}` } });
+    items.push(...response.data.value);
+    if (isDone?.(response.data.value)) return items;
+    next = response.data["@odata.nextLink"] || "";
+  }
+  if (next) {
+    logger.warn(`Microsoft Graph listing stopped after ${GRAPH_MAX_PAGES} pages [url=${sanitizeUrlForLog(firstUrl)}]`);
+  }
+  return items;
+};
 
 export class MicrosoftTeamsClient implements TMicrosoftTeamsClient {
   async verifyTenantConsent(input: {
@@ -135,12 +161,12 @@ export class MicrosoftTeamsClient implements TMicrosoftTeamsClient {
 
   async findInstalledApp(input: { graphToken: string; botId: string }) {
     try {
-      const response = await request.get<{ value: { id: string; externalId: string }[] }>(
+      const apps = await listGraphPages<{ id: string; externalId: string }>(
         "https://graph.microsoft.com/v1.0/appCatalogs/teamsApps",
-        { headers: { Authorization: `Bearer ${input.graphToken}` } }
+        input.graphToken,
+        (page) => page.some((a) => a.externalId === input.botId)
       );
-
-      const app = response.data.value.find((a) => a.externalId === input.botId);
+      const app = apps.find((a) => a.externalId === input.botId);
       return app ? { internalAppId: app.id } : null;
     } catch (err) {
       logger.error(err, "Error fetching installed apps");
@@ -149,23 +175,13 @@ export class MicrosoftTeamsClient implements TMicrosoftTeamsClient {
   }
 
   async listTeamsWithChannels(input: { graphToken: string; internalAppId: string }): Promise<TMicrosoftTeamsTeam[]> {
-    const headers = { Authorization: `Bearer ${input.graphToken}` };
-
     const listAll = async (firstUrl: string, failureLog: string) => {
-      const items: TNamedItem[] = [];
-      let next = firstUrl;
-      while (next.length) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const response = await request.get<TPage<TNamedItem>>(next, { headers });
-          items.push(...response.data.value);
-          next = response.data["@odata.nextLink"] || "";
-        } catch (err) {
-          logger.error(isAxiosError(err) ? err.response?.data : err, failureLog);
-          throw err;
-        }
+      try {
+        return await listGraphPages<TNamedItem>(firstUrl, input.graphToken);
+      } catch (err) {
+        logger.error(isAxiosError(err) ? err.response?.data : err, failureLog);
+        throw err;
       }
-      return items;
     };
 
     try {
@@ -178,12 +194,15 @@ export class MicrosoftTeamsClient implements TMicrosoftTeamsClient {
 
       for await (const team of teams) {
         try {
-          const installedApps = await request.get<{ value: { teamsAppDefinition: { teamsAppId: string } }[] }>(
+          const isOurs = (app: { teamsAppDefinition: { teamsAppId: string } }) =>
+            app.teamsAppDefinition.teamsAppId === input.internalAppId;
+          const installedApps = await listGraphPages<{ teamsAppDefinition: { teamsAppId: string } }>(
             `https://graph.microsoft.com/v1.0/teams/${team.id}/installedApps?$expand=teamsAppDefinition`,
-            { headers }
+            input.graphToken,
+            (page) => page.some(isOurs)
           );
 
-          if (!installedApps.data.value.some((app) => app.teamsAppDefinition.teamsAppId === input.internalAppId)) {
+          if (!installedApps.some(isOurs)) {
             // eslint-disable-next-line no-continue
             continue;
           }

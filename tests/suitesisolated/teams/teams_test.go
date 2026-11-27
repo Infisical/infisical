@@ -61,6 +61,24 @@ func TestMicrosoftTeamsIntegration_Create(t *testing.T) {
 		require.Equal(t, "installed", string((*listed.JSON200)[0].Status))
 	})
 
+	t.Run("should find the bot on a later page of the tenant's app catalog", func(t *testing.T) {
+		// Setup
+		tn := h.NewTenant(t)
+		tenant := newTeamsTenant(t, tn)
+		tenant.graph.Seed(t, azure.WithPageSize(1), azure.WithApp("catalog-"+id.Short(), "another-bot"),
+			azure.WithApp(catalogAppID, teamsBotID))
+		slug := "teams-" + id.Short()
+
+		// Action
+		res := completeTeams(t, tn, tenant.id, slug, "code-"+id.Short())
+
+		// Assert
+		require.Equal(t, http.StatusOK, res.Status, apierr.Body(res.Body))
+		created := fixture.WorkflowIntegrationBySlug(t, tn, slug)
+		require.NotNil(t, created)
+		require.Equal(t, "installed", string(created.Status))
+	})
+
 	t.Run("should create a pending Teams integration, and install it once the bot is in the tenant", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)

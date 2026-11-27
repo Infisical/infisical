@@ -88,14 +88,10 @@ func WithPageSize(n int) any { return Directory{PageSize: n} }
 
 func (d *Directory) ServeHTTP(w http.ResponseWriter, r *http.Request) { d.mux.ServeHTTP(w, r) }
 
-func (d *Directory) apps(w http.ResponseWriter, _ *http.Request) {
+func (d *Directory) apps(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	apps := d.Apps
-	if apps == nil {
-		apps = []CatalogApp{}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"value": apps})
+	page(d, w, r, d.Apps, func(a CatalogApp) any { return a })
 }
 
 // page serves items[skip:skip+size], with the nextLink for the rest. $skiptoken is an
