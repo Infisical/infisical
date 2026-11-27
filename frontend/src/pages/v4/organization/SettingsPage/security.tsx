@@ -24,6 +24,7 @@ import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license";
+import { useOrgPageScope } from "../../shell/page-scope";
 
 const MFA_METHODS = [
   { value: MfaMethod.EMAIL, label: "Email" },
@@ -197,13 +198,14 @@ const SessionLengthCard = ({
 };
 
 export const SecurityTab = () => {
+  const scope = useOrgPageScope();
   const orgId = useOrgId();
   const { permission, isPending } = useOrgPermission();
   const { data: organization } = useV4Adapter("org").useOrganization(orgId);
   const canRead = permission.can(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
   return (
     <Stack gap={24}>
-      <PageHeader title="Security" />
+      <PageHeader scope={scope} title="Security" />
       {!isPending && !canRead && <AccessRestricted requirement="Read SSO" />}
       {canRead && organization && (
         <>

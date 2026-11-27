@@ -25,21 +25,29 @@ import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { APP_ROLES } from "./shared";
 
-const kinds: { value: TPkiApplicationMemberKind; label: string; empty: string }[] = [
+const kinds: {
+  value: TPkiApplicationMemberKind;
+  label: string;
+  empty: string;
+  noMatch: string;
+}[] = [
   {
     value: "user",
     label: "Users",
-    empty: "No matching users. Grant users access from Access Control first."
+    empty: "No users left to add. Grant users access from Access Control first.",
+    noMatch: "No matching users"
   },
   {
     value: "identity",
     label: "Machine identities",
-    empty: "No matching machine identities. Grant them access from Access Control first."
+    empty: "No machine identities left to add. Grant them access from Access Control first.",
+    noMatch: "No matching machine identities"
   },
   {
     value: "group",
     label: "Groups",
-    empty: "No matching groups. Grant groups access from Access Control first."
+    empty: "No groups left to add. Grant groups access from Access Control first.",
+    noMatch: "No matching groups"
   }
 ];
 
@@ -156,6 +164,7 @@ export const AddMemberDialog = ({
                   label={current.label}
                   placeholder={`Select ${current.label.toLowerCase()}`}
                   emptyText={pool.isPending ? "Loading" : current.empty}
+                  noMatchText={current.noMatch}
                   options={options}
                   value={selected}
                   onValueChange={setSelected}

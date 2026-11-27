@@ -263,8 +263,8 @@ export const SecretSyncsTab = ({
       header: "Source environment",
       sortable: true,
       width: 170,
-      text: (sync) => sync.environment?.name ?? "-",
-      render: (sync) => sync.environment?.name ?? "-"
+      text: (sync) => sync.environment?.name ?? "",
+      render: (sync) => sync.environment?.name
     },
     {
       id: "source",

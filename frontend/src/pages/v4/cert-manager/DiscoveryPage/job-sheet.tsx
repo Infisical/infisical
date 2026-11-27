@@ -34,6 +34,7 @@ import { readableFailure } from "../../access/toast";
 import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { GatewayPicker } from "../../networking/gateway-picker";
+import { stepAside } from "../components/step-aside";
 import { BadgeList, DiscoveryTypeIcon, DiscoveryTypeLabel } from "./discovery-shared";
 import {
   CA_CERTIFICATE_STORES,
@@ -536,8 +537,7 @@ const JobSheet = ({
       return [
         {
           title: "Hosts",
-          description:
-            "Pick the SSH connections for the servers to scan. Each connection is one server, scanned from the gateway on that connection.",
+          aside: stepAside("The scan runs from the gateway on each connection."),
           validate: check("hosts"),
           content: (
             <HostsStep
@@ -551,15 +551,19 @@ const JobSheet = ({
         },
         {
           title: "Where to look",
-          description:
-            "Only certificate files are opened (.pem, .crt, .cer, .der, .p7b, .pfx, .p12, .jks, .keystore). The SSH user needs read access to these folders; folders it can't read are listed in the scan.",
+          aside: stepAside(
+            "Only certificate files are opened: .pem, .crt, .cer, .der, .p7b, .pfx, .p12, .jks and .keystore.",
+            "The SSH user needs read access to these folders, such as through a group or ACL. Folders it can't read are listed in the scan."
+          ),
           validate: check("folders"),
           content: <FoldersStep {...stepProps} />
         },
         {
           title: "Options",
-          description:
-            "Private keys aren't imported. Keystores protected by a password are listed as locked until you set the password on the installation.",
+          aside: stepAside(
+            "Private keys aren't imported.",
+            "Keystores protected by a password are listed as locked. Set the password on the installation and the file is scanned again."
+          ),
           validate: check("options"),
           content: <OptionsStep {...stepProps} />
         }
@@ -568,8 +572,7 @@ const JobSheet = ({
       return [
         {
           title: "Hosts",
-          description:
-            "Pick the Windows (WinRM) connections for the servers to scan. Each connection is one server, scanned from the gateway on that connection.",
+          aside: stepAside("The scan runs from the gateway on each connection."),
           validate: check("hosts"),
           content: (
             <HostsStep
@@ -583,8 +586,10 @@ const JobSheet = ({
         },
         {
           title: "Stores",
-          description:
-            "The scan reads the Local Machine certificate stores. Private keys aren't read or imported.",
+          aside: stepAside(
+            "The scan reads the Local Machine certificate stores. Private keys aren't read or imported, and the installation only records whether a certificate has one.",
+            "Stores the connection's account can't open are listed in the scan."
+          ),
           validate: check("stores"),
           content: <StoresStep {...stepProps} />
         }
@@ -592,8 +597,9 @@ const JobSheet = ({
     return [
       {
         title: "Targets",
-        description:
-          "Each target is checked on every port listed. Any certificate served over TLS is imported with its chain.",
+        aside: stepAside(
+          "Each target is checked on every port listed, and any certificate served over TLS is imported with its chain."
+        ),
         validate: check("targets"),
         content: <TargetsStep {...stepProps} />
       }
@@ -643,12 +649,21 @@ const JobSheet = ({
           {
             title: "Details",
             summary: draft?.name || undefined,
+            aside: stepAside("A scheduled job runs again at the interval you choose."),
             validate: check("details"),
             content: <DetailsStep {...stepProps} />
           },
           ...(isEdit
             ? []
-            : [{ title: "Review", content: draft ? <ReviewStep draft={draft} /> : null }])
+            : [
+                {
+                  title: "Review",
+                  aside: stepAside(
+                    "You can edit every setting except the discovery type later from the job."
+                  ),
+                  content: draft ? <ReviewStep draft={draft} /> : null
+                }
+              ])
         ]
       : [])
   ];
@@ -665,7 +680,7 @@ const JobSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title={type ? <DiscoveryTypeLabel type={type}>{title}</DiscoveryTypeLabel> : title}
         badges={
           type ? (

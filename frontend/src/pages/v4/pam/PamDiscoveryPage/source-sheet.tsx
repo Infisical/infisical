@@ -6,6 +6,7 @@ import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
 import { DataTable, type DataTableColumn } from "@infisical/cipher/ui/data-table";
 import { EmptyState } from "@infisical/cipher/ui/empty";
+import { FloatingActionBar } from "@infisical/cipher/ui/floating-action-bar";
 import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Link } from "@infisical/cipher/ui/link";
@@ -135,11 +136,7 @@ const StagedTab = ({
             header: "Dependencies",
             width: 128,
             render: (row: TPamDiscoveredAccount) =>
-              row.dependencyCount > 0 ? (
-                <Badge tone="soft">{row.dependencyCount}</Badge>
-              ) : (
-                <Meta>-</Meta>
-              )
+              row.dependencyCount > 0 ? <Badge tone="soft">{row.dependencyCount}</Badge> : null
           }
         ]
       : [])
@@ -147,22 +144,13 @@ const StagedTab = ({
 
   return (
     <Stack gap={16}>
-      <Inline gap={8} wrap={false}>
-        <Input
-          icon="search"
-          aria-label="Search staged accounts"
-          placeholder="Search accounts..."
-          value={paging.search}
-          onChange={(event) => paging.setSearch(event.target.value)}
-        />
-        <Button
-          variant="outline"
-          disabledReason={selectedAccounts.length ? undefined : "Select accounts to import"}
-          onClick={() => setImporting(true)}
-        >
-          {selectedAccounts.length ? `Import ${selectedAccounts.length}` : "Import"}
-        </Button>
-      </Inline>
+      <Input
+        icon="search"
+        aria-label="Search staged accounts"
+        placeholder="Search accounts..."
+        value={paging.search}
+        onChange={(event) => paging.setSearch(event.target.value)}
+      />
       <DataTable
         ghost={false}
         label="Staged accounts"
@@ -197,6 +185,19 @@ const StagedTab = ({
           />
         }
         pagination={paging.pagination(data?.totalCount ?? 0, "Staged account pages")}
+        actionBar={
+          selectedAccounts.length > 0 ? (
+            <FloatingActionBar
+              label="Selected account actions"
+              count={selectedAccounts.length}
+              onClear={() => setSelected({})}
+              noun={selectedAccounts.length === 1 ? "account" : "accounts"}
+              actions={[
+                { label: "Import accounts", icon: "download", onClick: () => setImporting(true) }
+              ]}
+            />
+          ) : undefined
+        }
       />
       <ImportDialog
         open={importing}
@@ -247,8 +248,7 @@ const StaleTab = ({
       id: "folder",
       header: "Folder",
       width: 176,
-      text: (row) => row.folderName ?? "-",
-      render: (row) => row.folderName ?? "-"
+      text: (row) => row.folderName ?? ""
     },
     {
       id: "type",
@@ -260,7 +260,10 @@ const StaleTab = ({
       id: "lastSeen",
       header: "Last seen",
       width: 184,
-      render: (row) => <Meta mono={false}>{formatDate(row.lastDiscoveredAt) ?? "-"}</Meta>
+      render: (row) => {
+        const lastSeen = formatDate(row.lastDiscoveredAt);
+        return lastSeen ? <Meta mono={false}>{lastSeen}</Meta> : null;
+      }
     }
   ];
 
@@ -344,8 +347,7 @@ const RunsTab = ({ runs, isPending }: { runs: TPamDiscoveryRun[]; isPending: boo
         header: "Started",
         width: 184,
         primary: true,
-        text: (row) => formatDate(row.startedAt) ?? "-",
-        render: (row) => formatDate(row.startedAt) ?? "-"
+        text: (row) => formatDate(row.startedAt) ?? ""
       },
       {
         id: "status",

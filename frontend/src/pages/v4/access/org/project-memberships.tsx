@@ -478,9 +478,9 @@ export const ProjectMembershipsSection = ({
       header: "Project",
       sortable: true,
       grow: true,
-      text: (row) => (isNamedByProduct(row.project.type) ? "-" : row.project.name),
+      text: (row) => (isNamedByProduct(row.project.type) ? "" : row.project.name),
       render: (row) =>
-        isNamedByProduct(row.project.type) ? "-" : <MiddleTruncate text={row.project.name} />
+        isNamedByProduct(row.project.type) ? null : <MiddleTruncate text={row.project.name} />
     },
     ...(subject === "group" ? [] : [{ id: "role", header: "Role", width: 160, render: roleLabel }]),
     ...(subject === "user"

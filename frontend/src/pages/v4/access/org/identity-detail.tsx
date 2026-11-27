@@ -48,6 +48,7 @@ import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { TruncatedValue } from "../../networking/truncated-value";
+import { useOrgPageScope } from "../../shell/page-scope";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId, useOrgPermission } from "../permissions";
@@ -242,6 +243,7 @@ const IdentityHeaderActions = ({
 );
 
 export const OrgIdentityDetail = () => {
+  const scope = useOrgPageScope();
   const { identityId } = useParams({ from: "/v4/organizations/$orgId/identities/$identityId" });
   const access = useV4Adapter("access");
   const orgId = useOrgId();
@@ -357,6 +359,7 @@ export const OrgIdentityDetail = () => {
     <div className={css.detailPage}>
       <Stack gap={24}>
         <PageHeader
+          scope={scope}
           breadcrumb={[
             { label: "Organization machine identities", link: go.link(backHref(orgId)) }
           ]}

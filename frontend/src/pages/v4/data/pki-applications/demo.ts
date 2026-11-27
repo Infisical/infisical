@@ -274,8 +274,7 @@ const addMember = (
 
 export const pkiApplicationsDemo: PkiApplicationsAdapter = {
   ...enrollmentDemo,
-  useAllApplications: () => ready(demoApplications.use().map(({ id, name }) => ({ id, name }))),
-  useApplications: ({ search, limit = 20, offset = 0 }) => {
+  useApplications: ({ search, limit = 20, offset = 0, applicationIds }) => {
     const applications = demoApplications.use();
     const profiles = demoProfiles.use();
     const members = demoMembers.use();
@@ -283,8 +282,10 @@ export const pkiApplicationsDemo: PkiApplicationsAdapter = {
       certificatesDemo.useCertificates({ projectId: DEMO_PROJECT_ID, offset: 0, limit: 10_000 })
         .data?.certificates ?? [];
     const needle = search?.trim().toLowerCase();
+    const ids = applicationIds?.length ? new Set(applicationIds) : undefined;
     const matched = applications
       .filter((entry) => !needle || entry.name.toLowerCase().includes(needle))
+      .filter((entry) => !ids || ids.has(entry.id))
       .sort((a, b) => a.name.localeCompare(b.name));
     return ready({
       total: matched.length,

@@ -78,6 +78,7 @@ import {
   usageLabel,
   withUsageEffect
 } from "./policy-model";
+import { stepAside } from "./step-aside";
 
 const ANY_CRITICALITY = "any";
 
@@ -1062,7 +1063,7 @@ export const CertificatePolicySheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title={isEdit ? "Edit certificate policy" : "Create certificate policy"}
         open
         step={step}
@@ -1107,8 +1108,10 @@ export const CertificatePolicySheet = ({
           },
           {
             title: STEP_TITLES[1],
-            description:
-              "A restriction left off allows any value. Requests outside the rules are rejected at issuance.",
+            aside: stepAside(
+              "A restriction left off allows any value. Turn one on to set which values are allowed, required or denied.",
+              "Requests outside the rules are rejected at issuance."
+            ),
             validate: () => check(1),
             content: (
               <SubjectStep draft={draft} errors={errors} change={change} restrict={restrict} />
@@ -1116,6 +1119,9 @@ export const CertificatePolicySheet = ({
           },
           {
             title: STEP_TITLES[2],
+            aside: stepAside(
+              "With no restriction, any signature and key algorithm is accepted. Turn one on to allow only the algorithms you choose."
+            ),
             validate: () => check(2),
             content: (
               <AlgorithmsStep
@@ -1131,10 +1137,16 @@ export const CertificatePolicySheet = ({
           },
           {
             title: STEP_TITLES[3],
+            aside: stepAside(
+              "With no restriction, certificates can carry any key usage or extended key usage. Turn one on to mark each usage as required, allowed or denied."
+            ),
             content: <UsagesStep draft={draft} change={change} restrict={restrict} />
           },
           {
             title: STEP_TITLES[4],
+            aside: stepAside(
+              "With no restriction, certificates can carry any custom extension. Turn one on to allow only the OIDs you choose and the values they can take."
+            ),
             validate: () => check(4),
             content: (
               <ExtensionsStep
@@ -1148,6 +1160,9 @@ export const CertificatePolicySheet = ({
           },
           {
             title: STEP_TITLES[5],
+            aside: stepAside(
+              "With no restriction, validity and CA capability are open. Turn one on to cap validity or control whether certificates can act as a CA, including path length."
+            ),
             content: <ConstraintsStep draft={draft} change={change} restrict={restrict} />
           }
         ]}

@@ -37,6 +37,7 @@ import { readableFailure, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import { certificateHref, useGo } from "../../../links";
 import { ruleKey } from "../policy-model";
+import { stepAside } from "../step-aside";
 import {
   AlgorithmSelectors,
   BasicConstraintsField,
@@ -61,30 +62,35 @@ type StepKey = "profile" | "csr" | "subject" | "options" | "extensions" | "metad
 
 const AWS_PCA_MAX_CA_PATH_LENGTH = 3;
 
-const STEP_COPY: Record<StepKey, { title: string; description: string }> = {
+const STEP_COPY: Record<StepKey, { title: string; aside: string }> = {
   profile: {
     title: "Profile",
-    description: "Choose how to request the certificate and which profile to use."
+    aside:
+      "The profile sets the issuing CA and the policy that limits what this certificate can contain."
   },
   csr: {
     title: "Signing request",
-    description: "Paste the certificate signing request to submit for signing."
+    aside:
+      "The subject, key and extensions come from your CSR. The profile's policy still checks the request at issuance."
   },
   subject: {
     title: "Subject",
-    description: "Set the subject attributes and alternative names for this certificate."
+    aside: "The profile's policy limits which subject fields and alternative names you can set."
   },
   options: {
     title: "Options",
-    description: "Set validity, algorithms, and key usages within the profile's policy."
+    aside:
+      "These values are checked against the profile's policy at issuance. Fields the profile or an external CA controls are hidden or read-only."
   },
   extensions: {
     title: "Custom extensions",
-    description: "Set the custom extensions this certificate carries."
+    aside:
+      "The profile's policy limits which custom extensions are allowed and what values they can take."
   },
   metadata: {
     title: "Metadata",
-    description: "Attach optional metadata key-value pairs to this certificate."
+    aside:
+      "Metadata is stored with the certificate for your own tracking and automation. It doesn't change the issued certificate."
   }
 };
 
@@ -704,7 +710,7 @@ export const RequestCertificateSheet = ({
 
   const steps: MultiStepStep[] = stepKeys.map((key) => ({
     title: STEP_COPY[key].title,
-    description: STEP_COPY[key].description,
+    aside: stepAside(STEP_COPY[key].aside),
     content: content[key],
     disabledReason:
       key === "profile" && draft.profileId && isPolicyLoading
@@ -717,7 +723,7 @@ export const RequestCertificateSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title="Request certificate"
         open
         step={Math.min(step, steps.length - 1)}

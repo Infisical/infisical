@@ -194,20 +194,20 @@ const InstallationDetail = ({
       header: "Serial number",
       mono: true,
       width: 200,
-      text: (cert) => cert.serialNumber || "-",
-      render: (cert) => cert.serialNumber || "-"
+      text: (cert) => cert.serialNumber ?? "",
+      render: (cert) => cert.serialNumber
     },
     {
       id: "expires",
       header: "Expires",
       width: 120,
-      render: (cert) => (cert.notAfter ? timestamp(cert.notAfter).slice(0, 12) : "-")
+      render: (cert) => (cert.notAfter ? timestamp(cert.notAfter).slice(0, 12) : null)
     },
     {
       id: "seen",
       header: "Last seen",
       width: 160,
-      render: (cert) => (cert.lastSeenAt ? timestamp(cert.lastSeenAt) : "-")
+      render: (cert) => (cert.lastSeenAt ? timestamp(cert.lastSeenAt) : null)
     }
   ];
 
