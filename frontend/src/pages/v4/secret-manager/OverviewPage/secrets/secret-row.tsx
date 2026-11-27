@@ -86,6 +86,13 @@ import {
   selectionKey
 } from "../secrets-model";
 import type { PendingType } from "./batch/pending";
+import {
+  draftKey,
+  type UnsavedChange,
+  useHeldDraft,
+  useUnsavedEdit,
+  useUnsavedEditsState
+} from "./batch/unsaved-edits";
 import { environmentLabel } from "./flows/shared";
 import {
   ChildSelectCell,
@@ -206,6 +213,8 @@ function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean })
   );
 }
 
+type InlineSave = (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
+
 function InlineEditor({
   label,
   scope,
@@ -214,6 +223,9 @@ function InlineEditor({
   saveLabel,
   undoLabel,
   dirtyFromStart,
+  multiline,
+  draft: restored,
+  unsaved,
   onSave,
   onCancel,
   idle
@@ -225,62 +237,107 @@ function InlineEditor({
   saveLabel: string;
   undoLabel: string;
   dirtyFromStart?: boolean;
-  onSave: (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
+  multiline?: boolean;
+  draft?: string;
+  unsaved?: {
+    key: string;
+    change: (draft: string) => UnsavedChange;
+    settle: (committed: UnsavedChange, draft: string) => void;
+  };
+  onSave: InlineSave;
   onCancel: () => void;
   idle?: ReactNode;
 }) {
-  const [draft, setDraft] = useState(initial);
+  useRequestBreadth(Boolean(multiline));
+  const [draft, setDraft] = useState(restored ?? initial);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const registry = useUnsavedEditsState()?.registry;
   const dirty = dirtyFromStart || draft !== initial;
+  const { committing, release } = useUnsavedEdit(unsaved?.key, dirty && !saving, {
+    getChanges: () => (unsaved ? [unsaved.change(draft)] : []),
+    settle: ([committed]) => {
+      if (!unsaved || !committed) return;
+      if (committed.secretValue === draft) release();
+      unsaved.settle(committed, draft);
+    },
+    discard: () => {
+      release();
+      onCancel();
+    }
+  });
+  const cancel = () => {
+    release();
+    onCancel();
+  };
   const save = () => {
-    if (saving) return;
+    if (saving || committing) return;
+    const submitted = unsaved?.change(draft);
     setSaving(true);
-    onSave(draft, setError).finally(() => setSaving(false));
+    onSave(draft, setError)
+      .catch(() => false)
+      .then((ok) => {
+        if (!ok && submitted && !mounted.current) registry?.holdDrafts([submitted]);
+      })
+      .finally(() => setSaving(false));
+  };
+  const control = {
+    autoFocus: true,
+    readOnly: saving || committing,
+    className: styles.inlineInput,
+    "aria-invalid": Boolean(error) || undefined,
+    "aria-label": label,
+    placeholder,
+    autoComplete: "off",
+    spellCheck: false
   };
   return (
     <div ref={root} className={styles.inlineEdit} data-invalid={error ? "" : undefined}>
       <ReferenceEditor
         value={draft}
         scope={scope}
+        multiline={multiline}
         onValueChange={(next) => {
           setDraft(next);
           setError("");
         }}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && dirty) {
+          if (event.nativeEvent.isComposing) return;
+          if (event.key === "Enter" && !event.shiftKey && dirty) {
             event.preventDefault();
             save();
           }
           if (event.key === "Escape") {
             event.preventDefault();
-            onCancel();
+            cancel();
           }
         }}
         onBlur={(event) => {
           if (!dirty && !root.current?.contains(event.relatedTarget as Node)) onCancel();
         }}
       >
-        {(control) => (
-          <Input
-            {...control}
-            autoFocus
-            className={styles.inlineInput}
-            aria-invalid={Boolean(error) || undefined}
-            aria-label={label}
-            placeholder={placeholder}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        )}
+        {(editor) =>
+          multiline ? (
+            <Textarea {...editor} {...control} rows={1} />
+          ) : (
+            <Input {...editor} {...control} />
+          )
+        }
       </ReferenceEditor>
       {dirty ? (
         <span className={styles.quickActions}>
-          <Button variant="ghost" size="xs" onClick={onCancel}>
+          <Button variant="ghost" size="xs" disabled={committing} onClick={cancel}>
             {undoLabel}
           </Button>
-          <Button size="xs" loading={saving} onClick={save}>
+          <Button size="xs" loading={saving} disabled={committing} onClick={save}>
             {saveLabel}
           </Button>
         </span>
@@ -1194,6 +1251,158 @@ function SecretActionsRow({
   );
 }
 
+function EnvironmentValueEditor({
+  secret,
+  label,
+  initial,
+  draft,
+  onUpdate,
+  onRebase,
+  onDone
+}: {
+  secret: Secret;
+  label: string;
+  initial: string;
+  draft?: string;
+  onUpdate: SecretUpdate;
+  onRebase: (value: string) => void;
+  onDone: () => void;
+}) {
+  const { dependents, isPending } = useDependents(secret);
+  const [held, setHeld] = useState<{
+    value: string;
+    onFieldError: (message: string) => void;
+    resolve: (ok: boolean | Promise<boolean>) => void;
+  }>();
+  const commit: InlineSave = (value, onFieldError) =>
+    onUpdate(secret, { value }, { title: `Updated ${secret.name} in ${label}` }, onFieldError).then(
+      (ok) => {
+        if (ok) onDone();
+        return ok;
+      }
+    );
+  const release = (confirmed: boolean) => {
+    if (!held) return;
+    setHeld(undefined);
+    held.resolve(confirmed ? commit(held.value, held.onFieldError) : false);
+  };
+  useEffect(() => {
+    if (held && !isPending && !dependents.length) release(true);
+  }, [held, isPending, dependents.length]);
+  return (
+    <>
+      <InlineEditor
+        multiline
+        label={`Value of ${secret.name} in ${label}`}
+        scope={secret}
+        initial={initial}
+        draft={draft}
+        placeholder={secret.value.status === "unreadable" ? "Enter a new value" : "Secret value"}
+        saveLabel="Save"
+        undoLabel="Discard"
+        unsaved={{
+          key: draftKey(secret.project, secret.environment, secret.path, secret.name),
+          change: (value) => ({
+            projectId: secret.project,
+            environment: secret.environment,
+            secretPath: secret.path,
+            secretKey: secret.name,
+            secretValue: value,
+            originalValue: initial,
+            isCreate: false
+          }),
+          settle: (committed, value) =>
+            committed.secretValue === value ? onDone() : onRebase(committed.secretValue)
+        }}
+        onCancel={onDone}
+        onSave={(value, onFieldError) =>
+          !isPending && !dependents.length
+            ? commit(value, onFieldError)
+            : new Promise((resolve) => {
+                setHeld({ value, onFieldError, resolve });
+              })
+        }
+      />
+      <ConfirmDependentsDialog
+        open={Boolean(held) && !isPending && dependents.length > 0}
+        dependents={dependents}
+        onOpenChange={(open) => {
+          if (!open) release(false);
+        }}
+        onConfirm={() => release(true)}
+      />
+    </>
+  );
+}
+
+function EnvironmentValueCell({
+  secret,
+  label,
+  visible,
+  ctx,
+  onUpdate
+}: {
+  secret: Secret;
+  label: string;
+  visible: boolean;
+  ctx: RowContext;
+  onUpdate: SecretUpdate;
+}) {
+  const [editing, setEditing] = useState<{ initial: string; draft?: string }>();
+  const loader = useValueLoader();
+  const canEdit = canEditInline(secret, ctx);
+  useHeldDraft(draftKey(secret.project, secret.environment, secret.path, secret.name), ([held]) => {
+    if (held) setEditing({ initial: held.originalValue, draft: held.secretValue });
+  });
+  const begin = async () => {
+    if (!canEdit || editing) return;
+    const current = readableValue(secret);
+    if (current !== undefined || secret.value.status === "unreadable") {
+      setEditing({ initial: current ?? "" });
+      return;
+    }
+    const values = await loader.ensure([secret]);
+    const loaded =
+      values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
+    if (typeof loaded === "string") setEditing({ initial: loaded });
+    else ctx.report(`Could not read ${secret.name}.`, "bad");
+  };
+  return (
+    <TableCell
+      colSpan={2}
+      className={styles.valueCell}
+      data-editable={canEdit || undefined}
+      tabIndex={canEdit && !editing ? 0 : undefined}
+      onClick={() => begin()}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key !== "Enter" && event.key !== "F2") return;
+        event.preventDefault();
+        begin();
+      }}
+    >
+      <div className={styles.nameLine}>
+        {editing ? (
+          <EnvironmentValueEditor
+            secret={secret}
+            label={label}
+            initial={editing.initial}
+            draft={editing.draft}
+            onUpdate={onUpdate}
+            onRebase={(value) => setEditing((current) => current && { ...current, initial: value })}
+            onDone={() => setEditing(undefined)}
+          />
+        ) : (
+          <>
+            <SecretValue secret={secret} visible={visible} />
+            <Indicators secret={secret} />
+          </>
+        )}
+      </div>
+    </TableCell>
+  );
+}
+
 function OverrideValue({
   secret,
   creating,
@@ -1537,6 +1746,12 @@ function SecretRowView({
   const [creatingOverride, setCreatingOverride] = useState<string[]>([]);
   const first = entries[0];
   const { name } = first;
+  const unsaved = useUnsavedEditsState();
+  const pendingIn = (environment: string, present: boolean) => {
+    if (!unsaved?.keys.has(draftKey(first.project, environment, first.path, name)))
+      return undefined;
+    return present ? "update" : "create";
+  };
   const stopCreating = (environment: string) =>
     setCreatingOverride((current) => current.filter((entry) => entry !== environment));
   const startCreating = (environment: string) =>
@@ -1568,6 +1783,7 @@ function SecretRowView({
     renameBlock = "Managed secrets can't be renamed";
   else if (!renameBlock && entries.some((entry) => entry.override !== undefined))
     renameBlock = "Remove personal overrides first";
+  else if (!renameBlock && unsaved?.committing) renameBlock = "Wait for Save to finish";
   const groupActions: RowActionProps = {
     label: name,
     menu: (
@@ -1630,6 +1846,7 @@ function SecretRowView({
                 key={environment.value}
                 status={status(environment.value)}
                 hasOverride={secret?.override !== undefined}
+                pending={pendingIn(environment.value, Boolean(secret))}
                 annotations={
                   secret && (
                     <Annotations
@@ -1718,12 +1935,22 @@ function SecretRowView({
                           )}
                         </span>
                       </TableCell>
-                      <TableCell colSpan={2} className={styles.valueCell}>
-                        <div className={styles.nameLine}>
-                          <SecretValue secret={secret} visible={rowVisible} />
-                          {secret && <Indicators secret={secret} />}
-                        </div>
-                      </TableCell>
+                      {secret ? (
+                        <EnvironmentValueCell
+                          key={secret.id}
+                          secret={secret}
+                          label={environment.label}
+                          visible={rowVisible}
+                          ctx={ctx}
+                          onUpdate={handlers.onUpdate}
+                        />
+                      ) : (
+                        <TableCell colSpan={2} className={styles.valueCell}>
+                          <div className={styles.nameLine}>
+                            <SecretValue visible={rowVisible} />
+                          </div>
+                        </TableCell>
+                      )}
                     </>
                   );
                   const addValue: RowActionProps = {

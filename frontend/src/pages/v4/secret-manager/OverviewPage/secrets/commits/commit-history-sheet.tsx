@@ -1021,7 +1021,7 @@ export function CommitHistorySheet({
           if (!next) onClose();
         }}
       >
-        <SheetContent className={styles.sheet} onOpenAutoFocus={(event) => event.preventDefault()}>
+        <SheetContent size="xl" onOpenAutoFocus={(event) => event.preventDefault()}>
           {content}
         </SheetContent>
       </Sheet>

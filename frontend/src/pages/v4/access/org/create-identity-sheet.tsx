@@ -225,6 +225,7 @@ const SubOrgAddIdentitySheet = ({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open={open}
         title="Add machine identity to sub-organization"
         completeLabel={draft.mode === "assign" ? "Assign" : "Create"}

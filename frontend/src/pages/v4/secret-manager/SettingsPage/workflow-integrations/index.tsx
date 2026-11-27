@@ -30,13 +30,14 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
+import { ProviderLabel } from "@app/pages/v4/components/provider-label";
 
 import { useProjectPermission } from "../../../access/permissions";
 import { useProjectScope } from "../../../access/project/scope";
 import { saved } from "../../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../../access/ui";
 import { useV4Adapter } from "../../../data/adapters";
-import { PLATFORM_LABELS, SheetForm } from "./shared";
+import { PLATFORM_LABELS, platformOf, SheetForm } from "./shared";
 import { SlackIntegrationForm } from "./slack-form";
 import { MicrosoftTeamsIntegrationForm } from "./teams-form";
 
@@ -69,9 +70,13 @@ const IntegrationSheet = ({
     setChosen(undefined);
     onClose();
   };
-  const title = fixedPlatform
-    ? `Edit ${PLATFORM_LABELS[fixedPlatform]} integration`
-    : "Add workflow integration";
+  const title = fixedPlatform ? (
+    <ProviderLabel provider={platformOf(fixedPlatform)}>
+      Edit {PLATFORM_LABELS[fixedPlatform]} integration
+    </ProviderLabel>
+  ) : (
+    "Add workflow integration"
+  );
   const lead = fixedPlatform ? undefined : (
     <Field wide label="Platform">
       <Select
@@ -81,7 +86,7 @@ const IntegrationSheet = ({
         options={Object.values(WorkflowIntegrationPlatform).map((value) => ({
           value,
           label: PLATFORM_LABELS[value],
-          description: configured[value] ? "Already configured" : undefined
+          meta: configured[value] ? "Already configured" : undefined
         }))}
         onChange={(value) => setChosen(value as WorkflowIntegrationPlatform)}
       />
@@ -200,14 +205,15 @@ export const WorkflowIntegrationsSettings = () => {
       id: "provider",
       header: "Provider",
       width: 200,
-      render: (row) =>
-        canEdit ? (
-          <Button variant="link" underline="hover" onClick={() => edit(row)}>
-            {PLATFORM_LABELS[row.platform]}
-          </Button>
-        ) : (
-          PLATFORM_LABELS[row.platform]
-        )
+      render: (row) => (
+        <ProviderLabel provider={platformOf(row.platform)}>
+          {canEdit ? (
+            <Button variant="link" underline="hover" onClick={() => edit(row)}>
+              {PLATFORM_LABELS[row.platform]}
+            </Button>
+          ) : undefined}
+        </ProviderLabel>
+      )
     },
     {
       id: "accessRequest",

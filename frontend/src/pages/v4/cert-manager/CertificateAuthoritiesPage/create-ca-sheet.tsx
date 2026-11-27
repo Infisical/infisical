@@ -124,7 +124,6 @@ const KeySourceField = ({ draft, patch, plan }: StepProps & { plan?: CaPlan }) =
   return (
     <Field label="Key source" description={KEY_SOURCE_DESCRIPTIONS[draft.keySource]} wide>
       <Select
-        descriptionLayout="stacked"
         aria-label="Key source"
         value={draft.keySource}
         options={keySourceOptions({
@@ -265,7 +264,7 @@ const KeyAlgorithmField = ({ draft, errors, set, plan }: StepProps & { plan?: Ca
           .map(({ label, value }) => ({
             value,
             label,
-            description: isPqcAlgorithm(value) && pqcLocked ? "Enterprise plan" : undefined
+            meta: isPqcAlgorithm(value) && pqcLocked ? "Enterprise plan" : undefined
           }))}
         onValueChange={(next) => {
           if (isPqcAlgorithm(next) && pqcLocked) {

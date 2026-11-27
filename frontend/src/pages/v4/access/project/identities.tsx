@@ -27,6 +27,7 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 
+import { ProviderLabel } from "../../components/provider-label";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
@@ -37,7 +38,6 @@ import { AddProjectIdentitySheet } from "./identity-add-sheet";
 import { useAuthMethodFlows } from "./identity-auth";
 import {
   AssumePrivilegesDialog,
-  authMethodName,
   DELETE_PROTECTED,
   IdentityRemovalDialog,
   identitySubject,
@@ -182,12 +182,8 @@ export const ProjectIdentitiesTab = () => {
                       flows.view(method);
                     }}
                   >
-                    {identity.activeLockoutAuthMethods?.includes(method) ? (
-                      <Icon name="lock" />
-                    ) : (
-                      <Icon name="key" />
-                    )}
-                    {authMethodName(method)}
+                    <ProviderLabel kind="identity-auth" value={method} size="sm" />
+                    {identity.activeLockoutAuthMethods?.includes(method) && <Icon name="lock" />}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuItem

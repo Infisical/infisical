@@ -34,6 +34,7 @@ import { Tooltip } from "@infisical/cipher/ui/tooltip";
 
 import { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 
+import { ProviderLabel } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { failed, readableFailure, saved } from "../toast";
 import { DetailSkeleton, FormSkeleton, Gate } from "../ui";
@@ -178,7 +179,7 @@ const MethodPicker = ({
         value: method,
         label: authMethodName(method),
         disabled: configured.includes(method),
-        description: configured.includes(method) ? "Configured" : undefined
+        meta: configured.includes(method) ? "Configured" : undefined
       }))}
       onChange={(next) => onChange(next as IdentityAuthMethod)}
     />
@@ -261,8 +262,17 @@ const AuthMethodForm = ({
     <>
       <MultiStep
         variant="sheet"
+        size="lg"
         open
-        title={isUpdate && method ? `Edit ${authMethodName(method)}` : "Add auth method"}
+        title={
+          isUpdate && method ? (
+            <ProviderLabel kind="identity-auth" value={method}>
+              {`Edit ${authMethodName(method)}`}
+            </ProviderLabel>
+          ) : (
+            "Add auth method"
+          )
+        }
         completeLabel={copy.complete}
         onOpenChange={(open) => {
           if (open) return;
@@ -298,7 +308,11 @@ const EditAuthMethodForm = ({ method, ...props }: FormProps & { method: Identity
       <Sheet open onOpenChange={(open) => !open && props.onClose()}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>{`Edit ${authMethodName(method)}`}</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel kind="identity-auth" value={method}>
+                {`Edit ${authMethodName(method)}`}
+              </ProviderLabel>
+            </SheetTitle>
           </SheetHeader>
           <SheetBody>
             <EmptyState size="sm" icon="lock" title={`Couldn't load ${authMethodName(method)}`} />
@@ -476,7 +490,7 @@ export const AuthMethodViewSheet = ({
             <SheetHeader>
               <SheetTitle>
                 <Inline gap={8}>
-                  {authMethodName(method)}
+                  <ProviderLabel kind="identity-auth" value={method} />
                   {locked && <LockBadge label={ACTIVE_LOCKOUTS} />}
                 </Inline>
               </SheetTitle>

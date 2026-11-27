@@ -14,12 +14,7 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
-import { useNavigate } from "@tanstack/react-router";
 
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "@app/context/ProjectPermissionContext/types";
 import { CertificateRequestStatus } from "@app/hooks/api/certificates/enums";
 import type { TCertificateRequestListItem } from "@app/hooks/api/certificates/types";
 import {
@@ -28,18 +23,15 @@ import {
   type TPkiApplication
 } from "@app/hooks/api/pkiApplications/types";
 
-import { useProjectPermission } from "../../access/permissions";
 import { formatDate, formatDateTime } from "../../access/roles";
 import { failed, toast } from "../../access/toast";
 import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
-import { orgHref, v4Path } from "../../links";
+import { certificateHref, orgHref, useGo } from "../../links";
 import { RequestCertificateSheet } from "../components/certificate-requests/request-sheet";
 import { appCan, plural } from "./shared";
-
-const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
 
 type StatusFilter = "pending" | "issued" | "failed";
 
@@ -125,22 +117,20 @@ const RequestStatus = ({
 
 export const RequestsTab = ({
   orgId,
-  projectId,
   application,
   access
 }: {
   orgId: string;
-  projectId: string;
-  application?: TPkiApplication;
-  access?: PkiApplicationPermission;
+  application: TPkiApplication;
+  access: PkiApplicationPermission;
 }) => {
   const [requesting, setRequesting] = useState(false);
-  const { permission } = useProjectPermission(projectId);
-  const canRequest = access
-    ? appCan(access, PkiApplicationResourceActions.Create, PkiApplicationResourceSub.Certificates)
-    : !application &&
-      permission.can(ProjectPermissionCertificateActions.Create, ProjectPermissionSub.Certificates);
-  const navigate = useNavigate();
+  const canRequest = appCan(
+    access,
+    PkiApplicationResourceActions.Create,
+    PkiApplicationResourceSub.Certificates
+  );
+  const go = useGo();
   const adapter = useV4Adapter("pkiApplications");
   const cancel = adapter.useCancelCertificateRequest();
   const trigger = adapter.useTriggerRequestValidation();
@@ -157,7 +147,7 @@ export const RequestsTab = ({
     isPending,
     error: loadError
   } = adapter.useCertificateRequests({
-    applicationId: application?.id,
+    applicationId: application.id,
     offset: (page - 1) * pageSize,
     limit: pageSize,
     sortBy: "createdAt",
@@ -227,7 +217,7 @@ export const RequestsTab = ({
       header: "Status",
       width: 176,
       render: (request) => (
-        <RequestStatus request={request} orgId={orgId} applicationName={application?.name} />
+        <RequestStatus request={request} orgId={orgId} applicationName={application.name} />
       )
     },
     {
@@ -286,14 +276,14 @@ export const RequestsTab = ({
       />
       {requesting && (
         <RequestCertificateSheet
-          applicationId={application?.id}
-          applicationName={application?.name}
+          applicationId={application.id}
+          applicationName={application.name}
           onClose={() => setRequesting(false)}
         />
       )}
       <DataTable
         filtered={filtered}
-        label={application ? `Certificate requests in ${application.name}` : "Certificate requests"}
+        label={`Certificate requests in ${application.name}`}
         rows={rows}
         loading={isPending}
         columns={columns}
@@ -316,11 +306,11 @@ export const RequestsTab = ({
                 {request.status === CertificateRequestStatus.ISSUED && request.certificateId && (
                   <DropdownMenuItem
                     onSelect={() =>
-                      navigate({
-                        to: certificatePath,
-                        params: { orgId, certificateId: request.certificateId ?? "" },
-                        search: application ? { fromApplication: application.name } : {}
-                      })
+                      go(
+                        certificateHref(orgId, request.certificateId ?? "", {
+                          applicationName: application.name
+                        })
+                      )
                     }
                   >
                     <Icon name="eye" />

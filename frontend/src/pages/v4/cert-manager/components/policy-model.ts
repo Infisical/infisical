@@ -184,6 +184,11 @@ export const POLICY_STATE_LABELS: Record<PolicyState, string> = {
   denied: "Denied"
 };
 
+export type PolicyConstraints = { allowed?: string[]; required?: string[]; denied?: string[] };
+
+export const hasConstraints = (rule: PolicyConstraints) =>
+  Boolean(rule.allowed?.length || rule.required?.length || rule.denied?.length);
+
 export const CRITICALITY_LABELS: Record<"" | Criticality, string> = {
   "": "Critical and non-critical allowed",
   critical: "Always critical",

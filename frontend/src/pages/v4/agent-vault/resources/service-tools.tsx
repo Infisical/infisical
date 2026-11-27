@@ -465,7 +465,8 @@ export const McpToolsFields = ({
               value={allowedTools}
               invalid={Boolean(err("allowedTools"))}
               placeholder={serverTools ? "Select tools" : "Select tools, or type a tool's name"}
-              emptyText={
+              emptyText="Type a tool's name to add it"
+              noMatchText={
                 serverTools ? "No tools match your search" : "Type a tool's name to add it"
               }
               clearable

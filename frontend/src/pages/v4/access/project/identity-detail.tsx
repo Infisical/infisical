@@ -44,6 +44,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { copyText } from "../../clipboard";
+import { ProviderLabel } from "../../components/provider-label";
 import { ResourceAlertAction } from "../../components/resource-alerts";
 import { useV4Adapter } from "../../data/adapters";
 import { PageLoader } from "../../shell/project-gate";
@@ -58,7 +59,6 @@ import { ProjectAccessExtras } from "./access-extras";
 import { ProjectIdentityAuthSection } from "./identity-auth";
 import {
   AssumePrivilegesDialog,
-  authMethodName,
   DELETE_PROTECTED,
   IdentityRemovalDialog,
   identitySubject,
@@ -316,7 +316,11 @@ const DetailsCard = ({
                 [
                   "Last login method",
                   membership.lastLoginAuthMethod ? (
-                    authMethodName(membership.lastLoginAuthMethod)
+                    <ProviderLabel
+                      key="method"
+                      kind="identity-auth"
+                      value={membership.lastLoginAuthMethod}
+                    />
                   ) : (
                     <Muted key="method">-</Muted>
                   )

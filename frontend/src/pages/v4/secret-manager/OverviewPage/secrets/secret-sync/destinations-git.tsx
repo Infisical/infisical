@@ -56,6 +56,7 @@ function SearchComboField({
   fallback,
   placeholder,
   emptyText,
+  noMatchText,
   loading,
   disabled,
   onSearch,
@@ -68,6 +69,7 @@ function SearchComboField({
   fallback?: ComboboxOption;
   placeholder: string;
   emptyText: string;
+  noMatchText?: string;
   loading: boolean;
   disabled?: boolean;
   onSearch: (query: string) => void;
@@ -98,6 +100,7 @@ function SearchComboField({
             }
             placeholder={placeholder}
             emptyText={emptyText}
+            noMatchText={noMatchText ?? emptyText}
             loading={loading}
             onSearch={onSearch}
             disabled={disabled || !connectionId}
@@ -362,9 +365,8 @@ function BitbucketDestination() {
           workspace && !workspaceSearch ? { value: workspace, label: workspace } : undefined
         }
         placeholder="Select a workspace..."
-        emptyText={
-          workspaceSearch ? "No workspaces found matching your search." : "No workspaces found."
-        }
+        emptyText="No workspaces found."
+        noMatchText="No workspaces found matching your search."
         loading={
           Boolean(connectionId) &&
           (workspaces.isPending || isSearchPending(workspaceSearch, debouncedWorkspaceSearch))
@@ -389,9 +391,8 @@ function BitbucketDestination() {
             : undefined
         }
         placeholder="Select a repository..."
-        emptyText={
-          repoSearch ? "No repositories found matching your search." : "No repositories found."
-        }
+        emptyText="No repositories found."
+        noMatchText="No repositories found matching your search."
         loading={
           Boolean(connectionId && workspace) &&
           (repositories.isPending || isSearchPending(repoSearch, debouncedRepoSearch))

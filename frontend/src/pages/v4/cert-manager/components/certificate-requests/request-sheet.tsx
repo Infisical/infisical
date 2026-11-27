@@ -9,7 +9,6 @@ import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 import { Select } from "@infisical/cipher/ui/select";
 import { SmallText } from "@infisical/cipher/ui/text";
 import { Textarea } from "@infisical/cipher/ui/textarea";
-import { useNavigate } from "@tanstack/react-router";
 
 import { buildManagedRequest } from "@app/helpers/buildManagedRequest";
 import {
@@ -36,7 +35,7 @@ import {
 import { useOrgId } from "../../../access/permissions";
 import { readableFailure, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
-import { v4Path } from "../../../links";
+import { certificateHref, useGo } from "../../../links";
 import { ruleKey } from "../policy-model";
 import {
   AlgorithmSelectors,
@@ -246,7 +245,7 @@ export const RequestCertificateSheet = ({
   onClose: () => void;
 }) => {
   const orgId = useOrgId();
-  const navigate = useNavigate();
+  const go = useGo();
   const certificates = useV4Adapter("certificates");
   const issue = certificates.useIssueCertificate();
   const { data: profileData } = certificates.useCertificateProfiles({
@@ -398,11 +397,7 @@ export const RequestCertificateSheet = ({
   const handleResponse = (response: TUnifiedCertificateIssuanceResponse) => {
     if ("certificate" in response && response.certificate) {
       saved("Successfully created certificate");
-      navigate({
-        to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
-        params: { orgId, certificateId: response.certificate.certificateId },
-        search: applicationName ? { fromApplication: applicationName } : {}
-      });
+      go(certificateHref(orgId, response.certificate.certificateId, { applicationName }));
     } else if (
       "status" in response &&
       response.status === CertificateRequestStatus.PENDING_APPROVAL
@@ -527,7 +522,6 @@ export const RequestCertificateSheet = ({
               .join(" ")}
           >
             <Select
-              descriptionLayout="stacked"
               aria-label="Certificate profile"
               placeholder="Select a certificate profile"
               invalid={Boolean(errors.profileId)}

@@ -42,6 +42,7 @@ import type { IdentityMembershipOrg } from "@app/hooks/api/identities/types";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { copyText } from "../../clipboard";
+import { ProviderLabel } from "../../components/provider-label";
 import { ResourceAlertAction } from "../../components/resource-alerts";
 import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
@@ -306,8 +307,7 @@ export const OrgIdentityDetail = () => {
       grow: true,
       render: (method) => (
         <Inline gap={8} wrap={false}>
-          <Icon name="key" />
-          <span>{authMethodName(method)}</span>
+          <ProviderLabel kind="identity-auth" value={method} />
           {locked.includes(method) && <LockBadge label="Auth method has active lockouts" />}
         </Inline>
       )

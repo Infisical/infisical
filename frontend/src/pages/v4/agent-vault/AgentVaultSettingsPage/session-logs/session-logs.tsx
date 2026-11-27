@@ -419,7 +419,6 @@ const SessionLogSettingsCard = ({
             <>
               <Field label="Storage">
                 <Select
-                  descriptionLayout="stacked"
                   aria-label="Storage"
                   placeholder="Choose where to store session logs"
                   options={storageOptions}

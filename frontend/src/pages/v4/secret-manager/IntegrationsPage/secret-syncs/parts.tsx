@@ -323,7 +323,6 @@ const ImportDialog = ({
           </DialogDescription>
         </DialogHeader>
         <Select
-          descriptionLayout="stacked"
           label="Import behavior"
           aria-label="Import behavior"
           placeholder="Select a behavior..."

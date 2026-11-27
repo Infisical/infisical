@@ -580,7 +580,7 @@ const RecordingCard = ({
                 options={connections.map((connection) => ({
                   value: connection.id,
                   label: connection.name,
-                  description: connection.providerName
+                  meta: connection.providerName
                 }))}
                 onValueChange={(connectionId) => edit({ connectionId: connectionId || null })}
               />

@@ -21,10 +21,20 @@ export const PLATFORM_LABELS: Record<WorkflowIntegrationPlatform, string> = {
   [WorkflowIntegrationPlatform.MICROSOFT_TEAMS]: "Microsoft Teams"
 };
 
+const PLATFORM_IMAGES: Record<WorkflowIntegrationPlatform, string> = {
+  [WorkflowIntegrationPlatform.SLACK]: "Slack.svg",
+  [WorkflowIntegrationPlatform.MICROSOFT_TEAMS]: "Microsoft Teams.svg"
+};
+
+export const platformOf = (platform: WorkflowIntegrationPlatform) => ({
+  name: PLATFORM_LABELS[platform],
+  image: PLATFORM_IMAGES[platform]
+});
+
 export type PlatformFormProps = {
   projectId: string;
   orgId: string;
-  title: string;
+  title: ReactNode;
   lead?: ReactNode;
   onClose: () => void;
 };
@@ -38,7 +48,7 @@ export const SheetForm = ({
   onSubmit,
   children
 }: {
-  title: string;
+  title: ReactNode;
   lead?: ReactNode;
   pending?: boolean;
   loading?: boolean;

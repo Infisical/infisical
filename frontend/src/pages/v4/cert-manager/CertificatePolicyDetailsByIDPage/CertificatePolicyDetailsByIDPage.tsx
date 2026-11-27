@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import { Badge } from "@infisical/cipher/ui/badge";
 import { Button } from "@infisical/cipher/ui/button";
@@ -38,12 +38,15 @@ import { TruncatedValue } from "../../networking/truncated-value";
 import { CertManagerNotSetUp, useCertManagerProjectId } from "../components/certificate";
 import { DeletePolicyDialog } from "../components/delete-dialogs";
 import { ExtensionName } from "../components/extension-name";
+import { ConstraintList } from "../components/policy-constraints";
 import {
   CRITICALITY_LABELS,
   domainComponentChain,
   formatValidity,
+  hasConstraints,
   hasEnforcement,
   POLICY_DOCS,
+  type PolicyConstraints,
   POLICY_STATE_LABELS,
   type PolicyState,
   SAN_LABELS,
@@ -59,11 +62,6 @@ const routeId = v4Path("/organizations/$orgId/cert-manager/certificate-policies/
 const timestamp = (value: string) => format(new Date(value), "MMM d, yyyy 'at' h:mm a");
 
 const STATE_TONE = { required: "ok", allowed: "info", denied: "bad" } as const;
-
-type RuleValues = { allowed?: string[]; required?: string[]; denied?: string[] };
-
-const isEmptyRule = (rule: RuleValues) =>
-  !rule.allowed?.length && !rule.required?.length && !rule.denied?.length;
 
 const Values = ({
   values,
@@ -83,36 +81,7 @@ const Values = ({
   </Inline>
 );
 
-const ruleValueGrid = {
-  display: "grid",
-  gridTemplateColumns: "auto auto",
-  gap: 8,
-  alignItems: "center",
-  justifyContent: "end"
-} as const;
-
-const RuleValueList = ({
-  rule,
-  format: formatValue,
-  mono
-}: {
-  rule: RuleValues;
-  format?: (value: string) => string;
-  mono?: boolean;
-}) => (
-  <div style={ruleValueGrid}>
-    {(["required", "allowed", "denied"] as const)
-      .filter((state) => rule[state]?.length)
-      .map((state) => (
-        <Fragment key={state}>
-          <SmallText muted>{POLICY_STATE_LABELS[state]}</SmallText>
-          <Values values={rule[state] ?? []} format={formatValue} mono={mono} />
-        </Fragment>
-      ))}
-  </div>
-);
-
-const ruleId = (rule: RuleValues & { oid: string }) =>
+const ruleId = (rule: PolicyConstraints & { oid: string }) =>
   [rule.oid, rule.required, rule.allowed, rule.denied].flat().join(":");
 
 const NoneAllowed = ({ children }: { children: string }) => <SmallText muted>{children}</SmallText>;
@@ -145,10 +114,10 @@ const usageItemsOf = (policy: TCertificatePolicy): DataListItem[] => {
       ? ([
           [
             "Key usages",
-            isEmptyRule(policy.keyUsages) ? (
+            !hasConstraints(policy.keyUsages) ? (
               <NoneAllowed key="ku">None allowed</NoneAllowed>
             ) : (
-              <RuleValueList key="ku" rule={policy.keyUsages} format={usageLabel} />
+              <ConstraintList key="ku" rule={policy.keyUsages} format={usageLabel} />
             )
           ]
         ] as const)
@@ -157,10 +126,10 @@ const usageItemsOf = (policy: TCertificatePolicy): DataListItem[] => {
       ? ([
           [
             "Extended key usages",
-            isEmptyRule(policy.extendedKeyUsages) ? (
+            !hasConstraints(policy.extendedKeyUsages) ? (
               <NoneAllowed key="eku">None allowed</NoneAllowed>
             ) : (
-              <RuleValueList key="eku" rule={policy.extendedKeyUsages} format={usageLabel} />
+              <ConstraintList key="eku" rule={policy.extendedKeyUsages} format={usageLabel} />
             )
           ]
         ] as const)
@@ -173,11 +142,12 @@ const SubjectCard = ({ rules }: { rules: NonNullable<TCertificatePolicy["subject
     {rules.length ? (
       <DataList
         variant="props"
+        density="compact"
         items={rules.map((rule) => {
           const isDomain = rule.type === "domain_component";
           return [
             SUBJECT_LABELS[rule.type as SubjectType] ?? rule.type,
-            <RuleValueList
+            <ConstraintList
               key={rule.type}
               rule={rule}
               mono={isDomain}
@@ -199,11 +169,12 @@ const SanCard = ({ rules }: { rules: NonNullable<TCertificatePolicy["sans"]> }) 
     {rules.length ? (
       <DataList
         variant="props"
+        density="compact"
         items={rules.map(
           (rule) =>
             [
               SAN_LABELS[rule.type as SanType] ?? rule.type,
-              <RuleValueList key={rule.type} rule={rule} mono />
+              <ConstraintList key={rule.type} rule={rule} mono />
             ] as const
         )}
       />
@@ -225,6 +196,7 @@ const AlgorithmsCard = ({
   <Card variant="framed" title="Algorithms">
     <DataList
       variant="props"
+      density="compact"
       items={[
         ...(signatures.length
           ? ([["Signature algorithms", <Values key="sig" values={signatures} />]] as const)
@@ -246,6 +218,7 @@ const ExtensionsCard = ({
     {rules.length ? (
       <DataList
         variant="props"
+        density="compact"
         items={rules.map(
           (rule) =>
             [
@@ -256,7 +229,7 @@ const ExtensionsCard = ({
                     <Badge tone="soft">{CRITICALITY_LABELS[rule.critical]}</Badge>
                   </div>
                 )}
-                <RuleValueList rule={rule} mono />
+                <ConstraintList rule={rule} mono />
               </Stack>
             ] as const
         )}
@@ -284,8 +257,8 @@ const Sections = ({ policy }: { policy: TCertificatePolicy }) => {
     );
 
   const validityItems = validityItemsOf(policy);
-  const subjectRules = policy.subject?.filter((rule) => !isEmptyRule(rule));
-  const sanRules = policy.sans?.filter((rule) => !isEmptyRule(rule));
+  const subjectRules = policy.subject?.filter(hasConstraints);
+  const sanRules = policy.sans?.filter(hasConstraints);
   const signatures = policy.algorithms?.signature ?? [];
   const keyAlgorithms = policy.algorithms?.keyAlgorithm ?? [];
   const usageItems = usageItemsOf(policy);
@@ -293,14 +266,14 @@ const Sections = ({ policy }: { policy: TCertificatePolicy }) => {
     <>
       {validityItems.length > 0 && (
         <Card variant="framed" title="Validity and constraints">
-          <DataList variant="props" items={validityItems} />
+          <DataList variant="props" density="compact" items={validityItems} />
         </Card>
       )}
       {subjectRules && <SubjectCard rules={subjectRules} />}
       {sanRules && <SanCard rules={sanRules} />}
       {usageItems.length > 0 && (
         <Card variant="framed" title="Key usages">
-          <DataList variant="props" items={usageItems} />
+          <DataList variant="props" density="compact" items={usageItems} />
         </Card>
       )}
       {(signatures.length > 0 || keyAlgorithms.length > 0) && (

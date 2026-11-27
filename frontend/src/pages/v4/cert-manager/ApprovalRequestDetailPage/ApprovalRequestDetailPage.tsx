@@ -52,7 +52,7 @@ import type { CrlReason } from "@app/hooks/api/certificates/enums";
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { orgHref, useGo, v4Path } from "../../links";
+import { certificateHref, orgHref, useGo, v4Path } from "../../links";
 import { TruncatedValue } from "../../networking/truncated-value";
 import {
   certDataOf,
@@ -429,10 +429,9 @@ const RequestDetail = ({
                     "Certificate",
                     <Button key="certificate" variant="link" asChild>
                       <a
-                        href={orgHref(
-                          orgId,
-                          `/cert-manager/certificates/${revocationData.certificateId}`
-                        )}
+                        href={certificateHref(orgId, revocationData.certificateId, {
+                          applicationName: origin.applicationName
+                        })}
                       >
                         {revocationData.commonName || revocationData.serialNumber.toUpperCase()}
                       </a>

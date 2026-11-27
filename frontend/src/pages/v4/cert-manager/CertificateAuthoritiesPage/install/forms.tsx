@@ -167,7 +167,6 @@ export const InternalInstallForm = ({
             <Select
               aria-label="Parent CA"
               placeholder="Select a parent CA"
-              descriptionLayout="stacked"
               value={parent?.id ?? ""}
               invalid={Boolean(errors.parent)}
               options={parents.map((entry) => ({

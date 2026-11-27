@@ -328,6 +328,7 @@ function ConfigurationFields({
       />
       {!IS_ROTATION_DUAL_CREDENTIALS[type] && isAutoRotationEnabled && (
         <Alert tone="warn">
+          {/* v4-check-ignore bare-provider-name -- the provider name opens a sentence */}
           {SECRET_ROTATION_MAP[type].name} rotates a single credential set, so auto-rotation can
           interrupt services that use it. Turn it off if you need continuity.{" "}
           <a
@@ -689,7 +690,7 @@ export function SecretRotationFlow({
         }}
       >
         <FormProvider {...form}>
-          <SheetContent className="data-[side=right]:w-full data-[side=right]:sm:w-3/4 data-[side=right]:sm:max-w-none">
+          <SheetContent size="xl">
             {type ? (
               <SheetHeader>
                 <Inline gap={12} wrap={false} align="start">
@@ -703,6 +704,7 @@ export function SecretRotationFlow({
                         />
                       }
                     >
+                      {/* v4-check-ignore bare-provider-name -- ProviderLogo already leads this header */}
                       {SECRET_ROTATION_MAP[type].name} secret rotation
                     </SheetTitle>
                     {!isUpdate && (

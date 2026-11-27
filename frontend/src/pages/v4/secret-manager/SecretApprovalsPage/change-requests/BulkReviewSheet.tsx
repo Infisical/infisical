@@ -636,7 +636,7 @@ export const BulkReviewSheet = ({
   const [submitting, setSubmitting] = useState(false);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent size="lg" pending={submitting} className={styles.sheet}>
+      <SheetContent size="xl" pending={submitting}>
         {open && (
           <ReviewContent
             {...props}

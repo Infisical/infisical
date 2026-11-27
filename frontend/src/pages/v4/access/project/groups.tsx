@@ -24,11 +24,11 @@ import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
+import { useProjectPlanGates } from "../plan-gate";
 import { formatDate } from "../roles";
 import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
-import { useProjectPlanGates } from "./plan-gates";
 import { accessLabel, accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 

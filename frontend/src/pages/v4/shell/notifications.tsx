@@ -1,11 +1,4 @@
-import {
-  type MouseEvent,
-  type PointerEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState
-} from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
   AlertDialog,
@@ -29,8 +22,7 @@ import { EmptyState } from "@infisical/cipher/ui/empty";
 import { Icon } from "@infisical/cipher/ui/icon";
 import { Media } from "@infisical/cipher/ui/item";
 import { List, ListRow } from "@infisical/cipher/ui/list";
-import { PopoverContent } from "@infisical/cipher/ui/popover";
-import { Sheet, SheetContent, SheetTitle } from "@infisical/cipher/ui/sheet";
+import { PopoverContent, PopoverHeader, PopoverTitle } from "@infisical/cipher/ui/popover";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 import { Tooltip } from "@infisical/cipher/ui/tooltip";
 import { useAppShell } from "@infisical/cipher/ui/top-bar";
@@ -94,52 +86,16 @@ export const useNotificationInbox = (orgId: string) => {
   };
 };
 
-const SWIPE_CLOSE_PX = 80;
-
-const useSwipeDown = (onClose: () => void) => {
-  const drag = useRef<{ startY: number; pointerId: number } | null>(null);
-  const reset = (element: HTMLElement) => {
-    drag.current = null;
-    element.style.removeProperty("translate");
-    element.style.removeProperty("transition");
-  };
-  return {
-    onPointerDown: (event: PointerEvent<HTMLElement>) => {
-      const target = event.target as HTMLElement;
-      if (event.pointerType === "mouse" || target.closest("button, a, [role='tab']")) return;
-      const scroller = target.closest<HTMLElement>("[data-swipe-scroll]");
-      if (scroller && scroller.scrollTop > 0) return;
-      drag.current = { startY: event.clientY, pointerId: event.pointerId };
-    },
-    onPointerMove: (event: PointerEvent<HTMLElement>) => {
-      if (drag.current?.pointerId !== event.pointerId) return;
-      const offset = Math.max(0, event.clientY - drag.current.startY);
-      const { style } = event.currentTarget;
-      style.setProperty("transition", "none");
-      style.setProperty("translate", `0 ${offset}px`);
-    },
-    onPointerUp: (event: PointerEvent<HTMLElement>) => {
-      if (drag.current?.pointerId !== event.pointerId) return;
-      const offset = event.clientY - drag.current.startY;
-      reset(event.currentTarget);
-      if (offset > SWIPE_CLOSE_PX) onClose();
-    },
-    onPointerCancel: (event: PointerEvent<HTMLElement>) => reset(event.currentTarget)
-  };
-};
-
 const InboxBody = ({
   orgId,
   notifications,
   isPending,
-  onClose,
-  title
+  onClose
 }: {
   orgId: string;
   notifications: TUserNotification[];
   isPending: boolean;
   onClose: () => void;
-  title: ReactNode;
 }) => {
   const shell = useV4Adapter("shell");
   const go = useGo();
@@ -204,14 +160,7 @@ const InboxBody = ({
         label={plainText(latest.title)}
         href={href}
         onClick={(event) => openGroup(event, group, href)}
-        media={
-          <Media
-            size="sm"
-            icon={notificationIcon(latest.type)}
-            tone={group.tone}
-            className={styles.tile}
-          />
-        }
+        media={<Media size="sm" icon={notificationIcon(latest.type)} tone={group.tone} />}
         unread={group.unread > 0}
         title={<ReactMarkdown components={inline}>{latest.title}</ReactMarkdown>}
         badge={
@@ -270,7 +219,6 @@ const InboxBody = ({
       size="icon-sm"
       icon="check-check"
       iconOnly
-      className={styles.markAll}
       loading={markAll.isPending}
       disabledReason={unread ? undefined : "No unread notifications"}
       onClick={() =>
@@ -284,68 +232,76 @@ const InboxBody = ({
   );
 
   return (
-    <div className={styles.inbox}>
-      <div className={styles.head}>
-        {title}
-        {notifications.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
-                More actions
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem
-                variant="destructive"
-                disabledReason={
-                  notifications.some((notification) => notification.isRead)
-                    ? undefined
-                    : "Nothing has been read yet"
-                }
-                onSelect={() => setConfirmClear(true)}
-              >
-                <Icon name="trash" />
-                Clear read
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {unread ? <Tooltip content="Mark all as read">{markAllButton}</Tooltip> : markAllButton}
-      </div>
-      {groups.length > 0 && (
-        <Tabs
-          className={styles.filters}
-          label="Filter notifications"
-          value={filter}
-          onChange={(value) => {
-            setFilter(value as Filter);
-            setShownCount(PAGE_SIZE);
-          }}
-          tabs={[
-            { value: "all", label: "All" },
-            { value: "unread", label: "Unread", count: unread || undefined }
-          ]}
-        />
-      )}
-      <div
-        className={styles.scroll}
-        data-scroll-fade="y"
-        data-swipe-scroll
-        onAuxClick={(event) => {
-          if (event.button !== 1) return;
-          const key = (event.target as HTMLElement)
-            .closest("[data-list-row]")
-            ?.getAttribute("data-list-row");
-          const group = shown.find((entry) => entry.key === key);
-          if (group && toHref(group.latest.link)) readGroup(group);
-        }}
+    <PopoverContent
+      size="feed"
+      align="end"
+      side="bottom"
+      onAuxClick={(event) => {
+        if (event.button !== 1) return;
+        const key = (event.target as HTMLElement)
+          .closest("[data-list-row]")
+          ?.getAttribute("data-list-row");
+        const group = shown.find((entry) => entry.key === key);
+        if (group && toHref(group.latest.link)) readGroup(group);
+      }}
+    >
+      <PopoverHeader
+        action={
+          unread ? <Tooltip content="Mark all as read">{markAllButton}</Tooltip> : markAllButton
+        }
+        tabs={
+          groups.length > 0 && (
+            <Tabs
+              className={styles.filters}
+              label="Filter notifications"
+              value={filter}
+              onChange={(value) => {
+                setFilter(value as Filter);
+                setShownCount(PAGE_SIZE);
+              }}
+              tabs={[
+                { value: "all", label: "All" },
+                { value: "unread", label: "Unread", count: unread || undefined }
+              ]}
+            />
+          )
+        }
       >
+        <div className={styles.title}>
+          <PopoverTitle className={styles.heading}>Notifications</PopoverTitle>
+          {notifications.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+                  More actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabledReason={
+                    notifications.some((notification) => notification.isRead)
+                      ? undefined
+                      : "Nothing has been read yet"
+                  }
+                  onSelect={() => setConfirmClear(true)}
+                >
+                  <Icon name="trash" />
+                  Clear read
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </PopoverHeader>
+      {!isPending && !visible.length ? (
+        <EmptyState size="sm" icon="bell" title={EMPTY_TITLES[filter]} />
+      ) : (
         <List
           label="Notifications"
           variant="bare"
           inset
           loading={isPending}
-          empty={<EmptyState size="sm" icon="bell" title={EMPTY_TITLES[filter]} />}
           footer={
             visible.length > shownCount && (
               <ShowMoreFooter
@@ -357,7 +313,7 @@ const InboxBody = ({
         >
           {shown.map(row)}
         </List>
-      </div>
+      )}
       <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
         <AlertDialogContent tone="danger" pending={clearAll.isPending}>
           <AlertDialogHeader>
@@ -387,7 +343,7 @@ const InboxBody = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PopoverContent>
   );
 };
 
@@ -404,37 +360,12 @@ export const NotificationInbox = ({
   useEffect(() => {
     if (narrow && inbox.open) setNavigationOpen?.(false);
   }, [narrow, inbox.open, setNavigationOpen]);
-  const close = () => inbox.onOpenChange(false);
-  const swipe = useSwipeDown(close);
-  const body = (title: ReactNode) => (
+  return (
     <InboxBody
       orgId={orgId}
       notifications={inbox.notifications}
       isPending={inbox.isPending}
-      onClose={close}
-      title={title}
+      onClose={() => inbox.onOpenChange(false)}
     />
-  );
-  if (narrow)
-    return (
-      <Sheet open={inbox.open} onOpenChange={inbox.onOpenChange}>
-        <SheetContent
-          side="bottom"
-          aria-describedby={undefined}
-          showCloseButton={false}
-          className={styles.sheet}
-          {...swipe}
-        >
-          <span className={styles.grabber} aria-hidden />
-          {inbox.open && body(<SheetTitle className={styles.heading}>Notifications</SheetTitle>)}
-        </SheetContent>
-      </Sheet>
-    );
-  return (
-    inbox.open && (
-      <PopoverContent align="end" side="bottom" className={styles.popover}>
-        {body(<h2 className={styles.heading}>Notifications</h2>)}
-      </PopoverContent>
-    )
   );
 };

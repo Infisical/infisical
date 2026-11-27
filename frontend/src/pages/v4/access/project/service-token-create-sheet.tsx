@@ -131,7 +131,7 @@ export const ServiceTokenCreateSheet = ({
         onOpenChange(next);
       }}
     >
-      <SheetContent pending={pending}>
+      <SheetContent size="lg" pending={pending}>
         <SheetHeader>
           <SheetTitle>
             {project.data ? `Add a service token for ${project.data.name}` : "Add a service token"}

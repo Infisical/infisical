@@ -29,6 +29,8 @@ import {
 import {
   certKeys,
   useGetCertActivityTrend,
+  useGetCertBody,
+  useGetCertBundle,
   useGetCertDashboardStats,
   useGetCertificateById,
   useGetCertificateRenewalPreview,
@@ -135,6 +137,8 @@ export const certificatesLive: CertificatesAdapter = {
   useImportCertificate,
   useImportPkcs12Entries,
   useIssueCertificate: useUnifiedCertificateIssuance,
+  useCertificateBody: useGetCertBody,
+  useCertificateBundle: useGetCertBundle,
   useExportCertificate,
   useUpdateCertificateMetadata: useUpdateCertificate,
   useAssignToApplication: useAssignCertificateToApplication,

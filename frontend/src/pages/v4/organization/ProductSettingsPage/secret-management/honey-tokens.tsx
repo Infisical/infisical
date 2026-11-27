@@ -40,6 +40,7 @@ import { slugSchema } from "@app/lib/schemas";
 import { failed, saved, toast } from "../../../access/toast";
 import { RESTRICTED } from "../../../access/ui";
 import { copyText } from "../../../clipboard";
+import { ProviderLabel } from "../../../components/provider-label";
 import { RegionCombobox } from "../../../components/region-combobox";
 import { useV4Adapter } from "../../../data/adapters";
 import type { HoneyTokenConnectionTest } from "../../../data/product-settings/contract";
@@ -177,7 +178,11 @@ const HoneyTokenSheet = ({
       <Sheet open onOpenChange={(next) => (next ? undefined : guard.requestDiscard())}>
         <SheetContent size="lg" pending={pending}>
           <SheetHeader>
-            <SheetTitle>Configure AWS honey tokens</SheetTitle>
+            <SheetTitle>
+              <ProviderLabel kind="honey-token" value={HoneyTokenType.AWS}>
+                Configure AWS honey tokens
+              </ProviderLabel>
+            </SheetTitle>
             <SheetDescription>
               Plant a decoy IAM credential in your AWS account. Infisical alerts on every access
               attempt.
@@ -336,14 +341,16 @@ export const HoneyTokensCard = ({ canSetup }: { canSetup: boolean }) => {
         flush
         loading={isPending}
         title={
-          <Inline gap={8} wrap={false}>
+          <ProviderLabel kind="honey-token" value={HoneyTokenType.AWS}>
             AWS honey tokens
-            {config && (
-              <Badge tone={verified ? "ok" : "warn"} dot>
-                {verified ? "Verified" : "Pending verification"}
-              </Badge>
-            )}
-          </Inline>
+          </ProviderLabel>
+        }
+        badges={
+          config && (
+            <Badge tone={verified ? "ok" : "warn"} dot>
+              {verified ? "Verified" : "Pending verification"}
+            </Badge>
+          )
         }
         description="Plant decoy IAM credentials in your AWS account. Infisical alerts on every access attempt."
         action={

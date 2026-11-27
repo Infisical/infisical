@@ -24,7 +24,7 @@ export const keySourceOptions = ({
           value: CertKeySource.AwsKms,
           label: "AWS KMS",
           disabled: !awsKms.available,
-          description: awsKms.available ? undefined : "Enterprise plan"
+          meta: awsKms.available ? undefined : "Enterprise plan"
         }
       ]
     : [])

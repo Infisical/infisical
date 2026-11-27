@@ -41,6 +41,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 import { failed, saved } from "../../access/toast";
 import { ProviderIcon } from "../../components/provider-icon";
+import { ProviderLabel } from "../../components/provider-label";
 import { RegionCombobox } from "../../components/region-combobox";
 import { useV4Adapter } from "../../data/adapters";
 import { useUpgradeGate } from "../../license/useUpgradeGate";
@@ -1196,7 +1197,11 @@ const useSaveExternalCa = (
 const sheetTitle = (draft: Draft | undefined, editing: boolean) => {
   const provider = draft && PROVIDERS.find((entry) => entry.type === draft.type);
   if (!provider) return "Connect external CA";
-  return `${editing ? "Edit" : "Create"} ${provider.name} CA`;
+  return (
+    <ProviderLabel provider={provider}>
+      {editing ? "Edit" : "Create"} {provider.name} CA
+    </ProviderLabel>
+  );
 };
 
 const useFetchedCa = (open: boolean, ca?: TUnifiedCertificateAuthority) =>
@@ -1294,7 +1299,7 @@ export const ExternalCaSheet = ({
   return (
     <>
       <Sheet open={open} onOpenChange={(next) => !next && !pending && guarded(close)}>
-        <SheetContent pending={pending || codeSigning.checking}>
+        <SheetContent size="md" pending={pending || codeSigning.checking}>
           <SheetHeader>
             <SheetTitle>{sheetTitle(draft, editing)}</SheetTitle>
           </SheetHeader>
