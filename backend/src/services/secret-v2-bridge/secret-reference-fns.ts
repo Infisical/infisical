@@ -147,6 +147,7 @@ type TExpandedValue = {
   value: string;
   // Every reference in the value's tree, counted the way the reference tree lists them.
   referenceCount: number;
+  characterCount: number;
   referencedSecretIds: Set<string>;
   traceChildren: TSecretReferenceTraceNode[];
   // A value whose circular reference was cut short depends on which secrets referenced it, so it cannot be reused.
@@ -158,28 +159,27 @@ export const MAX_SECRET_REFERENCE_DEPTH = 10;
 // references to a secret that holds many references of its own costs the product of the two counts.
 export const MAX_SECRET_REFERENCE_EXPANSION_REFERENCES = 1_000;
 export const MAX_SECRET_REFERENCE_EXPANSION_CHARACTERS = 10 * 1024 * 1024;
-// Well under the expansion limit, so a value that is accepted can still expand together with the references of the
-// secrets it points to.
+// Counts every occurrence, so a reference repeated in one value counts each time. Well under the expansion limit, so
+// a value that is accepted can still expand together with the references of the secrets it points to.
 export const MAX_SECRET_REFERENCES_PER_VALUE = 100;
 
-const exceedsDistinctReferences = (value: string, limit: number) => {
+const exceedsReferenceOccurrences = (value: string, limit: number) => {
   const regex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
-  const references = new Set<string>();
-  let match;
+  let occurrences = 0;
   // eslint-disable-next-line no-cond-assign
-  while ((match = regex.exec(value)) !== null) {
-    references.add(match[1]);
-    if (references.size > limit) return true;
+  while (regex.exec(value) !== null) {
+    occurrences += 1;
+    if (occurrences > limit) return true;
   }
   return false;
 };
 
 export const assertSecretReferencesWithinLimit = (secrets: { secretKey: string; secretValue?: string | null }[]) => {
   for (const { secretKey, secretValue } of secrets) {
-    if (secretValue && exceedsDistinctReferences(secretValue, MAX_SECRET_REFERENCES_PER_VALUE)) {
+    if (secretValue && exceedsReferenceOccurrences(secretValue, MAX_SECRET_REFERENCES_PER_VALUE)) {
       throw new BadRequestError({
         name: "SecretReferenceLimitExceeded",
-        message: `The value of secret '${secretKey}' holds more than ${MAX_SECRET_REFERENCES_PER_VALUE.toLocaleString("en-US")} different secret references. Reduce the references in it, or split it into several secrets.`
+        message: `The value of secret '${secretKey}' holds more than ${MAX_SECRET_REFERENCES_PER_VALUE.toLocaleString("en-US")} secret references, counting a reference each time it repeats. Reduce the references in it, or split it into several secrets.`
       });
     }
   }
@@ -523,45 +523,67 @@ export const expandSecretReferencesFactory = ({
       value,
       environment,
       secretPath,
+      secretKey,
       depth,
       ancestors
     }: {
       value: string;
       environment: string;
       secretPath: string;
+      secretKey: string;
       depth: number;
       ancestors: Set<string>;
     }): Promise<TExpandedValue> => {
       const expanded: TExpandedValue = {
         value,
         referenceCount: 0,
+        characterCount: 0,
         referencedSecretIds: new Set(),
         traceChildren: [],
         isReusable: true
       };
 
-      if (depth > MAX_SECRET_REFERENCE_DEPTH) return expanded;
+      if (depth > MAX_SECRET_REFERENCE_DEPTH) {
+        expanded.isReusable = false;
+        return expanded;
+      }
 
       chargeCharacters(value.length);
+      expanded.characterCount += value.length;
 
       const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
-      const refs = new Set<string>();
+      const occurrences = new Map<string, number>();
+      // A same-project reference always counts once resolved; a cross-project one may be skipped without counting.
+      let sameProjectReferences = 0;
       let match;
 
+      let occurrenceCount = 0;
       // eslint-disable-next-line no-cond-assign
       while ((match = matchRegex.exec(value)) !== null) {
-        refs.add(match[0]);
-        // Each distinct reference counts at least once, so a value holding more than the budget has left is refused
-        // before any of them is resolved.
-        if (budget.references + refs.size > MAX_SECRET_REFERENCE_EXPANSION_REFERENCES) {
-          chargeReferences(refs.size);
+        // Values stored before the write limit can repeat a reference hundreds of thousands of times; stopping here
+        // keeps refusing one to a handful of matches instead of a scan over all of them.
+        occurrenceCount += 1;
+        if (occurrenceCount > MAX_SECRET_REFERENCE_EXPANSION_REFERENCES) {
+          throwExpansionTooLarge(
+            `the value of secret '${secretKey}' holds more than ${MAX_SECRET_REFERENCE_EXPANSION_REFERENCES.toLocaleString("en-US")} references`
+          );
+        }
+        const count = occurrences.get(match[0]);
+        occurrences.set(match[0], (count ?? 0) + 1);
+        if (count === undefined && !match[1].startsWith("@")) {
+          sameProjectReferences += 1;
+          // Refused before any reference is resolved when the value alone holds more than the budget has left.
+          if (budget.references + sameProjectReferences > MAX_SECRET_REFERENCE_EXPANSION_REFERENCES) {
+            chargeReferences(sameProjectReferences);
+          }
         }
       }
 
-      if (!refs.size) return expanded;
+      const refs = [...occurrences.keys()];
+      if (!refs.length) return expanded;
 
       // Batch-resolve all cross-project slugs from this value's refs in one query
-      const crossProjectSlugs = [...refs]
+      const crossProjectSlugs = refs
         .map((r) =>
           r
             .slice(2, r.length - 1)
@@ -600,6 +622,7 @@ export const expandSecretReferencesFactory = ({
 
         if (child) {
           expanded.referenceCount += child.referenceCount;
+          expanded.characterCount += child.characterCount;
           child.referencedSecretIds.forEach((id) => expanded.referencedSecretIds.add(id));
           if (!child.isReusable) expanded.isReusable = false;
         }
@@ -620,12 +643,19 @@ export const expandSecretReferencesFactory = ({
       }
 
       if (replacements.size) {
+        let expandedLength = value.length;
+        replacements.forEach((replacement, interpolationSyntax) => {
+          expandedLength +=
+            (occurrences.get(interpolationSyntax) ?? 0) * (replacement.length - interpolationSyntax.length);
+        });
+        chargeCharacters(expandedLength);
+        expanded.characterCount += expandedLength;
+
         // A replacer function inserts the value literally, so `$&` and similar patterns in it are not expanded
         expanded.value = value.replace(
           new RE2(INTERPOLATION_PATTERN_STRING, "g"),
           (interpolationSyntax: string) => replacements.get(interpolationSyntax) ?? interpolationSyntax
         );
-        chargeCharacters(expanded.value.length);
       }
 
       return expanded;
@@ -636,6 +666,7 @@ export const expandSecretReferencesFactory = ({
       const cached = expandedValueCache.get(cacheKey);
       if (cached) {
         chargeReferences(cached.referenceCount);
+        chargeCharacters(cached.characterCount);
         return cached;
       }
 
@@ -643,6 +674,7 @@ export const expandSecretReferencesFactory = ({
         value: reference.value,
         environment: reference.environment,
         secretPath: reference.secretPath,
+        secretKey: reference.key,
         depth,
         ancestors: new Set(ancestors).add(reference.nodeId)
       });
@@ -654,6 +686,7 @@ export const expandSecretReferencesFactory = ({
       value: dto.value,
       environment: dto.environment,
       secretPath: dto.secretPath,
+      secretKey: dto.secretKey,
       depth: 0,
       ancestors: new Set([createSecretId(dto.environment, dto.secretPath, dto.secretKey)])
     });
