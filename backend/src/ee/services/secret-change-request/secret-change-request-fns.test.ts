@@ -27,7 +27,18 @@ import { ApprovalStatus, RequestState } from "./secret-change-request-types";
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 
-const TX = { isTx: true } as unknown as Knex;
+const TX = { isTx: true, executionPromise: new Promise(() => {}) } as unknown as Knex;
+
+// A caller's transaction the test commits or rolls back.
+const controlledTx = () => {
+  let commit = () => {};
+  let rollback = () => {};
+  const executionPromise = new Promise<void>((resolve, reject) => {
+    commit = () => resolve();
+    rollback = () => reject(new Error("rolled back"));
+  });
+  return { tx: { isTx: true, executionPromise } as unknown as Knex, commit, rollback };
+};
 const CREATED_AT = new Date("2026-01-01T00:00:00.000Z");
 
 const approvalRequest = (overrides: Partial<TApprovalRequests> = {}): TApprovalRequests => ({
@@ -384,6 +395,31 @@ describe("runSecretChangeRequestSideEffects", () => {
         }) as object
       })
     );
+  });
+
+  test("posts to chat only once the caller's transaction commits", async () => {
+    const { fns, deps } = buildFns();
+    const { tx, commit } = controlledTx();
+
+    await fns.runSecretChangeRequestSideEffects({ ...input, tx });
+    const beforeCommit = deps.secretsChatNotificationService.notifications.length;
+    commit();
+    await vi.waitFor(() => expect(deps.secretsChatNotificationService.notifications).toHaveLength(1));
+
+    expect(beforeCommit).toBe(0);
+  });
+
+  test("never posts to chat when the caller's transaction rolls back", async () => {
+    const { fns, deps } = buildFns();
+    const { tx, rollback } = controlledTx();
+
+    await fns.runSecretChangeRequestSideEffects({ ...input, tx });
+    rollback();
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+
+    expect(deps.secretsChatNotificationService.notifications).toEqual([]);
   });
 
   test("reads through the caller's transaction and rethrows a webhook failure when one is supplied", async () => {

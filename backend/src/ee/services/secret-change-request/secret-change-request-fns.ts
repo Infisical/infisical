@@ -345,23 +345,32 @@ export const secretChangeRequestFnsFactory = ({
         : await (tx ? findUser() : requestMemoize(requestMemoKeys.userFindById(actorId), findUser));
     const env = await projectEnvDAL.findOne({ slug: environment, projectId: project.id }, tx);
 
-    await secretsChatNotificationService.notify({
-      projectId: project.id,
-      notification: {
-        type: SecretsChatNotificationType.SecretApproval,
-        payload: {
-          machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
-          userEmail: user?.email ?? undefined,
-          environment: env.name,
-          secretPath,
-          projectId: project.id,
-          projectName: project.name,
-          requestId: approvalRequest.id,
-          secretKeys,
-          approvalUrl: buildApprovalUrl(actorOrgId, project.id, approvalRequest.id)
+    const notifyChat = () =>
+      secretsChatNotificationService.notify({
+        projectId: project.id,
+        notification: {
+          type: SecretsChatNotificationType.SecretApproval,
+          payload: {
+            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
+            userEmail: user?.email ?? undefined,
+            environment: env.name,
+            secretPath,
+            projectId: project.id,
+            projectName: project.name,
+            requestId: approvalRequest.id,
+            secretKeys,
+            approvalUrl: buildApprovalUrl(actorOrgId, project.id, approvalRequest.id)
+          }
         }
-      }
-    });
+      });
+    // Posting reads chat settings on the pool and calls Slack or Teams, so it never runs while the caller's transaction
+    // is open: it waits for the commit, and a request that rolls back is never announced.
+    const commit = (tx as Partial<Knex.Transaction> | undefined)?.executionPromise;
+    if (commit) {
+      void commit.then(notifyChat, () => undefined);
+    } else {
+      await notifyChat();
+    }
 
     await $sendApproverNotifications({ policy, requestId: approvalRequest.id, projectId: project.id, tx });
 
