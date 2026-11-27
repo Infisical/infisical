@@ -528,7 +528,6 @@ export const RequestCertificateSheet = ({
               .join(" ")}
           >
             <Select
-              descriptionLayout="stacked"
               aria-label="Certificate profile"
               placeholder="Select a certificate profile"
               invalid={Boolean(errors.profileId)}

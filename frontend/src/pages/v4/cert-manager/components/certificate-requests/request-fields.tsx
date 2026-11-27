@@ -370,7 +370,6 @@ const AlgorithmSelect = ({
   return (
     <Field label={label} error={error} description={disabledReason}>
       <Select
-        descriptionLayout="stacked"
         aria-label={label}
         placeholder={options.length ? placeholder : "No algorithms available"}
         disabled={Boolean(disabledReason)}

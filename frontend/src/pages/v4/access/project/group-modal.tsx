@@ -31,6 +31,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useDebounced } from "../org/use-debounced";
 import { useOrgId } from "../permissions";
+import { roleOptions } from "../roles";
 import { failed, saved } from "../toast";
 import { accessNoun } from "./product";
 import { useProjectScope } from "./scope";
@@ -176,11 +177,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
               label="Role"
               placeholder="Select role..."
               emptyText="No roles found"
-              options={(roles.data ?? []).map((item) => ({
-                value: item.slug,
-                label: item.name,
-                description: item.description ?? undefined
-              }))}
+              options={roleOptions(roles.data ?? [])}
               value={role ?? ""}
               invalid={Boolean(roleError)}
               onChange={setRole}

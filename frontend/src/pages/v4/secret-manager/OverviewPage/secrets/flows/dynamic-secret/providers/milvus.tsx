@@ -18,9 +18,9 @@ import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynami
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
 import { DynamicSecretProviders, MILVUS_OBJECT_TYPES } from "@app/hooks/api/dynamicSecret/types";
 
+import { GatewayPicker } from "../../../../../../networking/gateway-picker";
 import {
   fieldError,
-  GatewayPicker,
   MetadataFields,
   ProviderFields,
   ProviderGroup,
@@ -103,6 +103,7 @@ function MilvusFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
       <ProviderGroup id="milvus-connection">
         <Field wide label="Gateway">
           <GatewayPicker
+            label="Gateway"
             value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
             onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {
               setValue("inputs.gatewayId", nextId ?? undefined, { shouldDirty: true });

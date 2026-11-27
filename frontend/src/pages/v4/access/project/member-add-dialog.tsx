@@ -34,6 +34,7 @@ import { useBillingSubscription } from "../../license/product-icon";
 import { useResolveV4Href } from "../../resolveV4Href";
 import { accessLinks } from "../links";
 import { useOrgId, useOrgPermission, useProjectPermission } from "../permissions";
+import { roleOptions } from "../roles";
 import { failed, saved } from "../toast";
 import { personName, useMemberRoleAccess } from "./member-access";
 import { accessNoun, accessThe, accessThis } from "./product";
@@ -228,11 +229,7 @@ export const AddMemberDialog = ({
               label="Select roles"
               placeholder="Select roles..."
               searchable
-              options={assignable.map((role) => ({
-                value: role.slug,
-                label: role.name,
-                description: role.description ?? undefined
-              }))}
+              options={roleOptions(assignable)}
               value={roles}
               onChange={setRoles}
               onOpenChange={(isOpen) => {

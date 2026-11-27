@@ -15,9 +15,11 @@ import type {
   VaultImportSelectionAction,
   VaultImportSelectionState
 } from "@app/components/external-migrations/vaultImportSelection";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAvailableAppConnection } from "@app/hooks/api/appConnections/types";
 
 import { errorMessage } from "../../../../access/toast";
+import { ConnectionCombobox } from "../../../../components/connection-combobox";
 import { useV4Adapter } from "../../../../data/adapters";
 import type {
   Queryable,
@@ -186,15 +188,12 @@ export function VaultSourceStep({
   return (
     <Stack gap={16}>
       <Field label="App connection">
-        <Combobox
+        <ConnectionCombobox
           label="App connection"
           placeholder="Select app connection"
           emptyText="No app connections found"
-          options={connections.map((entry) => ({
-            value: entry.id,
-            label: entry.name,
-            meta: entry.projectId ? undefined : "Organization"
-          }))}
+          connections={connections}
+          app={AppConnection.HCVault}
           value={connectionId ?? ""}
           onValueChange={(value) => dispatch({ type: "connection", value })}
         />

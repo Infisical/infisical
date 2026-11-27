@@ -21,6 +21,7 @@ import { isValidEmail, MAX_INVITE_EMAILS, normalizeEmail } from "@app/helpers/em
 import { getProjectTitle } from "@app/helpers/project";
 import { findOrgMembershipRole } from "@app/helpers/roles";
 
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { useOrgId } from "../permissions";
@@ -261,11 +262,11 @@ export const InviteUsersSheet = ({
                   )}
                 </Field>
                 <Field label="Assign organization role">
-                  <Select
+                  <RoleSelect
                     label="Assign organization role"
                     value={role ?? defaultRole}
                     onChange={setRole}
-                    options={roleOptions(orgRoles)}
+                    roles={orgRoles}
                   />
                 </Field>
                 <Field label="Assign users to a product" optional>
@@ -314,7 +315,7 @@ export const InviteUsersSheet = ({
                         : "Only built-in roles are available for multiple projects."
                     }
                   >
-                    <Select
+                    <RoleSelect
                       label={selectedProduct.isSingleton ? "Product role" : "Project role"}
                       value={projectRole}
                       onChange={setProjectRole}

@@ -35,6 +35,7 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import { useOrgId, useOrgPermission } from "../../../../access/permissions";
 import { useV4Adapter } from "../../../../data/adapters";
+import { environmentOptions } from "../environment-picker";
 import { useCreateBlock } from "../row-actions/permissions";
 import { ProviderLogo } from "./provider-logo";
 import { InfoTip } from "./secret-rotation/fields";
@@ -420,7 +421,7 @@ export function CreateHoneyTokenFlow({
                 <Field label="Environment" error={errors.environment}>
                   <Combobox
                     label="Environment"
-                    options={scope.environments.map((entry) => ({ ...entry, meta: entry.value }))}
+                    options={environmentOptions(scope.environments)}
                     value={draft.environment}
                     placeholder="Select an environment..."
                     invalid={Boolean(errors.environment)}

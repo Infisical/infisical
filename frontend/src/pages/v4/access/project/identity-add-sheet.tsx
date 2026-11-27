@@ -28,6 +28,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
+import { roleOptions } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { Muted } from "../ui";
 import { accessNoun, accessThis } from "./product";
@@ -306,11 +307,7 @@ const AddIdentityForm = ({
               <Combobox
                 label="Role"
                 placeholder="Select role..."
-                options={(roles ?? []).map((item) => ({
-                  value: item.slug,
-                  label: item.name,
-                  description: item.description || undefined
-                }))}
+                options={roleOptions(roles ?? [])}
                 value={role}
                 onChange={(value) => value && setRole(value)}
               />

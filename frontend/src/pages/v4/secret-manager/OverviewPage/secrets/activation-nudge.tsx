@@ -6,7 +6,6 @@ import { Card } from "@infisical/cipher/ui/card";
 import { Field } from "@infisical/cipher/ui/field";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
-import { Select } from "@infisical/cipher/ui/select";
 import { TagsInput } from "@infisical/cipher/ui/tags-input";
 import { CircleCheckIcon, SendHorizontalIcon, XIcon } from "lucide-react";
 
@@ -22,6 +21,7 @@ import type { SecretsActivationProperties } from "@app/lib/analytics/events";
 import { useOrgPermission } from "../../../access/permissions";
 import { useMemberRoleAccess } from "../../../access/project/member-access";
 import { failed, readableFailure, toast } from "../../../access/toast";
+import { RoleSelect } from "../../../components/role-select";
 import { useV4Adapter, useV4Mode } from "../../../data/adapters";
 import type { ActivationVariant } from "../../../data/secrets/contract-activation";
 import { useV4Session } from "../../../data/session/contract";
@@ -206,15 +206,10 @@ function InviteMembersDialog({
                   name="role"
                   help="Select which role to assign to the invited members in this project."
                 >
-                  <Select
-                    descriptionLayout="stacked"
+                  <RoleSelect
                     aria-label="Project role"
                     placeholder="Select role..."
-                    options={assignable.map((entry) => ({
-                      value: entry.slug,
-                      label: entry.name,
-                      description: entry.description ?? undefined
-                    }))}
+                    roles={assignable}
                     value={roleSlug ?? role?.slug}
                     onValueChange={setRoleSlug}
                   />

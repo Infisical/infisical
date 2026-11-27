@@ -594,7 +594,6 @@ const AlgorithmDefaults = ({
       {!externalAdcs && (
         <Field label="Signature algorithm">
           <Select
-            descriptionLayout="stacked"
             aria-label="Signature algorithm"
             width="md"
             options={[

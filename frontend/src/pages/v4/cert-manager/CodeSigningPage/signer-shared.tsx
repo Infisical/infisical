@@ -36,6 +36,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useProjectPermission } from "../../access/permissions";
 import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { hsmKeySourceReason, keySourceOptions } from "../components/key-source";
 import { AddHsmConnectorSheet } from "../SettingsPage/hsm-connector-wizard";
 
 const DOCS = "https://infisical.com/docs/documentation/platform/pki/code-signing";
@@ -748,27 +749,16 @@ export const SignerKeyFields = ({
     ProjectPermissionSub.HsmConnectors
   );
   const isHsm = draft.keySource === CertKeySource.Hsm;
-  let hsmReason: string | undefined;
-  if (!isHsmLicensed) hsmReason = "Enterprise plan";
-  else if (!canAttach) hsmReason = "Requires permission to attach HSM connectors";
+  const hsmReason = hsmKeySourceReason(isHsmLicensed, canAttach);
 
   return (
     <>
       <Field label="Key source" description={keySourceHintFor(requiresHsm, isHsm)} wide>
         <Select
-          descriptionLayout="stacked"
           aria-label="Key source"
           value={draft.keySource}
           disabled={requiresHsm}
-          options={[
-            { value: CertKeySource.Infisical, label: "Infisical", disabled: requiresHsm },
-            {
-              value: CertKeySource.Hsm,
-              label: "HSM",
-              disabled: Boolean(hsmReason),
-              description: hsmReason
-            }
-          ]}
+          options={keySourceOptions({ hsmReason, requiresHsm })}
           onValueChange={(next) => {
             const keySource = next as CertKeySource;
             patch({

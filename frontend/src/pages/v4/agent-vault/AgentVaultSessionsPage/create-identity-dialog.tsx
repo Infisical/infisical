@@ -10,7 +10,6 @@ import { Field } from "@infisical/cipher/ui/field";
 import { Input } from "@infisical/cipher/ui/input";
 import { Stack } from "@infisical/cipher/ui/layout";
 import { MultiStep } from "@infisical/cipher/ui/multi-step";
-import { Select } from "@infisical/cipher/ui/select";
 import { Skeleton } from "@infisical/cipher/ui/skeleton";
 import { Tabs } from "@infisical/cipher/ui/tabs";
 
@@ -23,6 +22,7 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { useProjectPermission } from "../../access/permissions";
 import { readableFailure, saved, toast } from "../../access/toast";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 
 type TMode = "create" | "assign";
@@ -175,8 +175,7 @@ export const CreateIdentityDialog = ({
                   </Field>
                 )}
                 <Field label="Role">
-                  <Select
-                    descriptionLayout="stacked"
+                  <RoleSelect
                     label="Role"
                     value={draft.role}
                     options={ROLE_OPTIONS}

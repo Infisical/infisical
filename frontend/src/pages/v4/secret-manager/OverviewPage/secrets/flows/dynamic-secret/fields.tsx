@@ -34,9 +34,6 @@ import {
   type TDynamicSecretProviderFieldGroup,
   type TDynamicSecretProviderFormItem
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
-
-import { useV4Adapter } from "../../../../../data/adapters";
 
 export const fieldError = (error?: { message?: unknown }) =>
   typeof error?.message === "string" ? error.message : undefined;
@@ -424,63 +421,6 @@ export function SslRejectUnauthorizedField<TValues extends FieldValues>({
           {fieldError(error) && <FieldError>{fieldError(error)}</FieldError>}
         </Stack>
       )}
-    />
-  );
-}
-
-export type GatewayValue = { gatewayId: string | null; gatewayPoolId: string | null };
-
-export function GatewayPicker({
-  value,
-  onChange,
-  disabled,
-  invalid,
-  isRequired,
-  placeholder = "Select gateway...",
-  noGatewayLabel = "Internet Gateway"
-}: {
-  value: GatewayValue;
-  onChange: (value: GatewayValue) => void;
-  disabled?: boolean;
-  invalid?: boolean;
-  isRequired?: boolean;
-  placeholder?: string;
-  noGatewayLabel?: string;
-}) {
-  const adapter = useV4Adapter("secrets");
-  const gateways = adapter.useGateways().data ?? [];
-  const pools = adapter.useGatewayPools().data ?? [];
-  let selected = isRequired ? "" : "internet";
-  if (value.gatewayPoolId) selected = `pool:${value.gatewayPoolId}`;
-  else if (value.gatewayId) selected = `gateway:${value.gatewayId}`;
-  return (
-    <Select
-      value={selected}
-      disabled={disabled}
-      invalid={invalid}
-      placeholder={placeholder}
-      options={[
-        ...(isRequired ? [] : [{ value: "internet", label: noGatewayLabel }]),
-        ...pools.map((pool) => ({
-          value: `pool:${pool.id}`,
-          label: pool.name,
-          meta: "High Availability",
-          group: "Gateway Pools"
-        })),
-        ...gateways.map((gateway) => ({
-          value: `gateway:${gateway.id}`,
-          label: gateway.name,
-          meta: isGatewayHealthy(gateway) ? "Online" : "Offline",
-          group: "Individual Gateways"
-        }))
-      ]}
-      onValueChange={(next) => {
-        if (!next || next === selected) return;
-        if (next === "internet") onChange({ gatewayId: null, gatewayPoolId: null });
-        else if (next.startsWith("pool:"))
-          onChange({ gatewayId: null, gatewayPoolId: next.replace("pool:", "") });
-        else onChange({ gatewayId: next.replace("gateway:", ""), gatewayPoolId: null });
-      }}
     />
   );
 }

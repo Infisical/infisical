@@ -24,6 +24,7 @@ import { PamSheetTab } from "@app/hooks/usePamSheetState";
 import { useOrgId } from "../../access/permissions";
 import { failed, readableFailure, saved } from "../../access/toast";
 import { NoExpiry } from "../../components/no-expiry";
+import { RoleSelect } from "../../components/role-select";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -304,14 +305,10 @@ const AssignAccessDialog = ({
                   />
                 </Field>
                 <Field label="Role">
-                  <Select
+                  <RoleSelect
                     label="Role"
                     value={effectiveRole}
-                    options={roles.map(({ slug, name, description }) => ({
-                      value: slug,
-                      label: name,
-                      description
-                    }))}
+                    roles={roles}
                     onValueChange={setRole}
                   />
                 </Field>
