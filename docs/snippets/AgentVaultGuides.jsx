@@ -1,10 +1,8 @@
-export const AgentVaultGuides = ({ view = "compute", children }) => {
+export const AgentVaultGuides = ({ children }) => {
   const AXES = {
-    agent: { column: "agents", order: ["Claude Code", "Codex", "OpenCode", "OpenClaw", "Hermes", "Cursor"] },
-    compute: { column: "compute", order: ["Docker", "VM", "Kubernetes", "Modal", "Daytona", "E2B"] },
-    useCase: { column: "useCases", order: [] }
+    agent: { order: ["Claude Code", "Codex", "OpenCode", "OpenClaw", "Hermes", "Cursor"] },
+    compute: { order: ["Docker", "VM", "Kubernetes", "Modal", "Daytona", "E2B"] }
   };
-  const own = AXES[view] ? view : "compute";
 
   const LOGOS = {
     "Claude Code": "/images/agent-vault-agents/claude-code.svg",
@@ -43,7 +41,6 @@ export const AgentVaultGuides = ({ view = "compute", children }) => {
   const [query, setQuery] = useState("");
   const [agent, setAgent] = useState(null);
   const [compute, setCompute] = useState(null);
-  const [useCase, setUseCase] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const rootRef = useRef(null);
   const tableRef = useRef(null);
@@ -91,7 +88,7 @@ export const AgentVaultGuides = ({ view = "compute", children }) => {
         services: splitNames(cells[4]),
         useCases: splitNames(cells[5]),
         description: (cells[6]?.textContent ?? "").trim(),
-        recommended: splitNames(cells[7])
+        featured: (cells[7]?.textContent ?? "").trim() !== ""
       });
     });
     if (parsed.length) setGuides(parsed);
@@ -170,31 +167,27 @@ export const AgentVaultGuides = ({ view = "compute", children }) => {
   const ordered = (column, order) => [...new Set(all.flatMap((guide) => guide[column]))].sort(byOrder(order));
   const agentOptions = ordered("agents", AXES.agent.order);
   const computeOptions = ordered("compute", AXES.compute.order);
-  const useCaseOptions = ordered("useCases", []);
 
-  const shown = all.filter(
-    (guide) =>
-      (!agent || guide.agents.includes(agent)) &&
-      (!compute || guide.compute.includes(compute)) &&
-      (!useCase || guide.useCases.includes(useCase)) &&
-      matchesQuery(guide)
-  );
+  const shown = all
+    .filter(
+      (guide) =>
+        (!agent || guide.agents.includes(agent)) &&
+        (!compute || guide.compute.includes(compute)) &&
+        matchesQuery(guide)
+    )
+    .sort((a, b) => a.title.localeCompare(b.title));
 
-  const ownColumn = AXES[own].column;
-  const ownOptions = { agent: agentOptions, compute: computeOptions, useCase: useCaseOptions }[own];
-  const sections = ownOptions
-    .map((name) => ({
-      name,
-      guides: shown
-        .filter((guide) => guide[ownColumn].includes(name))
-        .sort((a, b) => Number(a.example) - Number(b.example))
-    }))
-    .filter((section) => section.guides.length > 0);
-  const count = new Set(sections.flatMap((section) => section.guides.map((guide) => guide.title))).size;
+  const filtered = Boolean(query.trim() || agent || compute);
+  const recommended = filtered ? [] : shown.filter((guide) => guide.featured);
+  const sections = [
+    ...(recommended.length ? [{ name: "Recommended", guides: recommended }] : []),
+    { name: filtered ? null : "All guides", guides: shown }
+  ].filter((section) => section.guides.length > 0);
+  const count = shown.length;
   const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
   const card = (guide) => {
-    const names = [...guide.agents, ...guide.compute];
+    const names = [...(guide.agents.length === 1 ? guide.agents : []), ...guide.compute];
     const icon = names.some((name) => LOGOS[name] || name === "VM") ? (
       <span className="ifx-avg__card-icons">{names.map((name) => <span key={name}>{chipIcon(name)}</span>)}</span>
     ) : (
@@ -304,30 +297,20 @@ export const AgentVaultGuides = ({ view = "compute", children }) => {
           </div>
 
           <div ref={filtersRef} className="ifx-catalog__filters" role="group" aria-label="Filter guides">
-            {own !== "agent" &&
-              filterMenu(
-                "agent",
-                "Agent",
-                agentOptions.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
-                agent,
-                setAgent
-              )}
-            {own !== "compute" &&
-              filterMenu(
-                "compute",
-                "Compute",
-                computeOptions.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
-                compute,
-                setCompute
-              )}
-            {own !== "useCase" &&
-              filterMenu(
-                "useCase",
-                "Use case",
-                useCaseOptions.map((name) => ({ id: name, label: name, chip: null })),
-                useCase,
-                setUseCase
-              )}
+            {filterMenu(
+              "agent",
+              "Agent",
+              agentOptions.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
+              agent,
+              setAgent
+            )}
+            {filterMenu(
+              "compute",
+              "Compute",
+              computeOptions.map((name) => ({ id: name, label: label(name), chip: chipIcon(name) })),
+              compute,
+              setCompute
+            )}
           </div>
 
           <p className="ifx-catalog__count" aria-live="polite">
@@ -344,8 +327,8 @@ export const AgentVaultGuides = ({ view = "compute", children }) => {
       {guides &&
         (count > 0 ? (
           sections.map((section) => (
-            <section key={section.name}>
-              <h3 id={slug(section.name)}>{label(section.name)}</h3>
+            <section key={section.name ?? "results"}>
+              {section.name && <h3 id={slug(section.name)}>{section.name}</h3>}
               <Columns cols={2}>{section.guides.map(card)}</Columns>
             </section>
           ))

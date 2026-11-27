@@ -711,8 +711,60 @@
               {
                 "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/by-compute",
-                  "documentation/platform/agent-vault/guides/by-agent"
+                  "documentation/platform/agent-vault/guides/overview",
+                  {
+                    "group": "Agents",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/claude-code",
+                      "documentation/platform/agent-vault/guides/codex",
+                      "documentation/platform/agent-vault/guides/opencode",
+                      {
+                        "group": "OpenClaw",
+                        "icon": "/images/agent-vault-agents/openclaw.svg",
+                        "root": "documentation/platform/agent-vault/guides/openclaw",
+                        "pages": [
+                          "documentation/platform/agent-vault/guides/openclaw-gateway",
+                          "documentation/platform/agent-vault/guides/openclaw-droplet"
+                        ]
+                      },
+                      {
+                        "group": "Hermes Agent",
+                        "icon": "/images/agent-vault-agents/hermes.png",
+                        "root": "documentation/platform/agent-vault/guides/hermes",
+                        "pages": [
+                          "documentation/platform/agent-vault/guides/hermes-gateway",
+                          "documentation/platform/agent-vault/guides/hermes-droplet"
+                        ]
+                      },
+                      "documentation/platform/agent-vault/guides/cursor"
+                    ]
+                  },
+                  {
+                    "group": "Compute",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/docker",
+                      {
+                        "group": "Kubernetes",
+                        "icon": "/images/stack/kubernetes.png",
+                        "root": "documentation/platform/agent-vault/guides/kubernetes",
+                        "pages": [
+                          "documentation/platform/agent-vault/guides/kubernetes-setup"
+                        ]
+                      },
+                      "documentation/platform/agent-vault/guides/modal",
+                      "documentation/platform/agent-vault/guides/daytona",
+                      "documentation/platform/agent-vault/guides/e2b"
+                    ]
+                  },
+                  {
+                    "group": "Use cases",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/team-assistant",
+                      "documentation/platform/agent-vault/guides/on-call-slack-agent",
+                      "documentation/platform/agent-vault/guides/coding-slack-agent",
+                      "documentation/platform/agent-vault/guides/recruiting-slack-agent"
+                    ]
+                  }
                 ]
               },
               {

@@ -1,0 +1,32 @@
+---
+title: "Recruiting Slack agent with Agent Vault"
+sidebarTitle: "Recruiting Slack agent"
+description: "Answer questions about jobs and candidates from Ashby in Slack with an agent that holds no API keys."
+icon: "contact"
+---
+
+Mention the recruiting agent in your hiring team's Slack channel, and it answers questions about open jobs, candidates, and where each candidate is in the pipeline, from Ashby.
+
+<Card title="Recruiting Slack agent reference architecture" icon="github" href="https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/recruiting" horizontal>
+  The code and the full setup steps for each implementation, in the reference repo.
+</Card>
+
+## Implementations
+
+| Agent | Runs on | Code |
+| --- | --- | --- |
+| [Claude Code](/documentation/platform/agent-vault/guides/claude-code) | [Docker](/documentation/platform/agent-vault/guides/docker) | [`slack-agents/recruiting`](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/recruiting#with-docker) |
+| [Claude Code](/documentation/platform/agent-vault/guides/claude-code) | Virtual machine | [`slack-agents/recruiting`](https://github.com/Infisical/agent-reference-architectures/tree/main/slack-agents/recruiting#on-a-vm) |
+
+## How it works
+
+1. A Slack bridge receives each mention and runs the agent with the message.
+2. The agent reads Ashby through Ashby's [MCP server](/documentation/platform/agent-vault/mcp-servers), signed in with OAuth. The proxy hides every Ashby tool except the read tools you allow, so the agent can't change anything.
+3. Every request goes through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies), which attaches the real credential for Anthropic, Ashby, and Slack, and blocks hosts outside the agent's [access bundle](/documentation/platform/agent-vault/access-bundles).
+
+## What you need
+
+- An Agent Vault project where you have the Admin role
+- A Slack workspace where you can create apps, and a private channel for your hiring team
+- An Ashby account whose access matches what the hiring team may see
+- Somewhere to run it: Docker with Compose, or a Debian or Ubuntu virtual machine
