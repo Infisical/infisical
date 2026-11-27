@@ -139,12 +139,13 @@ const AccessBundles = ({ orgId, projectId }: { orgId: string; projectId: string 
       header: "Services",
       sortable: true,
       width: 176,
-      render: (bundle) => (
-        <ServiceIconStack
-          hostPatterns={bundle.hostPatterns}
-          nativeServices={bundle.nativeServices}
-        />
-      )
+      render: (bundle) =>
+        bundle.hostPatterns.length || bundle.nativeServices.length ? (
+          <ServiceIconStack
+            hostPatterns={bundle.hostPatterns}
+            nativeServices={bundle.nativeServices}
+          />
+        ) : null
     },
     {
       id: "members",
