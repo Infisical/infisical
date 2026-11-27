@@ -66,6 +66,7 @@ import {
   type ProfileDraft,
   profileDraftOf
 } from "./profile-model";
+import { stepAside } from "./step-aside";
 
 const NO_DEFAULT = "__none__";
 const AWS_ACM_PUBLIC_TTL_DAYS = 198;
@@ -965,6 +966,7 @@ export const CertificateProfileSheet = ({
   const detailsStep = {
     title: "Details",
     summary: draft.slug || undefined,
+    aside: stepAside("Certificate requests reference the profile by this name."),
     validate: validateDetails,
     content: (
       <Stack gap={16}>
@@ -1015,7 +1017,9 @@ export const CertificateProfileSheet = ({
 
   const defaultsStep = {
     title: "Certificate defaults",
-    description: "Applied when a request leaves a value out. A request can override any of them.",
+    aside: stepAside(
+      "Applied when a request leaves a value out. A request can override any of them within the policy's limits."
+    ),
     validate: validateDefaults,
     content: (
       <DefaultsFields
@@ -1042,7 +1046,7 @@ export const CertificateProfileSheet = ({
     <>
       <MultiStep
         variant="sheet"
-        size="lg"
+        layout="aside"
         title={titles[isEdit ? "edit" : mode]}
         open
         onOpenChange={(next) => {
