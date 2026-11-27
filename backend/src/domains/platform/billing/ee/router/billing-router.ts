@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import { BillingV2BreakdownDimension, BillingV2BreakdownScopeKind } from "@app/ee/services/license-v2/license-v2-types";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+
+import { BreakdownDimensionKey, BreakdownScope } from "../services/usage-breakdown/service";
 
 // The license server joins this onto its configured portal origin, so it must be a single-rooted
 // relative path. Reject protocol-relative ("//host", "/\\host") values that browsers can normalize
@@ -312,7 +312,7 @@ const BillingV2CommitmentChangeSchema = z.object({
   quantity: z.number().int().min(0)
 });
 
-export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
+export const registerBillingRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:organizationId/billing/v2/overview",
@@ -327,10 +327,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.licenseV2.getOverview({
+      return server.services.billingOverviewService.getOverview({
         orgId: req.params.organizationId,
-        actor: req.actor,
-        isInstanceAdmin: isSuperAdmin(req.auth)
+        actor: req.actor
       });
     }
   });
@@ -371,10 +370,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.licenseV2.getBillableOrganizations({
+      return server.services.usageBreakdownService.getBillableOrganizations({
         orgId: req.params.organizationId,
         actor: req.actor,
-        isInstanceAdmin: isSuperAdmin(req.auth),
         search: req.query.search,
         limit: req.query.limit,
         offset: req.query.offset
@@ -394,12 +392,12 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
         "Break one metered usage dimension down by the organizations and projects its units were created in.",
       params: z.object({
         organizationId: z.string().trim().uuid(),
-        dimensionKey: z.nativeEnum(BillingV2BreakdownDimension).describe("The metered dimension to break down.")
+        dimensionKey: z.nativeEnum(BreakdownDimensionKey).describe("The metered dimension to break down.")
       }),
       querystring: z.object({
         scope: z
-          .nativeEnum(BillingV2BreakdownScopeKind)
-          .default(BillingV2BreakdownScopeKind.Organization)
+          .nativeEnum(BreakdownScope)
+          .default(BreakdownScope.Organization)
           .describe(
             "'instance' explains usage across the entire self-hosted licence; 'organization' explains one root organization's share of it."
           )
@@ -410,11 +408,10 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.licenseV2.getUsageBreakdown({
+      return server.services.usageBreakdownService.getUsageBreakdown({
         orgId: req.params.organizationId,
         dimensionKey: req.params.dimensionKey,
         actor: req.actor,
-        isInstanceAdmin: isSuperAdmin(req.auth),
         scope: req.query.scope
       });
     }
@@ -434,7 +431,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.refreshEntitlements({
+      return server.services.billingOverviewService.refreshEntitlements({
         orgId: req.params.organizationId,
         actor: req.actor
       });
@@ -455,10 +452,9 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return server.services.licenseV2.getCatalog({
+      return server.services.billingOverviewService.getCatalog({
         orgId: req.params.organizationId,
-        actor: req.actor,
-        isInstanceAdmin: isSuperAdmin(req.auth)
+        actor: req.actor
       });
     }
   });
@@ -478,7 +474,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.portalSession({
+      return server.services.subscriptionService.openPortal({
         orgId: req.params.organizationId,
         actor: req.actor,
         returnPath: req.body.returnPath
@@ -501,7 +497,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.addPaymentMethod({
+      return server.services.subscriptionService.openPortal({
         orgId: req.params.organizationId,
         actor: req.actor,
         returnPath: req.body.returnPath
@@ -545,7 +541,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.previewChange({
+      return server.services.subscriptionService.previewChange({
         orgId: req.params.organizationId,
         actor: req.actor,
         addProductId: req.body.addProductId,
@@ -589,7 +585,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       // A first-touch org has no Stripe customer yet, so the server needs an email. Take it from the
       // authenticated user (JWT-only route) rather than trusting a client-supplied value.
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
-      const result = await server.services.licenseV2.buyProduct({
+      const result = await server.services.subscriptionService.buyProduct({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId,
@@ -653,7 +649,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const result = await server.services.licenseV2.upgradeProduct({
+      const result = await server.services.subscriptionService.upgradeProduct({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId,
@@ -699,7 +695,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.removeProduct({
+      return server.services.subscriptionService.removeProduct({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.params.productId
@@ -732,7 +728,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.changeCommitments({
+      return server.services.subscriptionService.changeCommitments({
         orgId: req.params.organizationId,
         actor: req.actor,
         changes: req.body.changes,
@@ -766,7 +762,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       // A trial has no Stripe customer yet, so the server needs an email. Take it from the authenticated
       // user (this route is JWT-only) rather than trusting a client-supplied value.
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
-      const result = await server.services.licenseV2.startTrial({
+      const result = await server.services.trialService.startTrial({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId,
@@ -815,7 +811,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.cancelTrial({
+      return server.services.trialService.cancelTrial({
         orgId: req.params.organizationId,
         actor: req.actor,
         productId: req.body.productId
@@ -844,7 +840,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      return server.services.licenseV2.confirmTrialPayment({
+      return server.services.trialService.confirmTrialPayment({
         orgId: req.params.organizationId,
         actor: req.actor,
         returnPath: req.body.returnPath

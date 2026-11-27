@@ -4,6 +4,12 @@ import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
 import { TAgentVaultAccessService, TAgentVaultUsageService } from "@app/domains/agent-vault/agent-vault/ce/module";
+import type {
+  TBillingOverviewService,
+  TSubscriptionService,
+  TTrialService,
+  TUsageBreakdownService
+} from "@app/domains/domains";
 import { TInstanceConfigService } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsDataKeyService, TKmsRootKeyService } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseService } from "@app/domains/platform/license/ce/module";
@@ -51,7 +57,6 @@ import { TKmipClientDALFactory } from "@app/ee/services/kmip/kmip-client-dal";
 import { TKmipOperationServiceFactory } from "@app/ee/services/kmip/kmip-operation-service";
 import { TKmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
-import { TLicenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { TMicrosoftAutoenrollmentServiceFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccessRequestServiceFactory } from "@app/ee/services/pam-access-request/pam-access-request-service";
@@ -452,7 +457,10 @@ declare module "fastify" {
     actorContextService: TActorContextService;
     orgPermissionService: TOrgPermissionService;
     memberPermissionAudit: TMemberPermissionAuditServiceFactory;
-    licenseV2: TLicenseV2ServiceFactory;
+    billingOverviewService: TBillingOverviewService;
+    usageBreakdownService: TUsageBreakdownService;
+    subscriptionService: TSubscriptionService;
+    trialService: TTrialService;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;
     telemetry: TTelemetryServiceFactory;

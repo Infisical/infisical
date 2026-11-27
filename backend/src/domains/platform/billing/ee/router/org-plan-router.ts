@@ -5,18 +5,10 @@ import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 
-// Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
-// lives on the License Server v2 routes in license-v2-router.
-export const registerLicenseRouter = async (server: FastifyZodProvider) => {
-  // Any member of the org can read its plan, which is always its root org's.
-  const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
-    await server.services.orgPermissionService.getOrgPermission({ actor: req.actor, orgId });
-    if (refreshCache) {
-      await server.services.licenseService.refreshPlan(req.actor.rootOrgId);
-    }
-    const plan = await server.services.licenseService.getPlan(req.actor.rootOrgId);
-    return plan.toJSON();
-  };
+// Plan reads, for any member of the org. The rest of billing is in billing-router.
+export const registerOrgPlanRouter = async (server: FastifyZodProvider) => {
+  const readOrgPlan = (req: FastifyRequest, orgId: string, refreshCache: boolean) =>
+    server.services.billingOverviewService.getOrgPlan({ orgId, actor: req.actor, refreshCache });
 
   server.route({
     method: "GET",
@@ -39,7 +31,8 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      return { plan: await readOrgPlan(req, req.params.organizationId, req.query.refreshCache) };
+      const plan = await readOrgPlan(req, req.params.organizationId, req.query.refreshCache);
+      return { plan: plan.toJSON() };
     }
   });
 
@@ -58,7 +51,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      return readOrgPlan(req, req.params.organizationId, false);
+      return (await readOrgPlan(req, req.params.organizationId, false)).toJSON();
     }
   });
 };

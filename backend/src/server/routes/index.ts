@@ -126,8 +126,6 @@ import { kmipServiceFactory } from "@app/ee/services/kmip/kmip-service";
 import { ldapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { ldapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-config-service";
 import { ldapGroupMapDALFactory } from "@app/ee/services/ldap-config/ldap-group-map-dal";
-import { licenseV2BreakdownDALFactory } from "@app/ee/services/license-v2/license-v2-breakdown-dal";
-import { licenseV2ServiceFactory } from "@app/ee/services/license-v2/license-v2-service";
 import { channelBindingCacheFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-channel-binding-cache";
 import { checkMicrosoftAutoenrollmentRequestBeforeSigning } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-eligibility-fns";
 import { microsoftAutoenrollmentRequestDALFactory } from "@app/ee/services/microsoft-autoenrollment/microsoft-autoenrollment-request-dal";
@@ -879,21 +877,6 @@ export const registerRoutes = async (
     actorContextService,
     identityDAL,
     userDAL
-  });
-
-  const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
-
-  // Billing surface: catalog, subscription and entitlement reads through the License Server billing client.
-  const licenseV2Service = licenseV2ServiceFactory({
-    orgPermissionService,
-    envConfig,
-    orgDAL,
-    licenseService,
-    usageMeteringService,
-    licenseBilling: domains.licenseBilling,
-    organizationsService,
-    projectsService,
-    breakdownDAL: licenseV2BreakdownDAL
   });
 
   // Project events SSE service (for clients to subscribe to secret mutation events)
@@ -5282,7 +5265,10 @@ export const registerRoutes = async (
     actorContextService,
     orgPermissionService,
     memberPermissionAudit: memberPermissionAuditService,
-    licenseV2: licenseV2Service,
+    billingOverviewService: domains.billing.billingOverviewService,
+    usageBreakdownService: domains.billing.usageBreakdownService,
+    subscriptionService: domains.billing.subscriptionService,
+    trialService: domains.billing.trialService,
     trustedIp: trustedIpService,
     scim: scimService,
     secretBlindIndex: secretBlindIndexService,
