@@ -31,7 +31,7 @@ type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   webhookDAL: Pick<TWebhookDALFactory, "countByEnvId" | "countByProjectId">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "countByEnvId" | "countByProject">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "countFromSourceEnvByFolder" | "countByFolderId">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findFolderPastLimitOnSourceRestore">;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
   secretsPermissionService: TSecretsPermissionService;
   licenseService: TLicenseService;
@@ -336,16 +336,13 @@ export const projectEnvServiceFactory = ({
         });
       }
     }
-    if (resourceLimits.max(ResourceLimit.ImportsPerFolder) !== null) {
-      const importingFolders = await secretImportDAL.countFromSourceEnvByFolder(envId, tx);
-      for await (const { folderId, count } of importingFolders) {
-        const used = await secretImportDAL.countByFolderId(folderId, tx);
-        resourceLimits.assertWithin({
-          limit: ResourceLimit.ImportsPerFolder,
-          used,
-          adding: count,
-          describe: (max) =>
-            `Restoring environment '${envSlug}' would bring back imports that read from it and take a folder past the maximum of ${max} secret imports. Remove imports from folders that import '${envSlug}' before restoring it.`
+    const maxImports = resourceLimits.max(ResourceLimit.ImportsPerFolder);
+    if (maxImports !== null) {
+      const pastLimit = await secretImportDAL.findFolderPastLimitOnSourceRestore(envId, maxImports, tx);
+      if (pastLimit) {
+        throw new BadRequestError({
+          name: "ResourceLimitExceeded",
+          message: `Restoring environment '${envSlug}' would bring back imports that read from it and take a folder to ${pastLimit.total} secret imports, past the maximum of ${maxImports}. Remove imports from folders that import '${envSlug}' before restoring it.`
         });
       }
     }

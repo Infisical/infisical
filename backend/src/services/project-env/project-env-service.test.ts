@@ -30,8 +30,7 @@ type TRestoreCounts = {
   projectWebhooks?: number;
   rotationsInEnv?: number;
   projectRotations?: number;
-  importsFromEnv?: { folderId: string; count: number }[];
-  folderImports?: number;
+  importPastLimit?: { folderId: string; total: number };
 };
 
 const createService = ({
@@ -74,8 +73,7 @@ const createService = ({
     countByProject: vi.fn().mockResolvedValue(restore.projectRotations ?? 0)
   };
   const secretImportDAL = {
-    countFromSourceEnvByFolder: vi.fn().mockResolvedValue(restore.importsFromEnv ?? []),
-    countByFolderId: vi.fn().mockResolvedValue(restore.folderImports ?? 0)
+    findFolderPastLimitOnSourceRestore: vi.fn().mockResolvedValue(restore.importPastLimit)
   };
 
   const service = projectEnvServiceFactory({
@@ -152,15 +150,15 @@ describe("restoreEnvironment resource limits on Infisical Cloud", () => {
     config.INFISICAL_CLOUD = true;
     const { restoreEnvironment, projectEnvDAL, secretImportDAL } = createService({
       plan: { smSecretImportsPerFolderLimit: 3 },
-      restore: { importsFromEnv: [{ folderId: "folder-1", count: 1 }], folderImports: 3 }
+      restore: { importPastLimit: { folderId: "folder-1", total: 4 } }
     });
 
     // Action
     const result = restoreEnvironment();
 
     // Assert
-    await expect(result).rejects.toThrow("take a folder past the maximum of 3 secret imports");
-    expect(secretImportDAL.countByFolderId).toHaveBeenCalledWith("folder-1", TX);
+    await expect(result).rejects.toThrow("take a folder to 4 secret imports, past the maximum of 3");
+    expect(secretImportDAL.findFolderPastLimitOnSourceRestore).toHaveBeenCalledExactlyOnceWith(DELETED_ENV_ID, 3, TX);
     expect(projectEnvDAL.restoreById).not.toHaveBeenCalled();
   });
 
@@ -173,9 +171,7 @@ describe("restoreEnvironment resource limits on Infisical Cloud", () => {
         webhooksInEnv: 1,
         projectWebhooks: 2,
         rotationsInEnv: 1,
-        projectRotations: 2,
-        importsFromEnv: [{ folderId: "folder-1", count: 1 }],
-        folderImports: 2
+        projectRotations: 2
       }
     });
 

@@ -251,31 +251,39 @@ export const secretImportDALFactory = (db: TDbClient) => {
   // Counts the imports the folder's list shows. Users cannot see or directly remove the other rows (reserved replication
   // rows, imports whose source environment or project is soft-deleted), so counting them would block a folder that looks
   // empty. They stay bounded: replication adds one reserved row per import, and importEnv cascades on hard delete.
-  // Per destination folder, the imports that read from one environment (reserved replication rows left out). While
-  // that environment is soft-deleted these are the rows countByFolderId hides, so restoring it adds them back.
-  // Folders in a soft-deleted environment or project are left out: they can't be opened or edited, so a refusal naming
-  // them would leave nothing to fix, and restoring them adds no imports they did not already hold.
-  const countFromSourceEnvByFolder = async (importEnvId: string, tx?: Knex) => {
+  // While an environment is soft-deleted, imports reading from it drop out of countByFolderId, so restoring it adds
+  // them back. Folders in a soft-deleted environment or project are left out: they can't be opened or edited, so a refusal naming them would leave nothing to fix.
+  const findFolderPastLimitOnSourceRestore = async (importEnvId: string, maxPerFolder: number, tx?: Knex) => {
     try {
-      const rows = (await (tx || db.replicaNode())(TableName.SecretImport)
+      const conn = tx || db.replicaNode();
+      const notReserved = (bd: Knex.QueryBuilder) =>
+        void bd
+          .where(`${TableName.SecretImport}.isReserved`, false)
+          .orWhereNull(`${TableName.SecretImport}.isReserved`);
+      const importingFolders = conn(TableName.SecretImport)
         .join(TableName.SecretFolder, `${TableName.SecretImport}.folderId`, `${TableName.SecretFolder}.id`)
         .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
         .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .whereNull(`${TableName.Project}.deleteAfter`)
         .where(`${TableName.SecretImport}.importEnv`, importEnvId)
-        .where(
-          (bd) =>
-            void bd
-              .where(`${TableName.SecretImport}.isReserved`, false)
-              .orWhereNull(`${TableName.SecretImport}.isReserved`)
-        )
+        .where(notReserved)
+        .distinct(`${TableName.SecretImport}.folderId`);
+      // countByFolderId's filter, plus the rows the restore brings back.
+      const total = `count(*) filter (where "srcEnv"."deleteAfter" is null and "srcProject"."deleteAfter" is null)
+        + count(*) filter (where "${TableName.SecretImport}"."importEnv" = ?)`;
+      const row = (await conn(TableName.SecretImport)
+        .join({ srcEnv: TableName.Environment }, `${TableName.SecretImport}.importEnv`, "srcEnv.id")
+        .leftJoin({ srcProject: TableName.Project }, "srcEnv.projectId", "srcProject.id")
+        .whereIn(`${TableName.SecretImport}.folderId`, importingFolders)
+        .where(notReserved)
         .groupBy(`${TableName.SecretImport}.folderId`)
-        .select(`${TableName.SecretImport}.folderId`)
-        .count({ count: `${TableName.SecretImport}.id` })) as { folderId: string; count: string | number }[];
-      return rows.map((row) => ({ folderId: row.folderId, count: Number(row.count) }));
+        .select(`${TableName.SecretImport}.folderId`, db.raw(`${total} as total`, [importEnvId]))
+        .havingRaw(`${total} > ?`, [importEnvId, maxPerFolder])
+        .first()) as { folderId: string; total: string | number } | undefined;
+      return row ? { folderId: row.folderId, total: Number(row.total) } : undefined;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Count secret imports from an environment" });
+      throw new DatabaseError({ error, name: "Find a folder past the import limit on restore" });
     }
   };
 
@@ -774,7 +782,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     findByIds,
     findIncludingExpired,
     countByFolderId,
-    countFromSourceEnvByFolder,
+    findFolderPastLimitOnSourceRestore,
     findByFolderIds,
     findImportByFolderIds,
     findFolderIdsWithImports,
