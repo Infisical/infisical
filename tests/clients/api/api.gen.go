@@ -129129,6 +129129,96 @@ func (e CreateOidcConfig500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteSamlConfig400JSONResponseBodyStatusCode.
+const (
+	DeleteSamlConfig400JSONResponseBodyStatusCodeN400 DeleteSamlConfig400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteSamlConfig400JSONResponseBodyStatusCode enum.
+func (e DeleteSamlConfig400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSamlConfig400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSamlConfig401JSONResponseBodyStatusCode.
+const (
+	DeleteSamlConfig401JSONResponseBodyStatusCodeN401 DeleteSamlConfig401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteSamlConfig401JSONResponseBodyStatusCode enum.
+func (e DeleteSamlConfig401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSamlConfig401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSamlConfig403JSONResponseBodyStatusCode.
+const (
+	DeleteSamlConfig403JSONResponseBodyStatusCodeN403 DeleteSamlConfig403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteSamlConfig403JSONResponseBodyStatusCode enum.
+func (e DeleteSamlConfig403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSamlConfig403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSamlConfig404JSONResponseBodyStatusCode.
+const (
+	DeleteSamlConfig404JSONResponseBodyStatusCodeN404 DeleteSamlConfig404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteSamlConfig404JSONResponseBodyStatusCode enum.
+func (e DeleteSamlConfig404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSamlConfig404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSamlConfig422JSONResponseBodyStatusCode.
+const (
+	DeleteSamlConfig422JSONResponseBodyStatusCodeN422 DeleteSamlConfig422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteSamlConfig422JSONResponseBodyStatusCode enum.
+func (e DeleteSamlConfig422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSamlConfig422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteSamlConfig500JSONResponseBodyStatusCode.
+const (
+	DeleteSamlConfig500JSONResponseBodyStatusCodeN500 DeleteSamlConfig500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteSamlConfig500JSONResponseBodyStatusCode enum.
+func (e DeleteSamlConfig500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteSamlConfig500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetSamlConfig400JSONResponseBodyStatusCode.
 const (
 	GetSamlConfig400JSONResponseBodyStatusCodeN400 GetSamlConfig400JSONResponseBodyStatusCode = 400
@@ -204530,6 +204620,24 @@ type RedirectSamlByConfigIdParams struct {
 	CallbackPort *string `form:"callback_port,omitempty" json:"callback_port,omitempty"`
 }
 
+// DeleteSamlConfig400JSONResponseBodyStatusCode defines parameters for DeleteSamlConfig.
+type DeleteSamlConfig400JSONResponseBodyStatusCode float32
+
+// DeleteSamlConfig401JSONResponseBodyStatusCode defines parameters for DeleteSamlConfig.
+type DeleteSamlConfig401JSONResponseBodyStatusCode float32
+
+// DeleteSamlConfig403JSONResponseBodyStatusCode defines parameters for DeleteSamlConfig.
+type DeleteSamlConfig403JSONResponseBodyStatusCode float32
+
+// DeleteSamlConfig404JSONResponseBodyStatusCode defines parameters for DeleteSamlConfig.
+type DeleteSamlConfig404JSONResponseBodyStatusCode float32
+
+// DeleteSamlConfig422JSONResponseBodyStatusCode defines parameters for DeleteSamlConfig.
+type DeleteSamlConfig422JSONResponseBodyStatusCode float32
+
+// DeleteSamlConfig500JSONResponseBodyStatusCode defines parameters for DeleteSamlConfig.
+type DeleteSamlConfig500JSONResponseBodyStatusCode float32
+
 // GetSamlConfig400JSONResponseBodyStatusCode defines parameters for GetSamlConfig.
 type GetSamlConfig400JSONResponseBodyStatusCode float32
 
@@ -260970,6 +261078,11 @@ type ClientInterface interface {
 	// RedirectSamlByConfigId performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
 	RedirectSamlByConfigId(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteSamlConfig performs a DELETE /api/v1/sso/saml/config (the `DeleteSamlConfig` operationId) request.
+	//
+	// Delete SAML config.
+	DeleteSamlConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetSamlConfig performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
 	//
 	// Get SAML config.
@@ -281011,6 +281124,21 @@ func (c *Client) RedirectSamlByOrgSlug(ctx context.Context, orgSlug string, para
 // RedirectSamlByConfigId performs a GET /api/v1/sso/redirect/saml2/{samlConfigId} (the `RedirectSamlByConfigId` operationId) request.
 func (c *Client) RedirectSamlByConfigId(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRedirectSamlByConfigIdRequest(c.Server, samlConfigId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteSamlConfig performs a DELETE /api/v1/sso/saml/config (the `DeleteSamlConfig` operationId) request.
+//
+// Delete SAML config.
+func (c *Client) DeleteSamlConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSamlConfigRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -324715,6 +324843,33 @@ func NewRedirectSamlByConfigIdRequest(server string, samlConfigId string, params
 	return req, nil
 }
 
+// NewDeleteSamlConfigRequest constructs an http.Request for the DeleteSamlConfig method
+func NewDeleteSamlConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/sso/saml/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetSamlConfigRequest constructs an http.Request for the GetSamlConfig method
 func NewGetSamlConfigRequest(server string) (*http.Request, error) {
 	var err error
@@ -340732,6 +340887,13 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	RedirectSamlByConfigIdWithResponse(ctx context.Context, samlConfigId string, params *RedirectSamlByConfigIdParams, reqEditors ...RequestEditorFn) (*RedirectSamlByConfigIdResponse, error)
+
+	// DeleteSamlConfigWithResponse performs a DELETE /api/v1/sso/saml/config (the `DeleteSamlConfig` operationId) request.
+	//
+	// Delete SAML config.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteSamlConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteSamlConfigResponse, error)
 
 	// GetSamlConfigWithResponse performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
 	//
@@ -504391,11 +504553,182 @@ func (r RedirectSamlByConfigIdResponse) ContentType() string {
 	return ""
 }
 
+type DeleteSamlConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AuthProvider       string             `json:"authProvider"`
+		CreatedAt          time.Time          `json:"createdAt"`
+		Id                 openapi_types.UUID `json:"id"`
+		IsActive           bool               `json:"isActive"`
+		LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+		MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+		MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+		MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+		OrgId              openapi_types.UUID `json:"orgId"`
+		UpdatedAt          time.Time          `json:"updatedAt"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                   `json:"details,omitempty"`
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                        `json:"error"`
+		Message    interface{}                                   `json:"message,omitempty"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                        `json:"error"`
+		Message    string                                        `json:"message"`
+		ReqId      string                                        `json:"reqId"`
+		StatusCode DeleteSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON200() *struct {
+	AuthProvider       string             `json:"authProvider"`
+	CreatedAt          time.Time          `json:"createdAt"`
+	Id                 openapi_types.UUID `json:"id"`
+	IsActive           bool               `json:"isActive"`
+	LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+	MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+	MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+	MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+	OrgId              openapi_types.UUID `json:"orgId"`
+	UpdatedAt          time.Time          `json:"updatedAt"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON400() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON401() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON403() *struct {
+	Details    interface{}                                   `json:"details,omitempty"`
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON404() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON422() *struct {
+	Error      string                                        `json:"error"`
+	Message    interface{}                                   `json:"message,omitempty"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteSamlConfigResponse) GetJSON500() *struct {
+	Error      string                                        `json:"error"`
+	Message    string                                        `json:"message"`
+	ReqId      string                                        `json:"reqId"`
+	StatusCode DeleteSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteSamlConfigResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteSamlConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteSamlConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteSamlConfigResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetSamlConfigResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
+		// AcsUrl The Assertion Consumer Service (ACS) URL to enter in the identity provider. The provider sends SAML responses to this URL.
+		AcsUrl             string     `json:"acsUrl"`
 		AuthProvider       string     `json:"authProvider"`
 		Cert               string     `json:"cert"`
 		EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
@@ -504409,6 +504742,9 @@ type GetSamlConfigResponse struct {
 		MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
 		OrgId              string     `json:"orgId"`
 		Organization       string     `json:"organization"`
+
+		// SpEntityId The service provider entity ID (audience) to enter in the identity provider.
+		SpEntityId string `json:"spEntityId"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
 	JSON400 *struct {
@@ -504458,6 +504794,8 @@ type GetSamlConfigResponse struct {
 
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetSamlConfigResponse) GetJSON200() *struct {
+	// AcsUrl The Assertion Consumer Service (ACS) URL to enter in the identity provider. The provider sends SAML responses to this URL.
+	AcsUrl             string     `json:"acsUrl"`
 	AuthProvider       string     `json:"authProvider"`
 	Cert               string     `json:"cert"`
 	EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
@@ -504471,6 +504809,9 @@ func (r GetSamlConfigResponse) GetJSON200() *struct {
 	MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
 	OrgId              string     `json:"orgId"`
 	Organization       string     `json:"organization"`
+
+	// SpEntityId The service provider entity ID (audience) to enter in the identity provider.
+	SpEntityId string `json:"spEntityId"`
 } {
 	return r.JSON200
 }
@@ -551416,6 +551757,19 @@ func (c *ClientWithResponses) RedirectSamlByConfigIdWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseRedirectSamlByConfigIdResponse(rsp)
+}
+
+// DeleteSamlConfigWithResponse performs a DELETE /api/v1/sso/saml/config (the `DeleteSamlConfig` operationId) request.
+//
+// Delete SAML config.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteSamlConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteSamlConfigResponse, error) {
+	rsp, err := c.DeleteSamlConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteSamlConfigResponse(rsp)
 }
 
 // GetSamlConfigWithResponse performs a GET /api/v1/sso/saml/config (the `GetSamlConfig` operationId) request.
@@ -658084,6 +658438,117 @@ func ParseRedirectSamlByConfigIdResponse(rsp *http.Response) (*RedirectSamlByCon
 	return response, nil
 }
 
+// ParseDeleteSamlConfigResponse parses an HTTP response from a DeleteSamlConfigWithResponse call
+func ParseDeleteSamlConfigResponse(rsp *http.Response) (*DeleteSamlConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteSamlConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AuthProvider       string             `json:"authProvider"`
+			CreatedAt          time.Time          `json:"createdAt"`
+			Id                 openapi_types.UUID `json:"id"`
+			IsActive           bool               `json:"isActive"`
+			LastUsed           *time.Time         `json:"lastUsed,omitempty"`
+			MfaAttributeValues *[]string          `json:"mfaAttributeValues,omitempty"`
+			MfaAuthnContexts   *[]string          `json:"mfaAuthnContexts,omitempty"`
+			MfaSignalAttribute *string            `json:"mfaSignalAttribute,omitempty"`
+			OrgId              openapi_types.UUID `json:"orgId"`
+			UpdatedAt          time.Time          `json:"updatedAt"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteSamlConfig400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteSamlConfig401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                   `json:"details,omitempty"`
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteSamlConfig403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteSamlConfig404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    interface{}                                   `json:"message,omitempty"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteSamlConfig422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                        `json:"error"`
+			Message    string                                        `json:"message"`
+			ReqId      string                                        `json:"reqId"`
+			StatusCode DeleteSamlConfig500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetSamlConfigResponse parses an HTTP response from a GetSamlConfigWithResponse call
 func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -658100,6 +658565,8 @@ func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, err
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
+			// AcsUrl The Assertion Consumer Service (ACS) URL to enter in the identity provider. The provider sends SAML responses to this URL.
+			AcsUrl             string     `json:"acsUrl"`
 			AuthProvider       string     `json:"authProvider"`
 			Cert               string     `json:"cert"`
 			EnableGroupSync    *bool      `json:"enableGroupSync,omitempty"`
@@ -658113,6 +658580,9 @@ func ParseGetSamlConfigResponse(rsp *http.Response) (*GetSamlConfigResponse, err
 			MfaSignalAttribute *string    `json:"mfaSignalAttribute,omitempty"`
 			OrgId              string     `json:"orgId"`
 			Organization       string     `json:"organization"`
+
+			// SpEntityId The service provider entity ID (audience) to enter in the identity provider.
+			SpEntityId string `json:"spEntityId"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

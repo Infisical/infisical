@@ -122,3 +122,18 @@ export const useUpdateSSOConfig = () => {
     }
   });
 };
+
+export const useDeleteSSOConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<object, object, { organizationId: string }>({
+    mutationFn: async () => {
+      const { data } = await apiRequest.delete("/api/v1/sso/saml/config");
+      return data;
+    },
+    onSuccess(_, { organizationId }) {
+      queryClient.invalidateQueries({ queryKey: ssoConfigKeys.getSSOConfig(organizationId) });
+      // Deleting the config also turns off SSO enforcement and SCIM on the organization
+      queryClient.invalidateQueries({ queryKey: organizationKeys.getUserOrganizations });
+    }
+  });
+};

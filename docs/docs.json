@@ -1543,6 +1543,7 @@
                       "api-reference/endpoints/organizations/saml-sso/get-saml-config",
                       "api-reference/endpoints/organizations/saml-sso/update-saml-config",
                       "api-reference/endpoints/organizations/saml-sso/create-saml-config",
+                      "api-reference/endpoints/organizations/saml-sso/delete-saml-config",
                       {
                         "group": "Legacy",
                         "pages": [

@@ -1,1 +1,6 @@
-export { useCreateSSOConfig, useGetSSOConfig, useUpdateSSOConfig } from "./queries";
+export {
+  useCreateSSOConfig,
+  useDeleteSSOConfig,
+  useGetSSOConfig,
+  useUpdateSSOConfig
+} from "./queries";

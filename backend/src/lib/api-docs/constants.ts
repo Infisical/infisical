@@ -4590,6 +4590,11 @@ export const EMAIL_DOMAINS = {
 };
 
 export const SamlSso = {
+  CONFIG: {
+    acsUrl:
+      "The Assertion Consumer Service (ACS) URL to enter in the identity provider. The provider sends SAML responses to this URL.",
+    spEntityId: "The service provider entity ID (audience) to enter in the identity provider."
+  },
   UPDATE_CONFIG: {
     authProvider: "Authentication provider to use for SAML authentication.",
     isActive: "Whether to enable or disable this SAML configuration.",

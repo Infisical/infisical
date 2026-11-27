@@ -45,6 +45,23 @@ func TestSAMLConfig_Create(t *testing.T) {
 		require.True(t, stored.IsActive)
 	})
 
+	t.Run("should return a conflict and keep the existing config when the organization already has one", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		before := readConfig(t, s.Tenant.Admin)
+
+		// Action
+		res, err := s.Tenant.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(s.Tenant, samlidp.New(t), sso.Okta))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusConflict, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "A SAML configuration already exists")
+		require.Equal(t, before, readConfig(t, s.Tenant.Admin))
+	})
+
 	t.Run("should reject creation when the plan lacks SAML SSO", func(t *testing.T) {
 		t.Parallel()
 
@@ -94,18 +111,21 @@ func TestSAMLConfig_Create(t *testing.T) {
 		requireNoConfig(t, tn)
 	})
 
-	t.Run("should reject creation when the admin belongs to another organization", func(t *testing.T) {
+	t.Run("should create the config in the caller's organization and leave other organizations untouched", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		mine, theirs := h.NewTenant(t), h.NewTenant(t)
+		fixture.VerifiedEmailDomain(t, theirs)
+		body := sso.SAMLConfigBody(mine, samlidp.New(t), sso.Okta)
 
 		// Action
-		res, err := theirs.Admin.API.CreateSamlConfigWithResponse(t.Context(), sso.SAMLConfigBody(mine, samlidp.New(t), sso.Okta))
+		res, err := theirs.Admin.API.CreateSamlConfigWithResponse(t.Context(), body)
 
 		// Assert
 		require.NoError(t, err)
-		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, body.EntryPoint, readConfig(t, theirs.Admin).EntryPoint)
 		requireNoConfig(t, mine)
 	})
 
@@ -148,6 +168,21 @@ func TestSAMLConfig_Read(t *testing.T) {
 		require.Contains(t, string(res.Body), "SAML configuration for organization with ID '"+tn.OrgID.String()+"' not found")
 	})
 
+	t.Run("should return the values to enter in the IdP", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+
+		// Action
+		res, err := s.Tenant.Admin.API.GetSamlConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		requireSpValues(t, s.ConfigID.String(), res.JSON200.AcsUrl, res.JSON200.SpEntityId)
+	})
+
 	t.Run("should return the config when a machine identity has SSO read", func(t *testing.T) {
 		t.Parallel()
 
@@ -168,6 +203,24 @@ func TestSAMLConfig_Read(t *testing.T) {
 
 func TestSAMLConfig_Update(t *testing.T) {
 	t.Parallel()
+
+	t.Run("should return not found and leave the organization untouched when there is no config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := harness.From(t).NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
+			IsActive: new(true),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "SAML configuration for organization")
+		requireNoConfig(t, tn)
+	})
 
 	t.Run("should apply new IdP settings when an admin updates the config", func(t *testing.T) {
 		t.Parallel()
@@ -191,10 +244,44 @@ func TestSAMLConfig_Update(t *testing.T) {
 		require.Equal(t, s.Issuer, stored.Issuer)
 	})
 
-	t.Run("should turn off SSO enforcement when the config is updated", func(t *testing.T) {
+	t.Run("should keep SSO enforcement when an update resends the stored settings", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, "Pins current behaviour: every config update clears authEnforced and lastUsed, "+
-			"so an admin who rotates a certificate silently drops SSO enforcement.")
+		spec.Why(t, "A Terraform apply resends every field; enforcement must survive an update that changes nothing.")
+
+		// Setup
+		s := setup(t, sso.Okta)
+		s.Enforce(t)
+
+		// Action
+		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), storedSettings(s))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.True(t, authEnforced(t, s.Tenant))
+	})
+
+	t.Run("should keep SSO enforcement when an update changes only the MFA signal fields", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		s.Enforce(t)
+		body := storedSettings(s)
+		body.MfaAuthnContexts = &[]string{"urn:example:mfa"}
+
+		// Action
+		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.True(t, authEnforced(t, s.Tenant))
+	})
+
+	t.Run("should turn off SSO enforcement when an update changes the entry point", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "A new entry point can break every login, so enforcement is turned off to keep the admin from being locked out.")
 
 		// Setup
 		s := setup(t, sso.Okta)
@@ -202,16 +289,81 @@ func TestSAMLConfig_Update(t *testing.T) {
 
 		// Action
 		res, err := s.Tenant.Admin.API.UpdateSamlConfigWithResponse(t.Context(), api.UpdateSamlConfigJSONRequestBody{
-			Cert: new(s.IdP.CertPEM()),
+			EntryPoint: new(samlidp.New(t).EntryPoint),
 		})
 
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
-		org, err := s.Tenant.Admin.API.GetOrganizationByIdWithResponse(t.Context(), s.Tenant.OrgID.String())
+		require.False(t, authEnforced(t, s.Tenant))
+	})
+}
+
+func TestSAMLConfig_Delete(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should remove the config and turn off SSO enforcement when an admin deletes it", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		s.Enforce(t)
+
+		// Action
+		res, err := s.Tenant.Admin.API.DeleteSamlConfigWithResponse(t.Context())
+
+		// Assert
 		require.NoError(t, err)
-		require.Equalf(t, http.StatusOK, org.StatusCode(), "%s", apierr.Body(org.Body))
-		require.False(t, *org.JSON200.Organization.AuthEnforced)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t, s.ConfigID, res.JSON200.Id)
+		requireNoConfig(t, s.Tenant)
+		require.False(t, authEnforced(t, s.Tenant))
+	})
+
+	t.Run("should return not found when the organization has no config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := harness.From(t).NewTenant(t)
+
+		// Action
+		res, err := tn.Admin.API.DeleteSamlConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "SAML configuration for organization")
+	})
+
+	t.Run("should reject the delete and keep the config when the actor is a member", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+		member := s.Tenant.NewUser(t)
+
+		// Action
+		res, err := member.API.DeleteSamlConfigWithResponse(t.Context())
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.True(t, readConfig(t, s.Tenant.Admin).IsActive)
+	})
+
+	t.Run("should not serve delete on the legacy path and keep the config", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		s := setup(t, sso.Okta)
+
+		// Action
+		res, err := s.Tenant.Admin.API.DeleteSamlConfigWithResponse(t.Context(), legacyPath)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusNotFound, res.StatusCode())
+		require.True(t, readConfig(t, s.Tenant.Admin).IsActive)
 	})
 }
 
@@ -313,6 +465,25 @@ func legacyBody(t *testing.T, body any, organizationID string) *bytes.Reader {
 	raw, err = json.Marshal(fields)
 	require.NoError(t, err)
 	return bytes.NewReader(raw)
+}
+
+// storedSettings is an update body that resends every connection field exactly as setup stored it.
+func storedSettings(s *sso.SAML) api.UpdateSamlConfigJSONRequestBody {
+	return api.UpdateSamlConfigJSONRequestBody{
+		AuthProvider:    new(api.UpdateSamlConfigJSONBodyAuthProvider(sso.Okta)),
+		IsActive:        new(true),
+		EntryPoint:      new(s.IdP.EntryPoint),
+		Issuer:          new(s.Issuer),
+		Cert:            new(s.IdP.CertPEM()),
+		EnableGroupSync: new(false),
+	}
+}
+
+func requireSpValues(t *testing.T, configID, acsURL, spEntityID string) {
+	t.Helper()
+	siteURL := harness.From(t).App().SiteURL()
+	require.Equal(t, siteURL+"/api/v1/sso/saml2/"+configID, acsURL)
+	require.Equal(t, siteURL, spEntityID)
 }
 
 type storedConfig struct {

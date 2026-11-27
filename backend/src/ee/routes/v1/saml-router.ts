@@ -15,6 +15,7 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { extractSamlAuthnContextClassRefs } from "@app/ee/services/saml-config/saml-assertion-fns";
+import { buildSamlAcsUrl, getSamlSpEntityId } from "@app/ee/services/saml-config/saml-config-fns";
 import { SamlProviders, TGetSamlCfgDTO } from "@app/ee/services/saml-config/saml-config-types";
 import { ApiDocsTags, SamlSso } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
@@ -92,11 +93,11 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
               throw new BadRequestError({ message: "Failed to authenticate with SAML SSO" });
 
             const samlConfig: TSAMLConfig = {
-              callbackUrl: `${appCfg.SITE_URL}/api/v1/sso/saml2/${ssoConfig.id}`,
+              callbackUrl: buildSamlAcsUrl(ssoConfig.id),
               entryPoint: ssoConfig.entryPoint,
               issuer: ssoConfig.issuer,
               idpCert: ssoConfig.cert,
-              audience: appCfg.SITE_URL || ""
+              audience: getSamlSpEntityId()
             };
             if (ssoConfig.authProvider === SamlProviders.JUMPCLOUD_SAML) {
               samlConfig.wantAuthnResponseSigned = false;
@@ -458,7 +459,9 @@ export const registerSamlConfigRouter = async (
           enableGroupSync: z.boolean().optional(),
           mfaSignalAttribute: z.string().nullable().optional(),
           mfaAuthnContexts: z.string().array().nullable().optional(),
-          mfaAttributeValues: z.string().array().nullable().optional()
+          mfaAttributeValues: z.string().array().nullable().optional(),
+          acsUrl: z.string().describe(SamlSso.CONFIG.acsUrl),
+          spEntityId: z.string().describe(SamlSso.CONFIG.spEntityId)
         })
       }
     },
@@ -636,4 +639,40 @@ export const registerSamlConfigRouter = async (
       return samlCfg;
     }
   });
+
+  if (!isLegacyPath) {
+    server.route({
+      method: "DELETE",
+      url: "/config",
+      config: {
+        rateLimit: writeLimit
+      },
+      onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+      schema: {
+        hide: false,
+        tags: [ApiDocsTags.SamlSso],
+        operationId: "deleteSamlConfig",
+        description: "Delete SAML config",
+        security: [
+          {
+            bearerAuth: []
+          }
+        ],
+        response: {
+          200: SanitizedSamlConfigSchema
+        }
+      },
+      handler: async (req) => {
+        const samlCfg = await server.services.saml.deleteSamlCfg({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          orgId: req.permission.orgId
+        });
+
+        return samlCfg;
+      }
+    });
+  }
 };

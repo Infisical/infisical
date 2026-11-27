@@ -35,11 +35,12 @@ through `isIdpMfaTrusted` (`auth-fns.ts`), the only reader of the setting. Rules
   (`mfa-step-up-fns.ts`) and PAM MFA are unaffected. OAuth consent (`authorizeConsent`) re-derives the MFA
   requirement for the client's org and applies the same `isIdpMfaTrusted` waiver, so a session that skipped
   the login prompt is not refused when authorizing an application.
-- Updating a SAML or OIDC config resets the org's `authEnforced` and `scimEnabled`, except when the update
-  carries only the MFA signal fields (`mfaSignalAttribute` / `mfaAuthnContexts` /
-  `mfaAttributeValues`, `mfaClaimName` / `mfaAmrValues`), which cannot break a login. The SSO modals send only
-  those fields when nothing else changed, so tuning an allowlist on a live, enforced setup does not turn
-  enforcement off.
+- Updating a SAML or OIDC config resets the org's `authEnforced` and `scimEnabled` (and the config's
+  `lastUsed`) only when a field that can break a login actually changes, compared with the stored value
+  (decrypted for encrypted fields): `isConnectionChanged` in `updateSamlCfg` and `updateOidcCfg`. The MFA
+  signal fields (`mfaSignalAttribute` / `mfaAuthnContexts` / `mfaAttributeValues`, `mfaClaimName` /
+  `mfaAmrValues`) never count, and neither does resending the stored values, so a Terraform apply or an
+  allowlist tweak on a live, enforced setup does not turn enforcement off.
 - The callback writes a `USER_LOGIN` audit event with the `idpMfa` verdict: `evidence` is what matched and
   `received` is every value the IdP sent in the fields that were read, so a rejected login shows which value
   to add to the allowlist. `SELECT_ORGANIZATION` records `mfaSatisfiedBy`, so an admin can see why a login was

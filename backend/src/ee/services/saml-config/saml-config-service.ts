@@ -25,7 +25,10 @@ import {
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { isPatchValueChanged } from "@app/lib/fn";
 import { TEventEmitter } from "@app/lib/knex/event-emitter";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -77,6 +80,7 @@ import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/or
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
+import { buildSamlAcsUrl, getSamlSpEntityId } from "./saml-config-fns";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
 
 // SAML providers that support group sync
@@ -84,7 +88,10 @@ const GROUP_SYNC_SUPPORTED_PROVIDERS = [SamlProviders.GOOGLE_SAML] as SamlProvid
 
 type TSamlConfigServiceFactoryDep = {
   instanceConfigService: TInstanceConfigService;
-  samlConfigDAL: Pick<TSamlConfigDALFactory, "create" | "findOne" | "update" | "findById">;
+  samlConfigDAL: Pick<
+    TSamlConfigDALFactory,
+    "create" | "findOne" | "update" | "findById" | "deleteById" | "transaction"
+  >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   userDAL: Pick<
     TUserDALFactory,
@@ -409,18 +416,27 @@ export const samlConfigServiceFactory = ({
       orgId
     });
 
-    const samlConfig = await samlConfigDAL.create({
-      orgId,
-      authProvider,
-      isActive,
-      encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
-      encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
-      encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
-      enableGroupSync: enableGroupSync || false,
-      mfaSignalAttribute,
-      mfaAuthnContexts,
-      mfaAttributeValues
-    });
+    const samlConfig = await samlConfigDAL
+      .create({
+        orgId,
+        authProvider,
+        isActive,
+        encryptedSamlCertificate: encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob,
+        encryptedSamlEntryPoint: encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob,
+        encryptedSamlIssuer: encryptor({ plainText: Buffer.from(issuer) }).cipherTextBlob,
+        enableGroupSync: enableGroupSync || false,
+        mfaSignalAttribute,
+        mfaAuthnContexts,
+        mfaAttributeValues
+      })
+      .catch((err: unknown) => {
+        if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
+          throw new ConflictError({
+            message: `A SAML configuration already exists for organization with ID '${orgId}'.`
+          });
+        }
+        throw err;
+      });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Create, orgId });
 
@@ -465,6 +481,11 @@ export const samlConfigServiceFactory = ({
       throw new NotFoundError({ message: `Could not find organization with ID "${orgId}"` });
     }
 
+    const existingCfg = await samlConfigDAL.findOne({ orgId });
+    if (!existingCfg) {
+      throw new NotFoundError({ message: `SAML configuration for organization with ID '${orgId}' not found` });
+    }
+
     if (org.googleSsoAuthEnforced && isActive) {
       throw new BadRequestError({
         message:
@@ -484,14 +505,30 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    const isMfaSignalOnlyUpdate = [authProvider, isActive, entryPoint, issuer, idpCert, enableGroupSync].every(
-      (value) => value === undefined
-    );
+    const { encryptor, decryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId
+    });
+    const decrypt = (cipherTextBlob?: Buffer | null) =>
+      cipherTextBlob ? decryptor({ cipherTextBlob }).toString() : "";
+
+    // Any change to SAML config should not lock users out, if auth/scim is enforced prior to it
+    const samlConnectionConfigs: [unknown, unknown][] = [
+      [authProvider, existingCfg.authProvider],
+      [isActive, existingCfg.isActive],
+      [enableGroupSync, existingCfg.enableGroupSync],
+      [entryPoint, decrypt(existingCfg.encryptedSamlEntryPoint)],
+      [issuer, decrypt(existingCfg.encryptedSamlIssuer)],
+      [idpCert, decrypt(existingCfg.encryptedSamlCertificate)]
+    ];
+    const isConnectionChanged = samlConnectionConfigs.some(([next, current]) => isPatchValueChanged(next, current));
+
+    const shouldDisableEnforcement = isConnectionChanged && Boolean(org.authEnforced || org.scimEnabled);
 
     const updateQuery: TSamlConfigsUpdate = {
       authProvider,
       isActive,
-      ...(!isMfaSignalOnlyUpdate && { lastUsed: null })
+      ...(isConnectionChanged && { lastUsed: null })
     };
 
     if (enableGroupSync !== undefined) {
@@ -506,10 +543,6 @@ export const samlConfigServiceFactory = ({
     if (mfaAttributeValues !== undefined) {
       updateQuery.mfaAttributeValues = mfaAttributeValues;
     }
-    const { encryptor } = await kmsDataKeyService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
-    });
 
     if (entryPoint !== undefined) {
       updateQuery.encryptedSamlEntryPoint = encryptor({ plainText: Buffer.from(entryPoint) }).cipherTextBlob;
@@ -523,14 +556,51 @@ export const samlConfigServiceFactory = ({
       updateQuery.encryptedSamlCertificate = encryptor({ plainText: Buffer.from(idpCert) }).cipherTextBlob;
     }
 
-    const [ssoConfig] = await samlConfigDAL.update({ orgId }, updateQuery);
-    if (!isMfaSignalOnlyUpdate) {
-      await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false });
-    }
+    const ssoConfig = await samlConfigDAL.transaction(async (tx) => {
+      const [cfg] = await samlConfigDAL.update({ orgId }, updateQuery, tx);
+      if (shouldDisableEnforcement) {
+        await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false }, tx);
+      }
+      return cfg;
+    });
 
     recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Update, orgId });
 
-    return ssoConfig;
+    return { ...ssoConfig, ssoEnforcementDisabled: shouldDisableEnforcement };
+  };
+
+  const deleteSamlCfg: TSamlConfigServiceFactory["deleteSamlCfg"] = async ({
+    orgId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Delete, OrgPermissionSubjects.Sso);
+
+    const samlConfig = await samlConfigDAL.findOne({ orgId });
+    if (!samlConfig) {
+      throw new NotFoundError({ message: `SAML configuration for organization with ID '${orgId}' not found` });
+    }
+
+    const deletedCfg = await samlConfigDAL.transaction(async (tx) => {
+      const deleted = await samlConfigDAL.deleteById(samlConfig.id, tx);
+      // SSO enforcement and SCIM both require an active SSO config; leaving them on would lock users out
+      await orgDAL.updateById(orgId, { authEnforced: false, scimEnabled: false }, tx);
+      return deleted;
+    });
+
+    recordSsoConfigChangeMetric({ provider: SsoProvider.Saml, action: SsoConfigAction.Delete, orgId });
+
+    return deletedCfg;
   };
 
   const getSaml: TSamlConfigServiceFactory["getSaml"] = async (dto) => {
@@ -621,7 +691,9 @@ export const samlConfigServiceFactory = ({
       enableGroupSync: samlConfig.enableGroupSync,
       mfaSignalAttribute: samlConfig.mfaSignalAttribute,
       mfaAuthnContexts: samlConfig.mfaAuthnContexts,
-      mfaAttributeValues: samlConfig.mfaAttributeValues
+      mfaAttributeValues: samlConfig.mfaAttributeValues,
+      acsUrl: buildSamlAcsUrl(samlConfig.id),
+      spEntityId: getSamlSpEntityId()
     };
   };
 
@@ -981,6 +1053,7 @@ export const samlConfigServiceFactory = ({
   return {
     createSamlCfg,
     updateSamlCfg,
+    deleteSamlCfg,
     getSaml,
     samlLogin,
     consumeSamlAssertion
