@@ -935,6 +935,7 @@ export const AutoApprovalCard = ({
             <Combobox
               label="Add request form field"
               width="sm"
+              align="end"
               options={availableInputs}
               value=""
               disabled={inputLimitReached}
