@@ -54,6 +54,7 @@ import {
 import type { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 import { providerMedia } from "@app/pages/v4/components/provider-label";
 
+import type { ScopeState } from "../../../data/secrets/contract";
 import { v4Path } from "../../../links";
 import { nameLabel } from "../../../shell/resource-name";
 import { withoutDefaults } from "../../search-defaults";
@@ -961,11 +962,18 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
   );
 }
 
+const EMPTY_IMPORT_MESSAGES: Record<ScopeState, string> = {
+  loading: "Loading secrets…",
+  failed: "Couldn't load the secrets in this folder.",
+  loaded: "No secrets in this folder."
+};
+
 export function ImportRow({
   rowKey,
   entries,
   ctx,
   sourceSecrets,
+  sourceState,
   projectId,
   sites,
   revealAll
@@ -974,6 +982,7 @@ export function ImportRow({
   entries: Of<"import">[];
   ctx: RowContext;
   sourceSecrets: (entry: Of<"import">) => Secret[];
+  sourceState: (entry: Of<"import">) => ScopeState;
   projectId: string;
   sites: EnvironmentOption[];
   revealAll: boolean;
@@ -981,6 +990,7 @@ export function ImportRow({
   const expanded = ctx.expanded.includes(rowKey);
   const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
   const first = entries[0];
+  const nestedSecrets = expanded && !first.revoked ? sourceSecrets(first) : [];
   const crossProject = first.source.project !== projectId;
   const sourceProject = nameLabel(
     { id: first.source.project, name: first.sourceProjectName, pending: false },
@@ -1188,17 +1198,27 @@ export function ImportRow({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sourceSecrets(first).map((secret) => (
-                    <TableRow key={secret.id} className={styles.row}>
-                      <TableCell selection divider={false} />
-                      <TableCell className={styles.envName}>
-                        <span className={styles.truncate}>{secret.name}</span>
-                      </TableCell>
-                      <TableCell className={styles.valueCell}>
-                        <SecretValue secret={secret} visible={revealAll} />
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  <>
+                    {nestedSecrets.map((secret) => (
+                      <TableRow key={secret.id} className={styles.row}>
+                        <TableCell selection divider={false} />
+                        <TableCell className={styles.envName}>
+                          <span className={styles.truncate}>{secret.name}</span>
+                        </TableCell>
+                        <TableCell className={styles.valueCell}>
+                          <SecretValue secret={secret} visible={revealAll} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {nestedSecrets.length === 0 && (
+                      <TableRow>
+                        <TableCell selection divider={false} />
+                        <TableCell colSpan={2} className={styles.subtle}>
+                          {EMPTY_IMPORT_MESSAGES[sourceState(first)]}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 )}
               </TableBody>
             </Table>

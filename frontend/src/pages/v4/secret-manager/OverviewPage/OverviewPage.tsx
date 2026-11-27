@@ -101,6 +101,7 @@ import { dismissToast, errorMessage, toast, warned } from "../../access/toast";
 import { copyText } from "../../clipboard";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
+import type { ScopeState } from "../../data/secrets/contract";
 import { v4Path } from "../../links";
 import { nameLabel, useProjectName } from "../../shell/resource-name";
 import { withoutDefaults } from "../search-defaults";
@@ -1308,7 +1309,7 @@ export const OverviewPage = () => {
         (resource): resource is Secret =>
           resource.kind === "secret" && scopeMatches(resource, entry.source)
       );
-    const imported = foreignImports[entry.environment] ?? [];
+    const imported = foreignImports[entry.environment]?.groups ?? [];
     const group =
       imported.find((candidate) => candidate.importId === entry.id) ??
       imported.find(
@@ -1360,6 +1361,17 @@ export const OverviewPage = () => {
           }
         : resource;
     });
+  };
+
+  const sourceState = (entry: Of<"import">): ScopeState => {
+    if (entry.source.project !== projectId)
+      return foreignImports[entry.environment]?.status ?? "loading";
+    if (
+      entry.source.path === path &&
+      visibleEnvironments.some((environment) => environment.value === entry.source.environment)
+    )
+      return "loaded";
+    return breadth.state(entry.source);
   };
 
   const insert = (
@@ -2589,6 +2601,7 @@ export const OverviewPage = () => {
                                     entries={entries as Of<"import">[]}
                                     ctx={ctx}
                                     sourceSecrets={sourceSecrets}
+                                    sourceState={sourceState}
                                     projectId={project}
                                     sites={sitesOf(entries as Of<"import">[])}
                                     revealAll={single ? revealAll : showValues}

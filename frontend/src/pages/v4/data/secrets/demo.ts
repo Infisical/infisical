@@ -413,17 +413,22 @@ export const secretsDemo: SecretsAdapter = {
     return Object.fromEntries(
       environments.map((environment) => [
         environment,
-        state.imports.filter(isForeignImportAt(projectId, environment, path)).map((entry) => ({
-          importId: entry.id,
-          environment: entry.importEnv.slug,
-          secretPath: entry.importPath,
-          secrets: foreignImportKeys(entry).map((key) => ({
-            id: `${entry.id}:${key}`,
-            key,
-            secretValueHidden: false,
-            version: 1
-          }))
-        }))
+        {
+          status: "loaded" as const,
+          groups: state.imports
+            .filter(isForeignImportAt(projectId, environment, path))
+            .map((entry) => ({
+              importId: entry.id,
+              environment: entry.importEnv.slug,
+              secretPath: entry.importPath,
+              secrets: foreignImportKeys(entry).map((key) => ({
+                id: `${entry.id}:${key}`,
+                key,
+                secretValueHidden: false,
+                version: 1
+              }))
+            }))
+        }
       ])
     );
   },

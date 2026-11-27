@@ -27,7 +27,7 @@ import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 
 import { withMutationMeta } from "../contract";
 import { useProjectById } from "../projectQuery";
-import type { SecretsAdapter } from "./contract";
+import type { ScopeState, SecretsAdapter } from "./contract";
 import { secretsAccessInsightsLive } from "./live-access-insights";
 import { secretsActivationLive } from "./live-activation";
 import { secretsChangeRequestsLive } from "./live-change-requests";
@@ -57,15 +57,24 @@ export const secretsLive: SecretsAdapter = {
   useImportedSecrets: ({ projectId, environments, path }) => {
     const { secretImports } = useGetImportedSecretsAllEnvs({ projectId, environments, path });
     return Object.fromEntries(
-      environments.map((environment, index) => [
-        environment,
-        (secretImports[index]?.data ?? []).map((group) => ({
-          importId: group.importId,
-          environment: group.environment,
-          secretPath: group.secretPath,
-          secrets: group.secrets
-        }))
-      ])
+      environments.map((environment, index) => {
+        const query = secretImports[index];
+        let status: ScopeState = "loading";
+        if (query?.data) status = "loaded";
+        else if (query?.isError) status = "failed";
+        return [
+          environment,
+          {
+            status,
+            groups: (query?.data ?? []).map((group) => ({
+              importId: group.importId,
+              environment: group.environment,
+              secretPath: group.secretPath,
+              secrets: group.secrets
+            }))
+          }
+        ];
+      })
     );
   },
   useSecretKeyCheck: () => {
