@@ -62,6 +62,7 @@ const DuplicateGroups = ({
                   primary: true,
                   grow: true,
                   mono: true,
+                  wrap: true,
                   text: (entry) => entry.key,
                   render: (entry) => (
                     <RowLink
@@ -88,6 +89,7 @@ const DuplicateGroups = ({
                   grow: true,
                   minWidth: 120,
                   mono: true,
+                  wrap: true,
                   text: (entry) => entry.secretPath,
                   render: (entry) => entry.secretPath
                 }
