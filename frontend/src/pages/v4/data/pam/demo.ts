@@ -418,6 +418,7 @@ const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
     gatewayId: null,
     gatewayPoolId: null,
     recordingConnectionId: null,
+    maxAccessDurationSeconds: null,
     isAccessible: issues.length === 0,
     accessibilityIssues: issues,
     isStale: seed.isStale ?? false,

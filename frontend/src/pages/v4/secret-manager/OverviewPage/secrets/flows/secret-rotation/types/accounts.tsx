@@ -387,7 +387,7 @@ const DBT_PERMISSION_SET_OPTIONS: SelectOption[] = Object.entries(DBT_PERMISSION
   ([permissionSet, { label, isEnterpriseOnly }]) => ({
     value: permissionSet,
     label,
-    description: isEnterpriseOnly ? "DBT Enterprise" : undefined
+    meta: isEnterpriseOnly ? "DBT Enterprise" : undefined
   })
 );
 

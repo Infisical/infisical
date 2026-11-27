@@ -44,10 +44,11 @@ export const RootOrgFilter = ({
       id="billing-root-org-filter"
       label="Organization"
       placeholder="Select an organization"
-      emptyText={
+      emptyText="No organizations found"
+      noMatchText={
         totalCount > orgs.length
           ? `No match in the first ${orgs.length.toLocaleString()} of ${totalCount.toLocaleString()}. Type to search.`
-          : "No organizations found"
+          : undefined
       }
       loading={isLoading}
       options={shown.map((org) => ({ value: org.id, label: org.name, meta: org.slug }))}

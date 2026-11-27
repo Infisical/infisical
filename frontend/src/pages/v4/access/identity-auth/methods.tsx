@@ -425,7 +425,7 @@ const GatewayField = ({
         ...pools.map((pool) => ({
           value: `pool:${pool.id}`,
           label: pool.name,
-          description: "Gateway pool"
+          meta: "Gateway pool"
         }))
       ]}
       onChange={(next) => {

@@ -97,7 +97,7 @@ const AddGroupDialog = ({
           <Combobox
             label="Group"
             placeholder="Select group..."
-            emptyText="No groups match your search"
+            noMatchText="No groups match your search"
             options={available.map((group) => ({ value: group.id, label: group.name }))}
             value={groupId}
             onChange={setGroupId}

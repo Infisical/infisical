@@ -204,14 +204,7 @@ const InboxBody = ({
         label={plainText(latest.title)}
         href={href}
         onClick={(event) => openGroup(event, group, href)}
-        media={
-          <Media
-            size="sm"
-            icon={notificationIcon(latest.type)}
-            tone={group.tone}
-            className={styles.tile}
-          />
-        }
+        media={<Media size="sm" icon={notificationIcon(latest.type)} tone={group.tone} />}
         unread={group.unread > 0}
         title={<ReactMarkdown components={inline}>{latest.title}</ReactMarkdown>}
         badge={

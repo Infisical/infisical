@@ -1,9 +1,11 @@
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 import type { PendingChanges } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
 import { readableValue, type Secret } from "../secrets-model";
 import type { PendingChange, PendingResource } from "../secrets/batch/pending";
+import type { UnsavedChange } from "../secrets/batch/unsaved-edits";
 
 const tagRefs = (tags: readonly WsTag[], slugs: string[]) =>
   tags.filter((tag) => slugs.includes(tag.slug)).map((tag) => ({ id: tag.id, slug: tag.slug }));
@@ -121,4 +123,50 @@ export const toPendingChanges = (
     });
   });
   return result;
+};
+
+export const toUnsavedPendingChanges = (
+  changes: readonly UnsavedChange[],
+  current: readonly SecretV3RawSanitized[],
+  tags: readonly WsTag[]
+): PendingChanges => {
+  const timestamp = Date.now();
+  return {
+    folders: [],
+    secrets: changes.flatMap((change): PendingChanges["secrets"] => {
+      if (change.isCreate)
+        return [
+          {
+            id: crypto.randomUUID(),
+            timestamp,
+            resourceType: "secret",
+            type: PendingAction.Create,
+            secretKey: change.secretKey,
+            secretValue: change.secretValue,
+            secretComment: change.annotations?.comment || undefined,
+            tags: tagRefs(tags, change.annotations?.tags ?? []),
+            secretMetadata: change.annotations?.metadata.map((entry) => ({
+              key: entry.key,
+              value: entry.value,
+              isEncrypted: entry.encrypted
+            }))
+          }
+        ];
+      const existing = current.find((secret) => secret.key === change.secretKey);
+      if (!existing) return [];
+      return [
+        {
+          id: crypto.randomUUID(),
+          timestamp,
+          resourceType: "secret",
+          type: PendingAction.Update,
+          secretKey: change.secretKey,
+          secretValue: change.secretValue,
+          secretComment: existing.comment,
+          tags: existing.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })),
+          existingSecret: existing
+        }
+      ];
+    })
+  };
 };

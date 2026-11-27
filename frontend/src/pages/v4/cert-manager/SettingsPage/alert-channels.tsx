@@ -295,7 +295,7 @@ const EmailRecipientsField = ({
             ? "Select members or type an email"
             : `Select ${groupOptions ? "members or groups" : "members"}`
         }
-        emptyText={
+        noMatchText={
           allowEmailAddresses
             ? "No matching members. Type a full email to add it."
             : `No matching ${pickable}.`

@@ -258,7 +258,7 @@ const ExtensionDefaults = ({
           const others = taken(entry.key);
           return (
             <Stack key={entry.key} gap={4}>
-              <Inline gap={8} align="center" wrap={false}>
+              <Inline gap={12} align="center">
                 {selectable ? (
                   <Select
                     aria-label="Extension"

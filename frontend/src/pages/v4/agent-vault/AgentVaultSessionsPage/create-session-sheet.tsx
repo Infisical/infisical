@@ -894,7 +894,7 @@ const MachineIdentityFields = ({
         <Combobox
           label="Machine identity"
           placeholder="Pick a machine identity"
-          emptyText="No machine identity matches."
+          noMatchText="No machine identity matches."
           options={identityOptions}
           value={identity?.id ?? ""}
           loading={isSearchingIdentities}
@@ -981,7 +981,7 @@ const AccessBundleField = ({
       <Combobox
         label="Access bundle"
         placeholder="Pick an access bundle"
-        emptyText="No access bundle matches."
+        noMatchText="No access bundle matches."
         options={bundleOptions}
         value={accessBundle?.id ?? ""}
         loading={isSearchingBundles}

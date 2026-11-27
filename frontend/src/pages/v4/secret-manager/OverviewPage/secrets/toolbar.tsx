@@ -31,6 +31,7 @@ import { v4Path } from "../../../links";
 import { withoutDefaults } from "../../search-defaults";
 import { useRequestBreadth } from "../bridge/scopes";
 import type { ResourceKind, Scope, Secret } from "../secrets-model";
+import { changeKey, type UnsavedChange, useHeldDraft, useUnsavedEdit } from "./batch/unsaved-edits";
 import {
   type ExternalImportSource,
   externalImportSources
@@ -448,11 +449,13 @@ export function EnvironmentAction({
 export type QuickAddAnnotations = Pick<Secret, "comment" | "tags" | "metadata">;
 type QuickAddAnnotation = "comment" | "tags" | "metadata";
 const noAnnotations: QuickAddAnnotations = { comment: "", tags: [], metadata: [] };
+const validName = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function QuickAddValue({
   ref,
   scope,
   multiple,
+  readOnly,
   value,
   onChange,
   onSave,
@@ -461,6 +464,7 @@ function QuickAddValue({
   ref: Ref<HTMLTextAreaElement & HTMLInputElement>;
   scope: Scope;
   multiple: boolean;
+  readOnly: boolean;
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -477,6 +481,7 @@ function QuickAddValue({
       scope={scope}
       onValueChange={onChange}
       onKeyDown={(event) => {
+        if (readOnly) return;
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
           onSave();
@@ -489,6 +494,7 @@ function QuickAddValue({
           {...control}
           onFocusCapture={() => setEditing(true)}
           onBlurCapture={() => setEditing(false)}
+          readOnly={readOnly}
           rows={1}
           className={styles.inlineInput}
           aria-label="New secret value"
@@ -504,6 +510,7 @@ function QuickAddValue({
 export function QuickAddRow({
   scope,
   multiple,
+  environments,
   colSpan,
   existing,
   tagOptions,
@@ -516,6 +523,7 @@ export function QuickAddRow({
 }: {
   scope: Scope;
   multiple: boolean;
+  environments: string[];
   colSpan: number;
   existing: string[];
   tagOptions: string[];
@@ -551,6 +559,61 @@ export function QuickAddRow({
     setError("");
     setAnnotations(noAnnotations);
   };
+  const [draftPath, setDraftPath] = useState(scope.path);
+  if (draftPath !== scope.path) {
+    setDraftPath(scope.path);
+    reset();
+  }
+  const name = key.trim();
+  const pendingChanges = (): UnsavedChange[] =>
+    environments.map((environment) => ({
+      projectId: scope.project,
+      environment,
+      secretPath: scope.path,
+      secretKey: name,
+      secretValue: value,
+      originalValue: "",
+      isCreate: true,
+      annotations
+    }));
+  const holdDrafts = useHeldDraft("quick-add", (draft) => {
+    if (draft[0]?.secretPath !== scope.path) return;
+    if (
+      draft.length !== environments.length ||
+      draft.some(({ environment }) => !environments.includes(environment))
+    ) {
+      holdDrafts(draft);
+      return;
+    }
+    setKey(draft[0].secretKey);
+    setValue(draft[0].secretValue);
+    setAnnotations(draft[0].annotations ?? noAnnotations);
+  });
+  const { committing, release } = useUnsavedEdit(
+    "quick-add",
+    multiple && validName.test(name) && !existing.includes(name) && !saving,
+    {
+      getChanges: pendingChanges,
+      settle: (committed, _review, submitted) => {
+        release();
+        const added = name
+          ? pendingChanges().filter(
+              (change) => !submitted.some((entry) => changeKey(entry) === changeKey(change))
+            )
+          : [];
+        holdDrafts(
+          [...submitted, ...added].filter(
+            (change) => !committed.some((entry) => changeKey(entry) === changeKey(change))
+          )
+        );
+        reset();
+      },
+      discard: () => {
+        release();
+        reset();
+      }
+    }
+  );
   const finishAnnotating = () => {
     setOverlay(undefined);
     (resume.current ?? valueRef.current)?.focus();
@@ -561,12 +624,11 @@ export function QuickAddRow({
     finishAnnotating();
   };
   const save = (queue = false) => {
-    const name = key.trim();
     if (!name) {
       setError("Secret name is required");
       return;
     }
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    if (!validName.test(name)) {
       setError("Use letters, numbers and underscores, starting with a letter or underscore");
       return;
     }
@@ -629,6 +691,7 @@ export function QuickAddRow({
             autoComplete="off"
             spellCheck={false}
             value={key}
+            readOnly={committing}
             aria-invalid={Boolean(error) || undefined}
             title={error || undefined}
             onChange={(event) => {
@@ -741,6 +804,7 @@ export function QuickAddRow({
             ref={valueRef}
             scope={scope}
             multiple={multiple}
+            readOnly={committing}
             value={value}
             onChange={setValue}
             onSave={save}
@@ -748,10 +812,10 @@ export function QuickAddRow({
           />
           {dirty && (
             <span className={styles.quickActions}>
-              <Button variant="ghost" size="xs" onClick={reset}>
+              <Button variant="ghost" size="xs" disabled={committing} onClick={reset}>
                 Undo
               </Button>
-              <Button size="xs" loading={saving} onClick={() => save()}>
+              <Button size="xs" loading={saving} disabled={committing} onClick={() => save()}>
                 Save
               </Button>
             </span>

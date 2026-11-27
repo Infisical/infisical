@@ -319,8 +319,12 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     ),
     route("/cert-manager/applications/", "v4/cert-manager/ApplicationsPage/route.tsx"),
     route(
-      "/cert-manager/applications/$applicationName",
+      "/cert-manager/applications/$applicationName/",
       "v4/cert-manager/ApplicationDetailsByIDPage/route.tsx"
+    ),
+    route(
+      "/cert-manager/applications/$applicationName/certificates/$certificateId",
+      "v4/cert-manager/CertificateDetailsByIDPage/application/route.tsx"
     ),
     route(
       "/cert-manager/certificate-authorities",

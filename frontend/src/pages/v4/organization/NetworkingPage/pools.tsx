@@ -296,8 +296,7 @@ export const PoolSheet = ({
                       {
                         label: "Trigger health check",
                         icon: HeartPulseIcon,
-                        disabledReason: (gateway) =>
-                          healthCheck.isChecking(gateway.id) ? "Checking health…" : undefined,
+                        loading: (gateway) => healthCheck.isChecking(gateway.id),
                         onSelect: healthCheck.run
                       }
                     ],

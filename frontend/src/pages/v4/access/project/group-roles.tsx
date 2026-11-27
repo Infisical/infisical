@@ -16,11 +16,11 @@ import { ClockAlertIcon } from "lucide-react";
 import type { TGroupMembership } from "@app/hooks/api/groups/types";
 
 import { useV4Adapter } from "../../data/adapters";
+import { useProjectPlanGates } from "../plan-gate";
 import { grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RoleBadges, RESTRICTED } from "../ui";
 import { type ProjectRoleOption, useGroupRoleAccess } from "./member-access";
-import { useProjectPlanGates } from "./plan-gates";
 import { useProjectScope } from "./scope";
 import {
   draftOf,

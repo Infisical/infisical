@@ -65,11 +65,6 @@
   padding-inline: 0;
 }
 
-.tile,
-.tile + [aria-hidden] {
-  translate: 0 -0.2em;
-}
-
 .scroll {
   flex: 1;
   min-height: 0;
@@ -99,7 +94,7 @@
 
 .rowMenu {
   position: absolute;
-  right: calc((var(--cipher-size-icon-sm) - var(--cipher-action-height)) / 2);
+  right: 0;
   top: 50%;
   translate: 0 -50%;
   opacity: 0;
@@ -127,6 +122,5 @@
     position: static;
     translate: none;
     opacity: 1;
-    margin-right: calc((var(--cipher-size-icon-sm) - var(--cipher-action-height)) / 2);
   }
 }

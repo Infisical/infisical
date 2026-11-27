@@ -9,7 +9,6 @@ import { Input } from "@infisical/cipher/ui/input";
 import { Inline, Stack } from "@infisical/cipher/ui/layout";
 import { Pagination } from "@infisical/cipher/ui/pagination";
 import { RowLink } from "@infisical/cipher/ui/row-link";
-import { useNavigate } from "@tanstack/react-router";
 
 import type { TCertificate } from "@app/hooks/api/certificates/types";
 import {
@@ -23,7 +22,7 @@ import { RESTRICTED } from "../../access/ui";
 import { usePageSize } from "../../components/use-page-size";
 import { useV4Adapter } from "../../data/adapters";
 import type { PkiApplicationPermission } from "../../data/pki-applications/contract";
-import { v4Path } from "../../links";
+import { certificateHref, useGo } from "../../links";
 import {
   certificateBlocks,
   certificateName,
@@ -40,8 +39,6 @@ import { type InventoryView, InventoryViewsMenu } from "../InventoryPage/invento
 import { ExportCsvButton } from "../InventoryPage/InventoryPage";
 import { appCan, plural } from "./shared";
 
-const certificatePath = v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId");
-
 export const CertificatesTab = ({
   orgId,
   projectId,
@@ -55,7 +52,7 @@ export const CertificatesTab = ({
   access: PkiApplicationPermission;
   initialSearch?: string;
 }) => {
-  const navigate = useNavigate();
+  const go = useGo();
   const adapter = useV4Adapter("pkiApplications");
   const { data: authorities = [] } = useV4Adapter("certificates").useCertificateAuthorities();
   const revocationOf = useRevocationApprovals(application.id);
@@ -102,11 +99,7 @@ export const CertificatesTab = ({
   });
   const caType = (cert: TCertificate) => authorities.find((ca) => ca.id === cert.caId)?.type;
   const open = (cert: TCertificate) =>
-    navigate({
-      to: certificatePath,
-      params: { orgId, certificateId: cert.id },
-      search: { fromApplication: application.name }
-    });
+    go(certificateHref(orgId, cert.id, { applicationName: application.name }));
 
   const columns: DataTableColumn<TCertificate>[] = [
     {
@@ -117,11 +110,7 @@ export const CertificatesTab = ({
       text: (cert) => certificateName(cert),
       render: (cert) => (
         <RowLink
-          link={{
-            to: certificatePath,
-            params: { orgId, certificateId: cert.id },
-            search: { fromApplication: application.name }
-          }}
+          link={go.link(certificateHref(orgId, cert.id, { applicationName: application.name }))}
           title={certificateName(cert)}
         >
           {certificateName(cert)}
@@ -236,6 +225,7 @@ export const CertificatesTab = ({
       {importing && (
         <ImportCertificatesSheet
           applicationId={application.id}
+          applicationName={application.name}
           onClose={() => setImporting(false)}
         />
       )}

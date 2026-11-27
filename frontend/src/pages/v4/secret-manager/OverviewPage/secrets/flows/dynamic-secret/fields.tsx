@@ -464,13 +464,13 @@ export function GatewayPicker({
         ...pools.map((pool) => ({
           value: `pool:${pool.id}`,
           label: pool.name,
-          description: "High Availability",
+          meta: "High Availability",
           group: "Gateway Pools"
         })),
         ...gateways.map((gateway) => ({
           value: `gateway:${gateway.id}`,
           label: gateway.name,
-          description: isGatewayHealthy(gateway) ? "Online" : "Offline",
+          meta: isGatewayHealthy(gateway) ? "Online" : "Offline",
           group: "Individual Gateways"
         }))
       ]}

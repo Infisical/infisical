@@ -251,7 +251,21 @@ const member = (
   details: { name, email }
 });
 
+const DESKTOP_APPROVERS = [
+  ["user-alexandra-montgomery", "Alexandra Montgomery-Fitzgerald-Ramanathan"],
+  ["user-bartholomew-okonkwo", "Bartholomew Okonkwo-Vandenberghe"],
+  ["user-christina-lindqvist", "Christina Lindqvist"],
+  ["user-dmitri-alexandrov", "Dmitri Alexandrovich Sokolov"],
+  ["user-esperanza-delacruz", "Esperanza de la Cruz Villanueva"],
+  ["user-fumiko-takahashi", "Fumiko Takahashi"],
+  ["user-guillermo-ibarra", "Guillermo Ibarra"],
+  ["user-hannelore-schmidt", "Hannelore Schmidt-Brandenburg"]
+] as const;
+
 const members = createFixtureStore<TSignerMember[]>([
+  ...DESKTOP_APPROVERS.map(([id, name]) =>
+    member(DESKTOP, "user", id, name, SignerMemberRole.Operator)
+  ),
   member(RELEASE, "user", "u-sarah", "Sarah Lin", SignerMemberRole.Administrator, "sarah@acme.dev"),
   member(
     RELEASE,
@@ -320,16 +334,50 @@ const policies = createFixtureStore<TSignerPolicy[]>([
         stepNumber: 1,
         name: "Release lead",
         requiredApprovals: 1,
-        approvers: [{ type: "user", id: "u-sarah" }]
+        approvers: [
+          { type: "user", id: "u-sarah" },
+          { type: "user", id: "user-maya-chen" }
+        ]
       },
       {
         stepNumber: 2,
         name: "Platform Security",
-        requiredApprovals: 1,
-        approvers: [{ type: "group", id: "group-platform-security" }]
+        requiredApprovals: 2,
+        approvers: [
+          { type: "group", id: "group-platform-security" },
+          { type: "user", id: "user-jonas-weber" },
+          { type: "user", id: "user-maya-chen" }
+        ]
       }
     ],
     constraints: { maxSignings: 10, maxWindowDuration: "24h" }
+  },
+  {
+    id: `policy-${FIRMWARE}`,
+    signerId: FIRMWARE,
+    hasSteps: true,
+    steps: [{ stepNumber: 1, requiredApprovals: 1, approvers: [{ type: "user", id: "u-sarah" }] }],
+    constraints: { maxSignings: null, maxWindowDuration: "1h" }
+  },
+  {
+    id: `policy-${DESKTOP}`,
+    signerId: DESKTOP,
+    hasSteps: true,
+    steps: [
+      "Enterprise release engineering on-call reviewer for Windows desktop builds",
+      "Security",
+      "Legal and export compliance",
+      null
+    ].map((name, index) => ({
+      stepNumber: index + 1,
+      name,
+      requiredApprovals: index + 1,
+      approvers: DESKTOP_APPROVERS.slice(0, 2 + index * 2).map(([id]) => ({
+        type: "user" as const,
+        id
+      }))
+    })),
+    constraints: { maxSignings: 250, maxWindowDuration: "720h" }
   }
 ]);
 

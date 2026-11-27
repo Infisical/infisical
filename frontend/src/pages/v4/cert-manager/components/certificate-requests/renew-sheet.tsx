@@ -18,7 +18,6 @@ import { Loader } from "@infisical/cipher/ui/loader";
 import { MultiStep, type MultiStepStep } from "@infisical/cipher/ui/multi-step";
 import { RadioGroup, RadioGroupCard } from "@infisical/cipher/ui/radio-group";
 import { Textarea } from "@infisical/cipher/ui/textarea";
-import { useNavigate } from "@tanstack/react-router";
 
 import type {
   CertSubjectAlternativeNameType,
@@ -65,7 +64,7 @@ import type { RenewalFormData } from "@app/pages/cert-manager/CertificatesPage/c
 import { useOrgId } from "../../../access/permissions";
 import { failed, readableFailure, saved } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
-import { v4Path } from "../../../links";
+import { certificateHref, useGo } from "../../../links";
 import { certificateName } from "../certificate";
 import {
   AlgorithmSelectors,
@@ -266,7 +265,7 @@ const RenewWizard = ({
   onClose: () => void;
 }) => {
   const orgId = useOrgId();
-  const navigate = useNavigate();
+  const go = useGo();
   const renew = useV4Adapter("certificates").useRenewCertificate();
   const constraints = policy ? deriveTemplateConstraints(policy) : DEFAULT_TEMPLATE_CONSTRAINTS;
   const {
@@ -441,11 +440,7 @@ const RenewWizard = ({
       );
     completed.current = true;
     if (result.certificateId && result.certificate)
-      navigate({
-        to: v4Path("/organizations/$orgId/cert-manager/certificates/$certificateId"),
-        params: { orgId, certificateId: result.certificateId },
-        search: applicationName ? { fromApplication: applicationName } : {}
-      });
+      go(certificateHref(orgId, result.certificateId, { applicationName }));
   };
 
   const validateLast = (key: StepKey) => {
