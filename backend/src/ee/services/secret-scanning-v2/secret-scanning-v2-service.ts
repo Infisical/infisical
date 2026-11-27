@@ -769,13 +769,9 @@ export const secretScanningV2ServiceFactory = ({
 
     // Alerts point at their data source without a foreign key, so nothing cascades to them.
     await secretScanningV2DAL.dataSources.transaction(async (tx) => {
+      await secretScanningV2DAL.findings.detachResources({ projectId: dataSource.projectId, dataSourceId }, tx);
       await alertService.deleteAlertsForDeletedResource(
         { resourceType: SECRET_SCANNING_RESOURCE_TYPE, resourceId: dataSourceId },
-        tx
-      );
-      const resources = await secretScanningV2DAL.resources.find({ dataSourceId }, { tx });
-      await secretScanningV2DAL.findings.detachResources(
-        { projectId: dataSource.projectId, resourceIds: resources.map(({ id }) => id) },
         tx
       );
       await secretScanningV2DAL.dataSources.deleteById(dataSourceId, tx);
@@ -1078,6 +1074,12 @@ export const secretScanningV2ServiceFactory = ({
 
     try {
       await secretScanningV2DAL.resources.transaction(async (tx) => {
+        // First, so the project lock comes before the data source row, as in a data source delete.
+        await secretScanningV2DAL.findings.detachResources(
+          { projectId: dataSource.projectId, resourceIds: [resourceId] },
+          tx
+        );
+
         if (webhook) {
           await secretScanningV2DAL.dataSources.updateById(
             dataSourceId,
@@ -1086,10 +1088,6 @@ export const secretScanningV2ServiceFactory = ({
           );
         }
 
-        await secretScanningV2DAL.findings.detachResources(
-          { projectId: dataSource.projectId, resourceIds: [resourceId] },
-          tx
-        );
         // Cascades to the resource's scans.
         await secretScanningV2DAL.resources.deleteById(resourceId, tx);
       });

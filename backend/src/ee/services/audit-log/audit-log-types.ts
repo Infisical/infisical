@@ -6162,7 +6162,6 @@ interface SecretScanningFindingUpdateEvent {
     findingRule: string;
     resourceId: string;
     resourceName: string;
-    // every resource the finding was found in, which the update applies to
     resources?: { id: string; name: string }[];
   };
 }

@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { SecretScanningDataSourceIcon } from "@app/components/secret-scanning";
 import {
   Button,
   Card,
@@ -29,7 +30,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   Pagination,
-  ProviderIcon,
   SelectedActionBar,
   Skeleton,
   Table,
@@ -46,14 +46,14 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  formatLocationCount,
+  formatResourceCount,
   RESOURCE_DESCRIPTION_HELPER,
-  SECRET_SCANNING_DATA_SOURCE_MAP,
   SECRET_SCANNING_FINDING_STATUS_MAP,
   SECRET_SCANNING_FINDING_STATUS_ORDER
 } from "@app/helpers/secretScanningV2";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  SecretScanningDataSource,
   SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   TSecretScanningDataSource,
@@ -78,19 +78,6 @@ const DEFAULT_SORT: TSort = {
 };
 
 const ALL_OPTION = "all";
-
-// GitLab calls its repositories projects; a secret found in both kinds is counted in repositories
-const formatResourceCount = (resources: TSecretScanningFinding["resources"]) => {
-  const isAllProjects =
-    resources.length > 0 &&
-    resources.every(({ dataSourceType }) => dataSourceType === SecretScanningDataSource.GitLab);
-  const { singularNoun, pluralNoun } =
-    RESOURCE_DESCRIPTION_HELPER[
-      isAllProjects ? SecretScanningDataSource.GitLab : SecretScanningDataSource.GitHub
-    ];
-
-  return `in ${resources.length} ${resources.length === 1 ? singularNoun : pluralNoun}`;
-};
 
 type ResourceFilterProps = {
   dataSource: Pick<TSecretScanningDataSource, "id" | "type">;
@@ -457,11 +444,7 @@ export const SecretScanningFindingsTable = ({
                     <DropdownMenuSeparator />
                     {dataSources.map((option) => (
                       <DropdownMenuRadioItem key={option.id} value={option.id}>
-                        <ProviderIcon
-                          alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[option.type].name} data source`}
-                          icon={SECRET_SCANNING_DATA_SOURCE_MAP[option.type].image}
-                          className="size-4"
-                        />
+                        <SecretScanningDataSourceIcon type={option.type} className="size-4" />
                         <span className="truncate">{option.name}</span>
                       </DropdownMenuRadioItem>
                     ))}
@@ -548,9 +531,7 @@ export const SecretScanningFindingsTable = ({
                         <TableCell isTruncatable>{finding.rule}</TableCell>
                         <TableCell>
                           <p className="whitespace-nowrap">
-                            {finding.locationCount === 1
-                              ? "1 location"
-                              : `${finding.locationCount} locations`}
+                            {formatLocationCount(finding.locationCount)}
                           </p>
                           <p className="text-xs whitespace-nowrap text-muted">
                             {formatResourceCount(finding.resources)}

@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { SecretScanningDataSourceIcon } from "@app/components/secret-scanning";
 import {
   Button,
   ButtonGroup,
@@ -14,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  ProviderIcon,
   Separator,
   Sheet,
   SheetContent,
@@ -27,7 +27,7 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
+import { formatLocationCount } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
@@ -39,7 +39,7 @@ import { FindingStatusBadge } from "./FindingStatusBadge";
 
 type Props = {
   finding?: TSecretScanningFinding;
-  // the resource the user came from, whose locations are shown first
+  // the resource the user came from, which the location list starts filtered to
   focusResourceId: string | null;
   position: { index: number; total: number } | null;
   onClose: () => void;
@@ -63,15 +63,14 @@ const FoundInList = ({ resources }: { resources: TSecretScanningFinding["resourc
     <ul className="flex flex-col gap-1">
       {visible.map((resource) => (
         <li key={resource.id} className="flex items-center gap-2">
-          <ProviderIcon
-            alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source ${resource.dataSourceName}`}
-            title={resource.dataSourceName}
-            icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
+          <SecretScanningDataSourceIcon
+            type={resource.dataSourceType}
+            dataSourceName={resource.dataSourceName}
             className="size-3.5"
           />
           <span className="truncate">{resource.name}</span>
           <span className="shrink-0 text-xs text-muted">
-            {resource.locationCount === 1 ? "1 location" : `${resource.locationCount} locations`}
+            {formatLocationCount(resource.locationCount)}
           </span>
         </li>
       ))}
@@ -83,7 +82,7 @@ const FoundInList = ({ resources }: { resources: TSecretScanningFinding["resourc
             className="px-0"
             onClick={() => setIsExpanded(!isExpanded)}
           >
-            {isExpanded ? "Show less" : `${hiddenCount} more`}
+            {isExpanded ? "Show less" : `+${hiddenCount} more`}
           </Button>
         </li>
       )}
@@ -105,7 +104,9 @@ export const FindingDetailSheet = ({
   const { data: locationPages } = useListSecretScanningFindingLocations(finding?.id ?? "");
   const latestLocation = locationPages?.pages[0]?.locations[0];
   const dataSourceNames = [
-    ...new Set(finding?.resources.map((resource) => resource.dataSourceName) ?? [])
+    ...new Map(
+      (finding?.resources ?? []).map((resource) => [resource.dataSourceId, resource.dataSourceName])
+    ).values()
   ];
 
   return (
@@ -115,7 +116,7 @@ export const FindingDetailSheet = ({
           <>
             <SheetHeader>
               <div className="flex items-center gap-1 pr-8">
-                <span className="mr-auto flex items-center gap-2 text-xs text-muted">
+                <span className="mr-auto min-w-0 truncate text-xs text-muted">
                   {dataSourceNames.join(", ")}
                 </span>
                 {position && (

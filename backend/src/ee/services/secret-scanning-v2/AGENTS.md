@@ -29,21 +29,21 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
 - Nothing in the database makes a value's finding unique, because earlier releases save a finding per resource or per
   location and have to keep working after a rollback. Code that looks a value up must take the oldest finding when
   there are several, which is also the one the merge by value keeps
-  (`20261125120000_merge-secret-scanning-findings-across-resources.ts`).
+  (`20261126120000_merge-secret-scanning-findings-across-resources.ts`).
 - Scans write findings only through `findings.persistLocations` (`secret-scanning-v2-dal.ts`), in the transaction
   that records the scan's progress. Only a location the resource didn't have can create a finding or reopen a
   `resolved` one; a rescan of history must change nothing. False positives and ignored findings just gain the
-  location. It takes a per-resource advisory lock (`PgSqlLock.SecretScanningFindingLocations`) first, so a diff scan
-  and a full scan of one resource can't both create a finding for one value (no unique index keeps one finding per
-  value, so the previous release still works after a rollback) or both take a location as new.
-- Finding locks are taken in one order: a resource's advisory lock, then the project's
-  (`PgSqlLock.SecretScanningFindingValues`), then finding rows `ORDER BY id FOR UPDATE`. Never take a resource's lock
-  while holding the project's. `persistLocations` takes the project lock before writing anything whenever it saves a
-  location with a blind index, `findings.detachResources` takes only the project lock, and PR skips take only the row
-  locks. Any other write that locks several findings locks them in id order too.
+  location. Its locks (next item) keep two scans from both creating a finding for one value or both taking a location
+  as new.
+- Finding locks are taken in one order: a resource's advisory lock (`PgSqlLock.SecretScanningFindingLocations`), then
+  the project's (`PgSqlLock.SecretScanningFindingValues`), then rows: the data source's, then findings
+  `ORDER BY id FOR UPDATE`. Never take a resource's lock while holding the project's. `persistLocations` takes the
+  project lock before writing anything whenever it saves a new location with a blind index, `findings.detachResources`
+  takes only the project lock (so a resource or data source delete calls it before touching the data source row), and
+  PR skips take only the row locks. Any other write that locks several findings locks them in id order too.
 - A finding's locations, not `findings.resourceId`, say which resources it is in, since a finding can have locations
-  in resources other than the one it names. Filters and counts by resource or data source go through the locations. A finding with no location at all (a copy the merge by value had
-  no place for) is in the resource it names.
+  in resources other than the one it names. Filters and counts by resource or data source go through the locations.
+  A finding with no location at all (a copy the merge by value had no place for) is in the resource it names.
 - Deleting a resource or a data source calls `findings.detachResources` first, in the same transaction. It removes the
   resources' locations, deletes findings left without one, and points the others' deprecated columns at a location
   that stays, so the cascade through `findings.resourceId` and `findings.scanId` never deletes a finding that still
@@ -55,16 +55,16 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, findings, or 
 - `findings.resourceId`, `scanId`, `fingerprint` and `details` describe one of the finding's locations and always move
   together, so the scan always belongs to the resource. The last three are deprecated but still written:
   `persistLocations` stores the finding's first location there, so the release before locations existed keeps working
-  if a deploy is rolled back.
-  The findings API still returns them (and sorts by `author` from `details`) for clients built before locations. Never
-  read them in new code; drop the columns and those fields together, in a release after this one has shipped.
+  if a deploy is rolled back. The findings API still returns them (and sorts by `author` from `details`) for clients
+  built before locations. Never read them in new code; drop the columns and those fields together, in a release after
+  this one has shipped.
 - Location ids of migrated findings are the old finding ids, so ids saved before the merge (a PR check's
   `findingIds`) still resolve through `findings.findByIdsOrLocationIdsForUpdate`, which only returns findings with a
   location in the check's resource.
 - A PR check is judged on the finding of every location the scan matched, including locations an earlier push saved,
   never only the new ones. Its counts are distinct findings. Its output lists only the scan's own locations, never
   another resource's names or paths, since a public repository's check is public. Skipping it from GitHub triages the
-  whole finding, in every resource, as GitGuardian does.
+  whole finding, in every resource.
 - A finding's `resources` (API) lists every resource it was found in, the one a list was filtered by (or its scan's)
   first, so links from a resource's alert or check open on that resource.
 - Notifications are alerts on the shared alert module (`secret-scanning.data-source` provider), bound to one data

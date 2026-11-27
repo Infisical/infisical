@@ -40,7 +40,6 @@ export enum SecretScanningFindingOrderBy {
   LastDetectedAt = "lastDetectedAt",
   CreatedAt = "createdAt",
   Rule = "rule",
-  ResourceName = "resourceName",
   Status = "status",
   LocationCount = "locationCount"
 }

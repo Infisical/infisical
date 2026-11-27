@@ -67,10 +67,8 @@ export const FindingStatusDialog = ({ findings, status, onOpenChange, onComplete
   const sharedFindings = findings.filter((finding) => finding.resources.length > 1);
 
   const renderSharedNotice = () => {
-    if (!sharedFindings.length) return null;
-
     if (isBulk) {
-      return `${sharedFindings.length} of these secrets were found in more than one place. The status applies everywhere each was found.`;
+      return `${sharedFindings.length} of these secrets were found in more than one repository. The status applies everywhere each was found.`;
     }
 
     const names = findings[0].resources.map((resource) => resource.name);

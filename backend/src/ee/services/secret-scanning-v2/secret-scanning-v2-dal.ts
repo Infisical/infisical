@@ -183,6 +183,52 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   const findingOrm = ormify(db, TableName.SecretScanningFinding);
   const configOrm = ormify(db, TableName.SecretScanningConfig);
 
+  // A finding's locations, optionally only those in one resource, data source or scan, as the subquery of a
+  // whereExists or whereNotExists on the finding.
+  const findingLocationsQuery = (
+    subQuery: Knex.QueryBuilder,
+    { resourceId, dataSourceId, scanId }: { resourceId?: string; dataSourceId?: string; scanId?: string } = {}
+  ) => {
+    void subQuery
+      .select(db.raw("1"))
+      .from(TableName.SecretScanningFindingLocation)
+      .whereRaw("?? = ??", [
+        `${TableName.SecretScanningFindingLocation}.findingId`,
+        `${TableName.SecretScanningFinding}.id`
+      ]);
+    if (resourceId) void subQuery.where(`${TableName.SecretScanningFindingLocation}.resourceId`, resourceId);
+    if (dataSourceId) {
+      void subQuery.whereIn(`${TableName.SecretScanningFindingLocation}.resourceId`, (resources) => {
+        void resources.select("id").from(TableName.SecretScanningResource).where({ dataSourceId });
+      });
+    }
+    if (scanId) void subQuery.where(`${TableName.SecretScanningFindingLocation}.scanId`, scanId);
+  };
+
+  // A finding is in a resource when it has a location there, or names the resource when it has no location at all.
+  const whereFindingInResource = (
+    query: Knex.QueryBuilder,
+    scope: { resourceId: string } | { dataSourceId: string }
+  ) => {
+    void query.where((inScope) => {
+      void inScope
+        .whereExists((subQuery) => findingLocationsQuery(subQuery, scope))
+        .orWhere((unlocated) => {
+          if ("resourceId" in scope)
+            void unlocated.where(`${TableName.SecretScanningFinding}.resourceId`, scope.resourceId);
+          else {
+            void unlocated.whereIn(`${TableName.SecretScanningFinding}.resourceId`, (resources) => {
+              void resources
+                .select("id")
+                .from(TableName.SecretScanningResource)
+                .where({ dataSourceId: scope.dataSourceId });
+            });
+          }
+          void unlocated.whereNotExists((subQuery) => findingLocationsQuery(subQuery));
+        });
+    });
+  };
+
   // Postgres has a hard limit of how many itens can be upserted, so to prevent
   // issues in very large repositories with lots of findings, we should batch
   // the inserts to prevent the worker from exiting and failing the scan.
@@ -540,15 +586,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
           )
           .whereIn(`${TableName.SecretScanningResource}.dataSourceId`, dataSourceIds)
           .where(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
-          .whereNotExists((subQuery) => {
-            void subQuery
-              .select(db.raw("1"))
-              .from(TableName.SecretScanningFindingLocation)
-              .whereRaw("?? = ??", [
-                `${TableName.SecretScanningFindingLocation}.findingId`,
-                `${TableName.SecretScanningFinding}.id`
-              ]);
-          })
+          .whereNotExists((subQuery) => findingLocationsQuery(subQuery))
           .groupBy(`${TableName.SecretScanningResource}.dataSourceId`)
           .select(`${TableName.SecretScanningResource}.dataSourceId`)
           .count({ count: "*" })
@@ -950,7 +988,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
                    'dataSourceType', ds.type, 'locationCount', lc.count
                  )
                  ORDER BY r.id = COALESCE(?::uuid, (SELECT s."resourceId" FROM ?? AS s WHERE s.id = ?::uuid)) DESC NULLS LAST,
-                   ds.id = ?::uuid DESC NULLS LAST, lc.count DESC, r.name
+                   ds.id = ?::uuid DESC NULLS LAST, lc.count DESC, r.name, r.id
                )
                FROM (SELECT l."resourceId", count(*)::int AS count FROM ?? AS l WHERE l."findingId" = ?? GROUP BY l."resourceId") AS lc
                JOIN ?? AS r ON r.id = lc."resourceId"
@@ -990,53 +1028,10 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   ) => {
     void query.where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
     if (status) void query.where(`${TableName.SecretScanningFinding}.status`, status);
-    // A finding is in a resource when it has a location there, or names it when it has no location at all.
-    if (dataSourceId || resourceId) {
-      void query.where((inScope) => {
-        void inScope
-          .whereExists((subQuery) => {
-            void subQuery
-              .select(db.raw("1"))
-              .from(TableName.SecretScanningFindingLocation)
-              .whereRaw("?? = ??", [
-                `${TableName.SecretScanningFindingLocation}.findingId`,
-                `${TableName.SecretScanningFinding}.id`
-              ]);
-            if (resourceId) void subQuery.where(`${TableName.SecretScanningFindingLocation}.resourceId`, resourceId);
-            if (dataSourceId) {
-              void subQuery.whereIn(`${TableName.SecretScanningFindingLocation}.resourceId`, (resources) => {
-                void resources.select("id").from(TableName.SecretScanningResource).where({ dataSourceId });
-              });
-            }
-          })
-          .orWhere((unlocated) => {
-            if (resourceId) void unlocated.where(`${TableName.SecretScanningFinding}.resourceId`, resourceId);
-            if (dataSourceId) void unlocated.where(`${TableName.SecretScanningDataSource}.id`, dataSourceId);
-            void unlocated.whereNotExists((subQuery) => {
-              void subQuery
-                .select(db.raw("1"))
-                .from(TableName.SecretScanningFindingLocation)
-                .whereRaw("?? = ??", [
-                  `${TableName.SecretScanningFindingLocation}.findingId`,
-                  `${TableName.SecretScanningFinding}.id`
-                ]);
-            });
-          });
-      });
-    }
+    if (resourceId) whereFindingInResource(query, { resourceId });
+    if (dataSourceId) whereFindingInResource(query, { dataSourceId });
     // the findings the scan found a new location of
-    if (scanId) {
-      void query.whereExists((subQuery) => {
-        void subQuery
-          .select(db.raw("1"))
-          .from(TableName.SecretScanningFindingLocation)
-          .whereRaw("?? = ??", [
-            `${TableName.SecretScanningFindingLocation}.findingId`,
-            `${TableName.SecretScanningFinding}.id`
-          ])
-          .where(`${TableName.SecretScanningFindingLocation}.scanId`, scanId);
-      });
-    }
+    if (scanId) void query.whereExists((subQuery) => findingLocationsQuery(subQuery, { scanId }));
     return query;
   };
 
@@ -1196,7 +1191,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
    * diff scan reopened), each once. A known value turning up somewhere new is no news. A finding's scanId is written
    * once, by the scan that inserts it under the advisory locks, so it names the creating scan however many batches or
    * attempts that scan took. Location timestamps can't tell: now() is when a transaction began, so a scan that began
-   * earlier but took the lock later would sort first on a finding it didn't create.
+   * earlier but took the lock later would sort first on a finding it didn't create. A resource delete can point an
+   * older finding's scanId at a later scan (detachResources), so a finding found before the scan began is never its.
    */
   const countNewUnresolvedByScanId = async (
     scanId: string,
@@ -1207,7 +1203,14 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       const [result] = (await (tx || db)(TableName.SecretScanningFinding)
         .where("status", SecretScanningFindingStatus.Unresolved)
         .where((news) => {
-          void news.where({ scanId });
+          void news.where((created) => {
+            void created
+              .where({ scanId })
+              .whereRaw(`"createdAt" >= (SELECT s."createdAt" FROM ?? AS s WHERE s.id = ?)`, [
+                TableName.SecretScanningScan,
+                scanId
+              ]);
+          });
           if (alsoIds.length) void news.orWhereRaw("?? = ANY(?::uuid[])", ["id", alsoIds]);
         })
         .count("* as count")) as { count: string }[];
@@ -1230,32 +1233,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
         .where((qb) => {
           void qb
             .where((byFindingId) => {
-              void byFindingId.whereRaw("?? = ANY(?::uuid[])", ["id", ids]).where((inResource) => {
-                void inResource
-                  .whereExists((subQuery) => {
-                    void subQuery
-                      .select(db.raw("1"))
-                      .from(TableName.SecretScanningFindingLocation)
-                      .whereRaw("?? = ??", [
-                        `${TableName.SecretScanningFindingLocation}.findingId`,
-                        `${TableName.SecretScanningFinding}.id`
-                      ])
-                      .where(`${TableName.SecretScanningFindingLocation}.resourceId`, resourceId);
-                  })
-                  .orWhere((unlocated) => {
-                    void unlocated
-                      .where(`${TableName.SecretScanningFinding}.resourceId`, resourceId)
-                      .whereNotExists((subQuery) => {
-                        void subQuery
-                          .select(db.raw("1"))
-                          .from(TableName.SecretScanningFindingLocation)
-                          .whereRaw("?? = ??", [
-                            `${TableName.SecretScanningFindingLocation}.findingId`,
-                            `${TableName.SecretScanningFinding}.id`
-                          ]);
-                      });
-                  });
-              });
+              void byFindingId.whereRaw("?? = ANY(?::uuid[])", ["id", ids]);
+              whereFindingInResource(byFindingId, { resourceId });
             })
             .orWhereIn("id", (subQuery) => {
               void subQuery
@@ -1279,15 +1258,23 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
    * through a finding's resourceId and scanId never reaches it.
    */
   const detachFindingResources = async (
-    { projectId, resourceIds }: { projectId: string; resourceIds: string[] },
+    scope: { projectId: string } & ({ resourceIds: string[] } | { dataSourceId: string }),
     tx: Knex
   ) => {
-    if (!resourceIds.length) return;
-
     try {
       // Only this lock, never a resource's: scans take a resource's lock and then this one, so waiting on a resource's
       // lock while holding this one could deadlock with them.
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(projectId)]);
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretScanningFindingValues(scope.projectId)]);
+
+      // Read under the lock, which a scan holds while it saves a resource's findings, so no resource with findings is
+      // missed and left to the cascade.
+      const resourceIds =
+        "resourceIds" in scope
+          ? scope.resourceIds
+          : (await tx(TableName.SecretScanningResource).where({ dataSourceId: scope.dataSourceId }).select("id")).map(
+              ({ id }) => id
+            );
+      if (!resourceIds.length) return;
 
       const findings = await tx(TableName.SecretScanningFinding)
         .where((qb) => {
@@ -1309,15 +1296,7 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
 
       await tx(TableName.SecretScanningFinding)
         .whereRaw("?? = ANY(?::uuid[])", [`${TableName.SecretScanningFinding}.id`, findingIds])
-        .whereNotExists((subQuery) => {
-          void subQuery
-            .select(db.raw("1"))
-            .from(TableName.SecretScanningFindingLocation)
-            .whereRaw("?? = ??", [
-              `${TableName.SecretScanningFindingLocation}.findingId`,
-              `${TableName.SecretScanningFinding}.id`
-            ]);
-        })
+        .whereNotExists((subQuery) => findingLocationsQuery(subQuery))
         .delete();
 
       await tx.raw(
@@ -1381,6 +1360,27 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  const findLocationResourcesByFindingIds = async (findingIds: string[], tx?: Knex) => {
+    if (!findingIds.length) return [];
+
+    try {
+      return (await (tx || db.replicaNode())(TableName.SecretScanningFindingLocation)
+        .join(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningResource}.id`,
+          `${TableName.SecretScanningFindingLocation}.resourceId`
+        )
+        .whereRaw("?? = ANY(?::uuid[])", [`${TableName.SecretScanningFindingLocation}.findingId`, findingIds])
+        .distinct(
+          `${TableName.SecretScanningFindingLocation}.findingId`,
+          `${TableName.SecretScanningResource}.id`,
+          `${TableName.SecretScanningResource}.name`
+        )) as { findingId: string; id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Resources By Finding IDs - Secret Scanning Finding Location" });
+    }
+  };
+
   const primaryNode = () => db.primaryNode();
 
   return {
@@ -1421,7 +1421,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       countByProjectId: countFindingsByProjectId
     },
     locations: {
-      findByFindingId: findLocationsByFindingId
+      findByFindingId: findLocationsByFindingId,
+      findResourcesByFindingIds: findLocationResourcesByFindingIds
     },
     configs: configOrm
   };

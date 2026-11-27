@@ -101,6 +101,21 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
   }
 };
 
+export const formatLocationCount = (count: number) =>
+  count === 1 ? "1 location" : `${count} locations`;
+
+// Resources of different kinds, such as GitHub repositories and GitLab projects, are counted as repositories.
+export const formatResourceCount = (resources: { dataSourceType: SecretScanningDataSource }[]) => {
+  const isOneKind =
+    resources.length > 0 &&
+    resources.every(({ dataSourceType }) => dataSourceType === resources[0].dataSourceType);
+  const { singularNoun, pluralNoun } = isOneKind
+    ? RESOURCE_DESCRIPTION_HELPER[resources[0].dataSourceType]
+    : { singularNoun: "repository", pluralNoun: "repositories" };
+
+  return `in ${resources.length} ${resources.length === 1 ? singularNoun : pluralNoun}`;
+};
+
 export const SECRET_SCANNING_FINDING_STATUS_MAP: Record<
   SecretScanningFindingStatus,
   {

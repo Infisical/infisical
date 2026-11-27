@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import { ChevronDownIcon, ExternalLinkIcon } from "lucide-react";
 
+import { SecretScanningDataSourceIcon } from "@app/components/secret-scanning";
 import {
   Accordion,
   AccordionContent,
@@ -17,13 +18,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  ProviderIcon,
   Skeleton
 } from "@app/components/v3";
-import {
-  RESOURCE_DESCRIPTION_HELPER,
-  SECRET_SCANNING_DATA_SOURCE_MAP
-} from "@app/helpers/secretScanningV2";
+import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
 import {
   TSecretScanningFindingLocation,
   TSecretScanningFindingResource,
@@ -64,9 +61,8 @@ const LocationDetails = ({
         </DetailLabel>
         <DetailValue className="flex items-center gap-1.5">
           {resource && (
-            <ProviderIcon
-              alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].name} data source`}
-              icon={SECRET_SCANNING_DATA_SOURCE_MAP[resource.dataSourceType].image}
+            <SecretScanningDataSourceIcon
+              type={resource.dataSourceType}
               className="size-4 shrink-0"
             />
           )}
@@ -173,8 +169,10 @@ export const FindingLocationList = ({
         {resources.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="xs">
-                {selectedResource ? selectedResource.name : "Everywhere"}
+              <Button variant="outline" size="xs" className="max-w-56">
+                <span className="truncate">
+                  {selectedResource ? selectedResource.name : "Everywhere"}
+                </span>
                 <ChevronDownIcon />
               </Button>
             </DropdownMenuTrigger>

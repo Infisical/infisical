@@ -310,6 +310,46 @@ describe("secretScanningV2DAL findings", () => {
       expect(await h.db(TableName.SecretScanningFinding).where({ id: unlocated.id }).first()).toBeDefined();
     });
 
+    test("should not make a known finding news for the running scan it is pointed at", async () => {
+      // Setup
+      const s = await setup();
+      const [removed, added] = [await s.resource(), await s.resource()];
+      const removedScan = await s.scan(removed.id);
+      const known = await s.finding({ resourceId: removed.id, scanId: removedScan.id, blindIndex: "value-a" });
+      await s.location({ findingId: known.id, resourceId: removed.id, scanId: removedScan.id });
+      const running = await s.scan(added.id, SecretScanningScanStatus.Scanning);
+      await s.location({ findingId: known.id, resourceId: added.id, scanId: running.id });
+
+      // Action
+      await h.db.transaction((tx) =>
+        s.dal.findings.detachResources({ projectId: s.projectId, resourceIds: [removed.id] }, tx)
+      );
+
+      // Assert
+      expect(await h.db(TableName.SecretScanningFinding).where({ id: known.id }).first()).toMatchObject({
+        scanId: running.id
+      });
+      expect(await s.dal.findings.countNewUnresolvedByScanId(running.id)).toBe(0);
+    });
+
+    test("should detach every resource of a data source", async () => {
+      // Setup
+      const s = await setup();
+      const [first, second] = [await s.resource(), await s.resource()];
+      const created = await s.persist(first.id, (await s.scan(first.id)).id, [row("value-a", "fp-1")]);
+      await s.persist(second.id, (await s.scan(second.id)).id, [row("value-a", "fp-2")]);
+
+      // Action
+      await h.db.transaction((tx) =>
+        s.dal.findings.detachResources({ projectId: s.projectId, dataSourceId: s.dataSource.id }, tx)
+      );
+
+      // Assert
+      expect(await h.db(TableName.SecretScanningFinding).where({ id: created.scannedLocations[0].id }).first()).toBe(
+        undefined
+      );
+    });
+
     test("should delete a resource's findings like the cascade did when they have no other location", async () => {
       // Setup
       const s = await setup();
