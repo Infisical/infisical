@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/slack"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
@@ -187,6 +188,45 @@ func TestSlackIntegration_Manage(t *testing.T) {
 		require.Equal(t, renamed, got.JSON200.Slug)
 		require.Equal(t, "on-call pages", *got.JSON200.Description)
 		require.Equal(t, teamName, got.JSON200.TeamName)
+	})
+
+	t.Run("should audit a rename in the integration's org with its id, new slug and description", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		integrationID, _ := installSlack(t, tn, "alerts-"+id.Short(), "Acme "+id.Short())
+		renamed := "paging-" + id.Short()
+		res := fixture.RawCall(t, tn.Admin.API, http.MethodPatch, slackBase+"/"+integrationID,
+			map[string]any{"slug": renamed, "description": "on-call pages"})
+		require.Equal(t, http.StatusOK, res.Status, string(res.Body))
+
+		// Action
+		events := fixture.WaitForAuditEvents(t, tn, "update-slack-integration", 1,
+			func(e fixture.AuditEvent) bool { return e.Metadata["id"] == integrationID })
+
+		// Assert
+		require.Len(t, events, 1)
+		require.Equal(t, renamed, events[0].Metadata["slug"])
+		require.Equal(t, "on-call pages", events[0].Metadata["description"])
+	})
+
+	t.Run("should audit an install attempt in the actor's org with the requested slug", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		slug := "alerts-" + id.Short()
+		res, err := tn.Admin.API.GetSlackInstallUrlWithResponse(t.Context(), &api.GetSlackInstallUrlParams{Slug: slug})
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+
+		// Action
+		events := fixture.WaitForAuditEvents(t, tn, "attempt-create-slack-integration", 1,
+			func(e fixture.AuditEvent) bool { return e.Metadata["slug"] == slug })
+
+		// Assert
+		require.Len(t, events, 1)
 	})
 
 	t.Run("should refuse renaming to a slug another integration of the org has, and keep the name", func(t *testing.T) {

@@ -45,6 +45,8 @@ export type {
 } from "./services/dependencies";
 export type { TMicrosoftTeamsIntegrationService } from "./services/microsoft-teams-integration/service";
 export type { TSlackIntegrationService } from "./services/slack-integration/service";
+export { WorkflowIntegrationAuditEvent } from "./router/audit";
+export type { TWorkflowIntegrationAuditEntry, TWorkflowIntegrationAuditLog } from "./router/audit";
 export { registerWorkflowIntegrationsRouter } from "./router/workflow-integrations-router";
 export type { TWorkflowIntegrationsRouterDeps } from "./router/types";
 export type { TFindInOrgInput, TWorkflowIntegrationService } from "./services/workflow-integration/service";

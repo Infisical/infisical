@@ -40,8 +40,10 @@ channelIds, teamId?, limits? })`. Never add product vocabulary (event names, wor
   tenant's pending integration installed.
 - **Config comes in through the module**: `siteUrl`, `isCloud` and `authSecret` (the Slack OAuth state secret) from
   `domains.ts`. Nothing here calls `getConfig()`.
-- **The routes take their services as deps** (`registerWorkflowIntegrationsRouter(server, deps)`), never from
-  `server.services`. The audit log is the one exception until Audit Log Core lands.
+- **The routes take everything as deps** (`registerWorkflowIntegrationsRouter(server, deps)`), never from
+  `server.services`: their services, and `auditLog`, which records a `WorkflowIntegrationAuditEvent`. The mount site
+  (`server/routes/v1/index.ts`) maps each event onto the audit catalog's `EventType` in an exhaustive map, so `ce/`
+  never imports the `ee/` catalog and a new event fails to compile until it is mapped.
 - **`GET /slack/:id/alert-count` belongs to Alerting** (`server/routes/v1/alert-slack-integration-router.ts`), mounted
   under the same prefix: the count is Alerting's data, and it asks this domain only for the read check
   (`slackIntegrationService.assertCanRead`).

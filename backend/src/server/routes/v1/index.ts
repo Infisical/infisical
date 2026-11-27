@@ -1,5 +1,9 @@
 import type { TDomains } from "@app/domains/domains";
-import { registerWorkflowIntegrationsRouter } from "@app/domains/platform/workflow-integrations/ce/module";
+import {
+  registerWorkflowIntegrationsRouter,
+  WorkflowIntegrationAuditEvent
+} from "@app/domains/platform/workflow-integrations/ce/module";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { withRoutePrefix } from "@app/server/lib/with-route-prefix";
@@ -109,6 +113,25 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 
+// Every Workflow Integrations audit event on the audit catalog's type; a new event fails to compile until it is listed.
+const WORKFLOW_INTEGRATION_AUDIT_EVENTS: Record<WorkflowIntegrationAuditEvent, EventType> = {
+  [WorkflowIntegrationAuditEvent.AttemptCreateSlackIntegration]: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION,
+  [WorkflowIntegrationAuditEvent.AttemptReinstallSlackIntegration]: EventType.ATTEMPT_REINSTALL_SLACK_INTEGRATION,
+  [WorkflowIntegrationAuditEvent.DeleteSlackIntegration]: EventType.DELETE_SLACK_INTEGRATION,
+  [WorkflowIntegrationAuditEvent.GetSlackIntegration]: EventType.GET_SLACK_INTEGRATION,
+  [WorkflowIntegrationAuditEvent.UpdateSlackIntegration]: EventType.UPDATE_SLACK_INTEGRATION,
+  [WorkflowIntegrationAuditEvent.CheckMicrosoftTeamsInstallationStatus]:
+    EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS,
+  [WorkflowIntegrationAuditEvent.CreateMicrosoftTeamsIntegration]:
+    EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE,
+  [WorkflowIntegrationAuditEvent.DeleteMicrosoftTeamsIntegration]:
+    EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE,
+  [WorkflowIntegrationAuditEvent.GetMicrosoftTeamsIntegration]: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET,
+  [WorkflowIntegrationAuditEvent.GetMicrosoftTeamsTeams]: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS,
+  [WorkflowIntegrationAuditEvent.ListMicrosoftTeamsIntegrations]: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST,
+  [WorkflowIntegrationAuditEvent.UpdateMicrosoftTeamsIntegration]: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE
+};
+
 export const registerV1Routes = async (server: FastifyZodProvider, { domains }: { domains: TDomains }) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
   await server.register(
@@ -167,7 +190,15 @@ export const registerV1Routes = async (server: FastifyZodProvider, { domains }: 
         workflowIntegrationService: workflowIntegrations.workflowIntegrationService,
         slackIntegrationService: workflowIntegrations.slackIntegrationService,
         microsoftTeamsIntegrationService: workflowIntegrations.microsoftTeamsIntegrationService,
-        siteUrl: getConfig().SITE_URL
+        siteUrl: getConfig().SITE_URL,
+        auditLog: {
+          record: (req, { orgId, type, metadata }) =>
+            server.services.auditLog.createAuditLog({
+              ...req.auditLogInfo,
+              orgId: orgId ?? req.actor.orgId,
+              event: { type: WORKFLOW_INTEGRATION_AUDIT_EVENTS[type], metadata }
+            } as Parameters<typeof server.services.auditLog.createAuditLog>[0])
+        }
       });
       await workflowIntegrationRouter.register(registerAlertSlackIntegrationRouter, { prefix: "/slack" });
     },

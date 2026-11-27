@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 import { SlackIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 
+import { WorkflowIntegrationAuditEvent } from "./audit";
 import { toSlackIntegrationResponse } from "./responses";
 import { TWorkflowIntegrationsRouterDeps } from "./types";
 
@@ -23,7 +23,11 @@ export const sanitizedSlackIntegrationSchema = WorkflowIntegrationsSchema.pick({
 
 export const registerSlackRoutes = async (
   server: FastifyZodProvider,
-  { slackIntegrationService, siteUrl }: Pick<TWorkflowIntegrationsRouterDeps, "slackIntegrationService" | "siteUrl">
+  {
+    slackIntegrationService,
+    siteUrl,
+    auditLog
+  }: Pick<TWorkflowIntegrationsRouterDeps, "slackIntegrationService" | "siteUrl" | "auditLog">
 ) => {
   server.route({
     method: "GET",
@@ -53,15 +57,11 @@ export const registerSlackRoutes = async (
         ...req.query
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.ATTEMPT_CREATE_SLACK_INTEGRATION,
-          metadata: {
-            slug: req.query.slug,
-            description: req.query.description
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.AttemptCreateSlackIntegration,
+        metadata: {
+          slug: req.query.slug,
+          description: req.query.description
         }
       });
 
@@ -96,14 +96,10 @@ export const registerSlackRoutes = async (
         id: req.query.id
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.ATTEMPT_REINSTALL_SLACK_INTEGRATION,
-          metadata: {
-            id: req.query.id
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.AttemptReinstallSlackIntegration,
+        metadata: {
+          id: req.query.id
         }
       });
 
@@ -165,14 +161,11 @@ export const registerSlackRoutes = async (
         id: req.params.id
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
+      await auditLog.record(req, {
         orgId: deletedSlackIntegration.orgId,
-        event: {
-          type: EventType.DELETE_SLACK_INTEGRATION,
-          metadata: {
-            id: deletedSlackIntegration.id
-          }
+        type: WorkflowIntegrationAuditEvent.DeleteSlackIntegration,
+        metadata: {
+          id: deletedSlackIntegration.id
         }
       });
 
@@ -207,14 +200,11 @@ export const registerSlackRoutes = async (
         id: req.params.id
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
+      await auditLog.record(req, {
         orgId: slackIntegration.orgId,
-        event: {
-          type: EventType.GET_SLACK_INTEGRATION,
-          metadata: {
-            id: slackIntegration.id
-          }
+        type: WorkflowIntegrationAuditEvent.GetSlackIntegration,
+        metadata: {
+          id: slackIntegration.id
         }
       });
 
@@ -291,16 +281,13 @@ export const registerSlackRoutes = async (
         ...req.body
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
+      await auditLog.record(req, {
         orgId: slackIntegration.orgId,
-        event: {
-          type: EventType.UPDATE_SLACK_INTEGRATION,
-          metadata: {
-            id: slackIntegration.id,
-            slug: slackIntegration.slug,
-            description: slackIntegration.description as string
-          }
+        type: WorkflowIntegrationAuditEvent.UpdateSlackIntegration,
+        metadata: {
+          id: slackIntegration.id,
+          slug: slackIntegration.slug,
+          description: slackIntegration.description as string
         }
       });
 

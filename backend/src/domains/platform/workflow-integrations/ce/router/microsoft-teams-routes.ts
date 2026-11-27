@@ -1,13 +1,13 @@
 import { z } from "zod";
 
 import { MicrosoftTeamsIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 
 import { WorkflowIntegrationStatus } from "../models/enums";
+import { WorkflowIntegrationAuditEvent } from "./audit";
 import { toMicrosoftTeamsIntegrationResponse } from "./responses";
 import { TWorkflowIntegrationsRouterDeps } from "./types";
 
@@ -30,7 +30,10 @@ const sanitizedMicrosoftTeamsIntegrationSchema = WorkflowIntegrationsSchema.pick
 
 export const registerMicrosoftTeamsRoutes = async (
   server: FastifyZodProvider,
-  { microsoftTeamsIntegrationService }: Pick<TWorkflowIntegrationsRouterDeps, "microsoftTeamsIntegrationService">
+  {
+    microsoftTeamsIntegrationService,
+    auditLog
+  }: Pick<TWorkflowIntegrationsRouterDeps, "microsoftTeamsIntegrationService" | "auditLog">
 ) => {
   server.route({
     method: "GET",
@@ -86,16 +89,12 @@ export const registerMicrosoftTeamsRoutes = async (
         actor: req.actor
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CREATE,
-          metadata: {
-            tenantId: req.body.tenantId,
-            slug: req.body.slug,
-            description: req.body.description
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.CreateMicrosoftTeamsIntegration,
+        metadata: {
+          tenantId: req.body.tenantId,
+          slug: req.body.slug,
+          description: req.body.description
         }
       });
     }
@@ -126,13 +125,9 @@ export const registerMicrosoftTeamsRoutes = async (
         })
       ).map(toMicrosoftTeamsIntegrationResponse);
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_LIST,
-          metadata: {}
-        }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.ListMicrosoftTeamsIntegrations,
+        metadata: {}
       });
 
       return microsoftTeamsIntegrations;
@@ -160,15 +155,11 @@ export const registerMicrosoftTeamsRoutes = async (
         })
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_CHECK_INSTALLATION_STATUS,
-          metadata: {
-            tenantId: microsoftTeamsIntegration.tenantId,
-            slug: microsoftTeamsIntegration.slug
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.CheckMicrosoftTeamsInstallationStatus,
+        metadata: {
+          tenantId: microsoftTeamsIntegration.tenantId,
+          slug: microsoftTeamsIntegration.slug
         }
       });
     }
@@ -203,16 +194,12 @@ export const registerMicrosoftTeamsRoutes = async (
         })
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_DELETE,
-          metadata: {
-            tenantId: deletedMicrosoftTeamsIntegration.tenantId,
-            slug: deletedMicrosoftTeamsIntegration.slug,
-            id: deletedMicrosoftTeamsIntegration.id
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.DeleteMicrosoftTeamsIntegration,
+        metadata: {
+          tenantId: deletedMicrosoftTeamsIntegration.tenantId,
+          slug: deletedMicrosoftTeamsIntegration.slug,
+          id: deletedMicrosoftTeamsIntegration.id
         }
       });
 
@@ -249,16 +236,12 @@ export const registerMicrosoftTeamsRoutes = async (
         })
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET,
-          metadata: {
-            slug: microsoftTeamsIntegration.slug,
-            id: microsoftTeamsIntegration.id,
-            tenantId: microsoftTeamsIntegration.tenantId
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.GetMicrosoftTeamsIntegration,
+        metadata: {
+          slug: microsoftTeamsIntegration.slug,
+          id: microsoftTeamsIntegration.id,
+          tenantId: microsoftTeamsIntegration.tenantId
         }
       });
 
@@ -300,18 +283,14 @@ export const registerMicrosoftTeamsRoutes = async (
         })
       );
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_UPDATE,
-          metadata: {
-            slug: microsoftTeamsIntegration.slug,
-            id: microsoftTeamsIntegration.id,
-            tenantId: microsoftTeamsIntegration.tenantId,
-            newSlug: req.body.slug,
-            newDescription: req.body.description
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.UpdateMicrosoftTeamsIntegration,
+        metadata: {
+          slug: microsoftTeamsIntegration.slug,
+          id: microsoftTeamsIntegration.id,
+          tenantId: microsoftTeamsIntegration.tenantId,
+          newSlug: req.body.slug,
+          newDescription: req.body.description
         }
       });
 
@@ -353,16 +332,12 @@ export const registerMicrosoftTeamsRoutes = async (
       });
       const microsoftTeamsIntegration = { ...toMicrosoftTeamsIntegrationResponse(integration), teams };
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.actor.orgId,
-        event: {
-          type: EventType.MICROSOFT_TEAMS_WORKFLOW_INTEGRATION_GET_TEAMS,
-          metadata: {
-            tenantId: microsoftTeamsIntegration.tenantId,
-            slug: microsoftTeamsIntegration.slug,
-            id: microsoftTeamsIntegration.id
-          }
+      await auditLog.record(req, {
+        type: WorkflowIntegrationAuditEvent.GetMicrosoftTeamsTeams,
+        metadata: {
+          tenantId: microsoftTeamsIntegration.tenantId,
+          slug: microsoftTeamsIntegration.slug,
+          id: microsoftTeamsIntegration.id
         }
       });
 
