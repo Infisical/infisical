@@ -341,8 +341,9 @@ const assertPrivateCaActiveForSetup = async ({
   instanceConfigService: TInstanceConfigService;
 }) => {
   let describeResult;
+  let pcaClient: Awaited<ReturnType<typeof buildPcaClient>> | undefined;
   try {
-    const pcaClient = await buildPcaClient(connection, region, instanceConfigService);
+    pcaClient = await buildPcaClient(connection, region, instanceConfigService);
     describeResult = await pcaClient.send(
       new DescribeCertificateAuthorityCommand({
         CertificateAuthorityArn: certificateAuthorityArn
@@ -356,7 +357,7 @@ const assertPrivateCaActiveForSetup = async ({
     }
     if (!(error instanceof Error) || !("$metadata" in error)) throw error;
     logger.warn(error, logMessage);
-    if (isAwsTransientError(error)) throw awsTransientError("AWS Private CA", error.name);
+    if (isAwsTransientError(error)) throw awsTransientError(pcaClient ? "AWS Private CA" : "AWS STS", error);
     if (error.name === "ResourceNotFoundException") {
       throw new BadRequestError({
         message: `AWS Private CA has no certificate authority '${certificateAuthorityArn}' in region '${region}'. Check the ARN and the region.`

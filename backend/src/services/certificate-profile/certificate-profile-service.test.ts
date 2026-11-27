@@ -337,6 +337,33 @@ describe("CertificateProfileService", () => {
       });
     });
 
+    it.each([
+      [true, true],
+      [false, false]
+    ])("adds the ttlDays advice from the policy check's ttlExceedsMax flag (%s)", async (ttlExceedsMax, hasAdvice) => {
+      (mockCertificateAuthorityDAL.findByIdWithAssociatedCa as any).mockResolvedValue({
+        id: "ca-123",
+        externalCa: null
+      });
+      mockCertificatePolicyService.validateRequestAgainstPolicy.mockReturnValueOnce({
+        isValid: false,
+        errors: [describeTtlExceedsMax("60d", "'30d'", "30d")],
+        warnings: [],
+        ttlExceedsMax
+      });
+
+      const created = service.createProfile({
+        ...mockActor,
+        projectId: "project-123",
+        data: { ...validProfileData, defaults: { ttlDays: 60 } } as never
+      });
+
+      await expect(created).rejects.toThrow("The profile defaults do not meet the certificate policy");
+      await expect(created).rejects.toThrow(
+        hasAdvice ? /set defaults\.ttlDays to a whole number of days/ : /change the matching default instead\.$/
+      );
+    });
+
     describe("custom extension declarations", () => {
       const SID_OID = "1.3.6.1.4.1.311.25.2";
       const CUSTOM_OID = "1.3.6.1.4.1.99999.7.1";
@@ -1503,10 +1530,10 @@ describe("CertificateProfileService", () => {
 
 describe("profileDefaultsViolationError", () => {
   it("adds the ttlDays advice only when a violation is about the TTL", () => {
-    const ttlError = profileDefaultsViolationError([
-      describeTtlExceedsMax("30d", "'12h'", "12h"),
-      "Key usage 'crl_sign' is denied by this policy"
-    ]);
+    const ttlError = profileDefaultsViolationError(
+      [describeTtlExceedsMax("30d", "'12h'", "12h"), "Key usage 'crl_sign' is denied by this policy"],
+      true
+    );
     expect(ttlError.message).toContain("set defaults.ttlDays to a whole number of days");
     expect(ttlError.message).toContain("Otherwise, and for EST, SCEP and ACME, raise the policy's maximum.");
 

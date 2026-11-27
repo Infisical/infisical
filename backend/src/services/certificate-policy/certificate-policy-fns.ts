@@ -28,12 +28,8 @@ export const parsePolicyTtl = (ttl: string): number => {
   return parseInt(match[1], 10) * unitMs[match[2] as keyof typeof unitMs];
 };
 
-const TTL_EXCEEDS_MAX_PREFIX = "Requested validity '";
-
 export const describeTtlExceedsMax = (ttl: string, maxWithDays: string, requestableMax: string | undefined) =>
-  `${TTL_EXCEEDS_MAX_PREFIX}${ttl}' exceeds the policy's maximum of ${maxWithDays}. Request a TTL of ${requestableMax} or less`;
-
-export const isTtlExceedsMaxViolation = (violation: string) => violation.startsWith(TTL_EXCEEDS_MAX_PREFIX);
+  `Requested validity '${ttl}' exceeds the policy's maximum of ${maxWithDays}. Request a TTL of ${requestableMax} or less`;
 
 export const isWildcardPattern = (value: string): boolean => value.includes("*");
 

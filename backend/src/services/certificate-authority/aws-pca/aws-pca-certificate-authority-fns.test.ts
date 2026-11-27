@@ -2,6 +2,7 @@ import { RequestAlreadyProcessedException } from "@aws-sdk/client-acm-pca";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { CrlReason } from "@app/services/certificate/certificate-types";
 
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -117,7 +118,9 @@ describe("AWS PCA createCertificateAuthority setup check", () => {
   it.each([
     ["throttling", awsError("ThrottlingException", { $fault: "client", $metadata: { httpStatusCode: 400 } })],
     ["an AWS server fault", awsError("InternalFailure", { $fault: "server", $metadata: { httpStatusCode: 500 } })],
-    ["a 503 from AWS", awsError("ServiceUnavailable", { $metadata: { httpStatusCode: 503 } })]
+    ["a 503 from AWS", awsError("ServiceUnavailable", { $metadata: { httpStatusCode: 503 } })],
+    ["a 429 from AWS", awsError("TooManyRequests", { $metadata: { httpStatusCode: 429 } })],
+    ["a timeout after the SDK's retries", awsError("TimeoutError", { $metadata: { attempts: 3 } })]
   ])("answers %s with a retryable 500 rather than a 400", async (_label, error) => {
     send.mockRejectedValue(error);
 
@@ -126,6 +129,28 @@ describe("AWS PCA createCertificateAuthority setup check", () => {
     await expect(setup).rejects.toThrow(
       `AWS Private CA did not answer Infisical's check (${error.name}). This is a temporary problem on AWS's side`
     );
+  });
+
+  it("names the network code when the connection to AWS fails", async () => {
+    send.mockRejectedValue(awsError("Error", { code: "ECONNRESET", $metadata: { attempts: 3 } }));
+
+    const setup = runSetup();
+    await expect(setup).rejects.toBeInstanceOf(InternalServerError);
+    await expect(setup).rejects.toThrow("Infisical could not reach AWS Private CA (ECONNRESET).");
+  });
+
+  it("names AWS STS when the connection's role can't be reached", async () => {
+    vi.mocked(getAwsConnectionConfig).mockRejectedValueOnce(
+      awsError("TimeoutError", { code: "ECONNREFUSED", $metadata: { attempts: 3 } })
+    );
+
+    await expect(runSetup()).rejects.toThrow("Infisical could not reach AWS STS (ECONNREFUSED).");
+  });
+
+  it("keeps a host that does not exist as a 400, since retrying can't fix it", async () => {
+    send.mockRejectedValue(awsError("Error", { code: "ENOTFOUND", $metadata: { attempts: 3 } }));
+
+    await expect(runSetup()).rejects.toBeInstanceOf(BadRequestError);
   });
 
   it("still answers a credential denial with a 400", async () => {

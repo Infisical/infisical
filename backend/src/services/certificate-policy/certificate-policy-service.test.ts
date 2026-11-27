@@ -1006,6 +1006,10 @@ describe("CertificatePolicyService", () => {
       expect(result.errors).toContain(
         "Requested validity '180d' exceeds the policy's maximum of '90d'. Request a TTL of 90d or less"
       );
+      expect(result.ttlExceedsMax).toBe(true);
+
+      const withinMax = await service.validateCertificateRequest("template-123", validRequest);
+      expect(withinMax.ttlExceedsMax).toBe(false);
     });
 
     it("should detect TTL exceeding maximum duration", async () => {

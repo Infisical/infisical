@@ -228,7 +228,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       // AWS denial text names the calling principal and the role ARN, so only the error name is returned.
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
       if (isAwsTransientError(error)) {
-        throw awsTransientError(acmClient ? "AWS Certificate Manager" : "AWS STS", errorName);
+        throw awsTransientError(acmClient ? "AWS Certificate Manager" : "AWS STS", error as Error);
       }
       if (!acmClient) {
         throw new BadRequestError({
@@ -264,7 +264,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       logger.warn(error, logMessage);
       const errorName = isAwsError ? (error as Error).name : "UnknownError";
       if (isAwsTransientError(error)) {
-        throw awsTransientError(route53Client ? "Route 53" : "AWS STS", errorName);
+        throw awsTransientError(route53Client ? "Route 53" : "AWS STS", error as Error);
       }
       if (!route53Client) {
         throw new BadRequestError({

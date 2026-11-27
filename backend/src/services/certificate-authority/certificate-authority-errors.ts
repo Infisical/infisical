@@ -40,20 +40,55 @@ const AWS_THROTTLING_ERROR_NAMES = [
   "PriorRequestNotComplete"
 ];
 
-// Throttling and AWS-side faults are not the caller's configuration to fix, so setup checks answer them with a 5xx
-// that a client retries instead of a 400 it reads as its own mistake.
+const AWS_TIMEOUT_ERROR_NAMES = ["TimeoutError", "RequestTimeout", "RequestTimeoutException"];
+
+// ENOTFOUND is left out: the host does not exist, which is permanent (a FIPS endpoint in a region that has none, or a
+// custom STS endpoint that was removed), so it stays a 400.
+const NETWORK_ERROR_CODES = [
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EPIPE",
+  "ETIMEDOUT",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EAI_AGAIN"
+];
+
+// Throttling, timeouts, network failures and AWS-side faults are not the caller's configuration to fix, so setup
+// checks answer them with a 5xx that a client retries instead of a 400 it reads as its own mistake. The SDK adds an
+// empty `$metadata` to every error once its retries run out, network errors included, so these are matched by name
+// and code rather than by the presence of an HTTP status.
 export const isAwsTransientError = (error: unknown) => {
   if (!(error instanceof Error) || !("$metadata" in error)) return false;
-  const { $fault, $metadata } = error as { $fault?: string; $metadata?: { httpStatusCode?: number } };
+  const { $fault, $metadata, $retryable, code } = error as {
+    $fault?: string;
+    $metadata?: { httpStatusCode?: number };
+    $retryable?: unknown;
+    code?: string;
+  };
+  const httpStatusCode = $metadata?.httpStatusCode ?? 0;
   return (
-    $fault === "server" || ($metadata?.httpStatusCode ?? 0) >= 500 || AWS_THROTTLING_ERROR_NAMES.includes(error.name)
+    $fault === "server" ||
+    httpStatusCode >= 500 ||
+    httpStatusCode === 429 ||
+    $retryable !== undefined ||
+    AWS_THROTTLING_ERROR_NAMES.includes(error.name) ||
+    AWS_TIMEOUT_ERROR_NAMES.includes(error.name) ||
+    (code !== undefined && NETWORK_ERROR_CODES.includes(code))
   );
 };
 
-export const awsTransientError = (service: string, errorName: string) =>
-  new InternalServerError({
-    message: `${service} did not answer Infisical's check (${errorName}). This is a temporary problem on AWS's side, not your configuration. Try again shortly.`
+export const awsTransientError = (service: string, error: Error) => {
+  const { code } = error as { code?: string };
+  if (code && NETWORK_ERROR_CODES.includes(code)) {
+    return new InternalServerError({
+      message: `Infisical could not reach ${service} (${code}). This is usually temporary. Try again shortly, and if it keeps failing, ask your instance administrator to check that Infisical can reach AWS, and the connection's STS endpoint if it sets one.`
+    });
+  }
+  return new InternalServerError({
+    message: `${service} did not answer Infisical's check (${error.name}). This is a temporary problem on AWS's side, not your configuration. Try again shortly.`
   });
+};
 
 export const duplicateCaNameError = (name: string) =>
   new BadRequestError({

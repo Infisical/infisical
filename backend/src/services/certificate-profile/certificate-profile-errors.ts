@@ -1,8 +1,5 @@
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import {
-  isTtlExceedsMaxViolation,
-  joinPolicyViolations
-} from "@app/services/certificate-policy/certificate-policy-fns";
+import { joinPolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 
 import { ENROLLMENT_TYPE_NAME_MAP, EnrollmentType } from "./certificate-profile-types";
 
@@ -37,8 +34,8 @@ export const profilePolicyMissingError = () =>
       "The certificate policy attached to this certificate profile no longer exists. Issue through a profile whose certificate policy exists."
   });
 
-export const profileDefaultsViolationError = (violations: string[]) => {
-  const ttlAdvice = violations.some(isTtlExceedsMaxViolation)
+export const profileDefaultsViolationError = (violations: string[], ttlExceedsMax = false) => {
+  const ttlAdvice = ttlExceedsMax
     ? " For a TTL, set defaults.ttlDays to a whole number of days within the policy's maximum. If that maximum is under one day, no default fits: leave ttlDays out and send a ttl with each API request, if the certificate authority can issue certificates valid for less than a day. Otherwise, and for EST, SCEP and ACME, raise the policy's maximum."
     : "";
   return new BadRequestError({

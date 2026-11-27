@@ -351,6 +351,7 @@ export const certificatePolicyServiceFactory = ({
   ): TPolicyValidationResult => {
     const errors: string[] = [];
     const warnings: string[] = [];
+    let ttlExceedsMax = false;
 
     // Validate subject attributes
     const subjectPolicies = template.subject;
@@ -664,6 +665,7 @@ export const certificatePolicyServiceFactory = ({
         const maxDurationMs = parsePolicyTtl(template.validity.max);
 
         if (requestDurationMs > maxDurationMs) {
+          ttlExceedsMax = true;
           errors.push(describeTtlExceedsMax(request.validity.ttl, maxWithDays, requestableMax));
         }
       }
@@ -732,7 +734,8 @@ export const certificatePolicyServiceFactory = ({
       isValid: errors.length === 0,
       errors,
       warnings,
-      resolvedCustomExtensions
+      resolvedCustomExtensions,
+      ttlExceedsMax
     };
   };
 

@@ -568,7 +568,7 @@ export const certificateProfileServiceFactory = ({
         };
         const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
         if (!result.isValid) {
-          throw profileDefaultsViolationError(result.errors);
+          throw profileDefaultsViolationError(result.errors, result.ttlExceedsMax);
         }
       }
     }
@@ -951,7 +951,7 @@ export const certificateProfileServiceFactory = ({
         };
         const result = certificatePolicyService.validateRequestAgainstPolicy(policy, request, { skipRequired: true });
         if (!result.isValid) {
-          throw profileDefaultsViolationError(result.errors);
+          throw profileDefaultsViolationError(result.errors, result.ttlExceedsMax);
         }
       }
     }
