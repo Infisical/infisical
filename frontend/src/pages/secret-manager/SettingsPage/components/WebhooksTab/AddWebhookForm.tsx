@@ -247,12 +247,13 @@ export const AddWebhookForm = ({
                       {...field}
                       id="webhook-secret-path"
                       environment={selectedEnvironment}
-                      placeholder="/"
+                      placeholder="/**"
                       isError={Boolean(error)}
                     />
                     <FieldError>{error?.message}</FieldError>
                     <FieldDescription>
-                      Enter `/` to match all secret paths in the selected environment.
+                      Enter `/**` to match all secret paths in the selected environment. Use `/` for
+                      root-folder events. Access-request events may also match subfolders.
                     </FieldDescription>
                   </Field>
                 )}

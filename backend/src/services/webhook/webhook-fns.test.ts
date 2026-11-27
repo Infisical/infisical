@@ -423,7 +423,11 @@ describe("isWebhookPathSubscribed", () => {
       ["/api/billing", "/api/*", true],
       ["/api/billing", "/**", true],
       ["/api/billing", "/web/*", false],
-      ["/", "/", true]
+      ["/api/billing", "/", false],
+      ["/", "/", true],
+      ["/", "/**", true],
+      ["/api/billing/sub", "/api/*", false],
+      ["/api/billing/sub", "/api/**", true]
     ])("event %s against hook %s is %s", (eventPath, hookPath, expected) => {
       expect(isWebhookPathSubscribed(WebhookEvents.ChangeRequestModified, eventPath, hookPath)).toBe(expected);
     });
