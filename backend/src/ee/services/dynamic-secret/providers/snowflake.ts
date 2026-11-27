@@ -7,6 +7,10 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import {
+  assertNotSnowflakeFileTransferStatement,
+  SNOWFLAKE_ARRAY_BINDING_THRESHOLD_DISABLED
+} from "@app/services/app-connection/snowflake";
 
 import { ActorIdentityAttributes } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
 import { DynamicSecretSnowflakeSchema, TDynamicProviderFns } from "./models";
@@ -28,20 +32,35 @@ const getDaysToExpiry = (expiryDate: Date) => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
+const SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE =
+  "PUT and GET file transfers are not supported in Snowflake dynamic secret statements";
+
 export const SnowflakeProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSnowflakeSchema.parseAsync(inputs);
     validateHandlebarTemplate("Snowflake creation", providerInputs.creationStatement, {
       allowedExpressions: (val) => ["username", "password", "expiration"].includes(val)
     });
+    assertNotSnowflakeFileTransferStatement(
+      providerInputs.creationStatement,
+      SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE
+    );
     if (providerInputs.renewStatement) {
       validateHandlebarTemplate("Snowflake renew", providerInputs.renewStatement, {
         allowedExpressions: (val) => ["username", "expiration"].includes(val)
       });
+      assertNotSnowflakeFileTransferStatement(
+        providerInputs.renewStatement,
+        SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE
+      );
     }
     validateHandlebarTemplate("Snowflake revoke", providerInputs.revocationStatement, {
       allowedExpressions: (val) => ["username"].includes(val)
     });
+    assertNotSnowflakeFileTransferStatement(
+      providerInputs.revocationStatement,
+      SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE
+    );
 
     return providerInputs;
   };
@@ -51,7 +70,8 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
       account: `${providerInputs.orgId}-${providerInputs.accountId}`,
       username: providerInputs.username,
       password: providerInputs.password,
-      application: "Infisical"
+      application: "Infisical",
+      arrayBindingThreshold: SNOWFLAKE_ARRAY_BINDING_THRESHOLD_DISABLED
     });
 
     await client.connectAsync(noop);
@@ -96,8 +116,6 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     const { inputs, expireAt, usernameTemplate, identity, dynamicSecret } = data;
     const providerInputs = await validateProviderInputs(inputs);
 
-    const client = await $getClient(providerInputs);
-
     const username = await generateUsername(usernameTemplate, {
       decryptedDynamicSecretInputs: inputs,
       dynamicSecret,
@@ -106,15 +124,17 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
       usernamePrefix: "infisical_"
     });
     const password = generatePassword();
+    const expiration = getDaysToExpiry(new Date(expireAt));
+    const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
+      username,
+      password,
+      expiration
+    });
+    assertNotSnowflakeFileTransferStatement(creationStatement, SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE);
+
+    const client = await $getClient(providerInputs);
 
     try {
-      const expiration = getDaysToExpiry(new Date(expireAt));
-      const creationStatement = handlebars.compile(providerInputs.creationStatement, { noEscape: true })({
-        username,
-        password,
-        expiration
-      });
-
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: creationStatement,
@@ -142,12 +162,12 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
 
   const revoke = async (inputs: unknown, username: string) => {
     const providerInputs = await validateProviderInputs(inputs);
+    const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
+    assertNotSnowflakeFileTransferStatement(revokeStatement, SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE);
 
     const client = await $getClient(providerInputs);
 
     try {
-      const revokeStatement = handlebars.compile(providerInputs.revocationStatement, { noEscape: true })({ username });
-
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: revokeStatement,
@@ -177,15 +197,16 @@ export const SnowflakeProvider = (): TDynamicProviderFns => {
     const providerInputs = await validateProviderInputs(inputs);
     if (!providerInputs.renewStatement) return { entityId };
 
+    const expiration = getDaysToExpiry(new Date(expireAt));
+    const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
+      username: entityId,
+      expiration
+    });
+    assertNotSnowflakeFileTransferStatement(renewStatement, SNOWFLAKE_FILE_TRANSFER_UNSUPPORTED_MESSAGE);
+
     const client = await $getClient(providerInputs);
 
     try {
-      const expiration = getDaysToExpiry(new Date(expireAt));
-      const renewStatement = handlebars.compile(providerInputs.renewStatement, { noEscape: true })({
-        username: entityId,
-        expiration
-      });
-
       await new Promise((resolve, reject) => {
         client.execute({
           sqlText: renewStatement,
