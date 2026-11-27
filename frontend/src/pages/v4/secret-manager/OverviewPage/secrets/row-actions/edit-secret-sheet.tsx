@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field } from "@infisical/cipher/ui/field";
 import { Inline } from "@infisical/cipher/ui/layout";
@@ -17,7 +19,6 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import { readableValue, type Secret } from "../../secrets-model";
 import { type Entry, SecretEntryFields } from "../flows/create-secret-flow";
-import { DiscardDialog } from "../flows/shared";
 import { ConfirmDependentsDialog } from "./confirm-dependents-dialog";
 import { useDependents } from "./references-dialog";
 import type { SecretPatch } from "./types";
@@ -63,7 +64,6 @@ export function EditSecretSheet({
   const [entry, setEntry] = useState(initial);
   const [createdTags, setCreatedTags] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [discard, setDiscard] = useState(false);
   const [confirm, setConfirm] = useState<SecretPatch>();
   const [saving, setSaving] = useState(false);
   const metadata = (list: Entry["metadata"]) =>
@@ -84,10 +84,10 @@ export function EditSecretSheet({
   const options = [...new Set([...tagOptions, ...createdTags, ...entry.tags])]
     .sort()
     .map((tag) => ({ value: tag, label: tag }));
-  const close = () => {
-    if (dirty) setDiscard(true);
-    else onClose();
-  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: onClose
+  });
   const save = async (next: SecretPatch) => {
     setSaving(true);
     try {
@@ -114,7 +114,7 @@ export function EditSecretSheet({
       <Sheet
         open
         onOpenChange={(next) => {
-          if (!next) close();
+          if (!next) requestDiscard();
         }}
       >
         <SheetContent size="md" pending={saving}>
@@ -180,7 +180,7 @@ export function EditSecretSheet({
           </SheetBody>
           <SheetFooter>
             <Inline gap={8} justify="end">
-              <Button type="button" variant="ghost" onClick={close}>
+              <Button type="button" variant="ghost" onClick={requestDiscard}>
                 Cancel
               </Button>
               <Button
@@ -195,15 +195,7 @@ export function EditSecretSheet({
           </SheetFooter>
         </SheetContent>
       </Sheet>
-      <DiscardDialog
-        open={discard}
-        description="Your unsaved changes will be lost."
-        onKeep={() => setDiscard(false)}
-        onDiscard={() => {
-          setDiscard(false);
-          onClose();
-        }}
-      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
       <ConfirmDependentsDialog
         open={Boolean(confirm)}
         dependents={dependents}

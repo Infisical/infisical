@@ -8,6 +8,7 @@ import {
   useWatch
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import { TilePicker } from "@infisical/cipher/patterns/tile-picker";
 import { Alert } from "@infisical/cipher/ui/alert";
 import {
@@ -18,7 +19,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  DiscardChangesAlertDialog
 } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Card } from "@infisical/cipher/ui/card";
@@ -75,7 +77,6 @@ import {
   RotationField as SyncField,
   TextField
 } from "../flows/secret-rotation/fields";
-import { DiscardDialog } from "../flows/shared";
 import { useCreateBlock } from "../row-actions/permissions";
 import type { RowActionTone } from "../row-actions/types";
 import {
@@ -962,7 +963,7 @@ export function CreateSecretSyncSheet({
   }));
   const [destination, setDestination] = useState<SecretSync | null>(null);
   const [step, setStep] = useState(0);
-  const [discard, setDiscard] = useState<"close" | "provider">();
+  const [discardTarget, setDiscardTarget] = useState<"close" | "provider">("close");
   const [confirming, setConfirming] = useState(false);
   const closing = useRef(false);
   const [addedConnections, setAddedConnections] = useState<LocalSyncConnection[]>([]);
@@ -1090,9 +1091,17 @@ export function CreateSecretSyncSheet({
     setConfirming(false);
     onOpenChange(false);
   };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: Boolean(destination) && isDirty,
+    onDiscard: () => {
+      if (discardTarget === "close") close();
+      else setDestination(null);
+    }
+  });
   const request = (target: "close" | "provider") => {
     if (destination && isDirty) {
-      setDiscard(target);
+      setDiscardTarget(target);
+      requestDiscard();
       return;
     }
     if (target === "close") close();
@@ -1287,17 +1296,7 @@ export function CreateSecretSyncSheet({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <DiscardDialog
-          open={Boolean(discard)}
-          title="Discard sync setup?"
-          description="Your progress will be lost."
-          onKeep={() => setDiscard(undefined)}
-          onDiscard={() => {
-            if (discard === "close") close();
-            else setDestination(null);
-            setDiscard(undefined);
-          }}
-        />
+        <DiscardChangesAlertDialog {...discardDialogProps} title="Discard sync setup?" />
       </FormProvider>
     </SyncConnections>
   );

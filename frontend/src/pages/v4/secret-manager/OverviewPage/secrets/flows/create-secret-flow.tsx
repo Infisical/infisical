@@ -1,10 +1,12 @@
 import { type ClipboardEvent, useMemo, useRef, useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from "@infisical/cipher/ui/accordion";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field, FieldError, FieldLabel } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -31,7 +33,7 @@ import { slugSchema } from "@app/lib/schemas/slugSchema";
 import type { Scope } from "../../secrets-model";
 import { ReferenceEditor } from "../secret-references";
 import { PasswordGenerator } from "./password-generator";
-import { DiscardDialog, environmentLabel, folderExists, secretsAt } from "./shared";
+import { environmentLabel, folderExists, secretsAt } from "./shared";
 import type { AddFlowProps, NewResource } from "./types";
 
 import styles from "./flows.module.css";
@@ -360,7 +362,6 @@ export function CreateSecretFlow({
   const [entries, setEntries] = useState(() => [blankEntry(initial?.name)]);
   const [createdTags, setCreatedTags] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [discard, setDiscard] = useState(false);
   const [pristine] = useState(() => JSON.stringify({ selected, entries }));
   const keyInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const dirty = JSON.stringify({ selected, entries }) !== pristine;
@@ -390,10 +391,10 @@ export function CreateSecretFlow({
       delete rest[key];
       return rest;
     });
-  const close = () => {
-    if (dirty) setDiscard(true);
-    else onOpenChange(false);
-  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty,
+    onDiscard: () => onOpenChange(false)
+  });
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>, entry: Entry) => {
     const content = event.clipboardData.getData("text");
@@ -519,7 +520,7 @@ export function CreateSecretFlow({
       <Sheet
         open={open}
         onOpenChange={(next) => {
-          if (!next) close();
+          if (!next) requestDiscard();
         }}
       >
         <SheetContent
@@ -629,7 +630,7 @@ export function CreateSecretFlow({
                 </Button>
               )}
               <Inline gap={8}>
-                <Button type="button" variant="ghost" onClick={close}>
+                <Button type="button" variant="ghost" onClick={requestDiscard}>
                   Cancel
                 </Button>
                 <Button type="submit" form="create-secret-flow">
@@ -640,14 +641,7 @@ export function CreateSecretFlow({
           </SheetFooter>
         </SheetContent>
       </Sheet>
-      <DiscardDialog
-        open={discard}
-        onKeep={() => setDiscard(false)}
-        onDiscard={() => {
-          setDiscard(false);
-          onOpenChange(false);
-        }}
-      />
+      <DiscardChangesAlertDialog {...discardDialogProps} />
     </>
   );
 }

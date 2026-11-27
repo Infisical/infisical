@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useDiscardChangesGuard } from "@infisical/cipher/hooks/use-discard-changes-guard";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from "@infisical/cipher/ui/accordion";
+import { DiscardChangesAlertDialog } from "@infisical/cipher/ui/alert-dialog";
 import { Button } from "@infisical/cipher/ui/button";
 import { Field, FieldLabel } from "@infisical/cipher/ui/field";
 import { Icon } from "@infisical/cipher/ui/icon";
@@ -33,7 +35,6 @@ import { SecretSharingAccessType } from "@app/hooks/api/secretSharing/types";
 import { errorMessage } from "../../../../access/toast";
 import { copyText } from "../../../../clipboard";
 import { useV4Adapter } from "../../../../data/adapters";
-import { DiscardDialog } from "../flows/shared";
 
 import styles from "./row-actions.module.css";
 
@@ -75,7 +76,6 @@ export function ShareSecretSheet({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [result, setResult] = useState<Result>();
-  const [discard, setDiscard] = useState(false);
   const [failure, setFailure] = useState("");
   const createSharedSecret = useV4Adapter("secrets").useCreateSharedSecret();
   const dirty = JSON.stringify(form) !== JSON.stringify(blank);
@@ -88,10 +88,10 @@ export function ShareSecretSheet({
     setResult(undefined);
     onOpenChange(false);
   };
-  const requestClose = () => {
-    if (dirty && !result) setDiscard(true);
-    else close();
-  };
+  const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
+    isDirty: dirty && !result,
+    onDiscard: close
+  });
   const recipients = form.emails.split(EMAIL_LIST_DELIMITER).filter(Boolean);
   const constraints = [
     form.shouldLimitView,
@@ -148,7 +148,7 @@ export function ShareSecretSheet({
       <Sheet
         open={open}
         onOpenChange={(next) => {
-          if (!next) requestClose();
+          if (!next) requestDiscard();
         }}
       >
         <SheetContent size="md">
@@ -374,7 +374,7 @@ export function ShareSecretSheet({
                 <Button onClick={() => setResult(undefined)}>Share another secret</Button>
               ) : (
                 <>
-                  <Button type="button" variant="ghost" onClick={requestClose}>
+                  <Button type="button" variant="ghost" onClick={requestDiscard}>
                     Cancel
                   </Button>
                   <Button
@@ -390,16 +390,7 @@ export function ShareSecretSheet({
           </SheetFooter>
         </SheetContent>
       </Sheet>
-      <DiscardDialog
-        open={discard}
-        title="Discard secret?"
-        description="Your unsaved changes will be lost."
-        onKeep={() => setDiscard(false)}
-        onDiscard={() => {
-          setDiscard(false);
-          close();
-        }}
-      />
+      <DiscardChangesAlertDialog {...discardDialogProps} title="Discard secret?" />
     </>
   );
 }
