@@ -188,6 +188,7 @@ const UnlinkCertificatesDialog = ({
       removalOptions
     );
   const unlinkCount = pendingUnlink?.preview.toUnlink.length ?? 0;
+  const destinationName = destinationNameOf(sync.destination);
 
   return (
     <AlertDialog open={Boolean(pendingUnlink)} onOpenChange={(open) => !open && onCancel()}>
@@ -211,8 +212,8 @@ const UnlinkCertificatesDialog = ({
                 </ul>
                 {pendingUnlink?.preview.willRemoveFromDestination && (
                   <span>
-                    Removal is on for this sync, so they&apos;re also deleted from{" "}
-                    {destinationNameOf(sync.destination)}.
+                    Removal is on for this sync, so they&apos;re also deleted from {destinationName}
+                    .
                   </span>
                 )}
               </Stack>
