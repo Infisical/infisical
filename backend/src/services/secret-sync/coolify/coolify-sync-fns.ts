@@ -23,6 +23,7 @@ import { CoolifySyncScope } from "./coolify-sync-enums";
 import { TCoolifyEnvVar, TCoolifyEnvVarUpsert, TCoolifySyncWithCredentials } from "./coolify-sync-types";
 
 type TCoolifyEnvVarsApi = { connection: TCoolifyConnection; envsPath: string; deps: TCoolifyGatewayDeps };
+type TCoolifyDeployVarsApi = { connection: TCoolifyConnection; deps: TCoolifyGatewayDeps };
 
 type TGatewayV2Service = Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 type TGatewayPoolService = Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -76,6 +77,21 @@ const getCoolifyEnvVarsApi = async (
     return {
       connection: await resolveCoolifyGateway(connection, gatewayPoolService),
       envsPath: `/${COOLIFY_RESOURCE_PATH[resourceType]}/${encodeURIComponent(resourceId)}/envs`,
+      deps: { gatewayV2Service }
+    };
+  } catch (error) {
+    throw toSyncError(error, "Failed to resolve the Coolify connection's gateway");
+  }
+};
+
+const getCoolifyDeployVarsApi = async (
+  { connection }: TCoolifySyncWithCredentials,
+  gatewayV2Service: TGatewayV2Service,
+  gatewayPoolService: TGatewayPoolService
+): Promise<TCoolifyDeployVarsApi> => {
+  try {
+    return {
+      connection: await resolveCoolifyGateway(connection, gatewayPoolService),
       deps: { gatewayV2Service }
     };
   } catch (error) {
@@ -148,6 +164,35 @@ const createProductionEnvVarsWithoutPreviewCopies = async (
   }
 };
 
+const redeployApplication = async (
+  { connection, deps }: TCoolifyDeployVarsApi,
+  secretSync: TCoolifySyncWithCredentials
+) => {
+  const {
+    destinationConfig: { resourceType, resourceId, resourceName }
+  } = secretSync;
+  if (resourceType !== CoolifyResourceType.Application) {
+    return;
+  }
+  try {
+    await coolifyRequest(
+      connection,
+      {
+        method: "POST",
+        path: "/deploy",
+        data: {
+          uuid: resourceId
+        }
+      },
+      deps
+    );
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) return;
+
+    throw toSyncError(error, `Failed to deploy Coolify service '${resourceName}'`);
+  }
+};
+
 export const CoolifySyncFns = {
   async getSecrets(
     secretSync: TCoolifySyncWithCredentials,
@@ -179,7 +224,7 @@ export const CoolifySyncFns = {
     const secretMap = payload.flatten();
     const {
       destinationConfig: { resourceType, scope },
-      syncOptions: { disableSecretDeletion }
+      syncOptions: { disableSecretDeletion, autoRedeploy }
     } = secretSync;
 
     // Rejected up front so the message names every offending key, instead of Coolify refusing the batch on the first
@@ -225,10 +270,15 @@ export const CoolifySyncFns = {
 
     await upsertCoolifyEnvVars(api, upserts);
 
-    if (disableSecretDeletion) return;
+    if (!disableSecretDeletion) {
+      for (const envVar of getOwnedEnvVars(secretSync, envVars)) {
+        if (!Object.hasOwn(secretMap, envVar.key)) await deleteCoolifyEnvVar(api, envVar);
+      }
+    }
 
-    for (const envVar of getOwnedEnvVars(secretSync, envVars)) {
-      if (!Object.hasOwn(secretMap, envVar.key)) await deleteCoolifyEnvVar(api, envVar);
+    if (autoRedeploy) {
+      const deployApi = await getCoolifyDeployVarsApi(secretSync, gatewayV2Service, gatewayPoolService);
+      await redeployApplication(deployApi, secretSync);
     }
   },
 

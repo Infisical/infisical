@@ -1,10 +1,27 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { Badge, Detail, DetailLabel, DetailValue } from "@app/components/v3";
 import { COOLIFY_RESOURCE_TYPE_LABELS, COOLIFY_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { CoolifyResourceType } from "@app/hooks/api/appConnections/coolify";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
+
+export const CoolifySyncOptionsReviewFields = () => {
+  const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Coolify }>();
+
+  const [{ autoRedeploy }] = watch(["syncOptions"]);
+
+  return (
+    <Detail>
+      <DetailLabel>Auto Redeploy</DetailLabel>
+      <DetailValue>
+        <Badge variant={autoRedeploy ? "success" : "danger"}>
+          {autoRedeploy ? "Enabled" : "Disabled"}
+        </Badge>
+      </DetailValue>
+    </Detail>
+  );
+};
 
 export const CoolifySyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm & { destination: SecretSync.Coolify }>();
