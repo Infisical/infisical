@@ -112,7 +112,7 @@ Rules store team keys, so update them if you change a team's key in Linear. Infi
 To require sign-off in Linear, combine **has status** with **had its status set by**. For example, a rule with **has status** `Approved` and **had its status set by** your security leads passes only after one of them moves the issue to `Approved`.
 
 <Warning>
-  Linear has no approvals, and anyone on a team can usually create an issue, assign it to themselves, and change its status and labels. Without **had its status set by**, Linear checks don't show that someone else signed off. An [AI check](#ai-checks) that reads the issue's comments can also look for sign-off. Name the people who can approve by email address in its instructions, since Linear users can change their own names. Infisical reads the issue's latest 50 history entries, so on a very busy issue the check fails if the status change is older than that.
+  Linear has no approvals, and anyone on a team can usually create an issue, assign it to themselves, and change its status and labels. Without **had its status set by**, Linear checks don't show that someone else signed off. An [AI check](#ai-checks) that reads the issue's comments can also look for sign-off. Name the people who can approve by email address in its instructions, since Linear users can change their own names. Infisical reads the issue's latest 50 history entries, so on a very busy issue the check fails if the status change is older than that. Rules match statuses by name, so in the Linear team's **Access and permissions** settings, limit **Settings management** to team owners. Otherwise a team member could rename statuses to make an issue look approved.
 </Warning>
 
 ### Requester in incident.io
