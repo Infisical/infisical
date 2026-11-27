@@ -128,6 +128,7 @@ const KeySourceField = ({ draft, patch, plan }: StepProps & { plan?: CaPlan }) =
   return (
     <Field label="Key source" description={KEY_SOURCE_DESCRIPTIONS[draft.keySource]} wide>
       <Select
+        descriptionLayout="stacked"
         aria-label="Key source"
         value={draft.keySource}
         options={[
