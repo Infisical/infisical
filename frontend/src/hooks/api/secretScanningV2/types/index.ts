@@ -210,13 +210,18 @@ export type TGetSecretScanningConfigResponse = {
   config: TSecretScanningConfig;
 };
 
-export type TSecretScanningFinding = {
+export type TSecretScanningFindingResource = {
   id: string;
-  resourceId: string;
-  resourceName: string;
+  name: string;
   dataSourceId: string;
   dataSourceName: string;
   dataSourceType: SecretScanningDataSource;
+  locationCount: number;
+};
+
+export type TSecretScanningFinding = {
+  id: string;
+  resources: TSecretScanningFindingResource[];
   rule: string;
   severity: SecretScanningFindingSeverity;
   confidence?: SecretScanningFindingConfidence | null;
@@ -236,6 +241,7 @@ export type TSecretScanningFindingLocation = {
   id: string;
   findingId: string;
   resourceId: string;
+  resourceName: string;
   scanId: string;
   fingerprint: string;
   rule: string;

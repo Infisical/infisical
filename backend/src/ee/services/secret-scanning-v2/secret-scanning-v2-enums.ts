@@ -37,7 +37,8 @@ export enum SecretScanningFindingOrderBy {
   ResourceName = "resourceName",
   // deprecated: a finding can have several authors, so this sorts by its first location's author
   Author = "author",
-  Status = "status"
+  Status = "status",
+  LocationCount = "locationCount"
 }
 
 export enum SecretScanningResourceOrderBy {

@@ -84,8 +84,8 @@ export const secretScanningV2Keys = {
     ...secretScanningV2Keys.listFindings(params.projectId),
     params
   ],
-  listFindingLocations: (findingId: string) =>
-    [...secretScanningV2Keys.finding(), "locations", findingId] as const,
+  listFindingLocations: (findingId: string, resourceId?: string) =>
+    [...secretScanningV2Keys.finding(), "locations", findingId, resourceId ?? "all"] as const,
   configByProjectId: (projectId: string) =>
     [...secretScanningV2Keys.all, "config", projectId] as const,
   activeProjectId: (orgId: string) => [...secretScanningV2Keys.all, "project", orgId] as const,
@@ -386,14 +386,14 @@ export const useListSecretScanningFindings = (
 
 const FINDING_LOCATIONS_PAGE_SIZE = 100;
 
-export const useListSecretScanningFindingLocations = (findingId: string) => {
+export const useListSecretScanningFindingLocations = (findingId: string, resourceId?: string) => {
   return useInfiniteQuery({
     initialPageParam: 0,
-    queryKey: secretScanningV2Keys.listFindingLocations(findingId),
+    queryKey: secretScanningV2Keys.listFindingLocations(findingId, resourceId),
     queryFn: async ({ pageParam }) => {
       const { data } = await apiRequest.get<TListSecretScanningFindingLocationsResponse>(
         `/api/v2/secret-scanning/findings/${findingId}/locations`,
-        { params: { offset: pageParam, limit: FINDING_LOCATIONS_PAGE_SIZE } }
+        { params: { resourceId, offset: pageParam, limit: FINDING_LOCATIONS_PAGE_SIZE } }
       );
 
       return data;

@@ -372,7 +372,7 @@ const buildOutcome = ({
           reopenedFindings: Array.from({ length: reopened }, (_, i) => ({ id: `reopened-${i}`, rule: "rule" }))
         })),
         countByScanId: vi.fn(async () => counts),
-        countUnresolvedCreatedByScanId: vi.fn(async () => createdUnresolved)
+        countNewUnresolvedByScanId: vi.fn(async () => createdUnresolved)
       }
     } as unknown as TScanOutcomeDeps["secretScanningV2DAL"],
     projectDAL: {

@@ -662,7 +662,7 @@ export const completeFullScan = async (
     // A full scan never alerts on a finding it reopened: a secret coming back is news when someone pushes it, not when
     // history is read again.
     if (alertScope) {
-      const newFindings = await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx);
+      const newFindings = await secretScanningV2DAL.findings.countNewUnresolvedByScanId(scanId, tx);
 
       if (newFindings) {
         await emitSecretScanningSecretsDetected(
@@ -699,7 +699,10 @@ export const completeDiffScan = async (
 
   return secretScanningV2DAL.findings.transaction(async (tx) => {
     const persisted = rows.length
-      ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows }, tx)
+      ? await secretScanningV2DAL.findings.persistLocations(
+          { projectId: dataSource.projectId, resourceId, scanId, rows },
+          tx
+        )
       : { scannedLocations: [], reopenedFindings: [] };
 
     const completed = await secretScanningV2DAL.scans.markCompleted(
@@ -715,8 +718,7 @@ export const completeDiffScan = async (
     // that's still unresolved has already been alerted on, and one of a false positive or an ignored finding needs
     // no action.
     const newFindings =
-      (await secretScanningV2DAL.findings.countUnresolvedCreatedByScanId(scanId, tx)) +
-      persisted.reopenedFindings.length;
+      (await secretScanningV2DAL.findings.countNewUnresolvedByScanId(scanId, tx)) + persisted.reopenedFindings.length;
 
     if (newFindings && alertScope) {
       await emitSecretScanningSecretsDetected(

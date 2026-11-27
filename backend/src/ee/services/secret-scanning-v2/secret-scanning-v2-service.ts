@@ -742,8 +742,11 @@ export const secretScanningV2ServiceFactory = ({
       credentials
     });
 
+    await secretScanningV2DAL.findings.detachResourcesInBatches({ projectId: dataSource.projectId, dataSourceId });
+
     // Alerts point at their data source without a foreign key, so nothing cascades to them.
     await secretScanningV2DAL.dataSources.transaction(async (tx) => {
+      await secretScanningV2DAL.findings.detachResources({ projectId: dataSource.projectId, dataSourceId }, tx);
       await alertService.deleteAlertsForDeletedResource(
         { resourceType: SECRET_SCANNING_RESOURCE_TYPE, resourceId: dataSourceId },
         tx
@@ -1038,7 +1041,18 @@ export const secretScanningV2ServiceFactory = ({
     }
 
     try {
+      await secretScanningV2DAL.findings.detachResourcesInBatches({
+        projectId: dataSource.projectId,
+        resourceIds: [resourceId]
+      });
+
       await secretScanningV2DAL.resources.transaction(async (tx) => {
+        // First, so the project lock comes before the data source row, as in a data source delete.
+        await secretScanningV2DAL.findings.detachResources(
+          { projectId: dataSource.projectId, resourceIds: [resourceId] },
+          tx
+        );
+
         if (webhook) {
           await secretScanningV2DAL.dataSources.updateById(
             dataSourceId,
@@ -1047,7 +1061,7 @@ export const secretScanningV2ServiceFactory = ({
           );
         }
 
-        // Cascades to the resource's scans and findings.
+        // Cascades to the resource's scans.
         await secretScanningV2DAL.resources.deleteById(resourceId, tx);
       });
     } catch (err) {
@@ -1375,7 +1389,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const listSecretScanningFindingLocations = async (
-    { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
+    { findingId, resourceId, offset, limit }: TListSecretScanningFindingLocationsDTO,
     actor: TActorContext
   ) => {
     const finding = await findSecretScanningFindingWithPermission(
@@ -1385,6 +1399,7 @@ export const secretScanningV2ServiceFactory = ({
     );
 
     const { locations, totalCount } = await secretScanningV2DAL.locations.findByFindingId(findingId, {
+      resourceId,
       offset,
       limit
     });
@@ -1410,31 +1425,43 @@ export const secretScanningV2ServiceFactory = ({
       actor
     );
 
-    const isStatusChange = status !== undefined && status !== finding.status;
     const now = new Date();
 
-    const updatedFinding = await secretScanningV2DAL.findings.transaction(async (tx) => {
-      await secretScanningV2DAL.findings.updateById(
-        findingId,
-        {
-          triageComment,
-          status,
-          ...(isStatusChange || triageComment !== undefined
-            ? { triagedAt: now, triagedByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : null }
-            : {}),
-          ...(isStatusChange ? { resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null } : {})
-        },
-        tx
-      );
+    const { updatedFinding, isStatusChange, previousStatus } = await secretScanningV2DAL.findings.transaction(
+      async (tx) => {
+        const current = await secretScanningV2DAL.findings.findByIdOrLocationIdForUpdate(findingId, tx);
+        if (!current)
+          throw new NotFoundError({
+            message: `Could not find Secret Scanning Finding with ID "${findingId}"`
+          });
 
-      // read back in the same transaction: a replica may not have the write yet
-      return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
-    });
+        const isChange = status !== undefined && status !== current.status;
+        await secretScanningV2DAL.findings.updateById(
+          current.id,
+          {
+            triageComment,
+            status,
+            ...(isChange || triageComment !== undefined
+              ? { triagedAt: now, triagedByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : null }
+              : {}),
+            ...(isChange ? { resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null } : {})
+          },
+          tx
+        );
+
+        return {
+          // read back in the same transaction: a replica may not have the write yet
+          updatedFinding: await secretScanningV2DAL.findings.findByIdWithDetails(current.id, tx),
+          isStatusChange: isChange,
+          previousStatus: current.status as SecretScanningFindingStatus
+        };
+      }
+    );
 
     return {
       finding: updatedFinding as TSecretScanningFinding,
       projectId: finding.projectId,
-      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined
+      previousStatus: isStatusChange ? previousStatus : undefined
     };
   };
 

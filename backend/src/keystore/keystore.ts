@@ -43,6 +43,8 @@ export const PgSqlLock = {
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
   SecretScanningFindingLocations: (resourceId: string) =>
     pgAdvisoryLockHashText(`secret-scanning-finding-locations:${resourceId}`),
+  SecretScanningFindingValues: (projectId: string) =>
+    pgAdvisoryLockHashText(`secret-scanning-finding-values:${projectId}`),
   OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
   OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
   LastAdminGuard: (scope: "org" | "project", scopeId: string) =>

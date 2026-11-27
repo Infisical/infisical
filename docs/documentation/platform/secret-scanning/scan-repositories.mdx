@@ -45,7 +45,7 @@ To add resources yourself, select the data source, open its **Repositories** or 
 - **Add Repository** or **Add Project**: Add one resource
 - **Add All Repositories** or **Add All Projects**: Add every resource the data source covers (not available for a GitLab data source without a group)
 
-To stop scanning a resource, select the options menu on the resource's row, then select **Remove Repository** or **Remove Project**. Infisical permanently deletes the resource's scans and findings. If discovery is on, Infisical adds the resource back on its next push, so turn discovery off first if you want the resource to stay removed.
+To stop scanning a resource, select the options menu on the resource's row, then select **Remove Repository** or **Remove Project**. Infisical permanently deletes the resource's scans and the [findings](/documentation/platform/secret-scanning/findings) found only in that resource. If a secret is also in another resource, its finding stays and keeps its locations in the other resource. If discovery is on, Infisical adds the resource back on its next push, so turn discovery off first if you want the resource to stay removed.
 
 To see a data source's resources and its **Scan History**, select the data source.
 

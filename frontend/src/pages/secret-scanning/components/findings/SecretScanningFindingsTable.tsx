@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { SecretScanningDataSourceIcon } from "@app/components/secret-scanning";
 import {
   Button,
   Card,
@@ -29,7 +30,6 @@ import {
   EmptyMedia,
   EmptyTitle,
   Pagination,
-  ProviderIcon,
   SelectedActionBar,
   Skeleton,
   Table,
@@ -46,8 +46,10 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  formatLocationCount,
+  formatResourceCount,
+  formatSecretScanningRule,
   RESOURCE_DESCRIPTION_HELPER,
-  SECRET_SCANNING_DATA_SOURCE_MAP,
   SECRET_SCANNING_FINDING_STATUS_MAP,
   SECRET_SCANNING_FINDING_STATUS_ORDER
 } from "@app/helpers/secretScanningV2";
@@ -213,9 +215,6 @@ export const SecretScanningFindingsTable = ({
     : undefined;
   const openIndex = openFinding ? pageIds.indexOf(openFinding.id) : -1;
 
-  const resourceLabel = selectedDataSource
-    ? RESOURCE_DESCRIPTION_HELPER[selectedDataSource.type].singularTitle
-    : "Resource";
   const isFiltered =
     statusFilter !== "all" ||
     Boolean(resourceFilter) ||
@@ -247,7 +246,8 @@ export const SecretScanningFindingsTable = ({
         return {
           orderBy,
           orderDirection:
-            orderBy === SecretScanningFindingOrderBy.LastDetectedAt
+            orderBy === SecretScanningFindingOrderBy.LastDetectedAt ||
+            orderBy === SecretScanningFindingOrderBy.LocationCount
               ? OrderByDirection.DESC
               : OrderByDirection.ASC
         };
@@ -445,11 +445,7 @@ export const SecretScanningFindingsTable = ({
                     <DropdownMenuSeparator />
                     {dataSources.map((option) => (
                       <DropdownMenuRadioItem key={option.id} value={option.id}>
-                        <ProviderIcon
-                          alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[option.type].name} data source`}
-                          icon={SECRET_SCANNING_DATA_SOURCE_MAP[option.type].image}
-                          className="size-4"
-                        />
+                        <SecretScanningDataSourceIcon type={option.type} className="size-4" />
                         <span className="truncate">{option.name}</span>
                       </DropdownMenuRadioItem>
                     ))}
@@ -481,8 +477,12 @@ export const SecretScanningFindingsTable = ({
                       onCheckedChange={() => setSelectedIds(isPageSelected ? [] : pageIds)}
                     />
                   </TableHead>
-                  {renderSortableHead(SecretScanningFindingOrderBy.ResourceName, resourceLabel)}
                   {renderSortableHead(SecretScanningFindingOrderBy.Rule, "Rule")}
+                  {renderSortableHead(
+                    SecretScanningFindingOrderBy.LocationCount,
+                    "Locations",
+                    "w-36"
+                  )}
                   {renderSortableHead(
                     SecretScanningFindingOrderBy.LastDetectedAt,
                     "Last Detected",
@@ -508,7 +508,6 @@ export const SecretScanningFindingsTable = ({
                 {!isPending &&
                   findings.map((finding) => {
                     const isSelected = selectedIds.includes(finding.id);
-                    const source = SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType];
 
                     return (
                       <TableRow
@@ -518,7 +517,7 @@ export const SecretScanningFindingsTable = ({
                       >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
-                            aria-label={`Select finding ${finding.rule}`}
+                            aria-label={`Select finding ${formatSecretScanningRule(finding.rule)}`}
                             isChecked={isSelected}
                             isDisabled={isPlaceholderData}
                             onCheckedChange={() =>
@@ -531,24 +530,16 @@ export const SecretScanningFindingsTable = ({
                           />
                         </TableCell>
                         <TableCell isTruncatable>
-                          <p className="flex items-center gap-1.5 truncate">
-                            {!isScoped && (
-                              <ProviderIcon
-                                alt={`${source.name} data source ${finding.dataSourceName}`}
-                                title={finding.dataSourceName}
-                                icon={source.image}
-                                className="size-3.5"
-                              />
-                            )}
-                            {finding.resourceName}
+                          {formatSecretScanningRule(finding.rule)}
+                        </TableCell>
+                        <TableCell>
+                          <p className="whitespace-nowrap">
+                            {formatLocationCount(finding.locationCount)}
                           </p>
-                          <p className="truncate text-xs text-muted">
-                            {finding.locationCount === 1
-                              ? "1 location"
-                              : `${finding.locationCount} locations`}
+                          <p className="text-xs whitespace-nowrap text-muted">
+                            {formatResourceCount(finding.resources)}
                           </p>
                         </TableCell>
-                        <TableCell isTruncatable>{finding.rule}</TableCell>
                         <TableCell>
                           {formatDistanceToNowStrict(new Date(finding.lastDetectedAt), {
                             addSuffix: true
@@ -617,6 +608,11 @@ export const SecretScanningFindingsTable = ({
 
       <FindingDetailSheet
         finding={visibleOpenFinding}
+        focusResourceId={
+          (resourceFilter || scanFilter) && visibleOpenFinding?.resources.length
+            ? visibleOpenFinding.resources[0].id
+            : null
+        }
         position={openIndex >= 0 ? { index: openIndex, total: findings.length } : null}
         onClose={() => setOpenFinding(null)}
         onPrevious={() => {

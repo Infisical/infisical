@@ -1,0 +1,295 @@
+import { Knex } from "knex";
+
+import { SecretScanningFindingStatus } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { PgSqlLock } from "@app/keystore/keystore";
+
+import { TableName } from "../schemas";
+
+const FINDING = TableName.SecretScanningFinding;
+const LOCATION = TableName.SecretScanningFindingLocation;
+const RESOURCE = TableName.SecretScanningResource;
+const DATA_SOURCE = TableName.SecretScanningDataSource;
+
+const BATCH_LOCATIONS = 20_000;
+const BATCH_FINDINGS = 2_000;
+// Each resource takes an advisory lock, and they share Postgres's lock table with every other transaction.
+const BATCH_RESOURCES = 500;
+const BATCH_ATTEMPTS = 3;
+const SPLIT_BATCH_FINDINGS = 1_000;
+const STATEMENT_TIMEOUT_MS = 10 * 60 * 1000;
+
+const STATUS_PRECEDENCE = [
+  SecretScanningFindingStatus.Unresolved,
+  SecretScanningFindingStatus.Resolved,
+  SecretScanningFindingStatus.Ignore,
+  SecretScanningFindingStatus.FalsePositive
+];
+
+const STATUS_LABEL: Record<string, string> = {
+  [SecretScanningFindingStatus.Unresolved]: "unresolved",
+  [SecretScanningFindingStatus.Resolved]: "resolved",
+  [SecretScanningFindingStatus.Ignore]: "ignored",
+  [SecretScanningFindingStatus.FalsePositive]: "false positive"
+};
+
+type TValue = {
+  projectId: string;
+  blindIndex: string;
+  findingCount: number;
+  locationCount: number;
+  resourceIds: string[];
+};
+
+type TFinding = {
+  id: string;
+  valueKey: string;
+  status: SecretScanningFindingStatus;
+  triagedAt: Date | null;
+  triageComment: string | null;
+  resourceName: string;
+};
+
+const lockAll = (tx: Knex, keys: number[]) =>
+  tx.raw("SELECT pg_advisory_xact_lock(k) FROM unnest(?::bigint[]) AS k", [keys]);
+
+// The merged finding takes the safest status, so a leak still open in one repository is never hidden by a verdict from
+// another. Between equal statuses the latest triage wins, as the most recent decision about the value.
+const isSafer = (a: TFinding, b: TFinding) => {
+  const rankA = STATUS_PRECEDENCE.indexOf(a.status);
+  const rankB = STATUS_PRECEDENCE.indexOf(b.status);
+  if (rankA !== rankB) return rankA < rankB;
+  return (a.triagedAt?.getTime() ?? -Infinity) > (b.triagedAt?.getTime() ?? -Infinity);
+};
+
+// The findings come oldest first, and the oldest is kept.
+const mergeValue = async (tx: Knex, findings: TFinding[]) => {
+  const [winner, ...losers] = findings;
+  const loserIds = losers.map(({ id }) => id);
+
+  // A finding the release before locations saved during their migration can have none, so it gets one from its own
+  // columns, as that migration did, and its place outlives the merge.
+  await tx.raw(
+    `INSERT INTO ?? (id, "findingId", "resourceId", "scanId", fingerprint, rule, details, "createdAt")
+     SELECT f.id, f.id, f."resourceId", f."scanId", f.fingerprint, f.rule, f.details, f."createdAt"
+     FROM ?? AS f
+     WHERE f.id = ANY(?::uuid[]) AND NOT EXISTS (SELECT 1 FROM ?? AS l WHERE l."findingId" = f.id)
+     ON CONFLICT ("resourceId", fingerprint) DO NOTHING`,
+    [LOCATION, FINDING, findings.map(({ id }) => id), LOCATION]
+  );
+
+  // A pull request check saved finding ids, so each merged-away finding's id lives on as the id of its oldest
+  // location, which findings.findByIdsOrLocationIdsForUpdate resolves.
+  await tx.raw(
+    `UPDATE ?? AS l SET id = o."findingId"
+     FROM (
+       SELECT DISTINCT ON (x."findingId") x.id, x."findingId"
+       FROM ?? AS x
+       WHERE x."findingId" = ANY(?::uuid[]) AND NOT EXISTS (SELECT 1 FROM ?? AS t WHERE t.id = x."findingId")
+       ORDER BY x."findingId", x."createdAt", x.id
+     ) AS o
+     WHERE l.id = o.id`,
+    [LOCATION, LOCATION, loserIds, LOCATION]
+  );
+
+  await tx(LOCATION).whereIn("findingId", loserIds).update({ findingId: winner.id });
+
+  const verdict = findings.reduce((best, finding) => (isSafer(finding, best) ? finding : best));
+  const notes = findings
+    .filter((finding): finding is TFinding & { triagedAt: Date } => finding !== verdict && Boolean(finding.triagedAt))
+    .sort((a, b) => a.triagedAt.getTime() - b.triagedAt.getTime())
+    .map(
+      ({ resourceName, status, triagedAt, triageComment }) =>
+        `Merged from ${resourceName}: ${STATUS_LABEL[status]} on ${triagedAt.toISOString().slice(0, 10)}${
+          triageComment ? `: ${triageComment}` : ""
+        }`
+    );
+
+  // The verdict's timestamps are copied in SQL, since a JS Date would drop their microseconds.
+  await tx.raw(
+    `UPDATE ?? AS w
+     SET status = v.status, "resolvedAt" = v."resolvedAt", "triagedAt" = v."triagedAt",
+       "triagedByUserId" = v."triagedByUserId", "triageComment" = ?,
+       "lastDetectedAt" = (SELECT max("lastDetectedAt") FROM ?? WHERE id = ANY(?::uuid[]))
+     FROM ?? AS v
+     WHERE w.id = ? AND v.id = ?`,
+    [
+      FINDING,
+      [verdict.triageComment, notes.join("\n")].filter(Boolean).join("\n\n") || null,
+      FINDING,
+      findings.map(({ id }) => id),
+      FINDING,
+      winner.id,
+      verdict.id
+    ]
+  );
+
+  await tx(FINDING).whereIn("id", loserIds).delete();
+};
+
+const mergeBatch = async (tx: Knex, values: TValue[]) => {
+  const resourceIds = [...new Set(values.flatMap((value) => value.resourceIds))].sort();
+  const projectIds = [...new Set(values.map((value) => value.projectId))].sort();
+
+  await tx.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
+
+  // Resources before projects, as scans take them. A scan of the previous release takes only its resource's lock, so
+  // the batch merges only findings named after resources it locked.
+  await lockAll(tx, resourceIds.map(PgSqlLock.SecretScanningFindingLocations));
+  await lockAll(tx, projectIds.map(PgSqlLock.SecretScanningFindingValues));
+
+  const batchFindings = () =>
+    tx(`${FINDING} as f`)
+      .join(`${RESOURCE} as r`, "r.id", "f.resourceId")
+      .join(`${DATA_SOURCE} as ds`, "ds.id", "r.dataSourceId")
+      .whereRaw(`(ds."projectId", f."secretFindingBlindIndex") IN (SELECT * FROM unnest(?::text[], ?::text[]))`, [
+        values.map(({ projectId }) => projectId),
+        values.map(({ blindIndex }) => blindIndex)
+      ])
+      .whereRaw(`f."resourceId" = ANY(?::uuid[])`, [resourceIds]);
+
+  // Triage takes no advisory lock, so the findings are locked before their triage is read, in id order as everything
+  // else that locks several findings does.
+  await batchFindings().orderBy("f.id").forUpdate("f").select("f.id");
+
+  const findings: TFinding[] = await batchFindings()
+    .orderBy(["f.createdAt", "f.id"])
+    .select(
+      tx.raw(`ds."projectId" || ':' || f."secretFindingBlindIndex" AS "valueKey"`),
+      "f.id",
+      "f.status",
+      "f.triagedAt",
+      "f.triageComment",
+      "r.name as resourceName"
+    );
+
+  const findingsByValue = Map.groupBy(findings, ({ valueKey }) => valueKey);
+  for (const valueFindings of findingsByValue.values()) {
+    // eslint-disable-next-line no-await-in-loop
+    if (valueFindings.length > 1) await mergeValue(tx, valueFindings);
+  }
+};
+
+// One transaction per batch, so an interrupted run can start over.
+export async function up(knex: Knex): Promise<void> {
+  const values: TValue[] = await knex(`${FINDING} as f`)
+    .join(`${RESOURCE} as r`, "r.id", "f.resourceId")
+    .join(`${DATA_SOURCE} as ds`, "ds.id", "r.dataSourceId")
+    .leftJoin(`${LOCATION} as l`, "l.findingId", "f.id")
+    .whereNotNull("f.secretFindingBlindIndex")
+    .groupBy("ds.projectId", "f.secretFindingBlindIndex")
+    .havingRaw("count(DISTINCT f.id) > 1")
+    .orderBy(["ds.projectId", "f.secretFindingBlindIndex"])
+    .select(
+      "ds.projectId",
+      "f.secretFindingBlindIndex as blindIndex",
+      knex.raw(`array_agg(DISTINCT f."resourceId"::text) AS "resourceIds"`),
+      knex.raw(`count(DISTINCT f.id)::int AS "findingCount"`),
+      knex.raw(`count(l.id)::int AS "locationCount"`)
+    );
+
+  const batches: TValue[][] = [];
+  let batchLocations = 0;
+  let batchFindingCount = 0;
+  let batchResources = new Set<string>();
+  for (const value of values) {
+    const resources = new Set([...batchResources, ...value.resourceIds]);
+    if (
+      !batches.length ||
+      batchLocations + value.locationCount > BATCH_LOCATIONS ||
+      batchFindingCount + value.findingCount > BATCH_FINDINGS ||
+      resources.size > BATCH_RESOURCES
+    ) {
+      batches.push([]);
+      batchLocations = 0;
+      batchFindingCount = 0;
+      batchResources = new Set(value.resourceIds);
+    } else {
+      batchResources = resources;
+    }
+    batches[batches.length - 1].push(value);
+    batchLocations += value.locationCount;
+    batchFindingCount += value.findingCount;
+  }
+
+  for (const batch of batches) {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await knex.transaction((tx) => mergeBatch(tx, batch));
+        break;
+      } catch (error) {
+        // The release before this one deletes resources and skips findings without the advisory locks, so it can
+        // deadlock with a batch. A batch is idempotent, so it is run again.
+        const { code } = error as { code?: string };
+        if (attempt >= BATCH_ATTEMPTS || (code !== "40P01" && code !== "55P03")) throw error;
+      }
+    }
+  }
+}
+
+const splitBatch = async (tx: Knex, findingIds: string[]) => {
+  await tx.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`);
+
+  await tx.raw(
+    `CREATE TEMPORARY TABLE finding_split ON COMMIT DROP AS
+     SELECT DISTINCT ON (l."findingId", l."resourceId")
+       l."findingId", l."resourceId", gen_random_uuid() AS "newId", l."scanId", l.fingerprint, l.details, l."createdAt"
+     FROM ?? AS l
+     JOIN ?? AS f ON f.id = l."findingId"
+     WHERE l."resourceId" <> f."resourceId" AND f.id = ANY(?::uuid[])
+     ORDER BY l."findingId", l."resourceId", l."createdAt", l.id`,
+    [LOCATION, FINDING, findingIds]
+  );
+
+  await tx.raw(
+    `INSERT INTO ?? (
+       id, "resourceId", "scanId", fingerprint, details, rule, severity, confidence, status, "triageComment",
+       "triagedByUserId", "triagedAt", "resolvedAt", "secretFindingBlindIndex", "createdAt", "lastDetectedAt"
+     )
+     SELECT s."newId", s."resourceId", s."scanId", s.fingerprint, s.details, f.rule, f.severity, f.confidence, f.status,
+       f."triageComment", f."triagedByUserId", f."triagedAt", f."resolvedAt", f."secretFindingBlindIndex", s."createdAt",
+       f."lastDetectedAt"
+     FROM finding_split AS s
+     JOIN ?? AS f ON f.id = s."findingId"`,
+    [FINDING, FINDING]
+  );
+
+  await tx.raw(
+    `UPDATE ?? AS l SET "findingId" = s."newId"
+     FROM finding_split AS s
+     WHERE l."findingId" = s."findingId" AND l."resourceId" = s."resourceId"`,
+    [LOCATION]
+  );
+};
+
+// A split finding has no location left in another resource, so an interrupted run can start over.
+export async function down(knex: Knex): Promise<void> {
+  let lastFindingId: string | null = null;
+
+  for (;;) {
+    const cursor = lastFindingId;
+    // eslint-disable-next-line no-await-in-loop
+    const findingIds: string[] = await knex(`${FINDING} as f`)
+      .whereExists((locations) => {
+        void locations
+          .select(knex.raw("1"))
+          .from(`${LOCATION} as l`)
+          .whereRaw(`l."findingId" = f.id AND l."resourceId" <> f."resourceId"`);
+      })
+      .modify((qb) => {
+        if (cursor) void qb.where("f.id", ">", cursor);
+      })
+      .orderBy("f.id")
+      .limit(SPLIT_BATCH_FINDINGS)
+      .pluck("f.id");
+
+    if (!findingIds.length) break;
+
+    // eslint-disable-next-line no-await-in-loop
+    await knex.transaction((tx) => splitBatch(tx, findingIds));
+    lastFindingId = findingIds[findingIds.length - 1];
+  }
+}
+
+const config = { transaction: false };
+export { config };

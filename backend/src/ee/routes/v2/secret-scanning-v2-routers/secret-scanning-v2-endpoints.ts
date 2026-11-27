@@ -669,7 +669,7 @@ export const registerSecretScanningEndpoints = <
       hide: true,
       operationId: `remove${sourceTypeId}DataSourceResource`,
       tags: [ApiDocsTags.SecretScanning],
-      description: `Remove a resource from the specified ${sourceType} Data Source, deleting its scans and findings.`,
+      description: `Remove a resource from the specified ${sourceType} Data Source, deleting its scans and the places its findings were found. A finding found only there is deleted too.`,
       params: z.object({
         dataSourceId: z.string().uuid().describe(SecretScanningDataSources.REMOVE_RESOURCE(type).dataSourceId),
         resourceId: z.string().uuid().describe(SecretScanningDataSources.REMOVE_RESOURCE(type).resourceId)

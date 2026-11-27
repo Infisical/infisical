@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { SecretScanningDataSourceIcon } from "@app/components/secret-scanning";
 import {
   Button,
   ButtonGroup,
@@ -13,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  ProviderIcon,
   Separator,
   Sheet,
   SheetContent,
@@ -26,10 +27,7 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import {
-  RESOURCE_DESCRIPTION_HELPER,
-  SECRET_SCANNING_DATA_SOURCE_MAP
-} from "@app/helpers/secretScanningV2";
+import { formatLocationCount, formatSecretScanningRule } from "@app/helpers/secretScanningV2";
 import {
   SecretScanningFindingStatus,
   TSecretScanningFinding,
@@ -41,6 +39,7 @@ import { FindingStatusBadge } from "./FindingStatusBadge";
 
 type Props = {
   finding?: TSecretScanningFinding;
+  focusResourceId: string | null;
   position: { index: number; total: number } | null;
   onClose: () => void;
   onPrevious: () => void;
@@ -51,8 +50,48 @@ type Props = {
 
 const formatDate = (date: string | Date) => format(new Date(date), "MMM d, yyyy h:mm a");
 
+const FOUND_IN_PREVIEW_COUNT = 2;
+
+const FoundInList = ({ resources }: { resources: TSecretScanningFinding["resources"] }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hiddenCount = resources.length - FOUND_IN_PREVIEW_COUNT;
+  const visible =
+    isExpanded || hiddenCount <= 0 ? resources : resources.slice(0, FOUND_IN_PREVIEW_COUNT);
+
+  return (
+    <ul className="flex flex-col gap-1">
+      {visible.map((resource) => (
+        <li key={resource.id} className="flex items-center gap-2">
+          <SecretScanningDataSourceIcon
+            type={resource.dataSourceType}
+            dataSourceName={resource.dataSourceName}
+            className="size-3.5"
+          />
+          <span className="truncate">{resource.name}</span>
+          <span className="shrink-0 text-xs text-muted">
+            {formatLocationCount(resource.locationCount)}
+          </span>
+        </li>
+      ))}
+      {hiddenCount > 0 && (
+        <li>
+          <Button
+            variant="link"
+            size="xs"
+            className="px-0"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? "Show Less" : `+${hiddenCount} More`}
+          </Button>
+        </li>
+      )}
+    </ul>
+  );
+};
+
 export const FindingDetailSheet = ({
   finding,
+  focusResourceId,
   position,
   onClose,
   onPrevious,
@@ -63,6 +102,11 @@ export const FindingDetailSheet = ({
   // the newest location's rule description stands for the finding's
   const { data: locationPages } = useListSecretScanningFindingLocations(finding?.id ?? "");
   const latestLocation = locationPages?.pages[0]?.locations[0];
+  const dataSourceNames = [
+    ...new Map(
+      (finding?.resources ?? []).map((resource) => [resource.dataSourceId, resource.dataSourceName])
+    ).values()
+  ];
 
   return (
     <Sheet open={Boolean(finding)} onOpenChange={(open) => !open && onClose()}>
@@ -71,13 +115,8 @@ export const FindingDetailSheet = ({
           <>
             <SheetHeader>
               <div className="flex items-center gap-1 pr-8">
-                <span className="mr-auto flex items-center gap-2 text-xs text-muted">
-                  <ProviderIcon
-                    alt={`${SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType].name} data source`}
-                    icon={SECRET_SCANNING_DATA_SOURCE_MAP[finding.dataSourceType].image}
-                    className="size-4"
-                  />
-                  {finding.dataSourceName}
+                <span className="mr-auto min-w-0 truncate text-xs text-muted">
+                  {dataSourceNames.join(", ")}
                 </span>
                 {position && (
                   <span className="mr-1 text-xs text-muted">
@@ -104,7 +143,7 @@ export const FindingDetailSheet = ({
                 </IconButton>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <SheetTitle>{finding.rule}</SheetTitle>
+                <SheetTitle>{formatSecretScanningRule(finding.rule)}</SheetTitle>
                 <FindingStatusBadge status={finding.status} />
               </div>
               {latestLocation && (
@@ -114,11 +153,11 @@ export const FindingDetailSheet = ({
 
             <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
               <div className="grid grid-cols-2 gap-4">
-                <Detail>
-                  <DetailLabel>
-                    {RESOURCE_DESCRIPTION_HELPER[finding.dataSourceType].singularTitle}
-                  </DetailLabel>
-                  <DetailValue>{finding.resourceName}</DetailValue>
+                <Detail className="col-span-2">
+                  <DetailLabel>Found In</DetailLabel>
+                  <DetailValue>
+                    <FoundInList key={finding.id} resources={finding.resources} />
+                  </DetailValue>
                 </Detail>
                 <Detail>
                   <DetailLabel>Last Detected</DetailLabel>
@@ -138,7 +177,13 @@ export const FindingDetailSheet = ({
                 )}
               </div>
               <Separator />
-              <FindingLocationList findingId={finding.id} locationCount={finding.locationCount} />
+              <FindingLocationList
+                key={finding.id}
+                findingId={finding.id}
+                locationCount={finding.locationCount}
+                resources={finding.resources}
+                initialResourceId={focusResourceId}
+              />
             </div>
 
             <Separator />

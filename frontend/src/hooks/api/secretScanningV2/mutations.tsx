@@ -194,6 +194,9 @@ export const useRemoveSecretScanningResource = () => {
       queryClient.invalidateQueries({
         queryKey: secretScanningV2Keys.findingCount(projectId)
       });
+      queryClient.invalidateQueries({
+        queryKey: [...secretScanningV2Keys.finding(), "locations"]
+      });
     }
   });
 };

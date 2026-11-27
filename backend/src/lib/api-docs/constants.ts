@@ -4593,7 +4593,8 @@ export const SecretScanningDataSources = {
   }),
   REMOVE_RESOURCE: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to remove the resource from.`,
-    resourceId: "The ID of the resource to remove. Its scans and findings are deleted with it."
+    resourceId:
+      "The ID of the resource to remove. Its scans, and the places its findings were found, are deleted with it. A finding found only there is deleted too."
   }),
   CONFIG: {
     GITLAB: {
@@ -4614,18 +4615,25 @@ export const SecretScanningFindings = {
   LIST: {
     projectId: `The ID of the project to list Secret Scanning Findings from. Defaults to the organization's active Secret Scanning project.`,
     status: "Only return findings with this status.",
-    dataSourceId: "Only return findings detected in this Data Source.",
-    resourceId: "Only return findings detected in this resource, such as a repository or project.",
+    dataSourceId: "Only return findings found in this Data Source, in any of its resources.",
+    resourceId:
+      "Only return findings found in this resource, such as a repository or project. A finding is also found in any other resource with the same secret.",
     scanId: "Only return findings this scan found in a new location.",
-    orderBy: "The field to sort findings by. Sorting by `author` is deprecated and uses the first location's author.",
+    orderBy:
+      "The field to sort findings by. Sorting by `author` and by `resourceName` is deprecated: a finding can span several resources, so they sort by one of its locations.",
     orderDirection: "The direction to sort findings in.",
     offset: "The number of findings to skip, for pagination.",
     limit: "The maximum number of findings to return, from 1 to 100."
   },
   DEPRECATED_FIRST_LOCATION:
     "Deprecated: describes only the first place the secret was found. Use the finding's locations instead.",
+  DEPRECATED_NAMED_RESOURCE:
+    "Deprecated: describes only one of the resources the secret was found in. Use `resources` instead.",
+  RESOURCES:
+    "Every resource the secret was found in, with how many places in each. The resource a list was filtered by comes first.",
   LIST_LOCATIONS: {
     findingId: "The ID of the Secret Scanning Finding to list the locations of.",
+    resourceId: "Only return the places the secret was found in this resource.",
     offset: "The number of locations to skip, for pagination.",
     limit: "The maximum number of locations to return, from 1 to 100."
   },
