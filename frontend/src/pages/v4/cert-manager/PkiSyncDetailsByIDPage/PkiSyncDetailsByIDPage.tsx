@@ -32,6 +32,7 @@ import { Dash } from "../../access/org/detail-parts";
 import { formatDateTime } from "../../access/roles";
 import { toast } from "../../access/toast";
 import { EditDetailsButton, RESTRICTED } from "../../access/ui";
+import { providerMedia } from "../../components/provider-label";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, useGo, v4Path } from "../../links";
@@ -259,6 +260,7 @@ const SyncDetails = ({
         <PageHeader
           breadcrumb={[{ label: backLabel, href: backHref }]}
           title={sync.name}
+          media={providerMedia("pki-sync", sync.destination, "xl")}
           badges={
             <Inline gap={8} align="center" wrap={false}>
               <SyncStatus sync={sync} badge="control-sm" />
