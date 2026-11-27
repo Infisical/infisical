@@ -136,7 +136,7 @@ export const failureAlertSchema = (saved?: Pick<TSavedFailureAlert, "enabled" | 
         return;
       const result = z
         .array(channelFormSchema)
-        .min(1, "At least one channel is required")
+        .min(1, "Add at least one channel, or turn off the alert.")
         .safeParse(channels);
       if (result.success) return;
       result.error.issues.forEach((issue) =>

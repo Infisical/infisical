@@ -492,7 +492,7 @@ function RotationSteps({
   const offset = isUpdate ? 0 : 1;
   return (
     <div className="flex min-h-0 flex-1">
-      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--cipher-line-soft)] px-5 py-6">
+      <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--cipher-line-soft)] px-5 py-6 max-md:hidden">
         <SmallText muted>Setup steps</SmallText>
         <Steps
           orientation="vertical"
@@ -513,7 +513,7 @@ function RotationSteps({
       </aside>
       <form
         data-scroll-fade="y"
-        className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6"
+        className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-8 py-6 max-md:px-5"
         onSubmit={(event) => event.preventDefault()}
       >
         <Heading level={2} size="subsection">
@@ -847,9 +847,11 @@ export function SecretRotationFlow({
             {type && (
               <SheetFooter>
                 <Inline justify="between" wrap={false}>
-                  <SmallText muted>{isDirty ? "Unsaved changes" : ""}</SmallText>
+                  <SmallText muted className="max-md:hidden">
+                    {isDirty ? "Unsaved changes" : ""}
+                  </SmallText>
                   <Inline gap={12} wrap={false}>
-                    <SmallText muted>
+                    <SmallText muted className="whitespace-nowrap">
                       Step {step + (isUpdate ? 1 : 2)} of {FORM_STEPS.length + (isUpdate ? 0 : 1)}
                     </SmallText>
                     <Button variant="outline" onClick={handlePrev}>

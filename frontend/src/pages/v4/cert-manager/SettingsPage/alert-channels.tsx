@@ -887,9 +887,7 @@ export const ChannelsStep = ({
 }) => (
   <Stack gap={16}>
     <Inline gap={12} justify="between" align="center" wrap={false}>
-      <SmallText muted>
-        {channels.length ? pluralize(channels.length, "channel") : "No channels yet"}
-      </SmallText>
+      <SmallText muted>{channels.length > 0 && pluralize(channels.length, "channel")}</SmallText>
       <AddChannelMenu
         channelCount={channels.length}
         hasEnterprise={hasEnterprise}

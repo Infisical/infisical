@@ -4,6 +4,7 @@ import { SecretSync } from "@app/hooks/api/secretSyncs/enums";
 
 import type { V4QueryResult } from "../contract";
 import type { ConnectionWithApp, SecretsOptionsAdapter } from "./contract-options";
+import { demoConnectionId } from "./demo-ids";
 import { DEMO_SYNC_CONNECTIONS } from "./demo-syncs";
 
 const ROTATION_CONNECTION_NAMES: [AppConnection, string[]][] = [
@@ -39,7 +40,7 @@ const ROTATION_CONNECTION_NAMES: [AppConnection, string[]][] = [
 
 export const DEMO_ROTATION_CONNECTIONS: ConnectionWithApp[] = ROTATION_CONNECTION_NAMES.flatMap(
   ([app, names]) =>
-    names.map((name) => ({ id: `connection-${name}`, name, app, projectId: "payments-api" }))
+    names.map((name) => ({ id: demoConnectionId(name), name, app, projectId: "payments-api" }))
 );
 
 export const ready = <T>(data: T, enabled = true): V4QueryResult<T> => ({

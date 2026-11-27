@@ -35,6 +35,7 @@ import { V4_DEMO_ORG_ID } from "../../mode";
 import { type DemoFolderAccess, seedFolderAccess } from "./demo-access-seed";
 import { seedChangeRequests } from "./demo-change-requests-seed";
 import { type DemoCommit, seedDemoCommits } from "./demo-commits-seed";
+import { demoConnectionId } from "./demo-ids";
 import { seedSecretSyncs } from "./demo-syncs";
 
 type Scope = { projectId: string; environment: string; path: string };
@@ -300,7 +301,7 @@ const rotation = (
   name,
   description: null,
   folderId: id("payments-api", environment, path),
-  connectionId: `connection-${connection}`,
+  connectionId: demoConnectionId(connection),
   createdAt: created,
   updatedAt: created,
   rotationInterval: 30,
@@ -311,7 +312,7 @@ const rotation = (
   lastRotatedAt: "2026-10-20T00:00:00Z",
   lastRotationAttemptedAt: "2026-10-20T00:00:00Z",
   lastRotationMessage: null,
-  connection: { app: AppConnection.Postgres, id: `connection-${connection}`, name: connection },
+  connection: { app: AppConnection.Postgres, id: demoConnectionId(connection), name: connection },
   environment: envOf(environment),
   folder: { id: id("payments-api", environment, path), path },
   isAutoRotationEnabled: true,
