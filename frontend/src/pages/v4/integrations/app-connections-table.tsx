@@ -146,6 +146,11 @@ const useGitHubAppLinks = (connections: TAppConnection[], projectId?: string) =>
   };
 };
 
+const projectConnectionsPath: Partial<Record<ProjectType, string>> = {
+  [ProjectType.AgentVault]: "settings",
+  [ProjectType.SecretManager]: "integrations?selectedTab=app-connections"
+};
+
 const useConnectionColumns = (connections: TAppConnection[], scope: AppConnectionsScope) => {
   const orgId = useOrgId();
   const isProject = scope.kind === "project";
@@ -158,7 +163,7 @@ const useConnectionColumns = (connections: TAppConnection[], scope: AppConnectio
   const projectHref = (project: NonNullable<TAppConnection["project"]>) =>
     orgHref(
       orgId,
-      `${projectBase(project.type, project.id)}/${project.type === ProjectType.AgentVault ? "settings" : "app-connections"}`
+      `${projectBase(project.type, project.id)}/${projectConnectionsPath[project.type] ?? "app-connections"}`
     );
   const managedColumn: DataTableColumn<TAppConnection> = {
     id: "managed",

@@ -217,7 +217,7 @@ import { Route as v4SecretManagerOverviewPageRouteImport } from './pages/v4/secr
 import { Route as v4SecretManagerInsightsPageRouteImport } from './pages/v4/secret-manager/InsightsPage/route'
 import { Route as v4ProjectAuditLogsPageRouteImport } from './pages/v4/project/AuditLogsPage/route'
 import { Route as v4SecretManagerSecretApprovalsPageRouteImport } from './pages/v4/secret-manager/SecretApprovalsPage/route'
-import { Route as v4ProjectAppConnectionsPageRouteImport } from './pages/v4/project/AppConnectionsPage/route'
+import { Route as v4RedirectsSecretManagerAppConnectionsRedirectRouteImport } from './pages/v4/redirects/SecretManagerAppConnectionsRedirect/route'
 import { Route as v4ProjectAccessControlPageRouteImport } from './pages/v4/project/AccessControlPage/route'
 import { Route as v4KmsKmipServerDetailsByIDPageRouteImport } from './pages/v4/kms/KmipServerDetailsByIDPage/route'
 import { Route as v4KmsSettingsPageRouteImport } from './pages/v4/kms/SettingsPage/route'
@@ -2153,8 +2153,8 @@ const v4SecretManagerSecretApprovalsPageRouteRoute =
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
-const v4ProjectAppConnectionsPageRouteRoute =
-  v4ProjectAppConnectionsPageRouteImport.update({
+const v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute =
+  v4RedirectsSecretManagerAppConnectionsRedirectRouteImport.update({
     id: '/secret-management/$projectId/app-connections',
     path: '/secret-management/$projectId/app-connections',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
@@ -5952,7 +5952,7 @@ declare module '@tanstack/react-router' {
       id: '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections'
       path: '/secret-management/$projectId/app-connections'
       fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections'
-      preLoaderRoute: typeof v4ProjectAppConnectionsPageRouteImport
+      preLoaderRoute: typeof v4RedirectsSecretManagerAppConnectionsRedirectRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
     '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': {
@@ -8040,7 +8040,7 @@ interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4KmsSettingsPageRouteRoute: typeof v4KmsSettingsPageRouteRoute
   v4KmsKmipServerDetailsByIDPageRouteRoute: typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   v4ProjectAccessControlPageRouteRoute: typeof v4ProjectAccessControlPageRouteRoute
-  v4ProjectAppConnectionsPageRouteRoute: typeof v4ProjectAppConnectionsPageRouteRoute
+  v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute: typeof v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute
   v4SecretManagerSecretApprovalsPageRouteRoute: typeof v4SecretManagerSecretApprovalsPageRouteRoute
   v4ProjectAuditLogsPageRouteRoute: typeof v4ProjectAuditLogsPageRouteRoute
   v4SecretManagerInsightsPageRouteRoute: typeof v4SecretManagerInsightsPageRouteRoute
@@ -8120,8 +8120,8 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
     v4KmsKmipServerDetailsByIDPageRouteRoute:
       v4KmsKmipServerDetailsByIDPageRouteRoute,
     v4ProjectAccessControlPageRouteRoute: v4ProjectAccessControlPageRouteRoute,
-    v4ProjectAppConnectionsPageRouteRoute:
-      v4ProjectAppConnectionsPageRouteRoute,
+    v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute:
+      v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute,
     v4SecretManagerSecretApprovalsPageRouteRoute:
       v4SecretManagerSecretApprovalsPageRouteRoute,
     v4ProjectAuditLogsPageRouteRoute: v4ProjectAuditLogsPageRouteRoute,
@@ -10091,7 +10091,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
-  '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof v4ProjectAppConnectionsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': typeof v4ProjectAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/insights': typeof v4SecretManagerInsightsPageRouteRoute
@@ -10572,7 +10572,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
-  '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof v4ProjectAppConnectionsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': typeof v4ProjectAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/insights': typeof v4SecretManagerInsightsPageRouteRoute
@@ -11052,7 +11052,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
-  '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof v4ProjectAppConnectionsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections': typeof v4RedirectsSecretManagerAppConnectionsRedirectRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': typeof v4ProjectAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/insights': typeof v4SecretManagerInsightsPageRouteRoute
@@ -14107,7 +14107,7 @@ export const routeTree = rootRoute
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/app-connections": {
-      "filePath": "v4/project/AppConnectionsPage/route.tsx",
+      "filePath": "v4/redirects/SecretManagerAppConnectionsRedirect/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/approval": {

@@ -4,7 +4,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 export type ShellLevel =
   | "org"
-  | "settings"
   | "product"
   | "project"
   | "pki"
@@ -21,6 +20,7 @@ export type ShellNavItem = {
   search?: Record<string, string>;
   count?: number;
   drillIn?: boolean;
+  children?: readonly ShellNavItem[];
 };
 
 export type ShellNavSection = {
@@ -146,12 +146,26 @@ const audit = (path: string): ShellNavItem => ({
   icon: "history",
   path: `${path}/audit-logs`
 });
-const settings = (path: string): ShellNavItem => ({
-  id: "settings",
-  label: "Settings",
-  icon: "settings",
-  path: `${path}/settings`
-});
+type SettingsTab = (id: string, label: string, icon: IconName, selectedTab: string) => ShellNavItem;
+
+/** A scope's Settings row. With more than one settings page it expands in place to them, the same rule as the org's Products section. */
+const settings = (base: string, pages?: (tab: SettingsTab) => ShellNavItem[]): ShellNavItem => {
+  const path = `${base}/settings`;
+  const children = pages?.((id, label, icon, selectedTab) => ({
+    id,
+    label,
+    icon,
+    path,
+    search: { selectedTab }
+  }));
+  return {
+    id: "settings",
+    label: "Settings",
+    icon: "settings",
+    path,
+    children: children && children.length > 1 ? children : undefined
+  };
+};
 
 export const orgSections = (isSubOrganization: boolean): readonly ShellNavSection[] => [
   {
@@ -180,57 +194,39 @@ export const orgSections = (isSubOrganization: boolean): readonly ShellNavSectio
             }
           ]),
       audit(""),
-      {
-        ...settings(""),
-        drillIn: true,
-        search: { selectedTab: "tab-org-general" }
-      }
-    ]
-  }
-];
-
-const settingsTab = (id: string, label: string, icon: IconName, selectedTab: string) => ({
-  id,
-  label,
-  icon,
-  path: "/settings",
-  search: { selectedTab }
-});
-
-export const settingsSections = (isSubOrganization: boolean): readonly ShellNavSection[] => [
-  {
-    items: [
-      settingsTab("general", "General", "settings", "tab-org-general"),
-      ...(isSubOrganization
-        ? []
-        : [
-            {
-              id: "sso",
-              label: "SSO & provisioning",
-              icon: "sign-in" as const,
-              path: "/sso"
-            },
-            {
-              id: "oauth",
-              label: "OAuth applications",
-              icon: "app-window" as const,
-              path: "/oauth-applications"
-            }
-          ]),
-      {
-        id: "networking",
-        label: "Networking",
-        icon: "network",
-        path: "/networking"
-      },
-      ...(isSubOrganization
-        ? []
-        : [settingsTab("security", "Security", "shield-check", "tab-org-security")]),
-      settingsTab("encryption", "Encryption", "key", "tab-org-encryption"),
-      settingsTab("product", "Product settings", "settings", "product-settings"),
-      ...(isSubOrganization
-        ? []
-        : [settingsTab("sub-orgs", "Sub organizations", "building", "tab-sub-organizations")])
+      settings("", (tab) => [
+        tab("general", "General", "settings", "tab-org-general"),
+        ...(isSubOrganization
+          ? []
+          : [
+              {
+                id: "sso",
+                label: "SSO & provisioning",
+                icon: "sign-in" as const,
+                path: "/sso"
+              },
+              {
+                id: "oauth",
+                label: "OAuth applications",
+                icon: "app-window" as const,
+                path: "/oauth-applications"
+              }
+            ]),
+        {
+          id: "networking",
+          label: "Networking",
+          icon: "network",
+          path: "/networking"
+        },
+        ...(isSubOrganization
+          ? []
+          : [tab("security", "Security", "shield-check", "tab-org-security")]),
+        tab("encryption", "Encryption", "key", "tab-org-encryption"),
+        tab("product", "Product settings", "settings", "product-settings"),
+        ...(isSubOrganization
+          ? []
+          : [tab("sub-orgs", "Sub organizations", "building", "tab-sub-organizations")])
+      ])
     ]
   }
 ];
@@ -304,54 +300,6 @@ export const productNavItems = (blocked: ReadonlySet<ProjectType>): ShellProduct
       };
     });
 
-const settingsTabOf =
-  (path: string) => (id: string, label: string, icon: IconName, selectedTab: string) => ({
-    ...settingsTab(id, label, icon, selectedTab),
-    path
-  });
-
-export const projectSettingsSections = (
-  level: ShellLevel,
-  base: string
-): readonly ShellNavSection[] | undefined => {
-  const tab = settingsTabOf(base);
-  if (level === "project")
-    return [
-      {
-        items: [
-          tab("general", "General", "settings", "tab-project-general"),
-          tab("environments", "Environments", "layers", "tab-secret-environments"),
-          tab("tags", "Tags", "tag", "tab-secret-tags"),
-          tab("policies", "Policies", "shield-check", "tab-secret-policies"),
-          tab("encryption", "Encryption", "lock", "tab-project-encryption"),
-          tab("workflow", "Workflow integrations", "apps", "tab-workflow-integrations"),
-          tab("webhooks", "Webhooks", "webhook", "tab-project-webhooks")
-        ]
-      }
-    ];
-  if (level === "agent-vault")
-    return [
-      {
-        items: [
-          tab("general", "General", "settings", "tab-project-general"),
-          tab("session-logs", "Session logs", "history", "tab-session-logs")
-        ]
-      }
-    ];
-  if (level === "pki")
-    return [
-      {
-        items: [
-          tab("app-connections", "App connections", "cable", "app-connections"),
-          tab("hsm-connectors", "HSM connectors", "server", "hsm-connectors"),
-          tab("cleanup", "Cleanup", "trash", "cleanup"),
-          tab("alerts", "Alerts", "bell", "alerts")
-        ]
-      }
-    ];
-  return undefined;
-};
-
 export const projectSections = (base: string): readonly ShellNavSection[] => [
   {
     items: [
@@ -382,7 +330,21 @@ export const projectSections = (base: string): readonly ShellNavSection[] => [
       }
     ]
   },
-  { label: "Administration", items: [audit(base), settings(base)] }
+  {
+    label: "Administration",
+    items: [
+      audit(base),
+      settings(base, (tab) => [
+        tab("general", "General", "settings", "tab-project-general"),
+        tab("environments", "Environments", "layers", "tab-secret-environments"),
+        tab("tags", "Tags", "tag", "tab-secret-tags"),
+        tab("policies", "Policies", "shield-check", "tab-secret-policies"),
+        tab("encryption", "Encryption", "lock", "tab-project-encryption"),
+        tab("workflow", "Workflow integrations", "apps", "tab-workflow-integrations"),
+        tab("webhooks", "Webhooks", "webhook", "tab-project-webhooks")
+      ])
+    ]
+  }
 ];
 
 export const kmsSections = (base: string): readonly ShellNavSection[] => [
@@ -474,7 +436,19 @@ export const pkiSections: readonly ShellNavSection[] = [
       }
     ]
   },
-  { label: "Administration", items: [access(pki), audit(pki), settings(pki)] }
+  {
+    label: "Administration",
+    items: [
+      access(pki),
+      audit(pki),
+      settings(pki, (tab) => [
+        tab("app-connections", "App connections", "cable", "app-connections"),
+        tab("hsm-connectors", "HSM connectors", "server", "hsm-connectors"),
+        tab("cleanup", "Cleanup", "trash", "cleanup"),
+        tab("alerts", "Alerts", "bell", "alerts")
+      ])
+    ]
+  }
 ];
 
 const scanning = "/secret-scanning";
@@ -600,6 +574,13 @@ export const agentVaultSections = (base: string): readonly ShellNavSection[] => 
   },
   {
     label: "Administration",
-    items: [access(base), audit(base), settings(base)]
+    items: [
+      access(base),
+      audit(base),
+      settings(base, (tab) => [
+        tab("general", "General", "settings", "tab-project-general"),
+        tab("session-logs", "Session logs", "history", "tab-session-logs")
+      ])
+    ]
   }
 ];
