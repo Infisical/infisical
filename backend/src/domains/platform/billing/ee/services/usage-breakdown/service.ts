@@ -9,21 +9,13 @@ import {
 import { TProjectsService } from "@app/domains/platform/projects/ce/module";
 
 import { BillingAccess } from "../../models/billing-access";
-import { BreakdownDimension, TBreakdownDimensionKey } from "../../models/breakdown-dimension";
+import { BreakdownDimension } from "../../models/breakdown-dimension";
 import { TUsageBreakdownView, UsageBreakdown } from "../../models/usage-breakdown";
 import { TBillingConfig } from "../dependencies";
 import { assertBillingRead } from "../helpers/billing-access";
 
-// The meters a breakdown is offered for, by the key the API takes.
-export const BreakdownDimensionKey = {
-  Identities: "identities",
-  UserIdentities: "user_identities",
-  SecretIdentities: "secret_identities",
-  PamIdentities: "pam_identities",
-  InternalCas: "internal_cas",
-  ActiveCerts: "active_certs",
-  WildcardCerts: "wildcard_certs"
-} as const satisfies Record<string, TBreakdownDimensionKey>;
+// The keys the API takes for a breakdown.
+export const breakdownDimensionKeys = BreakdownDimension.keys();
 
 export enum BreakdownScope {
   // Every org on a self-hosted instance, which its license is billed on.

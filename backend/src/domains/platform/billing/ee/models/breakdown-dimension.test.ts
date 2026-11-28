@@ -12,3 +12,21 @@ describe("BreakdownDimension.fromKey", () => {
     expect(result).toEqual([BreakdownDimension.Identities, BreakdownDimension.PamIdentities, null, null]);
   });
 });
+
+describe("BreakdownDimension.keys", () => {
+  test("should offer exactly the seven breakdowns in the order the API documents them", () => {
+    // Action
+    const keys = BreakdownDimension.keys();
+
+    // Assert
+    expect(keys).toEqual([
+      "identities",
+      "user_identities",
+      "secret_identities",
+      "pam_identities",
+      "internal_cas",
+      "active_certs",
+      "wildcard_certs"
+    ]);
+  });
+});

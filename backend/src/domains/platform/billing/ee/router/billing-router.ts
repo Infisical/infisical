@@ -10,7 +10,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TBillingOverviewService } from "../services/billing-overview/service";
 import { TSubscriptionService } from "../services/subscription/service";
 import { TTrialService } from "../services/trial/service";
-import { BreakdownDimensionKey, BreakdownScope, TUsageBreakdownService } from "../services/usage-breakdown/service";
+import { breakdownDimensionKeys, BreakdownScope, TUsageBreakdownService } from "../services/usage-breakdown/service";
 
 // The license server joins this onto its configured portal origin, so it must be a single-rooted
 // relative path. Reject protocol-relative ("//host", "/\\host") values that browsers can normalize
@@ -403,7 +403,7 @@ export const registerBillingRouter = async (server: FastifyZodProvider, services
         "Break one metered usage dimension down by the organizations and projects its units were created in.",
       params: z.object({
         organizationId: z.string().trim().uuid(),
-        dimensionKey: z.nativeEnum(BreakdownDimensionKey).describe("The metered dimension to break down.")
+        dimensionKey: z.enum(breakdownDimensionKeys).describe("The metered dimension to break down.")
       }),
       querystring: z.object({
         scope: z
