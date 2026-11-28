@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { hasHCVaultDotSegment } from "@app/services/app-connection/hc-vault/hc-vault-path-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
   BaseSecretSyncSchema,
@@ -33,6 +34,25 @@ const HCVaultSyncDestinationConfigSchema = z.object({
     .describe(SecretSyncs.DESTINATION_CONFIG.HC_VAULT.path)
 });
 
+// Create and update only; stored configs are checked when the sync runs.
+const HCVaultSyncDestinationConfigInputSchema = HCVaultSyncDestinationConfigSchema.superRefine((config, ctx) => {
+  if (hasHCVaultDotSegment(config.mount)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Secrets Engine Mount cannot contain '.' or '..' segments.",
+      path: ["mount"]
+    });
+  }
+
+  if (hasHCVaultDotSegment(config.path)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Path cannot contain '.' or '..' segments.",
+      path: ["path"]
+    });
+  }
+});
+
 const HCVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const HCVaultSyncSchema = BaseSecretSyncSchema(SecretSync.HCVault, HCVaultSyncOptionsConfig)
@@ -46,14 +66,14 @@ export const CreateHCVaultSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.HCVault,
   HCVaultSyncOptionsConfig
 ).extend({
-  destinationConfig: HCVaultSyncDestinationConfigSchema
+  destinationConfig: HCVaultSyncDestinationConfigInputSchema
 });
 
 export const UpdateHCVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.HCVault,
   HCVaultSyncOptionsConfig
 ).extend({
-  destinationConfig: HCVaultSyncDestinationConfigSchema.optional()
+  destinationConfig: HCVaultSyncDestinationConfigInputSchema.optional()
 });
 
 export const HCVaultSyncListItemSchema = z

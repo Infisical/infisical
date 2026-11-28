@@ -7,6 +7,10 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import {
   getHCVaultAccessToken,
   getHCVaultInstanceUrl,
+  HC_VAULT_URL_PATH_CHARACTERS_MESSAGE,
+  hasHCVaultDotSegment,
+  isHCVaultUrlPathPreserved,
+  isKvMount,
   requestWithHCVaultGateway,
   THCVaultConnection
 } from "@app/services/app-connection/hc-vault";
@@ -20,6 +24,42 @@ import {
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
+
+const assertMountHasNoDotSegment = (mount: string) => {
+  if (hasHCVaultDotSegment(mount)) {
+    throw new SecretSyncError({
+      message: `Secrets engine mount '${mount}' cannot contain '.' or '..' path segments`,
+      shouldRetry: false
+    });
+  }
+};
+
+const getKvUrl = (instanceUrl: string, mount: string, path: string, mountVersion: KvVersion) => {
+  assertMountHasNoDotSegment(mount);
+
+  if (hasHCVaultDotSegment(path)) {
+    throw new SecretSyncError({
+      message: `Vault path '${path}' cannot contain '.' or '..' path segments`,
+      shouldRetry: false
+    });
+  }
+
+  // KV v2 uses /data/ in the path, KV v1 does not
+  const urlPath =
+    mountVersion === KvVersion.V2
+      ? `${removeTrailingSlash(mount)}/data/${path}`
+      : `${removeTrailingSlash(mount)}/${path}`;
+  const url = `${instanceUrl}/v1/${urlPath}`;
+
+  if (!isHCVaultUrlPathPreserved(url)) {
+    throw new SecretSyncError({
+      message: `Secrets engine mount '${mount}' and path '${path}' ${HC_VAULT_URL_PATH_CHARACTERS_MESSAGE}`,
+      shouldRetry: false
+    });
+  }
+
+  return url;
+};
 
 const getKvMountVersion = async ({
   instanceUrl,
@@ -36,9 +76,12 @@ const getKvMountVersion = async ({
   connection: THCVaultConnection;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
 }) => {
+  assertMountHasNoDotSegment(mount);
+
   const { data } = await requestWithHCVaultGateway<{
     data: {
       [key: string]: {
+        type: string;
         options: {
           version?: string;
         } | null;
@@ -61,6 +104,13 @@ const getKvMountVersion = async ({
     throw new Error(`Mount '${mount}' not found`);
   }
 
+  if (!isKvMount({ path: normalizedMount, type: mountData.type })) {
+    throw new SecretSyncError({
+      message: `Secrets engine '${mount}' is a '${mountData.type}' engine. Only KV secrets engines can be used with this sync.`,
+      shouldRetry: false
+    });
+  }
+
   // default to v1
   const kvVersion = mountData.options?.version === KvVersion.V2 ? KvVersion.V2 : KvVersion.V1;
 
@@ -74,17 +124,13 @@ const listHCVaultVariables = async (
   connection: THCVaultConnection,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ): Promise<{ [key: string]: string }> => {
-  try {
-    // KV v2 uses /data/ in the path, KV v1 does not
-    const urlPath =
-      mountVersion === KvVersion.V2
-        ? `${removeTrailingSlash(mount)}/data/${path}`
-        : `${removeTrailingSlash(mount)}/${path}`;
+  const url = getKvUrl(instanceUrl, mount, path, mountVersion);
 
+  try {
     if (mountVersion === KvVersion.V2) {
       // KV v2 response structure
       const { data } = await requestWithHCVaultGateway<THCVaultListVariablesResponse>(connection, gatewayV2Service, {
-        url: `${instanceUrl}/v1/${urlPath}`,
+        url,
         method: "GET",
         headers: {
           "X-Vault-Token": accessToken,
@@ -100,7 +146,7 @@ const listHCVaultVariables = async (
         [key: string]: string;
       };
     }>(connection, gatewayV2Service, {
-      url: `${instanceUrl}/v1/${urlPath}`,
+      url,
       method: "GET",
       headers: {
         "X-Vault-Token": accessToken,
@@ -127,17 +173,13 @@ const updateHCVaultVariables = async (
   connection: THCVaultConnection,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
-  // KV v2 uses /data/ in the path, KV v1 does not
-  const urlPath =
-    mountVersion === KvVersion.V2
-      ? `${removeTrailingSlash(mount)}/data/${path}`
-      : `${removeTrailingSlash(mount)}/${path}`;
+  const url = getKvUrl(instanceUrl, mount, path, mountVersion);
 
   // KV v2 wraps data in { data: { ... } }, KV v1 sends data directly
   const payload = mountVersion === KvVersion.V2 ? { data } : data;
 
   return requestWithHCVaultGateway(connection, gatewayV2Service, {
-    url: `${instanceUrl}/v1/${urlPath}`,
+    url,
     method: "POST",
     headers: {
       "X-Vault-Token": accessToken,
@@ -221,9 +263,9 @@ export const HCVaultSyncFns = {
       // for kv v1: must DELETE the path entirely (empty secrets not allowed)
       // for kv v2: can write empty data to keep the path with metadata
       if (mountVersion === KvVersion.V1) {
-        const urlPath = `${removeTrailingSlash(mount)}/${path}`;
+        const url = getKvUrl(instanceUrl, mount, path, mountVersion);
         await requestWithHCVaultGateway(connection, gatewayV2Service, {
-          url: `${instanceUrl}/v1/${urlPath}`,
+          url,
           method: "DELETE",
           headers: {
             "X-Vault-Token": accessToken,
@@ -298,9 +340,9 @@ export const HCVaultSyncFns = {
         // for kv v1: must DELETE the path entirely (empty secrets not allowed)
         // for kv v2: can write empty data to keep the path with metadata
         if (mountVersion === KvVersion.V1) {
-          const urlPath = `${removeTrailingSlash(mount)}/${path}`;
+          const url = getKvUrl(instanceUrl, mount, path, mountVersion);
           await requestWithHCVaultGateway(connection, gatewayV2Service, {
-            url: `${instanceUrl}/v1/${urlPath}`,
+            url,
             method: "DELETE",
             headers: {
               "X-Vault-Token": accessToken,
