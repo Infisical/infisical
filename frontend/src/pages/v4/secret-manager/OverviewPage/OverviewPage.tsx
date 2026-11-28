@@ -111,6 +111,7 @@ import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
 import { buildResources, toImportedSecret, valueKey } from "./bridge/view-model";
 import {
+  importName,
   readableValue,
   type Resource,
   type ResourceApplyOptions,
@@ -458,21 +459,38 @@ export const OverviewPage = () => {
     !tags.length &&
     scope.path === path &&
     visibleEnvironments.some((entry) => entry.value === scope.environment);
+  const visibleImports = (overview.data?.imports ?? []).filter((entry) => !entry.isReserved);
   const breadthScopes = [
-    ...(overview.data?.imports ?? [])
+    ...visibleImports
       .filter((entry) => !entry.importEnv.projectId || entry.importEnv.projectId === projectId)
       .map((entry) => ({ environment: entry.importEnv.slug, path: entry.importPath })),
-    ...(wide
-      ? Object.values(folderTree ?? {}).flatMap((environment) =>
-          environment.folders.map((folder) => ({
-            environment: environment.slug,
-            path: folder.path
-          }))
+    ...visibleImports
+      .filter((entry) =>
+        expandedRows.includes(
+          resourceKey({
+            kind: "import",
+            name: importName(
+              projectId,
+              entry.importEnv.projectId ?? projectId,
+              entry.importEnv.slug,
+              entry.importPath
+            )
+          })
         )
+      )
+      .map((entry) => ({ environment: entry.environment ?? "", path })),
+    ...(wide
+      ? Object.values(folderTree ?? {})
+          .flatMap((environment) =>
+            environment.folders.map((folder) => ({
+              environment: environment.slug,
+              path: folder.path
+            }))
+          )
+          .filter((scope) => !overviewHolds(scope))
       : [])
   ].filter(
     (scope, index, all) =>
-      !overviewHolds(scope) &&
       all.findIndex(
         (entry) => entry.environment === scope.environment && entry.path === scope.path
       ) === index
@@ -1337,7 +1355,6 @@ export const OverviewPage = () => {
   const sourceState = (entry: Of<"import">): ScopeState => {
     if (entry.source.project !== projectId)
       return foreignImports[entry.environment]?.status ?? "loading";
-    if (overviewHolds(entry.source)) return "loaded";
     return breadth.state(entry.source);
   };
   const importSource: ImportSource = {
