@@ -98,8 +98,13 @@ Rules:
 - **CE never sees the usage wire format.** The EE client builds the body and idempotency key and maps responses
   to outcomes: `no-license`, `not-priced`, `rejected` are final, anything else throws so the queue retries. A new
   final answer goes in the client, not as a status check in `UsageReportService`.
-- **Billing isn't on `TLicenseService`.** It's the EE `LicenseServerClient`, returned by `createDomains` as
-  `licenseBilling` and passed only to subscription code.
+- **Billing isn't on `TLicenseService`.** The License Server's billing endpoints (`TLicenseServerBilling`) are on the EE
+  `LicenseServerClient`, which `domains.ts` hands only to the Billing domain (`platform/billing`). License never calls
+  them.
+- **Every counter explains its count.** A `TUsageCounter` supplies `breakdown(orgId)` beside `count(orgId)`, built on the
+  same query rules (`projectIdentityEntities`, the billable-actor filter, the cert quota-key attribution), so the billed figure and its per-org and per-project split agree; `CounterRegistry` refuses a
+  counter without one. `usageMeteringService.getUsageBreakdown(meter, orgId)` passes the scope through as given (no
+  self-hosted switch, unlike `countUsage`): the caller decides between a root org and `null` for the whole instance.
 - **A failed renewal reaches the org as the `subscription_payment_failed` plan notice**, pulled with the plan since
   the License Server never calls us. It drives the org-wide banner and carries no payment link, because every member
   reads the plan; the invoice link stays on the permission-checked billing overview.
@@ -111,5 +116,5 @@ Rules:
   file moves.
 - **Tests:** `ce/testing/build-license.ts` builds the module on an in-memory key store and queue, with
   `FakeLicenseServer` (policy and License Server) `FakeOrganizationsService` and `FakeProjectsService`. `testFeatures()` is
-  test data, not product defaults. Consumers use `FakeLicenseService` / `FakeUsageMeteringService`; product
+  test data, not product defaults. Consumers use `FakeLicenseService` (records `refreshes`) / `FakeUsageMeteringService` (scripted `setBreakdown`); product
   domains read their counters with `usageCounter(module.usageCounters, Meter.X)`.

@@ -108,6 +108,48 @@ type SecretDeleted struct{ SecretDetail }
 func (SecretDeleted) EventName() string { return "github.secret-deleted" }
 ```
 
+## License Server billing
+
+The `license` fake also answers the cloud billing endpoints the billing portal calls, per
+organization (`/v1/organizations/{orgId}/...`). Open the root org's scope with
+`fixture.LicenseServer(t, tn, tn.OrgID)`. State is JSON, so a test seeds it before the action
+and reads it back after.
+
+| Endpoint | Answers |
+|---|---|
+| `GET /products` | the seeded `Catalog`; empty until seeded |
+| `GET /subscription` | the seeded `Subscription`; 404 (no subscription) until seeded |
+| `GET /billing/profile` | the seeded `Profile`; 404 until seeded |
+| `GET /billing/trials` | the seeded `Trials`; none until seeded |
+| `POST /billing/portal-session`, `POST /subscription/preview`, `POST /subscription/products`, `DELETE /subscription/products/{id}`, `POST /subscription/upgrade`, `PUT /subscription/commitments`, `POST /billing/trial`, `POST /billing/trial/cancel`, `POST /subscription/trials/confirm-payment` | the scripted `Reply` for the operation (`license.OpBuy`, `OpUpgrade`, ...), else a success |
+
+```go
+ls := fixture.LicenseServer(t, tn, tn.OrgID)
+ls.Seed(t, license.SeedBilling(license.BillingState{
+	Catalog: &license.Catalog{Products: []license.CatalogProduct{
+		license.SelfServeProduct("secret-manager", "Secrets Management",
+			license.PerResourceDimension("identities", "Identities", "identity")),
+	}},
+	Results: map[license.Op]license.Reply{license.OpBuy: license.CheckoutCreated("https://checkout.test/s")},
+}))
+
+ls.State(t).RequestsFor(license.OpBuy)[0].Body["declaredUsage"] // what the instance sent
+ls.Fail(t, "GET", "/v1/organizations/"+tn.OrgID.String()+"/subscription", 503) // a failure per endpoint
+```
+
+- A seed fragment sets only the billing fields it carries. A `BillingSeed` leaves the plan
+  alone, and seeding a `Plan` leaves billing alone.
+- `Results` is sticky: an operation keeps answering what was scripted until another seed
+  replaces it. `license.AwaitingCard` is the real server's 402. A refusal with a body the
+  instance parses (`details.code`) is `Fail` with `fakenet.Body`.
+- `Requests` records only the mutations that reached the fake with their JSON bodies. A
+  request an injected failure refused is in `Calls`, never in `Requests`, so an empty
+  `RequestsFor(op)` proves the instance never forwarded the change.
+- Nothing is derived: a bought product does not appear in the subscription unless the test
+  seeds it. `SelfServeProduct` builds a free plan plus a paid `pro` plan priced per unit
+  monthly and annually; `MeteredDimension` is a dimension the License Server classifies as
+  metered while sending the price without a kind.
+
 ## Identity providers
 
 The test plays the workload or the person and holds the credential; the fake plays the

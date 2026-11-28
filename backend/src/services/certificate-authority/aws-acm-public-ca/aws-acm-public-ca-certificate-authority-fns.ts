@@ -12,6 +12,7 @@ import {
   RevokeCertificateCommand,
   ValidationMethod
 } from "@aws-sdk/client-acm";
+import { GetHostedZoneCommand } from "@aws-sdk/client-route-53";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
@@ -46,7 +47,17 @@ import {
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
-import { route53GetHostedZone, route53UpsertRecord } from "../dns-providers/route53";
+import {
+  awsInstanceCredentialsMissingError,
+  awsTransientError,
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError,
+  isAwsInstanceCredentialsMissing,
+  isAwsTransientError
+} from "../certificate-authority-errors";
+import { buildRoute53Client, route53UpsertRecord } from "../dns-providers/route53";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createAcmClient, resolveDnsAwsConnection } from "./aws-acm-public-ca-certificate-authority-client";
 import { AwsAcmValidationMethod } from "./aws-acm-public-ca-certificate-authority-enums";
@@ -161,7 +172,7 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
   }) => {
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.AWS);
     }
     if (appConnection.app !== AppConnection.AWS) {
       throw new BadRequestError({
@@ -192,6 +203,85 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     }
   };
 
+  const assertAcmReachableForSetup = async (appConnectionId: string, region: AWSRegion) => {
+    let acmClient: Awaited<ReturnType<typeof createAcmClient>> | undefined;
+    try {
+      acmClient = await createAcmClient({
+        appConnectionId,
+        region,
+        appConnectionDAL,
+        kmsDataKeyService,
+        instanceConfigService
+      });
+      await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
+    } catch (error) {
+      // Building the client also assumes the connection's role through STS, which is the caller's to fix, but it
+      // decrypts the connection and reads instance config too; only errors AWS returned become a 400.
+      const isAwsError = error instanceof Error && "$metadata" in error;
+      const logMessage = `AWS ACM setup check failed [region=${region}] [appConnectionId=${appConnectionId}]`;
+      if (!acmClient && isAwsInstanceCredentialsMissing(error)) {
+        logger.warn(error, logMessage);
+        throw awsInstanceCredentialsMissingError("AWS connection");
+      }
+      if (!acmClient && !isAwsError) throw error;
+      logger.warn(error, logMessage);
+      // AWS denial text names the calling principal and the role ARN, so only the error name is returned.
+      const errorName = isAwsError ? (error as Error).name : "UnknownError";
+      if (isAwsTransientError(error)) {
+        throw awsTransientError(acmClient ? "AWS Certificate Manager" : "AWS STS", error as Error);
+      }
+      if (!acmClient) {
+        throw new BadRequestError({
+          message: `AWS refused to let Infisical assume the AWS connection's role (${errorName}). Check the connection's credentials and the role's trust policy, then try again.`
+        });
+      }
+      throw new BadRequestError({
+        message: `Could not reach AWS Certificate Manager in region '${region}' (${errorName}). Check the AWS connection's credentials and that it can call acm:ListCertificates in that region, then try again.`
+      });
+    }
+  };
+
+  const assertHostedZoneReachableForSetup = async (
+    dnsConnection: Parameters<typeof buildRoute53Client>[0],
+    dnsAppConnectionId: string,
+    hostedZoneId: string
+  ) => {
+    let route53Client: Awaited<ReturnType<typeof buildRoute53Client>> | undefined;
+    try {
+      route53Client = await buildRoute53Client(dnsConnection, instanceConfigService);
+      await route53Client.send(new GetHostedZoneCommand({ Id: hostedZoneId }));
+    } catch (error) {
+      // Same as the ACM check: building the client assumes the connection's role, and AWS denial text names the
+      // calling principal and the role ARN.
+      const isAwsError = error instanceof Error && "$metadata" in error;
+      const shownZoneId = hostedZoneId.length > 64 ? `${hostedZoneId.slice(0, 64)}...` : hostedZoneId;
+      const logMessage = `Route 53 hosted zone setup check failed [hostedZoneId=${shownZoneId}] [dnsAppConnectionId=${dnsAppConnectionId}]`;
+      if (!route53Client && isAwsInstanceCredentialsMissing(error)) {
+        logger.warn(error, logMessage);
+        throw awsInstanceCredentialsMissingError("Route 53 connection");
+      }
+      if (!route53Client && !isAwsError) throw error;
+      logger.warn(error, logMessage);
+      const errorName = isAwsError ? (error as Error).name : "UnknownError";
+      if (isAwsTransientError(error)) {
+        throw awsTransientError(route53Client ? "Route 53" : "AWS STS", error as Error);
+      }
+      if (!route53Client) {
+        throw new BadRequestError({
+          message: `AWS refused to let Infisical assume the Route 53 connection's role (${errorName}). Check the connection's credentials and the role's trust policy, then try again.`
+        });
+      }
+      if (errorName === "NoSuchHostedZone") {
+        throw new BadRequestError({
+          message: `Route 53 has no hosted zone '${shownZoneId}' that the Route 53 connection can see. Check the hosted zone ID, then try again.`
+        });
+      }
+      throw new BadRequestError({
+        message: `Could not access Route 53 hosted zone '${shownZoneId}' (${errorName}). Check the Route 53 connection's credentials, that it can call route53:GetHostedZone, and the hosted zone ID, then try again.`
+      });
+    }
+  };
+
   const createCertificateAuthority = async ({
     name,
     projectId,
@@ -212,29 +302,14 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
     // Smoke-test both connections up front — ACM via ListCertificates (no single "get CA" resource),
     // and Route 53 via GetHostedZone so a misconfigured DNS connection / wrong zone ID fails
     // synchronously here instead of mid-issuance.
-    const acmClient = await createAcmClient({
-      appConnectionId,
-      region,
-      appConnectionDAL,
-      kmsDataKeyService,
-      instanceConfigService
-    });
-    try {
-      await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
-    } catch (error) {
-      throw new BadRequestError({
-        message: `Failed to reach AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
-      });
-    }
+    await assertAcmReachableForSetup(appConnectionId, region);
 
-    const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsDataKeyService });
-    try {
-      await route53GetHostedZone(dnsConnection, hostedZoneId, instanceConfigService);
-    } catch (error) {
-      throw new BadRequestError({
-        message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
-      });
-    }
+    const dnsConnection = await resolveDnsAwsConnection({
+      dnsAppConnectionId,
+      appConnectionDAL,
+      kmsDataKeyService
+    });
+    await assertHostedZoneReachableForSetup(dnsConnection, dnsAppConnectionId, hostedZoneId);
 
     const caEntity = await certificateAuthorityDAL.transaction(async (tx) => {
       try {
@@ -266,16 +341,14 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
       } catch (error) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToAwsAcmPublicCaCertificateAuthority(caEntity);
@@ -299,34 +372,19 @@ export const AwsAcmPublicCaCertificateAuthorityFns = ({
 
       const ca = await certificateAuthorityDAL.findById(id);
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await validateAwsConnection({ appConnectionId, dnsAppConnectionId, projectId: ca.projectId, actor });
 
-      const acmClient = await createAcmClient({
-        appConnectionId,
-        region,
-        appConnectionDAL,
-        kmsDataKeyService,
-        instanceConfigService
-      });
-      try {
-        await acmClient.send(new ListCertificatesCommand({ MaxItems: 1 }));
-      } catch (error) {
-        throw new BadRequestError({
-          message: `Failed to reach AWS Certificate Manager: ${error instanceof Error ? error.message : "Unknown error"}`
-        });
-      }
+      await assertAcmReachableForSetup(appConnectionId, region);
 
-      const dnsConnection = await resolveDnsAwsConnection({ dnsAppConnectionId, appConnectionDAL, kmsDataKeyService });
-      try {
-        await route53GetHostedZone(dnsConnection, hostedZoneId, instanceConfigService);
-      } catch (error) {
-        throw new BadRequestError({
-          message: `Failed to access Route 53 hosted zone: ${error instanceof Error ? error.message : "Unknown error"}`
-        });
-      }
+      const dnsConnection = await resolveDnsAwsConnection({
+        dnsAppConnectionId,
+        appConnectionDAL,
+        kmsDataKeyService
+      });
+      await assertHostedZoneReachableForSetup(dnsConnection, dnsAppConnectionId, hostedZoneId);
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {

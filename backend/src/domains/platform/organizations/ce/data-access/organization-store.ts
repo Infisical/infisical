@@ -1,9 +1,17 @@
 import { TableName, TOrganizations } from "@app/db/schemas";
 import type { TActorOrg } from "@app/domains/lib/actor-context";
-import { TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
+import { toCount, TReadOptions, TStoreConnection } from "@app/domains/lib/data-access";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
+import { orgTreeIds } from "@app/lib/knex";
 
-import { TOrganization, TOrganizationStore } from "../services/dependencies";
+import {
+  TListRootOrganizationsQuery,
+  TOrganization,
+  TOrganizationName,
+  TOrganizationPage,
+  TOrganizationStore
+} from "../services/dependencies";
 
 // Reads tables a future domain will own; see ../../AGENTS.md.
 export class OrganizationStore implements TOrganizationStore {
@@ -76,6 +84,52 @@ export class OrganizationStore implements TOrganizationStore {
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find actor organization" });
+    }
+  }
+
+  async listOrgTreeNames(orgId: string, options?: TReadOptions): Promise<TOrganizationName[]> {
+    try {
+      const knex = this.connection.reader(options);
+      return (await knex(TableName.Organization)
+        .whereIn("id", orgTreeIds(knex, orgId))
+        .select("id", "name", "rootOrgId")) as TOrganizationName[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "List org tree names" });
+    }
+  }
+
+  async listAllOrgNames(options?: TReadOptions): Promise<TOrganizationName[]> {
+    try {
+      return (await this.connection
+        .reader(options)(TableName.Organization)
+        .select("id", "name", "rootOrgId")) as TOrganizationName[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "List all org names" });
+    }
+  }
+
+  async listRootOrganizations(query: TListRootOrganizationsQuery, options?: TReadOptions): Promise<TOrganizationPage> {
+    try {
+      const knex = this.connection.reader(options);
+      const base = knex(TableName.Organization).whereNull("rootOrgId");
+      if (query.search) {
+        const term = `%${sanitizeSqlLikeString(query.search)}%`;
+        void base.where((builder) => void builder.whereILike("name", term).orWhereILike("slug", term));
+      }
+
+      const [totalRow, organizations] = await Promise.all([
+        base.clone().count({ count: "*" }).first(),
+        base
+          .clone()
+          .orderBy("name", "asc")
+          .limit(query.limit)
+          .offset(query.offset)
+          .select("id", "name", "slug") as Promise<TOrganization[]>
+      ]);
+
+      return { organizations, totalCount: toCount((totalRow as { count?: string | number } | undefined)?.count) };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "List root organizations" });
     }
   }
 }

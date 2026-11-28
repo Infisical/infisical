@@ -10,8 +10,13 @@ import { Project } from "../models/project";
 // domains never touch the request themselves.
 export type TProjectAccessListener = (access: { project: Project; grants: ActorGrants }) => void;
 
+// A plain read: names for display, no rules.
+export type TProjectName = { id: string; name: string; orgId: string };
+
 export type TProjectStore = {
   countWorkspaces(orgId: string, options?: TReadOptions): Promise<number>;
+  // Skips projects scheduled for deletion and ids that don't exist.
+  findProjectNames(projectIds: string[], options?: TReadOptions): Promise<TProjectName[]>;
   findById(projectId: string, options?: TReadOptions): Promise<Project | null>;
   // Changes with any row change and reads "missing" once it's gone, so a cached project gets replaced within the
   // cache's check interval.

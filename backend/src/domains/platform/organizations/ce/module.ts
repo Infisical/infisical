@@ -25,7 +25,13 @@ export type {
   TOrgRolePermission
 } from "./services/org-permission/service";
 export type { TSsoSessionService } from "./services/sso-session/service";
-export type { TIdentityOwnership, TOrganization } from "./services/dependencies";
+export type {
+  TIdentityOwnership,
+  TListRootOrganizationsQuery,
+  TOrganization,
+  TOrganizationName,
+  TOrganizationPage
+} from "./services/dependencies";
 export type { TOrganizationsTransaction } from "./services/organizations/organizations-transaction";
 export type { TOrganizationsService } from "./services/organizations/service";
 

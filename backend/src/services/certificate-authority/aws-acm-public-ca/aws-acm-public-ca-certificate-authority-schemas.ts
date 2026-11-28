@@ -37,11 +37,15 @@ export const AwsAcmPublicCaCertificateAuthoritySchema = BaseCertificateAuthority
 export const CreateAwsAcmPublicCaCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(
   CaType.AWS_ACM_PUBLIC_CA
 ).extend({
-  configuration: AwsAcmPublicCaCertificateAuthorityConfigurationSchema
+  configuration: AwsAcmPublicCaCertificateAuthorityConfigurationSchema.describe(
+    CertificateAuthorities.CONFIGURATION(CaType.AWS_ACM_PUBLIC_CA)
+  )
 });
 
 export const UpdateAwsAcmPublicCaCertificateAuthoritySchema = GenericUpdateCertificateAuthorityFieldsSchema(
   CaType.AWS_ACM_PUBLIC_CA
 ).extend({
-  configuration: AwsAcmPublicCaCertificateAuthorityConfigurationSchema.optional()
+  configuration: AwsAcmPublicCaCertificateAuthorityConfigurationSchema.optional().describe(
+    CertificateAuthorities.UPDATE_CONFIGURATION(CaType.AWS_ACM_PUBLIC_CA)
+  )
 });

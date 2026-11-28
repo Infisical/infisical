@@ -14,6 +14,13 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  KEY_USAGE_OPTIONS,
+  POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES,
+  POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES,
+  SAN_TYPE_OPTIONS,
+  SUBJECT_ATTRIBUTE_TYPE_OPTIONS
+} from "@app/services/certificate-common/certificate-constants";
 import { RequestReference } from "@app/services/certificate-policy/certificate-policy-fns";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
@@ -2528,6 +2535,53 @@ export const CERTIFICATE_AUTHORITIES = {
 };
 
 export const CERTIFICATES = {
+  CREATE: {
+    description:
+      "Issue a certificate through a certificate profile. Send attributes to have Infisical generate the key pair, or a csr to have the profile's certificate authority sign your own key. The request must satisfy the profile's certificate policy, or it is refused with a 400 that lists every violation. When an approval policy requires approval for the request, the response has status pending_approval and no certificate. An external certificate authority can also answer with status pending and no certificate while it issues. In both cases, fetch the certificate request by the returned certificateRequestId to get the certificate once it is issued, or the reason it failed; that needs permission to read certificates. Some inputs depend on the profile's certificate authority: an AWS Certificate Manager profile can't sign a csr, and only an internal certificate authority or a self-signed profile applies domainComponents.",
+    profileId:
+      "The ID of the certificate profile to issue through. The profile decides the certificate authority, the certificate policy and the defaults applied to missing attributes.",
+    applicationId:
+      "The ID of the application to issue through, when the profile is attached to applications. Required for a profile that is only attached to applications.",
+    csr: "A PEM-encoded PKCS#10 certificate signing request. Its subject, key and extensions are used, so attributes may only set ttl, notBefore, notAfter and basicConstraints alongside it, and can't carry customExtensions. An external certificate authority takes basic constraints from the csr, or from the profile's defaults when the csr has none, and ignores attributes.basicConstraints. A csr whose key usage includes keyCertSign is treated as a request for a CA certificate, even without basic constraints. Of the external certificate authorities, only AWS Private CA can issue a CA certificate.",
+    attributes: "The certificate fields to request. Anything omitted falls back to the profile's defaults.",
+    removeRootsFromChain:
+      "Whether to leave the root certificate out of the returned certificate chain. Defaults to false.",
+    metadata: "Key-value pairs to attach to the issued certificate.",
+    metadataKey: "The metadata key, 1 to 255 characters.",
+    metadataValue: "The metadata value, up to 1020 characters. Defaults to an empty string."
+  },
+  ATTRIBUTES: {
+    commonName: "The subject common name (CN), up to 255 characters, such as app.example.com.",
+    organization: "The subject organization (O), up to 255 characters.",
+    organizationalUnit: "The subject organizational unit (OU), up to 255 characters.",
+    country: "The subject country (C), up to 255 characters, usually a two-letter ISO 3166 code such as US.",
+    state: "The subject state or province (ST), up to 255 characters.",
+    locality: "The subject locality (L), up to 255 characters.",
+    domainComponents:
+      "The subject domain components (DC), most specific first, such as ['app', 'example', 'com']. Up to 50 components and 255 characters in total, none containing a comma. Only an internal certificate authority or a self-signed profile applies them.",
+    keyUsages: "Key usages for the certificate, one of the listed values each. Up to 20.",
+    extendedKeyUsages: "Extended key usages for the certificate, one of the listed values each. Up to 20.",
+    altNames: `Subject alternative names, up to 100. Each has a type (${SAN_TYPE_OPTIONS.join(", ")}) and a value of that type, such as { type: 'dns_name', value: 'app.example.com' }.`,
+    altNameType: "The SAN type.",
+    altNameValue:
+      "The SAN value, up to 255 characters, in the format of its type: a host name, an IP address, an email address, a URI, or a user principal name.",
+    signatureAlgorithm: "The signature algorithm, one of the listed values, such as RSA-SHA256 or ECDSA-SHA384.",
+    keyAlgorithm: "The key algorithm, one of the listed values, such as RSA_2048 or EC_prime256v1.",
+    ttl: "How long the certificate is valid, as a number followed by h (hours), d (days) or y (years), such as 24h, 90d or 1y. Must end within 100 years and fit the policy's maximum validity.",
+    notBefore:
+      "When the certificate becomes valid, as an ISO 8601 date and time such as 2026-01-01T00:00:00Z. Can't be combined with ttl.",
+    notAfter:
+      "When the certificate expires, as an ISO 8601 date and time such as 2027-01-01T00:00:00Z. Must be after notBefore. Can't be combined with ttl.",
+    basicConstraints:
+      "Basic constraints. Set isCA to true to issue a CA certificate, which the policy must allow, and pathLength (0 to 255) to limit how many CAs may follow it.",
+    isCA: "Whether the certificate is a CA certificate.",
+    pathLength: "The maximum number of CA certificates that may follow this one in a chain, from 0 to 255.",
+    customExtensions:
+      "Custom X.509 extensions, one per OID. Each has a dotted-decimal oid such as 1.3.6.1.4.1.311.20.2, an optional value and an optional critical flag.",
+    customExtensionOid: "The extension's OID in dotted-decimal form, such as 1.3.6.1.4.1.311.20.2.",
+    customExtensionValue: "The extension's value, as text.",
+    customExtensionCritical: "Whether to mark the extension critical."
+  },
   GET: {
     id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get.",
@@ -2587,10 +2641,13 @@ export const CERTIFICATES = {
       "Fields the issuing authority set differently from the request, each with the requested and issued values. A renewal asks for the requested value again unless it is changed."
   },
   REVOKE: {
+    description:
+      "Revoke a certificate through the certificate authority that issued it. When a revocation approval policy covers the certificate's profile, an approval request is created instead and the response has status pending_approval.",
     id: "The ID or SHA-1/SHA-256 thumbprint of the certificate to revoke. Thumbprint colons and casing are ignored.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
-    revocationReason: "The reason for revoking the certificate.",
+    revocationReason:
+      "The reason for revoking the certificate, one of the listed CRL reason codes, such as KEY_COMPROMISE or SUPERSEDED.",
     revokedAt: "The date and time when the certificate was revoked.",
     serialNumberRes: "The serial number of the certificate.",
     status:
@@ -2649,6 +2706,39 @@ const sanRuleValues = (rule: string, reference: string) =>
   `SAN values ${rule}, with * as a wildcard. ${RequestReference.CommonName} as the whole value ${reference}. DNS names and email addresses ignore case, and in a URI with "://" only the scheme and authority ignore case. ${RequestReference.CommonName} matches an IP address by value. Any other value containing "{{" is refused.`;
 
 export const CERTIFICATE_POLICIES = {
+  CREATE_DESCRIPTION:
+    "Create a certificate policy. A policy sets the rules every certificate issued through a profile that uses it must meet. Omit a rule to leave that part unconstrained, except basicConstraints: a policy without it denies CA certificates.",
+  UPDATE_DESCRIPTION:
+    "Update a certificate policy. Send only the fields to change; a rule you send replaces the existing one, and null removes it. The change applies to certificates issued or renewed afterwards.",
+  id: "The ID of the certificate policy.",
+  name: "The name of the certificate policy. A slug of 1 to 255 lowercase letters, numbers and hyphens. If another policy in the organization already has the name, a random suffix is added rather than refusing the request, so use the name and ID in the response.",
+  updateName:
+    "The new name of the certificate policy, 1 to 255 characters. It is converted to a slug, cut to 255 characters if converting made it longer, and if another policy in the organization already has it, a random suffix is added rather than refusing the request, so use the name in the response.",
+  description: "A description of the certificate policy, up to 255 characters.",
+  subject: `Rules for subject attributes, one per attribute type. Each rule has a type (${SUBJECT_ATTRIBUTE_TYPE_OPTIONS.join(", ")}) and at least one of allowed, required or denied. A request attribute with no rule is refused. Omit to allow any subject; send an empty array to allow no subject attributes.`,
+  subjectType: "The subject attribute the rule applies to.",
+  subjectAllowed: "Values this attribute may take, with * as a wildcard, such as *.example.com.",
+  subjectRequired:
+    "Values the request must supply for this attribute, with * as a wildcard. Setting any makes the attribute mandatory.",
+  subjectDenied: "Values this attribute must not take, with * as a wildcard. A denied match wins over an allowed one.",
+  sans: "Rules for subject alternative names, one per SAN type. A SAN of a type with no rule is refused. Omit to allow any SAN; send an empty array to allow none.",
+  sanType: "The SAN type the rule applies to.",
+  keyUsages: `Key usage rules: allowed, required and denied lists of key usages (${KEY_USAGE_OPTIONS.join(", ")}). A usage can't be both denied and allowed or required. Omit to allow any key usage.`,
+  extendedKeyUsages:
+    "Extended key usage rules: allowed, required and denied lists of extended key usages, one of the listed values each. A usage can't be both denied and allowed or required. Omit to allow any extended key usage.",
+  usageAllowed: "Usages a request may include. A request usage not listed here or in required is refused.",
+  usageRequired: "Usages every request must include.",
+  usageDenied: "Usages a request must not include.",
+  algorithms: "The signature and key algorithms certificates may use. Omit to allow any algorithm.",
+  signatureAlgorithms: `Allowed signature algorithms, at least one: ${POLICY_SIGNATURE_ALGORITHM_DOCUMENTED_VALUES.join(", ")}.`,
+  keyAlgorithms: `Allowed key algorithms, at least one: ${POLICY_KEY_ALGORITHM_DOCUMENTED_VALUES.join(", ")}.`,
+  validity: "Validity limits for certificates issued under the policy.",
+  validityMax:
+    "The longest validity a certificate may request, as a number followed by h (hours), d (days), m (months, 30 days each) or y (years), such as 24h, 90d or 1y. Omit for no limit.",
+  basicConstraints:
+    "Whether certificates under the policy may be CA certificates, and how long a CA chain may follow them.",
+  isCA: "Whether CA certificates are allowed, required or denied. Defaults to denied.",
+  maxPathLength: "The longest path length a CA certificate may request: -1 for unlimited, or 0 or more.",
   SAN_RULE: {
     allowed: `${sanRuleValues("this type may take", "allows a SAN equal to the request's common name")} The requester sets the common name, so this allows any value the policy's common name rule allows, unless a denied value matches it.`,
     required: `${sanRuleValues("the request must include", "requires a SAN of this type equal to the request's common name")} If it lists ${RequestReference.CommonName}, a request without a common name is refused.`,
@@ -2657,6 +2747,9 @@ export const CERTIFICATE_POLICIES = {
   CUSTOM_EXTENSION_RULES:
     "Rules for custom X.509 extensions, one per OID. Omit the field to leave custom extensions unconstrained; send an empty array to forbid them entirely.",
   CUSTOM_EXTENSION_RULE: {
+    oid: "The extension's OID in dotted-decimal form, such as 1.3.6.1.4.1.311.20.2. One rule per OID.",
+    label: "A display name for the extension, 1 to 64 characters.",
+    critical: "Whether the extension must be issued as critical. Omit to let the request or the profile decide.",
     allowed:
       "Value patterns this extension may take, with * as a wildcard. Use * on its own to accept any value. Omit to place no allow-list constraint on the value.",
     required:
@@ -2672,6 +2765,34 @@ export const CERTIFICATE_POLICIES = {
 };
 
 export const CERTIFICATE_PROFILES = {
+  CREATE_DESCRIPTION:
+    "Create a certificate profile. A profile ties a certificate authority to a certificate policy and supplies the defaults applied to certificates requested through it.",
+  UPDATE_DESCRIPTION:
+    "Update a certificate profile. Send only the fields to change. The certificate authority and certificate policy can't be changed here.",
+  id: "The ID of the certificate profile.",
+  caId: "The ID of the certificate authority that signs certificates issued through the profile. Required when issuerType is ca, and not allowed when it is self-signed.",
+  certificatePolicyId: "The ID of the certificate policy that every certificate issued through the profile must meet.",
+  slug: "The name of the profile, unique in the organization: 1 to 255 lowercase letters, numbers and hyphens.",
+  description: "A description of the profile, up to 255 characters.",
+  issuerType:
+    "Who signs certificates issued through the profile: ca for the certificate authority in caId, or self-signed for certificates signed by their own key. Defaults to ca.",
+  updateIssuerType:
+    "Who signs certificates issued through the profile. Omit it to keep the current value. It must match the profile: ca when the profile has a certificate authority, self-signed when it has none.",
+  externalConfigs:
+    "Settings for an external certificate authority. For Microsoft AD CS and Azure AD CS, set template to the name of the Microsoft certificate template to issue from. Omit for other certificate authorities.",
+  defaults:
+    "Values applied to a certificate request that leaves them out. They must satisfy the profile's certificate policy.",
+  defaultTtlDays: "The default validity in days, as a positive whole number.",
+  defaultBasicConstraints:
+    "Default basic constraints. Set isCA to true to issue CA certificates by default, and pathLength (0 or more) to limit how many CAs may follow.",
+  defaultCustomExtensions:
+    "Default custom X.509 extensions, one per OID. Each has a dotted-decimal oid, an optional label, an optional critical flag and an optional value.",
+  customExtensionLabel: "A display name for the extension, 1 to 64 characters.",
+  defaultKeyUsages: "Default key usages, one of the listed values each.",
+  defaultExtendedKeyUsages: "Default extended key usages, one of the listed values each.",
+  defaultPathLength: "The maximum number of CA certificates that may follow this one in a chain, 0 or more.",
+  defaultAltNameValue:
+    "The SAN value, in the format of its type: a host name, an IP address, an email address, a URI, or a user principal name.",
   DEFAULT_SUBJECT_ALT_NAMES: `Default subject alternative names. Fixed values are added only when the request has no CSR and lists no SANs. An entry whose value is ${RequestReference.CommonName} adds the request's common name as a SAN of the entry's type when the request, or its CSR, lists no SANs. Nothing is added for it when there is no common name, when the common name is not valid for that SAN type, or when the certificate authority signs the CSR as sent (Microsoft AD CS, Venafi TPP). Through ACME, only the common name in the client's CSR is used, and only as a DNS name or IP address. Any other value containing "{{" is refused.`
 };
 
@@ -3152,19 +3273,36 @@ export const ProjectTemplates = {
   }
 };
 
+const describeCaOfType = (type: CaType) =>
+  type === CaType.INTERNAL
+    ? "an internal certificate authority"
+    : `a certificate authority of type ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]}`;
+
 export const CertificateAuthorities = {
+  ID: "The ID of the certificate authority.",
+  CREATE_DESCRIPTION: (type: CaType) =>
+    `Create ${describeCaOfType(type)}. Certificate profiles use it to sign the certificates issued through them.`,
+  UPDATE_DESCRIPTION: (type: CaType) => `Update ${describeCaOfType(type)}. Send only the fields to change.`,
+  CONFIGURATION: (type: CaType) => `Settings for ${describeCaOfType(type)}.`,
+  UPDATE_INTERNAL_CONFIGURATION:
+    "Settings to change on the internal certificate authority. Only the CRL and OCSP settings can be changed.",
+  UPDATE_CONFIGURATION: (type: CaType) =>
+    `Settings to change on ${describeCaOfType(type)}. Send the full configuration object.`,
   CREATE: (type: CaType) => ({
-    name: `The name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to create. Must be slug-friendly.`,
-    projectId: `The ID of the project to create the Certificate Authority in.`,
-    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
-    status: `The status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+    name: `The name of the certificate authority to create. A slug of lowercase letters, numbers and hyphens, unique in the organization.`,
+    projectId: `The ID of the project to create the certificate authority in.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the certificate authority.`,
+    status:
+      type === CaType.INTERNAL
+        ? "Ignored for internal CAs, and the create response echoes the value sent; read the CA to see its stored status. A root CA created with configuration.notAfter starts active. A root CA created without it starts as pending-certificate until its CA certificate is generated, and an intermediate CA until its signed CA certificate is installed. Disable it with an update."
+        : `The status of the certificate authority: active to issue certificates, or disabled.`
   }),
   UPDATE: (type: CaType) => ({
-    caId: `The ID of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority to update.`,
-    projectId: `The ID of the project to update the Certificate Authority in.`,
-    name: `The updated name of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority. Must be slug-friendly.`,
-    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
-    status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
+    caId: `The ID of the certificate authority to update. It must be ${describeCaOfType(type)}.`,
+    projectId: `The ID of the project to update the certificate authority in.`,
+    name: `The updated name of the certificate authority. A slug of lowercase letters, numbers and hyphens, unique in the organization.`,
+    enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the certificate authority.`,
+    status: `The updated status of the certificate authority: active to issue certificates, or disabled to stop issuing.`
   }),
   UPDATE_INTERNAL_RESPONSE: {
     crlWarning: "Set when the CRL validity was changed but the CRL could not be regenerated. Contains the reason."
@@ -3174,6 +3312,8 @@ export const CertificateAuthorities = {
       dnsAppConnectionId: `The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.`,
       directoryUrl: `The directory URL for the ACME Certificate Authority.`,
       accountEmail: `The email address for the ACME Certificate Authority.`,
+      dnsProviderConfig:
+        "The DNS provider and zone where Infisical publishes the TXT records that answer the ACME DNS challenges.",
       provider: `The DNS provider for the ACME Certificate Authority.`,
       hostedZoneId: `The hosted zone ID for the ACME Certificate Authority. For Google Cloud DNS, use the managed zone resource name in the format projects/{projectId}/managedZones/{zoneName}. For DNS Server (RFC 2136), use the zone name (e.g. example.com), or pass an empty string to detect the zone from the DNS server.`,
       eabKid: `The External Account Binding (EAB) Key ID for the ACME Certificate Authority. Required if the ACME provider uses EAB.`,
@@ -3192,20 +3332,26 @@ export const CertificateAuthorities = {
       region: `The AWS region to use for the ACM API calls.`
     },
     INTERNAL: {
-      type: "The type of CA to create.",
+      type: "The type of CA to create: root for a self-signed root CA, or intermediate for a CA whose certificate another CA signs.",
       friendlyName: "A friendly name for the CA.",
       organization: "The organization (O) for the CA.",
       ou: "The organization unit (OU) for the CA.",
-      country: "The country name (C) for the CA.",
-      province: "The state of province name for the CA.",
+      country: "The country (C) for the CA, as a two-letter ISO 3166 code such as US.",
+      province: "The state or province name (ST) for the CA.",
       locality: "The locality name for the CA.",
       commonName: "The common name (CN) for the CA.",
       notBefore: "The date and time when the CA becomes valid in YYYY-MM-DDTHH:mm:ss.sssZ format.",
-      notAfter: "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format.",
+      notAfter:
+        "The date and time when the CA expires in YYYY-MM-DDTHH:mm:ss.sssZ format. A root CA needs it to get its certificate on create; without it, the root CA starts as pending-certificate.",
       maxPathLength:
         "The maximum number of intermediate CAs that may follow this CA in the certificate / CA chain. A maxPathLength of -1 implies no path limit on the chain.",
       keyAlgorithm:
-        "The type of public key algorithm and size, in bits, of the key pair for the CA; when you create an intermediate CA, you must use a key algorithm supported by the parent CA.",
+        "The key algorithm of the CA's key pair, one of the listed values, such as RSA_2048 or EC_prime256v1. An intermediate CA must use a key algorithm its parent CA can sign.",
+      dn: "The CA's distinguished name, built from its subject fields. Not user-supplied.",
+      parentCaId:
+        "The ID of the CA that signed this CA's certificate, for an intermediate CA. Not user-supplied: set when the certificate is installed.",
+      serialNumber: "The serial number of the CA's active certificate. Not user-supplied.",
+      activeCaCertId: "The ID of the CA's active certificate. Not user-supplied.",
       keySource:
         "Where the CA's signing key is generated and stored. 'infisical' keeps the key in Infisical's KMS; 'hsm' generates and stores the key in the HSM reached through the specified HSM Connector; 'aws-kms' generates the key in AWS KMS through the specified AWS connection, and every signature is made by AWS KMS.",
       hsmConnectorId:

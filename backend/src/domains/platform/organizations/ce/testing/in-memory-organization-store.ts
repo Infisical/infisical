@@ -1,6 +1,18 @@
 import type { TActorOrg } from "@app/domains/lib/actor-context";
 
-import { TOrganization, TOrganizationStore } from "../services/dependencies";
+import {
+  TListRootOrganizationsQuery,
+  TOrganization,
+  TOrganizationName,
+  TOrganizationPage,
+  TOrganizationStore
+} from "../services/dependencies";
+
+const toName = (org: TActorOrg): TOrganizationName => ({
+  id: org.id,
+  name: org.name,
+  rootOrgId: org.rootOrgId === org.id ? null : org.rootOrgId
+});
 
 // Sub-orgs get their root's sign-in policy, same as the real store.
 export class InMemoryOrganizationStore implements TOrganizationStore {
@@ -25,5 +37,29 @@ export class InMemoryOrganizationStore implements TOrganizationStore {
     const { slug: _slug, ...actorOrg } = org;
     const root = this.orgs.get(org.rootOrgId) ?? org;
     return { ...actorOrg, ssoPolicy: { ...root.ssoPolicy } };
+  }
+
+  async listOrgTreeNames(orgId: string): Promise<TOrganizationName[]> {
+    const org = this.orgs.get(orgId);
+    if (!org) return [];
+    return [...this.orgs.values()].filter((candidate) => candidate.rootOrgId === org.rootOrgId).map(toName);
+  }
+
+  async listAllOrgNames(): Promise<TOrganizationName[]> {
+    return [...this.orgs.values()].map(toName);
+  }
+
+  async listRootOrganizations(query: TListRootOrganizationsQuery): Promise<TOrganizationPage> {
+    const term = query.search?.toLowerCase();
+    const matches = [...this.orgs.values()]
+      .filter((org) => org.rootOrgId === org.id)
+      .filter((org) => !term || org.name.toLowerCase().includes(term) || org.slug.toLowerCase().includes(term))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      organizations: matches
+        .slice(query.offset, query.offset + query.limit)
+        .map((org) => ({ id: org.id, name: org.name, slug: org.slug })),
+      totalCount: matches.length
+    };
   }
 }

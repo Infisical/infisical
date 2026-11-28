@@ -28,6 +28,12 @@ import { CertKeyAlgorithm, CertStatus, CrlReason, TAltNameType } from "@app/serv
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import {
+  caAppConnectionNotFoundError,
+  caNotFoundError,
+  duplicateCaNameError,
+  externalCaNotSavedError
+} from "../certificate-authority-errors";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import {
@@ -153,7 +159,7 @@ export const DigiCertCertificateAuthorityFns = ({
 
     const appConnection = await appConnectionDAL.findById(appConnectionId);
     if (!appConnection) {
-      throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+      throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
     }
     if (appConnection.app !== AppConnection.DigiCert) {
       throw new BadRequestError({
@@ -210,16 +216,14 @@ export const DigiCertCertificateAuthorityFns = ({
         // 23505 = unique_violation — same CA name in the same project
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToDigiCertCertificateAuthority(caEntity);
@@ -242,7 +246,7 @@ export const DigiCertCertificateAuthorityFns = ({
       const { appConnectionId, organizationId, productNameId, purpose, verifiedContact } = configuration;
       const appConnection = await appConnectionDAL.findById(appConnectionId);
       if (!appConnection) {
-        throw new NotFoundError({ message: `DigiCert app connection with ID '${appConnectionId}' not found` });
+        throw caAppConnectionNotFoundError(appConnectionId, AppConnection.DigiCert);
       }
       if (appConnection.app !== AppConnection.DigiCert) {
         throw new BadRequestError({
@@ -252,7 +256,7 @@ export const DigiCertCertificateAuthorityFns = ({
 
       const ca = await certificateAuthorityDAL.findById(id);
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await appConnectionService.validateAppConnectionUsageById(

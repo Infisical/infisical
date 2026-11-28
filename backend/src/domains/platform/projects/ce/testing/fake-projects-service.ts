@@ -14,13 +14,19 @@ export class FakeProjectsService implements TProjectsService {
     return row ? Project.restore(row) : null;
   };
 
+  findProjectNames: TProjectsService["findProjectNames"] = async (projectIds) =>
+    projectIds.flatMap((id) => {
+      const row = this.rows.get(id);
+      return row ? [{ id: row.id, name: row.name, orgId: row.orgId }] : [];
+    });
+
   countWorkspaces: TProjectsService["countWorkspaces"] = async () => this.workspaces;
 
   countProjectIdentities = async () => 0;
 
   countProjectIdentitiesByKind = async () => ({ users: 0, identities: 0 });
 
-  getProjectIdentityBreakdown = async () => [];
+  getProjectIdentityBreakdown: TProjectsService["getProjectIdentityBreakdown"] = async () => [];
 
   within = () => ({
     lockAndCountWorkspaces: (orgId: string) => this.countWorkspaces(orgId)

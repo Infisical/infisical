@@ -31,6 +31,7 @@ import { CertKeyAlgorithm, CertStatus, CrlReason } from "@app/services/certifica
 
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
+import { caNotFoundError, duplicateCaNameError, externalCaNotSavedError } from "../certificate-authority-errors";
 import { keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
 import { createGoDaddyApiClient } from "./godaddy-api-client";
@@ -258,16 +259,14 @@ export const GoDaddyCertificateAuthorityFns = ({
         // 23505 = unique_violation — same CA name in the same project
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
         if ((error as any)?.error?.code === "23505") {
-          throw new BadRequestError({
-            message: "Certificate authority with the same name already exists in your project"
-          });
+          throw duplicateCaNameError(name);
         }
         throw error;
       }
     });
 
     if (!caEntity.externalCa?.id) {
-      throw new BadRequestError({ message: "Failed to create external certificate authority" });
+      throw externalCaNotSavedError(name);
     }
 
     return castDbEntryToGoDaddyCertificateAuthority(caEntity);
@@ -301,7 +300,7 @@ export const GoDaddyCertificateAuthorityFns = ({
 
       const ca = await certificateAuthorityDAL.findById(id);
       if (!ca) {
-        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+        throw caNotFoundError(id);
       }
 
       await appConnectionService.validateAppConnectionUsageById(

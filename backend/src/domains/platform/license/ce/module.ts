@@ -32,6 +32,8 @@ export type {
   TLicensePolicyService,
   TLicenseServer,
   TPlanCache,
+  TUsageAttribution,
+  TUsageBreakdown,
   TUsageCounter,
   TUsageReportCache
 } from "./services/dependencies";

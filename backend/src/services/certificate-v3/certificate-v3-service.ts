@@ -39,13 +39,22 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-maps";
 import { validateGoDaddyIssuanceInputs } from "@app/services/certificate-authority/godaddy/godaddy-certificate-authority-validators";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { certificateNotFoundError } from "@app/services/certificate-common/certificate-errors";
 import {
   recordCertificateIssuanceFailure,
   tagErrorWithCertificateRequest
 } from "@app/services/certificate-common/certificate-issuance-audit-fns";
 import { recordNewCertificateQuotaKey } from "@app/services/certificate-common/certificate-quota-fns";
+import { assertPkiResourceInActorOrg } from "@app/services/certificate-common/pki-org-scope-fns";
+import { describePolicyViolations } from "@app/services/certificate-policy/certificate-policy-fns";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import {
+  certificateProfileNotFoundError,
+  enrollmentTypeMismatchError,
+  profileHasNoCaError,
+  selfSignedProfileCannotSignCsrError
+} from "@app/services/certificate-profile/certificate-profile-errors";
 import {
   ENROLLMENT_TYPE_NAME_MAP,
   EnrollmentType,
@@ -76,7 +85,9 @@ import {
   CertificateIssuanceOperation,
   CertKeyUsageType,
   CertPolicyState,
-  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE
+  CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
+  POLICY_KEY_ALGORITHM_TO_REQUEST,
+  POLICY_SIGNATURE_ALGORITHM_TO_REQUEST
 } from "../certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
@@ -249,19 +260,22 @@ const validateProfileAndPermissions = async ({
 }) => {
   const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
   if (!profile) {
-    throw new NotFoundError({ message: "Certificate profile not found" });
+    throw certificateProfileNotFoundError(profileId);
   }
 
-  if (!applicationId && profile.enrollmentType !== requiredEnrollmentType) {
-    throw new ForbiddenRequestError({
-      message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
-    });
-  }
+  // The enrollment type is checked after authorization so the error does not reveal a profile's
+  // configuration to a caller who cannot use it.
+  const assertEnrollmentType = () => {
+    if (!applicationId && profile.enrollmentType !== requiredEnrollmentType) {
+      throw enrollmentTypeMismatchError(profile.enrollmentType, requiredEnrollmentType);
+    }
+    return profile;
+  };
 
   if (caller.enrollment) {
     // EST, SCEP and MS autoenrollment already matched the client to the profile.
     if (PROTOCOL_ENROLLMENT_ACTORS.has(caller.enrollment.type)) {
-      return profile;
+      return assertEnrollmentType();
     }
 
     if (requiredEnrollmentType !== EnrollmentType.ACME) {
@@ -277,7 +291,15 @@ const validateProfileAndPermissions = async ({
         message: "ACME account is not associated with this profile"
       });
     }
-    return profile;
+    return assertEnrollmentType();
+  }
+
+  const { type: principalType } = caller.actor.principal;
+  if (
+    (principalType === ActorType.USER || principalType === ActorType.IDENTITY) &&
+    profile.project?.orgId !== caller.actor.org.id
+  ) {
+    throw certificateProfileNotFoundError(profileId);
   }
 
   if (applicationId) {
@@ -291,7 +313,7 @@ const validateProfileAndPermissions = async ({
       action: ProjectPermissionCertificateProfileActions.IssueCert,
       subject: ProjectPermissionSub.CertificateProfiles
     });
-    return profile;
+    return assertEnrollmentType();
   }
 
   const permission = await projectPermissionService.getProjectPermission({
@@ -306,7 +328,7 @@ const validateProfileAndPermissions = async ({
     fields: { slug: profile.slug }
   });
 
-  return profile;
+  return assertEnrollmentType();
 };
 
 // Builds the certificate permission fields from a persisted certificate record so the private-key
@@ -664,9 +686,6 @@ export const certificateV3ServiceFactory = ({
         policyId: profile.certificatePolicyId,
         internal: true
       });
-      if (!policy) {
-        throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-      }
 
       const validationResult = await certificatePolicyService.validateCertificateRequest(
         profile.certificatePolicyId,
@@ -676,7 +695,7 @@ export const certificateV3ServiceFactory = ({
 
       if (!validationResult.isValid) {
         throw new BadRequestError({
-          message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+          message: describePolicyViolations(validationResult.errors)
         });
       }
 
@@ -811,7 +830,7 @@ export const certificateV3ServiceFactory = ({
 
     if (certificateRequest.commonName && Array.isArray(certificateRequest.commonName)) {
       throw new BadRequestError({
-        message: "Common Name must be a single value, not an array"
+        message: "commonName must be a single string, not an array"
       });
     }
 
@@ -824,9 +843,6 @@ export const certificateV3ServiceFactory = ({
       policyId: profile.certificatePolicyId,
       internal: true
     });
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
 
     const validationResult = await certificatePolicyService.validateCertificateRequest(
       profile.certificatePolicyId,
@@ -834,30 +850,32 @@ export const certificateV3ServiceFactory = ({
       { profileCustomExtensions: profile.defaults?.customExtensions }
     );
 
-    if (!validationResult.isValid) {
-      throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
-      });
-    }
-
-    const { resolvedCustomExtensions } = validationResult;
-
     const effectiveSignatureAlgorithm = certificateRequestWithDefaults.signatureAlgorithm as
       | CertSignatureAlgorithm
       | undefined;
     const effectiveKeyAlgorithm = certificateRequestWithDefaults.keyAlgorithm as CertKeyAlgorithm | undefined;
 
+    // The policy validator only checks an algorithm the request sets, so a missing one is added here to report every
+    // violation in one response.
+    const policyViolations = [...validationResult.errors];
     if (policy.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
+      policyViolations.push(
+        `The certificate policy restricts key algorithms, so the request must set one. Add keyAlgorithm to the request, or set a default key algorithm on the certificate profile. Allowed key algorithms: ${policy.algorithms.keyAlgorithm.map((algorithm) => POLICY_KEY_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}`
+      );
+    }
+    if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
+      policyViolations.push(
+        `The certificate policy restricts signature algorithms, so the request must set one. Add signatureAlgorithm to the request, or set a default signature algorithm on the certificate profile. Allowed signature algorithms: ${policy.algorithms.signature.map((algorithm) => POLICY_SIGNATURE_ALGORITHM_TO_REQUEST[algorithm] ?? algorithm).join(", ")}`
+      );
+    }
+
+    if (policyViolations.length > 0) {
       throw new BadRequestError({
-        message: "Key algorithm is required by this policy but not provided in request"
+        message: describePolicyViolations(policyViolations)
       });
     }
 
-    if (policy.algorithms?.signature && !effectiveSignatureAlgorithm) {
-      throw new BadRequestError({
-        message: "Signature algorithm is required by this policy but not provided in request"
-      });
-    }
+    const { resolvedCustomExtensions } = validationResult;
 
     const certificateSubject = buildCertificateSubjectFromTemplate(certificateRequestWithDefaults, policy?.subject);
     const subjectAlternativeNames = buildSubjectAlternativeNamesFromTemplate(
@@ -1066,13 +1084,10 @@ export const certificateV3ServiceFactory = ({
     }
 
     if (!profile.caId) {
-      throw new NotFoundError({ message: "Certificate Authority ID not found" });
+      throw profileHasNoCaError(profile.slug);
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -1340,15 +1355,10 @@ export const certificateV3ServiceFactory = ({
     const applicationName = await $resolveApplicationName(applicationId);
 
     if (!profile.caId) {
-      throw new BadRequestError({
-        message: "Self-signed certificates are not supported for CSR signing"
-      });
+      throw selfSignedProfileCannotSignCsrError(profile.slug);
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -1358,10 +1368,6 @@ export const certificateV3ServiceFactory = ({
       policyId: profile.certificatePolicyId,
       internal: true
     });
-
-    if (!policy) {
-      throw new NotFoundError({ message: "Certificate policy not found for this profile" });
-    }
 
     const csrCertificateRequest = extractCertificateRequestFromCSR(csr);
     const additionalExtensionOids = (additionalExtensions ?? []).map((extension) => extension.oid);
@@ -1454,7 +1460,7 @@ export const certificateV3ServiceFactory = ({
 
     if (!validationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+        message: describePolicyViolations(validationResult.errors)
       });
     }
 
@@ -1963,7 +1969,7 @@ export const certificateV3ServiceFactory = ({
 
     if (!validationResult.isValid) {
       throw new BadRequestError({
-        message: `Certificate order validation failed: ${validationResult.errors.join(", ")}`
+        message: describePolicyViolations(validationResult.errors)
       });
     }
 
@@ -2147,14 +2153,11 @@ export const certificateV3ServiceFactory = ({
 
     if (!profile.caId) {
       throw new BadRequestError({
-        message: "Self-signed certificates are not supported for certificate ordering"
+        message: `Certificate profile '${profile.slug}' issues self-signed certificates, which cannot be ordered. Use a profile with an external certificate authority.`
       });
     }
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
 
     assertCaInProfileProject(ca, profile);
 
@@ -2162,7 +2165,8 @@ export const certificateV3ServiceFactory = ({
 
     if (caType === CaType.INTERNAL) {
       throw new BadRequestError({
-        message: "Certificate ordering is not supported for the specified CA type"
+        message:
+          "Certificate ordering is only for external certificate authorities, and this profile uses an internal one. Issue the certificate instead."
       });
     }
 
@@ -2260,15 +2264,21 @@ export const certificateV3ServiceFactory = ({
     }
 
     throw new BadRequestError({
-      message: "Certificate ordering is not supported for the specified CA type"
+      message: `Certificate ordering is not supported for certificate authority type '${caType}'. Use a profile with an external certificate authority.`
     });
   };
 
   const updateCertificate = async ({ certificateId, metadata, actor }: TUpdateCertificateDTO) => {
     const certificate = await certificateDAL.findById(certificateId);
     if (!certificate) {
-      throw new NotFoundError({ message: "Certificate not found" });
+      throw certificateNotFoundError({ id: certificateId });
     }
+    await assertPkiResourceInActorOrg({
+      projectDAL,
+      projectId: certificate.projectId,
+      actorOrgId: actor.org.id,
+      notFoundError: () => certificateNotFoundError({ id: certificateId })
+    });
 
     const { projectPermission } = await assertCanEditCertificate({
       certificate,
@@ -2296,7 +2306,7 @@ export const certificateV3ServiceFactory = ({
       await certificateDAL.transaction(async (tx) => {
         const lockedCertificate = await certificateDAL.findByIdForShare(certificateId, tx);
         if (!lockedCertificate) {
-          throw new NotFoundError({ message: "Certificate not found" });
+          throw certificateNotFoundError({ id: certificateId });
         }
         assertCertificateNotDeleted(lockedCertificate);
         await resourceMetadataDAL.delete({ certificateId }, tx);

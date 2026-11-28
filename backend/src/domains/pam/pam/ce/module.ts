@@ -35,7 +35,14 @@ export class PamModule {
     this.usageCounters = [
       {
         meter: Meter.PamIdentities,
-        count: (orgId) => projectsService.countProjectIdentities(ProjectType.PAM, orgId)
+        count: (orgId) => projectsService.countProjectIdentities(ProjectType.PAM, orgId),
+        breakdown: async (orgId) => {
+          const [{ users, identities }, rows] = await Promise.all([
+            projectsService.countProjectIdentitiesByKind(ProjectType.PAM, orgId ?? undefined),
+            projectsService.getProjectIdentityBreakdown(ProjectType.PAM, orgId ?? undefined)
+          ]);
+          return { total: users + identities, users, rows };
+        }
       }
     ];
   }
