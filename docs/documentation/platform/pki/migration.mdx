@@ -54,7 +54,7 @@ Your existing setup keeps working. Certificates will keep renewing, alerts will 
 If your organization has multiple Certificate Management projects, all of them remain accessible. The designated active project loads by default, and legacy projects can be opened directly to be wound down on your own timeline.
 
 <Note>
-  **Applications are scoped to the active project.** Within an organization that contains multiple Certificate Management projects, the Applications experience is available exclusively on the project designated as active under **Organization Settings → Products → Certificate Manager**. Applications aren't supported in legacy projects.
+  **Applications are scoped to the active project.** Within an organization that contains multiple Certificate Management projects, the Applications experience is available exclusively on the project designated as active. Applications aren't supported in legacy projects.
 </Note>
 
 **Plan your migration before starting:**
@@ -75,11 +75,13 @@ If you have CAs, policies, or profiles spread across multiple existing projects,
 
 <Steps>
   <Step title="Designate the active project">
-    Navigate to **Organization Settings → Products → Certificate Manager**. In the projects table, mark the project you intend to consolidate into as **Active**. All members and integrations across the organization will subsequently resolve to this project. Designating an active project also unlocks Applications. Until one is selected (in organizations with multiple Certificate Management projects), Applications can't be created or administered.
+    Open **Certificate Manager**. If no project is active yet, Infisical asks an organization admin to choose one. Select the project you intend to consolidate into, then select **Set as active**. You can also set or change the active project in **Certificate Manager** > **Product Settings**: open the project's actions menu in the projects table and select **Set as active**.
+
+    All members and integrations across the organization will subsequently resolve to this project. Designating an active project also unlocks Applications. Until one is selected (in organizations with multiple Certificate Management projects), Applications can't be created or administered.
   </Step>
 
   <Step title="Export entities from legacy projects">
-    From the same projects table, locate a legacy project, open its actions menu, and select **Export to active project**.
+    In the same projects table under **Certificate Manager** > **Product Settings**, locate a legacy project, open its actions menu, and select **Export to active project**.
 
     The export copies the following resources into the active project:
 
@@ -193,7 +195,7 @@ Once you've consolidated your projects (or if you only have one), go to your **a
     A profile defines what a certificate looks like: one CA, one policy, one set of constraints. A service often needs multiple certificate types. Keeping profiles at the product level lets admins define them once and let multiple Applications consume them, each with their own enrollment methods and access control.
   </Accordion>
   <Accordion title="Why don't I see Applications in my legacy project?">
-    Applications live on your organization's active Certificate Management project. Designate one under **Organization Settings → Products → Certificate Manager** and Applications will appear there. Legacy projects remain fully accessible for everything else.
+    Applications live on your organization's active Certificate Management project. Designate one under **Certificate Manager** > **Product Settings** and Applications will appear there. Legacy projects remain fully accessible for everything else.
   </Accordion>
 </AccordionGroup>
 
