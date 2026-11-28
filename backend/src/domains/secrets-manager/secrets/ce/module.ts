@@ -70,7 +70,14 @@ export class SecretsModule {
     this.usageCounters = [
       {
         meter: Meter.SecretIdentities,
-        count: (orgId) => projectsService.countProjectIdentities(ProjectType.SecretManager, orgId)
+        count: (orgId) => projectsService.countProjectIdentities(ProjectType.SecretManager, orgId),
+        breakdown: async (orgId) => {
+          const [{ users, identities }, rows] = await Promise.all([
+            projectsService.countProjectIdentitiesByKind(ProjectType.SecretManager, orgId ?? undefined),
+            projectsService.getProjectIdentityBreakdown(ProjectType.SecretManager, orgId ?? undefined)
+          ]);
+          return { total: users + identities, users, rows };
+        }
       }
     ];
   }

@@ -12,7 +12,7 @@ import { TAuthMode } from "./inject-identity";
 
 // Built from what inject-identity and inject-assume-privilege already loaded, so permission code never re-reads
 // users or identities.
-const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: string } => {
+export const principalFromAuth = (auth: TAuthMode): { principal: TPrincipal; actorId: string } => {
   switch (auth.actorType) {
     case ActorType.USER: {
       const assumed = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
