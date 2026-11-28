@@ -21,6 +21,7 @@ import { resolveV4Href } from "../../../resolveV4Href";
 import { BrandedLayout } from "../BrandedLayout";
 import { usePublicSecretSharing } from "../PublicLayout";
 import { DEFAULT_FAVICON_URL, errorOf } from "../shared";
+import { ShareHalftone } from "../ShareHalftone";
 
 import styles from "../public.module.css";
 
@@ -241,6 +242,7 @@ export const ViewSharedSecretPage = () => {
       variant="focused"
       pageTitle="Securely Share Secrets"
       title="View shared secret"
+      decal={<ShareHalftone />}
       bottom={
         <a
           className={styles.quietLink}

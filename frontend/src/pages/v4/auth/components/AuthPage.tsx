@@ -20,6 +20,7 @@ type Props = {
   bottom?: ReactNode;
   variant?: "split" | "focused";
   wide?: boolean;
+  decal?: ReactNode;
   children: ReactNode;
 };
 
@@ -33,11 +34,13 @@ export const AuthPage = ({
   bottom,
   variant = "split",
   wide,
+  decal,
   children
 }: Props) => {
   const copyRef = useRef<HTMLDivElement>(null);
   return (
     <div className={styles.page} data-variant={variant}>
+      {decal}
       <PageTitle title={pageTitle} />
       <section className={styles.formColumn}>
         <header className={styles.bar}>
